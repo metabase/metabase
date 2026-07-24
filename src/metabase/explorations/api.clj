@@ -209,31 +209,18 @@
                  (assoc row :exploration_thread_id thread-id :position i))
                rows))
 
-(defn- api->block
-  "Convert a block's API-shape (snake_case) dimension snapshots and metric-selection
-   dimension mappings to the internal kebab-case shape."
-  [block]
-  (cond-> block
-    (:dimensions block) (update :dimensions metrics/api->dimensions)
-    (:metrics block)    (update :metrics
-                                (fn [selections]
-                                  (mapv (fn [selection]
-                                          (cond-> selection
-                                            (:dimension_mappings selection)
-                                            (update :dimension_mappings metrics/api->dimension-mappings)))
-                                        selections)))))
-
 (defn- insert-blocks!
   "Persist the FE's Research-plan blocks — one `ExplorationBlock` row per block, in payload
-   order, with API-shape dimension keys converted to the internal kebab-case shape. Each
-   block keeps its own `:metrics`/`:dimensions` selection; the planners cross metrics with
+   order. Dimension snapshots and mapping objects arrive already converted to the internal
+   kebab-case shape (the request schemas carry the `:decode/api` rules `defendpoint` applies).
+   Each block keeps its own `:metrics`/`:dimensions` selection; the planners cross metrics with
    dimensions only within a block. No dedup across blocks: a metric or dimension appearing
    in two blocks is stored on both."
   [thread-id blocks]
   (when (seq blocks)
     (t2/insert! :model/ExplorationBlock
                 (positional-rows thread-id
-                                 (map #(select-keys (api->block %) [:type :metrics :dimensions]) blocks)))))
+                                 (map #(select-keys % [:type :metrics :dimensions]) blocks)))))
 
 (defn- insert-thread-timelines!
   "Attach `timeline-ids` to the thread, in payload order. Deduped (`distinct`, keeping first
@@ -323,16 +310,22 @@
 ;;; ----------------------------------------- schemas -----------------------------------------
 
 (def ^:private MetricSelection
+  ;; Mapping objects are decoded from the snake_case wire shape to the internal kebab-case shape
+  ;; at the `defendpoint` edge by the wire-annotated schema (see [[metabase.metrics.core]]);
+  ;; the envelope `:dimension_mappings` key itself stays snake_case, matching storage.
   [:map
    [:card_id ms/PositiveInt]
-   [:dimension_mappings {:optional true} [:maybe [:sequential :map]]]])
+   [:dimension_mappings {:optional true} [:maybe [:sequential ::metrics/dimension-mapping]]]])
 
 (def ^:private DimensionSelection
-  [:map
-   [:dimension_id   ms/NonBlankString]
-   [:display_name   {:optional true} [:maybe :string]]
-   [:effective_type {:optional true} [:maybe :string]]
-   [:semantic_type  {:optional true} [:maybe :string]]])
+  ;; The FE sends snake_case dimension snapshots; the `:decode/api` rule kebab-cases them at the
+  ;; `defendpoint` edge, so entries here are declared in the internal kebab-case shape the
+  ;; handler receives and persists. Open map: snapshot keys beyond these pass through kebab-cased.
+  [:map {:decode/api {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}
+   [:dimension-id   ms/UUIDString]
+   [:display-name   {:optional true} [:maybe :string]]
+   [:effective-type {:optional true} [:maybe :string]]
+   [:semantic-type  {:optional true} [:maybe :string]]])
 
 (def ^:private BlockSelection
   "One Research-plan area on the FE — either a metric area (one primary metric + chosen dimensions)
@@ -562,7 +555,7 @@
                                              [:id [:maybe ms/PositiveInt]]
                                              [:name :string]]]]
    [:dimension_ids        [:sequential :any]]
-   [:dimension_mappings   {:optional true} [:maybe [:sequential :map]]]
+   [:dimension_mappings   {:optional true} [:maybe [:sequential ::metrics/dimension-mapping]]]
    [:database_id          {:optional true} [:maybe ms/PositiveInt]]
    [:result_column_name   {:optional true} [:maybe :string]]
    [:in_library           {:optional true} :boolean]])
@@ -574,7 +567,7 @@
   [:map
    [:name                       :string]
    [:dimension_interestingness  [:maybe number?]]
-   [:dimensions                 [:sequential :map]]])
+   [:dimensions                 [:sequential ::metrics/dimension]]])
 
 (mr/def ::DimensionsResponse
   "Schema for GET /dimensions: metrics referencing dimensions by id, plus the grouped dimension list."
@@ -714,7 +707,11 @@
   Optional `q` filters case-insensitively across metric name and dimension display-name."
   [_route-params
    {:keys [q]} :- [:maybe [:map [:q {:optional true} [:maybe ms/NonBlankString]]]]]
-  (explorations/exploration-data->api (explorations/exploration-data {:q q})))
+  ;; Returned in the internal kebab-case shape; the `::DimensionsResponse` schema encodes
+  ;; dimensions and mappings to the snake_case wire shape at the `defendpoint` edge. (The
+  ;; `add_research_groups` metabot tool serves the same payload outside `defendpoint` and
+  ;; converts explicitly via [[explorations/exploration-data->api]].)
+  (explorations/exploration-data {:q q}))
 
 (defn- my-explorations-honeysql
   "HoneySQL for the explorations `user-id` created or edited, ordered by that user's most-recent

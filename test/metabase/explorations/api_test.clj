@@ -99,6 +99,18 @@
   [x]
   (walk/postwalk (fn [v] (if (seq? v) (vec v) v)) x))
 
+(defn- duid
+  "Deterministic valid-uuid dimension id for a short test label, e.g. `(duid \"d1\")`.
+  Dimension ids are uuid-validated at the API edge, so payload fixtures can't use bare
+  labels; this hex-encodes the label into the uuid digits, keeping ids stable and
+  distinct per label while satisfying the schema."
+  [label]
+  (let [hex (apply str (map #(format "%02x" (int %)) label))
+        _   (assert (<= (count hex) 32) (str "label too long for duid: " label))
+        pad (str (apply str (repeat (- 32 (count hex)) "0")) hex)]
+    (str (subs pad 0 8) "-" (subs pad 8 12) "-" (subs pad 12 16) "-"
+         (subs pad 16 20) "-" (subs pad 20 32))))
+
 (defn- ->blocks-body
   "Adapt a test body that uses top-level `:metrics`/`:dimensions` into the `:blocks` payload
   the API now requires, wrapping them in a single block. Bodies that already carry `:blocks`
@@ -282,10 +294,10 @@
                   :description  "Q3 dip"
                   :prompt       "break down by region"
                   :metrics      [{:card_id (:id metric)
-                                  :dimension_mappings [{:dimension_id "d1"
+                                  :dimension_mappings [{:dimension_id (duid "d1")
                                                         :table_id (mt/id :venues)
                                                         :target ["field" {} (mt/id :venues :price)]}]}]
-                  :dimensions   [{:dimension_id "d1" :display_name "Price"
+                  :dimensions   [{:dimension_id (duid "d1") :display_name "Price"
                                   :effective_type "type/Number"}]
                   :timeline_ids [(:id tl)]}
             resp (create-exploration! u body)
@@ -302,13 +314,13 @@
         (is (= 1 (t2/count :model/ExplorationBlock :exploration_thread_id (:id thread))))
         (testing "snake_case API payloads are persisted in the internal kebab-case shape"
           (let [block (t2/select-one :model/ExplorationBlock :exploration_thread_id (:id thread))]
-            (is (= "d1" (-> block :dimensions first :dimension-id)))
+            (is (= (duid "d1") (-> block :dimensions first :dimension-id)))
             (is (= "Price" (-> block :dimensions first :display-name)))
-            (is (= "d1" (-> block :metrics first :dimension_mappings first :dimension-id)))
+            (is (= (duid "d1") (-> block :metrics first :dimension_mappings first :dimension-id)))
             (is (= (mt/id :venues) (-> block :metrics first :dimension_mappings first :table-id)))))
         (is (= 1 (t2/count :model/ExplorationThreadTimeline :exploration_thread_id (:id thread))))
         (is (= 1 (count (:queries thread))))
-        (is (= "d1" (:dimension_id q)))
+        (is (= (duid "d1") (:dimension_id q)))
         (is (= "pending" (:status q)))
         (let [mp  (lib-be/application-database-metadata-provider (mt/id))
               qry (lib/query mp (:dataset_query q))
@@ -325,10 +337,10 @@
                    :model/Timeline tl {:creator_id (:id u) :name "Releases"}]
       (let [body      {:name         "Timeline hydrate"
                        :metrics      [{:card_id (:id metric)
-                                       :dimension_mappings [{:dimension_id "d1"
+                                       :dimension_mappings [{:dimension_id (duid "d1")
                                                              :table_id (mt/id :venues)
                                                              :target ["field" {} (mt/id :venues :price)]}]}]
-                       :dimensions   [{:dimension_id "d1" :display_name "Price"
+                       :dimensions   [{:dimension_id (duid "d1") :display_name "Price"
                                        :effective_type "type/Number"}]
                        :timeline_ids [(:id tl)]}
             resp      (create-exploration! u body)
@@ -344,11 +356,11 @@
                    :model/Card revenue (assoc (valid-metric-card (:id u)) :name "Revenue")
                    :model/Card signups (assoc (valid-metric-card (:id u)) :name "Signups")]
       (let [mapping (fn [card-id]
-                      [{:dimension_id "d1"
+                      [{:dimension_id (duid "d1")
                         :table_id (mt/id :venues)
                         :target ["field" {} (mt/id :venues :price)]
                         :card_id card-id}])
-            dims    [{:dimension_id "d1" :display_name "Price" :effective_type "type/Number"}]
+            dims    [{:dimension_id (duid "d1") :display_name "Price" :effective_type "type/Number"}]
             body    {:name   "Naming"
                      :blocks [;; metric-anchored: one metric crossed with a dimension
                               {:type       "metric"
@@ -421,7 +433,7 @@
     (mt/with-temp [:model/User u {:email "groups@example.com"}
                    :model/Card metric (valid-metric-card (:id u))
                    :model/Timeline tl {:creator_id (:id u)}]
-      (let [mapping [{:dimension_id "d1"
+      (let [mapping [{:dimension_id (duid "d1")
                       :table_id (mt/id :venues)
                       :target ["field" {} (mt/id :venues :price)]}]
             ;; Two blocks sharing the same metric: a metric block (metric + d1) and a
@@ -433,11 +445,11 @@
                   :timeline_ids [(:id tl)]
                   :blocks       [{:type       "metric"
                                   :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
-                                  :dimensions [{:dimension_id "d1" :display_name "Price"
+                                  :dimensions [{:dimension_id (duid "d1") :display_name "Price"
                                                 :effective_type "type/Number"}]}
                                  {:type       "dimension"
                                   :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
-                                  :dimensions [{:dimension_id "d2" :display_name "Category"
+                                  :dimensions [{:dimension_id (duid "d2") :display_name "Category"
                                                 :effective_type "type/Text"}]}]}
             resp   (mt/user-http-request u :post 200 "exploration" body)
             tid    (-> resp :threads first :id)
@@ -449,7 +461,7 @@
         (is (= [0 1] (map :position blocks)))
         (testing "each block keeps its own metrics + dimensions selection"
           (is (= [(:id metric) (:id metric)] (map #(-> % :metrics first :card_id) blocks)))
-          (is (= ["d1" "d2"] (map #(-> % :dimensions first :dimension-id) blocks))))
+          (is (= [(duid "d1") (duid "d2")] (map #(-> % :dimensions first :dimension-id) blocks))))
         (testing "timelines are thread-scoped, stored once"
           (is (= 1 (t2/count :model/ExplorationThreadTimeline :exploration_thread_id tid))))))))
 
@@ -466,18 +478,18 @@
             txt-fid (mt/id :venues :name)
             body    {:name    "binning"
                      :metrics [{:card_id (:id metric)
-                                :dimension_mappings [{:dimension_id "dt"  :table_id tbl-id :target ["field" {} id-fid]}
-                                                     {:dimension_id "d"   :table_id tbl-id :target ["field" {} id-fid]}
-                                                     {:dimension_id "t"   :table_id tbl-id :target ["field" {} id-fid]}
-                                                     {:dimension_id "n"   :table_id tbl-id :target ["field" {} num-fid]}
-                                                     {:dimension_id "lat" :table_id tbl-id :target ["field" {} lat-fid]}
-                                                     {:dimension_id "s"   :table_id tbl-id :target ["field" {} txt-fid]}]}]
-                     :dimensions [{:dimension_id "dt"  :effective_type "type/DateTime"}
-                                  {:dimension_id "d"   :effective_type "type/Date"}
-                                  {:dimension_id "t"   :effective_type "type/Time"}
-                                  {:dimension_id "n"   :effective_type "type/Number"}
-                                  {:dimension_id "lat" :effective_type "type/Float" :semantic_type "type/Latitude"}
-                                  {:dimension_id "s"   :effective_type "type/Text"}]}
+                                :dimension_mappings [{:dimension_id (duid "dt")  :table_id tbl-id :target ["field" {} id-fid]}
+                                                     {:dimension_id (duid "d")   :table_id tbl-id :target ["field" {} id-fid]}
+                                                     {:dimension_id (duid "t")   :table_id tbl-id :target ["field" {} id-fid]}
+                                                     {:dimension_id (duid "n")   :table_id tbl-id :target ["field" {} num-fid]}
+                                                     {:dimension_id (duid "lat") :table_id tbl-id :target ["field" {} lat-fid]}
+                                                     {:dimension_id (duid "s")   :table_id tbl-id :target ["field" {} txt-fid]}]}]
+                     :dimensions [{:dimension_id (duid "dt")  :effective_type "type/DateTime"}
+                                  {:dimension_id (duid "d")   :effective_type "type/Date"}
+                                  {:dimension_id (duid "t")   :effective_type "type/Time"}
+                                  {:dimension_id (duid "n")   :effective_type "type/Number"}
+                                  {:dimension_id (duid "lat") :effective_type "type/Float" :semantic_type "type/Latitude"}
+                                  {:dimension_id (duid "s")   :effective_type "type/Text"}]}
             resp    (create-exploration! u body)
             mp      (lib-be/application-database-metadata-provider (mt/id))
             by-dim  (into {} (for [q       (-> resp :threads first :queries)
@@ -487,20 +499,20 @@
                                                        lib/breakouts
                                                        first)]))]
         (testing "DateTime dim → :month bucket"
-          (is (= :month (lib/raw-temporal-bucket (get by-dim "dt"))))
-          (is (nil? (lib/binning (get by-dim "dt")))))
+          (is (= :month (lib/raw-temporal-bucket (get by-dim (duid "dt")))))
+          (is (nil? (lib/binning (get by-dim (duid "dt"))))))
         (testing "Date dim → :day bucket"
-          (is (= :day (lib/raw-temporal-bucket (get by-dim "d")))))
+          (is (= :day (lib/raw-temporal-bucket (get by-dim (duid "d"))))))
         (testing "Time dim → :hour bucket"
-          (is (= :hour (lib/raw-temporal-bucket (get by-dim "t")))))
+          (is (= :hour (lib/raw-temporal-bucket (get by-dim (duid "t"))))))
         (testing "Number dim with a fingerprinted field → default auto-binning"
-          (is (= :default (:strategy (lib/binning (get by-dim "n")))))
-          (is (nil? (lib/raw-temporal-bucket (get by-dim "n")))))
+          (is (= :default (:strategy (lib/binning (get by-dim (duid "n"))))))
+          (is (nil? (lib/raw-temporal-bucket (get by-dim (duid "n"))))))
         (testing "Coordinate (semantic Latitude over Float) with a fingerprinted field → default auto-binning"
-          (is (= :default (:strategy (lib/binning (get by-dim "lat"))))))
+          (is (= :default (:strategy (lib/binning (get by-dim (duid "lat")))))))
         (testing "Non-numeric / non-temporal dim → no bucket"
-          (is (nil? (lib/binning (get by-dim "s"))))
-          (is (nil? (lib/raw-temporal-bucket (get by-dim "s")))))))))
+          (is (nil? (lib/binning (get by-dim (duid "s")))))
+          (is (nil? (lib/raw-temporal-bucket (get by-dim (duid "s"))))))))))
 
 (deftest exploration-create-skips-binning-when-fingerprint-missing-test
   (testing "POST / skips default numeric binning when the underlying Field has no min/max fingerprint"
@@ -511,10 +523,10 @@
         (mt/with-temp-vals-in-db :model/Field field-id {:fingerprint nil}
           (let [body {:name    "no fp"
                       :metrics [{:card_id (:id metric)
-                                 :dimension_mappings [{:dimension_id "n"
+                                 :dimension_mappings [{:dimension_id (duid "n")
                                                        :table_id (mt/id :venues)
                                                        :target ["field" {} field-id]}]}]
-                      :dimensions [{:dimension_id "n" :effective_type "type/Number"}]}
+                      :dimensions [{:dimension_id (duid "n") :effective_type "type/Number"}]}
                 resp (create-exploration! u body)
                 q    (-> resp :threads first :queries first)
                 mp   (lib-be/application-database-metadata-provider (mt/id))
@@ -538,10 +550,10 @@
             temp-fid (mt/id :products :created_at)
             body     {:name       "no time pls"
                       :metrics    [{:card_id            (:id metric)
-                                    :dimension_mappings [{:dimension_id "d1"
+                                    :dimension_mappings [{:dimension_id (duid "d1")
                                                           :table_id     (mt/id :products)
                                                           :target       ["field" {} dim-fid]}]}]
-                      :dimensions [{:dimension_id "d1" :display_name "Region"}]}
+                      :dimensions [{:dimension_id (duid "d1") :display_name "Region"}]}
             resp (create-exploration! u body)
             q    (->> resp :threads first :queries (filter #(= "default" (:query_type %))) first)
             mp   (lib-be/application-database-metadata-provider (mt/id))
@@ -560,21 +572,21 @@
     (mt/with-temp [:model/User u {:email "matrix@example.com"}
                    :model/Card m1 (valid-metric-card (:id u))
                    :model/Card m2 (valid-metric-card (:id u))]
-      (let [mapping  [{:dimension_id "category" :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
-                      {:dimension_id "price"    :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}]
+      (let [mapping  [{:dimension_id (duid "category") :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
+                      {:dimension_id (duid "price")    :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}]
             body     {:name "matrix"
                       :metrics [{:card_id (:id m1) :dimension_mappings mapping}
                                 {:card_id (:id m2) :dimension_mappings mapping}]
-                      :dimensions [{:dimension_id "category" :display_name "Category"}
-                                   {:dimension_id "price"    :display_name "Price"}]}
+                      :dimensions [{:dimension_id (duid "category") :display_name "Category"}
+                                   {:dimension_id (duid "price")    :display_name "Price"}]}
             resp     (create-exploration! u body)
             all-queries (-> resp :threads first :queries)
             ;; The metric×dimension matrix is the set of base "default" queries (ignore
             ;; extra variants like top-n-other that high-cardinality dims also emit).
             queries  (filter #(= "default" (:query_type %)) all-queries)]
         (is (= 4 (count queries)) "2 metrics × 2 dimensions = 4 default queries")
-        (is (= #{[(:id m1) "category"] [(:id m1) "price"]
-                 [(:id m2) "category"] [(:id m2) "price"]}
+        (is (= #{[(:id m1) (duid "category")] [(:id m1) (duid "price")]
+                 [(:id m2) (duid "category")] [(:id m2) (duid "price")]}
                (set (map (juxt :card_id :dimension_id) queries))))
         (is (every? #(= "pending" (:status %)) all-queries))))))
 
@@ -584,18 +596,19 @@
    :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))})
 
 (defn- venues-dimension-mappings
-  "Wire-shape (snake_case) dimension mappings for HTTP request payloads. The API edge converts
-  these to the internal kebab-case shape (`metabase.metrics.dimension/api->dimension-mapping`)."
+  "Wire-shape (snake_case) dimension mappings for HTTP request payloads. `defendpoint` decodes
+  these to the internal kebab-case shape via the `:metabase.metrics.core/dimension-mapping`
+  schema the request schemas reference."
   []
-  [{:dimension_id "category" :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
-   {:dimension_id "price"    :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}])
+  [{:dimension_id (duid "category") :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
+   {:dimension_id (duid "price")    :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}])
 
 (defn- stored-venues-dimension-mappings
   "Internal-shape (kebab-case) dimension mappings for direct t2 block fixtures — the canonical
   stored shape, bypassing the API edge conversion."
   []
-  [{:dimension-id "category" :table-id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
-   {:dimension-id "price"    :table-id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}])
+  [{:dimension-id (duid "category") :table-id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
+   {:dimension-id (duid "price")    :table-id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}])
 
 (defn- segment-filters
   "Extract :segment filter clauses (as `[:segment {} <id>]`) from a snapshot dataset_query at stage 0."
@@ -616,8 +629,8 @@
                                             :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 4)))))}]
       (let [body    {:name       "fan-out"
                      :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
-                     :dimensions [{:dimension_id "category" :display_name "Category"}
-                                  {:dimension_id "price"    :display_name "Price"}]}
+                     :dimensions [{:dimension_id (duid "category") :display_name "Category"}
+                                  {:dimension_id (duid "price")    :display_name "Price"}]}
             resp    (create-exploration! u body)
             queries (-> resp :threads first :queries)
             ;; Filter to default queries to isolate segment fan-out behavior;
@@ -636,7 +649,7 @@
           (is (every? #(empty? (segment-filters (:dataset_query %))) base)))
         (testing "segmented row name includes the segment name"
           (let [segged-by-id (group-by :segment_id segged)
-                a-internal   (some #(when (= "category" (:dimension_id %)) %)
+                a-internal   (some #(when (= (duid "category") (:dimension_id %)) %)
                                    (get segged-by-id (:id internal)))]
             (is (= "Revenue by Category (internal)" (:name a-internal)))))))))
 
@@ -649,7 +662,7 @@
                                           :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :users))) (lib/filter (lib/not-null (lib.metadata/field mp (mt/id :users :id)))))))}]
       (let [body    {:name       "scope"
                      :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
-                     :dimensions [{:dimension_id "category"} {:dimension_id "price"}]}
+                     :dimensions [{:dimension_id (duid "category")} {:dimension_id (duid "price")}]}
             resp    (create-exploration! u body)
             queries (-> resp :threads first :queries)]
         (is (pos? (count queries))
@@ -673,7 +686,7 @@
   (testing "POST / with a datetime dim emits default + day-of-week + hour-of-day"
     (mt/with-temp [:model/User u {:email "temporal-dt@example.com"}
                    :model/Card metric (venues-metric-card (:id u))]
-      (let [mapping [{:dimension_id "created"
+      (let [mapping [{:dimension_id (duid "created")
                       ;; a mapping's :table_id is the table of the *target* column (see
                       ;; `column->computed-pair` in `metabase.lib-metric.dimension.jvm`),
                       ;; which for joined dimensions differs from the metric's source table
@@ -681,25 +694,25 @@
                       :target       ["field" {} (mt/id :people :created_at)]}]
             body    {:name       "dt"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
-                     :dimensions [{:dimension_id   "created"
+                     :dimensions [{:dimension_id   (duid "created")
                                    :display_name   "Created"
                                    :effective_type "type/DateTime"}]}
             queries (-> (create-exploration! u body)
                         :threads first :queries)]
         (is (= #{"default" "temporal-pattern-day" "temporal-pattern-hour"}
                (query-types queries)))
-        (is (every? #(= "created" (:dimension_id %)) queries))))))
+        (is (every? #(= (duid "created") (:dimension_id %)) queries))))))
 
 (deftest exploration-create-date-dim-skips-hour-of-day-test
   (testing "POST / with a pure-date dim emits default + day-of-week (no HoD)"
     (mt/with-temp [:model/User u {:email "temporal-date@example.com"}
                    :model/Card metric (venues-metric-card (:id u))]
-      (let [mapping [{:dimension_id "created"
+      (let [mapping [{:dimension_id (duid "created")
                       :table_id     (mt/id :venues)
                       :target       ["field" {} (mt/id :checkins :date)]}]
             body    {:name       "date"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
-                     :dimensions [{:dimension_id   "created"
+                     :dimensions [{:dimension_id   (duid "created")
                                    :display_name   "Created"
                                    :effective_type "type/Date"}]}
             queries (-> (create-exploration! u body)
@@ -710,12 +723,12 @@
   (testing "POST / with a low-cardinality categorical dim + metric with default temporal breakout emits default + time-facet"
     (mt/with-temp [:model/User u {:email "time-facet@example.com"}
                    :model/Card metric (assoc (products-monthly-metric-card (:id u)) :name "Sales")]
-      (let [mapping [{:dimension_id "cat"
+      (let [mapping [{:dimension_id (duid "cat")
                       :table_id     (mt/id :products)
                       :target       ["field" {} (mt/id :products :category)]}]
             body    {:name       "facet"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
-                     :dimensions [{:dimension_id "cat" :display_name "Category"}]}
+                     :dimensions [{:dimension_id (duid "cat") :display_name "Category"}]}
             thread  (-> (create-exploration! u body) :threads first)
             queries (:queries thread)
             facet   (first (filter #(= "time-facet" (:query_type %)) queries))
@@ -738,12 +751,12 @@
   (testing "POST / categorical dim but metric has no default temporal breakout → no time-facet"
     (mt/with-temp [:model/User u {:email "no-default-breakout@example.com"}
                    :model/Card metric (venues-metric-card (:id u))]
-      (let [mapping [{:dimension_id "price"
+      (let [mapping [{:dimension_id (duid "price")
                       :table_id     (mt/id :venues)
                       :target       ["field" {} (mt/id :venues :price)]}]
             body    {:name       "no-facet"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
-                     :dimensions [{:dimension_id "price" :display_name "Price" :effective_type "type/Number"}]}
+                     :dimensions [{:dimension_id (duid "price") :display_name "Price" :effective_type "type/Number"}]}
             queries (-> (create-exploration! u body)
                         :threads first :queries)]
         ;; Numeric dim → default (auto-binned); no top-n-other; and no time-facet because the
@@ -754,13 +767,13 @@
   (testing "POST / categorical dim with very high distinct-count → no default, no time-facet, just top-n-other"
     (mt/with-temp [:model/User u {:email "high-card@example.com"}
                    :model/Card metric (products-monthly-metric-card (:id u))]
-      (let [mapping [{:dimension_id "email"
+      (let [mapping [{:dimension_id (duid "email")
                       ;; :table_id is the target column's table, not the metric's source table
                       :table_id     (mt/id :people)
                       :target       ["field" {} (mt/id :people :email)]}]
             body    {:name       "high-card"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
-                     :dimensions [{:dimension_id "email" :display_name "Email"}]}
+                     :dimensions [{:dimension_id (duid "email") :display_name "Email"}]}
             queries (-> (create-exploration! u body)
                         :threads first :queries)]
         (is (= #{"top-n-other"} (query-types queries))
@@ -773,12 +786,12 @@
                    :model/Segment s {:name       "premium"
                                      :table_id   (mt/id :products)
                                      :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :products))) (lib/filter (lib/> (lib.metadata/field mp (mt/id :products :price)) 50)))))}]
-      (let [mapping [{:dimension_id "cat"
+      (let [mapping [{:dimension_id (duid "cat")
                       :table_id     (mt/id :products)
                       :target       ["field" {} (mt/id :products :category)]}]
             body    {:name       "facet-no-seg"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
-                     :dimensions [{:dimension_id "cat" :display_name "Category"}]}
+                     :dimensions [{:dimension_id (duid "cat") :display_name "Category"}]}
             queries (-> (create-exploration! u body)
                         :threads first :queries)
             by-type (group-by :query_type queries)]
@@ -798,7 +811,7 @@
                    :model/Segment s {:name       "cheap"
                                      :table_id   (mt/id :venues)
                                      :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1)))))}]
-      (let [mapping [{:dimension_id "created"
+      (let [mapping [{:dimension_id (duid "created")
                       ;; a mapping's :table_id is the table of the *target* column (see
                       ;; `column->computed-pair` in `metabase.lib-metric.dimension.jvm`),
                       ;; which for joined dimensions differs from the metric's source table
@@ -806,7 +819,7 @@
                       :target       ["field" {} (mt/id :people :created_at)]}]
             body    {:name       "seg"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
-                     :dimensions [{:dimension_id   "created"
+                     :dimensions [{:dimension_id   (duid "created")
                                    :display_name   "Created"
                                    :effective_type "type/DateTime"}]}
             queries (-> (create-exploration! u body)
@@ -823,7 +836,7 @@
   (testing "variants for a (card, dim) are materialized and partitioned across the block's pages"
     (mt/with-temp [:model/User u {:email "groups-collapse@example.com"}
                    :model/Card metric (venues-metric-card (:id u))]
-      (let [mapping [{:dimension_id "created"
+      (let [mapping [{:dimension_id (duid "created")
                       ;; a mapping's :table_id is the table of the *target* column (see
                       ;; `column->computed-pair` in `metabase.lib-metric.dimension.jvm`),
                       ;; which for joined dimensions differs from the metric's source table
@@ -831,7 +844,7 @@
                       :target       ["field" {} (mt/id :people :created_at)]}]
             body    {:name       "collapse"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
-                     :dimensions [{:dimension_id   "created"
+                     :dimensions [{:dimension_id   (duid "created")
                                    :display_name   "Created"
                                    :effective_type "type/DateTime"}]}
             resp    (create-exploration! u body)
@@ -862,10 +875,10 @@
       (let [body      {:name         "Why is revenue down"
                        :prompt       "break down by region"
                        :metrics      [{:card_id (:id metric)
-                                       :dimension_mappings [{:dimension_id "d1"
+                                       :dimension_mappings [{:dimension_id (duid "d1")
                                                              :table_id (mt/id :venues)
                                                              :target ["field" {} (mt/id :venues :price)]}]}]
-                       :dimensions   [{:dimension_id "d1" :display_name "Price"
+                       :dimensions   [{:dimension_id (duid "d1") :display_name "Price"
                                        :effective_type "type/Number"}]
                        :timeline_ids [(:id tl)]}
             created   (create-exploration! u body)
@@ -895,7 +908,7 @@
             (let [blocks (t2/select :model/ExplorationBlock :exploration_thread_id orig-tid)]
               (is (= 1 (count blocks)) "the Research-plan block survives the restart")
               (is (= 1 (count (:metrics (first blocks)))) "its metric selection is preserved")
-              (is (= ["d1"] (mapv :dimension-id (:dimensions (first blocks))))
+              (is (= [(duid "d1")] (mapv :dimension-id (:dimensions (first blocks))))
                   "its dimension selection is preserved"))
             (is (= 1 (count (:timelines rerun)))))
           (testing "the planner regenerates queries for the same thread"
@@ -966,11 +979,11 @@
                    :model/Card signups (valid-metric-card (:id u))]
       (let [body {:name "applicability"
                   :metrics [{:card_id (:id revenue)
-                             :dimension_mappings [{:dimension_id "plan"   :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}]}
+                             :dimension_mappings [{:dimension_id (duid "plan")   :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}]}
                             {:card_id (:id signups)
-                             :dimension_mappings [{:dimension_id "plan"   :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
-                                                  {:dimension_id "channel" :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}]}]
-                  :dimensions [{:dimension_id "plan"} {:dimension_id "channel"}]}
+                             :dimension_mappings [{:dimension_id (duid "plan")   :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
+                                                  {:dimension_id (duid "channel") :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}]}]
+                  :dimensions [{:dimension_id (duid "plan")} {:dimension_id (duid "channel")}]}
             resp     (create-exploration! u body)
             all-queries (-> resp :threads first :queries)
             ;; ignore extra planner variants (e.g. top-n-other); the matrix is the base
@@ -978,9 +991,9 @@
             queries  (filter #(= "default" (:query_type %)) all-queries)]
         (is (= 3 (count queries))
             "revenue×plan, signups×plan, signups×channel — revenue×channel is dropped")
-        (is (= #{[(:id revenue) "plan"]
-                 [(:id signups) "plan"]
-                 [(:id signups) "channel"]}
+        (is (= #{[(:id revenue) (duid "plan")]
+                 [(:id signups) (duid "plan")]
+                 [(:id signups) (duid "channel")]}
                (set (map (juxt :card_id :dimension_id) queries))))
         (is (= (range (count all-queries)) (sort (map :position all-queries)))
             "positions are sequential with no gaps from filtered pairs")))))
@@ -991,18 +1004,18 @@
                    :model/Card revenue (assoc (valid-metric-card (:id u)) :name "Revenue")]
       (let [body {:name "naming"
                   :metrics    [{:card_id (:id revenue)
-                                :dimension_mappings [{:dimension_id "country" :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
-                                                     {:dimension_id "no-name" :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}]}]
-                  :dimensions [{:dimension_id "country" :display_name "Country"}
-                               {:dimension_id "no-name"}]}
+                                :dimension_mappings [{:dimension_id (duid "country") :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
+                                                     {:dimension_id (duid "no-name") :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}]}]
+                  :dimensions [{:dimension_id (duid "country") :display_name "Country"}
+                               {:dimension_id (duid "no-name")}]}
             resp     (create-exploration! u body)
             ;; base "default" query carries the plain '{metric} by {dimension}' name;
             ;; variants like top-n-other add suffixes, so look only at the default queries
             queries  (filter #(= "default" (:query_type %)) (-> resp :threads first :queries))
             by-dim   (into {} (map (juxt :dimension_id :name) queries))]
-        (is (= "Revenue by Country" (get by-dim "country"))
+        (is (= "Revenue by Country" (get by-dim (duid "country")))
             "uses the metric Card name and the dimension's display_name")
-        (is (= "Revenue by no-name" (get by-dim "no-name"))
+        (is (= (str "Revenue by " (duid "no-name")) (get by-dim (duid "no-name")))
             "falls back to dimension_id when display_name is absent")))))
 
 (deftest exploration-create-disambiguates-same-named-dimensions-test
@@ -1071,10 +1084,10 @@
       (let [body {:name "no-group"
                   :metrics    [{:card_id (:id revenue)
                                 :dimension_mappings
-                                [{:dimension_id "a" :table_id 1 :target ["field" {} 1]}
-                                 {:dimension_id "b" :table_id 1 :target ["field" {} 2]}]}]
-                  :dimensions [{:dimension_id "a" :display_name "Created At"}
-                               {:dimension_id "b" :display_name "Created At"}]}
+                                [{:dimension_id (duid "a") :table_id 1 :target ["field" {} 1]}
+                                 {:dimension_id (duid "b") :table_id 1 :target ["field" {} 2]}]}]
+                  :dimensions [{:dimension_id (duid "a") :display_name "Created At"}
+                               {:dimension_id (duid "b") :display_name "Created At"}]}
             queries (-> (mt/user-http-request u :post 200 "exploration" body)
                         :threads first :queries)]
         (is (every? #(= "Revenue by Created At" (:name %)) queries)
@@ -1087,16 +1100,16 @@
       (let [body {:name "dim-name"
                   :metrics    [{:card_id (:id metric)
                                 :dimension_mappings
-                                [{:dimension_id "country" :table_id 1 :target ["field" {} 1]}
-                                 {:dimension_id "no-name" :table_id 1 :target ["field" {} 2]}]}]
-                  :dimensions [{:dimension_id "country" :display_name "Country"}
-                               {:dimension_id "no-name"}]}
+                                [{:dimension_id (duid "country") :table_id 1 :target ["field" {} 1]}
+                                 {:dimension_id (duid "no-name") :table_id 1 :target ["field" {} 2]}]}]
+                  :dimensions [{:dimension_id (duid "country") :display_name "Country"}
+                               {:dimension_id (duid "no-name")}]}
             by-dim (->> (create-exploration! u body)
                         :threads first :queries
                         (into {} (map (juxt :dimension_id :dimension_name))))]
-        (is (= "Country" (get by-dim "country"))
+        (is (= "Country" (get by-dim (duid "country")))
             "ships the dim's display_name as :dimension_name when unambiguous")
-        (is (= "no-name" (get by-dim "no-name"))
+        (is (= (duid "no-name") (get by-dim (duid "no-name")))
             "falls back to dimension_id when display_name is missing")))))
 
 (deftest exploration-get-dimension-name-disambiguates-test
@@ -1151,8 +1164,8 @@
       (let [resp (create-exploration! u
                                       {:name "get-score"
                                        :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                       :dimensions [{:dimension_id "d1"}]})
+                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id (duid "d1")}]})
             eid (:id resp)
             qid (-> resp :threads first :queries first :id)
             fetch-query (fn []
@@ -1231,8 +1244,8 @@
       (let [resp     (create-exploration! u
                                           {:name "result"
                                            :metrics [{:card_id (:id metric)
-                                                      :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                           :dimensions [{:dimension_id "d1"}]})
+                                                      :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                           :dimensions [{:dimension_id (duid "d1")}]})
             qid      (-> resp :threads first :queries first :id)
             qp-out   {:status :completed
                       :data   {:cols [{:name "x"} {:name "y"}]
@@ -1253,8 +1266,8 @@
       (let [resp (create-exploration! u
                                       {:name "pending"
                                        :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                       :dimensions [{:dimension_id "d1"}]})
+                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id (duid "d1")}]})
             qid  (-> resp :threads first :queries first :id)
             body (mt/user-http-request u :get 409 (format "exploration/query/%d" qid))]
         (is (= "pending" (:status body)))
@@ -1269,8 +1282,8 @@
                                       {:name "qr-private"
                                        :collection_id (:id (collection/user->personal-collection (:id owner)))
                                        :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                       :dimensions [{:dimension_id "d1"}]})
+                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id (duid "d1")}]})
             qid  (-> resp :threads first :queries first :id)]
         (mt/user-http-request other :get 403 (format "exploration/query/%d" qid))))))
 
@@ -1281,8 +1294,8 @@
       (let [resp (create-exploration! u
                                       {:name "page-mark"
                                        :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                       :dimensions [{:dimension_id "d1"}]})
+                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id (duid "d1")}]})
             eid     (:id resp)
             page-id (-> resp :threads first :blocks first :pages first :id)
             fetch-page (fn []
@@ -1306,8 +1319,8 @@
                                       {:name "page-mark-private"
                                        :collection_id (:id (collection/user->personal-collection (:id owner)))
                                        :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                       :dimensions [{:dimension_id "d1"}]})
+                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id (duid "d1")}]})
             page-id (-> resp :threads first :blocks first :pages first :id)]
         (mt/user-http-request other :put 403 (format "exploration/page/%d/starred" page-id) {:starred true})))))
 
@@ -1323,8 +1336,8 @@
       (let [resp (create-exploration! u
                                       {:name "page-hide"
                                        :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                       :dimensions [{:dimension_id "d1"}]})
+                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id (duid "d1")}]})
             eid     (:id resp)
             page-id (-> resp :threads first :blocks first :pages first :id)
             fetch-page (fn []
@@ -1346,9 +1359,9 @@
       (let [resp (create-exploration! u
                                       {:name "pages-hide-bulk"
                                        :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}
-                                                                       {:dimension_id "d2" :table_id 1 :target ["field" {} 2]}]}]
-                                       :dimensions [{:dimension_id "d1"} {:dimension_id "d2"}]})
+                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}
+                                                                       {:dimension_id (duid "d2") :table_id 1 :target ["field" {} 2]}]}]
+                                       :dimensions [{:dimension_id (duid "d1")} {:dimension_id (duid "d2")}]})
             eid      (:id resp)
             page-ids (->> (mt/user-http-request u :get 200 (format "exploration/%d" eid))
                           :threads first :blocks (mapcat :pages) (map :id))
@@ -1368,8 +1381,8 @@
                                       {:name "page-hide-private"
                                        :collection_id (:id (collection/user->personal-collection (:id owner)))
                                        :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                       :dimensions [{:dimension_id "d1"}]})
+                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id (duid "d1")}]})
             page-id (-> resp :threads first :blocks first :pages first :id)]
         (mt/user-http-request other :put 403 "exploration/pages/hidden" {:page_ids [page-id] :hidden true})))))
 
@@ -1388,8 +1401,8 @@
             body         {:name         "base drill"
                           :prompt       "why down?"
                           :metrics      [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
-                          :dimensions   [{:dimension_id "category" :display_name "Category"}
-                                         {:dimension_id "price"    :display_name "Price"}]
+                          :dimensions   [{:dimension_id (duid "category") :display_name "Category"}
+                                         {:dimension_id (duid "price")    :display_name "Price"}]
                           :timeline_ids [(:id tl)]}
             created      (create-exploration! u body)
             expl-id      (:id created)
@@ -1416,7 +1429,7 @@
         (testing "new block copies type/dimensions and appends explore_filters onto metrics"
           (let [persisted (t2/select-one :model/ExplorationBlock :exploration_thread_id (:id new))]
             (is (= "metric" (:type new-block)))
-            (is (= ["category" "price"] (mapv :dimension-id (:dimensions persisted))))
+            (is (= [(duid "category") (duid "price")] (mapv :dimension-id (:dimensions persisted))))
             (let [persisted-filters (:explore_filters (first (:metrics persisted)))]
               (is (= 1 (count persisted-filters)))
               (is (= filter-value (:value (first persisted-filters))))
@@ -1458,8 +1471,8 @@
       (let [body     {:name       "base drill"
                       :prompt     "why down?"
                       :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
-                      :dimensions [{:dimension_id "category" :display_name "Category"}
-                                   {:dimension_id "price"    :display_name "Price"}]}
+                      :dimensions [{:dimension_id (duid "category") :display_name "Category"}
+                                   {:dimension_id (duid "price")    :display_name "Price"}]}
             created  (create-exploration! u body)
             expl-id  (:id created)
             page-id  (some :id (filter #(str/includes? (:name %) "Price")
@@ -1487,7 +1500,7 @@
                                       {:name         "private drill"
                                        :collection_id (:id (collection/user->personal-collection (:id owner)))
                                        :metrics      [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
-                                       :dimensions   [{:dimension_id "category" :display_name "Category"}]})
+                                       :dimensions   [{:dimension_id (duid "category") :display_name "Category"}]})
             expl-id (:id resp)
             page-id (-> resp :threads first :blocks first :pages first :id)
             body    {:page_id         page-id
@@ -1509,8 +1522,8 @@
                                         :timeline_ids [(:id tl)]
                                         :blocks       [{:name       "Group"
                                                         :metrics    [{:card_id (:id metric)
-                                                                      :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                                        :dimensions [{:dimension_id "d1"}]}]})
+                                                                      :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                                        :dimensions [{:dimension_id (duid "d1")}]}]})
             eid  (:id resp)
             tid  (-> resp :threads first :id)]
         (t2/delete! :model/Exploration :id eid)
@@ -1526,8 +1539,8 @@
       (let [resp (mt/user-http-request u :post 200 "exploration"
                                        {:name "http-delete"
                                         :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                        :dimensions [{:dimension_id "d1"}]})
+                                                   :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                        :dimensions [{:dimension_id (duid "d1")}]})
             eid  (:id resp)]
         ;; Live exploration: delete via HTTP.
         (mt/user-http-request u :delete 204 (format "exploration/%d" eid))
@@ -1536,8 +1549,8 @@
         (let [resp2 (mt/user-http-request u :post 200 "exploration"
                                           {:name "trash-then-delete"
                                            :metrics [{:card_id (:id metric)
-                                                      :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                           :dimensions [{:dimension_id "d1"}]})
+                                                      :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                           :dimensions [{:dimension_id (duid "d1")}]})
               eid2  (:id resp2)]
           (mt/user-http-request u :put 200 (format "exploration/%d" eid2) {:archived true})
           (mt/user-http-request u :delete 204 (format "exploration/%d" eid2))
@@ -1553,9 +1566,9 @@
 (deftest blocks-tree-emits-blocks-and-pages-test
   (testing "Each block becomes a node; each of its pages bundles that page's queries by page_id"
     (let [blocks  [{:id 1 :metrics [{:card_id 10}]} {:id 2 :metrics [{:card_id 20}]}]
-          pages   [{:id 100 :exploration_block_id 1 :card_id 10 :dimension_id "d1" :query_type "default" :hidden false}
-                   {:id 101 :exploration_block_id 1 :card_id 10 :dimension_id "d2" :query_type "default" :hidden true}
-                   {:id 200 :exploration_block_id 2 :card_id 20 :dimension_id "d1" :query_type "default" :hidden false}]
+          pages   [{:id 100 :exploration_block_id 1 :card_id 10 :dimension_id (duid "d1") :query_type "default" :hidden false}
+                   {:id 101 :exploration_block_id 1 :card_id 10 :dimension_id (duid "d2") :query_type "default" :hidden true}
+                   {:id 200 :exploration_block_id 2 :card_id 20 :dimension_id (duid "d1") :query_type "default" :hidden false}]
           queries [{:id 1 :page_id 100 :segment_id nil :name "Rev by D1"      :interestingness_score 0.5}
                    {:id 2 :page_id 100 :segment_id 100 :name "Rev by D1 (S1)" :interestingness_score 0.7}
                    {:id 3 :page_id 100 :segment_id 101 :name "Rev by D1 (S2)" :interestingness_score 0.3}
@@ -1587,9 +1600,9 @@
 (deftest blocks-tree-positions-test
   (testing "blocks in authoring order; pages within a block score-sorted; positions reified"
     (let [blocks  [{:id 10} {:id 20}]
-          pages   [{:id 1 :exploration_block_id 10 :card_id 1 :dimension_id "d1" :query_type "default"}
-                   {:id 2 :exploration_block_id 10 :card_id 1 :dimension_id "d2" :query_type "default"}
-                   {:id 3 :exploration_block_id 20 :card_id 2 :dimension_id "d1" :query_type "default"}]
+          pages   [{:id 1 :exploration_block_id 10 :card_id 1 :dimension_id (duid "d1") :query_type "default"}
+                   {:id 2 :exploration_block_id 10 :card_id 1 :dimension_id (duid "d2") :query_type "default"}
+                   {:id 3 :exploration_block_id 20 :card_id 2 :dimension_id (duid "d1") :query_type "default"}]
           queries [{:id 1 :page_id 1 :segment_id nil :name "Rev by D1" :interestingness_score 0.9}
                    {:id 2 :page_id 2 :segment_id nil :name "Rev by D2" :interestingness_score 0.4}
                    {:id 3 :page_id 3 :segment_id nil :name "Cnt by D1" :interestingness_score 0.8}]
@@ -1602,7 +1615,7 @@
 (deftest blocks-tree-page-name-generated-from-parts-test
   (testing "page names are generated from the metric + dimension (+ variant), independent of the query :name"
     (let [blocks  [{:id 5 :metrics [{:card_id 10}]}]
-          pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id "d1" :query_type "default"}]
+          pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id (duid "d1") :query_type "default"}]
           queries [{:id 1 :page_id 1 :segment_id nil :dimension_name "Price" :name "some stored query name"}]
           [block] (explorations.blocks/blocks-tree blocks pages {10 "Revenue"} queries)
           [page]  (:pages block)]
@@ -1623,7 +1636,7 @@
                     :dimension_name "Year"
                     :display_value  "2024"}]
           blocks  [{:id 5 :metrics [{:card_id 10 :explore_filters filters}]}]
-          pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id "d1" :query_type "default"}]
+          pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id (duid "d1") :query_type "default"}]
           queries [{:id 1 :page_id 1 :segment_id nil :dimension_name "Category" :name "stored name"}]
           [block] (explorations.blocks/blocks-tree blocks pages {10 "Orders"} queries)
           [page]  (:pages block)]
@@ -1637,8 +1650,8 @@
 (deftest blocks-tree-page-sort-prefers-contextual-test
   (testing "page sort uses contextual_interestingness_score when present, else interestingness_score"
     (let [blocks  [{:id 5}]
-          pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id "d1" :query_type "default"}
-                   {:id 2 :exploration_block_id 5 :card_id 10 :dimension_id "d2" :query_type "default"}]
+          pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id (duid "d1") :query_type "default"}
+                   {:id 2 :exploration_block_id 5 :card_id 10 :dimension_id (duid "d2") :query_type "default"}]
           queries [{:id 1 :page_id 1 :segment_id nil :dimension_name "D1"
                     :interestingness_score 0.95 :contextual_interestingness_score 0.2}
                    {:id 2 :page_id 2 :segment_id nil :dimension_name "D2"
@@ -1650,9 +1663,9 @@
 (deftest blocks-tree-page-sort-order-test
   (testing "pages within a block sort by max interestingness desc; nil-score pages last"
     (let [blocks  [{:id 5}]
-          pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id "d1" :query_type "default"}
-                   {:id 2 :exploration_block_id 5 :card_id 10 :dimension_id "d2" :query_type "default"}
-                   {:id 3 :exploration_block_id 5 :card_id 10 :dimension_id "d3" :query_type "default"}]
+          pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id (duid "d1") :query_type "default"}
+                   {:id 2 :exploration_block_id 5 :card_id 10 :dimension_id (duid "d2") :query_type "default"}
+                   {:id 3 :exploration_block_id 5 :card_id 10 :dimension_id (duid "d3") :query_type "default"}]
           queries [{:id 1 :page_id 1 :segment_id nil :dimension_name "D1" :interestingness_score 0.4}
                    {:id 2 :page_id 2 :segment_id nil :dimension_name "D2" :interestingness_score 0.9}
                    {:id 3 :page_id 3 :segment_id nil :dimension_name "D3" :interestingness_score nil}]
@@ -1682,8 +1695,8 @@
       (let [body {:name "groups"
                   :metrics    [{:card_id (:id metric)
                                 :dimension_mappings (venues-dimension-mappings)}]
-                  :dimensions [{:dimension_id "category" :display_name "Category"}
-                               {:dimension_id "price"    :display_name "Price"}]}
+                  :dimensions [{:dimension_id (duid "category") :display_name "Category"}
+                               {:dimension_id (duid "price")    :display_name "Price"}]}
             resp      (create-exploration! u body)
             {eid :id} resp
             resp      (mt/user-http-request u :get 200 (format "exploration/%d" eid))
@@ -1728,8 +1741,8 @@
     (mt/with-temp [:model/User u {:email "multi-groups@example.com"}
                    :model/Card m1 (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Card m2 (assoc (venues-metric-card (:id u)) :name "Order count")]
-      (let [dims [{:dimension_id "category" :display_name "Category"}
-                  {:dimension_id "price"    :display_name "Price"}]
+      (let [dims [{:dimension_id (duid "category") :display_name "Category"}
+                  {:dimension_id (duid "price")    :display_name "Price"}]
             body {:name "multi"
                   :blocks [{:type       "metric"
                             :metrics    [{:card_id (:id m1) :dimension_mappings (venues-dimension-mappings)}]
@@ -1963,11 +1976,11 @@
                                                       :started_at     (t/offset-date-time)}
                      :model/ExplorationBlock group {:exploration_thread_id (:id thread)}
                      :model/ExplorationPage page {:exploration_block_id (:id group) :card_id (:id card)
-                                                  :dimension_id "d1" :query_type "default"}
+                                                  :dimension_id (duid "d1") :query_type "default"}
                      :model/ExplorationQuery _q {:exploration_thread_id (:id thread)
                                                  :card_id               (:id card)
                                                  :page_id               (:id page)
-                                                 :dimension_id          "d1"
+                                                 :dimension_id          (duid "d1")
                                                  :dataset_query         (:dataset_query card)
                                                  :status                "pending"
                                                  :position              0}]
@@ -2096,7 +2109,7 @@
                       :collection-id (:id coll)
                       :card-id      (:id metric)
                       :database-id  (mt/id)
-                      :dimension-id "d1"
+                      :dimension-id (duid "d1")
                       :metrics      [{:card_id (:id metric)}]}
               a       (insert-explore-fixture! common)
               b       (insert-explore-fixture! common)
@@ -2128,7 +2141,7 @@
                        :collection-id (:id coll)
                        :card-id       (:id metric)
                        :database-id   (mt/id)
-                       :dimension-id  "d1"
+                       :dimension-id  (duid "d1")
                        :metrics       [{:card_id (:id metric) :explore_filters [prior]}]})
               _      (mt/user-http-request :crowberto :post 200
                                            (str "exploration/" (:exploration-id src) "/explore-further")
@@ -2160,10 +2173,10 @@
                   :collection-id (:id coll)
                   :card-id       (:id metric)
                   :database-id   (mt/id)
-                  :dimension-id  "price"
+                  :dimension-id  (duid "price")
                   :metrics       [{:card_id (:id metric)
                                    :dimension_mappings (stored-venues-dimension-mappings)}]
-                  :dimensions    [{:dimension-id "price" :display-name "Price"}]})]
+                  :dimensions    [{:dimension-id (duid "price") :display-name "Price"}]})]
         ;; Mark the source thread as a follow-up so the next drill is nested. Any real page works;
         ;; a made-up id would violate the source_page_id FK.
         (t2/update! :model/ExplorationThread (:thread-id src) {:source_page_id (:page-id src)})
@@ -2194,11 +2207,11 @@
                     :collection-id (:id coll)
                     :card-id       (:id metric)
                     :database-id   (mt/id)
-                    :dimension-id  "category"
+                    :dimension-id  (duid "category")
                     :metrics       [{:card_id (:id metric)
                                      :dimension_mappings (stored-venues-dimension-mappings)}]
-                    :dimensions    [{:dimension-id "category" :display-name "Category"}
-                                    {:dimension-id "price" :display-name "Price"}]})]
+                    :dimensions    [{:dimension-id (duid "category") :display-name "Category"}
+                                    {:dimension-id (duid "price") :display-name "Price"}]})]
           (mt/user-http-request :crowberto :post 200
                                 (str "exploration/" (:exploration-id src) "/explore-further")
                                 {:page_id         (:page-id src)
@@ -2308,7 +2321,7 @@
                                                  :collection_id (:id (collection/user->personal-collection (:id owner)))
                                                  :metrics       [{:card_id (:id metric)
                                                                   :dimension_mappings (venues-dimension-mappings)}]
-                                                 :dimensions    [{:dimension_id "category" :display_name "Category"}]})
+                                                 :dimensions    [{:dimension_id (duid "category") :display_name "Category"}]})
             expl-id        (:id resp)
             page-id        (-> resp :threads first :blocks first :pages first :id)
             body           {:page_id         page-id
@@ -2342,10 +2355,10 @@
                    :model/Card metric (valid-metric-card (:id u))]
       (let [created (create-exploration! u {:name       "restart guard"
                                             :metrics    [{:card_id (:id metric)
-                                                          :dimension_mappings [{:dimension_id "d1"
+                                                          :dimension_mappings [{:dimension_id (duid "d1")
                                                                                 :table_id (mt/id :venues)
                                                                                 :target ["field" {} (mt/id :venues :price)]}]}]
-                                            :dimensions [{:dimension_id "d1" :display_name "Price"
+                                            :dimensions [{:dimension_id (duid "d1") :display_name "Price"
                                                           :effective_type "type/Number"}]})
             tid     (-> created :threads first :id)
             eq-id   (t2/select-one-fn :id :model/ExplorationQuery :exploration_thread_id tid)]
