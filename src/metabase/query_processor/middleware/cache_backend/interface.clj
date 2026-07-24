@@ -42,11 +42,16 @@
   reduction, and a failed cleanup shouldn't fail a query that already ran successfully.")
 
   (try-acquire-refresh-lease! [this ^bytes query-hash lease-ms]
-    "Atomically claim, across processes, the right to recompute the expired entry for `query-hash`. Returns true iff
-  this caller won the lease (and should recompute + [[save-results!]]); false means another process is already
-  refreshing it, so this caller should serve stale results instead. A lease held longer than `lease-ms` is considered
-  abandoned and may be taken over. Backends that can't coordinate across processes should return `true` (degrading to
-  the no-stampede-protection behavior)."))
+    "Atomically claim, across processes, the right to compute the query with `query-hash` -- either to refresh an
+  expired entry, or on a cold miss with no entry at all. Returns true iff this caller won the lease (and should
+  compute + [[save-results!]]); false means another process is already computing it, so this caller should serve
+  stale results or wait. A lease held longer than `lease-ms` is considered abandoned and may be taken over. Backends
+  that can't coordinate across processes should return `true` (degrading to the no-stampede-protection behavior).")
+
+  (release-refresh-lease! [this ^bytes query-hash]
+    "Release the refresh lease on `query-hash`, if held, without touching any stored results. Called when a compute
+  fails, so another caller can take over immediately instead of waiting out the lease. Backends that can't coordinate
+  across processes can no-op."))
 
 (defmacro with-cached-results
   "Macro version for consuming `cached-results` from a `backend`.
