@@ -42,7 +42,11 @@
 
     ;; something like [some.namespace :as whatever]
     :vector
-    (recur (first (:children node)))))
+    (recur (first (:children node)))
+
+    ;; anything else -- e.g. a runtime expression like `(requiring-resolve (:failing-test-var opts))` --
+    ;; has no statically-known namespace
+    nil))
 
 (comment
   (unwrap-require (-> "(requiring-resolve 'metabase.notification.payload.execute/execute-dashboard)"
@@ -58,13 +62,14 @@
                                  ;; as args. If you use a REPL tool that applies clj-kondo linting (e.g., Clojure MCP)
                                  ;; you may wish to `:reload` or `:reload-all` a namespace. So we shouldn't assume all
                                  ;; args are keywords:
-                                 (remove keyword?))]
+                                 (filter simple-symbol?))]
     (lint* node current-ns config required-namespaces)))
 
 (defn- lint-requiring-resolve* [node current-ns config]
   (let [[_requiring-resolve symb-node] (:children node)
         required-namespace             (unwrap-require symb-node)]
-    (lint* node current-ns config [required-namespace])))
+    (when (simple-symbol? required-namespace)
+      (lint* node current-ns config [required-namespace]))))
 
 (defn lint-require [x]
   (lint-require* (:node x) (:ns x) (modules/config x))
