@@ -202,16 +202,20 @@
           (log/trace "All cached rows reduced"))))))
 
 (def ^:dynamic *refresh-lease-duration-ms*
-  "How long a claimed stale-while-revalidate refresh lease is honored before another process may take it over (e.g. if
-  the claiming process crashed mid-refresh). Should comfortably exceed a normal query's run time."
-  (u/minutes->ms 5))
+  "How long a claimed compute lease is honored before another process may take it over (e.g. if the claiming process
+  crashed mid-compute), and how long a request waits on another process's computation before giving up and computing
+  locally. Should comfortably exceed a normal query's run time. Settable with the env var
+  `MB_QUERY_CACHING_REFRESH_LEASE_MS`."
+  (or (config/config-int :mb-query-caching-refresh-lease-ms)
+      (u/minutes->ms 5)))
 
 (def ^:dynamic *stale-grace-period-ms*
   "How long past its freshness boundary a cached entry may still be served to callers while another process holds the
-  refresh lease. Entries are only rewritten when someone actually runs the query, so without this bound a lease loser
-  could be served results arbitrarily older than the configured TTL (#78339); beyond the grace period the entry is
-  treated as a cache miss and recomputed instead."
-  (u/minutes->ms 5))
+  compute lease. Entries are only rewritten when someone actually runs the query, so without this bound a lease loser
+  could be served results arbitrarily older than the configured TTL (#78339); beyond the grace period callers wait
+  for the in-flight refresh instead. Settable with the env var `MB_QUERY_CACHING_STALE_GRACE_MS`."
+  (or (config/config-int :mb-query-caching-stale-grace-ms)
+      (u/minutes->ms 5)))
 
 (defn- cache-fresh?
   "Whether a cache entry last written at `updated-at` is still within its TTL given `invalidated-at` (the strategy's
@@ -319,8 +323,10 @@
         (throw e)))))
 
 (def ^:private cross-process-poll-interval-ms
-  "How often a request waiting on another process's computation re-checks the cache."
-  100)
+  "How often a request waiting on another process's computation re-checks the cache. Settable with the env var
+  `MB_QUERY_CACHING_COALESCING_POLL_INTERVAL_MS`."
+  (or (config/config-int :mb-query-caching-coalescing-poll-interval-ms)
+      100))
 
 (defn- await-cross-process-results
   "Another process holds the compute lease for `query-hash` and there is nothing servable. Poll the cache until its

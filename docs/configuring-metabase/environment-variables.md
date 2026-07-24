@@ -2960,6 +2960,27 @@ Default: `"db"`
 
 Current cache backend. Dynamically rebindable primarily for test purposes.
 
+### `MB_QUERY_CACHING_COALESCING_POLL_INTERVAL_MS`
+
+Type: integer<br>
+Default: `100`
+
+How often, in milliseconds, a request waiting for another process's computation of the same cached query re-checks the cache for its results.
+
+### `MB_QUERY_CACHING_REFRESH_LEASE_MS`
+
+Type: integer<br>
+Default: `300000`
+
+How long, in milliseconds, one process's claim to compute a cached query is honored before another process may take it over (for example, if the claiming process crashed mid-query), and how long a request waits for another process's computation before giving up and running the query itself. Should comfortably exceed a normal query's run time.
+
+### `MB_QUERY_CACHING_STALE_GRACE_MS`
+
+Type: integer<br>
+Default: `300000`
+
+How long, in milliseconds, past its expiry a cached query result may still be served while another process is refreshing it. Beyond this, requests wait for the in-flight refresh instead of being served stale results. Set to `0` to never serve expired results.
+
 ### `MB_SETUP_TOKEN`
 
 Type: string<br>
