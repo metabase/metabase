@@ -133,7 +133,7 @@ jobs:
         run: |
           BUN_CACHE_DIR=$(bun pm cache)
           echo "Bun cache directory: $BUN_CACHE_DIR"
-          echo "dir=$BUN_CACHE_DIR" >> $GITHUB_OUTPUT
+          echo "dir=$BUN_CACHE_DIR" >> "$GITHUB_OUTPUT"
 
       - name: Ensure that Cypress executable is ready
         run: |
