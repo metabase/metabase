@@ -4,7 +4,7 @@ name: Build Uberjar
 # or automatically for the listed branches
 
 concurrency:
-  group: uberjar-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
+  group: uberjar-${{ inputs.commit || github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: false
 
 on:
@@ -29,6 +29,10 @@ on:
       commit:
         description: "Optional full-length commit SHA-1 hash"
   workflow_call:
+    inputs:
+      commit:
+        description: "Optional full-length commit SHA-1 hash"
+        type: string
 
 jobs:
   check-existing-artifacts:
@@ -46,7 +50,7 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/fetch-artifact
         with:
-          commit: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          commit: ${{ inputs.commit || github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
           edition: ee
           output-name: metabase-ee.jar
 
@@ -55,7 +59,7 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/fetch-artifact
         with:
-          commit: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          commit: ${{ inputs.commit || github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
           edition: oss
           output-name: metabase-oss.jar
 
@@ -151,7 +155,7 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
-          name: metabase-bundle-stats-${{ matrix.edition }}-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          name: metabase-bundle-stats-${{ matrix.edition }}-${{ inputs.commit || github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
           path: target/bundle-stats
           if-no-files-found: warn
       - name: Prepare uberjar artifact
@@ -188,7 +192,7 @@ jobs:
       - name: Retrieve uberjar artifact
         uses: ./.github/actions/fetch-artifact
         with:
-          commit: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          commit: ${{ inputs.commit || github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
           edition: ${{ matrix.edition }}
       - name: Verify license files are present in uberjar
         run: |
