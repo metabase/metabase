@@ -247,5 +247,5 @@
   "Allow a provider to eagerly prepare the resolved model, for example by warming a lazy native runtime."
   [requested-model]
   (let [implementation (implementation! (:provider requested-model))]
-    (when-let [prepare! (:prepare! implementation)]
-      (prepare! (resolve-model-with implementation requested-model)))))
+    (when-let [prepare-fn (:prepare! implementation)]
+      (prepare-fn (resolve-model-with implementation requested-model)))))
