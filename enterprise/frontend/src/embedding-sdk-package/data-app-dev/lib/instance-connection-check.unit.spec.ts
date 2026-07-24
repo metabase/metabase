@@ -29,7 +29,7 @@ describe("InstanceConnectionCheck", () => {
       reachable: true,
       sdkVersion: "0.64.0",
     });
-    expect(devDiagnostics.getConnectionStatus()?.error).toBeUndefined();
+    expect(devDiagnostics.getConnectionStatus()?.error).toBeNull();
   });
 
   it("pings the instance URL itself and calls no API", async () => {

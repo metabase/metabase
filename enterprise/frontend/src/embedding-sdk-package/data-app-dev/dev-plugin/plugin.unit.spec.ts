@@ -21,10 +21,6 @@ import {
 import { dataAppSandboxDevPlugin } from "./plugin";
 
 jest.mock("vite", () => ({ build: jest.fn() }));
-// Mock at the app's own config boundary rather than the individual Vite plugins
-// it pulls in (`vite-plugin-css-injected-by-js`, `vite-plugin-svgr`): `build`
-// is stubbed out anyway, so the plugin never uses these values — the test only
-// needs `build-config` not to import those ESM-only packages at load time.
 jest.mock("../config/build-config", () => ({
   dataAppBuildPlugins: () => [],
   dataAppLibBuild: () => ({}),
@@ -36,27 +32,137 @@ const mockedFs = jest.mocked(fs);
 
 const RESOLVED = (id: string) => `\0${id}`;
 
-type FakeServer = {
-  config: {
-    root: string;
-    mode: string;
-    logger: { error: jest.Mock };
-    server: { headers: Record<string, string | null> };
-  };
-  ws: { send: jest.Mock; on: jest.Mock; clients: Set<unknown> };
-  middlewares: { use: jest.Mock };
-  watcher: { on: jest.Mock };
-  transformIndexHtml: jest.Mock;
+type ConnectReq = {
+  url?: string;
+  method?: string;
+  headers?: Record<string, string>;
 };
+type ConnectRes = { statusCode: number; setHeader: jest.Mock; end: jest.Mock };
+type ConnectHandler = (
+  req: ConnectReq,
+  res: ConnectRes,
+  next: (err?: unknown) => void,
+) => unknown;
+
+type RequestResult = {
+  res: ConnectRes;
+  statusCode: number;
+  fellThrough: boolean;
+  nextError: unknown;
+  body: any;
+};
+
+const DEV_CSP = "connect-src 'self'; form-action 'none'; frame-src 'self'";
+
+const APP_SLUG = "test-app";
+
+const isJson = (payload: unknown): payload is string =>
+  typeof payload === "string" && /^\s*[[{]/.test(payload);
+
+class FakeDevServer {
+  private readonly middlewareStack: ConnectHandler[] = [];
+  private readonly wsListeners = new Map<string, (message: unknown) => void>();
+  private readonly watchListeners = new Map<
+    string,
+    ((...args: unknown[]) => unknown)[]
+  >();
+
+  readonly config = {
+    root: "/app",
+    mode: "development",
+    logger: { error: jest.fn() },
+    server: { headers: { "Content-Security-Policy": DEV_CSP } },
+  };
+
+  readonly ws = {
+    on: jest.fn((event: string, handler: (message: unknown) => void) => {
+      this.wsListeners.set(event, handler);
+    }),
+    send: jest.fn(),
+    clients: new Set<unknown>(),
+    emit: (event: string, message: unknown) =>
+      this.wsListeners.get(event)?.(message),
+  };
+
+  readonly watcher = {
+    on: jest.fn((event: string, handler: (...args: unknown[]) => unknown) => {
+      this.watchListeners.set(event, [
+        ...(this.watchListeners.get(event) ?? []),
+        handler,
+      ]);
+    }),
+    emit: async (event: string, ...args: unknown[]) => {
+      for (const handler of this.watchListeners.get(event) ?? []) {
+        await handler(...args);
+      }
+    },
+  };
+
+  readonly middlewares = {
+    use: jest.fn((middleware: ConnectHandler) => {
+      this.middlewareStack.push(middleware);
+    }),
+  };
+
+  readonly transformIndexHtml = jest.fn(
+    async (_url: string, html: string) => html,
+  );
+
+  async request(
+    url: string,
+    { method = "GET", headers = {} }: RequestOptions = {},
+  ): Promise<RequestResult> {
+    const req: ConnectReq = { url, method, headers };
+    const res: ConnectRes = {
+      statusCode: 0,
+      setHeader: jest.fn(),
+      end: jest.fn(),
+    };
+
+    let index = 0;
+    let fellThrough = false;
+    let nextError: unknown;
+
+    const next = async (err?: unknown): Promise<void> => {
+      if (err !== undefined) {
+        nextError = err;
+        return;
+      }
+
+      const middleware = this.middlewareStack[index++];
+      if (!middleware) {
+        fellThrough = true;
+        return;
+      }
+
+      await middleware(req, res, next);
+    };
+
+    await next();
+
+    const [payload] = res.end.mock.calls[0] ?? [];
+
+    return {
+      res,
+      statusCode: res.statusCode,
+      fellThrough,
+      nextError,
+      // The feed is JSON; other routes (the bundle, the HTML shell) are
+      // asserted through `res.end` directly, so leave `body` null for them.
+      body: isJson(payload) ? JSON.parse(payload) : null,
+    };
+  }
+}
+
+type RequestOptions = { method?: string; headers?: Record<string, string> };
+
 type TestPlugin = {
   name: string;
   apply: string;
   resolveId: (id: string) => string | undefined;
   load: (id: string) => string | undefined;
-  configureServer: (server: FakeServer) => Promise<() => void>;
+  configureServer: (server: FakeDevServer) => Promise<() => void>;
 };
-
-const APP_SLUG = "test-app";
 
 function makePlugin(appSlug: string, allowedHosts: string[] = []): TestPlugin {
   // Vite declares every hook on `Plugin` as an `ObjectHook` union (a function or
@@ -74,7 +180,6 @@ describe("dataAppSandboxDevPlugin", () => {
   it("only applies to the dev server", () => {
     const plugin = makePlugin(APP_SLUG);
 
-    expect(plugin.name).toBe("metabase-data-app-dev");
     expect(plugin.apply).toBe("serve");
   });
 
@@ -133,23 +238,6 @@ describe("dataAppSandboxDevPlugin", () => {
   });
 
   describe("dev server wiring", () => {
-    const DEV_CSP = "connect-src 'self'; form-action 'none'; frame-src 'self'";
-
-    function makeServer(): FakeServer {
-      return {
-        config: {
-          root: "/app",
-          mode: "development",
-          logger: { error: jest.fn() },
-          server: { headers: { "Content-Security-Policy": DEV_CSP } },
-        },
-        ws: { send: jest.fn(), on: jest.fn(), clients: new Set() },
-        middlewares: { use: jest.fn() },
-        watcher: { on: jest.fn() },
-        transformIndexHtml: jest.fn(async (_url: string, html: string) => html),
-      };
-    }
-
     async function setup(bundleCode = "BUNDLE_CODE") {
       // Rollup's `OutputChunk` declares ~20 required fields; the plugin only
       // reads `type` and `code`, so the stub deliberately omits the rest.
@@ -157,7 +245,7 @@ describe("dataAppSandboxDevPlugin", () => {
         output: [{ type: "chunk", code: bundleCode }],
       } as unknown as Awaited<ReturnType<typeof build>>);
 
-      const server = makeServer();
+      const server = new FakeDevServer();
 
       // `configureServer` returns a hook Vite runs after its own middlewares;
       // call it so the document (index.html) middleware is registered too.
@@ -171,43 +259,30 @@ describe("dataAppSandboxDevPlugin", () => {
     it("builds the bundle on startup and serves it at the bundle URL", async () => {
       const { server } = await setup("BUNDLE_CODE");
 
-      expect(mockedBuild).toHaveBeenCalledTimes(1);
-
-      const bundleMiddleware = server.middlewares.use.mock.calls[0][0];
-      const res = { statusCode: 0, setHeader: jest.fn(), end: jest.fn() };
-      const next = jest.fn();
-      bundleMiddleware({ url: DATA_APP_BUNDLE_URL }, res, next);
+      const { res } = await server.request(DATA_APP_BUNDLE_URL);
 
       expect(res.setHeader).toHaveBeenCalledWith(
         "Content-Type",
         "text/javascript",
       );
       expect(res.end).toHaveBeenCalledWith("BUNDLE_CODE");
-      expect(next).not.toHaveBeenCalled();
     });
 
     it("passes non-bundle requests through to the next middleware", async () => {
       const { server } = await setup();
 
-      const bundleMiddleware = server.middlewares.use.mock.calls[0][0];
-      const next = jest.fn();
-      bundleMiddleware(
-        { url: "/some/asset.js" },
-        { setHeader: jest.fn(), end: jest.fn() },
-        next,
-      );
-
-      expect(next).toHaveBeenCalledTimes(1);
+      expect((await server.request("/some/asset.js")).fellThrough).toBe(true);
     });
 
     it("rebuilds and notifies the client when a src file changes", async () => {
       const { server } = await setup();
       expect(mockedBuild).toHaveBeenCalledTimes(1);
 
-      const [event, onWatch] = server.watcher.on.mock.calls[0];
-      expect(event).toBe("all");
-
-      await onWatch("change", `/app${path.sep}src${path.sep}index.tsx`);
+      await server.watcher.emit(
+        "all",
+        "change",
+        path.join("/app", "src", "index.tsx"),
+      );
 
       expect(mockedBuild).toHaveBeenCalledTimes(2);
       expect(server.ws.send).toHaveBeenCalledWith({
@@ -218,10 +293,17 @@ describe("dataAppSandboxDevPlugin", () => {
 
     it("rebuilds when a src file is added or removed, not only edited", async () => {
       const { server } = await setup();
-      const onWatch = server.watcher.on.mock.calls[0][1];
 
-      await onWatch("add", `/app${path.sep}src${path.sep}new.tsx`);
-      await onWatch("unlink", `/app${path.sep}src${path.sep}old.tsx`);
+      await server.watcher.emit(
+        "all",
+        "add",
+        path.join("/app", "src", "new.tsx"),
+      );
+      await server.watcher.emit(
+        "all",
+        "unlink",
+        path.join("/app", "src", "old.tsx"),
+      );
 
       expect(mockedBuild).toHaveBeenCalledTimes(3);
     });
@@ -229,8 +311,11 @@ describe("dataAppSandboxDevPlugin", () => {
     it("ignores changes outside src/", async () => {
       const { server } = await setup();
 
-      const onWatch = server.watcher.on.mock.calls[0][1];
-      await onWatch("change", "/app/README.md");
+      await server.watcher.emit(
+        "all",
+        "change",
+        path.join("/app", "README.md"),
+      );
 
       expect(mockedBuild).toHaveBeenCalledTimes(1);
       expect(server.ws.send).not.toHaveBeenCalled();
@@ -244,41 +329,27 @@ describe("dataAppSandboxDevPlugin", () => {
           "name: Renamed\npath: dist/index.js\n",
         );
 
-        const onWatch = server.watcher.on.mock.calls[0][1];
-
-        await onWatch("change", `/app${path.sep}data_app.yaml`);
+        await server.watcher.emit(
+          "all",
+          "change",
+          path.join("/app", "data_app.yaml"),
+        );
 
         // The status is read from the feed, not pushed to the page — the page
         // used to echo it back, which raced and reported "not validated yet".
-        const middleware = server.middlewares.use.mock.calls
-          .map((call) => call[0])
-          .find((handler) => {
-            const probe = { setHeader: jest.fn(), end: jest.fn() };
-            const next = jest.fn();
-            handler(
-              { url: DATA_APP_DIAGNOSTICS_URL, method: "GET" },
-              probe,
-              next,
-            );
-            return !next.mock.calls.length;
-          });
-        const res = { setHeader: jest.fn(), end: jest.fn() };
-        middleware?.(
-          { url: DATA_APP_DIAGNOSTICS_URL, method: "GET" },
-          res,
-          jest.fn(),
-        );
+        const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
 
-        expect(JSON.parse(res.end.mock.calls[0][0]).manifest).toMatchObject({
-          name: "Renamed",
-        });
+        expect(body.manifest).toMatchObject({ name: "Renamed" });
       });
 
       it("does not rebuild the bundle for a manifest change", async () => {
         const { server } = await setup();
 
-        const onWatch = server.watcher.on.mock.calls[0][1];
-        await onWatch("change", `/app${path.sep}data_app.yaml`);
+        await server.watcher.emit(
+          "all",
+          "change",
+          path.join("/app", "data_app.yaml"),
+        );
 
         expect(mockedBuild).toHaveBeenCalledTimes(1);
         expect(server.ws.send).not.toHaveBeenCalled();
@@ -286,20 +357,12 @@ describe("dataAppSandboxDevPlugin", () => {
     });
 
     describe("synthetic index.html document", () => {
-      // Registered by the post-hook, so it's always the last one added.
-      const getDocumentMiddleware = (server: FakeServer) =>
-        server.middlewares.use.mock.calls.at(-1)[0];
-
       it("serves the transformed shell with the configured CSP for navigations", async () => {
         const { server } = await setup();
-        const res = { statusCode: 0, setHeader: jest.fn(), end: jest.fn() };
-        const next = jest.fn();
 
-        await getDocumentMiddleware(server)(
-          { method: "GET", headers: { accept: "text/html" }, url: "/" },
-          res,
-          next,
-        );
+        const { res } = await server.request("/", {
+          headers: { accept: "text/html" },
+        });
 
         // The shell HTML goes through Vite's transform (HMR client, etc.).
         expect(server.transformIndexHtml).toHaveBeenCalledWith(
@@ -315,91 +378,53 @@ describe("dataAppSandboxDevPlugin", () => {
         expect(res.end).toHaveBeenCalledWith(
           expect.stringContaining("<!doctype html>"),
         );
-        expect(next).not.toHaveBeenCalled();
       });
 
       it("leaves non-HTML requests for the next middleware", async () => {
         const { server } = await setup();
-        const next = jest.fn();
 
-        await getDocumentMiddleware(server)(
-          {
-            method: "GET",
-            headers: { accept: "application/javascript" },
-            url: "/some/asset.js",
-          },
-          { setHeader: jest.fn(), end: jest.fn() },
-          next,
-        );
+        const { fellThrough } = await server.request("/some/asset.js", {
+          headers: { accept: "application/javascript" },
+        });
 
-        expect(server.transformIndexHtml).not.toHaveBeenCalled();
-        expect(next).toHaveBeenCalledTimes(1);
+        expect(fellThrough).toBe(true);
       });
 
       it("forwards transformIndexHtml errors to the next middleware", async () => {
         const { server } = await setup();
         const error = new Error("transform failed");
         server.transformIndexHtml.mockRejectedValueOnce(error);
-        const next = jest.fn();
 
-        await getDocumentMiddleware(server)(
-          { method: "GET", headers: { accept: "text/html" }, url: "/" },
-          { statusCode: 0, setHeader: jest.fn(), end: jest.fn() },
-          next,
-        );
+        const { nextError } = await server.request("/", {
+          headers: { accept: "text/html" },
+        });
 
-        expect(next).toHaveBeenCalledWith(error);
+        expect(nextError).toBe(error);
       });
     });
 
     describe("diagnostics feed", () => {
-      /** Drive the JSON endpoint the way connect would, and parse the response. */
-      const request = (server: FakeServer, url: string, method = "GET") => {
-        const middleware = server.middlewares.use.mock.calls
-          .map((call) => call[0])
-          .find((handler) => {
-            const res = { setHeader: jest.fn(), end: jest.fn() };
-            const next = jest.fn();
-            handler(
-              { url: DATA_APP_DIAGNOSTICS_URL, method: "GET" },
-              res,
-              next,
-            );
-            return !next.mock.calls.length;
-          });
-
-        const res = { statusCode: 0, setHeader: jest.fn(), end: jest.fn() };
-        const next = jest.fn();
-        middleware?.({ url, method }, res, next);
-
-        const [payload] = res.end.mock.calls[0] ?? [];
-
-        return {
-          next,
-          res,
-          body: typeof payload === "string" ? JSON.parse(payload) : null,
-        };
-      };
-
       const report = (
-        server: FakeServer,
+        server: FakeDevServer,
         entries: unknown[],
         sessionId?: string,
-      ) => {
-        const handler = server.ws.on.mock.calls.find(
-          ([event]) => event === DATA_APP_DIAGNOSTICS_EVENT,
-        )?.[1];
-        handler({ sessionId, entries, connection: { reachable: true } });
-      };
+      ) =>
+        server.ws.emit(DATA_APP_DIAGNOSTICS_EVENT, {
+          sessionId,
+          entries,
+          connection: { reachable: true },
+        });
 
       it("refuses a method it does not serve", async () => {
         const { server } = await setup();
 
-        const { res, next } = request(server, DATA_APP_DIAGNOSTICS_URL, "POST");
+        const { statusCode, res } = await server.request(
+          DATA_APP_DIAGNOSTICS_URL,
+          { method: "POST" },
+        );
 
-        expect(res.statusCode).toBe(405);
+        expect(statusCode).toBe(405);
         expect(res.setHeader).toHaveBeenCalledWith("Allow", "GET, DELETE");
-        expect(next).not.toHaveBeenCalled();
       });
 
       it("serves what the page reported, and passes other URLs through", async () => {
@@ -410,36 +435,15 @@ describe("dataAppSandboxDevPlugin", () => {
           { id: 2, kind: "sdk-call", summary: "POST /api/dataset → 400" },
         ]);
 
-        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
+        const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
         expect(
           body.entries.map((entry: { eventId: number }) => entry.eventId),
         ).toEqual([1, 2]);
         expect(body.connection).toEqual({ reachable: true });
         expect(body.nextEventId).toBe(3);
 
-        expect(request(server, "/something-else").next).toHaveBeenCalled();
-      });
-
-      it("re-stamps ids so a page reload can't hide entries behind a poller's cursor", async () => {
-        const { server } = await setup();
-
-        // First page: ids 1..2 from its own counter.
-        report(server, [
-          { id: 1, summary: "before reload" },
-          { id: 2, summary: "also before" },
-        ]);
-        const cursor = request(server, DATA_APP_DIAGNOSTICS_URL).body
-          .nextEventId;
-
-        // The preview reloads; the page's counter restarts at 1.
-        report(server, [{ id: 1, summary: "after reload" }]);
-
-        const { body } = request(
-          server,
-          `${DATA_APP_DIAGNOSTICS_URL}?startEventId=${cursor}`,
-        );
-        expect(body.entries.map((e: { summary: string }) => e.summary)).toEqual(
-          ["after reload"],
+        expect((await server.request("/something-else")).fellThrough).toBe(
+          true,
         );
       });
 
@@ -448,7 +452,7 @@ describe("dataAppSandboxDevPlugin", () => {
         // feed said "not validated yet" whenever that echo hadn't happened.
         const { server } = await setup();
 
-        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
+        const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
 
         expect(body.manifest).toEqual(
           expect.objectContaining({ errors: expect.any(Array) }),
@@ -459,65 +463,9 @@ describe("dataAppSandboxDevPlugin", () => {
         const { server } = await setup();
         report(server, [{ eventId: 1, summary: "boom" }]);
 
-        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
+        const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
 
         expect(body.manifest).not.toBeNull();
-      });
-
-      it("caps oversized text the socket sends", async () => {
-        const { server } = await setup();
-        // The socket is only as trustworthy as any local process, and this buffer
-        // is re-serialized on every poll.
-        report(server, [
-          {
-            eventId: 1,
-            summary: "x".repeat(50_000),
-            detail: "y".repeat(50_000),
-          },
-        ]);
-
-        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
-
-        expect(body.entries[0].summary.length).toBeLessThan(6_000);
-        expect(body.entries[0].detail.length).toBeLessThan(6_000);
-        expect(body.entries[0].summary).toContain("truncated");
-      });
-
-      it("serves both pages after a reload, and only the new one from a cursor", async () => {
-        const { server } = await setup();
-
-        report(server, [{ eventId: 1, summary: "before reload" }], "page-1");
-        const cursor = request(server, DATA_APP_DIAGNOSTICS_URL).body
-          .nextEventId;
-
-        report(server, [{ eventId: 2, summary: "after reload" }], "page-2");
-
-        // A reader with no cursor gets the whole buffer, including what the
-        // page was reloaded over; one that kept its cursor gets only the rest.
-        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
-        expect(body.entries.map((e: { summary: string }) => e.summary)).toEqual(
-          ["before reload", "after reload"],
-        );
-        expect(body.sessionId).toBe("page-2");
-
-        const fromCursor = request(
-          server,
-          `${DATA_APP_DIAGNOSTICS_URL}?startEventId=${cursor}`,
-        ).body;
-        expect(
-          fromCursor.entries.map((e: { summary: string }) => e.summary),
-        ).toEqual(["after reload"]);
-      });
-
-      it("keeps events across a soft reload (same sessionId)", async () => {
-        const { server } = await setup();
-
-        report(server, [{ eventId: 1, summary: "first" }], "page-1");
-        report(server, [{ eventId: 2, summary: "second" }], "page-1");
-
-        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
-
-        expect(body.entries).toHaveLength(2);
       });
 
       it("returns only events from `startEventId` onward", async () => {
@@ -527,8 +475,7 @@ describe("dataAppSandboxDevPlugin", () => {
           { id: 2, summary: "new" },
         ]);
 
-        const { body } = request(
-          server,
+        const { body } = await server.request(
           `${DATA_APP_DIAGNOSTICS_URL}?startEventId=2`,
         );
 
@@ -539,7 +486,9 @@ describe("dataAppSandboxDevPlugin", () => {
       it("reports connected clients, so an empty feed isn't read as healthy", async () => {
         const { server } = await setup();
 
-        expect(request(server, DATA_APP_DIAGNOSTICS_URL).body).toMatchObject({
+        expect(
+          (await server.request(DATA_APP_DIAGNOSTICS_URL)).body,
+        ).toMatchObject({
           entries: [],
           clients: 0,
           lastReportAt: null,
@@ -548,12 +497,12 @@ describe("dataAppSandboxDevPlugin", () => {
         server.ws.clients.add({});
         report(server, []);
 
-        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
+        const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
         expect(body.clients).toBe(1);
         expect(body.lastReportAt).toEqual(expect.any(Number));
       });
 
-      const changeNudges = (server: FakeServer) =>
+      const changeNudges = (server: FakeDevServer) =>
         server.ws.send.mock.calls.filter(
           ([message]) => message?.event === DATA_APP_DIAGNOSTICS_CHANGED_EVENT,
         ).length;

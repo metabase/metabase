@@ -1,7 +1,7 @@
 import type { SandboxBlockedEvent } from "metabase-enterprise/data_apps/sandbox/types";
 
 import {
-  capDiagnosticEntries,
+  trimDiagnosticEntries,
   truncateDiagnosticText,
 } from "../../lib/diagnostics-limits";
 import type {
@@ -19,20 +19,22 @@ export class DevDiagnosticsCollector {
   private entries: DevDiagnosticEntry[] = [];
   private connectionStatus: InstanceConnectionStatus | null = null;
   private nextEntryId = 1;
-  private uninstall: (() => void) | null = null;
+  private installed = false;
   private uncapturedConsoleError: typeof console.error | null = null;
   private readonly listeners = new Set<() => void>();
 
   /**
-   * Wraps `console.error` and listens for uncaught errors. Idempotent; call
-   * before the sandbox runs so nothing is missed. The teardown matters: without
-   * it, an HMR reload re-wraps the already-wrapped `console.error` and doubles
-   * every capture.
+   * Wraps `console.error` and listens for uncaught errors. Idempotent — a second
+   * `install()` is a no-op — so an HMR reload can't re-wrap the already-wrapped
+   * `console.error` and double every capture. Returns a teardown the caller can
+   * run to restore everything; only the unit tests do.
    */
   install(): () => void {
-    if (this.uninstall || typeof window === "undefined") {
+    if (this.installed || typeof window === "undefined") {
       return () => undefined;
     }
+
+    this.installed = true;
 
     const originalError = console.error.bind(console);
     this.uncapturedConsoleError = originalError;
@@ -74,16 +76,14 @@ export class DevDiagnosticsCollector {
     window.addEventListener("unhandledrejection", onRejection);
     window.addEventListener("securitypolicyviolation", onCspViolation);
 
-    this.uninstall = () => {
+    return () => {
       console.error = originalError;
       this.uncapturedConsoleError = null;
       window.removeEventListener("error", onError);
       window.removeEventListener("unhandledrejection", onRejection);
       window.removeEventListener("securitypolicyviolation", onCspViolation);
-      this.uninstall = null;
+      this.installed = false;
     };
-
-    return this.uninstall;
   }
 
   record(event: DevDiagnosticEvent): void {
@@ -93,7 +93,7 @@ export class DevDiagnosticsCollector {
       ...this.truncateEventText(event),
     };
 
-    this.entries = capDiagnosticEntries([...this.entries, newEntry]);
+    this.entries = trimDiagnosticEntries([...this.entries, newEntry]);
     this.emit();
   }
 
@@ -156,8 +156,8 @@ export class DevDiagnosticsCollector {
       return truncateDiagnosticText(arg);
     }
 
-    if (arg instanceof Error) {
-      return truncateDiagnosticText(arg.stack ?? `${arg.name}: ${arg.message}`);
+    if (arg instanceof Error && arg.stack) {
+      return truncateDiagnosticText(arg.stack);
     }
 
     try {

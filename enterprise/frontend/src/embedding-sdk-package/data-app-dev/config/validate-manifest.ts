@@ -25,10 +25,7 @@ const compareAllowedHosts = (
   nextHosts: string[],
 ): boolean => {
   const normalize = (hosts: string[]) =>
-    hosts
-      .filter((entry) => typeof entry === "string")
-      .map((entry) => entry.trim().toLowerCase())
-      .sort();
+    hosts.map((entry) => entry.trim().toLowerCase()).sort();
 
   const [prev, next] = [normalize(prevHosts), normalize(nextHosts)];
 
@@ -81,10 +78,9 @@ export function validateDataAppManifest(
     return status;
   }
 
-  const manifestValue = (key: string): unknown =>
-    typeof parsed === "object" && parsed !== null
-      ? Reflect.get(parsed, key)
-      : undefined;
+  // js-yaml types the parse result is `unknown`
+  const fields = (parsed ?? {}) as Record<string, unknown>;
+  const manifestValue = (key: string): unknown => fields[key];
 
   status.name = asNonEmptyString(manifestValue("name"));
   status.bundlePath = asNonEmptyString(manifestValue("path"));

@@ -163,7 +163,7 @@ describe("dev diagnostics collector", () => {
     expect(devDiagnostics.getEntries()).toHaveLength(1);
   });
 
-  it("caps stored entries at 200, keeping the most recent", () => {
+  it("trims stored entries to 200, keeping the most recent", () => {
     for (let i = 0; i < 205; i++) {
       console.error(`error ${i}`);
     }
@@ -297,6 +297,7 @@ describe("connection status", () => {
       metabaseUrl: "http://localhost:3000",
       reachable: true,
       sdkVersion: "0.63.1",
+      error: null,
     });
 
     expect(devDiagnostics.getConnectionStatus()).toMatchObject({
@@ -312,7 +313,7 @@ describe("bounded entry size", () => {
     devDiagnostics.install();
     devDiagnostics.clear();
 
-    // The count cap alone bounds nothing: one entry can be arbitrarily large,
+    // The count limit alone bounds nothing: one entry can be arbitrarily large,
     // and it is retained twice and re-serialized on every poll.
     console.error("rows", {
       rows: Array.from({ length: 50_000 }, (_, i) => i),

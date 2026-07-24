@@ -1,5 +1,5 @@
 import {
-  capDiagnosticEntries,
+  trimDiagnosticEntries,
   truncateDiagnosticText,
 } from "../lib/diagnostics-limits";
 import type {
@@ -74,8 +74,8 @@ export class DiagnosticsStore {
     }
 
     // A reload does not empty the buffer: the errors that prompted it are the
-    // ones a reader most needs. Only the cap evicts. A reader that wants the new
-    // page alone starts from the `nextEventId` it saw before the reload.
+    // ones a reader most needs. Only the size limit evicts. A reader that wants
+    // the new page alone starts from the `nextEventId` it saw before the reload.
     this.sessionId = sessionId;
 
     return true;
@@ -88,7 +88,7 @@ export class DiagnosticsStore {
       return false;
     }
 
-    this.entries = capDiagnosticEntries([
+    this.entries = trimDiagnosticEntries([
       ...this.entries,
       ...entries.map((entry) => this.toStoredEntry(entry)),
     ]);

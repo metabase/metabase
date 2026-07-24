@@ -19,6 +19,8 @@ const entry = (
   ...over,
 });
 
+// The page stamps each load with a `sessionId`; a new one is how the server
+// tells a reload (fresh id) from a soft HMR re-render (same id).
 const message = (entries: DataAppDiagnosticEntry[], sessionId = "page-1") => ({
   sessionId,
   entries,
@@ -132,7 +134,7 @@ describe("DiagnosticsStore", () => {
     expect(store.getReport(0).entries).toHaveLength(1);
   });
 
-  it("re-caps oversized text, since the socket is just another local process", () => {
+  it("re-truncates oversized text, since the socket is just another local process", () => {
     const store = new DiagnosticsStore();
     const long = "x".repeat(DATA_APP_DIAGNOSTIC_MAX_CHARS + 100);
 
@@ -150,6 +152,7 @@ describe("DiagnosticsStore", () => {
       metabaseUrl: "http://localhost:3000",
       reachable: true,
       sdkVersion: "0.63.1",
+      error: null,
     };
 
     store.applyMessage({ sessionId: "page-1", entries: [], connection });
@@ -212,6 +215,7 @@ describe("DiagnosticsStore", () => {
       metabaseUrl: "http://localhost:3000",
       reachable: true,
       sdkVersion: "0.63.1",
+      error: null,
     };
 
     it("is true for new entries", () => {

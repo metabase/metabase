@@ -10,7 +10,7 @@ import {
  * to the other kinds, so a quiet app still keeps a full buffer of errors.
  * Insertion order is preserved.
  */
-export const capDiagnosticEntries = <T extends { kind: string }>(
+export const trimDiagnosticEntries = <T extends { kind: string }>(
   entries: T[],
 ): T[] => {
   if (entries.length <= DATA_APP_DIAGNOSTICS_LIMIT) {

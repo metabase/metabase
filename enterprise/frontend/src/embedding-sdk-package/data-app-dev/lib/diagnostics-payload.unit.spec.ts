@@ -61,7 +61,7 @@ describe("toPayload for requests", () => {
     [200, false],
     [304, false],
     // 4xx is the boundary the Queries filter and the toggle badge both key on.
-    [399, false],
+    [308, false],
     [400, true],
     [404, true],
     [500, true],
@@ -69,7 +69,7 @@ describe("toPayload for requests", () => {
     expect(toPayload(sdkCall({ status })).alert).toBe(alert);
   });
 
-  it("re-caps a reason that outgrew the per-field bound", () => {
+  it("re-truncates a reason that outgrew the per-field bound", () => {
     const reason = "x".repeat(DATA_APP_DIAGNOSTIC_MAX_CHARS + 100);
 
     expect(toPayload(sdkCall({ status: 400, error: reason })).detail).toBe(

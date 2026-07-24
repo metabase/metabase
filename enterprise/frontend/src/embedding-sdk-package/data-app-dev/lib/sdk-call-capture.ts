@@ -1,6 +1,5 @@
 import { devDiagnostics } from "../components/DevToolbar/diagnostics";
-
-const MAX_INSPECTED_BODY_CHARS = 128 * 1024;
+import { MAX_INSPECTED_BODY_CHARS } from "../constants/diagnostics-channel";
 
 /**
  * Records every request the preview makes to the instance — method, endpoint,
@@ -10,10 +9,11 @@ const MAX_INSPECTED_BODY_CHARS = 128 * 1024;
  * SDK's own client would put it within reach of any page embedding the SDK.
  */
 export class SdkCallCapture {
-  private uninstall: (() => void) | null = null;
+  private installed = false;
 
+  /** Returns a teardown that restores the original `fetch`; only the tests run it. */
   install(metabaseUrl: string | undefined): () => void {
-    if (this.uninstall || typeof window === "undefined" || !metabaseUrl) {
+    if (this.installed || typeof window === "undefined" || !metabaseUrl) {
       return () => undefined;
     }
 
@@ -27,6 +27,8 @@ export class SdkCallCapture {
     } catch {
       return () => undefined;
     }
+
+    this.installed = true;
 
     const realFetch = window.fetch.bind(window);
 
@@ -76,12 +78,10 @@ export class SdkCallCapture {
       }
     };
 
-    this.uninstall = () => {
+    return () => {
       window.fetch = realFetch;
-      this.uninstall = null;
+      this.installed = false;
     };
-
-    return this.uninstall;
   }
 
   private resolveUrl(input: RequestInfo | URL): URL | null {
@@ -110,70 +110,26 @@ export class SdkCallCapture {
    * The status code alone doesn't say what went wrong, and without the reason
    * the feed can only report *that* a call failed. A non-2xx carries its reason
    * in the body; a query that died after the status line was already sent
-   * reports the failure in the body of a 2xx, so short 2xx bodies are checked
-   * for one too.
-   *
-   * Always through a clone, so the caller still gets a readable body. Length is
-   * bounded by `devDiagnostics.record`, which caps every string field.
+   * reports the failure in the body of a 2xx.
    */
   private async captureFailureReason(
     response: Response,
   ): Promise<string | undefined> {
     try {
-      const responseBody = await this.readWithinBound(
-        response.clone(),
-        MAX_INSPECTED_BODY_CHARS,
-      );
+      // Read from a clone so the caller still gets an untouched body
+      const body = await response.clone().text();
 
-      if (responseBody == null) {
+      if (!response.ok) {
+        return body ? this.getErrorMessage(body) : undefined;
+      }
+
+      if (body.length > MAX_INSPECTED_BODY_CHARS) {
         return undefined;
       }
 
-      if (!response.ok) {
-        return responseBody ? this.getErrorMessage(responseBody) : undefined;
-      }
-
-      return this.getQueryFailure(responseBody);
+      return this.getQueryFailure(body);
     } catch {
       return undefined;
-    }
-  }
-
-  private async readWithinBound(
-    response: Response,
-    max: number,
-  ): Promise<string | null> {
-    const reader = response.body?.getReader?.();
-
-    if (!reader) {
-      // No stream to read incrementally (an older polyfill): the bound still
-      // applies, it just costs the read to find out.
-      const text = await response.text();
-
-      return text.length > max ? null : text;
-    }
-
-    const decoder = new TextDecoder();
-    let text = "";
-
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-
-        if (done) {
-          return text;
-        }
-
-        text += decoder.decode(value, { stream: true });
-
-        if (text.length > max) {
-          return null;
-        }
-      }
-    } finally {
-      // Not awaited: cancelling one branch of a teed body settles only once the
-      // other is read, which cannot happen while `fetch` waits here.
-      reader.cancel().catch(() => undefined);
     }
   }
 

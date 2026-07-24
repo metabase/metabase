@@ -5,7 +5,7 @@ export interface InstanceConnectionStatus {
   metabaseUrl: string;
   reachable: boolean;
   sdkVersion: string | null;
-  error?: string;
+  error: string | null;
 }
 
 export interface DataAppDiagnosticEntry {

@@ -177,7 +177,7 @@ describe("SdkCallCapture", () => {
     await expect(response.json()).resolves.toEqual({ message: "nope" });
   });
 
-  it("caps a huge failure body exactly once", async () => {
+  it("truncates a huge failure body exactly once", async () => {
     install();
     const message = "x".repeat(DATA_APP_DIAGNOSTIC_MAX_CHARS + 1000);
     realFetch.mockResolvedValue(errorResponse(400, { message }));
@@ -185,23 +185,25 @@ describe("SdkCallCapture", () => {
     await window.fetch(`${METABASE_URL}/api/dataset`);
 
     // Truncating here as well as in the collector would re-truncate the already
-    // capped string and chop up its own "… (truncated)" marker.
+    // truncated string and chop up its own "… (truncated)" marker.
     const { error } = calls()[0];
     expect(error).toBe(truncateDiagnosticText(message));
     expect(error).toContain(`truncated, ${message.length} chars`);
   });
 
-  it("gives up on an error body too large to buffer", async () => {
+  it("reports a large error body, truncated, rather than losing the reason", async () => {
     install();
-    // A proxy's error page can be megabytes; the app is waiting on this
-    // response while we read the clone.
+    // Unlike a 2xx result, an error is read whatever its size — the reason is at
+    // the front, and `record` truncates what we keep.
     realFetch.mockResolvedValue(
       new Response("x".repeat(200 * 1024), { status: 502 }),
     );
 
     await window.fetch(`${METABASE_URL}/api/dataset`);
 
-    expect(calls()[0]).toMatchObject({ status: 502, error: undefined });
+    const { status, error } = calls()[0];
+    expect(status).toBe(502);
+    expect(error).toContain("truncated");
   });
 
   it("keeps the querystring out of the recorded endpoint", async () => {

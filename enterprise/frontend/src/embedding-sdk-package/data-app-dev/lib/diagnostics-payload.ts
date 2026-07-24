@@ -26,8 +26,11 @@ export const formatDevDiagnostic = (entry: DevDiagnosticEntry): string => {
         entry.blockedUri || "inline content"
       }`;
     case "sdk-call": {
-      // The reason goes on its own line so `toSummaryAndDetail` files it as the
-      // collapsible detail rather than burying the endpoint behind it.
+      // `error` is already a string — `sdk-call-capture` reads the reason out of
+      // the response body (JSON `{ message }` / `{ status: "failed", error }` or
+      // raw text) before recording. Here it just goes on its own line so
+      // `toSummaryAndDetail` files it as the collapsible detail rather than
+      // burying the endpoint behind it.
       const summary = `${entry.method} ${entry.endpoint} → ${entry.status ?? "failed"} (${entry.durationMs}ms)`;
 
       return entry.error ? `${summary}\n${entry.error}` : summary;
@@ -96,8 +99,9 @@ const toSummaryAndDetail = (
 };
 
 /**
- * No `eventId` — the dev server assigns it. `summary`/`detail` are re-capped: a
- * `console.error` with many args can exceed the per-arg bound applied at capture.
+ * No `eventId` — the dev server assigns it. `summary`/`detail` are re-truncated:
+ * a `console.error` with many args can exceed the per-arg bound applied at
+ * capture.
  */
 export const toPayload = (
   entry: DevDiagnosticEntry,

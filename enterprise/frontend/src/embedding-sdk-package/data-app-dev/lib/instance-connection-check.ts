@@ -21,6 +21,7 @@ export class InstanceConnectionCheck {
       metabaseUrl: base,
       reachable: false,
       sdkVersion,
+      error: null,
     };
 
     if (!base) {
@@ -32,7 +33,7 @@ export class InstanceConnectionCheck {
 
     // Without a scheme the browser resolves it against the preview origin, so
     // the dev server would answer and the instance would look reachable.
-    if (!this.isAbsoluteUrl(base)) {
+    if (!URL.canParse(base)) {
       status.error = `${DATA_APP_MB_URL_ENV} must be an absolute URL like http://localhost:3000, not "${base}".`;
       devDiagnostics.setConnectionStatus(status);
 
@@ -47,16 +48,6 @@ export class InstanceConnectionCheck {
     }
 
     devDiagnostics.setConnectionStatus(status);
-  }
-
-  private isAbsoluteUrl(value: string): boolean {
-    try {
-      new URL(value);
-
-      return true;
-    } catch {
-      return false;
-    }
   }
 
   private describeFailure(error: unknown): string {
