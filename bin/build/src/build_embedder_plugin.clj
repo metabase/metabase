@@ -20,7 +20,7 @@
 (defn- plugin-basis
   []
   (-> (plugin-uberjar/project-basis project-dir)
-      (plugin-uberjar/prune-provided-libs! plugin-uberjar/metabase-core-provided-libs)
+      (plugin-uberjar/prune-provided-libs! @plugin-uberjar/metabase-core-provided-libs)
       (dissoc :deps :aliases :mvn/repos)))
 
 (defn build-plugin!
