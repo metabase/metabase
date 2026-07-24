@@ -14,7 +14,7 @@ A question component embeds a single Metabase question (a chart, table, or other
 - [Query builder](#embed-the-query-builder)\*
 - [SQL editor](#embed-the-sql-editor)\*
 
-\*Requires you to log in people to your Metabase via SSO so Metabase can know what data people are allowed to query.
+\* Only available on Pro and Enterprise plans. Requires you to log in people to your Metabase via SSO so Metabase can know what data people are allowed to query.
 
 ## Embed a view-only chart
 
@@ -148,7 +148,7 @@ For all modular embeds, you can also set a `locale` in your page-level configura
 
 #### Limitations on OSS
 
-The free, OSS version of Metabase will show a "Powered by Metabase banner" on the chart.
+The free, OSS version of Metabase will show a "Powered by Metabase banner" on view-only charts.
 
 ### View-only charts using the React SDK
 
@@ -166,6 +166,8 @@ The component has a default height, which you can change with the `height` prop.
 {% include_file "{{ dirname }}/sdk/api/snippets/StaticQuestionProps.md" snippet="properties" %}
 
 ## Embed an editable chart
+
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
 An editable chart lets people explore their data: they can drill through the chart, filter results, summarize and group them, explore data, and optionally save their changes. With SSO, people can self-serve their data (which means less work for you building bespoke charts).
 
