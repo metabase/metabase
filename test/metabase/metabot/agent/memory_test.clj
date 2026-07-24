@@ -2,9 +2,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
-   [metabase.metabot.tools.shared :as shared]))
+   [metabase.metabot.tools.shared :as shared]
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (deftest ^:parallel initialize-test
   (testing "seeds the working state and starts an empty turn-state"
@@ -59,6 +63,20 @@
                                                         (:queries state)
                                                         (:charts state))
                             "/question#")))))
+
+(deftest ^:parallel initialize-canonicalizes-round-tripped-queries-test
+  (testing "a pMBQL query degraded by a JSON round-trip is re-canonicalized on rehydration"
+    (let [mp      (mt/metadata-provider)
+          query   (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          degrade #(json/decode (json/encode %) true)
+          state   {:queries    {"q1" (degrade query)}
+                   :charts     {"c1" {:queries [(degrade query)]}}
+                   :transforms {"1" {:source {:query (degrade query)}}}}
+          mem     (memory/initialize [] state)]
+      (is (= :mbql/query (:lib/type (memory/find-query mem "q1"))))
+      (is (= :mbql/query (:lib/type (first (:queries (memory/find-chart mem "c1"))))))
+      (is (= :mbql/query (get-in (memory/find-transform mem "1")
+                                 [:source :query :lib/type]))))))
 
 (deftest ^:parallel add-step-test
   (testing "adds step to memory"
