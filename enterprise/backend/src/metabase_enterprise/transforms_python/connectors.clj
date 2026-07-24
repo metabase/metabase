@@ -11,6 +11,7 @@
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase.system.core :as system]
    [metabase.transforms.core :as transforms.core]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]))
 
@@ -64,15 +65,14 @@
 
 ;;; ------------------------------------------------- OAuth -------------------------------------------------
 
-;; state-nonce -> {:connector-id ".." :token ".." :created-at ms}, consumed on connection creation.
+;; state-nonce -> {:connector-id ".." :token ".." :started-at timer}, consumed on connection creation.
 ;; In-memory only: a pending OAuth handshake doesn't survive a restart, which is fine for its 10min TTL.
 (defonce ^:private pending-tokens (atom {}))
 
 (def ^:private pending-token-ttl-ms (* 10 60 1000))
 
 (defn- prune-pending! []
-  (let [cutoff (- (System/currentTimeMillis) pending-token-ttl-ms)]
-    (swap! pending-tokens #(into {} (filter (fn [[_ v]] (> (:created-at v) cutoff))) %))))
+  (swap! pending-tokens #(into {} (filter (fn [[_ v]] (< (u/since-ms (:started-at v)) pending-token-ttl-ms))) %)))
 
 (defn- redirect-uri [connector-id]
   (str (system/site-url) "/api/ee/transforms-python/connector/oauth/callback/" connector-id))
@@ -87,7 +87,7 @@
                                           {:status-code 400})))
         state           (str (random-uuid))]
     (prune-pending!)
-    (swap! pending-tokens assoc state {:connector-id connector-id :created-at (System/currentTimeMillis)})
+    (swap! pending-tokens assoc state {:connector-id connector-id :started-at (u/start-timer)})
     {:url (str (:authorize-url oauth)
                "?client_id=" client-id
                "&redirect_uri=" (java.net.URLEncoder/encode (redirect-uri connector-id) "UTF-8")

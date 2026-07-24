@@ -11,7 +11,6 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.permissions.core :as perms]
    [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -150,8 +149,7 @@
                       [:table-name {:optional true} ms/NonBlankString]]]
             [:name {:optional true} ms/NonBlankString]]]
   (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (get-in body [:target :database])))
-  (-> (connectors/create-connection! connector-id body)
-      transforms.u/present-secrets))
+  (connectors/create-connection! connector-id body))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transforms-python` routes."

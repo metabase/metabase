@@ -3757,6 +3757,7 @@
            permissions
            query-processor
            settings
+           system
            tracing
            transforms
            transforms-base
@@ -3765,6 +3766,7 @@
    :model-imports #{:model/Database
                     :model/Field
                     :model/Table
+                    :model/Transform
                     :model/TransformRun}}
 
   enterprise/upload-management

@@ -101,8 +101,7 @@
    [:owner_email {:optional true} [:maybe :string]]
    [:owner {:optional true} [:maybe OwnerResponse]]
    [:last_checkpoint_value {:optional true} [:maybe :string]]
-   ;; Secret values never leave the server; responses carry the configured names only.
-   [:secret_keys {:optional true} [:sequential :string]]
+   ;; :secrets never appears: model selects strip it (see transform model after-select)
    [:sync_state {:optional true} [:maybe :any]]
    [:can_read {:optional true} :boolean]
    [:can_write {:optional true} :boolean]
@@ -191,8 +190,7 @@
              403
              (deferred-tru "A table with that name already exists."))
   (-> (transforms.core/create-transform! body)
-      transforms.u/add-source-readable
-      transforms.u/present-secrets))
+      transforms.u/add-source-readable))
 
 (api.macros/defendpoint :get "/:id" :- TransformResponse
   "Get a specific transform."
@@ -210,8 +208,7 @@
         dep-ids         (get graph id)
         dependencies    (map id->transform dep-ids)]
     (->> (t2/hydrate dependencies :creator :owner :can_read :can_write :can_execute)
-         transforms.u/add-source-readable
-         transforms.u/present-secrets)))
+         transforms.u/add-source-readable)))
 
 (api.macros/defendpoint :get "/run" :- [:map {:closed true}
                                         [:data [:sequential TransformRunResponse]]

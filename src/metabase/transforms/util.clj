@@ -102,15 +102,6 @@
           transform-or-transforms)
     (assoc transform-or-transforms :source_readable (source-tables-readable? transform-or-transforms))))
 
-(defn present-secrets
-  "Replace the decrypted `:secrets` map with a `:secret_keys` name list, for API responses."
-  [transform-or-transforms]
-  (if (sequential? transform-or-transforms)
-    (mapv present-secrets transform-or-transforms)
-    (let [names (mapv name (keys (:secrets transform-or-transforms)))]
-      (cond-> (dissoc transform-or-transforms :secrets)
-        (seq names) (assoc :secret_keys names)))))
-
 ;;; ------------------------------------------------- Scheduled Execution -------------------------------------------------
 
 (defn duplicate-key-violation?

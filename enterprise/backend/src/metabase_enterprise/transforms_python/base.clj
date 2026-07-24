@@ -18,6 +18,7 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.core :as transforms.core]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.util :as u]
    [metabase.util.format :as u.format]
@@ -282,7 +283,8 @@
               :run-id         run-id
               :source-tables  resolved-source-tables
               :shared-storage @shared-storage-ref
-              :secrets        (:secrets transform)
+              ;; secrets are never on the instance; fetched explicitly for the run
+              :secrets        (some-> (:id transform) transforms.core/secrets-for-run)
               :state          (:sync_state transform)})
 
             output-manifest (python-runner/read-output-manifest @shared-storage-ref)

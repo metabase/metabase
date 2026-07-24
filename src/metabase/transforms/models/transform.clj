@@ -131,7 +131,9 @@
    :target             mi/transform-json
    ;; nil round-trips as NULL
    :table_dependencies {:in #(some-> % mi/json-in), :out mi/json-out-with-keywordization}
-   :secrets            mi/transform-encrypted-json
+   ;; write-only here: after-select drops the column, so there's no point decrypting it on reads
+   ;; (see [[secrets-for-run]] for the explicit read path)
+   :secrets            {:in mi/encrypted-json-in}
    ;; opaque blob owned by the transform's python code; keys stay strings for round-trip fidelity
    :sync_state         {:in #(some-> % mi/json-in), :out mi/json-out-without-keywordization}
    :run_trigger        mi/transform-keyword})
@@ -215,9 +217,19 @@
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
-  (if source
-    (assoc transform :source_type (transforms-base.u/transform-source-type source))
-    transform))
+  ;; Secrets never leave the model on a select; execution fetches them via [[secrets-for-run]].
+  (let [transform (dissoc transform :secrets)]
+    (if source
+      (assoc transform :source_type (transforms-base.u/transform-source-type source))
+      transform)))
+
+(defn secrets-for-run
+  "Decrypted secrets env-var map for a transform. The only way to read secrets back: selects the raw
+  column, since instances returned by the model never include it."
+  [transform-id]
+  (some-> (t2/query-one {:select [:secrets], :from [:transform], :where [:= :id transform-id]})
+          :secrets
+          mi/encrypted-json-out))
 
 (defn- hydrate-permission
   "Batched-hydrate helper: attach a permission under `k` to each transform by calling `pred`
