@@ -1,0 +1,21 @@
+## Drop the transform.table_dependencies write-through cache
+databaseChangeLog:
+
+  - changeSet:
+      id: v63.2q7x16gwox
+      author: bronsa
+      comment: Drop unused table_dependencies column from transform table
+      changes:
+        - dropColumn:
+            tableName: transform
+            columnName: table_dependencies
+      rollback:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: table_dependencies
+                  type: ${text.type}
+                  remarks: Precomputed table dependencies (JSON) used for execution ordering and cycle detection. Null means not yet computed.
+                  constraints:
+                    nullable: true

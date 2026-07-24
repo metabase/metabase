@@ -3714,10 +3714,7 @@
   enterprise/transforms
   {:team "Graphy"
    :api  #{metabase-enterprise.transforms.api}
-   :uses #{premium-features
-           util
-           enterprise/transforms-inspector}
-   :model-imports #{:model/Transform}}
+   :uses #{premium-features enterprise/transforms-inspector}}
 
   enterprise/transforms-inspector
   {:team "Gadget"

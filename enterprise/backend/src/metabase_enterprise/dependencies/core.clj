@@ -6,12 +6,14 @@
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.metadata-provider :as deps.provider]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
+   [metabase-enterprise.dependencies.models.dependency-status :as deps.status]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.validate :as lib.schema.validate]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -141,6 +143,31 @@
                        check-query-soundness
                        (merge errors)))
                  {} by-db))))))
+
+;;; --------------------------------------- Transform execution ordering ---------------------------------------
+
+(defenterprise transform-table-deps
+  "Bulk lookup of transform table dependencies from the dependency graph.
+
+  Only transforms whose dependency analysis is fresh (see [[deps.status/fresh-entity-ids]]) are
+  returned, and only when every upstream edge is a plain table/transform edge."
+  :feature :dependencies
+  [transform-ids]
+  (let [fresh-ids (some->> transform-ids seq (deps.status/fresh-entity-ids :transform))
+        rows      (when (seq fresh-ids)
+                    (t2/select [:model/Dependency :from_entity_id :to_entity_type :to_entity_id]
+                               :from_entity_type :transform
+                               :from_entity_id [:in fresh-ids]))
+        by-id     (group-by :from_entity_id rows)]
+    (into {}
+          (keep (fn [id]
+                  (let [transform-rows (by-id id)]
+                    (when (every? (comp #{:table :transform} :to_entity_type) transform-rows)
+                      [id (into #{}
+                                (map (fn [{:keys [to_entity_type to_entity_id]}]
+                                       {to_entity_type to_entity_id}))
+                                transform-rows)]))))
+          fresh-ids)))
 
 #_{:clj-kondo/ignore [:unresolved-namespace]}
 (comment
