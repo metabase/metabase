@@ -6,6 +6,7 @@ import { forkConversation } from "metabase/metabot/state";
 import * as Urls from "metabase/urls";
 
 import {
+  conversationTitle,
   enterChatMessage,
   forkButton,
   lastChatMessage,
@@ -18,7 +19,8 @@ import {
 
 const forkedConversation = createMockMetabotConversationDetail({
   conversation_id: "forked-convo-id",
-  title: "Who is your favorite? (forked)",
+  title: null,
+  forked_from_conversation_id: "original-convo-id",
   messages: [
     {
       id: "m1",
@@ -67,6 +69,8 @@ describe("metabot > fork", () => {
       ).toBe("forked-convo-id"),
     );
     expect(await screen.findByText("Conversation forked")).toBeInTheDocument();
+
+    expect(await conversationTitle()).toHaveTextContent("Forked conversation");
   });
 
   it("shows an error toast and keeps the original conversation when forking fails", async () => {

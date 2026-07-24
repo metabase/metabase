@@ -55,6 +55,8 @@ export const MetabotConversationPage = () => {
           agentId: "ask",
           conversationId: conversation.conversation_id,
           title: conversation.title ?? undefined,
+          forkedFromConversationId:
+            conversation.forked_from_conversation_id ?? undefined,
           messages: normalizeFetchedChatMessages(conversation.messages),
           state: conversation.state,
           activeToolCalls: [],

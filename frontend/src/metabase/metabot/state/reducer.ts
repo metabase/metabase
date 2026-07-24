@@ -354,6 +354,7 @@ export const metabot = createSlice({
           activeToolCalls?: MetabotToolCall[];
           conversationId: string;
           title?: string;
+          forkedFromConversationId?: string;
         }>,
         state,
       ) => {
@@ -364,6 +365,7 @@ export const metabot = createSlice({
           activeToolCalls,
           conversationId,
           title,
+          forkedFromConversationId,
         } = action.payload;
 
         convo.messages = castDraft(messages ?? []);
@@ -372,6 +374,7 @@ export const metabot = createSlice({
         convo.conversationId = conversationId ?? uuid();
         convo.loadId = nanoid();
         convo.title = title;
+        convo.forkedFromConversationId = forkedFromConversationId;
         convo.isProcessing = hasInProgressMessage(messages ?? []);
         convo.stateBeforeTurn = undefined;
         convo.pendingMessageExternalId = undefined;

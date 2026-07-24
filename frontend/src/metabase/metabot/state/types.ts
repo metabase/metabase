@@ -125,6 +125,7 @@ export interface MetabotConverstationState {
   conversationId: string;
   loadId: string;
   title: string | undefined;
+  forkedFromConversationId: string | undefined;
   isProcessing: boolean;
   messages: MetabotChatMessage[];
   visible: boolean;
