@@ -113,6 +113,8 @@
       (m/update-existing :query (fn [q] (if (orphan-query? q) q (lib-be/normalize-query q))))
       (m/update-existing :source-incremental-strategy #(update-keys % keyword))
       (m/update-existing :source-tables (fn [st] (mapv #(update-keys % keyword) st)))
+      ;; ingestion-connector provenance; :config submap keys stay strings (they're config field names)
+      (m/update-existing :connector #(update-keys % keyword))
       (m/update-existing :type keyword)))
 
 (defn transform-source-in

@@ -160,6 +160,26 @@
   (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (get-in body [:target :database])))
   (connectors/create-connection! connector-id body))
 
+(api.macros/defendpoint :put "/connector/connection/:transform-id" :- [:sequential :map]
+  "Update the config and/or token of the connection `transform-id` belongs to. Applies to every
+  stream of the connection."
+  [{:keys [transform-id]} :- [:map [:transform-id ms/PositiveInt]]
+   _query-params
+   body :- [:map
+            [:config {:optional true} [:map-of :string :string]]
+            [:auth {:optional true} [:maybe [:map
+                                             [:token {:optional true} ms/NonBlankString]
+                                             [:oauth-state {:optional true} ms/NonBlankString]]]]]]
+  (connectors/update-connection! transform-id body))
+
+(api.macros/defendpoint :post "/connector/connection/:transform-id/streams" :- [:sequential :map]
+  "Add streams to the connection `transform-id` belongs to, copying its config and token.
+  Already-present streams are skipped."
+  [{:keys [transform-id]} :- [:map [:transform-id ms/PositiveInt]]
+   _query-params
+   body :- [:map [:streams [:sequential {:min 1} ms/NonBlankString]]]]
+  (connectors/add-streams! transform-id (:streams body)))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transforms-python` routes."
   (handlers/routes

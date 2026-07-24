@@ -8,12 +8,15 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
+   [metabase.api.common :as api]
    [metabase.system.core :as system]
    [metabase.transforms.core :as transforms.core]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -169,40 +172,122 @@
           source
           config-fields))
 
+(defn- create-stream-transform!
+  "Create the transform backing one stream of a connection."
+  [{:keys [config-fields secret-key] conn-name :name :as conn}
+   {:keys [key label default-table merge-key template] :as _stream}
+   {:keys [config connection-id db-id schema table-name transform-name token]}]
+  (let [table-name (or table-name default-table)]
+    (transforms.core/create-transform!
+     {:name    (or transform-name (str conn-name " " label " ingestion (" table-name ")"))
+      :source  {:type            :python
+                :source-database db-id
+                :source-tables   []
+                :body            (render-template @template config-fields config)
+                :connector       {:id            (:id conn)
+                                  :stream        key
+                                  :config        (or config {})
+                                  :connection-id connection-id}}
+      :target  {:type     "table-incremental"
+                :database db-id
+                :schema   schema
+                :name     table-name
+                :target-incremental-strategy {:type       "merge"
+                                              :unique-key (mapv (fn [col] {:name col}) merge-key)}}
+      :secrets {secret-key token}})))
+
+(defn- select-streams [conn stream-keys]
+  (let [selected (if (seq stream-keys)
+                   (filter (comp (set stream-keys) :key) (:streams conn))
+                   (:streams conn))]
+    (when (empty? selected)
+      (throw (ex-info (tru "No valid streams selected.") {:status-code 400})))
+    selected))
+
 (defn create-connection!
   "Instantiate `connector-id` as one python transform per selected stream. `auth` is either
   {:token \"...\"} (hand-entered) or {:oauth-state \"nonce\"} (token from a completed OAuth
   handshake); the token is shared by all created transforms. `streams` is a vector of stream keys,
   defaulting to all of the connector's streams. Returns the created transforms."
   [connector-id {:keys [config auth target name streams] :as _body}]
-  (let [{:keys [config-fields secret-key] conn-name :name :as conn} (connector connector-id)
-        selected (if (seq streams)
-                   (filter (comp (set streams) :key) (:streams conn))
-                   (:streams conn))
-        _        (when (empty? selected)
-                   (throw (ex-info (tru "No valid streams selected.") {:status-code 400})))
-        token    (or (:token auth)
-                     (some-> (:oauth-state auth) consume-oauth-token!)
-                     (throw (ex-info (tru "Either a token or a completed OAuth authorization is required.")
-                                     {:status-code 400})))
-        db-id    (:database target)
-        single?  (= 1 (count selected))]
-    (vec
-     (for [{:keys [label default-table merge-key template]} selected
-           ;; a custom table name only makes sense when a single stream is selected
-           :let [table-name (or (when single? (:table-name target)) default-table)
-                 code       (render-template @template config-fields config)]]
-       (transforms.core/create-transform!
-        {:name    (or (when single? name)
-                      (str conn-name " " label " ingestion (" table-name ")"))
-         :source  {:type            :python
-                   :source-database db-id
-                   :source-tables   []
-                   :body            code}
-         :target  {:type     "table-incremental"
-                   :database db-id
-                   :schema   (:schema target)
-                   :name     table-name
-                   :target-incremental-strategy {:type       "merge"
-                                                 :unique-key (mapv (fn [col] {:name col}) merge-key)}}
-         :secrets {secret-key token}})))))
+  (let [conn          (connector connector-id)
+        selected      (select-streams conn streams)
+        token         (or (:token auth)
+                          (some-> (:oauth-state auth) consume-oauth-token!)
+                          (throw (ex-info (tru "Either a token or a completed OAuth authorization is required.")
+                                          {:status-code 400})))
+        connection-id (str (random-uuid))
+        single?       (= 1 (count selected))]
+    (mapv (fn [stream]
+            (create-stream-transform! conn stream
+                                      {:config         config
+                                       :connection-id  connection-id
+                                       :db-id          (:database target)
+                                       :schema         (:schema target)
+                                       ;; a custom table name only makes sense for a single stream
+                                       :table-name     (when single? (:table-name target))
+                                       :transform-name (when single? name)
+                                       :token          token}))
+          selected)))
+
+;;; ------------------------------------------------- Connection editing -------------------------------------------------
+
+(defn- connector-meta [transform]
+  (or (get-in transform [:source :connector])
+      (throw (ex-info (tru "Not a connector-managed transform.") {:status-code 400}))))
+
+(defn- connection-transforms
+  "All transforms belonging to the same connection as `transform` (itself included)."
+  [transform]
+  (let [connection-id (:connection-id (connector-meta transform))]
+    (if connection-id
+      (filter #(= connection-id (get-in % [:source :connector :connection-id]))
+              (t2/select :model/Transform :source_type :python))
+      [transform])))
+
+(defn update-connection!
+  "Update the config and/or token of the connection that `transform-id` belongs to. A new `config`
+  re-renders every stream's code from its template; `auth` (token or completed OAuth state) replaces
+  the secret on every stream. Returns the updated transforms."
+  [transform-id {:keys [config auth] :as _body}]
+  (let [transform (api/write-check :model/Transform transform-id)
+        conn      (connector (:id (connector-meta transform)))
+        token     (or (:token auth)
+                      (some-> (:oauth-state auth) consume-oauth-token!))
+        siblings  (connection-transforms transform)]
+    (run! api/write-check siblings)
+    (mapv (fn [{:keys [source] :as sibling}]
+            (let [conn-meta  (:connector source)
+                  stream     (or (m/find-first #(= (:stream conn-meta) (:key %)) (:streams conn))
+                                 (throw (ex-info (tru "Unknown stream: {0}" (:stream conn-meta)) {:status-code 400})))
+                  new-config (or config (:config conn-meta))
+                  new-source (assoc source
+                                    :body (render-template @(:template stream) (:config-fields conn) new-config)
+                                    :connector (assoc conn-meta :config new-config))]
+              (transforms.core/update-transform!
+               (:id sibling)
+               (cond-> {:source new-source}
+                 token (assoc :secrets {(:secret-key conn) token})))))
+          siblings)))
+
+(defn add-streams!
+  "Add transforms for `stream-keys` to the connection `transform-id` belongs to, copying its config
+  and secret. Streams that already exist are skipped. Returns the created transforms."
+  [transform-id stream-keys]
+  (let [transform (api/write-check :model/Transform transform-id)
+        conn-meta (connector-meta transform)
+        conn      (connector (:id conn-meta))
+        existing  (into #{} (map #(get-in % [:source :connector :stream])) (connection-transforms transform))
+        to-add    (remove (comp existing :key) (select-streams conn stream-keys))
+        secrets   (transforms.core/secrets-for-run transform-id)
+        token     (get secrets (keyword (:secret-key conn)))]
+    (when-not token
+      (throw (ex-info (tru "The connection has no stored token to copy.") {:status-code 400})))
+    (mapv (fn [stream]
+            (create-stream-transform! conn stream
+                                      {:config        (:config conn-meta)
+                                       :connection-id (:connection-id conn-meta)
+                                       :db-id         (get-in transform [:target :database])
+                                       :schema        (get-in transform [:target :schema])
+                                       :token         token}))
+          to-add)))
