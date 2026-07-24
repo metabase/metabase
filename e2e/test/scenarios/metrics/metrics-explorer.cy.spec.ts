@@ -196,6 +196,11 @@ const addMetricInputSequence = (
   if (runExpression) {
     runFormula();
     if (!skipRunCompletionWait) {
+      // Running the expression fires /api/metric/dataset; the edit-mode UI is
+      // only torn down once that query resolves. Wait on the alias so the
+      // assertions below don't race the request against the 4s retry budget,
+      // which the query can exceed under load / network throttling.
+      cy.wait("@dataset");
       // It is expected that the elements below do not exist after the expression ran successfully
       cy.findByTestId("metrics-viewer-search-input").should("not.exist");
       cy.findByTestId("run-expression-button").should("not.exist");
