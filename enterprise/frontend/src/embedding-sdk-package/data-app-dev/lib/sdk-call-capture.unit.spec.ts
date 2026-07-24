@@ -18,24 +18,24 @@ const errorResponse = (status: number, body: unknown) =>
     headers: { "Content-Type": "application/json" },
   });
 
-let realFetch: jest.Mock<Promise<Response>, []>;
-let teardown: () => void;
+let originalFetch: jest.Mock<Promise<Response>, []>;
+let cleanup: () => void;
 
-const install = (metabaseUrl: string = METABASE_URL) => {
-  realFetch = jest.fn(async () => jsonResponse({}));
-  window.fetch = realFetch;
-  teardown = sdkCallCapture.install(metabaseUrl);
+const setup = (metabaseUrl: string = METABASE_URL) => {
+  originalFetch = jest.fn(async () => jsonResponse({}));
+  window.fetch = originalFetch;
+  cleanup = sdkCallCapture.install(metabaseUrl);
 };
-
-beforeEach(() => devDiagnostics.clear());
-afterEach(() => teardown?.());
 
 const calls = () =>
   devDiagnostics.getEntries().filter((entry) => entry.kind === "sdk-call");
 
 describe("SdkCallCapture", () => {
+  beforeEach(() => devDiagnostics.clear());
+  afterEach(() => cleanup?.());
+
   it("records a Metabase call and ignores everything else", async () => {
-    install();
+    setup();
 
     await window.fetch(`${METABASE_URL}/api/card/1`);
     await window.fetch("https://example.com/thing");
@@ -45,12 +45,12 @@ describe("SdkCallCapture", () => {
   });
 
   it("reads a successful response through a clone, never the original", async () => {
-    install();
+    setup();
     // A 2xx is inspected for a reported failure, so the original body has to be
     // left untouched for the caller.
     const exported = jsonResponse([{ a: 1 }]);
     const clone = jest.spyOn(exported, "clone");
-    realFetch.mockResolvedValue(exported);
+    originalFetch.mockResolvedValue(exported);
 
     await window.fetch(`${METABASE_URL}/api/dataset/json`);
 
@@ -59,7 +59,7 @@ describe("SdkCallCapture", () => {
   });
 
   it("records the request method from init or a Request", async () => {
-    install();
+    setup();
 
     await window.fetch(`${METABASE_URL}/api/card/1`, { method: "post" });
     expect(calls()[0].method).toBe("POST");
@@ -71,8 +71,8 @@ describe("SdkCallCapture", () => {
   });
 
   it("reports why a request failed, not just that it did", async () => {
-    install();
-    realFetch.mockResolvedValue(
+    setup();
+    originalFetch.mockResolvedValue(
       errorResponse(400, { message: 'Table "orders" is not in the manifest' }),
     );
 
@@ -87,8 +87,8 @@ describe("SdkCallCapture", () => {
   });
 
   it("falls back to the raw body when the failure isn't a Metabase error", async () => {
-    install();
-    realFetch.mockResolvedValue(
+    setup();
+    originalFetch.mockResolvedValue(
       new Response("<html>502 Bad Gateway</html>", { status: 502 }),
     );
 
@@ -101,8 +101,8 @@ describe("SdkCallCapture", () => {
   });
 
   it("reports a query that failed inside a 2xx, which the status alone hides", async () => {
-    install();
-    realFetch.mockResolvedValue(
+    setup();
+    originalFetch.mockResolvedValue(
       jsonResponse({ status: "failed", error: "Table does not exist" }),
     );
 
@@ -115,8 +115,8 @@ describe("SdkCallCapture", () => {
   });
 
   it("names a 2xx failure that carries no reason", async () => {
-    install();
-    realFetch.mockResolvedValue(jsonResponse({ status: "failed" }));
+    setup();
+    originalFetch.mockResolvedValue(jsonResponse({ status: "failed" }));
 
     await window.fetch(`${METABASE_URL}/api/dataset`);
 
@@ -124,8 +124,8 @@ describe("SdkCallCapture", () => {
   });
 
   it("leaves a completed result alone", async () => {
-    install();
-    realFetch.mockResolvedValue(
+    setup();
+    originalFetch.mockResolvedValue(
       jsonResponse({ status: "completed", data: { rows: [[1]] } }),
     );
 
@@ -135,10 +135,10 @@ describe("SdkCallCapture", () => {
   });
 
   it("gives up on a result too large to be an error", async () => {
-    install();
+    setup();
     // Reading it whole would pull the entire result into memory just to learn
     // it is not a failure map.
-    realFetch.mockResolvedValue(
+    originalFetch.mockResolvedValue(
       jsonResponse({ status: "failed", pad: "x".repeat(200 * 1024) }),
     );
 
@@ -148,8 +148,10 @@ describe("SdkCallCapture", () => {
   });
 
   it("leaves a 2xx body readable by the caller", async () => {
-    install();
-    realFetch.mockResolvedValue(jsonResponse({ status: "completed", rows: 1 }));
+    setup();
+    originalFetch.mockResolvedValue(
+      jsonResponse({ status: "completed", rows: 1 }),
+    );
 
     const response = await window.fetch(`${METABASE_URL}/api/dataset`);
 
@@ -157,8 +159,8 @@ describe("SdkCallCapture", () => {
   });
 
   it("records a failure with an empty body without inventing a reason", async () => {
-    install();
-    realFetch.mockResolvedValue(new Response("", { status: 500 }));
+    setup();
+    originalFetch.mockResolvedValue(new Response("", { status: 500 }));
 
     await window.fetch(`${METABASE_URL}/api/dataset`);
 
@@ -166,8 +168,8 @@ describe("SdkCallCapture", () => {
   });
 
   it("leaves the failure body readable by the caller", async () => {
-    install();
-    realFetch.mockResolvedValue(errorResponse(400, { message: "nope" }));
+    setup();
+    originalFetch.mockResolvedValue(errorResponse(400, { message: "nope" }));
 
     const response = await window.fetch(`${METABASE_URL}/api/dataset`);
 
@@ -178,9 +180,9 @@ describe("SdkCallCapture", () => {
   });
 
   it("truncates a huge failure body exactly once", async () => {
-    install();
+    setup();
     const message = "x".repeat(DATA_APP_DIAGNOSTIC_MAX_CHARS + 1000);
-    realFetch.mockResolvedValue(errorResponse(400, { message }));
+    originalFetch.mockResolvedValue(errorResponse(400, { message }));
 
     await window.fetch(`${METABASE_URL}/api/dataset`);
 
@@ -192,10 +194,10 @@ describe("SdkCallCapture", () => {
   });
 
   it("reports a large error body, truncated, rather than losing the reason", async () => {
-    install();
+    setup();
     // Unlike a 2xx result, an error is read whatever its size — the reason is at
     // the front, and `record` truncates what we keep.
-    realFetch.mockResolvedValue(
+    originalFetch.mockResolvedValue(
       new Response("x".repeat(200 * 1024), { status: 502 }),
     );
 
@@ -207,7 +209,7 @@ describe("SdkCallCapture", () => {
   });
 
   it("keeps the querystring out of the recorded endpoint", async () => {
-    install();
+    setup();
 
     await window.fetch(`${METABASE_URL}/api/card/1?token=secret&foo=bar`);
 
@@ -218,7 +220,7 @@ describe("SdkCallCapture", () => {
   });
 
   it("records the time the call took", async () => {
-    install();
+    setup();
 
     await window.fetch(`${METABASE_URL}/api/card/1`);
 
@@ -226,8 +228,8 @@ describe("SdkCallCapture", () => {
   });
 
   it("ignores an aborted request rather than reporting a failure", async () => {
-    install();
-    realFetch.mockRejectedValue(
+    setup();
+    originalFetch.mockRejectedValue(
       new DOMException("The user aborted a request.", "AbortError"),
     );
 
@@ -239,8 +241,8 @@ describe("SdkCallCapture", () => {
   });
 
   it("still reports a genuine transport failure", async () => {
-    install();
-    realFetch.mockRejectedValue(new TypeError("Failed to fetch"));
+    setup();
+    originalFetch.mockRejectedValue(new TypeError("Failed to fetch"));
 
     await expect(window.fetch(`${METABASE_URL}/api/dataset`)).rejects.toThrow();
 
@@ -251,7 +253,7 @@ describe("SdkCallCapture", () => {
   });
 
   it("strips the base path of a sub-path deployment", async () => {
-    install("https://acme.com/metabase");
+    setup("https://acme.com/metabase");
 
     await window.fetch("https://acme.com/metabase/api/dataset");
 
@@ -261,7 +263,7 @@ describe("SdkCallCapture", () => {
   });
 
   it("passes through a same-origin call that sits outside the base path", async () => {
-    install("https://acme.com/metabase");
+    setup("https://acme.com/metabase");
 
     // Another app on the same host is not the Metabase deployment; recording it
     // would put a tenant's unrelated traffic into the data-app author's feed.
@@ -295,15 +297,15 @@ describe("SdkCallCapture", () => {
   });
 
   it("stops recording once torn down, and can be reinstalled without double-counting", async () => {
-    install();
-    teardown();
+    setup();
+    cleanup();
 
     await window.fetch(`${METABASE_URL}/api/card/1`);
     expect(calls()).toHaveLength(0);
 
     // Reinstalling wraps the restored fetch, not the previous wrapper — without
     // the teardown resetting `installed`, a remount would record every call twice.
-    teardown = sdkCallCapture.install(METABASE_URL);
+    cleanup = sdkCallCapture.install(METABASE_URL);
     await window.fetch(`${METABASE_URL}/api/card/1`);
 
     expect(calls()).toHaveLength(1);

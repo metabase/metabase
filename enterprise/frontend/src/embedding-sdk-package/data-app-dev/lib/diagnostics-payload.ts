@@ -1,3 +1,5 @@
+import { match } from "ts-pattern";
+
 import type { DevDiagnosticEntry } from "../types/diagnostics";
 import type { DataAppDiagnosticEntry } from "../types/diagnostics-channel";
 
@@ -14,32 +16,29 @@ export const isAlert = (entry: DevDiagnosticEntry): boolean =>
   entry.kind === "csp-violation" ||
   isFailedSdkCall(entry);
 
-export const formatDevDiagnostic = (entry: DevDiagnosticEntry): string => {
-  switch (entry.kind) {
-    case "error":
-    case "blocked-api":
-      return entry.message;
-    case "blocked-network":
-      return `Blocked ${entry.api === "xhr" ? "XMLHttpRequest" : "fetch"} to ${entry.reason}`;
-    case "csp-violation":
-      return `Content Security Policy (${entry.directive}) blocked ${
-        entry.blockedUri || "inline content"
-      }`;
-    case "sdk-call": {
-      // `error` is already a string — `sdk-call-capture` reads the reason out of
-      // the response body (JSON `{ message }` / `{ status: "failed", error }` or
-      // raw text) before recording. Here it just goes on its own line so
-      // `toSummaryAndDetail` files it as the collapsible detail rather than
-      // burying the endpoint behind it.
+export const formatDevDiagnostic = (entry: DevDiagnosticEntry): string =>
+  // `.exhaustive()` makes a new `DevDiagnosticEvent` kind a compile error here
+  // until it has a branch, rather than silently formatting as `[object Object]`.
+  match(entry)
+    .with({ kind: "error" }, { kind: "blocked-api" }, (entry) => entry.message)
+    .with(
+      { kind: "blocked-network" },
+      (entry) =>
+        `Blocked ${entry.api === "xhr" ? "XMLHttpRequest" : "fetch"} to ${entry.reason}`,
+    )
+    .with(
+      { kind: "csp-violation" },
+      (entry) =>
+        `Content Security Policy (${entry.directive}) blocked ${entry.blockedUri || "inline content"}`,
+    )
+    .with({ kind: "sdk-call" }, (entry) => {
+      // The reason goes on its own line so `toSummaryAndDetail` files it as the
+      // collapsible detail instead of burying the endpoint behind it.
       const summary = `${entry.method} ${entry.endpoint} → ${entry.status ?? "failed"} (${entry.durationMs}ms)`;
 
       return entry.error ? `${summary}\n${entry.error}` : summary;
-    }
-    default: {
-      return String(entry);
-    }
-  }
-};
+    })
+    .exhaustive();
 
 const CSP_DIRECTIVE_HINTS: Record<string, string> = {
   "connect-src":
