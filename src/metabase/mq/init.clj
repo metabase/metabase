@@ -89,15 +89,13 @@
    (alter-var-root #'q.backend/*backend* (constantly prev-queue-be))))
 
 (defn- resolve-queue-be []
-  (let [explicit (mq.settings/queue-backend)
-        chosen   (or explicit
+  (let [queue-be (or (some->> (mq.settings/queue-backend) (keyword "queue.backend"))
                      (if (task/scheduler-disabled?)
                        (do (log/warn (str "Task scheduler is disabled (MB_DISABLE_SCHEDULER); using the in-memory queue "
                                           "backend. Queue messages will not survive a restart and are not shared "
                                           "across nodes."))
-                           "memory")
-                       "quartz"))
-        queue-be (keyword "queue.backend" chosen)]
+                           :queue.backend/memory)
+                       :queue.backend/quartz))]
     (when-not (contains? valid-queue-backends queue-be)
       (throw (ex-info (str "Invalid queue backend: " queue-be
                            ". Valid backends: " valid-queue-backends)
@@ -107,12 +105,12 @@
 ;; Misconfigurations must abort the boot here: a throw from ::MqStart (startup *logic*) is logged and
 ;; swallowed, but a throw from a startup *validation* fails startup.
 (defmethod startup/def-startup-validation! ::MqBackendValidation [_]
-  (when-let [explicit (mq.settings/queue-backend)]
-    (when-not (contains? valid-queue-backends (keyword "queue.backend" explicit))
+  (when-let [explicit (some->> (mq.settings/queue-backend) (keyword "queue.backend"))]
+    (when-not (contains? valid-queue-backends explicit)
       (throw (ex-info (str "Invalid queue backend: " explicit
                            ". Valid backends: " valid-queue-backends)
                       {:backend explicit :valid valid-queue-backends})))
-    (when (and (= explicit "quartz") (task/scheduler-disabled?))
+    (when (and (= explicit :queue.backend/quartz) (task/scheduler-disabled?))
       (throw (ex-info (str "The queue backend is explicitly set to `quartz` but the task scheduler is disabled "
                            "(MB_DISABLE_SCHEDULER). Quartz queue messages would be accepted but never delivered. "
                            "Unset MB_QUEUE_BACKEND to fall back to the in-memory backend, or re-enable the "
