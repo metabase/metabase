@@ -128,6 +128,14 @@ const ALL_MODELS = [
 const SNAPSHOT_NAME = "metrics-explorer-snapshot";
 const INPUT_PLACEHOLDER_TEXT = "Search for metrics...";
 
+// After clicking Run, the formula editor collapses into pills only once the
+// `/api/metric/dataset` round-trip returns. Under CI load / network throttling
+// that response can take longer than Cypress's default 4s command timeout,
+// leaving the CodeMirror editor (and the run button / loading indicator)
+// transiently in the DOM and flaking the "should not exist" checks that follow a
+// successful run. Give that transition a network-sized budget to settle.
+const RUN_COMPLETION_TIMEOUT = 30_000;
+
 // ============================================================================
 // Test Helpers
 // ============================================================================
@@ -197,9 +205,15 @@ const addMetricInputSequence = (
     runFormula();
     if (!skipRunCompletionWait) {
       // It is expected that the elements below do not exist after the expression ran successfully
-      cy.findByTestId("metrics-viewer-search-input").should("not.exist");
-      cy.findByTestId("run-expression-button").should("not.exist");
-      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByTestId("metrics-viewer-search-input", {
+        timeout: RUN_COMPLETION_TIMEOUT,
+      }).should("not.exist");
+      cy.findByTestId("run-expression-button", {
+        timeout: RUN_COMPLETION_TIMEOUT,
+      }).should("not.exist");
+      cy.findByTestId("loading-indicator", {
+        timeout: RUN_COMPLETION_TIMEOUT,
+      }).should("not.exist");
     }
   }
 };
