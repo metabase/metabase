@@ -128,6 +128,48 @@
   :encryption :no
   :audit      :getter)
 
+(setting/defsetting github-connector-client-id
+  (deferred-tru "OAuth client ID for the GitHub ingestion connector.")
+  :type       :string
+  :visibility :admin
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting github-connector-client-secret
+  (deferred-tru "OAuth client secret for the GitHub ingestion connector.")
+  :type       :string
+  :visibility :admin
+  :sensitive? true
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :when-encryption-key-set
+  :audit      :never)
+
+(setting/defsetting linear-connector-client-id
+  (deferred-tru "OAuth client ID for the Linear ingestion connector.")
+  :type       :string
+  :visibility :admin
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting linear-connector-client-secret
+  (deferred-tru "OAuth client secret for the Linear ingestion connector.")
+  :type       :string
+  :visibility :admin
+  :sensitive? true
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :when-encryption-key-set
+  :audit      :never)
+
 (setting/defsetting python-runner-test-run-timeout-seconds
   (deferred-tru "Timeout in seconds for Python script test runs. Defaults to 1 minute (60 seconds).")
   :type :integer

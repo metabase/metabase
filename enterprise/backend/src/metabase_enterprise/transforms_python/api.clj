@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms-python.api
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.transforms-python.connectors :as connectors]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
@@ -10,6 +11,7 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.permissions.core :as perms]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))

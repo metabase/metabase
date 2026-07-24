@@ -111,7 +111,10 @@
   (if (contains? transform :full-incremental-run?)
     (:full-incremental-run? transform)
     (and (incremental-target? transform)
-         (or (nil? (:last_checkpoint_value transform))
+         ;; a present :sync_state plays the same role as a checkpoint watermark for
+         ;; ingestion-style python transforms: its absence means "never synced"
+         (or (and (nil? (:last_checkpoint_value transform))
+                  (nil? (:sync_state transform)))
              (table-index/pending-changes-for-transform? id)))))
 
 (defn full-create-run?
