@@ -152,7 +152,9 @@
     ;; provisioning state, not portable content. Same rationale as TableRemapping above.
     :model/Workspace
     :model/WorkspaceDatabase
-    :model/WorkspaceInstance})
+    :model/WorkspaceInstance
+    ;; runtime-only warehouse provisioning state, same rationale as WorkspaceDatabase
+    :model/DatabaseIsolation})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (v2.entity-ids/toucan-models)

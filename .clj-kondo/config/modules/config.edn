@@ -3155,7 +3155,9 @@
   enterprise/database-isolation
   {:team "Graphy"
    :api  #{metabase-enterprise.database-isolation.provisioner}
-   :uses #{driver}}
+   :uses #{api
+           driver
+           models}}
 
   enterprise/database-replication
   {:team "Cloud"

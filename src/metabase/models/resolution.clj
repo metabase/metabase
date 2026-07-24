@@ -42,6 +42,7 @@
     :model/DashboardTab                      metabase.dashboards.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
     :model/Database                          metabase.warehouses.models.database
+    :model/DatabaseIsolation                 metabase-enterprise.database-isolation.models.database-isolation
     :model/DatabaseRouter                    metabase-enterprise.database-routing.models
     :model/Dependency                        metabase-enterprise.dependencies.models.dependency
     :model/DependencyStatus                  metabase-enterprise.dependencies.models.dependency-status
