@@ -26,20 +26,20 @@
                              {:keys [channel]} :details} (t2/select [:model/PulseChannel :id :channel_type :details]
                                                                     :pulse_id [:= bad-pulse-id])]
                         (case channel-type
-                          :email (let [pulse-channel-recipients (when (= :email channel-type)
-                                                                  (t2/select :model/PulseChannelRecipient
-                                                                             :pulse_channel_id pulse-channel-id))]
-                                   (when (seq pulse-channel-recipients)
+                          :email (let [pulse-channel-recipients (t2/select :model/PulseChannelRecipient
+                                                                           :pulse_channel_id pulse-channel-id)]
+                                   (if (seq pulse-channel-recipients)
                                      (map
                                       (fn [{:keys [common_name] :as recipient}]
                                         (assoc recipient
                                                :notification-type channel-type
                                                :recipient common_name))
                                       (t2/select [:model/User :first_name :last_name :email]
-                                                 :id [:in (map :user_id pulse-channel-recipients)]))))
+                                                 :id [:in (map :user_id pulse-channel-recipients)]))
+                                     []))
                           :slack {:notification-type channel-type
                                   :recipient         channel}
-                          nil)))}))
+                          [])))}))
 
 (defn- broken-pulses
   "Identify and return any pulses used in a subscription that contain parameters that are no longer on the dashboard."
@@ -82,15 +82,14 @@
          ;; We will not include links to Metabase for subscriptions created in modular embeddings
          :disable_links (:disable_links broken-pulse))))))
 
-(defn handle-broken-subscriptions
-  "Archive every subscription on `dashboard-id` whose parameters no longer exist on the dashboard,
-  notify their creators, and return the archived subscriptions' data. Must run after the update:
-  it compares the dashboard's current resolved params against each pulse's stored params."
+(defn handle-broken-subscriptions!
+  "Archive every subscription on `dashboard-id` whose parameters no longer exist on the dashboard
+  and notify their creators. Must run after the update: it compares the dashboard's current
+  resolved params against each pulse's stored params. Returns nil."
   [dashboard-id original-dashboard-params]
-  (let [broken (broken-subscription-data dashboard-id original-dashboard-params)]
-    (doseq [{:keys [pulse-id] :as broken-subscription} broken]
-      ;; Archive the pulse
-      (pulse/update-pulse! {:id pulse-id :archived true})
-      ;; Let the pulse and subscription creator know about the broken pulse
-      (messages/send-broken-subscription-notification! broken-subscription))
-    broken))
+  (doseq [{:keys [pulse-id] :as broken-subscription}
+          (broken-subscription-data dashboard-id original-dashboard-params)]
+    ;; Archive the pulse
+    (pulse/update-pulse! {:id pulse-id :archived true})
+    ;; Let the pulse and subscription creator know about the broken pulse
+    (messages/send-broken-subscription-notification! broken-subscription)))

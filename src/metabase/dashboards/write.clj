@@ -296,7 +296,7 @@
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
              ;; Handle broken subscriptions, if any, when parameters changed
              (when parameters
-               (pulse.broken-subscriptions/handle-broken-subscriptions id original-params)))
+               (pulse.broken-subscriptions/handle-broken-subscriptions! id original-params)))
            (when update-dashcards-and-tabs?
              (when (not (false? (:archived false)))
                (api/check-not-archived current-dash))
