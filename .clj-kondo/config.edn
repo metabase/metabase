@@ -72,6 +72,7 @@
   :metabase/no-jsqlparser-imports                            {:level :warning}
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
   :metabase/toucan-model-ns                                  {:level :warning}
+  :metabase/big-table-eager-select                           {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
   :metabase/validate-defendpoint-route-uses-kebab-case       {:level :warning}
@@ -621,6 +622,13 @@
    metabase.lib.schema.mbql-clause/define-tuple-mbql-clause                                                                  hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    methodical.core/defmethod                                                                                                 hooks.metabase.toucan.table-name/lint-defmethod
    methodical.macros/defmethod                                                                                               hooks.metabase.toucan.table-name/lint-defmethod
+   toucan2.core/select                                                                                                       hooks.metabase.toucan.big-table-select/lint
+   toucan2.core/select-fn-set                                                                                                hooks.metabase.toucan.big-table-select/lint
+   toucan2.core/select-fn-vec                                                                                                hooks.metabase.toucan.big-table-select/lint
+   toucan2.core/select-fn->fn                                                                                                hooks.metabase.toucan.big-table-select/lint
+   toucan2.core/select-fn->map                                                                                              hooks.metabase.toucan.big-table-select/lint
+   toucan2.core/select-pks-set                                                                                               hooks.metabase.toucan.big-table-select/lint
+   toucan2.core/select-pks-vec                                                                                               hooks.metabase.toucan.big-table-select/lint
    metabase.lib.test-util.macros/$ids                                                                                        hooks.metabase.test.data/$ids
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/mbql-5-query                                                                                hooks.metabase.test.data/mbql-query
