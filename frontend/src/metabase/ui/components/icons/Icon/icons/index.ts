@@ -1,9 +1,9 @@
 import type { IconName } from "metabase-types/api";
 
-import ten_thousand_component from "./10k.svg?component";
-import ten_thousand_source from "./10k.svg?source";
 import one_million_component from "./1m.svg?component";
 import one_million_source from "./1m.svg?source";
+import ten_thousand_component from "./10k.svg?component";
+import ten_thousand_source from "./10k.svg?source";
 import add_component from "./add.svg?component";
 import add_source from "./add.svg?source";
 import add_collection_component from "./add_collection.svg?component";

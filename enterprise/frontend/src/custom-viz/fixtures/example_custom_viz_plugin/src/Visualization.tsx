@@ -1,6 +1,7 @@
+import type { CustomVisualizationProps, RowValue } from "@metabase/custom-viz";
 import { useState } from "react";
 import type { MouseEvent } from "react";
-import type { CustomVisualizationProps, RowValue } from "@metabase/custom-viz";
+
 import type { Settings } from "./types";
 
 export const Visualization = (

@@ -868,9 +868,7 @@ describe("DataModel", () => {
 
     it("should show an access denied error if the foreign key field has an inaccessible target", async () => {
       const productsTable = createProductsTable({
-        fields: [
-          /* no PRODUCTS_ID_FIELD */
-        ],
+        fields: [/* no PRODUCTS_ID_FIELD */],
       });
 
       const database = createSampleDatabase({

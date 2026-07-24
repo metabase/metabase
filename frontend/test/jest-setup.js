@@ -10,6 +10,7 @@ import {
 import "cross-fetch/polyfill";
 import "raf/polyfill";
 import "jest-canvas-mock";
+
 import "metabase/utils/dayjs";
 import "__support__/mocks";
 

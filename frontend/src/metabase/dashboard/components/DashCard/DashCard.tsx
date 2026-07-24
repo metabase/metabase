@@ -15,8 +15,8 @@ import {
   getDashcardResultsError,
   isDashcardLoading,
 } from "metabase/dashboard/utils";
-import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import EmbedFrameS from "metabase/embedding/theme.module.css";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useDispatch, useSelector, useStore } from "metabase/redux";

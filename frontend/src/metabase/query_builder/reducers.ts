@@ -1,7 +1,13 @@
+// Import order is load-bearing here: sorting these triggers TS2589
+// ("Type instantiation is excessively deep") in the reducer type below.
+// oxfmt-ignore
 import { createReducer } from "@reduxjs/toolkit";
+// oxfmt-ignore
 import { assoc, merge } from "icepick";
+// oxfmt-ignore
 import _ from "underscore";
 
+// oxfmt-ignore
 import {
   createCardPublicLink,
   deleteCardPublicLink,
@@ -9,7 +15,9 @@ import {
   updateCardEmbeddingParams,
   updateCardEnableEmbedding,
 } from "metabase/api";
+// oxfmt-ignore
 import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
+// oxfmt-ignore
 import {
   API_UPDATE_QUESTION,
   CANCEL_QUERY,
@@ -48,6 +56,7 @@ import {
   SOFT_RELOAD_CARD,
   ZOOM_IN_ROW,
 } from "metabase/redux/query-builder";
+// oxfmt-ignore
 import type {
   ForeignKeyReference,
   InitialChartSettingState,
@@ -57,7 +66,9 @@ import type {
   QueryBuilderUIControls,
   Range,
 } from "metabase/redux/store";
+// oxfmt-ignore
 import { clone } from "metabase/utils/clone";
+// oxfmt-ignore
 import type {
   Card,
   CollectionItemModel,
@@ -68,6 +79,7 @@ import type {
   TimelineEvent,
 } from "metabase-types/api";
 
+// oxfmt-ignore
 import {
   API_CREATE_QUESTION,
   CLEAR_OBJECT_DETAIL_FK_REFERENCES,
@@ -91,6 +103,7 @@ import {
   TOGGLE_TEMPLATE_TAGS_EDITOR,
   UPDATE_QUESTION,
 } from "./actions";
+// oxfmt-ignore
 import {
   CLOSED_NATIVE_EDITOR_SIDEBARS,
   DEFAULT_LOADING_CONTROLS,

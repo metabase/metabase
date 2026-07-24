@@ -57,7 +57,7 @@ export const ModalRight = styled.div`
   overflow-y: hidden;
 
   .${SidebarContentS.SidebarContentRoot},
-    .${SidebarContentS.SidebarContentMain} {
+  .${SidebarContentS.SidebarContentMain} {
     width: 100%;
     height: 100%;
   }

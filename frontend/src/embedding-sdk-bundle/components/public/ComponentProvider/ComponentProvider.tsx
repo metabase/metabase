@@ -1,6 +1,7 @@
 // eslint-disable-next-line no-restricted-imports -- We sometimes need css-in-js in the SDK
 import { Global } from "@emotion/react";
 import { type JSX, memo, useEffect, useId, useRef } from "react";
+import { initializePlugins } from "sdk-ee-plugins";
 
 import { useInitSdkTracker } from "embedding-sdk-bundle/analytics/tracker";
 import { ContentTranslationsProvider } from "embedding-sdk-bundle/components/private/ContentTranslationsProvider";
@@ -21,14 +22,13 @@ import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
-import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
+import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { MetabaseReduxProvider, useSelector } from "metabase/redux";
 import { setOptions } from "metabase/redux/embed";
 import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
-import { initializePlugins } from "sdk-ee-plugins";
 
 import { SCOPED_CSS_RESET } from "../../private/PublicComponentStylesWrapper";
 import { SdkFontsGlobalStyles } from "../../private/SdkGlobalFontsStyles";

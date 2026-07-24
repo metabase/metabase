@@ -1,12 +1,15 @@
-/* eslint-disable import/order */
-
+// oxfmt-ignore
 import { TEST_SCHEMA } from "./fixtures";
 
+// oxfmt-ignore
 import type { RowValue } from "../../data-schema";
 
+// oxfmt-ignore
 import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
+// oxfmt-ignore
 import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
+// oxfmt-ignore
 import { breakout, orderBy, sum, useMetabaseQuery } from "..";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];

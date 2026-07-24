@@ -1,7 +1,7 @@
 /* eslint-disable metabase/no-literal-metabase-strings -- request header names */
 import type { OnBeforeRequestHandler } from "metabase/api/client";
-import { isEmbedPreview } from "metabase/embedding/config";
 import { isDataAppDev } from "metabase/embedding-sdk/config";
+import { isEmbedPreview } from "metabase/embedding/config";
 
 /**
  * Tag requests coming from an embed preview (the page is iframed into itself).

@@ -1,31 +1,51 @@
+// oxfmt-ignore
 import { setPlatformAPI } from "echarts/core";
+// oxfmt-ignore
 import ReactDOMServer from "react-dom/server";
-
-// eslint-disable-next-line import/order
+// `ee-overrides` is an rspack-only alias, so the tsconfig-paths resolver cannot
+// classify it into an import group.
+// oxfmt-ignore
 import enterpriseOverrides from "ee-overrides";
+// oxfmt-ignore
 import "metabase/utils/dayjs";
 
+// oxfmt-ignore
 import {
   StaticChoropleth,
   getStaticChoroplethSettings,
 } from "metabase/static-viz/components/StaticChoropleth";
+// oxfmt-ignore
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
+// oxfmt-ignore
 import { LegacyStaticChart } from "metabase/static-viz/containers/LegacyStaticChart";
+// oxfmt-ignore
 import type { LegacyStaticChartType } from "metabase/static-viz/containers/LegacyStaticChart/LegacyStaticChart";
+// oxfmt-ignore
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
+// oxfmt-ignore
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
+// oxfmt-ignore
 import { updateStartOfWeek } from "metabase/utils/i18n";
+// oxfmt-ignore
 import MetabaseSettings from "metabase/utils/settings";
+// oxfmt-ignore
 import { extractRemappings, isCartesianChart } from "metabase/visualizations";
+// oxfmt-ignore
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+// oxfmt-ignore
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
+// oxfmt-ignore
 import { createDataSource } from "metabase/visualizer/utils/data-source";
+// oxfmt-ignore
 import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
+// oxfmt-ignore
 import { mergeVisualizerData } from "metabase/visualizer/utils/merge-data";
+// oxfmt-ignore
 import {
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "metabase/visualizer/utils/split-series";
+// oxfmt-ignore
 import type {
   Card,
   DashCardVisualizationSettings,
@@ -38,6 +58,7 @@ import type {
   VisualizerVizDefinition,
 } from "metabase-types/api";
 
+// oxfmt-ignore
 import type {
   CellBackgroundColorsInput,
   RenderChartDashcardSettings,

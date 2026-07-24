@@ -7,8 +7,8 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { EntityItem } from "metabase/common/components/EntityItem";
 import { Markdown } from "metabase/common/components/Markdown";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Checkbox, Ellipsified, type IconProps, Tooltip } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
@@ -20,8 +20,6 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 
-import type { SortableColumnHeaderProps } from "./BaseItemsTable/BaseItemsTable";
-import { SortableColumnHeader } from "./BaseItemsTable/BaseItemsTable";
 import {
   BulkSelectWrapper,
   ColumnHeader,
@@ -34,6 +32,8 @@ import {
   RowActionsContainer,
   TableColumn,
 } from "./BaseItemsTable.styled";
+import type { SortableColumnHeaderProps } from "./BaseItemsTable/BaseItemsTable";
+import { SortableColumnHeader } from "./BaseItemsTable/BaseItemsTable";
 
 type HeaderProps = Omit<
   SortableColumnHeaderProps<ListCollectionItemsSortColumn>,
