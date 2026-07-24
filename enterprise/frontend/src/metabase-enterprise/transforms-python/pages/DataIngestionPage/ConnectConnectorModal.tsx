@@ -8,6 +8,7 @@ import { useTransformSupportedDbs } from "metabase/transforms/hooks/use-transfor
 import {
   Alert,
   Button,
+  Checkbox,
   Divider,
   Group,
   Icon,
@@ -113,6 +114,9 @@ export function ConnectConnectorModal({
   const [schema, setSchema] = useState("");
   const [tableName, setTableName] = useState("");
   const [name, setName] = useState("");
+  const [selectedStreamKeys, setSelectedStreamKeys] = useState<string[]>(() =>
+    connector.streams.map((stream) => stream.key),
+  );
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const oauth = useConnectorOauth(connector.id);
@@ -128,7 +132,23 @@ export function ConnectConnectorModal({
   const hasMissingRequiredField = configFields.some(
     (field) => field.required && !configValues[field.key]?.trim(),
   );
-  const canSubmit = databaseId != null && !hasMissingRequiredField;
+  const selectedStreams = connector.streams.filter((stream) =>
+    selectedStreamKeys.includes(stream.key),
+  );
+  const singleSelectedStream =
+    selectedStreams.length === 1 ? selectedStreams[0] : null;
+  const canSubmit =
+    databaseId != null &&
+    !hasMissingRequiredField &&
+    selectedStreams.length > 0;
+
+  const toggleStream = (streamKey: string, isChecked: boolean) => {
+    setSelectedStreamKeys((keys) =>
+      isChecked
+        ? [...keys, streamKey]
+        : keys.filter((key) => key !== streamKey),
+    );
+  };
 
   const handleSubmit = async () => {
     if (databaseId == null) {
@@ -139,23 +159,29 @@ export function ConnectConnectorModal({
       Object.entries(configValues).filter(([, value]) => value.trim() !== ""),
     );
     try {
-      const transform = await createConnection({
+      const transforms = await createConnection({
         connectorId: connector.id,
         config,
         auth: hasToken
           ? { token: token.trim() }
           : { "oauth-state": oauth.oauthState ?? undefined },
+        streams: selectedStreams.map((stream) => stream.key),
         target: {
           database: Number(databaseId),
           ...(schema.trim() !== "" ? { schema: schema.trim() } : {}),
-          ...(tableName.trim() !== ""
+          // The backend only honors a custom table name for a single stream.
+          ...(singleSelectedStream != null && tableName.trim() !== ""
             ? { "table-name": tableName.trim() }
             : {}),
         },
         ...(name.trim() !== "" ? { name: name.trim() } : {}),
       }).unwrap();
       onClose();
-      dispatch(push(Urls.transform(transform.id)));
+      if (transforms.length === 1) {
+        dispatch(push(Urls.transform(transforms[0].id)));
+      } else {
+        dispatch(push(Urls.transformList()));
+      }
     } catch (error) {
       setSubmitError(
         getErrorMessage(error, t`Could not create the connection`),
@@ -245,6 +271,25 @@ export function ConnectConnectorModal({
               }
             />
           ))}
+          <Stack gap="sm">
+            <Text fw="bold">{t`What to sync`}</Text>
+            {connector.streams.map((stream) => (
+              <Checkbox
+                key={stream.key}
+                label={stream.label}
+                description={stream.description}
+                checked={selectedStreamKeys.includes(stream.key)}
+                onChange={(event) =>
+                  toggleStream(stream.key, event.currentTarget.checked)
+                }
+              />
+            ))}
+            {selectedStreams.length === 0 && (
+              <Text c="error" fz="sm">
+                {t`Select at least one thing to sync.`}
+              </Text>
+            )}
+          </Stack>
           <Select
             label={t`Target database`}
             placeholder={t`Pick a database`}
@@ -263,12 +308,14 @@ export function ConnectConnectorModal({
             value={schema}
             onChange={(event) => setSchema(event.target.value)}
           />
-          <TextInput
-            label={t`Table name`}
-            placeholder={connector["default-table"]}
-            value={tableName}
-            onChange={(event) => setTableName(event.target.value)}
-          />
+          {singleSelectedStream != null && (
+            <TextInput
+              label={t`Table name`}
+              placeholder={singleSelectedStream["default-table"]}
+              value={tableName}
+              onChange={(event) => setTableName(event.target.value)}
+            />
+          )}
           {submitError != null && <Alert color="error">{submitError}</Alert>}
           <Group justify="flex-end" mt="sm">
             <Button onClick={() => setStep("auth")}>{t`Back`}</Button>

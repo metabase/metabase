@@ -486,14 +486,21 @@ export type IngestionConnectorConfigField = {
   required: boolean;
 };
 
+export type IngestionConnectorStream = {
+  key: string;
+  label: string;
+  description: string;
+  "default-table": string;
+  "merge-key": string[];
+};
+
 export type IngestionConnector = {
   id: string;
   name: string;
   description: string;
   "secret-key": string;
   "config-fields": IngestionConnectorConfigField[];
-  "default-table": string;
-  "merge-key": string[];
+  streams: IngestionConnectorStream[];
   "oauth-configured": boolean;
 };
 
@@ -513,6 +520,8 @@ export type CreateConnectorConnectionRequest = {
     token?: string;
     "oauth-state"?: string;
   };
+  /** Stream keys to sync; omitted = all streams. */
+  streams?: string[];
   target: {
     database: DatabaseId;
     schema?: string;

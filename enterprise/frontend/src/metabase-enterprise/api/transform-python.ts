@@ -48,7 +48,7 @@ export const pythonRunnerApi = EnterpriseApi.injectEndpoints({
       }),
     }),
     createConnectorConnection: builder.mutation<
-      Transform,
+      Transform[],
       CreateConnectorConnectionRequest
     >({
       query: ({ connectorId, ...body }) => ({
