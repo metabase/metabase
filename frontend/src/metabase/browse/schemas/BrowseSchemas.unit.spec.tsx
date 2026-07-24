@@ -3,13 +3,11 @@ import fetchMock from "fetch-mock";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import { BrowseSchemas } from "./BrowseSchemas";
-
-const RoutedBrowseSchemas = withRouteProps(BrowseSchemas);
 
 const setup = ({
   databases,
@@ -20,7 +18,7 @@ const setup = ({
 }) => {
   setupDatabasesEndpoints(databases);
   return renderWithProviders(
-    <Route path="/browse/databases/:slug" element={<RoutedBrowseSchemas />} />,
+    <Route path="/browse/databases/:slug" element={<BrowseSchemas />} />,
     { withRouter: true, initialRoute },
   );
 };

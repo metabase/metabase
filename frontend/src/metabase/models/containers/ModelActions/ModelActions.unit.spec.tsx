@@ -23,7 +23,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { Route, redirect, withRouteProps } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -55,8 +55,6 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import ModelActions from "./ModelActions";
-
-const RoutedModelActions = withRouteProps(ModelActions);
 
 // eslint-disable-next-line react/display-name
 jest.mock("metabase/actions/containers/ActionCreator", () => () => (
@@ -225,7 +223,7 @@ async function setup({
     <>
       <Route path="/model/:slug/detail">
         <Route index element={redirect("actions")} />
-        <Route path="actions" element={<RoutedModelActions />}>
+        <Route path="actions" element={<ModelActions />}>
           {modalRoute("new", ActionCreator, {
             modalProps: { transitionProps: { duration: 0 } },
           })}

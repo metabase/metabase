@@ -4,30 +4,23 @@ import _ from "underscore";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import type { AuthProvider } from "metabase/plugins/types";
 import { useSelector } from "metabase/redux";
-import type { Location } from "metabase/router";
+import { useParams, useRouter } from "metabase/router";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Divider } from "metabase/ui";
 
 import { getAuthProviders } from "../../selectors";
 import { AuthLayout } from "../AuthLayout";
 
-interface LoginQueryString {
-  redirect?: string;
-}
+type LoginQueryParams = {
+  provider: string;
+};
 
-interface LoginQueryParams {
-  provider?: string;
-}
-
-interface LoginProps {
-  params?: LoginQueryParams;
-  location?: Location<LoginQueryString>;
-}
-
-export const Login = ({ params, location }: LoginProps): JSX.Element => {
+export const Login = (): JSX.Element => {
+  const { location } = useRouter();
+  const params = useParams<LoginQueryParams>();
   const providers = useSelector(getAuthProviders);
-  const selection = getSelectedProvider(providers, params?.provider);
-  const redirectUrl = location?.query?.redirect;
+  const selection = getSelectedProvider(providers, params.provider);
+  const redirectUrl = location.query?.redirect;
   const applicationName = useSelector(getApplicationName);
 
   usePageTitle(t`Login`);

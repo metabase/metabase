@@ -8,12 +8,10 @@ import {
   setupResetPasswordEndpoint,
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
 import { ResetPassword } from "./ResetPassword";
-
-const RoutedResetPassword = withRouteProps(ResetPassword);
 
 interface SetupOpts {
   isTokenValid?: boolean;
@@ -30,10 +28,7 @@ const setup = ({ isTokenValid = true }: SetupOpts = {}) => {
     <>
       <Route path="/" element={<TestHome />} />
       <Route path="/another-page" element={<AnotherPage />} />
-      <Route
-        path="/auth/reset_password/:token"
-        element={<RoutedResetPassword />}
-      />
+      <Route path="/auth/reset_password/:token" element={<ResetPassword />} />
     </>,
     {
       withRouter: true,

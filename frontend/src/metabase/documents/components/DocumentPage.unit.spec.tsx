@@ -6,12 +6,10 @@ import {
   setupDocumentEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { createMockDocument } from "metabase-types/api/mocks";
 
 import { DocumentPage } from "./DocumentPage";
-
-const RoutedDocumentPage = withRouteProps(DocumentPage);
 
 const setup = () => {
   setupBookmarksEndpoints([]);
@@ -26,10 +24,7 @@ const setup = () => {
 
   renderWithProviders(
     <>
-      <Route
-        path="/document/:entityId"
-        element={<RoutedDocumentPage />}
-      ></Route>
+      <Route path="/document/:entityId" element={<DocumentPage />}></Route>
     </>,
     {
       withRouter: true,
