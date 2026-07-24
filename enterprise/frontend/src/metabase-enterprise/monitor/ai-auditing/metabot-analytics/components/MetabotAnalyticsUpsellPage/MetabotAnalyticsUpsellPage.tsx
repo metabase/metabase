@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { DottedBackground } from "metabase/common/components/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/common/components/upsells/components/LineDecorator";
 import { useUpgradeAction } from "metabase/common/components/upsells/components/UpgradeModal";
 import { UpsellCardContent } from "metabase/common/components/upsells/components/UpsellCardContent";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Stack } from "metabase/ui";
 
 export function MetabotAnalyticsUpsellPage() {
@@ -19,10 +19,7 @@ export function MetabotAnalyticsUpsellPage() {
   });
 
   return (
-    <MetabotAdminLayout
-      fullWidth
-      innerContentProps={{ fullWidth: true, fullHeight: true }}
-    >
+    <MonitorMain p={0}>
       <DottedBackground p="4rem">
         <Stack align="center" p={40}>
           <LineDecorator>
@@ -39,6 +36,6 @@ export function MetabotAnalyticsUpsellPage() {
           </LineDecorator>
         </Stack>
       </DottedBackground>
-    </MetabotAdminLayout>
+    </MonitorMain>
   );
 }

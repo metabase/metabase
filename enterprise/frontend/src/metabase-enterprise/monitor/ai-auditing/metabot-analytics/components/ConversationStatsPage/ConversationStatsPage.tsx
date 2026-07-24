@@ -2,16 +2,17 @@ import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { useDispatch } from "metabase/redux";
 import type { WithRouterProps } from "metabase/router";
 import { push } from "metabase/router";
 import { Button, Flex, SimpleGrid, Tabs, Text, Title } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import {
@@ -193,7 +194,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
     (filterOverrides: Partial<ConversationsUrlState>) => {
       dispatch(
         push({
-          pathname: "/admin/metabot/usage-auditing/conversations",
+          pathname: Urls.monitorAiAuditingConversations(),
           query: conversationsUrlStateConfig.serialize({
             page: 0,
             sort_column: "created_at",
@@ -258,7 +259,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
   );
 
   return (
-    <MetabotAdminLayout fullWidth>
+    <MonitorMain>
       <SettingsPageWrapper
         mt="sm"
         title={hasDataComplexityFeature ? t`Usage stats` : undefined}
@@ -375,7 +376,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
 
         <DataComplexitySection />
       </SettingsPageWrapper>
-    </MetabotAdminLayout>
+    </MonitorMain>
   );
 }
 

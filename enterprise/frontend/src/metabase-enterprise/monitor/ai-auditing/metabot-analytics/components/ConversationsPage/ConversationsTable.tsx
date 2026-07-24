@@ -10,6 +10,7 @@ import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import { Badge, Ellipsified, Flex, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatNumber } from "metabase/utils/formatting";
 import { getUserName } from "metabase/utils/user";
@@ -41,9 +42,7 @@ export function ConversationsTable({
 
   const handleRowClick = (convo: ConversationSummary) => {
     dispatch(
-      push(
-        `/admin/metabot/usage-auditing/conversations/${convo.conversation_id}`,
-      ),
+      push(Urls.monitorAiAuditingConversationDetail(convo.conversation_id)),
     );
   };
 

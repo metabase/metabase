@@ -2,12 +2,13 @@ import type { ReactNode } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { renderWithProviders, screen } from "__support__/ui";
-import { reinitialize } from "metabase/plugins";
+import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Outlet, Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import { getMonitorRedirects, getMonitorRoutes } from "./routes";
+import { getMonitorRoutes } from "./routes";
 
 jest.mock("metabase-enterprise/settings", () => ({
   hasPremiumFeature: jest.fn().mockReturnValue(true),
@@ -94,6 +95,7 @@ const CanAccessMonitor = () => <Outlet />;
 const CanAccessMonitorDiagnostics = () => <Outlet />;
 const CanAccessMonitoringTools = () => <Outlet />;
 const CanAccessAlertsManagement = () => <Outlet />;
+const CanAccessAiAuditing = () => <Outlet />;
 
 const UPSELL_TITLE =
   "Find and fix broken dependencies without hunting them down";
@@ -109,12 +111,12 @@ const setup = ({
 }: SetupOpts) => {
   return renderWithProviders(
     <Route path="/">
-      {getMonitorRedirects()}
       {getMonitorRoutes(
         CanAccessMonitor,
         CanAccessMonitorDiagnostics,
         CanAccessMonitoringTools,
         CanAccessAlertsManagement,
+        CanAccessAiAuditing,
       )}
     </Route>,
     {
@@ -134,16 +136,23 @@ const setupWithGuards = ({
   CanAccessMonitorDiagnostics: Diagnostics = CanAccessMonitorDiagnostics,
   CanAccessMonitoringTools: Tools = CanAccessMonitoringTools,
   CanAccessAlertsManagement: AlertsManagement = CanAccessAlertsManagement,
+  CanAccessAiAuditing: AiAuditing = CanAccessAiAuditing,
 }: {
   initialRoute: string;
   CanAccessMonitorDiagnostics?: () => ReactNode;
   CanAccessMonitoringTools?: () => ReactNode;
   CanAccessAlertsManagement?: () => ReactNode;
+  CanAccessAiAuditing?: () => ReactNode;
 }) => {
   return renderWithProviders(
     <Route path="/">
-      {getMonitorRedirects()}
-      {getMonitorRoutes(CanAccessMonitor, Diagnostics, Tools, AlertsManagement)}
+      {getMonitorRoutes(
+        CanAccessMonitor,
+        Diagnostics,
+        Tools,
+        AlertsManagement,
+        AiAuditing,
+      )}
     </Route>,
     {
       withRouter: true,
@@ -152,6 +161,16 @@ const setupWithGuards = ({
         currentUser: createMockUser({ is_superuser: true }),
       }),
     },
+  );
+};
+
+const enableAiAuditingRoutes = () => {
+  PLUGIN_AUDIT.isAiAuditingEnabled = true;
+  PLUGIN_AUDIT.getAiAuditingRoutes = () => (
+    <Route
+      path="usage"
+      element={<div data-testid="ai-auditing-page">AI Auditing</div>}
+    />
   );
 };
 
@@ -261,6 +280,22 @@ describe("monitor routes", () => {
         ).not.toBeInTheDocument();
       });
 
+      it("blocks the AI Auditing route when its own guard denies", async () => {
+        enableAiAuditingRoutes();
+
+        setupWithGuards({
+          initialRoute: Urls.monitorAiAuditingUsage(),
+          CanAccessAiAuditing: DenyingGuard,
+        });
+
+        expect(
+          await screen.findByTestId("unauthorized-marker"),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId("ai-auditing-page"),
+        ).not.toBeInTheDocument();
+      });
+
       it("renders NotFound for unknown paths even when both section guards deny (catch-all sits outside the guards)", async () => {
         setupWithGuards({
           initialRoute: "/monitor/does-not-exist",
@@ -277,25 +312,34 @@ describe("monitor routes", () => {
   });
 
   describe("Tools sections (migrated from /admin/tools)", () => {
-    it("renders the Logs section at /monitor/logs", async () => {
-      setup({ initialRoute: "/monitor/logs" });
+    it.each([["/monitor/logs"], ["/monitor/logs/levels"]])(
+      "renders the Logs section at %s",
+      async (initialRoute) => {
+        setup({ initialRoute });
 
-      expect(await screen.findByTestId("logs-page")).toBeInTheDocument();
-    });
+        expect(await screen.findByTestId("logs-page")).toBeInTheDocument();
+      },
+    );
 
-    it("renders the Jobs section at /monitor/jobs", async () => {
-      setup({ initialRoute: "/monitor/jobs" });
+    it.each([["/monitor/jobs"], ["/monitor/jobs/sync"]])(
+      "renders the Jobs section at %s",
+      async (initialRoute) => {
+        setup({ initialRoute });
 
-      expect(await screen.findByTestId("jobs-page")).toBeInTheDocument();
-    });
+        expect(await screen.findByTestId("jobs-page")).toBeInTheDocument();
+      },
+    );
 
-    it("renders the Model caching log section at /monitor/model-caching", async () => {
-      setup({ initialRoute: "/monitor/model-caching" });
+    it.each([["/monitor/model-caching"], ["/monitor/model-caching/9"]])(
+      "renders the Model caching log section at %s",
+      async (initialRoute) => {
+        setup({ initialRoute });
 
-      expect(
-        await screen.findByTestId("model-caching-page"),
-      ).toBeInTheDocument();
-    });
+        expect(
+          await screen.findByTestId("model-caching-page"),
+        ).toBeInTheDocument();
+      },
+    );
 
     it("renders the Erroring questions upsell at /monitor/errors without the audit_app feature", async () => {
       setup({ initialRoute: "/monitor/errors" });
@@ -329,34 +373,5 @@ describe("monitor routes", () => {
         ).toBeInTheDocument();
       },
     );
-  });
-
-  describe("getMonitorRedirects (legacy Admin Tools URLs)", () => {
-    it.each([
-      ["/admin/tools/tasks", "task-list-page"],
-      ["/admin/tools/tasks/list", "task-list-page"],
-      ["/admin/tools/tasks/list/42", "task-details-page"],
-      ["/admin/tools/tasks/runs", "task-runs-page"],
-      ["/admin/tools/tasks/runs/7", "task-run-details-page"],
-      ["/admin/tools/jobs", "jobs-page"],
-      ["/admin/tools/jobs/sync", "jobs-page"],
-      ["/admin/tools/logs", "logs-page"],
-      ["/admin/tools/logs/levels", "logs-page"],
-      ["/admin/tools/errors", "errors-upsell"],
-      ["/admin/tools/model-caching", "model-caching-page"],
-      ["/admin/tools/model-caching/9", "model-caching-page"],
-      ["/admin/tools/notifications", "notifications-page"],
-      ["/admin/tools/notifications/13", "notifications-page"],
-    ])("redirects %s into the Monitor space", async (route, testId) => {
-      setup({ initialRoute: route });
-
-      expect(await screen.findByTestId(testId)).toBeInTheDocument();
-    });
-
-    it("redirects the legacy /admin/tools index into the Monitor space", async () => {
-      setup({ initialRoute: "/admin/tools" });
-
-      expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
-    });
   });
 });

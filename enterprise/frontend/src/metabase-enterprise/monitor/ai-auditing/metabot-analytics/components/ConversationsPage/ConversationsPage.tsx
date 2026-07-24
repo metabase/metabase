@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import type { WithRouterProps } from "metabase/router";
 import { Card, Flex, Title } from "metabase/ui";
 
@@ -56,7 +56,7 @@ export function ConversationsPage({ location }: WithRouterProps) {
   const total = conversationsData?.total ?? 0;
 
   return (
-    <MetabotAdminLayout fullWidth>
+    <MonitorMain>
       <SettingsPageWrapper mt="sm">
         <Flex align="center" justify="space-between">
           <Title order={2} display="flex" style={{ alignItems: "center" }}>
@@ -103,6 +103,6 @@ export function ConversationsPage({ location }: WithRouterProps) {
           />
         </Flex>
       </SettingsPageWrapper>
-    </MetabotAdminLayout>
+    </MonitorMain>
   );
 }

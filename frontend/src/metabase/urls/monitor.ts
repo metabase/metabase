@@ -88,3 +88,23 @@ export function monitorNotifications() {
 export function monitorNotificationDetail(id: number) {
   return `${monitorNotifications()}/${id}`;
 }
+
+export function monitorAiAuditing() {
+  return `${ROOT_URL}/ai-auditing`;
+}
+
+export function monitorAiAuditingUsage() {
+  return `${monitorAiAuditing()}/usage`;
+}
+
+export function monitorAiAuditingConversations() {
+  return `${monitorAiAuditing()}/conversations`;
+}
+
+export function monitorAiAuditingConversationDetail(convoId: string) {
+  return `${monitorAiAuditingConversations()}/${convoId}`;
+}
+
+export function monitorAiAuditingMcp() {
+  return `${monitorAiAuditing()}/mcp`;
+}

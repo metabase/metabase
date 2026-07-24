@@ -2,7 +2,7 @@ const { H } = cy;
 
 import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
-const MCP_ANALYTICS_PATH = "/admin/metabot/usage-auditing/mcp";
+const MCP_ANALYTICS_PATH = "/monitor/ai-auditing/mcp";
 const SEED_TOOL_NAME = "e2e_smoke_tool";
 const SEED_ERROR_TOOL = "e2e_error_tool";
 // error_code -32602 is JSON-RPC "Invalid params", which the view maps to error_type "Invalid params".
@@ -37,7 +37,7 @@ function visitMcpAnalyticsPage(): void {
   cy.wait("@auditMetadata");
 }
 
-describe("scenarios > metabot > mcp analytics", () => {
+describe("scenarios > monitor > ai auditing > mcp analytics", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -49,7 +49,7 @@ describe("scenarios > metabot > mcp analytics", () => {
 
     visitMcpAnalyticsPage();
 
-    cy.log("Nav item lives under the Auditing folder");
+    cy.log("Nav item lives in the AI Auditing group");
     cy.findByRole("link", { name: "MCP analytics" }).should("be.visible");
 
     cy.log("The page renders with the seeded data (not the empty state)");

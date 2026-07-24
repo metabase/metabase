@@ -76,6 +76,7 @@ import {
   withRouteProps,
 } from "metabase/router";
 import {
+  CanAccessAiAuditing,
   CanAccessAlertsManagement,
   CanAccessDataModel,
   CanAccessDataStudio,
@@ -421,6 +422,7 @@ export const getRoutes = (store: AppStore) => {
             CanAccessMonitorDiagnostics,
             CanAccessMonitoringTools,
             CanAccessAlertsManagement,
+            CanAccessAiAuditing,
           )}
         </Route>
       </Route>

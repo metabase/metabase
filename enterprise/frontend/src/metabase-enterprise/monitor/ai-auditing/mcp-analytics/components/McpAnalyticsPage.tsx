@@ -1,11 +1,10 @@
-import { useEffect } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useSetting } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import type { WithRouterProps } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
 
@@ -27,11 +26,11 @@ import { McpCallsTimelineChart } from "./McpCallsTimelineChart";
 import { McpEventsTable } from "./McpEventsTable";
 
 /**
- * Admin MCP analytics page. Renders live ad-hoc queries over the `v_mcp_tool_calls` audit view
+ * AI Auditing MCP analytics page. Renders live ad-hoc queries over the `v_mcp_tool_calls` audit view
  * across two tabs (Charts and a row-level Events table), sharing URL-state date/user/group
  * filters. Shows a single empty state (no tabs) when the filtered view has no activity.
  */
-export function McpAnalyticsPage({ location, router }: WithRouterProps) {
+export function McpAnalyticsPage({ location }: WithRouterProps) {
   const [
     { date, user, group, tenant, tab, page, sortColumn, sortDirection },
     { patchUrlState },
@@ -52,10 +51,6 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
   // IP address and error message are PII (null unless retention is on), so only surface those
   // columns when they're collected.
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
-  // The MCP server can be turned off while its historical analytics still exist; when it's off the
-  // page is inaccessible (the nav item greys out — this also blocks direct URL access).
-  const mcpEnabled = useSetting("mcp-enabled?");
-
   const toolCallsAudit = useAuditTable(VIEW_MCP_TOOL_CALLS);
   const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
 
@@ -84,20 +79,8 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
     errorsOnly: true,
   });
 
-  // The MCP server can be off while its historical analytics still exist; when it's off the page
-  // is inaccessible — redirect away so it can't be reached by URL (the nav item also greys out).
-  useEffect(() => {
-    if (!mcpEnabled) {
-      router.replace("/admin/metabot/usage-auditing");
-    }
-  }, [mcpEnabled, router]);
-
-  if (!mcpEnabled) {
-    return null;
-  }
-
   return (
-    <MetabotAdminLayout fullWidth>
+    <MonitorMain>
       <SettingsPageWrapper mt="sm">
         <Flex align="center" justify="space-between">
           <Title order={2}>{t`MCP analytics`}</Title>
@@ -223,6 +206,6 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
             </Tabs>
           ))}
       </SettingsPageWrapper>
-    </MetabotAdminLayout>
+    </MonitorMain>
   );
 }

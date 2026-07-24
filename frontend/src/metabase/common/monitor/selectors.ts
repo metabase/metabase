@@ -30,6 +30,17 @@ export function canAccessAlertsManagement(state: State) {
   return getUserIsAdmin(state);
 }
 
+export function canAccessAiAuditing(state: State) {
+  if (getIsEmbeddingIframe(state)) {
+    return false;
+  }
+  return getUserIsAdmin(state);
+}
+
 export function canAccessMonitor(state: State) {
-  return canAccessMonitorDiagnostics(state) || canAccessMonitoringTools(state);
+  return (
+    canAccessMonitorDiagnostics(state) ||
+    canAccessMonitoringTools(state) ||
+    canAccessAiAuditing(state)
+  );
 }

@@ -15,8 +15,8 @@ import { ConversationDetailPage } from "./ConversationDetailPage";
 
 const RoutedConversationDetailPage = withRouteProps(ConversationDetailPage);
 
-jest.mock("metabase/admin/ai/MetabotAdminLayout", () => ({
-  MetabotAdminLayout: ({ children }: { children: React.ReactNode }) => children,
+jest.mock("metabase/monitor/components/MonitorLayout", () => ({
+  MonitorMain: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 type ConversationMessage = ConversationDetail["messages"][number];

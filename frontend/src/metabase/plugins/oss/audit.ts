@@ -48,9 +48,8 @@ const getDefaultPluginAudit = () => ({
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
   // Unjustified type cast. FIXME
   InsightsMenuItem: PluginPlaceholder as ComponentType<InsightsMenuItemProps>,
-  getMetabotAnalyticsNavItems: (): ReactNode => null,
-  getAiAnalyticsRoutes: (): ReactNode => null,
-  getMcpAnalyticsRoutes: (): ReactNode => null,
+  isAiAuditingEnabled: false,
+  getAiAuditingRoutes: (): ReactNode => null,
   // Unjustified type cast. FIXME
   handleMetabotSlashCommand: ((_args) => false) as MetabotSlashCommandHandler,
 });
