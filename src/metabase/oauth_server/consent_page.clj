@@ -109,6 +109,10 @@
       [:html {:lang "en"}
        [:head
         [:meta {:charset "UTF-8"}]
+        ;; Prevent the browser from sending the (very long) authorization URL as the Referer
+        ;; header when the consent form is submitted, which could exceed the server's header
+        ;; size limit and cause a 431. The Referer is not used by the decision endpoint.
+        [:meta {:name "referrer" :content "no-referrer"}]
         [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}]
         [:title "Authorize " (or client-name "Unknown Application")]
         [:style {:nonce nonce} (h/raw
