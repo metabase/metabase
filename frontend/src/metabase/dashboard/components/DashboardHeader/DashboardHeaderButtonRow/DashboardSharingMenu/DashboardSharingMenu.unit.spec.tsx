@@ -258,9 +258,10 @@ describe("DashboardSharingMenu", () => {
             "http://localhost:3000/dashboard/1-my-cool-dashboard",
           ),
         );
-        expect(
-          await screen.findByText("Link copied to clipboard"),
-        ).toBeInTheDocument();
+        // both labels stay in the DOM to reserve the button width; only the
+        // active one is visible
+        await waitFor(() => expect(screen.getByText("Copied")).toBeVisible());
+        expect(screen.getByText("Copy link")).not.toBeVisible();
       });
 
       it("should copy the public link when clicking 'Copy public link'", async () => {

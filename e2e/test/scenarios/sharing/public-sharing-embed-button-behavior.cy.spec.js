@@ -30,7 +30,7 @@ const { H } = cy;
 
           H.openSharingMenu();
           H.sharingMenu()
-            .findByRole("menuitem", { name: "Embed" })
+            .findByRole("button", { name: "Embed" })
             .should("be.visible")
             .and("be.enabled")
             .click();
@@ -153,7 +153,7 @@ const { H } = cy;
               cy.findByText("Enable").should("not.exist");
             });
 
-            H.sharingMenu().findByRole("menuitem", { name: "Embed" }).click();
+            H.sharingMenu().findByRole("button", { name: "Embed" }).click();
           });
         });
 
