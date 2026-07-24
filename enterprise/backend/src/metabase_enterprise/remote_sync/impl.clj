@@ -14,19 +14,22 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.serialization.core :as serialization]
+   [metabase-enterprise.workspaces.core :as workspaces]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model])
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
 (set! *warn-on-reflection* true)
@@ -297,11 +300,12 @@
 (defn- insert-with-metadata!
   "Inserts RemoteSyncObject `rows` after an import, one `content-hash-batch-size` chunk at a time, folding
   each chunk's file_path + content_hash (`repo-paths` gives entity-id models their real path) into its insert."
-  [rows repo-paths]
+  [rows repo-paths & {:keys [workspace-id]}]
   (serdes/with-cache
     (doseq [chunk (partition-all app-db-batch-size rows)]
       (t2/insert! :model/RemoteSyncObject
-                  (merge-content-metadata chunk (import-content-metadata chunk repo-paths))))))
+                  (map #(assoc % :workspace_id workspace-id)
+                       (merge-content-metadata chunk (import-content-metadata chunk repo-paths)))))))
 
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
@@ -356,8 +360,8 @@
       (remove-unsynced! (spec/all-syncable-collection-ids) imported-data)
       ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
       ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
-      ;; insert. Chunked so insert/IN params and memory stay bounded.
-      (t2/delete! :model/RemoteSyncObject)
+      ;; insert. Chunked so insert/IN params and memory stay bounded. Main-app ledger only (workspace_id nil).
+      (t2/delete! :model/RemoteSyncObject {:where (workspaces/workspace-filter-clause nil)})
       (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
                              (source.ingestable/cached-file-paths base-ingestable))
       (when finalize! (finalize!)))
@@ -367,6 +371,130 @@
       (settings/remote-sync-transforms! false))
     (remote-sync.task/update-progress! task-id 0.95)
     imported-data))
+
+;;; ------------------------------------------- Workspace Pull ---------------------------------------------------------
+
+(def ^:private workspace-managed-dirs
+  "The repo dirs a workspace pull ingests: entity-id collection content only. Path-identity content
+   (databases/ — Tables, Fields, their settings) describes shared physical warehouse metadata that cannot
+   exist per-workspace, and transforms/python libraries target physical tables; all of those stay
+   main-app-only. Workspace pulls never ingest these dirs and workspace pushes never touch them."
+  #{"collections" "snippets"})
+
+(defn- remove-unsynced-workspace!
+  "Deletes `workspace-id`'s content that was NOT part of the import: rows stamped with that workspace
+  whose entity id the import did not bring. Other workspaces and the main app (NULL workspace reference)
+  are never touched."
+  [workspace-id {:keys [by-entity-id]}]
+  (doseq [[model-key model-spec] (spec/specs-for-deletion)
+          :when (contains? serdes/workspace-scoped-models (:model-type model-spec))
+          :let [kept (get by-entity-id (:model-type model-spec) [])]]
+    (t2/delete! model-key {:where (cond-> [:and [:= :workspace_id workspace-id]]
+                                    (seq kept) (conj [:not-in :entity_id kept]))})))
+
+(defn- copy-collection-permissions!
+  "Grant `dest-collection-ids` the read/write group grants of `source-collection-id`. Reimplements the
+  private collection-model helper via public permissions paths (the model namespace is off-limits here)."
+  [source-collection-id dest-collection-ids]
+  (let [read-groups  (t2/select-fn-set :group_id :model/Permissions
+                                       :object (perms/collection-read-path source-collection-id))
+        write-groups (t2/select-fn-set :group_id :model/Permissions
+                                       :object (perms/collection-readwrite-path source-collection-id))
+        rows         (concat
+                      (for [dest     dest-collection-ids
+                            :let     [read-path (perms/collection-read-path dest)]
+                            group-id read-groups]
+                        {:group_id group-id :object read-path})
+                      (for [dest     dest-collection-ids
+                            :let     [rw-path (perms/collection-readwrite-path dest)]
+                            group-id write-groups]
+                        {:group_id group-id :object rw-path}))]
+    (when (seq rows)
+      (t2/insert! :model/Permissions rows)
+      (perms/increment-implicit-perms-revision! :model/CollectionPermissionGraphRevision
+                                                "Automatically updated permissions due to workspace collection pull"))))
+
+(defn- copy-main-app-permissions!
+  "Give each of `workspace`'s collections the permission grants of its main-app counterpart (same entity
+  id, NULL workspace reference), so a workspace is exactly as visible as the content it mirrors — never
+  more. Collections that already have grants and collections without a counterpart keep what they have."
+  [workspace]
+  (doseq [{:keys [id entity_id]} (t2/select [:model/Collection :id :entity_id]
+                                            :workspace_id (:id workspace))
+          :let  [counterpart (t2/select-one-pk :model/Collection
+                                               :entity_id entity_id
+                                               :workspace_id nil)]
+          :when (and counterpart
+                     (not (t2/exists? :model/Permissions :object [:like (str "/collection/" id "/%")])))]
+    (copy-collection-permissions! counterpart [id])))
+
+(defn- sync-workspace-remappings!
+  "Fully reconcile [[:model/WorkspaceEntityRemapping]] for `workspace-id` after a pull. For every
+  workspace-scoped serdes model, drops the workspace's existing remapping rows for that model, then for
+  each of the workspace's copies records a remapping to its main-app counterpart (same entity_id, NULL
+  workspace) — falling back to the copy's own id when there is no counterpart (a workspace-created row).
+  This keeps the read-path remapping in step with the copies the pull just produced."
+  [workspace-id]
+  (doseq [model-name serdes/workspace-scoped-models
+          :let       [model-kw (t2.model/resolve-model (symbol model-name))]]
+    (t2/delete! :model/WorkspaceEntityRemapping
+                :workspace_id workspace-id
+                :entity_type  model-kw)
+    (let [ws-rows (t2/select [model-kw :id :entity_id] :workspace_id workspace-id)]
+      (when (seq ws-rows)
+        (let [entity-ids   (into #{} (map :entity_id) ws-rows)
+              main-id-by   (into {}
+                                 (map (juxt :entity_id :id))
+                                 (t2/select [model-kw :id :entity_id]
+                                            :entity_id [:in entity-ids]
+                                            :workspace_id nil))
+              rows         (for [{:keys [id entity_id]} ws-rows]
+                             {:workspace_id     workspace-id
+                              :entity_type      model-kw
+                              :source_entity_id (or (get main-id-by entity_id) id)
+                              :target_entity_id id})]
+          (t2/insert! :model/WorkspaceEntityRemapping rows))))))
+
+(defn workspace-pull!
+  "Pull `workspace`'s branch into its copy-on-write overlay: load the snapshot with serdes matching and
+  stamping scoped to the workspace (see [[serdes/*workspace-id*]]), reconcile the workspace's content,
+  RemoteSyncObject ledger, and entity remappings to match it, and record the pulled version on the task.
+  Always a full reconcile; never touches main-app content. Returns a result map like [[import!]]."
+  [workspace ^SourceSnapshot snapshot task-id]
+  (log/infof "Pulling workspace %s (branch %s)" (:id workspace) (:branch workspace))
+  (analytics/inc! :metabase-remote-sync/imports)
+  (let [sync-timestamp   (t/instant)
+        snapshot-version (source.p/version snapshot)]
+    (try
+      ;; the binding covers both the load (scoped matching + stamping) and the ledger rebuild
+      ;; (sync-all-entities! resolves entity ids within the workspace)
+      (binding [serdes/*workspace-id* (:id workspace)]
+        (let [path-filters    (mapv #(re-pattern (str % "/.*")) workspace-managed-dirs)
+              base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
+              ingestable      (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)
+              load-result     (serdes/with-cache
+                                (serialization/load-metabase! ingestable))
+              imported-data   (spec/extract-imported-entities (:seen load-result))]
+          (remote-sync.task/update-progress! task-id 0.8)
+          (t2/with-transaction [_conn]
+            (remove-unsynced-workspace! (:id workspace) imported-data)
+            (t2/delete! :model/RemoteSyncObject :workspace_id (:id workspace))
+            (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
+                                   (source.ingestable/cached-file-paths base-ingestable)
+                                   :workspace-id (:id workspace))
+            (remote-sync.task/set-version! task-id snapshot-version))
+          ;; keep the read-path remapping in sync with the copies the pull produced
+          (sync-workspace-remappings! (:id workspace))
+          (copy-main-app-permissions! workspace)
+          (remote-sync.task/update-progress! task-id 0.95)
+          {:status  :success
+           :version snapshot-version
+           :outcome {:kind "pulled" :branch (:branch workspace)}}))
+      (catch Exception e
+        (log/errorf e "Failed to pull workspace %s: %s" (:id workspace) (ex-message e))
+        (analytics/inc! :metabase-remote-sync/imports-failed)
+        {:status  :error
+         :message (source-error-message e)}))))
 
 ;;; ------------------------------------------- Incremental Import Fast-Path -------------------------------------------
 
@@ -1073,12 +1201,15 @@
       {:model_type model :model_id id :id (rso-id [model id])})))
 
 (defn- find-departed-entities
-  "Find RSO rows for entity-id entities that left the synced set (removed/delete status and not in
-  `targets`), matching the incremental path; path/hybrid and still-exported rows are kept."
-  [exported-rows]
+  "Find `workspace`'s (nil = the main app's) RSO rows for entity-id entities that left the synced set
+  (removed/delete status and not in `targets`), matching the incremental path; path/hybrid rows,
+  still-exported rows, and other workspaces' ledgers are kept."
+  [exported-rows workspace]
   (let [exported (into #{} (map #(select-keys % [:model_type :model_id])) exported-rows)]
     (->> (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
-                    :status [:in ["removed" "delete"]])
+                    {:where [:and
+                             [:in :status ["removed" "delete"]]
+                             (workspaces/workspace-filter-clause (:id workspace))]})
          (filter #(= :entity-id (:identity (spec/spec-for-model-type (:model_type %)))))
          (remove #(exported (select-keys % [:model_type :model_id])))
          (map :id))))
@@ -1111,43 +1242,65 @@
 (def ^:private export-progress-plan-done 0.33) ; phase 1 (plan) complete / serialize start
 (def ^:private export-progress-serialize 0.66) ; phase 2 (serialize) complete
 
+(declare full-export!*)
+
 (defn- full-export!
-  "Re-serialize and commit the entire remote-synced set, then reconcile every RemoteSyncObject.
+  "Re-serialize and commit the entire remote-synced set — the instance-wide one, or `workspace`'s when
+  given — then reconcile every affected RemoteSyncObject.
+
+  `export-rows` may be supplied precomputed (the workspace push builds an overlay set); otherwise the
+  instance-wide exportable set is used.
 
   Returns:
    - {:status :success}
    or throws"
-  [snapshot task-id message sync-timestamp]
-  (let [export-rows (vec (exportable-write-rows))]
+  [snapshot task-id message sync-timestamp & {:keys [workspace export-rows]}]
+  (let [export-rows (or export-rows (vec (exportable-write-rows)))]
     (when (empty? export-rows)
       (throw (ex-info "No remote-syncable content available." {})))
-    (let [report (remote-sync.task/make-progress-reporter task-id)
-          total  (count export-rows)
-          span   (- export-progress-serialize export-progress-plan-done)]
-      (report export-progress-plan-done {:force? true})
-      (let [opts             (serdes/storage-base-context)
-            [synced version] (commit-staged! snapshot message
-                                             (fn [commit]
-                                               (source.p/replace-all! commit) ; replace the managed dirs wholesale
-                                               (let [synced (stage-writes commit opts export-rows
-                                                                          (fn [staged]
-                                                                            (report (+ export-progress-plan-done
-                                                                                       (* span (/ staged total))))))]
-                                                 (report export-progress-serialize {:force? true})
-                                                 synced))
-                                             report)]
-        (t2/with-transaction [_]
-          (when-not (= version :remote-sync/empty-commit)
-            (remote-sync.task/set-version! task-id version))
-          (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
-            (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
-          (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject) synced sync-timestamp))
-        (if (= version :remote-sync/empty-commit)
-          (do
-            (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
-            {:status :success :outcome {:kind "push-skipped"}})
-          {:status :success
-           :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}})))))
+    (full-export!* snapshot task-id message sync-timestamp workspace export-rows)))
+
+(defn- full-export!*
+  [snapshot task-id message sync-timestamp workspace export-rows]
+  (let [report (remote-sync.task/make-progress-reporter task-id)
+        total  (count export-rows)
+        span   (- export-progress-serialize export-progress-plan-done)]
+    (report export-progress-plan-done {:force? true})
+    (let [opts             (serdes/storage-base-context)
+          [synced version] (commit-staged! snapshot message
+                                           (fn [commit]
+                                             (source.p/replace-all! commit) ; replace the managed dirs wholesale
+                                             (let [synced (stage-writes commit opts export-rows
+                                                                        (fn [staged]
+                                                                          (report (+ export-progress-plan-done
+                                                                                     (* span (/ staged total))))))]
+                                               (report export-progress-serialize {:force? true})
+                                               synced))
+                                           report)]
+      (t2/with-transaction [_]
+        (when-not (= version :remote-sync/empty-commit)
+          (remote-sync.task/set-version! task-id version))
+        (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows workspace))]
+          (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
+        ;; a full export rewrites the managed dirs wholesale, so pending deletions are now pushed:
+        ;; their ledger rows are done
+        (when workspace
+          (t2/delete! :model/RemoteSyncObject
+                      :workspace_id (:id workspace)
+                      :status [:in ["delete" "removed"]]))
+        (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject
+                                              {:where (workspaces/workspace-filter-clause (:id workspace))})
+                           synced sync-timestamp))
+      (if (= version :remote-sync/empty-commit)
+        (do
+          (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
+          {:status :success :outcome {:kind "push-skipped"}})
+        {:status :success
+         :outcome {:kind "pushed"
+                   :count (count synced)
+                   :branch (if workspace
+                             (:branch workspace)
+                             (settings/remote-sync-branch))}}))))
 
 (defn- incremental-export!
   [plan disabled-files task-id snapshot message sync-timestamp]
@@ -1273,13 +1426,21 @@
   endpoints go through `ensure-no-active-task!` first (in `async-import!` / `async-export!` / etc.), which
   uses the stricter `task-running?` predicate and refuses if any task — including stale — is alive. So
   this function only reaches the supersession branch on the auto-import path."
-  [task-type]
-  (cluster-lock/with-cluster-lock ::remote-sync-task
-    (if-let [task (remote-sync.task/current-task)]
+  [task-type & [workspace]]
+  ;; per-workspace lock: operations on different workspaces don't contend, same-workspace operations
+  ;; serialize. The keyword just names the cluster-lock row.
+  (cluster-lock/with-cluster-lock (if workspace
+                                    (keyword (namespace ::remote-sync-task)
+                                             (str "remote-sync-task-workspace-" (:id workspace)))
+                                    ::remote-sync-task)
+    (if-let [task (if workspace
+                    (remote-sync.task/current-task (:id workspace))
+                    (remote-sync.task/current-task))]
       (assoc task :existing? true)
       (do
         (remote-sync.task/supersede-stale-tasks!)
-        (remote-sync.task/create-sync-task! task-type api/*current-user-id*)))))
+        (remote-sync.task/create-sync-task! task-type api/*current-user-id*
+                                            {:workspace_id (:id workspace)})))))
 
 ;;; ------------------------------------------- Remote Changes Check -------------------------------------------
 
@@ -1416,9 +1577,15 @@
                   :success (do
                              (when branch
                                (settings/remote-sync-branch! branch))
+                             (when-let [workspace-id (:workspace_id task)]
+                               (workspaces/set-base-version! workspace-id (:version task)))
                              (remote-sync.task/complete-sync-task! task-id (:outcome result)))
                   :conflict (do
                               (remote-sync.task/set-version! task-id (:version result))
+                              (when-let [workspace-id (:workspace_id task)]
+                                ;; conflicted tasks still advance the sync base (they record the version
+                                ;; the conflict was computed against), matching `last-version` semantics
+                                (workspaces/set-base-version! workspace-id (:version result)))
                               (remote-sync.task/conflict-sync-task! task-id (:conflicts result)))
                   :error (remote-sync.task/fail-sync-task! task-id (:message result))
                   (remote-sync.task/fail-sync-task! task-id "Unexpected Error"))
@@ -1447,8 +1614,8 @@
   running), then executes the sync function in a virtual thread with a timeout.
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 if a sync task is already in progress."
-  [task-type branch sync-fn & {:keys [on-success]}]
-  (let [{task-id :id existing? :existing? :as task} (create-task-with-lock! task-type)]
+  [task-type branch sync-fn & {:keys [on-success workspace]}]
+  (let [{task-id :id existing? :existing? :as task} (create-task-with-lock! task-type workspace)]
     (api/check-400 (not existing?) "Remote sync in progress")
     (u.jvm/in-virtual-thread*
      (dh/with-timeout {:interrupt? true
@@ -1482,6 +1649,10 @@
   are unsaved changes and neither force? nor merge? is set."
   [branch force? import-args & {:keys [on-success merge? force-deletion?]}]
   (guards/ensure-no-active-task!)
+  ;; a branch switch adopts `branch` as the main sync set; a branch owned by a workspace cannot be
+  ;; adopted (its rows carry workspace-scoped entity ids)
+  (when (not= branch (settings/remote-sync-branch))
+    (workspaces/check-branch-not-workspace! branch))
   (let [pre-task-branch        (settings/remote-sync-branch)
         source                 (source/source-from-settings branch)
         has-dirty?             (remote-sync.object/dirty?)
@@ -1564,6 +1735,126 @@
                            :base-snapshot   base-snapshot))
                 :on-success on-success)))
 
+;;; ------------------------------------------- Workspace Async Entry Points -----------------------------------------
+
+(defn- workspace-overlay-export-rows
+  "The export set for a workspace push. Workspaces are sparse overlays, so the set is the OVERLAY of main
+  + workspace:
+   - start from the main exportable set ([[exportable-write-rows]])
+   - for each workspace-scoped model type, swap a row's `:model_id` from its main source to the
+     workspace's copy where a remapping exists
+   - append entities created inside the workspace (remapping rows whose source = target)
+  Each result row's `:id` is resolved against the workspace's own RemoteSyncObject ledger (nil, hence an
+  untracked write, when the workspace has no ledger row yet — the push-first case)."
+  [workspace-id]
+  (let [main-rows (vec (exportable-write-rows))
+        swapped   (mapcat
+                   (fn [[model-type rows]]
+                     (if (contains? serdes/workspace-scoped-models model-type)
+                       (let [model-kw (:model-key (spec/spec-for-model-type model-type))
+                             ids      (mapv :model_id rows)
+                             remap    (into {}
+                                            (map (juxt :source_entity_id :target_entity_id))
+                                            (t2/select [:model/WorkspaceEntityRemapping :source_entity_id :target_entity_id]
+                                                       :workspace_id     workspace-id
+                                                       :entity_type      model-kw
+                                                       :source_entity_id [:in ids]))]
+                         (map (fn [row] (update row :model_id #(get remap % %))) rows))
+                       rows))
+                   (group-by :model_type main-rows))
+        created   (keep (fn [{:keys [entity_type target_entity_id]}]
+                          (when-let [spec (spec/spec-for-model-key entity_type)]
+                            {:model_type (:model-type spec) :model_id target_entity_id}))
+                        (t2/select [:model/WorkspaceEntityRemapping :entity_type :source_entity_id :target_entity_id]
+                                   :workspace_id workspace-id
+                                   {:where [:= :source_entity_id :target_entity_id]}))
+        ws-rso-id (u/index-by (juxt :model_type :model_id) :id
+                              (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
+                                         :workspace_id workspace-id))]
+    (mapv (fn [{:keys [model_type model_id]}]
+            {:model_type model_type
+             :model_id   model_id
+             :id         (ws-rso-id [model_type model_id])})
+          (concat swapped created))))
+
+(defn- workspace-push!
+  "Push `workspace`'s overlay content to its branch: a full export of the overlay set (main content with
+  the workspace's copies swapped in, plus workspace-created entities). When the remote has advanced past
+  the workspace's base and `force?` is not set, returns a conflict result instead of overwriting."
+  [workspace ^SourceSnapshot snapshot task-id message force?]
+  (let [sync-timestamp (t/instant)]
+    (try
+      (analytics/inc! :metabase-remote-sync/exports)
+      (serdes/with-cache
+        (let [remote-version (source.p/version snapshot)
+              base-version   (:base_version workspace)
+              diverged?      (and (some? base-version) (not= base-version remote-version))]
+          (if (and diverged? (not force?))
+            {:status    :conflict
+             :version   remote-version
+             :conflicts []
+             :message   "The remote branch has changed since your last sync. Choose how to proceed."}
+            (full-export! snapshot task-id message sync-timestamp
+                          :workspace   workspace
+                          :export-rows (workspace-overlay-export-rows (:id workspace))))))
+      (catch Exception e
+        (log/errorf e "Failed to push workspace %s: %s" (:id workspace) (ex-message e))
+        (analytics/inc! :metabase-remote-sync/exports-failed)
+        {:status  :error
+         :message (source-error-message e)})
+      (finally
+        (analytics/observe! :metabase-remote-sync/export-duration-ms
+                            (t/as (t/duration sync-timestamp (t/instant)) :millis))))))
+
+(defn async-workspace-pull!
+  "Pull `workspace`'s branch asynchronously. `force?` discards unpushed local changes in the workspace;
+  without it a dirty workspace is a 400 carrying the dirty objects (mirroring [[async-import!]]).
+  Returns a RemoteSyncTask."
+  [workspace force? & {:keys [on-success]}]
+  (guards/ensure-no-active-task! (:id workspace))
+  (when (and (remote-sync.object/dirty? (:id workspace)) (not force?))
+    (throw (ex-info "This workspace has changes that have not been pushed. Force the pull to discard them."
+                    {:status-code   400
+                     :conflicts     true
+                     :dirty_objects (remote-sync.object/dirty-objects (:id workspace))})))
+  (let [source   (source/source-from-settings (:branch workspace) workspace-managed-dirs)
+        snapshot (source.p/snapshot source)]
+    (run-async! "import" nil
+                (fn [task-id]
+                  (workspace-pull! workspace snapshot task-id))
+                :workspace workspace
+                :on-success on-success)))
+
+(defn async-workspace-push!
+  "Push `workspace`'s content to its branch asynchronously. Returns a RemoteSyncTask."
+  [workspace force? message & {:keys [on-success]}]
+  (guards/ensure-no-active-task! (:id workspace))
+  (let [source   (source/source-from-settings (:branch workspace) workspace-managed-dirs)
+        snapshot (source.p/snapshot source)]
+    (run-async! "export" nil
+                (fn [task-id]
+                  (workspace-push! workspace snapshot task-id message force?))
+                :workspace workspace
+                :on-success on-success)))
+
+(defn workspace-has-remote-changes?
+  "Compare `workspace`'s base version against its remote branch tip. Always fresh (no cache).
+  Returns a map shaped like [[has-remote-changes?]]'s."
+  [workspace]
+  (let [source   (source/source-from-settings (:branch workspace) workspace-managed-dirs)
+        snapshot (snapshot-or-missing-branch source)]
+    (if (= snapshot ::missing-branch)
+      {:has-changes?    false
+       :remote-version  nil
+       :local-version   (:base_version workspace)
+       :cached?         false
+       :branch-missing? true}
+      (let [remote-version (source.p/version snapshot)]
+        {:has-changes?   (not= remote-version (:base_version workspace))
+         :remote-version remote-version
+         :local-version  (:base_version workspace)
+         :cached?        false}))))
+
 (defn preview-export-merge
   "Dry-run preview of what exporting the current state would do given the live remote, without writing
   anything. Drives the UI's push decision (force / new branch / merge). Returns a map:
@@ -1600,20 +1891,21 @@
                                     {:deleted [] :overwritten []}))}))))
 
 (defn create-branch!
-  "Creates a new remote branch from `base-branch` and switches `remote-sync-branch`
-   to the new name. Does not publish events or return a response map; the caller
-   is responsible for those concerns."
+  "Creates a new remote branch from `base-branch`. Only creates: the `remote-sync-branch` setting is
+   never touched — switching the main app is the admin settings save (or a successful export carrying a
+   branch), and a branch created for a workspace must not move the main app at all. Does not publish
+   events or return a response map; the caller is responsible for those concerns."
   [name base-branch]
   (guards/ensure-no-active-task!)
   (let [source (source/source-from-settings)]
-    (source.p/create-branch source name base-branch)
-    (settings/remote-sync-branch! name)))
+    (source.p/create-branch source name base-branch)))
 
 (defn stash!
   "Creates a new remote branch from the current `remote-sync-branch` and starts an
    async export to it. Returns the resulting RemoteSyncTask. Does not publish events."
   [new-branch message & {:keys [on-success]}]
   (guards/ensure-no-active-task!)
+  (workspaces/check-branch-not-workspace! new-branch)
   (let [source (source/source-from-settings)]
     (source.p/create-branch source new-branch (settings/remote-sync-branch))
     (async-export! new-branch false message :on-success on-success)))
@@ -1628,7 +1920,7 @@
   (if (settings/remote-sync-enabled)
     (do
       (when (str/blank? (setting/get :remote-sync-branch))
-        (setting/set! :remote-sync-branch (source.p/default-branch (source/source-from-settings))))
+        (settings/remote-sync-branch! (source.p/default-branch (source/source-from-settings))))
       (when (= :read-only (settings/remote-sync-type))
         ;; force? true bypasses the version/dirty guards for setup, but force-deletion? false keeps unsynced
         ;; local transforms from being silently destroyed — they surface as a conflict instead (GHY-3900).

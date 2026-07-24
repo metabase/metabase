@@ -1,10 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
+import { skipToken } from "@reduxjs/toolkit/query";
 import cx from "classnames";
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
+import { getUser } from "metabase/selectors/user";
 import {
   Button,
   Combobox,
@@ -17,6 +19,7 @@ import {
 } from "metabase/ui";
 import {
   useGetHasRemoteChangesQuery,
+  useGetWorkspaceQuery,
   useImportChangesMutation,
   useLazyGetExportPreflightQuery,
 } from "metabase-enterprise/api";
@@ -47,6 +50,13 @@ export const GitSyncControls = () => {
   // Branch switching now lives in the instance Settings panel (behind destructive-action guard rails),
   // so these controls show the current branch read-only and expose only Push/Pull.
   const { isVisible, currentBranch } = useGitSyncVisible();
+
+  // When the user has an active workspace, the pill shows the workspace's branch instead of the
+  // instance-wide remote-sync branch. Until the workspace loads (or if it fails to load), keep the
+  // regular git presentation so the icon and the branch name always match.
+  const workspaceId = useSelector(getUser)?.workspace_id;
+  const { data: workspace } = useGetWorkspaceQuery(workspaceId ?? skipToken);
+  const workspaceBranch = workspaceId != null ? workspace?.branch : undefined;
 
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
@@ -258,7 +268,11 @@ export const GitSyncControls = () => {
             disabled={isLoading}
             onClick={() => combobox.toggleDropdown()}
             leftSection={
-              <Icon name="git_branch" c="text-secondary" size={14} />
+              <Icon
+                name={workspaceBranch != null ? "workspace" : "git_branch"}
+                c="text-secondary"
+                size={14}
+              />
             }
             rightSection={
               isLoading ? (
@@ -277,7 +291,7 @@ export const GitSyncControls = () => {
             data-testid="git-sync-controls"
           >
             <Text fw="bold" c="text-secondary" size="sm" lh="md" truncate>
-              {currentBranch}
+              {workspaceBranch ?? currentBranch}
             </Text>
           </Button>
         </Combobox.Target>

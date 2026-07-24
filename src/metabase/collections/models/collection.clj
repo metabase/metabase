@@ -1778,7 +1778,11 @@
   (u/prog1 (-> collection
                (assoc :slug (slugify collection-name))
                (cond->
-                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
+                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
+                ;; personal collections are system-created (often lazily, mid-request) and must
+                ;; never belong to a workspace — a workspace_id would cascade-delete them with it
+                (:personal_owner_id collection) (assoc :workspace_id nil))
+               workspaces/stamp-workspace-id)
     (assert-valid-remote-synced-parent <>)))
 
 (defn- copy-collection-permissions!
@@ -2185,7 +2189,8 @@
           :namespace
           :slug
           :type]
-   :skip []
+   ;; workspace membership is instance-local state, not portable content
+   :skip [:workspace_id]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
@@ -2504,5 +2509,5 @@
   ;; `:is_remote_synced` is copied so the remote-synced-parent check keeps passing.
   (let [source (t2/select-one :model/Collection :id id)]
     (t2/insert-returning-pk! :model/Collection
-                             (select-keys source [:name :description :namespace :authority_level
+                             (select-keys source [:entity_id :name :description :namespace :authority_level
                                                   :location :archived :is_remote_synced]))))

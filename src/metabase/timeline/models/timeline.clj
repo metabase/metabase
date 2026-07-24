@@ -28,7 +28,7 @@
 
 (t2/define-before-insert :model/Timeline [model]
   (collection/check-allowed-content :model/Timeline (:collection_id model))
-  model)
+  (workspaces/stamp-workspace-id model))
 
 (t2/define-before-update :model/Timeline [model]
   (collection/check-allowed-content :model/Timeline (:collection_id (t2/changes model)))
@@ -60,7 +60,8 @@
 
 (defmethod serdes/make-spec "Timeline" [_model-name opts]
   {:copy      [:archived :default :description :entity_id :icon :name]
-   :skip      []
+   :skip      [;; workspace membership is instance-local state, not portable content
+               :workspace_id]
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)
@@ -77,7 +78,7 @@
     (let [timeline  (t2/select-one :model/Timeline :id id)
           new-tl-id (t2/insert-returning-pk!
                      :model/Timeline
-                     (-> (select-keys timeline [:name :description :icon :collection_id :archived :default])
+                     (-> (select-keys timeline [:entity_id :name :description :icon :collection_id :archived :default])
                          (assoc :creator_id api/*current-user-id*)))]
       (doseq [event (t2/select :model/TimelineEvent :timeline_id id)]
         (t2/insert! :model/TimelineEvent

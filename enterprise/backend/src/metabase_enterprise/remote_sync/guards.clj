@@ -15,9 +15,11 @@
    `current-task`, so a stale task (no progress reports for longer than the timeout) does
    NOT count as running. Stale rows get cleaned up by `ensure-no-active-task!`'s supersession
    step, which means user-driven operations self-heal from JVM crashes and hung threads
-   the same way auto-import does."
-  []
-  (some? (rst/current-task)))
+   the same way auto-import does. With `workspace-id`, only that workspace's tasks count."
+  ([]
+   (some? (rst/current-task)))
+  ([workspace-id]
+   (some? (rst/current-task workspace-id))))
 
 (defn ensure-no-active-task!
   "Throws an ex-info with status-code 400 if a remote-sync task is currently active. After
@@ -27,9 +29,14 @@
    Used as a guard at the top of mutating remote-sync operations. Combined with
    `handle-task-result!`'s already-terminated check, this means an old task's late-arriving
    thread will detect its row is terminated and exit without writing the setting or
-   overwriting bookkeeping."
-  []
-  (when (task-running?)
-    (throw (ex-info "Remote sync task in progress"
-                    {:status-code 400})))
-  (rst/supersede-stale-tasks!))
+   overwriting bookkeeping.
+
+   With `workspace-id`, only that workspace's tasks block — operations on different workspaces
+   run concurrently."
+  ([]
+   (ensure-no-active-task! nil))
+  ([workspace-id]
+   (when (if workspace-id (task-running? workspace-id) (task-running?))
+     (throw (ex-info "Remote sync task in progress"
+                     {:status-code 400})))
+   (rst/supersede-stale-tasks!)))

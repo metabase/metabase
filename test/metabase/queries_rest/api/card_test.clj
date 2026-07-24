@@ -5289,7 +5289,7 @@
         lib/->legacy-MBQL)))
 
 (deftest workspace-card-copy-on-write-test
-  (mt/with-temp [:model/Workspace ws {:name "cow"}]
+  (mt/with-temp [:model/Workspace ws {:branch "cow"}]
     (mt/with-model-cleanup [:model/Card]
       (mt/with-temp [:model/Card card {:name "A" :dataset_query (ws-count-query :venues)}]
         (let [card-url (str "card/" (:id card))]
@@ -5308,7 +5308,7 @@
             (is (= "A" (:name (mt/user-http-request :crowberto :get 200 card-url))))))))))
 
 (deftest workspace-query-remapping-test
-  (mt/with-temp [:model/Workspace ws {:name "cow"}]
+  (mt/with-temp [:model/Workspace ws {:branch "cow"}]
     (mt/with-model-cleanup [:model/Card]
       (mt/with-temp [:model/Card card-a {:name "A" :dataset_query (ws-count-query :venues)}
                      :model/Card card-b {:name "B" :dataset_query (ws-source-card-query (:id card-a))}]
@@ -5330,7 +5330,7 @@
             (is (= 100 (run-b :crowberto)))))))))
 
 (deftest workspace-create-and-delete-test
-  (mt/with-temp [:model/Workspace ws {:name "cow"}]
+  (mt/with-temp [:model/Workspace ws {:branch "cow"}]
     (mt/with-model-cleanup [:model/Card]
       (testing "POST in a workspace registers the new entity as workspace-owned"
         (workspaces.tu/in-workspace (:id ws)

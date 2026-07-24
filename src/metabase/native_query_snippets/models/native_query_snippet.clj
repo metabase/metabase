@@ -82,7 +82,9 @@
          (assoc snippet :template_tags))))
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
-  (u/prog1 (add-template-tags snippet)
+  (u/prog1 (-> snippet
+               add-template-tags
+               workspaces/stamp-workspace-id)
     (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
@@ -175,7 +177,8 @@
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :content :description :entity_id :name]
-   :skip      []
+   :skip      [;; workspace membership is instance-local state, not portable content
+               :workspace_id]
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)
@@ -222,7 +225,7 @@
   ;; name verbatim — suffix it per workspace (the same way serdes suffixes conflicting imports).
   (let [source (t2/select-one :model/NativeQuerySnippet :id id)]
     (t2/insert-returning-pk! :model/NativeQuerySnippet
-                             (-> (select-keys source [:description :content :collection_id :archived])
+                             (-> (select-keys source [:entity_id :description :content :collection_id :archived])
                                  (assoc :name       (str (:name source)
                                                          " (workspace " (workspaces/current-workspace-id) ")")
                                         :creator_id api/*current-user-id*)))))

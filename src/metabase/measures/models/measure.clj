@@ -131,8 +131,9 @@
   (validate-mbql5-definition definition)
   (when (seq definition)
     (lib/check-measure-overwrite nil definition))
-  (cond-> measure
-    (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition))))
+  (-> (cond-> measure
+        (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition)))
+      workspaces/stamp-workspace-id))
 
 (t2/define-before-update :model/Measure [{:keys [id definition] :as measure}]
   ;; throw an Exception if someone tries to update creator_id
@@ -209,7 +210,9 @@
    :skip [;; dimensions are computed from the query and reconciled on read, not serialized
           :dimensions :dimension_mappings
           ;; always re-derived from definition by before-insert via lib/primary-source-table-id
-          :table_id]
+          :table_id
+          ;; workspace membership is instance-local state, not portable content
+          :workspace_id]
    :transform {:created_at (serdes/date)
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import import-measure-definition}}
@@ -247,4 +250,4 @@
 (defmethod workspaces/clone-entity! :model/Measure
   [_model id]
   (workspaces/clone-row! :model/Measure id
-                         [:name :description :table_id :definition :archived]))
+                         [:entity_id :name :description :table_id :definition :archived]))
