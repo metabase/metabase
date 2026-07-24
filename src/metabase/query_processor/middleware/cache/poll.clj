@@ -1,12 +1,28 @@
 (ns metabase.query-processor.middleware.cache.poll
   "Deduplicated background polling: many callers await the outcome of a single polling loop per key per JVM. The
   first caller to await a key starts its loop on an executor; every other caller for that key awaits the same
-  outcome."
+  outcome.
+
+  Why poll rather than issue one blocking DB call that returns when the results land:
+
+  - No portable primitive. The app DB may be H2, Postgres, or MySQL; only some of them offer a wait-for-event
+    mechanism (LISTEN/NOTIFY, GET_LOCK), so a blocking design needs a per-DB implementation plus a polling
+    fallback for the rest.
+  - Connection pool. A blocking wait pins a pooled connection for its whole duration, and the number of waiters is
+    unbounded (every concurrent request for the same query). Exhausting the pool degrades the entire instance, not
+    just caching. A poll tick borrows a connection only for a cheap read.
+  - The condition is state, not an event. A waiter is waiting for another process's transaction to commit
+    fresh-enough results, which is not the same event as a lease being released: the holder can die, its lease can
+    expire, and another node can take over. So the predicate has to be re-evaluated, which is what a poll does.
+  - Cancellation. The loop rechecks its deadline and interrupt status every tick, so query timeouts and shutdown
+    take effect promptly; an in-flight blocking DB call ignores interrupts and holds its thread and connection
+    until the DB-side timeout.
+
+  Deduplication is what keeps the cost acceptable: the DB sees one poller per key per node, not one per request."
   (:require
    [metabase.util.log :as log])
   (:import
-   (java.util.concurrent ExecutorService Executors RejectedExecutionException)
-   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
+   (java.util.concurrent ExecutorService Executors RejectedExecutionException)))
 
 (set! *warn-on-reflection* true)
 
@@ -17,10 +33,8 @@
   [[shutdown-context!]]."
   []
   {:executor (Executors/newCachedThreadPool
-              (.build
-               (doto (BasicThreadFactory$Builder.)
-                 (.namingPattern "qp-cache-poller-%d")
-                 (.daemon true))))
+              ;; platform, not virtual, threads: the loops block on JDBC, which can pin a carrier thread
+              (.factory (.name (.daemon (Thread/ofPlatform)) "qp-cache-poller-" 0)))
    ;; poll key -> {:signal <promise>, :fallback-outcome <any>}
    :pollers  (atom {})})
 
