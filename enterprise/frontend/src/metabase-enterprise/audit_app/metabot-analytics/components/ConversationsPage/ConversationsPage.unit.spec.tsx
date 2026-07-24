@@ -39,6 +39,7 @@ function createSummary(
     embedding_path: null,
     user_agent: null,
     sanitized_user_agent: null,
+    forked_from_conversation_id: null,
     user: null,
     ...opts,
   };

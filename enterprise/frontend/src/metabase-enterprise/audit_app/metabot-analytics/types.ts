@@ -33,6 +33,7 @@ export type ConversationSummary = {
   embedding_path: string | null;
   user_agent: string | null;
   sanitized_user_agent: string | null;
+  forked_from_conversation_id: string | null;
   user: MetabotUserInfo | null;
 };
 
@@ -104,6 +105,8 @@ export type ConversationDetail = {
   embedding_path: string | null;
   user_agent: string | null;
   sanitized_user_agent: string | null;
+  forked_from_conversation_id: string | null;
+  fork_boundary_message_id: string | null;
   feedback: ConversationFeedback[];
 };
 

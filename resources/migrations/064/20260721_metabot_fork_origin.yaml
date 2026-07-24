@@ -1,0 +1,135 @@
+# Fork origin: record where a forked Metabot conversation (and each of its
+# copied messages) came from, and surface the conversation link in the analytics
+# views so a fork can be traced back to the original thread.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.73dw0q
+      author: undrfined
+      comment: Add metabot_conversation.forked_from_conversation_id
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: forked_from_conversation_id
+                  type: varchar(36)
+                  constraints:
+                    nullable: true
+                  remarks: 'Conversation this one was forked from, or null when not a fork'
+      rollback:
+        - dropColumn:
+            tableName: metabot_conversation
+            columnName: forked_from_conversation_id
+
+  - changeSet:
+      id: v64.ssqh1b
+      author: undrfined
+      comment: Add metabot_message.forked_from_message_id
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: forked_from_message_id
+                  type: int
+                  constraints:
+                    nullable: true
+                  remarks: 'Source message this row was copied from when forking, or null'
+      rollback:
+        - dropColumn:
+            tableName: metabot_message
+            columnName: forked_from_message_id
+
+  - changeSet:
+      id: v64.hjnh9v
+      author: undrfined
+      comment: Recreate v_ai_usage_log with forked_from_conversation_id
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v4/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v4/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v4/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v3/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v3/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v3/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v64.46zooz
+      author: undrfined
+      comment: Recreate v_metabot_conversations with forked_from_conversation_id
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v6/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v6/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v6/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v5/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v5/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v5/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v64.p2w8xk
+      author: maksymyakubych
+      comment: Recreate v_metabot_messages excluding forked (copied) messages
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_messages/v3/postgres-metabot_messages.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_messages/v3/mysql-metabot_messages.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_messages/v3/h2-metabot_messages.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_messages/v2/postgres-metabot_messages.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_messages/v2/mysql-metabot_messages.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_messages/v2/h2-metabot_messages.sql
+            relativeToChangelogFile: true

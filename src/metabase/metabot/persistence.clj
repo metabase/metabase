@@ -810,3 +810,79 @@
                                          :archived false
                                          {:order-by [[:id :asc]]}))
        :messages        (messages->chat-messages messages)})))
+
+;;; ---------------------------------------- Forking ----------------------------------------
+
+(def ^:private max-title-length
+  "Cap the forked conversation's title. `metabot_conversation.title` is a `text`
+  column, so this is a readability guard against an unbounded title, not a storage
+  limit."
+  200)
+
+(def ^:private fork-title-suffix " (forked)")
+
+(defn- forked-title
+  "The forked conversation's title: the source `title` truncated to fit, with the
+  fork suffix appended. Nil when the source has no title yet, matching a fresh
+  conversation whose title is generated later."
+  [title]
+  (when-not (str/blank? title)
+    (let [room (- max-title-length (count fork-title-suffix))
+          base (str/trim title)]
+      (str (cond-> base (> (count base) room) (subs 0 room))
+           fork-title-suffix))))
+
+(defn- forked-message-row
+  "Build the insert map for a cloned message: a fresh `external_id`, `user-id`
+  attribution, and no timestamps so `created_at` is stamped anew by the DB
+  default. Token usage is zeroed (`total_tokens` 0, `usage` nil) so a fork never
+  double-counts tokens in the analytics views. `forked_from_message_id` records
+  the source row so the copied prefix can be told apart from messages added after
+  the fork."
+  [new-conversation-id user-id {:keys [id data data_version role profile_id ai_proxied finished error state]}]
+  (cond-> {:conversation_id        new-conversation-id
+           :data                   data
+           :data_version           data_version
+           :role                   role
+           :profile_id             profile_id
+           :external_id            (str (random-uuid))
+           :total_tokens           0
+           :usage                  nil
+           :ai_proxied             (boolean ai_proxied)
+           :user_id                user-id
+           :forked_from_message_id id}
+    (some? finished) (assoc :finished finished)
+    (some? error)    (assoc :error error)
+    (some? state)    (assoc :state state)))
+
+(mu/defn fork-conversation!
+  "Fork `conversation-id` at the assistant message identified by `fork-external-id`,
+  cloning the live messages from the thread start up through that message into a
+  brand-new conversation owned by `user-id`.
+
+  The fork target must be a live, finished, non-errored assistant message —
+  returns nil otherwise, creating nothing. Cloned rows share the conversation and
+  message insert shapes used by [[start-turn!]] but with fresh `id`/`external_id`s,
+  `user-id` attribution, DB-stamped `created_at`, and zeroed token usage. Returns
+  the new conversation id."
+  [conversation-id  :- :string
+   fork-external-id :- :string
+   user-id          :- pos-int?]
+  (let [messages          (live-messages conversation-id)
+        [before [target]] (split-with #(not= fork-external-id (:external_id %)) messages)]
+    (when (and target
+               (assistant-row? target)
+               (nil? (:error target))
+               (true? (:finished target)))
+      (let [to-clone            (conj (vec before) target)
+            new-conversation-id (str (random-uuid))
+            title               (t2/select-one-fn :title :model/MetabotConversation :id conversation-id)]
+        (t2/with-transaction [_conn]
+          (t2/insert! :model/MetabotConversation
+                      (cond-> {:id                          new-conversation-id
+                               :user_id                     user-id
+                               :forked_from_conversation_id conversation-id}
+                        (forked-title title) (assoc :title (forked-title title))))
+          (t2/insert! :model/MetabotMessage
+                      (mapv #(forked-message-row new-conversation-id user-id %) to-clone)))
+        new-conversation-id))))
