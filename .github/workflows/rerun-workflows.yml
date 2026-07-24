@@ -41,6 +41,22 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: | # js
+            async function withRetry(fn, { retries = 3, delay = 5000 } = {}) {
+              for (let attempt = 1; attempt <= retries; attempt++) {
+                try {
+                  return await fn();
+                } catch (error) {
+                  if (error.status >= 500 && attempt < retries) {
+                    console.log(`Attempt ${attempt} failed with HTTP ${error.status}, retrying in ${delay}ms...`);
+                    await new Promise(r => setTimeout(r, delay));
+                    delay *= 2;
+                  } else {
+                    throw error;
+                  }
+                }
+              }
+            }
+
             const MAX_ATTEMPTS = 1;
             const ATTEMPT = "${{ github.event.workflow_run.run_attempt }}";
             const FAILED_RUN_URL = "${{ github.event.workflow_run.html_url }}";
@@ -52,11 +68,11 @@ jobs:
 
             if (ATTEMPT <= MAX_ATTEMPTS) {
               try {
-                await github.rest.actions.reRunWorkflowFailedJobs({
+                await withRetry(() => github.rest.actions.reRunWorkflowFailedJobs({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   run_id: ${{ github.event.workflow_run.id }},
-                });
+                }));
               } catch (error) {
                 if (error.status === 403) {
                   console.log(`Skipping re-run: ${error.message}`);
@@ -71,12 +87,12 @@ jobs:
               // find out which jobs failed
               const { owner, repo } = context.repo;
 
-              const jobInfo = await github.rest.actions.listJobsForWorkflowRun({
+              const jobInfo = await withRetry(() => github.rest.actions.listJobsForWorkflowRun({
                 owner,
                 repo,
                 run_id: ${{ github.event.workflow_run.id }},
                 per_page: 100,
-              });
+              }));
 
               const failedJobs = jobInfo.data.jobs
                 .filter(job => job.status === "completed" && job.conclusion === "failure" && !job.name.includes("-tests-result"));
