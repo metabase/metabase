@@ -2662,6 +2662,13 @@ LIMIT
         .blur();
       cy.wait("@updateTransform");
 
+      cy.log(
+        "Dismiss the success toast so it can't outlive the later error toast",
+      );
+      H.undoToast().findByText("Transform name updated").should("be.visible");
+      H.undoToast().icon("close").click();
+      H.undoToast().should("not.exist");
+
       cy.log("Make another change");
       H.DataStudio.Transforms.header()
         .findByPlaceholderText("Name")
@@ -2669,6 +2676,13 @@ LIMIT
         .type("Another Updated Name")
         .blur();
       cy.wait("@updateTransform");
+
+      cy.log(
+        "Dismiss the success toast so it can't outlive the later error toast",
+      );
+      H.undoToast().findByText("Transform name updated").should("be.visible");
+      H.undoToast().icon("close").click();
+      H.undoToast().should("not.exist");
 
       cy.log("Open revision history");
       H.DataStudio.Transforms.header().icon("ellipsis").click();
