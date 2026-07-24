@@ -105,6 +105,10 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
       },
     ],
   },
+  zai: {
+    value: "zai/glm-5.2",
+    models: [{ id: "glm-5.2", display_name: "GLM-5.2" }],
+  },
 };
 
 type MetabotUsageQuota = {
@@ -125,6 +129,7 @@ type MetabotSettingKey =
   | "llm-azure-api-base-url"
   | "llm-openai-api-key"
   | "llm-openrouter-api-key"
+  | "llm-zai-api-key"
   | "llm-bedrock-access-key-id"
   | "llm-bedrock-secret-access-key"
   | "llm-bedrock-region"
@@ -218,6 +223,7 @@ async function setup({
     bedrock: null,
     openai: null,
     openrouter: null,
+    zai: null,
     ...apiKeyValues,
   };
 
@@ -279,6 +285,10 @@ async function setup({
     "llm-openrouter-api-key": createMockSettingDefinition({
       key: "llm-openrouter-api-key",
       value: mergedApiKeyValues.openrouter ?? undefined,
+    }),
+    "llm-zai-api-key": createMockSettingDefinition({
+      key: "llm-zai-api-key",
+      value: mergedApiKeyValues.zai ?? undefined,
     }),
     "llm-bedrock-access-key-id": createMockSettingDefinition({
       key: "llm-bedrock-access-key-id",
@@ -382,7 +392,9 @@ async function setup({
           ? "llm-anthropic-api-key"
           : body.provider === "openai"
             ? "llm-openai-api-key"
-            : "llm-openrouter-api-key";
+            : body.provider === "zai"
+              ? "llm-zai-api-key"
+              : "llm-openrouter-api-key";
       const maskedApiKey = body["api-key"]
         ? `**********${String(body["api-key"]).slice(-2)}`
         : undefined;
@@ -606,6 +618,20 @@ describe("AIProviderSettingsSection", () => {
     });
     expect(openrouterOption).toBeInTheDocument();
     expect(openrouterOption).not.toHaveAttribute("data-combobox-disabled");
+
+    expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
+  });
+
+  it("shows Z.AI as selectable in the provider dropdown", async () => {
+    await setup({ savedProviderValue: null, isConfigured: false });
+
+    await userEvent.click(screen.getByLabelText("Provider"));
+
+    const zaiOption = await screen.findByRole("option", {
+      name: /Z\.AI/,
+    });
+    expect(zaiOption).toBeInTheDocument();
+    expect(zaiOption).not.toHaveAttribute("data-combobox-disabled");
 
     expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
   });
@@ -1704,6 +1730,95 @@ describe("AIProviderSettingsSection", () => {
           body: {
             "llm-metabot-provider": null,
             "llm-openrouter-api-key": null,
+          },
+        }),
+      ).toBe(true);
+    });
+
+    expect(
+      await screen.findByText("Connect to an AI provider"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Provider")).toHaveValue("");
+  });
+
+  it("connects to Z.AI by saving the API key and selecting a model", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { zai: null },
+      updateResponse: {
+        value: "zai/glm-5.2",
+        models: DEFAULT_RESPONSES.zai.models,
+      },
+    });
+
+    await selectProvider("Z.AI");
+    await userEvent.type(screen.getByLabelText("API key"), "zai-key.test");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
+      ).toHaveLength(1);
+    });
+
+    expect(
+      fetchMock.callHistory.lastCall("path:/api/metabot/settings", {
+        method: "PUT",
+        body: {
+          provider: "zai",
+          "api-key": "zai-key.test",
+        },
+      }),
+    ).toBeDefined();
+
+    await screen.findByLabelText("Model");
+    await openModelSelector();
+    await userEvent.click(await screen.findByText("GLM-5.2"));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
+      ).toHaveLength(2);
+    });
+
+    expect(
+      fetchMock.callHistory.lastCall("path:/api/metabot/settings", {
+        method: "PUT",
+        body: {
+          provider: "zai",
+          model: "glm-5.2",
+        },
+      }),
+    ).toBeDefined();
+
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disconnects Z.AI by clearing both the provider and API key settings", async () => {
+    await setup({
+      savedProviderValue: "zai/glm-5.2",
+      isConfigured: true,
+      apiKeyValues: { zai: "**********st" },
+    });
+
+    await screen.findByText("Connected to Z.AI");
+    await screen.findByLabelText("API key");
+    await confirmDisconnectProvider();
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/setting", {
+          method: "PUT",
+          body: {
+            "llm-metabot-provider": null,
+            "llm-zai-api-key": null,
           },
         }),
       ).toBe(true);

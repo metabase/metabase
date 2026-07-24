@@ -78,6 +78,7 @@ export function AIProviderConfigurationForm({
     "llm-anthropic-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
+    "llm-zai-api-key",
   ] as const);
 
   const disconnectProvider = useCallback(async () => {
@@ -269,15 +270,21 @@ export function AIProviderConfigurationForm({
               isEnvSetting={isEnvSetting}
             />
           ))
-          .with("anthropic", "openai", "openrouter", (selectedProvider) => (
-            <ApiKeyProviderFields
-              key={selectedProvider}
-              selectedProvider={selectedProvider}
-              connectedModel={connectedModel}
-              isCurrentConfigured={isCurrentConfigured}
-              isEnvSetting={isEnvSetting}
-            />
-          ))
+          .with(
+            "anthropic",
+            "openai",
+            "openrouter",
+            "zai",
+            (selectedProvider) => (
+              <ApiKeyProviderFields
+                key={selectedProvider}
+                selectedProvider={selectedProvider}
+                connectedModel={connectedModel}
+                isCurrentConfigured={isCurrentConfigured}
+                isEnvSetting={isEnvSetting}
+              />
+            ),
+          )
           .with(P.nullish, () => null)
           .exhaustive()}
 

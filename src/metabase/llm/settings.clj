@@ -134,6 +134,26 @@
                              (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
   :doc              false)
 
+;;; --------------------------------------------------- Z.AI ----------------------------------------------------
+
+(defsetting llm-zai-api-base-url
+  (deferred-tru "The Z.AI API base URL used for Chat Completions.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.z.ai/api/paas/v4"
+  :export?    false
+  :doc        false)
+
+(defsetting llm-zai-api-key
+  (deferred-tru "The Z.AI API Key.")
+  ;; Z.AI keys are `{id}.{secret}` pairs with no documented prefix, so unlike the other
+  ;; direct-provider keys there is no format validation.
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :doc        false
+  :setter     (partial set-trimmed-string! :llm-zai-api-key))
+
 ;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
 
 (defsetting llm-bedrock-access-key-id
