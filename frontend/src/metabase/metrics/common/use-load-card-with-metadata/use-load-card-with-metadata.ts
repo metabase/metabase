@@ -11,11 +11,15 @@ export function useLoadCardWithMetadata(cardId: CardId | undefined) {
     isLoading: isLoadingCard,
     error: cardError,
   } = useGetCardQuery(cardId != null ? { id: cardId } : skipToken);
-  const { isLoading: isLoadingMetadata, error: metadataError } =
-    useGetCardQueryMetadataQuery(cardId ?? skipToken);
+  const {
+    data: metadata,
+    isLoading: isLoadingMetadata,
+    error: metadataError,
+  } = useGetCardQueryMetadataQuery(cardId ?? skipToken);
 
   return {
     card,
+    metadata,
     isLoading: isLoadingCard || isLoadingMetadata,
     error: cardError ?? metadataError,
   };

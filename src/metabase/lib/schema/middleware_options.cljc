@@ -14,6 +14,13 @@
      `metabase.query-processor.middleware.results-metadata`; default `false`. (Note: we may change the name of this
      column in the near future, to `result_metadata`, to fix inconsistencies in how we name things.)"}
     :boolean]
+   [:skip-result-metadata-persistence?
+    {:optional true
+     :description
+     "Should we skip persisting `result_metadata` to a saved Card while still returning it in query results? Used by
+       `metabase.query-processor.middleware.results-metadata`; default `false`. Has no effect when
+       `skip-results-metadata?` is true."}
+    :boolean]
    [:format-rows?
     {:optional true
      :description

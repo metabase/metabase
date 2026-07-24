@@ -3,6 +3,7 @@ import { Route } from "metabase/router";
 
 import { MetricAboutPage } from "./pages/MetricAboutPage";
 import { MetricDependenciesPage } from "./pages/MetricDependenciesPage";
+import { MetricDimensionsPage } from "./pages/MetricDimensionsPage";
 import { MetricHistoryPage } from "./pages/MetricHistoryPage";
 import { MetricOverviewPage } from "./pages/MetricOverviewPage";
 import { MetricQueryPage } from "./pages/MetricQueryPage";
@@ -15,6 +16,7 @@ export function getMetricRoutes() {
       <Route path=":cardId" element={<MetricAboutPage />} />
       <Route path=":cardId/overview" element={<MetricOverviewPage />} />
       <Route path=":cardId/query" element={<MetricQueryPage />} />
+      <Route path=":cardId/dimensions" element={<MetricDimensionsPage />} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route path=":cardId/dependencies" element={<MetricDependenciesPage />}>
           <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />

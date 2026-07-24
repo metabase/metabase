@@ -642,6 +642,12 @@ export function provideMetricDimensionValuesTags(
   return [idTag("card", metricId)];
 }
 
+export function provideMetricDimensionListTags(
+  metricId: MetricId,
+): TagDescription<TagType>[] {
+  return [listTag("metric-dimension"), idTag("metric-dimension", metricId)];
+}
+
 export function provideSnippetListTags(
   snippets: NativeQuerySnippet[],
 ): TagDescription<TagType>[] {

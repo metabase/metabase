@@ -1382,21 +1382,18 @@
            metabase.metrics.core}
    :uses #{api
            collections
+           events
            lib
            lib-be
            lib-metric
            models
            parameters
            permissions
-           premium-features
            query-processor
            request
            server
            util}
-   :model-imports #{:model/Card
-                    :model/Field
-                    :model/Measure
-                    :model/Table}}
+   :model-imports #{:model/Card :model/Field :model/Measure}}
 
   model-persistence
   {:team "Graphy"
@@ -1590,6 +1587,7 @@
   {:team "UX West"
    :api  #{metabase.permissions.core
            metabase.permissions.init
+           metabase.permissions.metric
            metabase.permissions.schema}
    :uses #{api
            app-db
@@ -1614,6 +1612,7 @@
                     :model/PermissionsRevision}
    :model-imports #{:model/Collection
                     :model/Database
+                    :model/Field
                     :model/Table
                     :model/User}}
 
@@ -1915,6 +1914,7 @@
            legacy-mbql
            lib
            lib-be
+           lib-metric
            model-persistence
            models
            parameters

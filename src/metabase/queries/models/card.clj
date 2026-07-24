@@ -82,7 +82,7 @@
 
   The core `after-select` logic compares each row's `card_schema` and runs the upgrade functions for all versions up to
   and including [[current-schema-version]]."
-  23)
+  24)
 
 (defmulti ^:private upgrade-card-schema-to
   "Upgrades a card on read, so that it fits the given schema version number.
@@ -109,6 +109,12 @@
     (t2/update! :model/Card metric-id
                 {:dimensions         dimensions
                  :dimension_mappings dimension-mappings})))
+
+(defmethod metrics/dimensions-initialized? :metadata/metric
+  [metric]
+  (some? (:dimensions (t2/query-one {:select [:dimensions]
+                                     :from   [:report_card]
+                                     :where  [:= :id (:id metric)]}))))
 
 (t2/deftransforms :model/Card
   {:dataset_query          lib-be/transform-query
@@ -723,6 +729,23 @@
   ;; This fix was a failure. We have to keep the schema upgrade, but now it's
   ;; just a no-op.
   card)
+
+;; Schema upgrade: 23 to 24 ==========================================================================================
+;; Curated metric dimensions (UXW-4808). New metrics seed their own-table columns only, with joined/FK
+;; columns available to add on demand. But metrics created before curated dimensions shipped implicitly
+;; exposed EVERY breakoutable column (own-table + implicitly-joined), and existing dashboard filters may
+;; be mapped to those joined columns. Modernize such a metric on read by backfilling the full
+;; implicitly-joined dimension set, so every existing mapping still corresponds to a live dimension.
+;; Only un-curated metrics (`:dimensions` still nil) are touched; once a metric is curated (any write),
+;; its `card_schema` is bumped to current and this upgrade no longer runs, so removals stay sticky.
+(defmethod upgrade-card-schema-to 24
+  [card _schema-version]
+  (if (and (= :metric (keyword (:type card)))
+           (nil? (:dimensions card))
+           (seq (:dataset_query card)))
+    (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set (:dataset_query card))]
+      (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))
+    card))
 
 (mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
   [card :- :map]
@@ -1412,8 +1435,6 @@
           :dataset_query_metrics_v2_migration_backup
           ;; this column is not used anymore
           :cache_ttl
-          ;; dimensions are computed from the query and reconciled on read, not serialized
-          :dimensions :dimension_mappings
           ;; temporary column to power rollback from v57 to v56; we can remove it in v58
           :legacy_query
           ;; always derivable from dataset_query by populate-query-fields; nil when not derivable
@@ -1446,7 +1467,10 @@
     :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
     :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}
     :visualization_settings {:export serdes/export-visualization-settings :import serdes/import-visualization-settings}
-    :result_metadata        {:export-with-context export-result-metadata :import import-result-metadata}}
+    :result_metadata        {:export-with-context export-result-metadata :import import-result-metadata}
+    ;; curated metric v2 dimensions & their column mappings; nil for non-metric cards, which elides the keys
+    :dimensions             {:export metrics/export-dimensions :import metrics/import-dimensions}
+    :dimension_mappings     {:export metrics/export-dimension-mappings :import metrics/import-dimension-mappings}}
    :defaults {:archived            false
               :archived_directly   false
               :collection_preview  true
@@ -1460,12 +1484,13 @@
   "The serdes dependencies of a Card as `:serdes/meta` paths. `allow-int-ids?` selects raw-appdb vs serialized ref semantics for
   the mbql walkers. Shared by [[serdes/deserialization-dependencies]] (allow-int-ids? false) and
   [[serdes/serialization-dependencies]] (allow-int-ids? true)."
-  [allow-int-ids? {:keys [collection_id database_id dataset_query parameters parameter_mappings
+  [allow-int-ids? {:keys [collection_id database_id dataset_query dimension_mappings parameters parameter_mappings
                           result_metadata source_card_id visualization_settings
                           dashboard_id document_id]}]
   (set
    (concat
     (mapcat #(serdes/mbql-deps allow-int-ids? %) parameter_mappings)
+    (metrics/dimension-mappings-deps allow-int-ids? dimension_mappings)
     (serdes/parameters-deps allow-int-ids? parameters)
     (when database_id [[{:model "Database" :id database_id}]])
     (when source_card_id #{[{:model "Card" :id source_card_id}]})

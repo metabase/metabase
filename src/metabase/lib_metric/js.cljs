@@ -633,6 +633,11 @@
    (to-array (lib-metric.projection/projectable-dimensions-for-source
               definition (->source-instance source-instance)))))
 
+(defn ^:export pickDefaultDimension
+  "Pick the preferred default from an ordered array of dimensions."
+  [dimensions]
+  (lib-metric.dimension/pick-default-dimension (array-seq dimensions)))
+
 (defn ^:export defaultBreakoutDimensions
   "Get dimensions corresponding to the source metric's default breakout columns."
   [definition]
@@ -655,6 +660,12 @@
    (lib-metric.projection/project definition dimension-ref))
   ([definition dimension-ref source-instance]
    (lib-metric.projection/project-for-source definition dimension-ref (->source-instance source-instance))))
+
+(defn ^:export projectDimension
+  "Project a dimension using its default temporal bucket or binning strategy."
+  [definition dimension]
+  (assert-single-source! definition)
+  (lib-metric.projection/project-dimension definition dimension))
 
 (defn ^:export projectionDimension
   "Get the dimension metadata for a projection clause.

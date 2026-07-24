@@ -32,7 +32,7 @@ export function MetricHistoryPage({
             showAppSwitcher={showAppSwitcher}
             showDataStudioLink={showDataStudioLink}
           />
-          <Card withBorder p="md" flex={1} className={S.card}>
+          <Card withBorder shadow="none" p="md" flex={1} className={S.card}>
             <Box maw={800} pt="md" px="md">
               <MetricActivityTimeline card={card} />
             </Box>

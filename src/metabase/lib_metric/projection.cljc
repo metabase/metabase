@@ -180,11 +180,12 @@
                units)))
 
 (defn- mark-unit [options option-key unit]
-  (perf/mapv (fn [option]
-               (cond-> option
-                 (:default option)          (dissoc :default)
-                 (= (:unit option) unit)    (assoc option-key true)))
-             options))
+  (cond->> options
+    (perf/some #(= (:unit %) unit) options)
+    (perf/mapv (fn [option]
+                 (cond-> option
+                   (contains? option option-key) (dissoc option-key)
+                   (= (:unit option) unit)       (assoc option-key true))))))
 
 (defn- available-temporal-buckets-for-type
   "Given a column type and nillable default-unit and selected-unit, return the appropriate bucket options."
@@ -212,7 +213,7 @@
                                      (:temporal-unit (second proj))))
                                  flat-projs)]
     (if (isa? effective-type :type/Temporal)
-      (available-temporal-buckets-for-type effective-type :month selected-unit)
+      (available-temporal-buckets-for-type effective-type nil selected-unit)
       [])))
 
 (mu/defn temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/option]
@@ -330,20 +331,51 @@
                             (assoc opts :binning binning-val)
                             (dissoc opts :binning))))))
 
+(defn- dimension-reference-with-default-options
+  [definition dimension]
+  (let [dimension-ref (lib-metric.dimension/reference dimension)]
+    (if-let [bucket (perf/some #(when (:default %) %)
+                               (available-temporal-buckets definition dimension))]
+      (with-temporal-bucket dimension-ref bucket)
+      (if-let [binning-option (perf/some #(when (:default %) %)
+                                         (available-binning-strategies definition dimension))]
+        (with-binning dimension-ref binning-option)
+        dimension-ref))))
+
+(mu/defn project-dimension :- ::lib-metric.schema/metric-definition
+  "Project a dimension using its default temporal bucket or binning strategy."
+  [definition :- ::lib-metric.schema/metric-definition
+   dimension  :- ::lib-metric.schema/metadata-dimension]
+  (project definition (dimension-reference-with-default-options definition dimension)))
+
+(defn dimension-breakout
+  "Return the dimension's mapped field reference with its default projection options, or nil when it has no mapping."
+  [definition dimension]
+  (when-let [target (perf/get-in dimension [:dimension-mapping :target])]
+    (let [dimension-ref (dimension-reference-with-default-options definition dimension)
+          options       (perf/select-keys (second dimension-ref) [:temporal-unit :binning])]
+      (lib/update-options (lib/ensure-uuid target) #(merge % options)))))
+
 ;;; -------------------------------------------------- Default Breakout Dimensions --------------------------------------------------
 
-(defn- dimension-has-field-id?
-  "Check if a dimension has a source matching any of the given field IDs."
-  [field-ids dimension]
-  (perf/some (fn [source]
-               (when-let [fid (:field-id source)]
-                 (field-ids fid)))
-             (:sources dimension)))
+(defn- column-key
+  "Collision-safe key for the underlying column of a field ref, ignoring any bucketing. Unlike a bare
+   field id, this keeps the `:source-field`/`:join-alias` so columns reached via different FKs to the
+   same table don't collide. See [[lib-metric.dimension/field-ref->key]]."
+  [field-ref]
+  (-> field-ref
+      (update 1 dissoc :temporal-unit :binning)
+      lib-metric.dimension/field-ref->key))
 
-(mu/defn default-breakout-dimensions :- [:sequential ::lib-metric.schema/metadata-dimension]
-  "Get dimensions corresponding to the source metric's default breakout columns.
-   Returns DimensionMetadata objects matching the breakout field-ids in the dataset_query."
-  [definition :- ::lib-metric.schema/metric-definition]
+(defn- dimension-column-key
+  "Column key for a metadata dimension, derived from its mapping target (which carries the
+   `:source-field`). Returns nil when the dimension has no mapping."
+  [dimension]
+  (some-> dimension :dimension-mapping :target column-key))
+
+(defn- source-query-breakout-dimensions
+  "Dimensions matching the breakout columns of the source metric's own dataset_query."
+  [definition]
   (let [{:keys [expression metadata-provider]} definition
         leaf-type (lib-metric.definition/expression-leaf-type expression)
         leaf-id   (lib-metric.definition/expression-leaf-id expression)]
@@ -356,12 +388,23 @@
             raw-query     (lib-metric.dimension/dimensionable-query metadata)]
         (if-not raw-query
           []
-          (let [mbql5-query        (lib/query metadata-provider raw-query)
-                breakout-clauses   (lib/breakouts mbql5-query)
-                breakout-field-ids (into #{}
-                                         (keep lib-metric.dimension/dimension-target->field-id)
-                                         breakout-clauses)]
-            (if (perf/empty? breakout-field-ids)
+          (let [mbql5-query      (lib/query metadata-provider raw-query)
+                breakout-clauses (lib/breakouts mbql5-query)
+                ;; Key by the full column ref (incl. :source-field), not the bare field id, since a
+                ;; field id can be reached via multiple FKs to the same foreign table.
+                breakout-keys    (into #{} (keep column-key) breakout-clauses)]
+            (if (perf/empty? breakout-keys)
               []
-              (filterv #(dimension-has-field-id? breakout-field-ids %)
+              (filterv #(when-let [k (dimension-column-key %)]
+                          (contains? breakout-keys k))
                        (projectable-dimensions definition)))))))))
+
+(mu/defn default-breakout-dimensions :- [:sequential ::lib-metric.schema/metadata-dimension]
+  "Get the dimensions to treat as the entity's defaults for breakouts: the curated default
+   dimension when one is set, otherwise dimensions matching the breakout columns in the source
+   metric's own dataset_query."
+  [definition :- ::lib-metric.schema/metric-definition]
+  (let [curated-defaults (filterv :default (projectable-dimensions definition))]
+    (if (seq curated-defaults)
+      curated-defaults
+      (source-query-breakout-dimensions definition))))

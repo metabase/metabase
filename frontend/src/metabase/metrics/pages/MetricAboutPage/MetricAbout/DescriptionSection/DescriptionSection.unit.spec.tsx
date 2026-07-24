@@ -31,6 +31,7 @@ const URLS: MetricUrls = {
   about: (id) => `/metric/${id}/about`,
   overview: (id) => `/metric/${id}/overview`,
   query: (id) => `/metric/${id}/query`,
+  dimensions: (id) => `/metric/${id}/dimensions`,
   dependencies: (id) => `/metric/${id}/dependencies`,
   history: (id) => `/metric/${id}/history`,
   database: (id) => `/browse/databases/${id}`,

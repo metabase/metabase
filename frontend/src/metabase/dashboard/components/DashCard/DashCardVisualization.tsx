@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
 import CS from "metabase/css/core/index.css";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -215,13 +216,12 @@ export function DashCardVisualization({
   }, [dashcard, rawSeries]);
 
   const untranslatedSeries = useMemo(() => {
-    if (
-      !dashcard ||
-      !rawSeries ||
-      rawSeries.length === 0 ||
-      !isVisualizerDashboardCard(dashcard)
-    ) {
+    if (!dashcard || !rawSeries || rawSeries.length === 0) {
       return rawSeries;
+    }
+
+    if (!isVisualizerDashboardCard(dashcard)) {
+      return getMetricSeriesWithDefaultDisplay(rawSeries, metadata);
     }
 
     const visualizerEntity = dashcard.visualization_settings.visualization;
@@ -310,7 +310,7 @@ export function DashCardVisualization({
     }
 
     return series;
-  }, [rawSeries, dashcard, datasets]);
+  }, [rawSeries, dashcard, datasets, metadata]);
 
   const series =
     PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(untranslatedSeries);

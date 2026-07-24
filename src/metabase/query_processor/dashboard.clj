@@ -8,9 +8,11 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
+   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.metric :as permissions.metric]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -36,6 +38,57 @@
               (t2/exists? :model/DashboardCardSeries
                           :card_id          card-id
                           :dashboardcard_id dashcard-id))))))
+
+(defn- current-dimension-mapping?
+  [provider query mapping]
+  (let [target-key (lib-metric/field-ref->key (:target mapping))]
+    (boolean
+     (some #(= target-key (lib-metric/field-ref->key (-> % :mapping :target)))
+           (lib-metric/compute-dimension-pairs provider query)))))
+
+(defn- default-metric-dimension
+  [provider query card]
+  (let [metric-metadata {:lib/type           :metadata/metric
+                         :id                 (:id card)
+                         :dataset-query      (:dataset_query card)
+                         :dimensions         (:dimensions card)
+                         :dimension-mappings (:dimension_mappings card)}
+        dimensions      (lib-metric/get-persisted-dimensions metric-metadata)
+        mappings        (lib-metric/get-persisted-dimension-mappings metric-metadata)]
+    (when-let [dimension (u/seek #(and (:default %)
+                                       (not= :status/orphaned (:status %)))
+                                 dimensions)]
+      (when-let [mapping (u/seek #(= (:id dimension) (:dimension-id %)) mappings)]
+        (when (current-dimension-mapping? provider query mapping)
+          (when-let [database-provider (lib-metric/database-provider-for-table provider (:table-id mapping))]
+            (when (permissions.metric/can-use-dimension-mapping? database-provider (:database_id card) mapping)
+              (let [field-id (lib-metric/dimension-target->field-id (:target mapping))]
+                (cond-> (assoc dimension
+                               :lib/type :metadata/dimension
+                               :source-type :metric
+                               :source-id (:id card)
+                               :dimension-mapping mapping)
+                  (and (not (seq (:sources dimension))) field-id)
+                  (assoc :sources [{:type :field, :field-id field-id}]))))))))))
+
+(defn card-with-default-metric-dimension
+  "Replace a metric card's final-stage breakouts with its active default dimension when the current user can access it."
+  [card]
+  (if-not (= :metric (:type card))
+    card
+    (let [provider (lib-metric/metadata-provider)
+          query    (lib/query provider (:dataset_query card))]
+      (if-not (and (= 1 (count (:stages query)))
+                   (lib/mbql-stage? query -1))
+        card
+        (if-let [dimension (default-metric-dimension provider query card)]
+          (let [definition (lib-metric/from-metric-metadata provider card)
+                breakout   (lib-metric/dimension-breakout definition dimension)]
+            (cond-> card
+              breakout (assoc :dataset_query (-> query
+                                                 lib/remove-all-breakouts
+                                                 (lib/breakout breakout)))))
+          card)))))
 
 (defn- resolve-param-for-card
   [card-id dashcard-id param-id->param {param-id :id, :as request-param}]
@@ -203,4 +256,5 @@
                     (u/pprint-to-str options))
         ;; we've already validated our parameters, so we don't need the [[qp.card]] namespace to do it again
         (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
-          (m/mapply qp.card/process-query-for-card card export-format options))))))
+          (m/mapply qp.card/process-query-for-card card export-format
+                    (assoc options :card-transform card-with-default-metric-dimension)))))))

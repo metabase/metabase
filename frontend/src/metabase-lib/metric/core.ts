@@ -2,7 +2,7 @@
 import dayjs, { type Dayjs } from "dayjs";
 
 import * as LibMetric from "cljs/metabase.lib_metric.js";
-import type { Metadata } from "metabase-lib";
+import type { ColumnMetadata, Metadata } from "metabase-lib";
 import type {
   ConcreteTableId,
   JsMetricDefinition,
@@ -441,6 +441,12 @@ export function projectionableDimensions(
   return LibMetric.projectionableDimensions(definition) as DimensionMetadata[];
 }
 
+export function pickDefaultDimension(
+  dimensions: readonly ColumnMetadata[],
+): ColumnMetadata | null {
+  return LibMetric.pickDefaultDimension(dimensions) as ColumnMetadata | null;
+}
+
 export function dimensionReference(
   dimension: DimensionMetadata,
 ): ProjectionClause {
@@ -469,6 +475,14 @@ export function project(
     ) as MetricDefinition;
   }
   return LibMetric.project(definition, dimensionRef) as MetricDefinition;
+}
+
+/** Projects a dimension using its default temporal bucket or binning strategy. */
+export function projectDimension(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): MetricDefinition {
+  return LibMetric.projectDimension(definition, dimension) as MetricDefinition;
 }
 
 export function projectionDimension(

@@ -1,15 +1,18 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
 import {
   setupCardEndpoints,
-  setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupDatabaseEndpoints,
+  setupMetricDatasetEndpoint,
   setupMetricEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { Card, Dataset, Field } from "metabase-types/api";
+import type { Card, Dataset, Field, Metric } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -18,10 +21,14 @@ import {
   createMockDatasetData,
   createMockField,
   createMockMetric,
+  createMockMetricDimension,
   createMockNumericColumn,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
   ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -36,6 +43,7 @@ const mockUrls = {
   about: (id: number) => `/metric/${id}`,
   overview: (id: number) => `/metric/${id}/overview`,
   query: (id: number) => `/metric/${id}/query`,
+  dimensions: (id: number) => `/metric/${id}/dimensions`,
   dependencies: (id: number) => `/metric/${id}/dependencies`,
   caching: (id: number) => `/metric/${id}/caching`,
   history: (id: number) => `/metric/${id}/history`,
@@ -62,19 +70,72 @@ function makeMetricCard(resultMetadata: Field[]): Card {
 const SCALAR_DATASET = createMockDataset({
   data: createMockDatasetData({
     cols: [createMockNumericColumn({ name: "count" })],
-    rows: [],
+    rows: [[150]],
   }),
 });
 
-function setup(card: Card, dataset: Dataset = SCALAR_DATASET) {
+const TIME_SERIES = createMockDataset({
+  data: createMockDatasetData({
+    cols: [
+      createMockColumn({
+        name: "created_at",
+        base_type: "type/DateTime",
+        unit: "month",
+      }),
+      createMockNumericColumn({ name: "count" }),
+    ],
+    rows: [
+      ["2023-12-01T00:00:00Z", 100],
+      ["2024-01-01T00:00:00Z", 150],
+    ],
+  }),
+});
+
+const BINNED_NUMERIC_DATASET = createMockDataset({
+  data: createMockDatasetData({
+    cols: [
+      createMockColumn({
+        name: "quantity",
+        display_name: "Quantity: 8 bins",
+        base_type: "type/Integer",
+        effective_type: "type/Integer",
+        binning_info: {
+          binning_strategy: "num-bins",
+          min_value: 0,
+          max_value: 100,
+          num_bins: 8,
+          bin_width: 12.5,
+        },
+      }),
+      createMockNumericColumn({ name: "count" }),
+    ],
+    rows: [
+      [0, 10],
+      [12.5, 20],
+    ],
+  }),
+});
+
+interface SetupOptions {
+  metric?: Metric;
+  metricDataset?: Dataset;
+}
+
+function setup(
+  card: Card,
+  dataset: Dataset = SCALAR_DATASET,
+  { metric, metricDataset }: SetupOptions = {},
+) {
   setupDatabaseEndpoints(SAMPLE_DB);
   setupCardEndpoints(card);
   setupCardQueryMetadataEndpoint(
     card,
     createMockCardQueryMetadata({ databases: [SAMPLE_DB] }),
   );
-  setupCardQueryEndpoints(card, dataset);
-  setupMetricEndpoint(createMockMetric({ id: card.id, name: card.name }));
+  setupMetricEndpoint(
+    metric ?? createMockMetric({ id: card.id, name: card.name }),
+  );
+  setupMetricDatasetEndpoint(metricDataset ?? dataset);
 
   renderWithProviders(
     <Route path="/" element={<MetricAbout card={card} urls={mockUrls} />} />,
@@ -84,6 +145,14 @@ function setup(card: Card, dataset: Dataset = SCALAR_DATASET) {
       initialRoute: "/",
     },
   );
+}
+
+async function getMetricDatasetRequest(): Promise<unknown> {
+  await waitFor(() => {
+    expect(fetchMock.callHistory.calls("metric-dataset")).toHaveLength(1);
+  });
+
+  return fetchMock.callHistory.lastCall("metric-dataset")?.request?.json();
 }
 
 describe("MetricAbout", () => {
@@ -113,88 +182,326 @@ describe("MetricAbout", () => {
     expect(screen.queryByTestId("explore-link")).not.toBeInTheDocument();
   });
 
-  // The value preview (latest value + period-over-period change) only renders
-  // for a time series, so its presence/absence tells us which branch was chosen.
-  describe("value + change-over-time preview", () => {
-    const TIME_SERIES = createMockDataset({
-      data: createMockDatasetData({
-        cols: [
-          createMockColumn({
-            name: "created_at",
-            base_type: "type/DateTime",
-            unit: "month",
+  describe("curated default dimension", () => {
+    it("queries the curated default instead of the saved card query", async () => {
+      const defaultDimensionId = "product-category";
+      const metric = createMockMetric({
+        id: 42,
+        dimensions: [
+          createMockMetricDimension({
+            id: defaultDimensionId,
+            display_name: "Product Category",
+            effective_type: "type/Text",
+            semantic_type: "type/Category",
+            default: true,
+            status: "status/active",
           }),
-          createMockNumericColumn({ name: "count" }),
         ],
-        rows: [
-          ["2023-12-01T00:00:00Z", 100],
-          ["2024-01-01T00:00:00Z", 150],
+        dimension_mappings: [
+          {
+            dimension_id: defaultDimensionId,
+            table_id: PRODUCTS_ID,
+            target: [
+              "field",
+              { "source-field": ORDERS.PRODUCT_ID },
+              PRODUCTS.CATEGORY,
+            ],
+          },
         ],
-      }),
-    });
+      });
+      const categoryDataset = createMockDataset({
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({
+              name: "category",
+              base_type: "type/Text",
+              semantic_type: "type/Category",
+            }),
+            createMockNumericColumn({ name: "count" }),
+          ],
+          rows: [
+            ["Doohickey", 40],
+            ["Gadget", 60],
+          ],
+        }),
+      });
 
-    it("shows the latest value when results are a (date, value) time series", async () => {
       setup(
         makeMetricCard([
           createMockField({ name: "created_at", base_type: "type/DateTime" }),
           createMockField({ name: "count", base_type: "type/Integer" }),
         ]),
         TIME_SERIES,
+        { metric, metricDataset: categoryDataset },
       );
+
+      expect(await getMetricDatasetRequest()).toEqual({
+        definition: expect.objectContaining({
+          projections: [
+            expect.objectContaining({
+              projection: [
+                ["dimension", expect.any(Object), defaultDimensionId],
+              ],
+            }),
+          ],
+        }),
+      });
+      expect(
+        fetchMock.callHistory.calls("path:/api/card/42/query"),
+      ).toHaveLength(0);
+      expect(
+        screen.queryByTestId("metric-value-preview"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("uses the curated time dimension for the value preview", async () => {
+      const defaultDimensionId = "created-at";
+      const metric = createMockMetric({
+        id: 42,
+        dimensions: [
+          createMockMetricDimension({
+            id: defaultDimensionId,
+            display_name: "Created At",
+            effective_type: "type/DateTime",
+            semantic_type: "type/CreationTimestamp",
+            default: true,
+            status: "status/active",
+          }),
+        ],
+        dimension_mappings: [
+          {
+            dimension_id: defaultDimensionId,
+            table_id: ORDERS_ID,
+            target: ["field", {}, ORDERS.CREATED_AT],
+          },
+        ],
+      });
+
+      setup(makeMetricCard([createMockField({ name: "count" })]), undefined, {
+        metric,
+        metricDataset: TIME_SERIES,
+      });
 
       expect(
         await screen.findByTestId("metric-value-preview"),
       ).toHaveTextContent("150");
-    });
-
-    it("does not show the value preview for a scalar metric with no date column", async () => {
-      setup(
-        makeMetricCard([
-          createMockField({ name: "count", base_type: "type/Integer" }),
-        ]),
-      );
-
-      expect(await screen.findByText("Source")).toBeInTheDocument();
+      expect(await getMetricDatasetRequest()).toEqual({
+        definition: expect.objectContaining({
+          projections: [
+            expect.objectContaining({
+              projection: [
+                ["dimension", expect.any(Object), defaultDimensionId],
+              ],
+            }),
+          ],
+        }),
+      });
       expect(
-        screen.queryByTestId("metric-value-preview"),
-      ).not.toBeInTheDocument();
+        fetchMock.callHistory.calls("path:/api/card/42/query"),
+      ).toHaveLength(0);
     });
 
-    it("does not show the value preview when broken out by a non-temporal dimension", async () => {
-      setup(
-        makeMetricCard([
-          createMockField({
-            name: "category",
-            base_type: "type/Text",
-            semantic_type: "type/Category",
+    it("changes the chart when a curated dimension is selected (UXW-4772)", async () => {
+      const defaultDimensionId = "created-at";
+      const categoryDimensionId = "product-category";
+      const metric = createMockMetric({
+        id: 42,
+        dimensions: [
+          createMockMetricDimension({
+            id: defaultDimensionId,
+            display_name: "Created At",
+            effective_type: "type/DateTime",
+            semantic_type: "type/CreationTimestamp",
+            default: true,
+            status: "status/active",
           }),
-          createMockField({ name: "count", base_type: "type/Integer" }),
-        ]),
-      );
+          createMockMetricDimension({
+            id: categoryDimensionId,
+            display_name: "Product Category",
+            effective_type: "type/Text",
+            semantic_type: "type/Category",
+            status: "status/active",
+          }),
+        ],
+        dimension_mappings: [
+          {
+            dimension_id: defaultDimensionId,
+            table_id: ORDERS_ID,
+            target: ["field", {}, ORDERS.CREATED_AT],
+          },
+          {
+            dimension_id: categoryDimensionId,
+            table_id: PRODUCTS_ID,
+            target: [
+              "field",
+              { "source-field": ORDERS.PRODUCT_ID },
+              PRODUCTS.CATEGORY,
+            ],
+          },
+        ],
+      });
 
-      expect(await screen.findByText("Source")).toBeInTheDocument();
+      setup(makeMetricCard([createMockField({ name: "count" })]), undefined, {
+        metric,
+        metricDataset: TIME_SERIES,
+      });
+
+      const dimensionSelect = await screen.findByRole("button", {
+        name: "Select dimension: Created At",
+      });
+      expect(dimensionSelect).toHaveTextContent("Created At");
+
+      await userEvent.click(dimensionSelect);
+      const categoryOption = await screen.findByRole("option", {
+        name: /Product Category/,
+      });
+      expect(categoryOption).toContainElement(
+        within(categoryOption).getByLabelText("string icon"),
+      );
+      await userEvent.click(categoryOption);
+
       expect(
-        screen.queryByTestId("metric-value-preview"),
-      ).not.toBeInTheDocument();
+        await screen.findByRole("button", {
+          name: "Select dimension: Product Category",
+        }),
+      ).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.calls("metric-dataset")).toHaveLength(2);
+      });
+      expect(
+        await fetchMock.callHistory.lastCall("metric-dataset")?.request?.json(),
+      ).toEqual({
+        definition: expect.objectContaining({
+          projections: [
+            expect.objectContaining({
+              projection: [
+                ["dimension", expect.any(Object), categoryDimensionId],
+              ],
+            }),
+          ],
+        }),
+      });
     });
 
-    it("does not show the value preview for a multi-breakout series where the value is not the second column", async () => {
+    it("shows the bin count for the selected numeric dimension", async () => {
+      const dimensionId = "quantity";
+      const metric = createMockMetric({
+        id: 42,
+        dimensions: [
+          createMockMetricDimension({
+            id: dimensionId,
+            display_name: "Quantity",
+            effective_type: "type/Integer",
+            semantic_type: "type/Quantity",
+            default: true,
+            status: "status/active",
+          }),
+        ],
+        dimension_mappings: [
+          {
+            dimension_id: dimensionId,
+            table_id: ORDERS_ID,
+            target: ["field", {}, ORDERS.QUANTITY],
+          },
+        ],
+      });
+
+      setup(makeMetricCard([createMockField({ name: "count" })]), undefined, {
+        metric,
+        metricDataset: BINNED_NUMERIC_DATASET,
+      });
+
+      const dimensionSelect = await screen.findByRole("button", {
+        name: "Select dimension: Quantity: 8 bins",
+      });
+      expect(dimensionSelect).toHaveTextContent("Quantity: 8 bins");
+
+      await userEvent.click(dimensionSelect);
+      const quantityOption = await screen.findByRole("option", {
+        name: /Quantity/,
+      });
+      expect(quantityOption).toHaveTextContent("Quantity");
+      expect(quantityOption).not.toHaveTextContent("8 bins");
+    });
+  });
+
+  describe("scalar fallback", () => {
+    it("shows a scalar when the curated default cannot be charted", async () => {
       setup(
         makeMetricCard([
           createMockField({ name: "created_at", base_type: "type/DateTime" }),
-          createMockField({
-            name: "category",
-            base_type: "type/Text",
-            semantic_type: "type/Category",
-          }),
           createMockField({ name: "count", base_type: "type/Integer" }),
         ]),
+        TIME_SERIES,
+        {
+          metric: createMockMetric({
+            id: 42,
+            dimensions: [
+              createMockMetricDimension({
+                id: "user-id",
+                effective_type: "type/Integer",
+                semantic_type: "type/FK",
+                default: true,
+                status: "status/active",
+              }),
+            ],
+            dimension_mappings: [
+              {
+                dimension_id: "user-id",
+                table_id: ORDERS_ID,
+                target: ["field", {}, ORDERS.USER_ID],
+              },
+            ],
+          }),
+          metricDataset: SCALAR_DATASET,
+        },
       );
 
-      expect(await screen.findByText("Source")).toBeInTheDocument();
+      expect(await screen.findByTestId("scalar-value")).toHaveTextContent(
+        "150",
+      );
       expect(
-        screen.queryByTestId("metric-value-preview"),
+        fetchMock.callHistory.calls("path:/api/card/42/query"),
+      ).toHaveLength(0);
+      expect(await getMetricDatasetRequest()).toEqual(
+        expect.objectContaining({
+          definition: expect.not.objectContaining({
+            projections: expect.anything(),
+          }),
+        }),
+      );
+    });
+
+    it("shows a scalar when there are no curated dimensions", async () => {
+      setup(
+        makeMetricCard([
+          createMockField({ name: "created_at", base_type: "type/DateTime" }),
+          createMockField({ name: "count", base_type: "type/Integer" }),
+        ]),
+        TIME_SERIES,
+        {
+          metric: createMockMetric({ id: 42, dimensions: [] }),
+          metricDataset: SCALAR_DATASET,
+        },
+      );
+
+      expect(await screen.findByTestId("scalar-value")).toHaveTextContent(
+        "150",
+      );
+      expect(
+        screen.queryByRole("button", { name: /Select dimension:/ }),
       ).not.toBeInTheDocument();
+      expect(await getMetricDatasetRequest()).toEqual(
+        expect.objectContaining({
+          definition: expect.not.objectContaining({
+            projections: expect.anything(),
+          }),
+        }),
+      );
+      expect(
+        fetchMock.callHistory.calls("path:/api/card/42/query"),
+      ).toHaveLength(0);
     });
   });
 });

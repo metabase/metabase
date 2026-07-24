@@ -24,6 +24,23 @@
    {:dimension {:id nil :name name}
     :mapping   {:type :table :table-id table-id :target target}}))
 
+(deftest ^:parallel pick-default-dimension-test
+  (let [fallback {:id "fallback" :effective-type :type/Integer}
+        category {:id "category" :semantic-type :type/Category}
+        low-cardinality {:id "low-cardinality" :effective-type :type/Text :has-field-values :list}
+        state {:id "state" :effective-type :type/Text :semantic-type :type/State}
+        time {:id "time" :effective-type :type/DateTime}]
+    (testing "prefers time, then geo, then category or low-cardinality, then the first dimension (UXW-4788)"
+      (is (= time (lib-metric.dimension/pick-default-dimension
+                   [fallback category low-cardinality state time])))
+      (is (= state (lib-metric.dimension/pick-default-dimension
+                    [fallback category low-cardinality state])))
+      (is (= category (lib-metric.dimension/pick-default-dimension
+                       [fallback category low-cardinality])))
+      (is (= low-cardinality (lib-metric.dimension/pick-default-dimension
+                              [fallback low-cardinality])))
+      (is (= fallback (lib-metric.dimension/pick-default-dimension [fallback]))))))
+
 ;;; -------------------------------------------------- Target Comparison --------------------------------------------------
 
 (deftest ^:parallel targets-equal?-same-field-id-test
@@ -55,6 +72,35 @@
         target-b [:field {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" :effective-type :type/Text :base-type :type/BigInteger} 100]]
     (is (lib-metric.dimension/targets-equal? target-a target-b)
         "effective-type and base-type are ignored")))
+
+;;; -------------------------------------------------- field-ref->key --------------------------------------------------
+
+(deftest ^:parallel field-ref->key-ignores-transient-opts-test
+  (testing ":lib/uuid and type hints are not part of the key"
+    (is (= (lib-metric.dimension/field-ref->key
+            [:field {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" :effective-type :type/Integer} 100])
+           (lib-metric.dimension/field-ref->key
+            [:field {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" :base-type :type/BigInteger} 100])))))
+
+(deftest ^:parallel field-ref->key-distinguishes-source-field-test
+  (testing "the SAME field id reached via different FKs (:source-field) yields DISTINCT keys"
+    ;; This is the bug this function exists to prevent: field ids are not unique within a query when
+    ;; a table has multiple FKs to the same foreign table.
+    (is (not= (lib-metric.dimension/field-ref->key [:field {:source-field 1} 100])
+              (lib-metric.dimension/field-ref->key [:field {:source-field 2} 100]))))
+  (testing "the same field id + same :source-field yields the same key (regardless of :lib/uuid)"
+    (is (= (lib-metric.dimension/field-ref->key
+            [:field {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" :source-field 1} 100])
+           (lib-metric.dimension/field-ref->key
+            [:field {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" :source-field 1} 100])))))
+
+(deftest ^:parallel field-ref->key-includes-bucketing-test
+  (testing "binning is part of the key"
+    (is (not= (lib-metric.dimension/field-ref->key [:field {:binning {:strategy :default}} 100])
+              (lib-metric.dimension/field-ref->key [:field {} 100]))))
+  (testing "temporal-unit is part of the key"
+    (is (not= (lib-metric.dimension/field-ref->key [:field {:temporal-unit :month} 100])
+              (lib-metric.dimension/field-ref->key [:field {:temporal-unit :day} 100])))))
 
 ;;; -------------------------------------------------- Reconciliation --------------------------------------------------
 

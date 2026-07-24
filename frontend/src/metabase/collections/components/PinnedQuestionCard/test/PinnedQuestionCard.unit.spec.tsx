@@ -2,7 +2,13 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { CollectionItemModel } from "metabase-types/api";
+import {
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { setup } from "./setup";
 
@@ -14,6 +20,39 @@ describe("PinnedQuestionCard", () => {
 
     expect(fetchMock.callHistory.calls("path:/api/card/1/query")).toHaveLength(
       1,
+    );
+  });
+
+  it("uses the default display for a pinned metric preview", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [
+            {
+              type: "column",
+              name: "TOTAL",
+              sourceName: "ORDERS",
+              bins: 10,
+            },
+          ],
+        },
+      ],
+    });
+
+    setup(
+      { model: "metric", collection_preview: true },
+      {
+        card: { type: "metric", display: "line" },
+        dataset: { json_query: Lib.toJsQuery(query) },
+        databases: [createSampleDatabase()],
+      },
+    );
+
+    expect(await screen.findByTestId("visualization-root")).toHaveAttribute(
+      "data-viz-ui-name",
+      "Bar",
     );
   });
 });

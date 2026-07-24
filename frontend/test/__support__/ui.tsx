@@ -1,5 +1,11 @@
 import { Global } from "@emotion/react";
-import type { Middleware, Reducer, Store } from "@reduxjs/toolkit";
+import type {
+  AnyAction,
+  Middleware,
+  Reducer,
+  Store,
+  ThunkDispatch,
+} from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher, RenderHookOptions } from "@testing-library/react";
 import {
@@ -228,7 +234,9 @@ export function getTestStoreAndWrapper({
     initialState,
     // Unjustified type cast. FIXME
     storeMiddleware as Middleware[],
-  ) as unknown as Store<State>;
+  ) as unknown as Store<State> & {
+    dispatch: ThunkDispatch<State, void, AnyAction>;
+  };
 
   const wrapper = (props: any) => {
     return (

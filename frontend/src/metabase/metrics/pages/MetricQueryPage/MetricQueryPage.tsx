@@ -148,7 +148,7 @@ function MetricQueryPageBody({
             />
           }
         />
-        <Card withBorder flex={1} p={0}>
+        <Card withBorder shadow="none" flex={1} p={0}>
           <MetricQueryEditor
             query={question.query()}
             uiState={uiState}
