@@ -20,7 +20,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [metabase.util.performance :as perf :refer [empty? every? mapv not-empty select-keys some]]
    [toucan2.pipeline :as t2.pipeline])
@@ -1672,14 +1671,13 @@
 
 (defmulti aggregation-name
   "Returns the name of an aggregation clause."
-  {:added "0.61.0", :deprecated "0.64.0", :arglists '([driver legacy-inner-query legacy-ag-clause])}
+  {:added "0.61.0" :arglists '([driver inner-query ag-clause])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-  #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod aggregation-name :sql
-  [_driver legacy-inner-query legacy-ag-clause]
-  (driver-api/aggregation-name legacy-inner-query legacy-ag-clause))
+  [_driver inner-query ag-clause]
+  (driver-api/aggregation-name inner-query ag-clause))
 
 (defmethod apply-top-level-clause [:sql :aggregation]
   [driver _top-level-clause honeysql-form {aggregations :aggregation, :as inner-query}]
@@ -1736,9 +1734,7 @@
      [:lower field])
    pattern])
 
-;; TODO (Cam 2026-07-23) remove once we finish migrating all SQL drivers to MBQL 5
-(mr/def ::legacy-string-value-or-field-or-expression
-  #_{:clj-kondo/ignore [:deprecated-var]}
+(def ^:private StringValueOrFieldOrExpression
   [:or
    [:and driver-api/mbql.schema.value
     [:fn {:error/message "string value"} #(string? (second %))]]
@@ -1794,7 +1790,7 @@
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
   [driver
    pre
-   [type _ :as arg] :- ::legacy-string-value-or-field-or-expression
+   [type _ :as arg] :- StringValueOrFieldOrExpression
    post
    {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   (if (= :value type)
@@ -2027,10 +2023,10 @@
    [:sequential :any]])
 
 (mu/defmethod join->honeysql :sql :- HoneySQLJoin
-  [driver {:keys [condition], :as legacy-join} :- #_{:clj-kondo/ignore [:deprecated-var]} driver-api/Join]
-  (let [join-alias ((some-fn driver-api/qp.add.alias :alias) legacy-join)]
+  [driver {:keys [condition], :as join} :- driver-api/Join]
+  (let [join-alias ((some-fn driver-api/qp.add.alias :alias) join)]
     (assert (string? join-alias))
-    [[(join-source driver legacy-join)
+    [[(join-source driver join)
       [(->honeysql driver (h2x/identifier :table-alias join-alias))]]
      (->honeysql driver condition)]))
 

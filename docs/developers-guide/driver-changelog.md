@@ -52,8 +52,6 @@ title: Driver interface changelog
 - `metabase.driver-api.core/aggregation-name` is now deprecated, as it operates on legacy MBQL; use
   `metabase.driver-api.core/mbql-5-aggregation-name` going forward.
 
-- `metabase.driver.sql.query-processor/aggregation-name` is now deprecated, and will be removed in a future release.
-
 - The method signature for `metabase.driver/substitute-native-parameters-in-stage-method`, introduced in 63, has
   changed; please update your implementations accordingly.
 
