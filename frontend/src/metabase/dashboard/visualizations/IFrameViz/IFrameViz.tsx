@@ -35,7 +35,6 @@ export interface IFrameVizProps {
   isPreviewing: boolean;
   onUpdateVisualizationSettings: (newSettings: VisualizationSettings) => void;
   settings: VisualizationSettings;
-  isEditingParameter?: boolean;
   width: number;
   height: number;
   gridSize: {
@@ -51,7 +50,6 @@ export function IFrameViz({
   isEditing,
   onUpdateVisualizationSettings,
   settings,
-  isEditingParameter,
   width,
   height,
   isPreviewing,
@@ -86,7 +84,7 @@ export function IFrameViz({
     [dashcard, dashboard, parameterValues, allowedIframeAttributes?.src],
   );
 
-  if (isEditing && !isEditingParameter && !isPreviewing) {
+  if (isEditing && !isPreviewing) {
     return (
       <IFrameEditWrapper>
         <Stack h="100%" gap="sm">
@@ -139,7 +137,7 @@ export function IFrameViz({
   };
 
   return (
-    <IFrameWrapper data-testid="iframe-card" fade={isEditingParameter}>
+    <IFrameWrapper data-testid="iframe-card">
       {hasAllowedIFrameUrl ? (
         <iframe
           data-testid="iframe-visualization"

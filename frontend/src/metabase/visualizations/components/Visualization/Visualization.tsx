@@ -690,6 +690,7 @@ class Visualization extends PureComponent<
       isDashboard,
       isDocument,
       isEditing,
+      isEditingParameter,
       isEmbeddingSdk,
       isFullscreen,
       isMetricsViewer,
@@ -956,6 +957,7 @@ class Visualization extends PureComponent<
                     isDashboard={!!isDashboard}
                     isDocument={!!isDocument}
                     isEditing={!!isEditing}
+                    isEditingParameter={isEditingParameter}
                     isEmbeddingSdk={isEmbeddingSdk}
                     isFullscreen={!!isFullscreen}
                     isMetricsViewer={!!isMetricsViewer}

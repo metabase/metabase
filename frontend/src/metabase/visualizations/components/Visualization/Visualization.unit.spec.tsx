@@ -8,7 +8,10 @@ import { color } from "metabase/ui/colors";
 import { registerVisualization } from "metabase/visualizations";
 import VisualizationComponent from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { VisualizationProps } from "metabase/visualizations/types";
+import type {
+  VisualizationPassThroughProps,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import type {
   RawSeries,
   Settings,
@@ -49,6 +52,30 @@ const MockedVisualization = Object.assign(
 );
 
 registerVisualization(MockedVisualization);
+
+// Unjustified type cast. FIXME
+const PROBE_DISPLAY = "probe-visualization" as VisualizationDisplay;
+
+const ProbeVisualization = Object.assign(
+  ({
+    isEditingParameter,
+  }: Pick<VisualizationPassThroughProps, "isEditingParameter">) => (
+    <div data-testid="probe-viz">{String(isEditingParameter ?? "none")}</div>
+  ),
+  {
+    getUiName: () => "Probe Visualization",
+    identifier: PROBE_DISPLAY,
+    iconName: "unknown" as const,
+    noHeader: true,
+    minSize: { width: 1, height: 1 },
+    defaultSize: { width: 4, height: 4 },
+    settings: {},
+    isSensible: () => false,
+    checkRenderable: () => undefined,
+  },
+);
+
+registerVisualization(ProbeVisualization);
 
 describe("Visualization", () => {
   const renderViz = async (
@@ -123,6 +150,35 @@ describe("Visualization", () => {
         "Products, Count, Grouped by Category and Vendor",
       );
     });
+  });
+
+  it("passes isEditingParameter through to the visualization component", async () => {
+    await renderViz(
+      [
+        {
+          data: {
+            ...createMockDatasetData({
+              cols: [
+                createMockCategoryColumn({ name: "CATEGORY" }),
+                createMockCategoryColumn({ name: "VENDOR" }),
+                createMockNumericColumn({ name: "count" }),
+              ],
+              rows: [["Doohickey", "Annetta Wyman and Sons", 1]],
+            }),
+          },
+          card: createMockCard({
+            display: PROBE_DISPLAY,
+            visualization_settings: createMockVisualizationSettings({
+              "graph.dimensions": ["CATEGORY", "VENDOR"],
+              "graph.metrics": ["count"],
+            }),
+          }),
+        },
+      ],
+      { isEditingParameter: true },
+    );
+
+    expect(screen.getByTestId("probe-viz")).toHaveTextContent("true");
   });
 
   it("should render a watermark when in development mode", async () => {

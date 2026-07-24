@@ -5,7 +5,7 @@ import styled from "@emotion/styled";
 
 import { Text, type TextProps, Textarea } from "metabase/ui";
 
-export const IFrameWrapper = styled.div<{ fade?: boolean }>`
+export const IFrameWrapper = styled.div`
   display: flex;
   width: 100%;
   height: 100%;
@@ -14,7 +14,7 @@ export const IFrameWrapper = styled.div<{ fade?: boolean }>`
   overflow: hidden;
 `;
 
-export const IFrameEditWrapper = styled.div<{ fade?: boolean }>`
+export const IFrameEditWrapper = styled.div`
   padding: 0.75rem 1rem;
   display: flex;
   flex-direction: column;
