@@ -19,6 +19,7 @@ import {
   allowedHosts,
   appSlug,
   bundleUrl,
+  diagnosticsChangedEvent,
   rebuiltEvent,
   sdkVersion,
 } from "virtual:metabase-data-app-dev-config";
@@ -52,10 +53,20 @@ sdkCallCapture.install(authConfig.metabaseInstanceUrl);
 
 const hot = import.meta.hot;
 
+const subscribeToDiagnostics = hot
+  ? (onChange: () => void) => {
+      hot.on(diagnosticsChangedEvent, onChange);
+
+      return () => hot.off(diagnosticsChangedEvent, onChange);
+    }
+  : undefined;
+
 const toolbarRoot = document.createElement("div");
 
 document.body.appendChild(toolbarRoot);
-createRoot(toolbarRoot).render(<DevToolbar />);
+createRoot(toolbarRoot).render(
+  <DevToolbar subscribe={subscribeToDiagnostics} />,
+);
 
 const root = document.getElementById("root");
 

@@ -76,6 +76,11 @@ export function dataAppSandboxDevPlugin(
         if (path.basename(file) === DATA_APP_MANIFEST_FILE_NAME) {
           refreshManifestStatus();
 
+          server.ws.send({
+            type: "custom",
+            event: DATA_APP_DIAGNOSTICS_CHANGED_EVENT,
+          });
+
           return;
         }
 

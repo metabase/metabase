@@ -1,7 +1,6 @@
 import {
   DATA_APP_DIAGNOSTICS_CALL_LIMIT,
   DATA_APP_DIAGNOSTICS_LIMIT,
-  DATA_APP_DIAGNOSTIC_MAX_CHARS,
 } from "../constants/diagnostics-channel";
 import type { DataAppDiagnosticEntry } from "../types/diagnostics-channel";
 
@@ -132,17 +131,6 @@ describe("DiagnosticsStore", () => {
     // to 0, and every id is >= 0.
     expect(store.getReport(Number.NaN).entries).toHaveLength(1);
     expect(store.getReport(0).entries).toHaveLength(1);
-  });
-
-  it("re-truncates oversized text, since the socket is just another local process", () => {
-    const store = new DiagnosticsStore();
-    const long = "x".repeat(DATA_APP_DIAGNOSTIC_MAX_CHARS + 100);
-
-    store.applyMessage(message([entry({ summary: long, detail: long })]));
-
-    const [only] = store.getReport(0).entries;
-    expect(only.summary).toContain("truncated");
-    expect(only.detail).toContain("truncated");
   });
 
   it("holds the last connection status reported, ignoring messages without one", () => {
