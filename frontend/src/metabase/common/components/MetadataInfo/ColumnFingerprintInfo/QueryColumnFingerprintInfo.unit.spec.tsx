@@ -19,7 +19,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { QueryColumnFingerprintInfo } from "./ColumnFingerprintInfo";
+import { QueryColumnFingerprintInfo } from "./QueryColumnFingerprintInfo";
 
 const NUMBER_FINGERPRINT = createMockFingerprint({
   type: {

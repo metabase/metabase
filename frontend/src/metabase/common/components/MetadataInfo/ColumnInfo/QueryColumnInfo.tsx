@@ -6,7 +6,7 @@ import { QueryColumnFingerprintInfo } from "../ColumnFingerprintInfo";
 import { Description, EmptyDescription } from "../MetadataInfo";
 import { SemanticTypeLabel } from "../SemanticTypeLabel";
 
-import { InfoContainer, Small } from "./ColumnInfo.styled";
+import { InfoContainer, Small } from "./QueryColumnInfo.styled";
 
 export type QueryColumnInfoProps = {
   className?: string;

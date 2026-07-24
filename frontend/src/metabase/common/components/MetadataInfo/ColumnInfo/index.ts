@@ -1,2 +1,2 @@
-export { QueryColumnInfo } from "./ColumnInfo";
-export type { QueryColumnInfoProps } from "./ColumnInfo";
+export { QueryColumnInfo } from "./QueryColumnInfo";
+export type { QueryColumnInfoProps } from "./QueryColumnInfo";

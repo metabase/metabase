@@ -1,1 +1,1 @@
-export * from "./ColumnInfoIcon";
+export * from "./QueryColumnInfoIcon";

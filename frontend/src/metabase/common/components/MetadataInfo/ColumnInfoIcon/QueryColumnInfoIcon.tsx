@@ -30,19 +30,17 @@ export function QueryColumnInfoIcon({
   const { column } = props;
 
   return (
-    <>
-      <QueryColumnInfoPopover {...props}>
-        <span aria-label={t`More info`}>
-          <PopoverDefaultIcon
-            className={className}
-            name={icon ?? getColumnIcon(column)}
-            size={size}
-            c={color}
-          />
-          <PopoverHoverTarget className={className} name="info" size={size} />
-        </span>
-      </QueryColumnInfoPopover>
-    </>
+    <QueryColumnInfoPopover {...props}>
+      <span aria-label={t`More info`}>
+        <PopoverDefaultIcon
+          className={className}
+          name={icon ?? getColumnIcon(column)}
+          size={size}
+          c={color}
+        />
+        <PopoverHoverTarget className={className} name="info" size={size} />
+      </span>
+    </QueryColumnInfoPopover>
   );
 }
 

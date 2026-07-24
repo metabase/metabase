@@ -1,1 +1,1 @@
-export * from "./ColumnFingerprintInfo";
+export * from "./QueryColumnFingerprintInfo";

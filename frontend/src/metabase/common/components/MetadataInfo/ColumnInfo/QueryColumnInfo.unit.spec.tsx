@@ -6,7 +6,7 @@ import {
   columnFinder,
 } from "metabase-lib/test-helpers";
 
-import { QueryColumnInfo } from "./ColumnInfo";
+import { QueryColumnInfo } from "./QueryColumnInfo";
 
 function setupLib(table: string, column: string) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
