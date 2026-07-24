@@ -11,6 +11,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
@@ -98,12 +99,22 @@
               end-id (inclusive-exclusive inclusive-end?))
       (format "from %s (%s) until the end" start-id (inclusive-exclusive inclusive-start?)))))
 
+(defonce ^{:private true :doc "Monotonic counter for fabricating unique synthetic per-major deployment_ids in tests."}
+  test-deployment-counter
+  (atom 0))
+
 (defn run-migrations-in-range!
   "Run Liquibase migrations from our migrations YAML file in the range of `start-id` -> `end-id` (inclusive) against a
   DB with `jdbc-spec`.
 
   Range comparison uses the actual changelog order (index-based), so all ID formats — including hex-style IDs like
-  `v60.f8c3be` — are handled correctly without numeric conversion."
+  `v60.f8c3be` — are handled correctly without numeric conversion.
+
+  After the update, the just-applied changesets that follow the legacy `vNN.` id scheme are split by Metabase major
+  version: each major's rows are reassigned a distinct synthetic `deployment_id` and given a `databasechangelog_version`
+  row (`x.<major>.0.0`). A single update run covers many majors but records only one `deployment_id`, so this mirrors
+  how separate production upgrades each record their own deployment + version -- which the deployment-based rollback
+  logic relies on -- letting `migrate! :down N` find a boundary at major `N`."
   {:added "0.41.0", :arglists '([conn [start-id end-id]]
                                 [conn [start-id end-id] {:keys [inclusive-start? inclusive-end?]
                                                          :or {inclusive-start? true
@@ -112,42 +123,53 @@
   (log/debugf "Finding and running migrations %s" (range-description start-id end-id range-options))
 
   (liquibase/with-liquibase [liquibase conn]
-    (let [database   (.getDatabase liquibase)
-          id->index  (into {} (map-indexed (fn [i ^ChangeSet cs] [(.getId cs) i])
-                                           (.getChangeSets (.getDatabaseChangeLog liquibase))))
-          resolve-id (fn [id]
-                       (or (id->index id)
-                           (throw (ex-info (format "Migration ID not found in changelog: %s" id) {:id id}))))
+    (let [database         (.getDatabase liquibase)
+          changelog-table  (.getDatabaseChangeLogTableName database)
+          changesets       (vec (.getChangeSets (.getDatabaseChangeLog liquibase)))
+          id->index        (into {} (map-indexed (fn [i ^ChangeSet cs] [(.getId cs) i]) changesets))
+          resolve-id       (fn [id]
+                             (or (id->index id)
+                                 (throw (ex-info (format "Migration ID not found in changelog: %s" id) {:id id}))))
           {:keys [inclusive-start? inclusive-end?]
            :or   {inclusive-start? true inclusive-end? true}} range-options
-          start-idx  (resolve-id start-id)
-          end-idx    (when end-id (resolve-id end-id))
+          start-idx        (resolve-id start-id)
+          end-idx          (when end-id (resolve-id end-id))
+          in-range?        (fn [idx]
+                             (and (some? idx)
+                                  (if inclusive-start? (<= start-idx idx) (< start-idx idx))
+                                  (if end-idx (if inclusive-end? (<= idx end-idx) (< idx end-idx)) true)))
+          major-of         (fn [id] (some-> (re-find #"^v(\d+)\." id) second parse-long))
+          in-range-ids     (->> changesets
+                                (map (fn [^ChangeSet cs] (.getId cs)))
+                                (filter #(in-range? (id->index %))))
           change-set-filters [(reify ChangeSetFilter
                                 (accepts [this change-set]
                                   (let [id      (.getId ^ChangeSet change-set)
-                                        idx     (id->index id)
-                                        accept? (boolean
-                                                 (and (some? idx)
-                                                      (if inclusive-start?
-                                                        (<= start-idx idx)
-                                                        (< start-idx idx))
-                                                      (if end-idx
-                                                        (if inclusive-end?
-                                                          (<= idx end-idx)
-                                                          (< idx end-idx))
-                                                        true)))]
+                                        accept? (boolean (in-range? (id->index id)))]
                                     (log/tracef "Migration %s in range [%s ↔ %s] %s ? => %s"
                                                 id start-id end-id
                                                 (if inclusive-end? "(inclusive)" "(exclusive)")
                                                 accept?)
                                     (ChangeSetFilterResult. accept? "decision according to range" (class this)))))]
           change-log-service (.getChangeLogService (ChangeLogHistoryServiceFactory/getInstance) database)]
+      (liquibase/ensure-databasechangelog-versions-table! conn)
       (liquibase/with-scope-locked liquibase
         ;; Calling .listUnrunChangeSets has the side effect of creating the Liquibase tables
         ;; and initializing checksums so that they match the ones generated in production.
         (.listUnrunChangeSets liquibase nil (LabelExpression.))
         (.generateDeploymentId change-log-service)
-        (liquibase/update-with-change-log liquibase {:change-set-filters change-set-filters})))))
+        (liquibase/update-with-change-log liquibase {:change-set-filters change-set-filters}))
+      ;; give each legacy `vNN.` major its own synthetic deployment_id + recorded version, so the deployment-based
+      ;; rollback logic has a boundary at every major (version-less ids keep the real deployment_id and are skipped)
+      (doseq [[major block-ids] (->> in-range-ids (filter major-of) (group-by major-of))]
+        (let [dep-id (format "td%07d" (swap! test-deployment-counter inc))]
+          (jdbc/execute! {:connection conn}
+                         (into [(format "UPDATE %s SET deployment_id = ? WHERE id IN (%s)"
+                                        changelog-table
+                                        (str/join ", " (repeat (count block-ids) "?")))
+                                dep-id]
+                               block-ids))
+          (liquibase/record-deployment-version! conn dep-id (format "x.%d.0.0" major)))))))
 
 (defn test-migrations-for-driver! [driver [start-id end-id] f]
   (log/debug (u/format-color 'yellow "Testing migrations for driver %s..." driver))
@@ -179,7 +201,11 @@
                    :down
                    (do
                      (assert (int? version), "Downgrade requires a version")
-                     (mdb/migrate! (mdb/data-source) :down version)
+                     ;; force: these legacy tests roll back to arbitrary majors, often further back than the default
+                     ;; rollback window (current major + previous-major boundary). force widens that window to the full
+                     ;; recorded history; each major is recorded by run-migrations-in-range! above, so every such target
+                     ;; is a valid recorded version. The default-window rule itself is covered in metabase.app-db.liquibase-test.
+                     (mdb/migrate! (mdb/data-source) :down-force version)
                      ;; We may have rolled back migrations prior to start-id, so its no longer safe to start from there.
                      (reset! restart-id (t2/select-one-pk (liquibase/changelog-table-name conn)
                                                           {:order-by [[:orderexecuted :desc]]}))))))]

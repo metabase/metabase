@@ -244,6 +244,87 @@
         #"Change set IDs are in the wrong file"
         (validate-id "v57.2024-01-01T10:30:00" "056_update_migrations.yaml"))))))
 
+(deftest ^:parallel year-dir-version-less-ids-test
+  (testing "year-based directories allow version-less changeset IDs"
+    (is (= :ok
+           (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
+                          (mock-change-set :id "aeiagus09e")))))
+  (testing "version-numbered directories still reject version-less changeset IDs"
+    (is (thrown?
+         clojure.lang.ExceptionInfo
+         (validate-file (io/file "migrations/060/20260616_workspaces.yaml")
+                        (mock-change-set :id "aeiagus09e"))))
+    (testing "but still accept properly prefixed IDs"
+      (is (= :ok
+             (validate-file (io/file "migrations/060/20260616_workspaces.yaml")
+                            (mock-change-set :id "v60.aeiagus09e"))))))
+  (testing "year-based directories accept lowercase alphanumeric/underscore IDs with at least one letter"
+    (doseq [good-id ["aeiagus09e" "workspaces_init" "a1234567"]]
+      (is (= :ok
+             (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
+                            (mock-change-set :id good-id)))
+          good-id)))
+  (testing "year-based directories reject invalid version-less IDs"
+    (doseq [bad-id ["2026-02-09T12:00:00" ; timestamp
+                    "foo-bar"             ; dash
+                    "v60.aeiagus09e"      ; version-prefixed
+                    "foo.bar"             ; dot
+                    "20260703"            ; all digits: looks like a pre-4.2 changeset id to decide-liquibase-file
+                    "12345"               ; all digits
+                    "v60abc"              ; leading v<digit>: pollutes old binaries' `id LIKE 'v%'` version scans
+                    "Foo_bar"]]           ; uppercase
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"invalid changeset IDs"
+           (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
+                          (mock-change-set :id bad-id)))
+          bad-id)))
+  (testing "year-based directory migrations still require rollback for non-auto-rollback change types"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Rollback is required but not present\."
+         (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
+                        (update (mock-change-set :id "aeiagus09e" :changes [{:sql {:sql "select 1"}}])
+                                :changeSet dissoc :rollback))))))
+
+(deftest ^:parallel year-dir-prevent-bare-types-test
+  ;; Regression: the bare-type checks filter changesets through changeset-version+id, which only parses `vNN.` ids --
+  ;; version-less year-dir ids returned nil and were silently EXEMPT from the boolean/datetime checks.
+  (let [year-file (io/file "migrations/2026/20260616_workspaces.yaml")]
+    (testing "year-dir migrations may use the parameterized types"
+      (is (= :ok
+             (validate-file year-file
+                            (mock-change-set
+                             :id "aeiagus09e"
+                             :changes [(mock-add-column-changes
+                                        :columns [(mock-column :type "${boolean.type}")])]))))
+      (is (= :ok
+             (validate-file year-file
+                            (mock-change-set
+                             :id "aeiagus09e"
+                             :changes [(mock-add-column-changes
+                                        :columns [(mock-column :type "${timestamp_type}")])])))))
+    (testing "year-dir migrations cannot add bare boolean columns"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"uses invalid types"
+           (validate-file year-file
+                          (mock-change-set
+                           :id "aeiagus09e"
+                           :changes [(mock-add-column-changes
+                                      :columns [(mock-column :type "boolean")])])))))
+    (testing "year-dir migrations cannot add bare datetime/timestamp columns"
+      (doseq [bad-type ["datetime" "timestamp" "timestamp without time zone"]]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"uses invalid types"
+             (validate-file year-file
+                            (mock-change-set
+                             :id "aeiagus09e"
+                             :changes [(mock-add-column-changes
+                                        :columns [(mock-column :type bad-type)])])))
+            bad-type)))))
+
 (deftest ^:parallel prevent-text-types-test
   (testing "should allow \"${text.type}\" columns from being added"
     (is (= :ok
