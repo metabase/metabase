@@ -10,7 +10,7 @@ import {
 import { useDispatch } from "metabase/redux";
 import { getBasename } from "metabase/utils/basename";
 
-import { LOCATION_CHANGE } from "../routing-reducer";
+import { LOCATION_CHANGE } from "../location-change";
 
 import { SyncHistoryRouter } from "./SyncHistoryRouter";
 import { V7ReduxBridge } from "./V7ReduxBridge";
@@ -21,8 +21,8 @@ import { notifyLocationListeners } from "./navigator";
 
 /**
  * The v7 route tree: the facade tree mapped to real v7 routes and rendered by
- * `<Routes>`, plus the redux bridge that mirrors location into `state.routing`
- * and lets `dispatch(push(...))` drive the router. Kept separate from the history
+ * `<Routes>`, plus the redux bridge that emits LOCATION_CHANGE on navigation and
+ * lets `dispatch(push(...))` drive the router. Kept separate from the history
  * provider below so tests can host the same tree under a `<MemoryRouter>`.
  */
 export function V7RouterTree({
@@ -40,9 +40,10 @@ export function V7RouterTree({
 }
 
 /**
- * Mirrors each location into `state.routing` (and the `router.listen`
- * subscribers) from inside the history subscription, so the store is current
- * before any thunk reads it. Replaces v3's `syncHistoryWithStore`.
+ * Emits LOCATION_CHANGE (and notifies the `router.listen` subscribers) from
+ * inside the history subscription, so the reducers keyed off it — `isNavbarOpen`
+ * and `errorPage` — settle as part of the transition rather than after a render.
+ * Replaces v3's `syncHistoryWithStore`.
  */
 function useLocationMirror() {
   const dispatch = useDispatch();

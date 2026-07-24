@@ -38,7 +38,6 @@ import {
   type LocationDescriptor,
   Route,
   routerMiddleware,
-  routing as routingReducer,
 } from "metabase/router";
 import {
   type MemoryTestHistory,
@@ -185,8 +184,7 @@ export function getTestStoreAndWrapper({
   customReducers,
   theme,
 }: GetTestStoreAndWrapperOptions) {
-  let { routing, ...initialState }: Partial<State> =
-    createMockState(storeInitialState);
+  let initialState: Partial<State> = createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
@@ -208,10 +206,6 @@ export function getTestStoreAndWrapper({
     reducers = makeMainReducers();
   }
 
-  if (withRouter) {
-    Object.assign(reducers, { routing: routingReducer });
-    Object.assign(initialState, { routing });
-  }
   if (customReducers) {
     reducers = { ...reducers, ...customReducers };
   }

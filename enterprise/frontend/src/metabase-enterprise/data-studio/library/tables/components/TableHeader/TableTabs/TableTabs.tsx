@@ -5,9 +5,7 @@ import {
   PaneHeaderTabs,
 } from "metabase/common/data-studio/components/PaneHeader";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
-import type { Location } from "metabase/router";
-import { getLocation } from "metabase/selectors/routing";
+import { type Location, useLocation } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
@@ -16,12 +14,15 @@ type TableTabsProps = {
 };
 
 export function TableTabs({ table }: TableTabsProps) {
-  const location = useSelector(getLocation);
+  const location = useLocation();
   const tabs = getTabs(table, location);
   return <PaneHeaderTabs tabs={tabs} />;
 }
 
-function getTabs(table: Table, location: Location): PaneHeaderTab[] {
+function getTabs(
+  table: Table,
+  location: Omit<Location, "query" | "action">,
+): PaneHeaderTab[] {
   const tabs: PaneHeaderTab[] = [];
 
   tabs.push({

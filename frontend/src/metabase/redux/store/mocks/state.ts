@@ -13,7 +13,6 @@ import { createMockNormalizedEntitiesState } from "./entities";
 import { createMockModalState } from "./modal";
 import { createMockParametersState } from "./parameters";
 import { createMockQueryBuilderState } from "./qb";
-import { createMockRoutingState } from "./routing";
 import { createMockSettingsState } from "./settings";
 import { createMockSetupState } from "./setup";
 import { createMockUploadState } from "./upload";
@@ -36,7 +35,6 @@ export function createMockState(opts: any) {
     "metabase-api": createMockApiState(),
     parameters: createMockParametersState(),
     qb: createMockQueryBuilderState(),
-    routing: createMockRoutingState(),
     settings: createMockSettingsState(),
     setup: createMockSetupState(),
     upload: createMockUploadState(),

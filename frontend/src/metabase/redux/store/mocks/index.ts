@@ -7,7 +7,7 @@ export * from "./entities";
 export * from "./embed";
 export * from "./parameters";
 export * from "./qb";
-export * from "./routing";
+export * from "./location";
 export * from "./settings";
 export * from "./setup";
 export * from "./state";
