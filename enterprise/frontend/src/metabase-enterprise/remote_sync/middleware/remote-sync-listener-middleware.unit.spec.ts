@@ -2,6 +2,7 @@ import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import { seedApiQueryCache } from "__support__/rtk-query-cache";
 import {
   setupCreateCollectionEndpoint,
   setupDeleteCollectionEndpoint,
@@ -11,43 +12,38 @@ import {
 } from "__support__/server-mocks";
 import { Api } from "metabase/api";
 import { collectionApi } from "metabase/api/collection";
-import { settings as settingsReducer } from "metabase/redux/settings";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
-import { createMockCollection } from "metabase-types/api/mocks";
-
+import type { EnterpriseSettings } from "metabase-types/api";
 import {
-  type SyncTaskState,
-  initialState,
-  remoteSyncReducer,
-} from "../sync-task-slice";
+  createMockCollection,
+  createMockSettings,
+} from "metabase-types/api/mocks";
+
+import { initialState, remoteSyncReducer } from "../sync-task-slice";
 
 import { remoteSyncListenerMiddleware } from "./remote-sync-listener-middleware";
 
-interface TestState {
-  remoteSyncPlugin: SyncTaskState;
-  settings: {
-    values: Record<string, unknown>;
-    loading: boolean;
-  };
-}
-
-const createTestStore = (settingsOverrides: Record<string, unknown> = {}) => {
-  return configureStore({
+const createTestStore = (
+  settingsOverrides: Partial<EnterpriseSettings> = {},
+) => {
+  const store = configureStore({
     reducer: combineReducers({
       remoteSyncPlugin: remoteSyncReducer,
-      settings: settingsReducer,
       // EnterpriseApi is an enhanced version of Api, so they share the same reducer
       [Api.reducerPath]: Api.reducer,
     }),
     preloadedState: {
       remoteSyncPlugin: initialState,
-      settings: {
-        values: {
-          "remote-sync-transforms": false,
-          ...settingsOverrides,
+      // Settings are served from the getSessionProperties RTK Query cache.
+      [Api.reducerPath]: seedApiQueryCache(undefined, [
+        {
+          endpointName: "getSessionProperties",
+          value: createMockSettings({
+            "remote-sync-transforms": false,
+            ...settingsOverrides,
+          }),
         },
-        loading: false,
-      },
+      ]),
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
@@ -59,6 +55,8 @@ const createTestStore = (settingsOverrides: Record<string, unknown> = {}) => {
         // and the test store's State type (test store uses simplified State)
         .concat(remoteSyncListenerMiddleware.middleware as any),
   });
+
+  return store;
 };
 
 const waitForCondition = async (
@@ -94,13 +92,11 @@ describe("remote-sync-listener-middleware", () => {
 
       // Wait for the request to complete and middleware to process
       await waitForCondition(() => {
-        // Unjustified type cast. FIXME
-        const state = store.getState() as TestState;
+        const state = store.getState();
         return state.remoteSyncPlugin?.showModal === true;
       });
 
-      // Unjustified type cast. FIXME
-      const state = store.getState() as TestState;
+      const state = store.getState();
       expect(state.remoteSyncPlugin?.showModal).toBe(true);
       expect(state.remoteSyncPlugin?.currentTask?.sync_task_type).toBe(
         "import",
@@ -130,8 +126,7 @@ describe("remote-sync-listener-middleware", () => {
       // Give middleware time to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Unjustified type cast. FIXME
-      const state = store.getState() as TestState;
+      const state = store.getState();
       expect(state.remoteSyncPlugin?.showModal).toBe(false);
       expect(state.remoteSyncPlugin?.currentTask).toBeNull();
     });
@@ -160,8 +155,7 @@ describe("remote-sync-listener-middleware", () => {
       // Give middleware time to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Unjustified type cast. FIXME
-      const state = store.getState() as TestState;
+      const state = store.getState();
       expect(state.remoteSyncPlugin?.showModal).toBe(false);
       expect(state.remoteSyncPlugin?.currentTask).toBeNull();
     });
@@ -189,8 +183,7 @@ describe("remote-sync-listener-middleware", () => {
       // Give middleware time to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Unjustified type cast. FIXME
-      const state = store.getState() as TestState;
+      const state = store.getState();
       expect(state.remoteSyncPlugin?.showModal).toBe(false);
       expect(state.remoteSyncPlugin?.currentTask).toBeNull();
     });
@@ -215,13 +208,11 @@ describe("remote-sync-listener-middleware", () => {
 
       // The import listener triggers on matchPending, so modal should show immediately
       await waitForCondition(() => {
-        // Unjustified type cast. FIXME
-        const state = store.getState() as TestState;
+        const state = store.getState();
         return state.remoteSyncPlugin?.showModal === true;
       });
 
-      // Unjustified type cast. FIXME
-      const state = store.getState() as TestState;
+      const state = store.getState();
       expect(state.remoteSyncPlugin?.showModal).toBe(true);
       expect(state.remoteSyncPlugin?.currentTask?.sync_task_type).toBe(
         "import",
@@ -252,8 +243,7 @@ describe("remote-sync-listener-middleware", () => {
       // Give middleware time to process the rejection
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Unjustified type cast. FIXME
-      const state = store.getState() as TestState;
+      const state = store.getState();
       expect(state.remoteSyncPlugin?.showModal).toBe(false);
       expect(state.remoteSyncPlugin?.currentTask).toBeNull();
     });

@@ -6,8 +6,6 @@ import { skipToken, useGetUserQuery } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
-import { useDispatch } from "metabase/redux";
-import { reloadSettings } from "metabase/redux/settings";
 import {
   Box,
   Button,
@@ -98,7 +96,6 @@ function GoogleSheetsConnectModal({
   folderUrl: string | null;
   serviceAccountEmail: string;
 }) {
-  const dispatch = useDispatch();
   const [folderLink, setFolderLink] = useState(folderUrl ?? "");
   const [errorMessage, setErrorMessage] = useState("");
   const [linkType, setLinkType] = useState<UploadType>("folder");
@@ -124,7 +121,6 @@ function GoogleSheetsConnectModal({
     })
       .unwrap()
       .then(() => {
-        dispatch(reloadSettings());
         onClose(true);
       })
       .catch((response) => {

@@ -74,11 +74,16 @@ export function AIProviderConfigurationForm({
   const [updateMetabotSettings] = useUpdateMetabotSettingsMutation();
   const disconnectHandlerRef = useRef<(() => Promise<void>) | null>(null);
 
-  const { details: providerApiKeyDetails } = useAdminSettings([
-    "llm-anthropic-api-key",
-    "llm-openai-api-key",
-    "llm-openrouter-api-key",
-  ] as const);
+  // Setting details come from a single admin endpoint, so one `isLoading`
+  // covers every provider. Gate the provider fields on it below: their forms
+  // use Formik `enableReinitialize`/hydrate-once effects that would wipe
+  // in-progress input if they rendered before the saved credentials arrived.
+  const { details: providerApiKeyDetails, isLoading: areDetailsLoading } =
+    useAdminSettings([
+      "llm-anthropic-api-key",
+      "llm-openai-api-key",
+      "llm-openrouter-api-key",
+    ] as const);
 
   const disconnectProvider = useCallback(async () => {
     if (!connectedProvider) {
@@ -251,35 +256,37 @@ export function AIProviderConfigurationForm({
           />
         )}
 
-        {match(provider)
-          .with("metabase", () => (
-            <MetabaseAIProviderSetup onConnect={onClose} />
-          ))
-          .with("azure", () => (
-            <AzureProviderFields
-              connectedModel={connectedModel}
-              isCurrentConfigured={isCurrentConfigured}
-              isEnvSetting={isEnvSetting}
-            />
-          ))
-          .with("bedrock", () => (
-            <BedrockProviderFields
-              connectedModel={connectedModel}
-              isCurrentConfigured={isCurrentConfigured}
-              isEnvSetting={isEnvSetting}
-            />
-          ))
-          .with("anthropic", "openai", "openrouter", (selectedProvider) => (
-            <ApiKeyProviderFields
-              key={selectedProvider}
-              selectedProvider={selectedProvider}
-              connectedModel={connectedModel}
-              isCurrentConfigured={isCurrentConfigured}
-              isEnvSetting={isEnvSetting}
-            />
-          ))
-          .with(P.nullish, () => null)
-          .exhaustive()}
+        {areDetailsLoading
+          ? null
+          : match(provider)
+              .with("metabase", () => (
+                <MetabaseAIProviderSetup onConnect={onClose} />
+              ))
+              .with("azure", () => (
+                <AzureProviderFields
+                  connectedModel={connectedModel}
+                  isCurrentConfigured={isCurrentConfigured}
+                  isEnvSetting={isEnvSetting}
+                />
+              ))
+              .with("bedrock", () => (
+                <BedrockProviderFields
+                  connectedModel={connectedModel}
+                  isCurrentConfigured={isCurrentConfigured}
+                  isEnvSetting={isEnvSetting}
+                />
+              ))
+              .with("anthropic", "openai", "openrouter", (selectedProvider) => (
+                <ApiKeyProviderFields
+                  key={selectedProvider}
+                  selectedProvider={selectedProvider}
+                  connectedModel={connectedModel}
+                  isCurrentConfigured={isCurrentConfigured}
+                  isEnvSetting={isEnvSetting}
+                />
+              ))
+              .with(P.nullish, () => null)
+              .exhaustive()}
 
         {envSettingName && <SetByEnvVar varName={envSettingName} />}
 

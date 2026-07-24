@@ -14,6 +14,7 @@ import {
   providePersistedInfoListTags,
   providePersistedInfoTags,
   providePersistedModelTags,
+  tag,
 } from "./tags";
 
 export const persistApi = Api.injectEndpoints({
@@ -44,13 +45,18 @@ export const persistApi = Api.injectEndpoints({
       }),
       providesTags: (model) => (model ? providePersistedModelTags(model) : []),
     }),
+    // These three change settings server-side (`persisted-models-enabled`,
+    // `persisted-model-refresh-cron-schedule`), so they also invalidate session-properties
     enablePersist: builder.mutation<void, void>({
       query: () => ({
         method: "POST",
         url: "/api/persist/enable",
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("persisted-info")]),
+        invalidateTags(error, [
+          listTag("persisted-info"),
+          tag("session-properties"),
+        ]),
     }),
     disablePersist: builder.mutation<void, void>({
       query: () => ({
@@ -58,7 +64,10 @@ export const persistApi = Api.injectEndpoints({
         url: "/api/persist/disable",
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("persisted-info")]),
+        invalidateTags(error, [
+          listTag("persisted-info"),
+          tag("session-properties"),
+        ]),
     }),
     setRefreshSchedule: builder.mutation<void, PersistedInfoRefreshSchedule>({
       query: (body) => ({
@@ -67,7 +76,10 @@ export const persistApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("persisted-info")]),
+        invalidateTags(error, [
+          listTag("persisted-info"),
+          tag("session-properties"),
+        ]),
     }),
   }),
 });

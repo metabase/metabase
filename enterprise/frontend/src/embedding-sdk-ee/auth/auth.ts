@@ -28,6 +28,13 @@ import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
+import {
+  loadCurrentUser,
+  refetchCurrentUser,
+  refetchSiteSettings,
+  sessionApi,
+  userApi,
+} from "metabase/api";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
 import { getSessionTokenHeaders } from "metabase/embedding/lib/auth/get-session-token-headers";
 import { setApiKeyHeader } from "metabase/embedding/lib/auth/set-api-key-header";
@@ -39,11 +46,8 @@ import {
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import { loadSettings, refreshSiteSettings } from "metabase/redux/settings";
-import { refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
 import MetabaseSettings from "metabase/utils/settings";
-import type { Settings } from "metabase-types/api";
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 
@@ -101,11 +105,29 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
           metabaseInstanceUrl: authConfig.metabaseInstanceUrl,
         }),
       );
-      dispatch(refreshCurrentUser.fulfilled(authState.user, "", undefined));
-      // Unjustified type cast. FIXME
-      dispatch(loadSettings(authState.siteSettings as Settings));
-      // Unjustified type cast. FIXME
-      MetabaseSettings.setAll(authState.siteSettings as Settings);
+      dispatch(
+        userApi.util.upsertQueryData(
+          "getCurrentUser",
+          undefined,
+          authState.user,
+        ),
+      );
+      dispatch(
+        sessionApi.util.upsertQueryData(
+          "getSessionProperties",
+          undefined,
+          authState.siteSettings,
+        ),
+      );
+      // Pin both upserted entries with never-released subscriptions (the
+      // entries are fulfilled, so no request fires). A tag invalidation
+      // outright deletes zero-subscriber entries instead of refetching them,
+      // and an SDK host page has no bootstrap to fall back to. This mirrors
+      // the non-bootstrap path, whose refetch subscriptions below are also
+      // never released.
+      dispatch(loadCurrentUser());
+      dispatch(sessionApi.endpoints.getSessionProperties.initiate());
+      MetabaseSettings.setAll(authState.siteSettings);
 
       // The session handler emits the X-Metabase-Session header on every API
       // call, renewing the token when it expires.
@@ -152,25 +174,26 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
       if ((e as Error).name === "MetabaseError") {
         throw e;
       }
-      // Unjustified type cast. FIXME
-      throw MetabaseError.REFRESH_TOKEN_BACKEND_ERROR(e as Error);
+      throw MetabaseError.REFRESH_TOKEN_BACKEND_ERROR(
+        e instanceof Error ? e : new Error(String(e)),
+      );
     }
   }
 
   // Fetch user and site settings
   const [user, siteSettings] = await Promise.all([
-    dispatch(refreshCurrentUser()),
-    dispatch(refreshSiteSettings()),
+    dispatch(refetchCurrentUser()),
+    dispatch(refetchSiteSettings()),
   ]);
 
-  if (!user.payload) {
+  if (!user.data) {
     if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {
       throw MetabaseError.EXISTING_USER_SESSION_FAILED();
     }
 
     throw MetabaseError.USER_FETCH_FAILED();
   }
-  if (!siteSettings.payload) {
+  if (!siteSettings.data) {
     throw MetabaseError.USER_FETCH_FAILED();
   }
 };

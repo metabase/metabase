@@ -1,33 +1,21 @@
 import { useMount } from "react-use";
 
+import { useLazyGetCurrentUserQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { connect } from "metabase/redux";
-import { refreshCurrentUser } from "metabase/redux/user";
-import type { LocationDescriptor } from "metabase/router";
+import { useDispatch } from "metabase/redux";
 import { replace } from "metabase/router";
 
-type DispatchProps = {
-  refreshCurrentUser: () => any;
-  onChangeLocation: (location: LocationDescriptor) => void;
-};
+export const NotFoundFallbackPage = () => {
+  const dispatch = useDispatch();
+  // A 404 can mean the session expired; re-check who we are and bounce to
+  // login if the current user can't be fetched.
+  const [refetchCurrentUser] = useLazyGetCurrentUserQuery();
 
-type Props = DispatchProps;
-
-const mapDispatchToProps = {
-  refreshCurrentUser,
-  onChangeLocation: replace,
-};
-
-const NotFoundFallbackPageInner = ({
-  refreshCurrentUser,
-  onChangeLocation,
-}: Props) => {
   useMount(() => {
     async function refresh() {
-      const result = await refreshCurrentUser();
-      const isSignedIn = !result.error;
-      if (!isSignedIn) {
-        onChangeLocation("/auth/login");
+      const { isError } = await refetchCurrentUser();
+      if (isError) {
+        dispatch(replace("/auth/login"));
       }
     }
     refresh();
@@ -35,8 +23,3 @@ const NotFoundFallbackPageInner = ({
 
   return <NotFound />;
 };
-
-export const NotFoundFallbackPage = connect(
-  null,
-  mapDispatchToProps,
-)(NotFoundFallbackPageInner);

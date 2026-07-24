@@ -4,13 +4,13 @@ import "metabase-dev";
 
 import _ from "underscore";
 
+import { Api } from "metabase/api";
 import { api } from "metabase/api/client";
 import { init } from "metabase/app";
 import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
 import { PLUGIN_API } from "metabase/plugins";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
-import { clearCurrentUser } from "metabase/redux/user";
 import { push } from "metabase/router";
 import { getRoutes } from "metabase/routes";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
@@ -48,7 +48,9 @@ init(mainReducers, getRoutes, (store) => {
       return;
     }
 
-    store.dispatch(clearCurrentUser());
+    // The session is gone, so every cached API response (including the current
+    // user, which the auth route guards read) is stale — drop them all.
+    store.dispatch(Api.util.resetApiState());
     store.dispatch(push("/auth/login"));
   });
 

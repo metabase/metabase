@@ -21,6 +21,7 @@ import { getPositionForNewDashCard } from "metabase/utils/dashboard_grid";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   DashCardId,
+  Dashboard,
   DashboardId,
   DashboardTabId,
 } from "metabase-types/api";
@@ -576,7 +577,13 @@ export const tabsReducer = createReducer<DashboardState>(
       state.selectedTabId = tabId;
     });
 
-    builder.addMatcher(updateDashboard.matchFulfilled, (state, { payload }) => {
+    // Seperate handler to avoid TS2589 error when the global API type graph grows
+    const updateDashboardFulfilled: (action: {
+      type: string;
+    }) => action is { type: string; payload: Dashboard } =
+      updateDashboard.matchFulfilled;
+
+    builder.addMatcher(updateDashboardFulfilled, (state, { payload }) => {
       if (payload.id !== state.dashboardId) {
         // Only react to saves for the dashboard that is currently loaded — otherwise
         // updating an unrelated dashboard (e.g. moving/pinning from a collection) would

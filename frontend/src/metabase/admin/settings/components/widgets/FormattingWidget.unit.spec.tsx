@@ -2,9 +2,8 @@ import userEvent from "@testing-library/user-event";
 
 import {
   findRequests,
-  setupPropertiesEndpoints,
   setupSettingsEndpoints,
-  setupUpdateSettingEndpoint,
+  setupStatefulSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
@@ -19,8 +18,13 @@ import { FormattingWidget } from "./FormattingWidget";
 
 const setup = async () => {
   const settings = createMockSettings();
-  setupPropertiesEndpoints(settings);
-  setupUpdateSettingEndpoint();
+
+  // Stateful mock: the widget saves one key then reads the refreshed settings
+  // (session-properties is refetched on every save via tag invalidation), so
+  // the properties endpoint must reflect prior PUTs — a static response would
+  // hand back the pre-save snapshot and drop accumulated changes.
+  setupStatefulSettingsEndpoints(settings);
+
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
       // Unjustified type cast. FIXME

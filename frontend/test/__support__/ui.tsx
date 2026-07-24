@@ -31,7 +31,10 @@ import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
+import {
+  type StoreSeedState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import {
   type Action,
   type History,
@@ -71,7 +74,7 @@ export interface RenderWithProvidersOptions {
   // public or sdk-specific tests
   mode?: "default" | "public";
   initialRoute?: string;
-  storeInitialState?: Partial<State>;
+  storeInitialState?: Partial<StoreSeedState>;
   withRouter?: boolean;
   /** Renders children wrapped with kbar provider */
   withKBar?: boolean;
@@ -185,8 +188,14 @@ export function getTestStoreAndWrapper({
   customReducers,
   theme,
 }: GetTestStoreAndWrapperOptions) {
-  let { routing, ...initialState }: Partial<State> =
-    createMockState(storeInitialState);
+  let {
+    routing,
+    // Pull settings and currentUser out because they have no reducer;
+    // createMockState mirrors them into the bootstrap / getCurrentUser cache.
+    settings,
+    currentUser,
+    ...initialState
+  }: Partial<StoreSeedState> = createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);

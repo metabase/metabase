@@ -1,5 +1,3 @@
-import { act } from "react-dom/test-utils";
-
 import {
   setupPropertiesEndpoints,
   setupSettingEndpoint,
@@ -73,68 +71,62 @@ const setup = async (props: {
       },
     },
   );
+
+  await screen.findByText(
+    props.isHosted ? /We're a little lost/ : "Check for updates",
+  );
 };
 
 describe("UpdatesSettingsPage", () => {
   it("should render a UpdatesSettingsPage", async () => {
-    await act(() =>
-      setup({
-        isHosted: false,
-        versionTag: "v1.53.8",
-      }),
-    );
-
-    [
-      "Check for updates",
-      "You're running Metabase 1.53.8 which is the latest and greatest!",
-    ].forEach((text) => {
-      expect(screen.getByText(text)).toBeInTheDocument();
+    await setup({
+      isHosted: false,
+      versionTag: "v1.53.8",
     });
+
+    expect(screen.getByText("Check for updates")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "You're running Metabase 1.53.8 which is the latest and greatest!",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("should load initial settings", async () => {
-    await act(() =>
-      setup({
-        isHosted: false,
-        versionTag: "v1.53.8",
-      }),
-    );
-    expect(await screen.findByRole("switch")).toBeChecked();
+    await setup({
+      isHosted: false,
+      versionTag: "v1.53.8",
+    });
+    expect(screen.getByRole("switch")).toBeChecked();
   });
 
   it("should show upsell when not hosted", async () => {
-    await act(() =>
-      setup({
-        isHosted: false,
-        isPro: false,
-        versionTag: "v1.53.8",
-      }),
-    );
+    await setup({
+      isHosted: false,
+      isPro: false,
+      versionTag: "v1.53.8",
+    });
     expect(
       await screen.findByText("Migrate to Metabase Cloud"),
     ).toBeInTheDocument();
   });
 
   it("should not show upsell to self-hosted pro users", async () => {
-    await act(() =>
-      setup({
-        isHosted: false,
-        isPro: true,
-        versionTag: "v1.53.8",
-      }),
-    );
+    await setup({
+      isHosted: false,
+      isPro: true,
+      versionTag: "v1.53.8",
+    });
     expect(
       screen.queryByText("Migrate to Metabase Cloud"),
     ).not.toBeInTheDocument();
   });
 
   it("should not show upsell when hosted", async () => {
-    await act(() =>
-      setup({
-        isHosted: true,
-        versionTag: "v1.53.8",
-      }),
-    );
+    await setup({
+      isHosted: true,
+      versionTag: "v1.53.8",
+    });
     expect(
       screen.queryByText("Migrate to Metabase Cloud"),
     ).not.toBeInTheDocument();

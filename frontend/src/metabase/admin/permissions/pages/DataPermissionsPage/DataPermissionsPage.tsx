@@ -10,7 +10,6 @@ import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Outlet, type Route } from "metabase/router";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, GroupInfo } from "metabase-types/api";
@@ -46,9 +45,6 @@ function DataPermissionsPage({ route, params }: DataPermissionsPageProps) {
   const groups = data ?? EMPTY_GROUP_LIST;
   const isDirty = useSelector(getIsDirty);
   const diff = useSelector((state) => getDiff(state, { databases, groups }));
-  const showSplitPermsModal = useSelector((state) =>
-    getSetting(state, "show-updated-permission-modal"),
-  );
   const dispatch = useDispatch();
 
   const resetPermissions = () => dispatch(restoreLoadedPermissions());
@@ -104,7 +100,7 @@ function DataPermissionsPage({ route, params }: DataPermissionsPageProps) {
       isDirty={isDirty}
       route={route}
       helpContent={<DataPermissionsHelp />}
-      showSplitPermsModal={showSplitPermsModal}
+      canShowSplitPermsModal
     >
       <Outlet />
     </PermissionsPageLayout>

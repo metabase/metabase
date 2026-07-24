@@ -1,14 +1,16 @@
 import { useCallback, useState } from "react";
 import { jt, t } from "ttag";
 
+import {
+  useLazyGetCurrentUserQuery,
+  useUpdateSettingsMutation,
+} from "metabase/api";
 import { trackCustomHomepageDashboardEnabled } from "metabase/common/analytics";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector/DashboardSelector";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
-import { updateSettings } from "metabase/redux/settings";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
-import { refreshCurrentUser } from "metabase/redux/user";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
@@ -27,15 +29,17 @@ export const CustomHomePageModal = ({
 }: CustomHomePageModalProps) => {
   const [dashboardId, setDashboardId] = useState<DashboardId>();
   const dispatch = useDispatch();
+  const [updateSettings] = useUpdateSettingsMutation();
+  // Setting a custom homepage also changes the current user server-side
+  // (`user.custom_homepage`), so refetch it after saving.
+  const [refetchCurrentUser] = useLazyGetCurrentUserQuery();
 
   const handleSave = async () => {
-    await dispatch(
-      updateSettings({
-        [CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY]: dashboardId,
-        [CUSTOM_HOMEPAGE_SETTING_KEY]: true,
-        [CUSTOM_HOMEPAGE_REDIRECT_TOAST_KEY]: true,
-      }),
-    );
+    await updateSettings({
+      [CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY]: dashboardId,
+      [CUSTOM_HOMEPAGE_SETTING_KEY]: true,
+      [CUSTOM_HOMEPAGE_REDIRECT_TOAST_KEY]: true,
+    }).unwrap();
 
     const id = Date.now();
     await dispatch(
@@ -61,7 +65,7 @@ export const CustomHomePageModal = ({
         canDismiss: false,
       }),
     );
-    await dispatch(refreshCurrentUser());
+    await refetchCurrentUser();
     trackCustomHomepageDashboardEnabled("homepage");
   };
 
