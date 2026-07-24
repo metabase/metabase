@@ -504,7 +504,9 @@ const getSingleSeriesTooltipModel = (
   );
 
   const seriesToShow = chartModel.seriesModels.filter(
-    (series) => series === hoveredSeries || !isBreakoutSeries(series),
+    (series) =>
+      series === hoveredSeries ||
+      (!isBreakoutSeries(series) && datum[series.dataKey] != null),
   );
   const seriesTooltipRows = seriesToShow.map((series) => {
     const isFocused =
