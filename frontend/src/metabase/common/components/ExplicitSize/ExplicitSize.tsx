@@ -56,6 +56,9 @@ type ExplicitSizeOuterProps<T> = Omit<T, "width" | "height">;
 /**
  * @deprecated HOCs are deprecated
  */
+// oxlint reads any curried function in a .tsx file as a component; this is an
+// HOC factory, and the component it returns sets its own displayName below.
+// oxlint-disable-next-line react/display-name
 export function ExplicitSize<T>({
   selector,
   wrapped = false,

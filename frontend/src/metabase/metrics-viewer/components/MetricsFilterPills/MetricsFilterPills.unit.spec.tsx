@@ -2,8 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import type { DefinitionSource } from "metabase/metrics-viewer/utils/definition-sources";
-import type * as LibMetric from "metabase-lib/metric";
-import * as LibMetricModule from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 
 import { MetricsFilterPills } from "./MetricsFilterPills";
 
@@ -72,7 +71,7 @@ jest.mock("./MetricsSegmentFilterPillPopover", () => ({
 }));
 
 // Unjustified type cast. FIXME
-const mockLibMetric = LibMetricModule as jest.Mocked<typeof LibMetric>;
+const mockLibMetric = LibMetric as jest.Mocked<typeof LibMetric>;
 
 function makeDefinitionSource(
   index: number,

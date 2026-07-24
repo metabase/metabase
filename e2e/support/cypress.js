@@ -7,6 +7,7 @@ import "@testing-library/cypress/add-commands";
 import { configure } from "@testing-library/cypress";
 import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
+
 import "./commands";
 // Must stay imported after "@cypress/code-coverage/support": its afterEach
 // zeroes the window coverage counters after collecting each test's fires,
@@ -126,12 +127,13 @@ function createMochawesomeObject() {
 Cypress.on("window:load", (window) => {
   const addEventListener = window.addEventListener;
 
-  window.addEventListener = function (event) {
+  window.addEventListener = function (...args) {
+    const [event] = args;
     if (event === "beforeunload") {
       return;
     }
 
-    return addEventListener.apply(this, arguments);
+    return addEventListener.apply(this, args);
   };
 });
 
