@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "incremental": false,
+    "noEmit": true,
+    "skipLibCheck": false,
+    "strict": true
+  },
+  "include": ["target/cljs_dev/**/*.d.ts"],
+  "exclude": ["node_modules"]
+}
