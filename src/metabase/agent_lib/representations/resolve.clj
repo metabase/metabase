@@ -29,6 +29,8 @@
   encoding or for handing back to the LLM as the canonical MBQL 5 representation."
   (:require
    [clojure.walk :as walk]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
@@ -103,6 +105,31 @@
        node))
    pmbql-query))
 
+(defn- annotate-metric-and-measure-ref-types
+  "GIT-10623: Stamp `:effective-type` on `:metric` / `:measure` refs missing it, computed
+  from the metric's / measure's aggregation definition — mirroring the FE's `lib.ref/ref-method
+  :metadata/metric`. Untyped refs poison arithmetic type inference in
+  [[metabase.agent-lib.representations.repair/assert-editor-accepts-expressions!]]"
+  [pmbql-query]
+  (walk/postwalk
+   (fn [node]
+     (if (and (vector? node)
+              (#{:metric :measure} (nth node 0 nil))
+              (map? (nth node 1 nil))
+              (pos-int? (nth node 2 nil))
+              (not (contains? (nth node 1) :effective-type)))
+       (let [md (case (nth node 0)
+                  :metric  (lib.metadata/metric pmbql-query (nth node 2))
+                  :measure (lib.metadata/measure pmbql-query (nth node 2)))
+             ;; `lib/type-of` rather than `lib.metadata.calculation/type-of`: same var, but the
+             ;; module linter exports only the `lib.core` surface to other modules.
+             t  (when md (lib/type-of pmbql-query md))]
+         (if (and t (isa? t :type/*) (not= t :type/*))
+           (update node 1 assoc :effective-type t)
+           node))
+       node))
+   pmbql-query))
+
 (defn- assert-parseable-temporal-literal!
   "Throw an agent-facing error if temporal string `s` is not a real date / datetime / year /
   year-month — i.e. one [[u.date/parse]] can read. The query schema only checks structure with a
@@ -162,6 +189,7 @@
          with-mp  (assoc resolved :lib/metadata metadata-provider)]
      (-> (lib.normalize/normalize ::lib.schema/query with-mp)
          (annotate-field-types metadata-provider)
+         annotate-metric-and-measure-ref-types
          validate-absolute-datetime-literals))))
 
 ;;; ============================================================
