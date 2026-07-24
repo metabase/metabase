@@ -976,6 +976,11 @@
            util}
    :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
 
+  embeddings
+  {:team "Metabot"
+   :api  #{}
+   :uses #{util}}
+
   entity-retrieval
   {:team "Metabot"
    :api  #{metabase.entity-retrieval.core
