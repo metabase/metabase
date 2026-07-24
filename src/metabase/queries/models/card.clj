@@ -822,7 +822,8 @@
         (u/assoc-default :entity_id (u/generate-nano-id))
         card.metadata/populate-result-metadata
         pre-insert
-        populate-query-fields)
+        populate-query-fields
+        workspaces/stamp-workspace-id)
     (collection/check-allowed-content (:type <>) (:collection_id <>))))
 
 (t2/define-after-insert :model/Card
@@ -1411,6 +1412,8 @@
           :view_count :initially_published_at
           ;; this is data migration column
           :dataset_query_metrics_v2_migration_backup
+          ;; workspace membership is instance-local state, not portable content
+          :workspace_id
           ;; this column is not used anymore
           :cache_ttl
           ;; dimensions are computed from the query and reconciled on read, not serialized

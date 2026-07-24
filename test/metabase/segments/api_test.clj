@@ -384,7 +384,7 @@
 ;;; ------------------------------------------- Workspace copy-on-write -------------------------------------------
 
 (deftest workspace-segment-copy-on-write-test
-  (mt/with-temp [:model/Workspace ws {:name "cow"}]
+  (mt/with-temp [:model/Workspace ws {:branch "cow"}]
     (mt/with-model-cleanup [:model/Segment]
       (mt/with-temp [:model/Segment segment {:name       "S"
                                              :table_id   (mt/id :venues)

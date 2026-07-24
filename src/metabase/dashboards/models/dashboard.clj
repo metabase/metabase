@@ -81,7 +81,7 @@
   [dashboard]
   (let [defaults  {:parameters []}
         dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
-    (u/prog1 dashboard
+    (u/prog1 (workspaces/stamp-workspace-id dashboard)
       (collection/check-allowed-content :model/Dashboard (:collection_id dashboard))
       (params/assert-valid-parameters dashboard)
       (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))))
@@ -425,7 +425,9 @@
    :skip      [;; those stats are inherently local state
                :view_count :last_viewed_at
                ;; this is deprecated
-               :cache_ttl]
+               :cache_ttl
+               ;; workspace membership is instance-local state, not portable content
+               :workspace_id]
    :transform {:created_at             (serdes/date)
                :initially_published_at (serdes/date)
                :collection_id          (serdes/fk :model/Collection)

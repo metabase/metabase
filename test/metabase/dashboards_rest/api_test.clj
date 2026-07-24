@@ -6473,7 +6473,7 @@
 ;;; ------------------------------------------- Workspace copy-on-write -------------------------------------------
 
 (deftest workspace-dashboard-copy-on-write-test
-  (mt/with-temp [:model/Workspace ws {:name "cow"}]
+  (mt/with-temp [:model/Workspace ws {:branch "cow"}]
     (mt/with-model-cleanup [:model/Dashboard]
       (mt/with-temp [:model/Card card        {:name "C"}
                      :model/Dashboard dash   {:name "D"}

@@ -698,15 +698,19 @@
    - Transforms-namespace collections (when remote-sync-transforms setting is enabled)
    - Snippets-namespace collections (when Library is remote-synced)
 
-   Used by import cleanup to determine which collections to scope deletions to."
+   Used by import cleanup to determine which collections to scope deletions to. Collections that belong
+   to a workspace are never part of the main sync set — their reconcile is workspace-scoped — so they
+   are excluded here (workspace_id nil = main app)."
   []
   (into []
         cat
-        [(t2/select-pks-vec :model/Collection :is_remote_synced true)
+        [(t2/select-pks-vec :model/Collection {:where [:and [:= :is_remote_synced true] [:= :workspace_id nil]]})
          (when (rs-settings/remote-sync-transforms)
-           (t2/select-pks-vec :model/Collection :namespace (name collections/transforms-ns)))
+           (t2/select-pks-vec :model/Collection
+                              {:where [:and [:= :namespace (name collections/transforms-ns)] [:= :workspace_id nil]]}))
          (when (rs-settings/library-is-remote-synced?)
-           (t2/select-pks-vec :model/Collection :namespace "snippets"))]))
+           (t2/select-pks-vec :model/Collection
+                              {:where [:and [:= :namespace "snippets"] [:= :workspace_id nil]]}))]))
 
 (def ^:private max-conflict-names
   "Cap on how many entity names a collection deletion conflict carries, so the payload stays bounded when
@@ -1031,7 +1035,12 @@
   (when (seq entity-ids)
     (let [;; Get select fields from spec, with :id always included
           select-fields (into [:id] (or (:select-fields tracking) [:name :collection_id]))
-          entities (t2/select (into [model-key] select-fields) :entity_id [:in entity-ids])]
+          ;; entity ids are only unique per workspace: resolve them within the workspace being synced
+          ;; (nil = the main app) or a workspace's copies would land in the wrong ledger
+          entities (apply t2/select (into [model-key] select-fields)
+                          :entity_id [:in entity-ids]
+                          (when (contains? serdes/workspace-scoped-models model-type)
+                            [:workspace_id serdes/*workspace-id*]))]
       (map (fn [entity]
              (let [;; Apply field mappings
                    field-mappings (:field-mappings tracking)
@@ -1062,7 +1071,9 @@
       ;; The query template uses alias :s for the main model (segment)
       (let [base-query (-> query-template
                            (update :select (fn [cols] (vec (concat [:s.id] cols))))
-                           (assoc :where [:in :s.entity_id entity-ids]))]
+                           (assoc :where (cond-> [:and [:in :s.entity_id entity-ids]]
+                                           (contains? serdes/workspace-scoped-models model-type)
+                                           (conj [:= :s.workspace_id serdes/*workspace-id*]))))]
         (->> (t2/query base-query)
              (map (fn [entity]
                     (let [field-mappings (:field-mappings tracking)
@@ -1162,28 +1173,32 @@
   [{:keys [export-scope]}]
   (case (or export-scope :derived)
     :root-collections
-    ;; Excludes archived collections - their files are handled by the removal logic
+    ;; Excludes archived collections - their files are handled by the removal logic - and workspace
+    ;; collections, which export only through their own workspace-scoped push (workspace_id nil = main app)
     (concat
      (t2/select-fn-set (juxt (constantly "Collection") :id)
                        :model/Collection
                        {:where [:and
                                 [:= :is_remote_synced true]
                                 [:= :location "/"]
-                                [:not :archived]]})
+                                [:not :archived]
+                                [:= :workspace_id nil]]})
      (when (rs-settings/remote-sync-transforms)
        (t2/select-fn-set (juxt (constantly "Collection") :id)
                          :model/Collection
                          {:where [:and
                                   [:= :namespace (name collections/transforms-ns)]
                                   [:= :location "/"]
-                                  [:not :archived]]}))
+                                  [:not :archived]
+                                  [:= :workspace_id nil]]}))
      (when (rs-settings/library-is-remote-synced?)
        (t2/select-fn-set (juxt (constantly "Collection") :id)
                          :model/Collection
                          {:where [:and
                                   [:= :namespace "snippets"]
                                   [:= :location "/"]
-                                  [:not :archived]]})))
+                                  [:not :archived]
+                                  [:= :workspace_id nil]]})))
     :derived
     nil))
 

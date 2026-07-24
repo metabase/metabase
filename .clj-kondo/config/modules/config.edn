@@ -109,7 +109,8 @@
            search
            settings
            util
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/Action}
    :model-imports #{:model/Card
                     :model/Collection
@@ -3460,6 +3461,7 @@
            collections
            events
            models
+           permissions
            premium-features
            search
            settings
@@ -3467,25 +3469,31 @@
            task
            task-history
            util
+           workspaces
            enterprise/data-apps
            enterprise/serialization
-           enterprise/transforms-python}
+           enterprise/transforms-python
+           enterprise/workspaces}
    :model-exports #{:model/RemoteSyncTask}
    :model-imports #{:model/Card
                     :model/Collection
+                    :model/CollectionPermissionGraphRevision
                     :model/Dashboard
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
                     :model/Measure
                     :model/NativeQuerySnippet
+                    :model/Permissions
                     :model/PythonLibrary
                     :model/Segment
                     :model/Table
                     :model/Timeline
                     :model/Transform
                     :model/TransformTag
-                    :model/User}}
+                    :model/User
+                    :model/Workspace
+                    :model/WorkspaceEntityRemapping}}
 
   enterprise/replacement
   {:team "Graphy"
@@ -3795,12 +3803,13 @@
 
   enterprise/workspaces
   {:team "Graphy"
-   :api  #{metabase-enterprise.workspaces.api}
+   :api  #{metabase-enterprise.workspaces.api metabase-enterprise.workspaces.core}
    :uses #{api
            models
            premium-features
            util
-           workspaces}}}
+           workspaces}
+   :model-exports #{:model/Workspace :model/WorkspaceEntityRemapping}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

@@ -162,8 +162,9 @@
   (let [definition (migrated-segment-definition segment)]
     (when (seq definition)
       (lib/check-segment-overwrite nil definition))
-    (cond-> (assoc segment :definition definition)
-      (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition)))))
+    (-> (cond-> (assoc segment :definition definition)
+          (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition)))
+        workspaces/stamp-workspace-id)))
 
 (t2/define-before-update :model/Segment [{:keys [id] :as segment}]
   ;; throw an Exception if someone tries to update creator_id
@@ -225,7 +226,9 @@
 (defmethod serdes/make-spec "Segment" [_model-name _opts]
   {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
    :skip      [;; always re-derived from definition by before-insert via lib/primary-source-table-id
-               :table_id]
+               :table_id
+               ;; workspace membership is instance-local state, not portable content
+               :workspace_id]
    :transform {:created_at (serdes/date)
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import serdes/import-mbql}}

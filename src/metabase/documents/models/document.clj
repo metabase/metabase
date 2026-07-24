@@ -217,7 +217,9 @@
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id]
+   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id
+          ;; workspace membership is instance-local state, not portable content
+          :workspace_id]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content
@@ -283,7 +285,7 @@
 
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))
-  model)
+  (workspaces/stamp-workspace-id model))
 
 (t2/define-before-update :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))

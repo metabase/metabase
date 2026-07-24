@@ -7,6 +7,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -19,6 +20,10 @@
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(t2/define-before-insert :model/DashboardTab
+  [tab]
+  (workspaces/stamp-workspace-id tab))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:metabase.dashboards.models.dashboard-card/DashboardCard :dashboard_tab]
   [_original-model _k]
@@ -54,7 +59,8 @@
 
 (defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
   {:copy      [:entity_id :name :position]
-   :skip      []
+   :skip      [;; workspace membership is instance-local state, not portable content
+               :workspace_id]
    :transform {:created_at   (serdes/date)
                :dashboard_id (serdes/parent-ref)}})
 

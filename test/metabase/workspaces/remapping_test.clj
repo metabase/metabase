@@ -7,7 +7,7 @@
    [toucan2.core :as t2]))
 
 (deftest remapping-test
-  (mt/with-temp [:model/Workspace ws   {:name "CoW overlay"}
+  (mt/with-temp [:model/Workspace ws   {:branch "CoW overlay"}
                  :model/User      user {:workspace_id (:id ws)}]
     (t2/insert! :model/WorkspaceEntityRemapping
                 {:workspace_id     (:id ws)
@@ -39,7 +39,7 @@
           (is (= 222 (workspaces/source-entity-id :model/Card 222))))))))
 
 (deftest check-workspace-enabled-test
-  (mt/with-temp [:model/Workspace ws   {:name "CoW overlay"}
+  (mt/with-temp [:model/Workspace ws   {:branch "CoW overlay"}
                  :model/User      user {:workspace_id (:id ws)}]
     (testing "no exception with an active workspace"
       (mt/with-current-user (:id user)
@@ -51,7 +51,7 @@
                               (workspaces/check-workspace-enabled)))))))
 
 (deftest with-current-workspace-id-test
-  (mt/with-temp [:model/Workspace ws {:name "CoW overlay"}]
+  (mt/with-temp [:model/Workspace ws {:branch "CoW overlay"}]
     (t2/insert! :model/WorkspaceEntityRemapping
                 {:workspace_id     (:id ws)
                  :entity_type      :model/Card

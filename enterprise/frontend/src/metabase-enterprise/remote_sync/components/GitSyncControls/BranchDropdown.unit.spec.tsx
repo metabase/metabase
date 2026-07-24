@@ -244,6 +244,28 @@ describe("BranchDropdown", () => {
       });
     });
 
+    it("should not create a branch when pressing Enter on a nonexistent name", async () => {
+      const { onChange } = setup({ value: "main" });
+
+      await waitFor(() => {
+        expect(
+          screen.getByPlaceholderText("Find or create a branch..."),
+        ).toBeInTheDocument();
+      });
+
+      await userEvent.type(
+        screen.getByPlaceholderText("Find or create a branch..."),
+        "brand-new-branch{enter}",
+      );
+
+      // Creation must stay behind the explicit "Create branch" option.
+      expect(screen.getByTestId("create-branch-button")).toBeInTheDocument();
+      expect(
+        fetchMock.callHistory.calls("path:/api/ee/remote-sync/create-branch"),
+      ).toHaveLength(0);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
     it("should call createBranch mutation and onChange when create option is clicked", async () => {
       const { onChange } = setup({ value: "main" });
 

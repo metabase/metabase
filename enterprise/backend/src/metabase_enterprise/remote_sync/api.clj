@@ -18,6 +18,7 @@
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -60,28 +61,50 @@
        ;; the branch the client believes is currently active; rejected if it disagrees with the
        ;; remote-sync-branch setting (a pull/switch from a stale tab). `branch` is the operational
        ;; target (it differs from this on a branch switch); `expected_branch` is only the assertion.
-       [:expected_branch ms/NonBlankString]]]
+       ;; Not required (and ignored) in workspace mode: a workspace has no ambient branch state.
+       [:expected_branch {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (check-branch-matches-setting! expected_branch)
-  (let [branch-name (or branch (settings/remote-sync-branch))
-        user-id     api/*current-user-id*
-        {task-id :id}
-        (impl/async-import!
-         branch-name force {}
-         :merge?     (or merge false)
-         :on-success (fn [task-id _result]
-                       (impl/publish-sync-event! :event/remote-sync-import task-id {:branch branch-name} user-id)))]
-    {:status :success
-     :task_id task-id
-     :message (when-not task-id "No changes since last import")}))
+  (if-let [ws-id (workspaces/current-workspace-id)]
+    (let [workspace (api/check-404 (t2/select-one :model/Workspace :id ws-id))
+          user-id   api/*current-user-id*]
+      (when branch
+        (api/check-400 (= branch (:branch workspace))
+                       "branch cannot be combined with an active workspace."))
+      (let [{task-id :id}
+            (impl/async-workspace-pull!
+             workspace (boolean force)
+             :on-success (fn [task-id _result]
+                           (impl/publish-sync-event! :event/remote-sync-import task-id
+                                                     {:branch (:branch workspace) :workspace_id ws-id}
+                                                     user-id)))]
+        {:status :success :task_id task-id :message nil}))
+    (do
+      (api/check-400 expected_branch "expected_branch is required.")
+      (check-branch-matches-setting! expected_branch)
+      (let [branch-name (or branch (settings/remote-sync-branch))
+            user-id     api/*current-user-id*
+            {task-id :id}
+            (impl/async-import!
+             branch-name force {}
+             :merge?     (or merge false)
+             :on-success (fn [task-id _result]
+                           (impl/publish-sync-event! :event/remote-sync-import task-id {:branch branch-name} user-id)))]
+        {:status :success
+         :task_id task-id
+         :message (when-not task-id "No changes since last import")}))))
 
 (api.macros/defendpoint :get "/is-dirty" :- remote-sync.schema/IsDirtyResponse
   "Check if any remote-synced collection or collection item has local changes that have not been pushed
-  to the remote sync source."
+  to the remote sync source. With an active workspace, checks that workspace's ledger."
   []
   (api/check-superuser)
-  {:is_dirty (remote-sync.object/dirty?)})
+  {:is_dirty (if-let [ws-id (workspaces/current-workspace-id)]
+               ;; a push-first workspace has an empty RSO ledger, so also treat any copy-on-write
+               ;; remapping as a local change
+               (boolean (or (remote-sync.object/dirty? ws-id)
+                            (t2/exists? :model/WorkspaceEntityRemapping :workspace_id ws-id)))
+               (remote-sync.object/dirty?))})
 
 (api.macros/defendpoint :get "/has-remote-changes" :- remote-sync.schema/HasRemoteChangesResponse
   "Check if there are new changes on the remote branch that can be pulled.
@@ -97,7 +120,9 @@
    _body]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (let [result (impl/has-remote-changes? {:force-refresh? force-refresh})]
+  (let [result (if-let [ws-id (workspaces/current-workspace-id)]
+                 (impl/workspace-has-remote-changes? (api/check-404 (t2/select-one :model/Workspace :id ws-id)))
+                 (impl/has-remote-changes? {:force-refresh? force-refresh}))]
     (cond-> {:has_changes (:has-changes? result)
              :remote_version (:remote-version result)
              :local_version (:local-version result)
@@ -106,12 +131,14 @@
 
 (api.macros/defendpoint :get "/dirty" :- remote-sync.schema/DirtyResponse
   "Return all models with changes that have not been pushed to the remote sync source in any
-  remote-synced collection."
+  remote-synced collection. With an active workspace, only that workspace's changes."
   []
   (api/check-superuser)
   {:dirty (into []
                 (m/distinct-by (juxt :id :model))
-                (remote-sync.object/dirty-objects))})
+                (if-let [ws-id (workspaces/current-workspace-id)]
+                  (remote-sync.object/dirty-objects ws-id)
+                  (remote-sync.object/dirty-objects)))})
 
 (api.macros/defendpoint :post "/export" :- remote-sync.schema/ExportResponse
   "Export the current state of the Remote Sync collection to a Source.
@@ -129,24 +156,42 @@
    _query
    {:keys [message branch force merge]} :- [:map
                                             [:message {:optional true} ms/NonBlankString]
-                                            [:branch ms/NonBlankString]
+                                            ;; required unless an active workspace names the target
+                                            [:branch {:optional true} ms/NonBlankString]
                                             [:force {:optional true} :boolean]
                                             [:merge {:optional true} :boolean]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")
-  (let [branch-name (check-branch-matches-setting! branch)
-        user-id     api/*current-user-id*
-        {task-id :id}
-        (impl/async-export!
-         branch-name
-         (or force false)
-         (or message "Exported from Metabase")
-         :merge?     (or merge false)
-         :on-success (fn [task-id _result]
-                       (impl/publish-sync-event! :event/remote-sync-export task-id {:branch branch-name} user-id)))]
-    {:message "Export task started"
-     :task_id task-id}))
+  (if-let [ws-id (workspaces/current-workspace-id)]
+    (let [workspace (api/check-404 (t2/select-one :model/Workspace :id ws-id))
+          user-id   api/*current-user-id*]
+      (when branch
+        (api/check-400 (= branch (:branch workspace))
+                       "branch cannot be combined with an active workspace."))
+      (let [{task-id :id}
+            (impl/async-workspace-push!
+             workspace (or force false) (or message "Exported from Metabase")
+             :on-success (fn [task-id _result]
+                           (impl/publish-sync-event! :event/remote-sync-export task-id
+                                                     {:branch (:branch workspace) :workspace_id ws-id}
+                                                     user-id)))]
+        {:message "Export task started"
+         :task_id task-id}))
+    (do
+      (api/check-400 branch "branch is required.")
+      (let [branch-name (check-branch-matches-setting! branch)
+            user-id     api/*current-user-id*
+            {task-id :id}
+            (impl/async-export!
+             branch-name
+             (or force false)
+             (or message "Exported from Metabase")
+             :merge?     (or merge false)
+             :on-success (fn [task-id _result]
+                           (impl/publish-sync-event! :event/remote-sync-export task-id {:branch branch-name} user-id)))]
+        {:message "Export task started"
+         :task_id task-id}))))
 
 (api.macros/defendpoint :get "/export-preflight" :- remote-sync.schema/ExportPreflightResponse
   "Dry-run preview of what pushing the current state would do given the live remote branch, without

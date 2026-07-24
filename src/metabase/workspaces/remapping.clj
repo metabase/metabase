@@ -36,9 +36,13 @@
   "assoc `:workspace_id` with the current user's active workspace unless the key is already
   present (nil on main / OSS, where no workspace can be active). Call from `before-insert` of
   workspace-scoped models so rows created inside a workspace are tagged with it — including
-  copy-on-write clones, which are always inserted in a workspace context."
+  copy-on-write clones, which are always inserted in a workspace context.
+
+  Also drops `:workspace_id_helper`: it is a database-generated column (present on instances
+  selected from the DB), and row-copy code paths that re-insert selected rows must never try
+  to assign it."
   [instance]
-  (cond-> instance
+  (cond-> (dissoc instance :workspace_id_helper)
     (not (contains? instance :workspace_id))
     (assoc :workspace_id (current-workspace-id))))
 
