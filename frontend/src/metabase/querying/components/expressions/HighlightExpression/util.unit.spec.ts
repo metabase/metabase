@@ -14,4 +14,10 @@ describe("highlight", () => {
       '<span class="variableName">if</span><span class="paren">(</span><span class="processingInstruction">[User Id]</span> <span class="compareOperator">></span> <span class="number">10</span>, <span class="string">"YES"</span>, <span class="number">42</span> <span class="arithmeticOperator">+</span> <span class="number">1e7</span><span class="paren">)</span>',
     );
   });
+
+  it("should escape HTML special characters in expression text", () => {
+    const html = highlight(`[<script>alert(1)</script>]`);
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
 });
