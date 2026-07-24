@@ -95,16 +95,16 @@
                                                   os-var           (constantly "linux")
                                                   libc-var         (constantly :glibc)
                                                   glibc-version-var (constantly "2.34")}
-                                   #(embeddings.provider/resolve-model requested-model)))]
-          (let [normal  (mapv (comp :embedding-space-id resolve-for) ["arm64" "avx2"])
-                bounded (binding [*print-length* 1
-                                  *print-level* 1
-                                  *print-readably* false
-                                  *print-dup* true]
-                          (mapv (comp :embedding-space-id resolve-for) ["arm64" "avx2"]))]
-            (is (= normal bounded) "model identity ignores ambient printer bindings")
-            (is (apply not= normal)
-                "architecture-specific exports intentionally have distinct embedding spaces")))
+                                   #(embeddings.provider/resolve-model requested-model)))
+              normal  (mapv (comp :embedding-space-id resolve-for) ["arm64" "avx2"])
+              bounded (binding [*print-length* 1
+                                *print-level* 1
+                                *print-readably* false
+                                *print-dup* true]
+                        (mapv (comp :embedding-space-id resolve-for) ["arm64" "avx2"]))]
+          (is (= normal bounded) "model identity ignores ambient printer bindings")
+          (is (apply not= normal)
+              "architecture-specific exports intentionally have distinct embedding spaces"))
         (let [model-spec-var (ns-resolve 'metabase-enterprise.embedder.catalog 'model-spec)
               model-spec-fn  (var-get model-spec-var)
               spec           (model-spec-fn (:model-name requested-model))
