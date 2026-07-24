@@ -71,7 +71,7 @@ export function sanitizedSetterDistortion(
   };
 }
 
-export const BLOCKED_TAGS = new Set([
+export const BLOCKED_TAGS: ReadonlySet<string> = new Set([
   "script",
   "iframe",
   "object",

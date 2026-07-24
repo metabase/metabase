@@ -1,12 +1,31 @@
 import { type ComponentType, createElement } from "react";
 import { type Root, createRoot } from "react-dom/client";
 
+import { getWindow } from "embedding-sdk-shared/lib/get-window";
+
 export type DataAppSdkMountHandle = {
   update: (componentProps: Record<string, unknown>) => void;
   unmount: () => void;
 };
 
 type HostComponent = ComponentType<Record<string, unknown>>;
+
+function assertTrustedSdkComponents(
+  ComponentProvider: unknown,
+  Component: unknown,
+): void {
+  const bundle = getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE;
+  const bundleExports: unknown[] = bundle ? Object.values(bundle) : [];
+
+  if (
+    !bundleExports.includes(ComponentProvider) ||
+    !bundleExports.includes(Component)
+  ) {
+    throw new Error(
+      "data-app SDK mount: only SDK bundle components may be mounted",
+    );
+  }
+}
 
 /**
  * Mediated-mount bridge for SDK components in a data app.
@@ -18,7 +37,8 @@ type HostComponent = ComponentType<Record<string, unknown>>;
  * subtree into that container with the HOST ReactDOM (its own realm/hooks),
  * living inside the guest app's DOM. Props/store are passed through the membrane.
  *
- * Endowed to the guest as `__MB_DATA_APP_SDK_MOUNT__`.
+ * Endowed to the guest as `__MB_DATA_APP_SDK_MOUNT__`. Only trusted SDK bundle
+ * components may be mounted — see [[assertTrustedSdkComponents]].
  */
 export function mountDataAppSdkComponent(
   container: HTMLElement,
@@ -27,6 +47,8 @@ export function mountDataAppSdkComponent(
   Component: HostComponent,
   componentProps: Record<string, unknown>,
 ): DataAppSdkMountHandle {
+  assertTrustedSdkComponents(ComponentProvider, Component);
+
   const root: Root = createRoot(container);
 
   const render = (nextComponentProps: Record<string, unknown>) => {
