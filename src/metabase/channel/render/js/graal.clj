@@ -265,13 +265,13 @@
   parsed-source cache."
   (ref-counted-engine (fn [] {:engine (new-untrusted-plugin-engine)})))
 
-(def render-max-cpu-time
+(def ^:private render-max-cpu-time
   "`sandbox.MaxCPUTime` for a *non-pooled* untrusted context (the dev fresh-context path). Covers a cold parse
   of the static-viz bundle plus a single render on dev hardware. Prod uses a pooled context with the larger,
   cumulative [[pool-max-cpu-time]] instead — see [[untrusted-static-viz-context-pool]]."
   "30s")
 
-(def pool-max-cpu-time
+(def ^:private pool-max-cpu-time
   "`sandbox.MaxCPUTime` for a *pooled*, long-lived untrusted context (the prod path). MaxCPUTime is a
   *cumulative* per-context lifetime budget, not per-render: it must cover the one-time cold parse of the
   slim bundle at pool generation plus the many renders the context then serves."
