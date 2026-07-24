@@ -17,9 +17,18 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+
   build:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    uses: ./.github/workflows/uberjar.yml
+    secrets: inherit
+    with:
+      commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+
+  dockerize:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    name: Build Metabase Docker image
+    needs: [build]
+    if: needs.build.result == 'success'
     timeout-minutes: 60
     permissions:
       id-token: write
@@ -59,11 +68,6 @@ jobs:
             echo "No image for ${TAG}; building."
             echo "found=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Ensure build
-        if: steps.exists.outputs.found == 'false'
-        uses: ./.github/workflows/uberjar.yml
-        with:
-          commit: ${{ steps.meta.outputs.tag }}
       - name: Retrieve uberjar artifact for ee
         if: steps.exists.outputs.found == 'false'
         uses: ./.github/actions/fetch-artifact
