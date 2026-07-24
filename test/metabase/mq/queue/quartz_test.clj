@@ -290,6 +290,21 @@
            clojure.lang.ExceptionInfo #"scheduler is not running"
            (publish! (keyword "queue" (str "quartz-nosched-" (random-uuid))) "x"))))))
 
+(deftest quartz-publish-with-disabled-scheduler-throws-test
+  (testing "publishing while the scheduler is disabled throws instead of writing a trigger that never fires"
+    ;; With MB_DISABLE_SCHEDULER the scheduler is still *initialized* (standby, so its Quartz job
+    ;; store accepts writes) but never started. Without a guard the trigger would be durably written
+    ;; and silently never delivered; throwing keeps outbox rows for the recovery sweep and lets the
+    ;; publish buffer retry/loudly drop, same as the nil-scheduler case above.
+    (mt/with-temp-scheduler!
+      (with-redefs [task/scheduler-disabled? (constantly true)]
+        (let [queue (keyword "queue" (str "quartz-disabled-" (random-uuid)))]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"scheduler is not running"
+               (publish! queue "x")))
+          (is (empty? (job-triggers (task/scheduler) queue))
+              "nothing was written to the job store"))))))
+
 (deftest quartz-requeue-no-listener-reschedules-not-refires-test
   (testing "no listener on this node re-schedules the message back into the store (so it goes back through acquisition and node-affinity routes it to a node that has the listener), rather than refiring it here — a refire would loop on this node forever"
     (mt/with-temp-scheduler!
