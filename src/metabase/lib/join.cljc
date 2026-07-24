@@ -451,28 +451,24 @@
 ;;; TODO -- this probably ought to live in [[metabase.lib.query]]
 (defmethod join-clause-method :mbql/query
   [another-query]
-  (-> {:lib/type :mbql/join
-       :stages   (:stages (lib.util/pipeline another-query))}
-      lib.options/ensure-uuid))
+  {:lib/type :mbql/join
+   :stages   (:stages (lib.util/pipeline another-query))})
 
 ;;; TODO -- this probably ought to live in [[metabase.lib.stage]]
 (defmethod join-clause-method :mbql.stage/mbql
   [mbql-stage]
-  (-> {:lib/type :mbql/join
-       :stages   [mbql-stage]}
-      lib.options/ensure-uuid))
+  {:lib/type :mbql/join
+   :stages   [mbql-stage]})
 
 (defmethod join-clause-method :metadata/card
   [card]
-  (-> {:lib/type :mbql/join
-       :stages [{:source-card (:id card)
-                 :lib/type :mbql.stage/mbql}]}
-      lib.options/ensure-uuid))
+  {:lib/type :mbql/join
+   :stages [{:source-card (:id card)
+             :lib/type :mbql.stage/mbql}]})
 
 (defmethod join-clause-method :metadata/table
   [{:keys [lib/join-alias], :as table-metadata}]
   (cond-> (join-clause-method {:lib/type     :mbql.stage/mbql
-                               :lib/options  {:lib/uuid (str (random-uuid))}
                                :source-table (:id table-metadata)})
     join-alias (with-join-alias join-alias)))
 

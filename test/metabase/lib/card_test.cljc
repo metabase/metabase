@@ -863,3 +863,38 @@
              (lib.card/saved-question-metadata mp (:id card)))))
     (testing "returns nil for a nonexistent card"
       (is (nil? (lib.card/saved-question-metadata mp 99999))))))
+
+(deftest ^:parallel strip-bad-column-ids-test
+  (testing "card-returned-columns should strip out column IDs that are obviously wrong (do not match :table-id)"
+    (let [mp (as-> meta/metadata-provider $mp
+               (lib.tu/mock-metadata-provider
+                $mp
+                {:cards [(let [query (-> (lib/query $mp (lib.metadata/table $mp (meta/id :orders)))
+                                         (lib/join (lib.metadata/table $mp (meta/id :products))))]
+                           {:id              1
+                            :type            :model
+                            :dataset-query   query
+                            :result-metadata (mapv (fn [col]
+                                                     (cond-> col
+                                                       (= (:id col) (meta/id :products :id))
+                                                       (assoc :id (meta/id :orders :id))))
+                                                   (lib.metadata.result-metadata/returned-columns query))})]}))]
+      (is (= [["ID"                   (meta/id :orders)  (meta/id :orders :id)]
+              ["USER_ID"              (meta/id :orders)  (meta/id :orders :user-id)]
+              ["PRODUCT_ID"           (meta/id :orders)  (meta/id :orders :product-id)]
+              ["SUBTOTAL"             (meta/id :orders)  (meta/id :orders :subtotal)]
+              ["TAX"                  (meta/id :orders)  (meta/id :orders :tax)]
+              ["TOTAL"                (meta/id :orders)  (meta/id :orders :total)]
+              ["DISCOUNT"             (meta/id :orders)  (meta/id :orders :discount)]
+              ["CREATED_AT"           (meta/id :orders)  (meta/id :orders :created-at)]
+              ["QUANTITY"             (meta/id :orders)  (meta/id :orders :quantity)]
+              ["Products__ID"         (meta/id :products) nil] ; <= should be stripped out
+              ["Products__EAN"        (meta/id :products) (meta/id :products :ean)]
+              ["Products__TITLE"      (meta/id :products) (meta/id :products :title)]
+              ["Products__CATEGORY"   (meta/id :products) (meta/id :products :category)]
+              ["Products__VENDOR"     (meta/id :products) (meta/id :products :vendor)]
+              ["Products__PRICE"      (meta/id :products) (meta/id :products :price)]
+              ["Products__RATING"     (meta/id :products) (meta/id :products :rating)]
+              ["Products__CREATED_AT" (meta/id :products) (meta/id :products :created-at)]]
+             (mapv (juxt :lib/desired-column-alias :table-id :id)
+                   (lib.card/card-returned-columns mp (lib.metadata/card mp 1))))))))

@@ -131,8 +131,7 @@
                                                     :lib/uuid       "ff3dc321-27a7-42d8-a7fc-518160250984"
                                                     :effective-type "type/Integer"}
                                                    76329)))
-                                                :stages      ({:lib/type "mbql.stage/mbql", :source-card 13281})
-                                                :lib/options #:lib{:uuid "517699ac-dede-4f6b-bc53-272def3eea8b"}})
+                                                :stages      ({:lib/type "mbql.stage/mbql", :source-card 13281})})
                                 :lib/type     "mbql.stage/mbql"
                                 :source-table 11763
                                 :fields       (("field"
@@ -213,7 +212,6 @@
                                                         76329]]]
                                         :fields      :all
                                         :stages      [{:source-card 13281, :lib/type :mbql.stage/mbql}]
-                                        :lib/options {:lib/uuid "517699ac-dede-4f6b-bc53-272def3eea8b"}
                                         :lib/type    :mbql/join}]
                         :limit        3
                         :source-table 11763

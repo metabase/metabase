@@ -267,6 +267,22 @@
                             binning       (update :display-name lib.binning/ensure-ends-with-binning binning semantic-type)))))))))
              result-cols)))))
 
+(mu/defn- remove-bad-field-ids-xform :- [:=>             ; this returns a transducer, and
+                                         [:cat #_rf fn?] ; I'm not bothering to write out a schema for the rf
+                                         #_rf fn?]       ; -- Cam
+  "Sometimes old metadata was saved with incorrect column IDs (usually when a join had a column with the same name),
+  we should strip these out if they're obviously wrong (`:table_id` differs from the Table for column with `:id`).
+  This way we don't try to match on it or otherwise perpetuate the brokenness."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
+  (letfn [(bad-column-id? [{:keys [table-id id], :as _col}]
+            (when (and id table-id)
+              (not= (:table-id (lib.metadata/field metadata-providerable id)) table-id)))
+          (remove-bad-column-id [col]
+            (cond-> col
+              (bad-column-id? col)
+              (dissoc :id)))]
+    (map remove-bad-column-id)))
+
 (mu/defn card-returned-columns :- [:maybe ::maybe-columns]
   "Get a normalized version of the saved metadata associated with Card metadata."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
@@ -288,10 +304,12 @@
                                    (lib.util/native-stage? -1)))]
         (not-empty
          (into []
-               ;; do not truncate the desired column aliases coming back in card metadata, if the query returns a
-               ;; 'crazy long' column name then we need to use that in the next stage.
-               ;; See [[metabase.lib.card-test/propagate-crazy-long-identifiers-from-card-metadata-test]]
-               (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util.unique-name-generator/non-truncating-unique-name-generator))
+               (comp
+                ;; do not truncate the desired column aliases coming back in card metadata, if the query returns a
+                ;; 'crazy long' column name then we need to use that in the next stage.
+                ;; See [[metabase.lib.card-test/propagate-crazy-long-identifiers-from-card-metadata-test]]
+                (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util.unique-name-generator/non-truncating-unique-name-generator))
+                (remove-bad-field-ids-xform metadata-providerable))
                (cond-> result-cols
                  (seq model-cols) (merge-model-metadata model-cols {:native-model? native-model?}))))))))
 
