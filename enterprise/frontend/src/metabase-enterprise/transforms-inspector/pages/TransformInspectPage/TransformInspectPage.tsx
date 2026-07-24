@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import type { Location } from "metabase/router";
+import { useParams, useRouter } from "metabase/router";
 import { TransformDisconnectedDatabaseBanner } from "metabase/transforms/components/TransformDisconnectedDatabaseBanner";
 import { TransformHeader } from "metabase/transforms/components/TransformHeader";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -16,15 +16,9 @@ import * as Urls from "metabase/urls";
 import { InspectorContent } from "./components/InspectorContent";
 import type { RouteParams } from "./types";
 
-type TransformInspectPageProps = {
-  params: RouteParams;
-  location: Location;
-};
-
-export const TransformInspectPage = ({
-  params,
-  location,
-}: TransformInspectPageProps) => {
+export const TransformInspectPage = () => {
+  const { location } = useRouter();
+  const params = useParams<RouteParams>();
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     transform,
