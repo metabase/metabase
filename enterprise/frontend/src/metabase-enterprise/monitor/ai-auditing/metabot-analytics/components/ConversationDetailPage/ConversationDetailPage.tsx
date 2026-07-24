@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useElementSize } from "@mantine/hooks";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
@@ -14,9 +15,11 @@ import { useBranchableMessages } from "metabase/metabot/hooks";
 import type {
   MetabotAgentTextChatMessage,
   MetabotChatMessage,
+  MetabotDebugToolCallMessage,
 } from "metabase/metabot/state/types";
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
+import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
 import type { WithRouterProps } from "metabase/router";
@@ -45,9 +48,13 @@ import { useGetMetabotAnalyticsConversationQuery } from "../../api";
 import type { ConversationFeedback, GeneratedQuery } from "../../types";
 
 import { ConversationHeader } from "./ConversationHeader";
+import { ToolCallDetailsSidebar } from "./ToolCallDetailsSidebar";
 
 export function ConversationDetailPage({ params }: WithRouterProps) {
   const convoId = params.convoId;
+  const { ref: containerRef, width: containerWidth } = useElementSize();
+  const [selectedToolCall, setSelectedToolCall] =
+    useState<MetabotDebugToolCallMessage | null>(null);
 
   const {
     data: conversation,
@@ -98,70 +105,84 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   } = conversation;
 
   return (
-    <MonitorMain>
-      <Stack gap="xl">
-        <ConversationHeader conversation={conversation} />
+    <Flex ref={containerRef} h="100%" wrap="nowrap">
+      <MonitorMain>
+        <Stack gap="xl">
+          <ConversationHeader conversation={conversation} />
 
-        <SimpleGrid cols={4}>
-          <StatCard label={t`Messages`} value={formatNumber(message_count)} />
-          <StatCard
-            label={t`Total tokens`}
-            value={formatNumber(total_tokens)}
-          />
-          <StatCard label={t`Queries run`} value={formatNumber(query_count)} />
-          <StatCard label={t`Searches`} value={formatNumber(search_count)} />
-        </SimpleGrid>
+          <SimpleGrid cols={4}>
+            <StatCard label={t`Messages`} value={formatNumber(message_count)} />
+            <StatCard
+              label={t`Total tokens`}
+              value={formatNumber(total_tokens)}
+            />
+            <StatCard
+              label={t`Queries run`}
+              value={formatNumber(query_count)}
+            />
+            <StatCard label={t`Searches`} value={formatNumber(search_count)} />
+          </SimpleGrid>
 
-        {feedback.length > 0 && (
+          {feedback.length > 0 && (
+            <Stack gap="md">
+              <Title order={3}>{t`Feedback`}</Title>
+              <Stack gap="sm">
+                {feedback.map((item) => (
+                  <FeedbackCard
+                    key={item.id}
+                    feedback={item}
+                    chatMessages={feedbackChatMessages}
+                    conversationId={convoId}
+                  />
+                ))}
+              </Stack>
+            </Stack>
+          )}
+
           <Stack gap="md">
-            <Title order={3}>{t`Feedback`}</Title>
-            <Stack gap="sm">
-              {feedback.map((item) => (
-                <FeedbackCard
-                  key={item.id}
-                  feedback={item}
-                  chatMessages={feedbackChatMessages}
-                  conversationId={convoId}
+            <Flex align="baseline" justify="space-between">
+              <Title order={3}>{t`Conversation`}</Title>
+              {conversation.slack_permalink && (
+                <ExternalLink href={conversation.slack_permalink}>
+                  {t`Open in Slack`}
+                </ExternalLink>
+              )}
+            </Flex>
+            <Card withBorder shadow="none" p="xl">
+              <Messages
+                messages={messages}
+                getExtraActions={getExtraActions}
+                isDoingScience={false}
+                debug
+                readonly
+                conversationId={convoId}
+                onToolCallSelect={setSelectedToolCall}
+              />
+            </Card>
+          </Stack>
+
+          {queries.length > 0 && (
+            <Stack gap="md">
+              <Title order={3}>{t`Queries generated`}</Title>
+              {queries.map((query) => (
+                <GeneratedQueryCard
+                  key={query.call_id ?? `${query.message_id}-${query.query_id}`}
+                  query={query}
                 />
               ))}
             </Stack>
-          </Stack>
-        )}
-
-        <Stack gap="md">
-          <Flex align="baseline" justify="space-between">
-            <Title order={3}>{t`Conversation`}</Title>
-            {conversation.slack_permalink && (
-              <ExternalLink href={conversation.slack_permalink}>
-                {t`Open in Slack`}
-              </ExternalLink>
-            )}
-          </Flex>
-          <Card withBorder shadow="none" p="xl">
-            <Messages
-              messages={messages}
-              getExtraActions={getExtraActions}
-              isDoingScience={false}
-              debug
-              readonly
-              conversationId={convoId}
-            />
-          </Card>
+          )}
         </Stack>
-
-        {queries.length > 0 && (
-          <Stack gap="md">
-            <Title order={3}>{t`Queries generated`}</Title>
-            {queries.map((query) => (
-              <GeneratedQueryCard
-                key={query.call_id ?? `${query.message_id}-${query.query_id}`}
-                query={query}
-              />
-            ))}
-          </Stack>
-        )}
-      </Stack>
-    </MonitorMain>
+      </MonitorMain>
+      {selectedToolCall && (
+        <Sidebar containerWidth={containerWidth}>
+          <ToolCallDetailsSidebar
+            message={selectedToolCall}
+            onClose={() => setSelectedToolCall(null)}
+          />
+        </Sidebar>
+      )}
+    </Flex>
   );
 }
 
