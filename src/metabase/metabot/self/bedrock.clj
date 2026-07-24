@@ -385,8 +385,16 @@
   [model]
   (cond
     (runtime-model? model)                      :runtime
-    (str/starts-with? (str model) "anthropic.") :anthropic
-    (str/starts-with? (str model) "openai.")    :openai))
+    (and (str/starts-with? (str model) "anthropic.")
+         (not (str/blank? (subs (str model) 10)))) :anthropic
+    (and (str/starts-with? (str model) "openai.")
+         (not (str/blank? (subs (str model) 7)))
+         (not (str/starts-with? (str model) "openai.gpt-oss"))) :openai))
+
+(defn invokable-model?
+  "Whether `model` names a supported Bedrock mantle model or Claude inference profile."
+  [model]
+  (boolean (model-family model)))
 
 (defn- model->family
   "Like [[model-family]], but throws for models outside the supported families."
