@@ -36,7 +36,6 @@
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
   (:import
-   (com.mchange.v2.c3p0 DataSources)
    (org.h2.tools Server)))
 
 (set! *warn-on-reflection* true)

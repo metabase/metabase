@@ -218,6 +218,15 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+        ## Recreate the explicit creator_id index (v63.2026-07-14T00:00:18) before the FK,
+        ## mirroring the original order. Without it, rolling back further aborts when
+        ## v63.2026-07-14T00:00:18's auto-rollback tries to DROP INDEX idx_workspace_creator_id.
+        - createIndex:
+            tableName: workspace
+            indexName: idx_workspace_creator_id
+            columns:
+              - column:
+                  name: creator_id
         - addForeignKeyConstraint:
             baseTableName: workspace
             baseColumnNames: creator_id
