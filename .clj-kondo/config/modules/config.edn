@@ -1689,9 +1689,11 @@
 
   product-notifications
   {:team "UX West"
-   :api  #{metabase.product-notifications.init}
+   :api  #{metabase.product-notifications.api metabase.product-notifications.init}
    :uses #{api
+           app-db
            config
+           models
            premium-features
            settings
            task
@@ -2672,8 +2674,7 @@
 
   version
   {:team "UX West"
-   :api  #{metabase.version.core
-           metabase.version.init}
+   :api  #{metabase.version.core metabase.version.init metabase.version.settings}
    :uses #{config
            settings
            system

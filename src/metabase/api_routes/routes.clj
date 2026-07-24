@@ -50,6 +50,7 @@
    [metabase.permissions-rest.api]
    [metabase.premium-features.api]
    [metabase.product-feedback.api]
+   [metabase.product-notifications.api]
    [metabase.public-sharing-rest.api]
    [metabase.pulse.api]
    [metabase.queries-rest.api]
@@ -114,6 +115,7 @@
          metabase.native-query-snippets.api/keep-me
          metabase.permissions-rest.api/keep-me
          metabase.product-feedback.api/keep-me
+         metabase.product-notifications.api/keep-me
          metabase.public-sharing-rest.api/keep-me
          metabase.query-processor.api/keep-me
          metabase.revisions.api/keep-me
@@ -227,6 +229,7 @@
    "/premium-features"     (+auth metabase.premium-features.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
    "/product-feedback"     'metabase.product-feedback.api
+   "/product-notifications" (+auth 'metabase.product-notifications.api)
    "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)

@@ -1,92 +1,159 @@
 (ns metabase.product-notifications.core
-  "Pure filtering logic for the in-app product notifications feed.
-
-  Given the raw feed fetched from static.metabase.com and a per-request context (the current user's superuser
-  status, the instance's edition/version/hosting, and the user's dismissals) decides which notifications are
-  relevant and undismissed. Kept dependency-free so it can be unit-tested without a running app."
+  "Validation, normalization, and eligibility rules for product notifications."
   (:require
-   [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.util.log :as log]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
+  (:import
+   (org.semver4j Semver)))
 
 (set! *warn-on-reflection* true)
 
-(def supported-schema-versions
-  "Notification `schemaVersion`s this server knows how to render. Notifications authored with a newer schema
-  are ignored so old servers degrade gracefully."
-  #{1})
+(def ^:private supported-schema-version 1)
 
-(defn- absent?
-  "A condition value imposes no constraint (i.e. always passes) when it is missing (nil) or a blank string."
-  [v]
-  (or (nil? v) (and (string? v) (str/blank? v))))
+(def ^:private GenericNotification
+  [:map
+   [:id ms/NonBlankString]
+   [:schema_version pos-int?]])
 
-(def ^:private version-pattern
-  "Matches our standard version tags: an optional `v`, an optional edition digit (`0` = OSS, `1` = EE), then the
-  marketing `MAJOR.MINOR(.PATCH…)` — e.g. `v0.54.0`, `v1.54.3`, `0.54.0`, `54.0`. Capture group 1 is the marketing
-  part, which is all we compare on, so the `v0`/`v1` edition prefix is ignored. A trailing qualifier such as
-  `-RC1` is tolerated and ignored."
-  #"(?i)^v?(?:[01]\.)?(\d+(?:\.\d+)*)")
+(def ^:private MarketingVersion
+  [:re #"^\d+(?:\.\d+)*$"])
 
-(defn- comparable-version
-  "Parse one of our standard version strings into a vector of integers for comparison, ignoring the leading `v`
-  and the edition digit so that e.g. `v0.54.0` and `v1.54.0` compare equal. Returns nil for strings that aren't a
-  recognizable version (e.g. `vLOCAL_DEV`), which callers treat as not comparable."
-  [s]
-  (when (string? s)
-    (when-let [[_ marketing] (re-find version-pattern (str/trim s))]
-      (mapv parse-long (str/split marketing #"\.")))))
+(def ^:private UtcTemporalString
+  [:and ms/TemporalString [:re #".*Z$"]])
 
-(defn- compare-versions
-  "Compare two of our standard version strings by their marketing `MAJOR.MINOR…`, ignoring the `v0`/`v1` edition
-  prefix. Returns -1/0/1, or nil when either string isn't a recognizable version."
-  [a b]
-  (let [a (comparable-version a)
-        b (comparable-version b)]
-    (when (and a b)
-      (let [n   (max (count a) (count b))
-            pad #(into % (repeat (- n (count %)) 0))]
-        (compare (pad a) (pad b))))))
+(def ^:private ConditionsV1
+  [:map {:closed true}
+   [:audience [:enum "admins" "all_users"]]
+   [:deployment [:enum "cloud" "self_hosted" "any"]]
+   [:edition [:enum "oss" "ee" "any"]]
+   [:starts_at UtcTemporalString]
+   [:ends_at UtcTemporalString]
+   [:min_version {:optional true} [:maybe MarketingVersion]]
+   [:max_version {:optional true} [:maybe MarketingVersion]]])
 
-(defn- within-date-window?
-  "True when `today` (a `LocalDate`) is within the inclusive [start end] window. Missing bounds are open. A
-  malformed date string hides the notification rather than throwing."
-  [today start end]
-  (letfn [(day [s] (when-not (absent? s) (t/local-date s)))]
+(def ^:private NotificationV1
+  [:map {:closed true}
+   [:id ms/NonBlankString]
+   [:schema_version [:= supported-schema-version]]
+   [:title ms/NonBlankString]
+   [:content ms/NonBlankString]
+   [:icon {:optional true} [:maybe ms/NonBlankString]]
+   [:conditions ConditionsV1]])
+
+(def ^:private Feed
+  [:map {:closed true}
+   [:notifications [:vector GenericNotification]]])
+
+(defn- parse-version
+  [version]
+  (when version
     (try
-      (and (or (nil? (day start)) (not (t/before? today (day start))))
-           (or (nil? (day end))   (not (t/after?  today (day end)))))
-      (catch Exception e
-        (log/warn e "Invalid date in product notification condition; hiding notification")
-        false))))
+      (Semver/coerce version)
+      (catch Exception _
+        nil))))
 
-(defn- passes-conditions?
-  "True when every targeting condition on `conditions` passes for `ctx`. A condition that is missing or a blank
-  string imposes no constraint; `admin` is the exception, defaulting to admins-only when missing/blank — only an
-  explicit `admin false` opens a notification to all authenticated users."
-  [conditions {:keys [superuser? hosted? edition version today]}]
-  (let [{:keys [admin cloud start_date end_date min_version max_version]} conditions
-        cond-edition (:edition conditions)]
-    (and
-     (if (false? admin) true (boolean superuser?))
-     (or (absent? cloud) (= (boolean cloud) (boolean hosted?)))
-     (or (absent? cond-edition) (= (str/lower-case (name cond-edition)) edition))
-     (within-date-window? today start_date end_date)
-     ;; inclusive version window; an unparseable running version hides version-targeted notifications
-     (or (absent? min_version) (when-let [c (compare-versions version min_version)] (>= c 0)))
-     (or (absent? max_version) (when-let [c (compare-versions version max_version)] (<= c 0))))))
+(defn- marketing-version
+  [version]
+  (some->> version
+           (re-matches #"(?i)^v?[01]\.(.+)$")
+           second
+           parse-version))
 
-(defn visible-notifications
-  "Given the raw `feed` map (`{:notifications [...]}`) and a per-user `ctx`, return the client-facing vector of
-  relevant, undismissed notifications, each trimmed to `{:id :title :content :icon}`.
+(defn- validate-version-range!
+  [{:keys [min_version max_version] :as notification}]
+  (let [^Semver minimum (parse-version min_version)
+        ^Semver maximum (parse-version max_version)]
+    (when (and min_version (nil? minimum))
+      (throw (ex-info "Invalid minimum product notification version"
+                      {:id (:notification_id notification), :version min_version})))
+    (when (and max_version (nil? maximum))
+      (throw (ex-info "Invalid maximum product notification version"
+                      {:id (:notification_id notification), :version max_version})))
+    (when (and minimum maximum (not (.isLowerThan minimum maximum)))
+      (throw (ex-info "Product notification minimum version must be lower than its maximum version"
+                      {:id (:notification_id notification)
+                       :min-version min_version
+                       :max-version max_version}))))
+  notification)
 
-  `ctx` keys: `:superuser?`, `:hosted?`, `:edition` (\"oss\"/\"ee\"), `:version` (running version tag),
-  `:today` (a `LocalDate`), and `:dismissed-ids` (a collection of already-dismissed notification ids)."
-  [feed {:keys [dismissed-ids] :as ctx}]
-  (let [dismissed (set dismissed-ids)]
-    (into []
-          (comp (filter #(contains? supported-schema-versions (:schemaVersion %)))
-                (remove #(contains? dismissed (:id %)))
-                (filter #(passes-conditions? (:conditions %) ctx))
-                (map #(select-keys % [:id :title :content :icon])))
-          (:notifications feed))))
+(defn- normalize-notification
+  [position notification]
+  (mu/validate-throw NotificationV1 notification)
+  (let [{:keys [audience deployment edition starts_at ends_at min_version max_version]}
+        (:conditions notification)
+        normalized
+        {:notification_id (:id notification)
+         :schema_version  (:schema_version notification)
+         :title           (:title notification)
+         :content         (:content notification)
+         :icon            (:icon notification)
+         :audience        (keyword audience)
+         :deployment      (keyword deployment)
+         :edition         (keyword edition)
+         :min_version     min_version
+         :max_version     max_version
+         :starts_at       (t/offset-date-time starts_at)
+         :ends_at         (t/offset-date-time ends_at)
+         :position        position}]
+    (when-not (t/before? (:starts_at normalized) (:ends_at normalized))
+      (throw (ex-info "Product notification start must be before its end"
+                      {:id (:notification_id normalized)})))
+    (validate-version-range! normalized)))
+
+(mu/defn normalize-feed :- [:map
+                            [:notifications [:vector :map]]
+                            [:present-ids [:set :string]]]
+  "Validate a complete remote feed and normalize supported notifications for persistence.
+
+  Notifications using a newer schema are retained in `:present-ids`, but omitted
+  from `:notifications` so this server cannot accidentally broaden their targeting."
+  [feed :- :map]
+  (mu/validate-throw Feed feed)
+  (let [ids (:notifications feed)
+        duplicates (->> ids
+                        (map :id)
+                        frequencies
+                        (keep (fn [[id n]] (when (> n 1) id)))
+                        seq)]
+    (when duplicates
+      (throw (ex-info "Duplicate product notification IDs"
+                      {:ids (vec duplicates)})))
+    {:present-ids (into #{} (map :id) ids)
+     :notifications
+     (into []
+           (keep-indexed
+            (fn [position notification]
+              (when (= supported-schema-version (:schema_version notification))
+                (normalize-notification position notification))))
+           ids)}))
+
+(defn- time-matches?
+  [{:keys [starts_at ends_at]} now]
+  (and (not (t/before? now starts_at))
+       (t/before? now ends_at)))
+
+(defn- version-matches?
+  [{:keys [min_version max_version]} version]
+  (if-not (or min_version max_version)
+    true
+    (when-let [^Semver current (marketing-version version)]
+      (let [^Semver minimum (parse-version min_version)
+            ^Semver maximum (parse-version max_version)]
+        (and (or (nil? minimum) (.isGreaterThanOrEqualTo current minimum))
+             (or (nil? maximum) (.isLowerThan current maximum)))))))
+
+(mu/defn eligible? :- :boolean
+  "Whether a persisted product notification applies to the supplied instance and person."
+  [{:keys [active audience deployment edition] :as notification} :- :map
+   {:keys [now superuser? hosted? enterprise? version]} :- :map]
+  (boolean
+   (and active
+        (time-matches? notification now)
+        (or (= audience :all_users)
+            (and (= audience :admins) superuser?))
+        (or (= deployment :any)
+            (= deployment (if hosted? :cloud :self_hosted)))
+        (or (= edition :any)
+            (= edition (if enterprise? :ee :oss)))
+        (version-matches? notification version))))
