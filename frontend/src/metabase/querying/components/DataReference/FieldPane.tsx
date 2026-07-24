@@ -1,12 +1,17 @@
+import { useMemo } from "react";
+
 import {
   skipToken,
   useGetCardQueryMetadataQuery,
   useGetFieldQuery,
-  useGetTableQuery,
+  useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { TableColumnInfo } from "metabase/common/components/MetadataInfo/ColumnInfo";
+import { QueryColumnInfo } from "metabase/common/components/MetadataInfo/ColumnInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { getColumnQueries } from "metabase/querying/common/utils";
+import { useSelector } from "metabase/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { FieldId } from "metabase-types/api";
 
@@ -16,15 +21,27 @@ import type {
   UniqueFieldId,
 } from "./types";
 
+const STAGE_INDEX = -1;
+
 export const FieldPane = ({
   onBack,
   onClose,
   id,
 }: DataReferencePaneProps<DataReferenceFieldItem>) => {
   const { field, table, isLoading, error } = useGetFieldAndTable(id);
+  const metadata = useSelector(getMetadata);
+  const columnQueries = useMemo(
+    () => getColumnQueries(metadata, table, field !== undefined ? [field] : []),
+    [metadata, table, field],
+  );
 
-  if (isLoading || error || field == null) {
+  if (isLoading || error || !field) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  const columnQuery = columnQueries.get(field);
+  if (!columnQuery) {
+    return <LoadingAndErrorWrapper loading />;
   }
 
   return (
@@ -35,8 +52,10 @@ export const FieldPane = ({
       onClose={onClose}
     >
       <SidebarContent.Pane>
-        <TableColumnInfo
-          field={field}
+        <QueryColumnInfo
+          query={columnQuery.query}
+          stageIndex={STAGE_INDEX}
+          column={columnQuery.column}
           timezone={table?.db?.timezone}
           showAllFieldValues
           showFingerprintInfo
@@ -73,7 +92,7 @@ function useGetFieldAndTableFromFieldId(id: FieldId | null) {
     data: table,
     isLoading: isLoadingTable,
     error: tableError,
-  } = useGetTableQuery(
+  } = useGetTableQueryMetadataQuery(
     field?.table_id != null ? { id: field.table_id } : skipToken,
   );
 

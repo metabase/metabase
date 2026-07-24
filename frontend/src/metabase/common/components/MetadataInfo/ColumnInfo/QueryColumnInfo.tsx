@@ -1,52 +1,12 @@
 import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import type Field from "metabase-lib/v1/metadata/Field";
-import type { Field as ApiField, DatasetColumn } from "metabase-types/api";
 
-import {
-  QueryColumnFingerprintInfo,
-  TableColumnFingerprintInfo,
-} from "../ColumnFingerprintInfo";
+import { QueryColumnFingerprintInfo } from "../ColumnFingerprintInfo";
 import { Description, EmptyDescription } from "../MetadataInfo";
 import { SemanticTypeLabel } from "../SemanticTypeLabel";
 
-import { InfoContainer, Small } from "./ColumnInfo.styled";
-
-export type TableColumnInfoProps = {
-  className?: string;
-  field: Field | DatasetColumn | ApiField;
-  timezone?: string;
-  showAllFieldValues?: boolean;
-  showFingerprintInfo?: boolean;
-};
-
-/**
- * @deprecated prefer to use the Lib/MBQL 5 query props
- */
-export function TableColumnInfo({
-  className,
-  field,
-  timezone,
-  showAllFieldValues,
-  showFingerprintInfo,
-}: TableColumnInfoProps) {
-  return (
-    <InfoContainer className={className}>
-      <ColumnDescription description={field.description} />
-      <Small>
-        <SemanticTypeLabel semanticType={field.semantic_type} />
-        {showFingerprintInfo && (
-          <TableColumnFingerprintInfo
-            field={field}
-            timezone={timezone}
-            showAllFieldValues={showAllFieldValues}
-          />
-        )}
-      </Small>
-    </InfoContainer>
-  );
-}
+import { InfoContainer, Small } from "./QueryColumnInfo.styled";
 
 export type QueryColumnInfoProps = {
   className?: string;

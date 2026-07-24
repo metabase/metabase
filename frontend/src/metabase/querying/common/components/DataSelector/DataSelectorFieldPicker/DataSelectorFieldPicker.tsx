@@ -1,12 +1,15 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import { AccordionList } from "metabase/common/components/AccordionList";
 import {
   HoverParent,
-  TableColumnInfoIcon,
+  QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import CS from "metabase/css/core/index.css";
+import { getColumnQueries } from "metabase/querying/common/utils";
+import { useSelector } from "metabase/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Box, DelayGroup, Icon } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -16,6 +19,8 @@ import { DataSelectorLoading } from "../DataSelectorLoading";
 import { CONTAINER_WIDTH } from "../constants";
 
 import DataSelectorFieldPickerS from "./DataSelectorFieldPicker.module.css";
+
+const STAGE_INDEX = -1;
 
 type DataSelectorFieldPickerProps = {
   fields: Field[];
@@ -48,6 +53,17 @@ export const DataSelectorFieldPicker = ({
   hasFiltering,
   hasInitialFocus,
 }: DataSelectorFieldPickerProps) => {
+  const metadata = useSelector(getMetadata);
+  const columnQueries = useMemo(
+    () =>
+      getColumnQueries(
+        metadata,
+        selectedTable,
+        fields.map((field) => field.getPlainObject()),
+      ),
+    [metadata, selectedTable, fields],
+  );
+
   const header = <Header onBack={onBack} selectedTable={selectedTable} />;
 
   if (isLoading) {
@@ -67,16 +83,22 @@ export const DataSelectorFieldPicker = ({
   const checkIfItemIsSelected = (item: FieldWithName) =>
     item.field && selectedField && item.field.id === selectedField.id;
 
-  const renderItemIcon = (item: FieldWithName) =>
-    item.field && (
-      <TableColumnInfoIcon
-        field={item.field}
-        position="top-end"
-        size={18}
-        // Unjustified type cast. FIXME
-        icon={item.field.icon() as unknown as IconName}
-      />
+  const renderItemIcon = (item: FieldWithName) => {
+    const columnQuery = columnQueries.get(item.field.getPlainObject());
+    return (
+      columnQuery && (
+        <QueryColumnInfoIcon
+          query={columnQuery.query}
+          stageIndex={STAGE_INDEX}
+          column={columnQuery.column}
+          position="top-end"
+          size={18}
+          // Unjustified type cast. FIXME
+          icon={item.field.icon() as unknown as IconName}
+        />
+      )
     );
+  };
 
   return (
     <Box w={CONTAINER_WIDTH} className={DataSelectorFieldPickerS.Container}>
