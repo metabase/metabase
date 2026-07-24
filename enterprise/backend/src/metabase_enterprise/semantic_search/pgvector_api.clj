@@ -11,6 +11,7 @@
    [metabase-enterprise.semantic-search.db.connection :as semantic.db.connection]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
+   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
@@ -27,7 +28,6 @@
   (def pgvector (or @semantic.db/data-source (semantic.db/init-db!)))
   (def index-metadata semantic.index-metadata/default-index-metadata)
 
-  (require '[metabase-enterprise.semantic-search.embedding :as semantic.embedding])
   (def embedding-model (semantic.embedding/get-configured-model)))
 
 (defn- fresh-index [index-metadata embedding-model & {:keys [force-reset?]}]
@@ -80,10 +80,11 @@
 
   Designed to be called once at application startup (or in tests)."
   [pgvector index-metadata embedding-model & {:as opts}]
-  (semantic.db.connection/with-migrate-tx [tx pgvector]
-    (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata
-                                              :embedding-model embedding-model})
-    (initialize-index! tx index-metadata embedding-model opts)))
+  (let [embedding-model (semantic.embedding/resolve-model embedding-model)]
+    (semantic.db.connection/with-migrate-tx [tx pgvector]
+      (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata
+                                                :embedding-model embedding-model})
+      (initialize-index! tx index-metadata embedding-model opts))))
 
 ;; query/index-mgmt require an active index to be established first.
 ;; init-semantic-search! must be called on startup

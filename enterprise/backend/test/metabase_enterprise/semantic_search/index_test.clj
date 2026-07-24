@@ -178,6 +178,8 @@
       ;; force-reset suffix, as pgvector-api/fresh-index builds it
       (str (semantic.index/model-table-name semantic.tu/mock-embedding-model) "_" (semantic.index/model-table-suffix))
       "index_ollama_mxbai_lg_1024_1234567"
+      "index_ollama_mxbai_lg_1024_e0123456789ab"
+      "index_ollama_mxbai_lg_1024_e0123456789ab_1234567"
       ;; hashed shape for names exceeding the pg identifier limit
       (semantic.index/hash-identifier-if-exceeds-pg-limit (apply str "index_" (repeat 60 "x")))
       (str "index_" (apply str (repeat 40 "a")))
@@ -201,6 +203,13 @@
       ;; wrong-length hex
       (str "index_" (apply str (repeat 39 "a")))
       (str "index_" (apply str (repeat 41 "a"))))))
+
+(deftest ^:parallel model-table-name-embedding-space-test
+  (let [model semantic.tu/mock-embedding-model]
+    (is (not= (semantic.index/model-table-name model)
+              (semantic.index/model-table-name (assoc model :embedding-space-id "another-space"))))
+    (is (= "index_mock_model_4"
+           (semantic.index/model-table-name (dissoc model :embedding-space-id))))))
 
 (defn- expected-index-defs
   "The index-DDL contract of [[semantic.index/create-index-table-if-not-exists!]] for `index`.

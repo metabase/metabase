@@ -29,7 +29,7 @@
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model1         semantic.tu/mock-embedding-model
-        model2         (assoc semantic.tu/mock-embedding-model :model-name "embed-harder")
+        model2         (semantic.tu/resolved-mock-embedding-model :model-name "embed-harder")
         sut*           semantic.pgvector-api/init-semantic-search!
         cleanup        (fn [_] (semantic.tu/cleanup-index-metadata! pgvector index-metadata))
         sut            #(semantic.tu/closeable (apply sut* %&) cleanup)]
@@ -127,7 +127,7 @@
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model1         semantic.tu/mock-embedding-model
-        model2         (assoc semantic.tu/mock-embedding-model :model-name "embedagain")
+        model2         (semantic.tu/resolved-mock-embedding-model :model-name "embedagain")
         sut            semantic.pgvector-api/index-documents!]
     (test-not-initialized sut pgvector index-metadata model1)
     (with-open [index-ref (open-semantic-search! pgvector index-metadata model1)]
@@ -155,7 +155,7 @@
         dash           "dashboard"
         card           "card"
         model1         semantic.tu/mock-embedding-model
-        model2         (assoc semantic.tu/mock-embedding-model :model-name "embedagain")
+        model2         (semantic.tu/resolved-mock-embedding-model :model-name "embedagain")
         sut            semantic.pgvector-api/delete-documents!
         documents      (semantic.tu/mock-documents)
         {card-ids "card", dash-ids "dashboard"} (u/group-by :model :id documents)]
@@ -194,7 +194,7 @@
       (let [pgvector       (semantic.env/get-pgvector-datasource!)
             index-metadata (semantic.tu/unique-index-metadata)
             model1         semantic.tu/mock-embedding-model
-            model2         (assoc semantic.tu/mock-embedding-model :model-name "judge-embedd")
+            model2         (semantic.tu/resolved-mock-embedding-model :model-name "judge-embedd")
             remove-scores  (fn [rows] (mapv #(dissoc % :score :all-scores) rows)) ; scores have time-sensitives components
             sut*           semantic.pgvector-api/query
             sut            #(remove-scores (:results (mt/as-admin (apply sut* %&)))) ; see notes below about perms
