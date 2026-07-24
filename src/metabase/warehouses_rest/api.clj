@@ -625,21 +625,20 @@
   (saved-cards-virtual-db-metadata :question :include-tables? true, :include-fields? true))
 
 (defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive? skip-fields?]
-  (let [db (-> (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
-               (t2/hydrate
-                (if skip-fields?
-                  [:tables :segments :metrics]
-                  [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics])))
-        db (if include-editable-data-model?
+  (let [db (binding [database/*hydrate-inactive-tables* (not remove_inactive?)]
+             (-> (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
+                 (t2/hydrate
+                  (if skip-fields?
+                    [:tables :segments :metrics]
+                    [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics]))))
+        db (cond-> db
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
-             (check-db-data-model-perms db)
-             db)
-        ;; Filter out columns hidden by the current user's column-restricting sandbox source card. No-op for
-        ;; non-sandboxed users.
-        db (if skip-fields?
-             db
-             (update db :tables apply-sandbox-column-filter))]
+             include-editable-data-model? check-db-data-model-perms
+             ;; Filter out columns hidden by the current user's column-restricting sandbox source card. No-op for
+             ;; non-sandboxed users.
+             (not skip-fields?)           (update :tables apply-sandbox-column-filter))]
+    ;; TODO: (bshepherdson, 2026/05/14) Rewrite this into a transducer pipeline instead of repeated lazy filters.
     (-> db
         (update :tables (if include-hidden?
                           identity
@@ -674,7 +673,8 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
-  By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
+  By default only active, non-hidden tables and fields are returned. Passing `include_hidden=true` includes active
+  hidden tables. Passing `remove_inactive=false` includes inactive tables.
 
   Passing include_editable_data_model will only return tables for which the current user has data model editing
   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
@@ -686,7 +686,7 @@
    :- [:map
        [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
        [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-       [:remove_inactive             {:default false} [:maybe ms/BooleanValue]]
+       [:remove_inactive             {:default true}  [:maybe ms/BooleanValue]]
        [:skip_fields                 {:default false} [:maybe ms/BooleanValue]]]]
   (db-metadata id
                include_hidden
