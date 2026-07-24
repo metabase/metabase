@@ -1995,3 +1995,60 @@
                   "Price column should be coerced to a timestamp string")
               (is (str/starts-with? (last row) "1970-01-01")
                   "Price should be coerced exactly once, producing a date near the Unix epoch"))))))))
+
+(deftest fk-remapping-with-sandboxing-and-specific-field-test
+  (testing "FK remapping should work for questions against sandboxed tables that select specific fields (#78187)"
+    (met/with-gtaps! {:gtaps {:people {:query (mt/native-query
+                                               {:query "SELECT * FROM PEOPLE WHERE STATE = {{state}}"
+                                                :template-tags {"state" {:display-name "State"
+                                                                         :id           "1"
+                                                                         :name         "state"
+                                                                         :type         :text}}})
+                                       :remappings {"state" [:variable [:template-tag "state"]]}}
+                              :orders {:query (mt/native-query
+                                               {:query (str "SELECT ORDERS.* FROM ORDERS "
+                                                            "LEFT JOIN PEOPLE ON PEOPLE.ID = ORDERS.USER_ID "
+                                                            "WHERE PEOPLE.STATE = {{state}}")
+                                                :template-tags {"state" {:display-name "State"
+                                                                         :id           "2"
+                                                                         :name         "state"
+                                                                         :type         :text}}})
+                                       :remappings {"state" [:variable [:template-tag "state"]]}}}
+                      :attributes {"state" "CA"}}
+      (data-perms/set-table-permission! &group (mt/id :products) :perms/create-queries :query-builder)
+      (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
+      (let [mp (lib.tu/remap-metadata-provider
+                (mt/metadata-provider)
+                (mt/id :orders :user_id)    (mt/id :people :name)
+                (mt/id :orders :product_id) (mt/id :products :title))
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/with-fields [(lib.metadata/field mp (mt/id :orders :user_id))
+                                        (lib.metadata/field mp (mt/id :orders :product_id))])
+                      (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :people))
+                                                     [(lib/= (lib.metadata/field mp (mt/id :orders :user_id))
+                                                             (lib.metadata/field mp (mt/id :people :id)))])
+                                    (lib/with-join-fields [(lib.metadata/field mp (mt/id :people :state))])))
+                      (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                                     [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                             (lib.metadata/field mp (mt/id :products :id)))])
+                                    (lib/with-join-fields [(lib.metadata/field mp (mt/id :products :category))])))
+                      (lib/order-by (lib.metadata/field mp (mt/id :people :name)) :asc)
+                      (lib/order-by (lib.metadata/field mp (mt/id :products :title)) :asc)
+                      (lib/limit 3))
+            result (qp/process-query query)
+            cols (mt/cols result)
+            col-by-name (m/index-by :name cols)]
+        (is (= [[624 144 "CA" "Widget" "Abbie Parisian" "Aerodynamic Bronze Hat"]
+                [624 94 "CA" "Widget" "Abbie Parisian" "Awesome Bronze Plate"]
+                [624 101 "CA" "Gadget" "Abbie Parisian" "Durable Cotton Bench"]]
+               (mt/rows result)))
+        (is (= "NAME" (:remapped_to (col-by-name "USER_ID"))))
+        (is (= "USER_ID" (:remapped_from (col-by-name "NAME"))))
+        (is (= "TITLE" (:remapped_to (col-by-name "PRODUCT_ID"))))
+        (is (= "PRODUCT_ID" (:remapped_from (col-by-name "TITLE"))))
+        (testing "every column with :remapped_from must point at a column with a matching :remapped_to (the FE errors otherwise)"
+          (doseq [col cols
+                  :when (:remapped_from col)
+                  :let [source-col (col-by-name (:remapped_from col))]]
+            (is (= (:name col)
+                   (:remapped_to source-col)))))))))

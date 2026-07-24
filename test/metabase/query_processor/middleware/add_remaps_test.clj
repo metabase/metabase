@@ -180,6 +180,21 @@
                                                  ::qp.add-remaps/new-field-dimension-id pos-int?}]]}})
               (lib/->legacy-MBQL query))))))
 
+(deftest ^:parallel add-remapped-columns-with-previous-stage-test
+  (let [query        (-> (lib/query category-id-remap-metadata-provider (meta/table-metadata :venues))
+                         (lib/append-stage)
+                         (lib/with-fields [(meta/field-metadata :venues :category-id)]))
+        dimension-id (get-in (lib.metadata/field category-id-remap-metadata-provider (meta/id :venues :category-id))
+                             [:lib/external-remap :id])]
+    ;; The `lib/append-stage` models the sandbox behaviour where an extra stage is added
+    ;; and the `remap-column-infos` become name based instead of id based
+    (is (=? {:stages [{}
+                      {:fields [[:field {::qp.add-remaps/original-field-dimension-id dimension-id}
+                                 (meta/id :venues :category-id)]
+                                [:field {::qp.add-remaps/new-field-dimension-id dimension-id}
+                                 (meta/id :categories :name)]]}]}
+            (qp.add-remaps/add-remapped-columns query)))))
+
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
 
 (defn- remap-results [query metadata rows]
