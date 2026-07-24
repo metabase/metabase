@@ -15,7 +15,6 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
       AUTHOR_NAME: ${{ github.event.workflow_run.head_commit.author.name }}
-      AUTHOR_LOGIN: ${{ github.event.workflow_run.head_commit.author.username }}
     steps:
       - name: Generate job summary
         run: |
@@ -47,7 +46,6 @@ jobs:
             const FAILED_RUN_NAME = "${{ github.event.workflow_run.name }}";
             const BREAKING_COMMIT = "${{ github.event.workflow_run.head_sha }}";
             const AUTHOR = process.env.AUTHOR_NAME;
-            const AUTHOR_LOGIN = process.env.AUTHOR_LOGIN;
             const BRANCH = process.env.BRANCH_NAME;
 
             if (ATTEMPT <= MAX_ATTEMPTS) {
@@ -66,7 +64,7 @@ jobs:
               }
             } else if (!BRANCH.includes('backport-')) {
               // notify slack of repeated failure
-              const { mentionUserByGithubLogin, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+              const { sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
 
               // find out which jobs failed
               const { owner, repo } = context.repo;
@@ -117,7 +115,7 @@ jobs:
                       "type": "section",
                       "text": {
                         "type": "mrkdwn",
-                        "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> by ${AUTHOR} (${mentionUserByGithubLogin(AUTHOR_LOGIN)}) has failing <${FAILED_RUN_URL}|${FAILED_RUN_NAME}> tests on <https://github.com/${owner}/${repo}/commits/${BRANCH}|\`${BRANCH}\`>`
+                        "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> by ${AUTHOR} has failing <${FAILED_RUN_URL}|${FAILED_RUN_NAME}> tests on <https://github.com/${owner}/${repo}/commits/${BRANCH}|\`${BRANCH}\`>`
                       },
                     },
                     {
