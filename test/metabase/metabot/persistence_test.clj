@@ -1410,7 +1410,7 @@
 
 (deftest ^:parallel conversation-state-merges-message-states-test
   (testing "merges live assistant rows' :state in order — maps merge, other values take the latest"
-    (is (= {:queries {:q1 {:database 1} :q2 {:database 2}}
+    (is (= {:queries {"q1" {:database 1} "q2" {:database 2}}
             :todos   [{:id "b"}]}
            (metabot-persistence/conversation-state
             [{:role :assistant :finished true :state {:queries {:q1 {:database 1}} :todos [{:id "a"}]}}

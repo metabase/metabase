@@ -35,18 +35,12 @@
                                         :edit-mode (:mode edit_action)
                                         :has-context (some? context)})
 
-  (let [;; Get current transform from context or memory, or create fresh one
-        current-transform (cond
-                            ;; Try to get from context first
-                            (and transform_id context)
-                            (get-in context [:transforms (str transform_id)])
-
-                            ;; Then try memory
-                            (and transform_id memory-atom)
-                            (get-in @memory-atom [:state :transforms (str transform_id)])
-
-                            ;; Create fresh transform
-                            :else
+  (let [;; Get current transform from context or memory, or create fresh one.
+        ;; A context that simply lacks this transform must fall through to memory, not shadow it.
+        current-transform (if transform_id
+                            (or (get-in context [:transforms (str transform_id)])
+                                (some-> memory-atom deref
+                                        (get-in [:state :transforms (str transform_id)])))
                             (transforms-write/create-fresh-transform :python transform_name transform_description
                                                                      source_database source_tables))
 

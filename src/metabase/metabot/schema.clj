@@ -33,10 +33,8 @@
    :keyword])
 
 (defn- canonicalize-query
-  "Return `query` as a canonical MBQL 5 query, repairing the string-valued enums a JSON
-  round-trip leaves behind (e.g. `:lib/type \"mbql/query\"`). Accepts legacy or pMBQL;
-  returns `query` unchanged when it is not a type-tagged query map or when normalization
-  fails, so bad stored data can never break a reader."
+  "Repair the string-valued enums a JSON round-trip leaves behind (`:lib/type \"mbql/query\"`).
+  Falls back to `query` unchanged so bad stored data can't break a reader."
   [query]
   (or (when (and (map? query)
                  (or (:lib/type query) (:type query)))
@@ -46,7 +44,6 @@
       query))
 
 (mr/def ::query
-  "An MBQL query embedded in state, restored to canonical MBQL 5 on decode."
   [:map {:decode/normalize canonicalize-query}])
 
 (mr/def ::chart-config
@@ -70,8 +67,11 @@
    [:link-registry {:optional true} [:map-of ::state-map-key :string]]])
 
 (defn normalize-state
-  "Normalize a state map according to [[::state]]: dynamic keys to their canonical string
-  form, and every embedded MBQL query back to canonical MBQL 5. Apply this wherever
-  persisted state re-enters the process, so readers can assume canonical queries."
+  "Normalize a state map according to [[::state]]: dynamic keys to strings, embedded MBQL to MBQL 5."
   [state]
   (mc/decode ::state state (mtx/transformer {:name :normalize})))
+
+(defn normalize-transform
+  "Normalize a transform according to [[::transform]]."
+  [transform]
+  (mc/decode ::transform transform (mtx/transformer {:name :normalize})))

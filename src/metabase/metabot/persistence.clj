@@ -361,8 +361,7 @@
        (some? finished)))
 
 (defn conversation-state
-  "Merge state values of all replayable messages, normalized back out of their at-rest
-  JSON form (see [[metabase.metabot.schema/normalize-state]])."
+  "Merge state values of all replayable messages"
   [messages]
   (->> messages
        (filter replayable-assistant-row?)

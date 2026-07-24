@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -117,18 +118,13 @@ def transform():
                                      :edit-mode (:mode edit_action)
                                      :has-context (some? context)})
 
-  (let [;; Get current transform from context or memory, or create fresh one
-        current-transform (cond
-                            ;; Try to get from context first
-                            (and transform_id context)
-                            (get-in context [:transforms (str transform_id)])
-
-                            ;; Then try memory
-                            (and transform_id memory-atom)
-                            (get-in @memory-atom [:state :transforms (str transform_id)])
-
-                            ;; Create fresh transform
-                            :else
+  (let [;; Get current transform from context or memory, or create fresh one.
+        ;; A context that simply lacks this transform must fall through to memory, not shadow it.
+        current-transform (if transform_id
+                            (or (some-> (get-in context [:transforms (str transform_id)])
+                                        metabot.schema/normalize-transform)
+                                (some-> memory-atom deref
+                                        (get-in [:state :transforms (str transform_id)])))
                             (create-fresh-transform :sql transform_name transform_description
                                                     database_id source_tables))
 

@@ -1307,7 +1307,7 @@
                               turn-state (conj {:type :data :data-type "state" :data turn-state}))))]
             (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
               (let [conversation-id (str (random-uuid))
-                    turn-1-state    {:queries {:q_1 {:database 1}} :todos [{:id "a" :status "pending"}]}
+                    turn-1-state    {:queries {"q_1" {:database 1}} :todos [{:id "a" :status "pending"}]}
                     first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                                           {:message         "make a query"
                                                            :context         {}
@@ -1324,7 +1324,7 @@
                 (is (= {} (first @seeded-states))
                     "a new conversation seeds the loop with empty state")
                 (is (= turn-1-state (second @seeded-states))
-                    "the follow-up turn is seeded from the DB partial, keywordized — no client echo")
+                    "the follow-up turn is seeded from the DB partial, normalized — no client echo")
                 (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                       {:message          "another"
                                        :context          {}

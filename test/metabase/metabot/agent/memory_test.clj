@@ -73,8 +73,6 @@
   (json/decode (json/encode x) true))
 
 (defn- rehydrated-queries
-  "`state` holding `query` at each location [[memory/initialize]] canonicalizes,
-  returned as location → the query a reader gets back."
   [query]
   (let [mem (memory/initialize [] {:queries    {"q1" query}
                                    :charts     {"c1" {:queries [query]}}
