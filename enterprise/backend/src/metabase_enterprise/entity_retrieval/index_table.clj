@@ -92,11 +92,13 @@
   doc-derivation contract (doc_id scheme, doc_type set, doc_text source, dedup/key rules).
   It's part of the meta row's [[model-identity]], so bumping it makes [[ensure-tables!]] drop and rebuild
   the vectors table; the post-upgrade startup reconcile then repopulates from the appdb under the new
-  format. Bump on ANY compatibility-affecting change in [[metabase-enterprise.entity-retrieval.reconcile]]
-  or either table schema: a column/type change, a new or renamed doc_type, a changed doc_text
-  source, or a changed doc_id / dedup / key scheme — anything that makes old rows incomparable to newly
-  derived desired docs. A bump forces a full re-embed of the library on every instance at upgrade, so do
-  it only when the format truly moved, never as a refresh convenience."
+  format. Bump on ANY compatibility-affecting change in the doc derivation — [[metabase.entity-retrieval.spec]]
+  and the four per-model `:library-index` declarations it registers — or either table schema: a column/type
+  change, a new or renamed doc_type, a changed doc_text source, or a changed doc_id / dedup / key scheme —
+  anything that makes old rows incomparable to newly derived desired docs. A bump forces a full re-embed of
+  the library on every instance at upgrade, so do it only when the format truly moved, never as a refresh
+  convenience. Manual by design: deriving this from declaration source would silently rebuild the index for
+  unrelated edits."
   ;; v1 — initial schema; v2 — immutable embedding-space identity.
   2)
 
