@@ -5,7 +5,10 @@ import { getCollectionIcon } from "metabase/common/collections/utils";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getLibQuery } from "metabase/transforms/utils";
+import {
+  getLibQuery,
+  hasCodeManagedSyncCursor,
+} from "metabase/transforms/utils";
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -46,6 +49,12 @@ export function getIncrementalWarning(
     if (!hasTableTag) {
       return t`Incremental transform with a native query requires a table variable. Please add a table variable to the query and update the checkpoint field.`;
     }
+  }
+
+  // Python transforms without source tables manage the sync cursor in code,
+  // so no checkpoint field is needed.
+  if (hasCodeManagedSyncCursor(transform.source)) {
+    return undefined;
   }
 
   const checkpointFieldId =

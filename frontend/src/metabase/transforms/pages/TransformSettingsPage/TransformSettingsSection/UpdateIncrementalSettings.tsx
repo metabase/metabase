@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useFormikContext } from "formik";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,6 +12,7 @@ import {
   IncrementalTransformSettings,
   useUpdateIncrementalSettings,
 } from "metabase/transforms/components/IncrementalTransform";
+import { hasCodeManagedSyncCursor } from "metabase/transforms/utils";
 import type { Transform } from "metabase-types/api";
 
 import { ResetCheckpointSection } from "./ResetCheckpointSection";
@@ -97,10 +98,16 @@ export function UpdateIncrementalSettings({
   const { initialValues, validationSchema, updateIncrementalSettings } =
     useUpdateIncrementalSettings(transform);
 
+  const validationContext = useMemo(
+    () => ({ hasCodeManagedSyncCursor: hasCodeManagedSyncCursor(transform.source) }),
+    [transform.source],
+  );
+
   return (
     <FormProvider
       initialValues={initialValues}
       validationSchema={validationSchema}
+      validationContext={validationContext}
       onSubmit={_.noop}
       enableReinitialize
     >
@@ -136,7 +143,9 @@ function useCheckpointChangeInterceptor(transform: Transform) {
       const waitingForCheckpointSelection =
         values.incremental &&
         values.sourceStrategy === "checkpoint" &&
-        values.checkpointFilterFieldId == null;
+        values.checkpointFilterFieldId == null &&
+        // No checkpoint field is expected when the transform code manages the cursor.
+        !hasCodeManagedSyncCursor(transform.source);
 
       if (waitingForCheckpointSelection) {
         return false;

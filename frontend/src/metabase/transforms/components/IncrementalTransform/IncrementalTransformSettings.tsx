@@ -8,7 +8,10 @@ import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { SOURCE_STRATEGY_OPTIONS } from "metabase/transforms/constants";
-import { getLibQuery } from "metabase/transforms/utils";
+import {
+  getLibQuery,
+  hasCodeManagedSyncCursor,
+} from "metabase/transforms/utils";
 import {
   Anchor,
   Box,
@@ -63,6 +66,7 @@ export const IncrementalTransformSettings = ({
 
   const isMultiTablePythonTransform =
     getIsPythonTransformWithMultipleTables(source);
+  const isCodeManagedCursor = hasCodeManagedSyncCursor(source);
   const isNativeWithoutTableTags = getIsNativeWithoutTableVariables(
     libQuery,
     transformType,
@@ -82,7 +86,7 @@ export const IncrementalTransformSettings = ({
       if (isNativeWithoutTableTags) {
         return t`Incremental transforms for native queries require a table variable.`;
       }
-      if (!hasCheckpointOptions) {
+      if (!hasCheckpointOptions && !isCodeManagedCursor) {
         return t`Incremental transforms require at least one numeric or temporal source field.`;
       }
       return t`Only process new data`;
@@ -90,7 +94,7 @@ export const IncrementalTransformSettings = ({
 
     const transformHasIssues =
       isNativeWithoutTableTags ||
-      !hasCheckpointOptions ||
+      (!hasCheckpointOptions && !isCodeManagedCursor) ||
       isMultiTablePythonTransform;
 
     const switchContent = (
@@ -284,17 +288,24 @@ function SourceStrategyFields({
               disabled={readOnly}
             />
           )}
-          {transformType === "python" && "source-tables" in source && (
-            <PythonKeysetColumnSelect
-              name="checkpointFilterFieldId"
-              label={t`Field to check for new values`}
-              placeholder={t`Pick a field`}
-              description={t`Pick the input field we should scan to determine which records are new or changed`}
-              descriptionProps={{ lh: "1rem" }}
-              sourceTables={source["source-tables"]}
-              disabled={readOnly}
-            />
+          {hasCodeManagedSyncCursor(source) && (
+            <Text size="sm" c="text-secondary">
+              {t`Sync cursor managed by the transform code`}
+            </Text>
           )}
+          {transformType === "python" &&
+            "source-tables" in source &&
+            !hasCodeManagedSyncCursor(source) && (
+              <PythonKeysetColumnSelect
+                name="checkpointFilterFieldId"
+                label={t`Field to check for new values`}
+                placeholder={t`Pick a field`}
+                description={t`Pick the input field we should scan to determine which records are new or changed`}
+                descriptionProps={{ lh: "1rem" }}
+                sourceTables={source["source-tables"]}
+                disabled={readOnly}
+              />
+            )}
         </>
       )}
     </>

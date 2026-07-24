@@ -20,13 +20,8 @@ export function getPythonSourceValidationResult(
     };
   }
 
-  if (source["source-tables"].length === 0) {
-    return {
-      isValid: false,
-      errorMessage: t`Select at least one table to alias`,
-    };
-  }
-
+  // Zero source tables is valid: ingestion-style transforms fetch their data
+  // from external sources instead of reading Metabase tables.
   return { isValid: true };
 }
 
