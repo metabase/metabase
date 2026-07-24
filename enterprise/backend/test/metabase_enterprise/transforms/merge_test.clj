@@ -283,6 +283,14 @@
                                                 :data :rows)]
                                    {:by-order (into {} (map (fn [[oid st]] [(long oid) st])) rows)
                                     :count    (count rows)}))
+                  delete-order! (fn [order-id]
+                                  (let [[schema tbl] (t2/select-one-fn (juxt :schema :name) :model/Table
+                                                                       (mt/id :order_status_lb))
+                                        spec         (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+                                        sql          (format "DELETE FROM %s WHERE %s = %d"
+                                                             (sql.u/quote-name driver/*driver* :table schema tbl)
+                                                             (q "order_id") order-id)]
+                                    (driver/execute-raw-queries! driver/*driver* spec [[sql]])))
                   watermark    (fn [id] (t2/select-one-fn :last_checkpoint_value :model/Transform id))]
               (mt/with-temp [:model/Transform transform payload]
                 (testing "first run builds the full target and records the watermark"
@@ -308,7 +316,21 @@
                     (is (= {:by-order {1 "shipped", 2 "created", 3 "created", 4 "created"} :count 4}
                            (read-target)))
                     (is (= before (watermark (:id transform)))
-                        "the watermark must not slide backwards by the lookback window")))))))))))
+                        "the watermark must not slide backwards by the lookback window")))
+                (testing "deleting the watermark row from the source does not regress the watermark"
+                  ;; With order 4 (the row that set the watermark, 02-01T10:00) deleted, max() over
+                  ;; the lookback window is orders 2/3 at 01-31T21:00:04 — behind the stored
+                  ;; watermark. The new-watermark clamp must keep the old value rather than let it
+                  ;; slide back (see get-source-range-params' `hi`).
+                  (let [before (watermark (:id transform))]
+                    (delete-order! 4)
+                    (transforms.execute/execute! (t2/select-one :model/Transform (:id transform))
+                                                 {:run-method :manual})
+                    (is (= before (watermark (:id transform)))
+                        "the watermark must not regress when the max row disappears from the source")
+                    (is (= {:by-order {1 "shipped", 2 "created", 3 "created", 4 "created"} :count 4}
+                           (read-target))
+                        "merge does not propagate source deletes; re-read rows upsert idempotently")))))))))))
 
 (deftest merge-composite-key-test
   (testing "a merge transform can upsert on a two-column key"
