@@ -4,7 +4,9 @@
    [metabase-enterprise.semantic-search.core :as semantic.core]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
+   [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
@@ -15,6 +17,8 @@
    [metabase.search.in-place.scoring :as in-place.scoring]
    [metabase.search.settings :as search.settings]
    [metabase.test :as mt]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
@@ -29,6 +33,32 @@
         (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
                                     (constantly semantic.tu/mock-embedding-model)]
           (is (true? (semantic.core/supported?))))))))
+
+(deftest ^:sequential repair-snapshot-precedes-canonical-document-read-test
+  (let [events       (atom [])
+        active-state (atom [nil {:metadata-row {:id 17}}])
+        documents    (map (fn [document]
+                            (swap! events conj :document-read)
+                            document)
+                          [{}])]
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-dynamic-fn-redefs
+        [semantic.core/capture-repair-snapshot-at       (fn [_]
+                                                          (swap! events conj :snapshot)
+                                                          ::snapshot-at)
+         semantic.env/get-pgvector-datasource!          (constantly ::pgvector)
+         semantic.env/get-index-metadata                (constantly ::index-metadata)
+         semantic.env/get-configured-embedding-model    (constantly ::embedding-model)
+         semantic.index-metadata/get-active-index-state (fn [& _]
+                                                          (let [state (first @active-state)]
+                                                            (swap! active-state subvec 1)
+                                                            state))
+         semantic.pgvector-api/init-semantic-search!    (fn [& _])
+         semantic.repair/with-repair-table!             (fn [_ _ f] (f "repair"))
+         semantic.pgvector-api/gate-updates!            (fn [_ _ docs & _] (dorun docs))]
+        (is (= {:index-id 17, :orphans 0, :snapshot-at ::snapshot-at}
+               (semantic.core/repair-index! documents))))
+      (is (= [:snapshot :document-read] @events)))))
 
 (deftest fallback-engine-available-with-semantic-test
   (mt/with-premium-features #{:semantic-search}

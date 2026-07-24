@@ -25,6 +25,15 @@
   [table-name]
   (second (qualified-table-parts table-name)))
 
+(defn quote-table
+  "Quote a possibly schema-qualified `table-name` for raw SQL, quoting schema and table separately so it
+  renders as \"schema\".\"table\" rather than one identifier with a literal dot."
+  [table-name]
+  (let [[schema table] (qualified-table-parts table-name)]
+    (if schema
+      (str (quote-ident schema) "." (quote-ident table))
+      (quote-ident table))))
+
 (defn column-keyword
   "A `table.column` reference as a dotted-name keyword, not a namespaced one.
   HoneySQL quotes a keyword's namespace as one identifier, so a schema-qualified table there renders as a
@@ -68,6 +77,26 @@
                               index])
                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})
         (:index_exists false))))
+
+(defn index-ready?
+  "Whether `index-name` is present and marked ready and valid by PostgreSQL. An in-progress or abandoned
+  concurrent build is not ready. A schema-qualified name matches only within its schema."
+  [pgvector index-name]
+  (let [[schema index] (qualified-table-parts index-name)]
+    (-> (jdbc/execute-one! pgvector
+                           (if schema
+                             [(str "SELECT exists (SELECT 1 FROM pg_class i "
+                                   "JOIN pg_namespace n ON n.oid = i.relnamespace "
+                                   "JOIN pg_index x ON x.indexrelid = i.oid "
+                                   "WHERE n.nspname = ? AND i.relname = ? "
+                                   "AND x.indisready AND x.indisvalid) AS index_ready")
+                              schema index]
+                             [(str "SELECT exists (SELECT 1 FROM pg_class i "
+                                   "JOIN pg_index x ON x.indexrelid = i.oid "
+                                   "WHERE i.relname = ? AND x.indisready AND x.indisvalid) AS index_ready")
+                              index])
+                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+        (:index_ready false))))
 
 (defn semantic-search-configured?
   "Whether to schedule the semantic-search Quartz jobs at startup.
