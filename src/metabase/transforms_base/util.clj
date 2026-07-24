@@ -16,6 +16,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
@@ -316,11 +317,10 @@
   "Push a checkpoint lower bound back by the lookback window (`value` `unit`s). Only supported
   for date and datetime checkpoint columns: time-only columns wrap at midnight, so a window
   behind the watermark is meaningless (and day-based units don't apply to them)."
-  [checkpoint base-type {:keys [value unit] :as lookback}]
+  [checkpoint column {:keys [value unit] :as lookback}]
   (let [invalid! (fn [msg] (throw (ex-info msg {:transform-message msg, :lookback lookback})))]
     (cond
-      (or (not (isa? base-type :type/Temporal))
-          (isa? base-type :type/Time))
+      (not (lib.types.isa/date-or-datetime? column))
       (invalid! (i18n/tru "A lookback window is only supported for date or datetime checkpoint columns."))
 
       (nil? unit)
@@ -339,6 +339,38 @@
   (if (isa? base-type :type/Temporal)
     (compare (->instant a) (->instant b))
     (compare a b)))
+
+(defn- validate-incremental-source!
+  "Throws a user-facing error when an incremental transform can't compute its source range: a
+  native query without a table variable to inject the filter into, or no checkpoint field
+  selected."
+  [{:keys [source] :as transform}]
+  (when (incremental-target? transform)
+    (when (and (native-query-transform? transform)
+               (not (some (fn [tag] (#{:table "table"} (:type tag)))
+                          (lib/template-tags (:query source)))))
+      (let [msg (i18n/tru (str "Incremental transform with a native query requires a table variable. "
+                               "Please add a table variable to the query and update the checkpoint field."))]
+        (throw (ex-info msg {:transform-message msg}))))
+    (when-not (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])
+      (let [msg (i18n/tru (str "Incremental transform is enabled but no checkpoint field is selected. "
+                               "Please select a checkpoint field in the transform settings."))]
+        (throw (ex-info msg {:transform-message msg}))))))
+
+(defn- checkpoint-column
+  "The checkpoint column fetched from `metadata-provider`, validated to exist, be active, and have
+  a type supported for incremental filtering."
+  [metadata-provider checkpoint-filter-field-id]
+  (let [column (lib.metadata/field metadata-provider checkpoint-filter-field-id)]
+    (when (or (nil? column) (not (:active column)))
+      (throw (ex-info "Checkpoint field does not exist or is not active"
+                      {:checkpoint-filter-field-id checkpoint-filter-field-id})))
+    (when-not (supported-incremental-filter-type? (lib.types.isa/column-type column))
+      (throw (ex-info (str "Checkpoint column '" (:name column) "' has unsupported type "
+                           (pr-str (lib.types.isa/column-type column)) ". "
+                           "Only numeric and temporal columns are supported for incremental filtering.")
+                      {:column column})))
+    column))
 
 (defn- inject-filters-into-table-tag
   "Inject `:source-filters` into the table template tag matching the checkpoint field's table.
@@ -381,41 +413,23 @@
   [{:keys [source] :as transform}]
   (let [{:keys [source-incremental-strategy]} source
         {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
-    (when (and (incremental-target? transform)
-               (native-query-transform? transform)
-               (not (some (fn [tag] (#{:table "table"} (:type tag)))
-                          (lib/template-tags (:query source)))))
-      (let [msg (i18n/tru (str "Incremental transform with a native query requires a table variable. "
-                               "Please add a table variable to the query and update the checkpoint field."))]
-        (throw (ex-info msg {:transform-message msg}))))
-    (when (and (incremental-target? transform)
-               (not checkpoint-filter-field-id))
-      (let [msg (i18n/tru (str "Incremental transform is enabled but no checkpoint field is selected. "
-                               "Please select a checkpoint field in the transform settings."))]
-        (throw (ex-info msg {:transform-message msg}))))
+    (validate-incremental-source! transform)
     (when checkpoint-filter-field-id
       (let [{:keys [last_checkpoint_value]} (cond-> transform
                                               (full-incremental-run? transform)
                                               (assoc :last_checkpoint_value nil))
             db-id             (transforms-base.i/target-db-id transform)
             metadata-provider (lib-be/application-database-metadata-provider db-id)
-            column            (lib.metadata/field metadata-provider checkpoint-filter-field-id)
-            _                   (when (or (nil? column) (not (:active column)))
-                                  (throw (ex-info "Checkpoint field does not exist or is not active"
-                                                  {:checkpoint-filter-field-id checkpoint-filter-field-id})))
+            column            (checkpoint-column metadata-provider checkpoint-filter-field-id)
             ;; Coerced columns (e.g. a unix-timestamp integer with an effective type of
             ;; :type/Instant) filter and return values as their effective type, so all
             ;; parsing/encoding of checkpoint values must key off it, not the storage type.
-            base-type         (or (:effective-type column) (:base-type column))
-            _ (when-not (supported-incremental-filter-type? base-type)
-                (throw (ex-info (str "Checkpoint column '" (:name column) "' has unsupported type " (pr-str base-type) ". "
-                                     "Only numeric and temporal columns are supported for incremental filtering.")
-                                {:column column})))
+            base-type         (lib.types.isa/column-type column)
             ;; `checkpoint-lo` is the stored watermark; `lo` is the scan bound, pushed back by any lookback.
             checkpoint-lo     (when last_checkpoint_value (parse-checkpoint-value base-type last_checkpoint_value))
             lookback          (get-in source [:source-incremental-strategy :lookback])
             lo                (cond-> checkpoint-lo
-                                (and checkpoint-lo lookback) (apply-lookback base-type lookback))
+                                (and checkpoint-lo lookback) (apply-lookback column lookback))
 
             ;; Combine max + count in one scan: avoids a second round-trip and pins both
             ;; numbers to the same point-in-time view of the source.
