@@ -72,14 +72,26 @@
        (map (partial strip-base-path dir))
        (into (sorted-set))))
 
+(def ^:private slug-id-prefix-re
+  #"#\d+-")
+
+(defn- replace-entropy
+  [s]
+  ;; Template tag slugs have the form `#1-my-card-name`, where `1` is the record ID. Record IDs depend on
+  ;; import order which is non-deterministic. Replace them with a deterministic placeholder.
+  (str/replace s slug-id-prefix-re "#<some-id>-"))
+
 (defn read-yaml
   "Reads a YAML file and returns Clojure data, with ignored fields removed."
   [file]
   (walk/postwalk
    (fn [x]
-     (if-not (map? x)
-       x
-       (reduce dissoc x ignored-fields)))
+     (cond
+       (map? x) (reduce dissoc x ignored-fields)
+       (string? x) (replace-entropy x)
+       ;; template tags are stored as a map keyed by tag name, so the slug also shows up as a key
+       (simple-keyword? x) (keyword (replace-entropy (name x)))
+       :else x))
    (yaml/parse-string (slurp file))))
 
 (defn non-empty-diff [diff]
