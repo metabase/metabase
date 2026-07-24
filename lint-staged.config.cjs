@@ -7,12 +7,12 @@ module.exports = {
     "oxfmt --write",
   ],
   "+(frontend|enterprise/frontend)/**/*.{js,jsx,ts,tsx}": [
-    "cross-env LINT_CSS_MODULES=true eslint --no-warn-ignored --max-warnings 0 --fix",
+    "oxlint --max-warnings 0 --fix",
     "oxfmt --write",
     "node ./bin/verify-doc-links",
   ],
   "e2e/**/!(cypress_sample_instance_data).{js,jsx,ts,jsx}": [
-    "eslint --no-warn-ignored --max-warnings 0 --fix",
+    "oxlint --max-warnings 0 --fix",
     "oxfmt --write",
   ],
   "**/*.{clj,cljc,cljs,bb}": [
