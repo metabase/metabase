@@ -1513,6 +1513,7 @@
   native-query
   raw-native-query
   recognize-template-tags
+  replace-template-tag-names
   required-native-extras
   native-query-card-ids
   native-query-snippet-ids

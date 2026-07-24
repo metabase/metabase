@@ -18,6 +18,7 @@
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.humanization :as u.humanization]
    [metabase.util.json :as json]
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
@@ -1423,6 +1424,81 @@
                                     :name         "snippet: id"
                                     :display-name "Snippet: WOOP"}}
                     template-tags))))))))
+
+(deftest load-native-card-template-tags-remap-test
+  (testing "card template tag names, display names, and the native text follow :card-id to the local card id (#77516)"
+    (let [serialized (atom nil)
+          target1s   (atom nil)
+          target-eid (atom nil)
+          native-eid (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db       (ts/create! :model/Database :name "tag-db")
+                table    (ts/create! :model/Table :name "customers" :db_id (:id db))
+                user     (ts/create! :model/User :first_name "Tag" :last_name "User" :email "tag@user.example")
+                coll     (ts/create! :model/Collection :name "Tag Collection")
+                target   (ts/create! :model/Card
+                                     :name "BH Population Model"
+                                     :collection_id (:id coll)
+                                     :creator_id (:id user)
+                                     :database_id (:id db)
+                                     :table_id (:id table)
+                                     :dataset_query {:type     :query
+                                                     :database (:id db)
+                                                     :query    {:source-table (:id table)}})
+                tag-name (str "#" (:id target) "-bh-population-model")]
+            (ts/create! :model/Card
+                        :name "Native Referencing Card"
+                        :collection_id (:id coll)
+                        :creator_id (:id user)
+                        :database_id (:id db)
+                        :query_type :native
+                        :entity_id "nativecardtagseid0001"
+                        :dataset_query {:type     :native
+                                        :database (:id db)
+                                        :native   {:query (format "SELECT * FROM {{%s}}" tag-name)
+                                                   :template-tags
+                                                   {tag-name {:id           "203a5ecb-24b1-4d5b-8bee-b3520d21fa89"
+                                                              :name         tag-name
+                                                              :display-name (u.humanization/name->human-readable-name :simple tag-name)
+                                                              :type         "card"
+                                                              :card-id      (:id target)}}}})
+            (reset! target1s target)
+            (reset! target-eid (:entity_id target))
+            (reset! native-eid "nativecardtagseid0001")
+            (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))))
+        (ts/with-db dest-db
+          ;; pre-create some cards so the referenced card can't land on its source id
+          (let [db    (ts/create! :model/Database :name "other-db")
+                table (ts/create! :model/Table :name "orders" :db_id (:id db))
+                user  (ts/create! :model/User :first_name "Tag" :last_name "User" :email "tag@user.example")]
+            (dotimes [i 3]
+              (ts/create! :model/Card
+                          :name (str "Filler " i)
+                          :creator_id (:id user)
+                          :database_id (:id db)
+                          :table_id (:id table)
+                          :dataset_query {:type     :query
+                                          :database (:id db)
+                                          :query    {:source-table (:id table)}})))
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [target-id    (t2/select-one-fn :id :model/Card :entity_id @target-eid)
+                new-tag-name (str "#" target-id "-bh-population-model")
+                stored-query #(t2/select-one-fn :dataset_query :model/Card :entity_id @native-eid)
+                query        (stored-query)]
+            (is (some? target-id))
+            (is (not= (:id @target1s) target-id)
+                "the referenced card must land on a different id for this test to prove anything")
+            (is (= (format "SELECT * FROM {{%s}}" new-tag-name)
+                   (-> query :stages first :native)))
+            (is (=? [{:type         :card
+                      :name         new-tag-name
+                      :display-name (u.humanization/name->human-readable-name :simple new-tag-name)
+                      :card-id      target-id}]
+                    (-> query :stages first :template-tags)))
+            (testing "re-importing over the existing card (the update path) repairs the same way"
+              (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+              (is (= query (stored-query))))))))))
 
 (deftest load-action-test
   (let [serialized (atom nil)
