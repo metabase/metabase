@@ -278,6 +278,12 @@ settings: {
 | `eraseDependencies`            | Setting IDs reset to `null` when this setting changes.                                           |
 | `persistDefault`               | When `true`, writes the value from `getDefault` to stored settings on first render.              |
 
+### Reserved setting ids
+
+Metabase adds a few settings of its own to every custom visualization. They power built-in behavior, like the column formatting popover that opens when a `"field"` or `"fields"` widget sets `showColumnSetting: true`. The setting ids `column_settings` and `column` are reserved for those settings: TypeScript rejects a `Settings` type that declares either key, and Metabase ignores any setting definition that uses one (and logs a warning to the console).
+
+Your visualization can still _read_ the per-column formatting: the resolved `settings` object includes `column`, a function that returns a column's effective formatting settings. See [Formatting and theming](#formatting-and-theming) for how to apply it with `formatValue`.
+
 ### Built-in widgets
 
 Widgets for the settings UI.
@@ -340,6 +346,12 @@ import { formatValue } from "@metabase/custom-viz";
 
 formatValue(row[1], { column: cols[1] });
 formatValue(0.084, { number_style: "percent", decimals: 1 }); // "8.4%"
+```
+
+To honor the formatting people pick in the column formatting popover (the one `showColumnSetting: true` enables on `"field"` and `"fields"` widgets - see [built-in widgets](#built-in-widgets)), format with `settings.column(col)`. It resolves a column's effective settings (instance-wide defaults, the column's metadata settings, and the card-level popover settings, merged in that order) into ready-to-use `formatValue` options:
+
+```tsx
+formatValue(row[1], settings.column?.(cols[1]));
 ```
 
 `formatValue` and the column-type predicates (like `isNumeric` and `isDate`) read formatting and type metadata from Metabase. If you call them outside of Metabase, like in a unit test, they'll throw `Metabase Viz API not initialized`.

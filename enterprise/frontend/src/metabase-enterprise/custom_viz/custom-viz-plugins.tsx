@@ -518,7 +518,10 @@ function createCustomVizWrapper(
       height,
       // Unjustified type cast. FIXME
       series: series as unknown as GenericVizPluginProps["series"],
-      settings,
+      // The plugin API mirrors host types with looser public shapes (e.g.
+      // the `column` resolver returns plain strings instead of internal
+      // unions); the runtime value is the host's computed settings.
+      settings: settings as unknown as GenericVizPluginProps["settings"],
       colorScheme: resolvedColorScheme,
       // Unjustified type cast. FIXME
       onClick: onVisualizationClick as unknown as (
