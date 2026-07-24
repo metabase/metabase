@@ -56,17 +56,15 @@ jobs:
             const { data } = await github.rest.issues.createComment({ owner, repo, issue_number, body });
             core.setOutput('comment_id', String(data.id));
 
-  uberjar:
-    needs: [announce]
-    if: >-
-      github.event_name == 'pull_request'
-      && github.event.label.name == 'evals/smoke'
-      && github.event.pull_request.head.repo.full_name == github.repository
-    uses: ./.github/workflows/uberjar.yml
+  image:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    uses: ./.github/workflows/build-private-ee-docker-image.yml
     secrets: inherit
+    with:
+     commit: ${{ github.event.inputs.ref || github.event.pull_request.head.sha || github.sha }}
 
   smoke:
-    needs: [announce, uberjar]
+    needs: [announce, image]
     if: >-
       github.event_name == 'pull_request'
       && github.event.label.name == 'evals/smoke'
@@ -81,7 +79,8 @@ jobs:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          EVALS_BRANCH: main
+          # WIP
+          EVALS_BRANCH: evals-docker-registry
         run: |
           gh api repos/metabase/evals/actions/workflows/eval-run.yml/dispatches \
             -f ref="$EVALS_BRANCH" \
@@ -93,16 +92,14 @@ jobs:
             -f "inputs[comment_id]=$COMMENT_ID"
 
   finalize:
-    # If the build or dispatch fell over, eval-run never took over the comment — leave a
-    # failure verdict instead of a comment stuck at "building the image…".
-    needs: [announce, uberjar, smoke]
+    needs: [announce, image, smoke]
     if: always() && needs.announce.result == 'success' && needs.smoke.result != 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
       COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
       SMOKE_RESULT: ${{ needs.smoke.result }}
-      UBERJAR_RESULT: ${{ needs.uberjar.result }}
+      IMAGE_RESULT: ${{ needs.image.result }}
     steps:
       - name: Comment (build/dispatch failed)
         uses: actions/github-script@v9
@@ -111,7 +108,7 @@ jobs:
           script: |
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             // A concurrency-cancelled retrigger lands here too; don't stamp it as an infra failure.
-            const cancelled = [process.env.SMOKE_RESULT, process.env.UBERJAR_RESULT].includes('cancelled');
+            const cancelled = [process.env.SMOKE_RESULT, process.env.IMAGE_RESULT].includes('cancelled');
             const body = cancelled
               ? `🤖 **Evals smoke** — ⚪ cancelled before evals started ([logs](${runUrl}))`
               : `🤖 **Evals smoke** — ❌ build or dispatch failed before evals started ([logs](${runUrl}))`;
@@ -120,6 +117,7 @@ jobs:
               comment_id: Number(process.env.COMMENT_ID), body });
 
   dispatch:
+    needs: [image]
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 5

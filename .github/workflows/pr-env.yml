@@ -21,46 +21,10 @@ on:
         default: false
 jobs:
   build:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     if: github.event.pull_request.head.repo.full_name == github.repository
     name: Build Metabase Docker image
-    timeout-minutes: 60
-    permissions:
-      id-token: write
-      contents: read
-      actions: read
-    steps:
-      - name: Checkout source code
-        uses: actions/checkout@v6
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
-        with:
-          role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
-          role-session-name: GitHub_to_AWS_via_FederatedOIDC
-          aws-region: us-east-1
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
-        with:
-          registries: "${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}"
-      - name: Retrieve uberjar artifact for ee
-        uses: ./.github/actions/fetch-artifact
-        with:
-          commit: ${{ github.event.pull_request.head.sha || github.sha }}
-          edition: ee
-          extract-path: "target/uberjar"
-          output-name: "metabase.jar"
-      - name: Move uberjar to bin/docker
-        run: |
-          jar xf target/uberjar/metabase.jar
-          mv target/uberjar/metabase.jar bin/docker/metabase.jar
-      - name: Build container
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
-        with:
-          context: bin/docker/
-          platforms: linux/amd64
-          network: host
-          tags: ${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/metabase-enterprise:pr${{ github.event.number }}
-          push: true
+    uses: ./.github/workflows/build-private-ee-docker-image.yml
+    secrets: inherit
   deploy_pr:
     needs: [build]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -228,7 +192,7 @@ jobs:
           input: ./metabase.yml.tmpl
           output: ./metabase.yml
         env:
-          IMAGE_TAG: pr${{ github.event.number }}
+          IMAGE_TAG: ${{ needs.build.outputs.tag }}
           PR_NUMBER: ${{ github.event.number }}
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -249,7 +213,7 @@ jobs:
           export OIDC_URL_WITH_AUDIENCE="$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${PR_ENV_K8S_AUDIENCE}"
           IDTOKEN=$(curl -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" -H "Accept: application/json; api-version=2.0" "$OIDC_URL_WITH_AUDIENCE" | jq -r .value)
           echo "::add-mask::${IDTOKEN}"
-          echo "idToken=${IDTOKEN}" >>$GITHUB_OUTPUT
+          echo "idToken=${IDTOKEN}" >> "$GITHUB_OUTPUT"
         env:
           PR_ENV_K8S_AUDIENCE: ${{ secrets.PR_ENV_K8S_AUDIENCE }}
       - name: Setup Kube Context
@@ -289,7 +253,7 @@ jobs:
           input: ./values.yaml.tmpl
           output: ./values.yaml
         env:
-          IMAGE_TAG: pr${{ github.event.number }}
+          IMAGE_TAG: ${{ needs.build.outputs.tag }}
           PR_NUMBER: ${{ github.event.number }}
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}

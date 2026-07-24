@@ -1,0 +1,92 @@
+name: Build & push private Metabase Docker image
+
+on:
+  workflow_call:
+    inputs:
+      commit:
+        description: Full sha of commit to build, optional
+        type: string
+
+    outputs:
+      tag:
+        description: "Image tag (the commit SHA)"
+        value: ${{ jobs.build.outputs.tag }}
+
+concurrency:
+  group: build-private-ee-docker-image-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+
+  build:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    uses: ./.github/workflows/uberjar.yml
+    secrets: inherit
+    with:
+      commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+
+  dockerize:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    needs: [build]
+    if: needs.build.result == 'success'
+    timeout-minutes: 60
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+        with:
+          role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: us-east-1
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
+        with:
+          registries: "${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}"
+      - name: Compute image tag
+        id: meta
+        env:
+          SHA: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+        run: echo "tag=${SHA}" >> "$GITHUB_OUTPUT"
+      - name: Check whether image already exists
+        id: exists
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          if aws ecr describe-images \
+              --repository-name metabase-enterprise \
+              --image-ids imageTag="${TAG}" >/dev/null 2>&1; then
+            echo "Image already present for ${TAG}; reusing it."
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No image for ${TAG}; building."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Retrieve uberjar artifact for ee
+        if: steps.exists.outputs.found == 'false'
+        uses: ./.github/actions/fetch-artifact
+        with:
+          commit: ${{ steps.meta.outputs.tag }}
+          edition: ee
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
+      - name: Move uberjar to bin/docker
+        if: steps.exists.outputs.found == 'false'
+        run: |
+          jar xf target/uberjar/metabase.jar
+          mv target/uberjar/metabase.jar bin/docker/metabase.jar
+      - name: Build container
+        if: steps.exists.outputs.found == 'false'
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          context: bin/docker/
+          platforms: linux/amd64
+          network: host
+          tags: ${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/metabase-enterprise:${{ steps.meta.outputs.tag }}
+          push: true
