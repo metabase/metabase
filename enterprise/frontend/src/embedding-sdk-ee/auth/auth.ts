@@ -159,9 +159,8 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
       if ((e as Error).name === "MetabaseError") {
         throw e;
       }
-      throw MetabaseError.REFRESH_TOKEN_BACKEND_ERROR(
-        e instanceof Error ? e : new Error(String(e)),
-      );
+      // `instanceof Error` is unreliable here (see the TODO above)
+      throw MetabaseError.REFRESH_TOKEN_BACKEND_ERROR(e as Error);
     }
   }
 

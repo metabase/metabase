@@ -18,7 +18,7 @@ export type UpdateSettingArg = {
 };
 
 const putSettingQuery = ({ key, value }: UpdateSettingArg) => ({
-  method: "PUT",
+  method: "PUT" as const,
   url: `/api/setting/${encodeURIComponent(key)}`,
   body: { value },
 });
