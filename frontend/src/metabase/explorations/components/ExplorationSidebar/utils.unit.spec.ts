@@ -16,6 +16,7 @@ import {
   getCompactRelativeTime,
   getExplorationSidebarTabsInfo,
   getExplorationSidebarTree,
+  getShimmerDelayStyle,
   isHiddenTreeItem,
   pickInitialSidebarPage,
 } from "./utils";
@@ -1309,5 +1310,31 @@ describe("getExplorationSidebarTree sub-exploration nesting", () => {
     // No parent to derive a metric prefix from — and no folding trigger, so
     // the bare thread name and its metric group stay as-is.
     expect(tree[1]?.name).toBe("Old drill");
+  });
+});
+
+describe("getShimmerDelayStyle", () => {
+  const delayMs = (seed: string | number) =>
+    parseFloat(String(Object.values(getShimmerDelayStyle(seed))[0]));
+
+  it("returns the same delay for the same seed, whether string or number", () => {
+    expect(getShimmerDelayStyle(7)).toEqual(getShimmerDelayStyle(7));
+    expect(getShimmerDelayStyle("7")).toEqual(getShimmerDelayStyle(7));
+  });
+
+  it("starts mid-cycle: a negative ms delay within one shimmer period", () => {
+    for (const seed of [1, "42", "heading-3"]) {
+      const style = getShimmerDelayStyle(seed);
+      expect(String(Object.values(style)[0])).toMatch(/^-\d+ms$/);
+      expect(delayMs(seed)).toBeLessThanOrEqual(0);
+      expect(delayMs(seed)).toBeGreaterThan(-2500);
+    }
+  });
+
+  it("spreads sequential ids across the period instead of clustering them", () => {
+    const delays = [1, 2, 3, 4, 5, 6, 7, 8].map(delayMs);
+
+    expect(new Set(delays).size).toBe(delays.length);
+    expect(Math.max(...delays) - Math.min(...delays)).toBeGreaterThan(1000);
   });
 });

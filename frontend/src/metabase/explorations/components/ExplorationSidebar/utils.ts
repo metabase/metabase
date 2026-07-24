@@ -553,3 +553,26 @@ export function getExplorationSidebarTabsInfo(
     },
   };
 }
+
+// Keep in sync with the `exploration-shimmer` animation duration in the CSS module.
+const SHIMMER_PERIOD_MS = 2500;
+// Deterministic per-row phase offset for the loading shimmer, seeded by the
+// row's id, so concurrent rows animate out of lockstep instead of pulsing in
+// unison. Negative delays start the animation mid-cycle, avoiding an initial
+// static period.
+export function getShimmerDelayStyle(
+  seed: string | number,
+): React.CSSProperties {
+  const text = String(seed);
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    // Multiply-xor with a golden-ratio constant (plus the avalanche below):
+    // ids are mostly small sequential numbers, and a plain `hash * 31 + char`
+    // maps those to delays ~1ms apart — visually still in sync.
+    hash = Math.imul(hash ^ text.charCodeAt(i), 0x9e3779b1);
+  }
+  hash ^= hash >>> 16;
+  const delay = `${-(Math.abs(hash) % SHIMMER_PERIOD_MS)}ms`;
+  // Custom CSS properties aren't assignable to React.CSSProperties keys.
+  return { "--shimmer-delay": delay } as React.CSSProperties;
+}
