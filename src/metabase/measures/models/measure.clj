@@ -247,4 +247,4 @@
 (defmethod workspaces/clone-entity! :model/Measure
   [_model id]
   (workspaces/clone-row! :model/Measure id
-                         [:name :description :table_id :definition :archived]))
+                         [:entity_id :name :description :table_id :definition :archived]))

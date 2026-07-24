@@ -32,6 +32,16 @@
   (api/check-400 (some? (current-workspace-id))
                  (tru "You must have an active workspace to perform this action.")))
 
+(defn stamp-workspace-id
+  "assoc `:workspace_id` with the current user's active workspace unless the key is already
+  present (nil on main / OSS, where no workspace can be active). Call from `before-insert` of
+  workspace-scoped models so rows created inside a workspace are tagged with it — including
+  copy-on-write clones, which are always inserted in a workspace context."
+  [instance]
+  (cond-> instance
+    (not (contains? instance :workspace_id))
+    (assoc :workspace_id (current-workspace-id))))
+
 (defn with-source-entity-id
   "Present a (possibly remapped) `entity` under `source-id`, the ID the client asked for, so
   clients keep a stable view of the graph. Identity for non-map or ID-less values."

@@ -2504,5 +2504,5 @@
   ;; `:is_remote_synced` is copied so the remote-synced-parent check keeps passing.
   (let [source (t2/select-one :model/Collection :id id)]
     (t2/insert-returning-pk! :model/Collection
-                             (select-keys source [:name :description :namespace :authority_level
+                             (select-keys source [:entity_id :name :description :namespace :authority_level
                                                   :location :archived :is_remote_synced]))))

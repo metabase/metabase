@@ -222,7 +222,7 @@
   ;; name verbatim — suffix it per workspace (the same way serdes suffixes conflicting imports).
   (let [source (t2/select-one :model/NativeQuerySnippet :id id)]
     (t2/insert-returning-pk! :model/NativeQuerySnippet
-                             (-> (select-keys source [:description :content :collection_id :archived])
+                             (-> (select-keys source [:entity_id :description :content :collection_id :archived])
                                  (assoc :name       (str (:name source)
                                                          " (workspace " (workspaces/current-workspace-id) ")")
                                         :creator_id api/*current-user-id*)))))

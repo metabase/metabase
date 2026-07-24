@@ -294,4 +294,4 @@
 (defmethod workspaces/clone-entity! :model/Document
   [_model id]
   (workspaces/clone-row! :model/Document id
-                         [:name :document :content_type :collection_id :archived]))
+                         [:entity_id :name :document :content_type :collection_id :archived]))
