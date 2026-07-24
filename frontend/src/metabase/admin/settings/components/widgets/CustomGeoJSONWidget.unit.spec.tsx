@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import {
   findRequests,
   setupGeoJSONEndpoint,
+  setupGeoJSONEndpointWithError,
+  setupMalformedGeoJSONEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
@@ -16,6 +18,7 @@ import type {
 } from "metabase-types/api";
 import {
   createMockGeoJSONFeatureCollection,
+  createMockProjectedGeoJSONFeatureCollection,
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
@@ -267,6 +270,67 @@ describe("CustomGeoJSONWIdget", () => {
       region_key: "featureclass",
       region_name: "scalerank",
       url: "https://test.com/download/GeoJSON_two.json",
+    });
+  });
+
+  describe("load errors", () => {
+    const loadMap = async (url: string) => {
+      await userEvent.click(screen.getByRole("button", { name: "Add a map" }));
+      await userEvent.type(
+        screen.getByPlaceholderText(
+          "Like https://my-mb-server.com/maps/my-map.json",
+        ),
+        url,
+      );
+      await userEvent.click(screen.getByRole("button", { name: /Load/i }));
+    };
+
+    it("should show the error the server rejected the URL with", async () => {
+      const url = "bad-url";
+      await setup({});
+      setupGeoJSONEndpointWithError({
+        url,
+        message:
+          "Invalid GeoJSON file location: must start with http:// or https://. " +
+          "URLs referring to hosts that supply internal hosting metadata are prohibited.",
+      });
+
+      await loadMap(url);
+
+      expect(
+        await screen.findByText(/Invalid GeoJSON file location/),
+      ).toBeInTheDocument();
+    });
+
+    it("should show an error when the payload has no features", async () => {
+      const url = "https://test.com/download/not-geojson.json";
+      await setup({});
+      setupMalformedGeoJSONEndpoint({ url, payload: { type: "Topology" } });
+
+      await loadMap(url);
+
+      expect(
+        await screen.findByText(
+          "Invalid custom GeoJSON: does not contain features",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("should show an error when coordinates are not lat/lng", async () => {
+      const url = "https://test.com/download/projected.json";
+      await setup({});
+      setupMalformedGeoJSONEndpoint({
+        url,
+        payload: createMockProjectedGeoJSONFeatureCollection(),
+      });
+
+      await loadMap(url);
+
+      expect(
+        await screen.findByText(
+          "Invalid custom GeoJSON: coordinates are outside bounds for latitude and longitude",
+        ),
+      ).toBeInTheDocument();
     });
   });
 
