@@ -1402,7 +1402,7 @@ function(bin) {
 
 (declare ^:private mbql->native-rec)
 
-(defn- ^:deprecated append-projections
+(defn- append-projections
   "Projection names must be unique, for historic reasons the MongoDB driver does things like `col` and `col_2` instead
   of `col` and `Join - col`."
   [pipeline-ctx new-projections]
