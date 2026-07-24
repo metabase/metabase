@@ -281,10 +281,17 @@
     (.setDataFormat (. data-format getFormat ^String format-string))))
 
 (defn- compute-column-cell-styles
-  "Compute a sequence of cell styles for each column"
-  [^Workbook workbook ^DataFormat data-format viz-settings cols format-rows?]
+  "Compute a sequence of cell styles for each column. When `inline-currency?` is true, currency columns render the
+  symbol in the cell (used for pivot exports, whose measures have no column header to carry it) -- expressed by
+  forcing `currency-in-header` off for the column."
+  [^Workbook workbook ^DataFormat data-format viz-settings cols format-rows? inline-currency?]
   (for [col cols]
-    (let [settings       (streaming.common/viz-settings-for-col col viz-settings)
+    (let [base-settings  (streaming.common/viz-settings-for-col col viz-settings)
+          ;; Scope the override to currency columns only -- injecting `currency-in-header` into a non-currency
+          ;; column's settings would perturb the number-formatting heuristics that inspect the setting keys.
+          settings       (cond-> base-settings
+                           (and inline-currency? (streaming.common/currency-settings? base-settings))
+                           (assoc ::mb.viz/currency-in-header false))
           format-strings (format-settings->format-strings settings col format-rows?)]
       (when (seq format-strings)
         (mapv
@@ -656,10 +663,12 @@
    :val-formatters (create-formatters cell-styles cols val-indexes timezone settings format-rows?)})
 
 (defn- generate-styles
-  [workbook viz-settings non-pivot-cols format-rows?]
-  (let [data-format (. ^SXSSFWorkbook workbook createDataFormat)]
-    {:cell-styles (compute-column-cell-styles workbook data-format viz-settings non-pivot-cols format-rows?)
-     :typed-cell-styles (compute-typed-cell-styles workbook data-format format-rows?)}))
+  ([workbook viz-settings non-pivot-cols format-rows?]
+   (generate-styles workbook viz-settings non-pivot-cols format-rows? false))
+  ([workbook viz-settings non-pivot-cols format-rows? inline-currency?]
+   (let [data-format (. ^SXSSFWorkbook workbook createDataFormat)]
+     {:cell-styles (compute-column-cell-styles workbook data-format viz-settings non-pivot-cols format-rows? inline-currency?)
+      :typed-cell-styles (compute-typed-cell-styles workbook data-format format-rows?)})))
 
 (defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
@@ -726,7 +735,7 @@
                 {:keys [pivot-rows pivot-cols pivot-measures]} pivot-export-options
 
                 {:keys [cell-styles typed-cell-styles]}
-                (generate-styles workbook settings non-pivot-cols format-rows?)
+                (generate-styles workbook settings non-pivot-cols format-rows? true)
 
                 formatters (make-formatters cell-styles
                                             non-pivot-cols
