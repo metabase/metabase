@@ -223,6 +223,12 @@
 
 (def ^:private anthropic-version "2023-06-01")
 
+(def model-vendor-prefixes
+  "The vendor prefixes a Bedrock model id must carry, mapped to the mantle API family that serves it.
+  Exported so a model reference can be rejected when it is configured rather than when it is called."
+  {"anthropic." :anthropic
+   "openai."    :openai})
+
 (defn- model->family
   "Which mantle API family serves `model`, by vendor prefix: `:anthropic` or `:openai`."
   [model]

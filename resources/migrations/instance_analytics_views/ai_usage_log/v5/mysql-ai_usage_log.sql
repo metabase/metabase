@@ -16,6 +16,7 @@ SELECT
         WHEN 'slackbot'                          THEN 'Slackbot'
         WHEN 'oss-sql-gen'                       THEN 'SQL'
         WHEN 'sql-gen'                           THEN 'SQL'
+        WHEN 'osi-generation'                    THEN 'Library Metadata Generation'
         WHEN 'unknown'                           THEN 'Unknown'
         ELSE a.source
     END                                                               AS source_name,
