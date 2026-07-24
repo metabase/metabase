@@ -36,7 +36,7 @@
                  :model/User      user {:workspace_id (:id ws)}]
     (testing "no exception with an active workspace"
       (mt/with-current-user (:id user)
-        (is (nil? (workspaces/check-workspace-enabled)))))
+        (is (workspaces/check-workspace-enabled))))
     (testing "400 without an active workspace"
       (mt/with-current-user (mt/user->id :rasta)
         (is (thrown-with-msg? clojure.lang.ExceptionInfo

@@ -2814,7 +2814,7 @@
            models
            premium-features
            util}
-   :model-exports #{:model/Workspace :model/WorkspaceEntityRemapping}}
+   :model-exports #{:model/Workspace}}
 
   xrays
   {:team "Graphy"
@@ -3774,7 +3774,7 @@
            premium-features
            util
            workspaces}
-   :model-imports #{:model/Workspace :model/WorkspaceEntityRemapping}}}
+   :model-imports #{:model/Workspace}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
