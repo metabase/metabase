@@ -158,6 +158,10 @@ function isJavascriptUrl(value: unknown): boolean {
   return typeof value === "string" && /^\s*javascript:/i.test(value);
 }
 
+function isTargetAttr(name: unknown): boolean {
+  return typeof name === "string" && name.toLowerCase() === "target";
+}
+
 function assertSafeAttrAssignment(
   errorPrefix: string,
   apiName: string,
@@ -172,6 +176,12 @@ function assertSafeAttrAssignment(
   if (isUrlValuedAttr(name) && isJavascriptUrl(value)) {
     throw new Error(
       `[${errorPrefix}] blocked ${apiName} with javascript: URL: ${String(name)}`,
+    );
+  }
+
+  if (isTargetAttr(name)) {
+    throw new Error(
+      `[${errorPrefix}] blocked ${apiName} for target attribute: ${String(name)}`,
     );
   }
 }

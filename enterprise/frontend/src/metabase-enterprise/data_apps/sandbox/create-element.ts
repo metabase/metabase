@@ -4,34 +4,12 @@ import {
   CREATE_ELEMENT_NS,
 } from "metabase/utils/scripts-sandbox/distortions-dom-mutate";
 
-// DISCOVERY MODE (temporary): block only the hard realm-creation / code-exec
-// vectors, allow everything else so a full SDK render completes, and log every
-// tag the shared blocklist would normally forbid — so we can build a tight,
-// security-vetted data-app allowlist from what the SDK *actually* creates
-// instead of guessing. (custom-viz is unaffected — it uses the shared blocklist
-// directly.)
-const HARD_BLOCKED = new Set(["script", "iframe", "object", "embed", "frame"]);
+// Blocked tags that are used by SDK Package
+const DATA_APP_ALLOWED_TAGS = new Set(["a", "style"]);
 
-const loggedTags = new Set<string>();
-
-function classify(tag: string): "block" | "log" | "allow" {
+function isBlockedForDataApp(tag: string): boolean {
   const lower = tag.toLowerCase();
-  if (HARD_BLOCKED.has(lower)) {
-    return "block";
-  }
-  if (BLOCKED_TAGS.has(lower)) {
-    return "log";
-  }
-  return "allow";
-}
-
-function logDiscovery(tag: string) {
-  const lower = tag.toLowerCase();
-
-  if (!loggedTags.has(lower)) {
-    loggedTags.add(lower);
-    console.warn(`[data-app] SDK-needed tag (normally blocked): ${lower}`);
-  }
+  return BLOCKED_TAGS.has(lower) && !DATA_APP_ALLOWED_TAGS.has(lower);
 }
 
 function localNameOf(qualifiedName: string) {
@@ -69,12 +47,8 @@ export function makeCreateElementDistortion(
       tag: string,
       options?: ElementCreationOptions,
     ) {
-      const verdict = classify(tag);
-      if (verdict === "block") {
+      if (isBlockedForDataApp(tag)) {
         return sharedCreateElement.call(this, tag, options);
-      }
-      if (verdict === "log") {
-        logDiscovery(tag);
       }
       return CREATE_ELEMENT.call(this, tag, options);
     };
@@ -91,17 +65,13 @@ export function makeCreateElementDistortion(
       qualifiedName: string,
       options?: ElementCreationOptions,
     ) {
-      const verdict = classify(localNameOf(qualifiedName));
-      if (verdict === "block") {
+      if (isBlockedForDataApp(localNameOf(qualifiedName))) {
         return sharedCreateElementNS.call(
           this,
           namespaceURI,
           qualifiedName,
           options,
         );
-      }
-      if (verdict === "log") {
-        logDiscovery(localNameOf(qualifiedName));
       }
       return CREATE_ELEMENT_NS.call(this, namespaceURI, qualifiedName, options);
     };

@@ -148,48 +148,21 @@ const buildRequestUrl = (input: RequestInfo | URL, base: string): string => {
   return toUrl(input, base)?.href ?? String(input);
 };
 
-// DISCOVERY MODE (temporary): the SDK now runs inside the sandbox, so its
-// same-origin `/api/*` calls go through this wrapper. Allow them all and log
-// each (deduped by method + normalized path) so we can build a tight,
-// security-vetted endpoint allowlist from what the SDK *actually* calls.
-// TODO: restrict to the SDK's safe endpoints — block `/api/user`,
-// `/api/permissions`, `/api/setting`, `/api/session`, writes, etc.
-const loggedApiCalls = new Set<string>();
-
-const logApiDiscovery = (
-  method: string | undefined,
-  pathname: string,
-): void => {
-  const normalized = pathname.replace(/\/\d+(?=\/|$)/g, "/:id");
-  const key = `${(method ?? "GET").toUpperCase()} ${normalized}`;
-  if (!loggedApiCalls.has(key)) {
-    loggedApiCalls.add(key);
-    console.warn(`[data-app] SDK /api call: ${key}`);
-  }
-};
-
 export const makeSandboxFetch = (
   targetWindow: SandboxRealm,
   allowedHosts: string[],
   label: string,
   onBlocked?: SandboxBlockedNetworkListener,
-): typeof fetch => {
+): typeof fetch | null => {
+  if (allowedHosts.length === 0) {
+    return null;
+  }
+
   const realFetch = targetWindow.fetch.bind(targetWindow);
   const base = targetWindow.location.href;
   const metabaseOrigin = targetWindow.location.origin;
 
   return function dataAppFetch(input: RequestInfo | URL, init?: RequestInit) {
-    const url = toUrl(input, base);
-
-    if (
-      url &&
-      url.origin === metabaseOrigin &&
-      url.pathname.startsWith("/api/")
-    ) {
-      logApiDiscovery(init?.method, url.pathname);
-      return realFetch(input, init);
-    }
-
     const reason = getBlockedReason(input, base, allowedHosts, metabaseOrigin);
 
     if (reason) {
