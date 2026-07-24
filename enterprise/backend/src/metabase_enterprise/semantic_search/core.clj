@@ -3,24 +3,28 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.embedders]
-   [metabase-enterprise.semantic-search.embedding]
+   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.tracing.core :as tracing]
-   [metabase.util :as u]
    [metabase.util.log :as log]
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs]
    [potemkin :as p]
    [toucan2.realize :as t2.realize]))
 
+;; import-vars requires full namespace symbols, so it can't use the alias
+#_{:clj-kondo/ignore [:aliased-namespace-symbol]}
 (p/import-vars
  [metabase-enterprise.semantic-search.embedders
   active-embedding-model
@@ -28,27 +32,53 @@
  [metabase-enterprise.semantic-search.embedding
   get-embeddings-batch])
 
-(defn- fallback-engine
-  "Find the highest priority search engine available for fallback."
-  []
-  (u/seek #(not= :search.engine/semantic %) (search.engine/supported-engines)))
+(defn- fallback-engine []
+  (search.engine/fallback-engine :search.engine/semantic))
 
 (defn- index-active? [pgvector index-metadata]
   (boolean (semantic.index-metadata/get-active-index-state pgvector index-metadata)))
 
-;; TODO: url should likely reside in settings
+(defn- capture-repair-snapshot-at [pgvector]
+  (:snapshot_at (jdbc/execute-one! pgvector ["SELECT clock_timestamp() AS snapshot_at"]
+                                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+
 (defenterprise supported?
   "Enterprise implementation of semantic search engine support check."
   :feature :semantic-search
   []
-  (and
-   (some? semantic.db.datasource/db-url)
-   (semantic.settings/semantic-search-enabled)))
+  ;; Gate engine selection on a usable embedder. App-db mode gives every Postgres instance a pgvector
+  ;; store, so without this the engine auto-activates with no embedder configured and every index and
+  ;; query embed fails. available?/capable? skip the gate on purpose: an existing index still needs
+  ;; maintenance while the embedder is temporarily unconfigured.
+  (and (semantic.util/semantic-search-available?)
+       (semantic.embedding/embedding-supported? (semantic.embedding/get-configured-model))))
 
-(defn- with-zero-semantic-distance
-  "Record `:semantic-distance` 0 on `results` that lack it, for a consistent merged-result score breakdown."
+(defonce ^:private hnsw-index-build-running? (atom false))
+
+(defn build-hnsw-index-async!
+  "Build the HNSW index on the active semantic search index in the background, returning promptly.
+
+  No-ops when semantic search isn't active or this process already has a build running. Database-level
+  coordination in [[semantic.pgvector-api/ensure-active-hnsw-index!]] serializes builds across instances."
+  []
+  (when (and (semantic.util/semantic-search-active?)
+             (compare-and-set! hnsw-index-build-running? false true))
+    (future
+      (try
+        (semantic.pgvector-api/ensure-active-hnsw-index! (semantic.env/get-pgvector-datasource!)
+                                                         (semantic.env/get-index-metadata))
+        (catch Throwable t
+          (log/error t "Failed to build HNSW index for semantic search"))
+        (finally
+          (reset! hnsw-index-build-running? false)))))
+  nil)
+
+(defn- with-zero-semantic-distance-score
+  "Record a 0 `:semantic-distance` score on `results` that lack it, for a consistent merged-result score breakdown."
   [search-ctx results]
   ;; Fallback (appdb/in-place) results never went through vector search, so they carry no semantic distance.
+  ;; Score them as least-relevant: the 0 below is a score, not a distance -- the opposite of a zero cosine
+  ;; distance, which would be a perfect match.
   (let [entry {:name         :semantic-distance
                :score        0
                :weight       (search.config/weight search-ctx :semantic-distance)
@@ -101,7 +131,7 @@
                                        []))
                   fallback-results (take total-limit fallback-results)
                   _                (analytics/observe! :metabase-search/semantic-fallback-results-usage (count fallback-results))
-                  combined-results (concat results (with-zero-semantic-distance search-ctx fallback-results))
+                  combined-results (concat results (with-zero-semantic-distance-score search-ctx fallback-results))
                   deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
               (take total-limit deduped-results)))))
       (catch Exception e
@@ -139,6 +169,16 @@
        model
        ids))))
 
+(defenterprise diagnose
+  "Enterprise implementation of the semantic search engine-owned diagnostic stages."
+  :feature :semantic-search
+  [search-ctx expected-model expected-id]
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
+        index-metadata (semantic.env/get-index-metadata)]
+    (if-not (index-active? pgvector index-metadata)
+      {:type :missing-from-index :details {:reason :no-active-index}}
+      (semantic.pgvector-api/diagnose pgvector index-metadata search-ctx expected-model expected-id))))
+
 ;; NOTE:
 ;; we're currently not returning stats from `init!` as the async nature means
 ;; we'd report skewed values for the `metabase-search` metrics.
@@ -156,24 +196,61 @@
 
 (defenterprise repair-index!
   "Brings the semantic search index into consistency with the provided document set.
-  Does not fully reinitialize the index, but will add missing documents and remove stale ones."
+  Does not fully reinitialize the index, but will add missing documents and remove stale ones.
+  Returns the repaired index ID, its stale-orphan count, and the pgvector timestamp captured before reading
+  the canonical stream."
   :feature :semantic-search
   [searchable-documents]
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
-        index-metadata (semantic.env/get-index-metadata)]
-    (if-not (index-active? pgvector index-metadata)
-      (log/debug "repair-index! called prior to init!")
+        index-metadata (semantic.env/get-index-metadata)
+        snapshot-at    (capture-repair-snapshot-at pgvector)
+        active-state   (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
+    (if-not active-state
+      ;; Semantic can become active at runtime (license applied, or added to additional-search-engines)
+      ;; without init! ever having run; initializing here lets the periodic repair task backfill the index.
+      (do
+        (log/info "No active semantic index, initializing it instead of repairing")
+        (semantic.pgvector-api/init-semantic-search!
+         pgvector index-metadata (semantic.env/get-configured-embedding-model) {})
+        (semantic.repair/with-repair-table!
+          pgvector
+          index-metadata
+          (fn [repair-table-name]
+            (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents
+                                                 :repair-table repair-table-name)
+            {:index-id       (-> (semantic.index-metadata/get-active-index-state pgvector index-metadata)
+                                 :metadata-row
+                                 :id)
+             :orphans        0
+             :snapshot-at    snapshot-at})))
       (semantic.repair/with-repair-table!
         pgvector
+        index-metadata
         (fn [repair-table-name]
           ;; Re-gate all provided documents, populating the repair table as we go
           (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents
                                                :repair-table repair-table-name)
-          ;; Find documents in the gate table that are not in the provided searchable-documents, and gate deletes for them
-          (when-let [ids-by-model (semantic.repair/find-lost-deletes-by-model pgvector (:gate-table-name index-metadata) repair-table-name)]
-            (doseq [[model ids] ids-by-model]
-              (log/infof "Repairing lost deletes for model %s: deleting %d documents" model (count ids))
-              (semantic.pgvector-api/gate-deletes! pgvector index-metadata model ids))))))))
+          ;; Counted BEFORE this run's gate-deletes, so the lost deletes found below (in-flight cleanup the
+          ;; indexer typically clears within minutes) don't read as a garbage spike that stands until the
+          ;; next hourly repair; see [[semantic.repair/count-stale-orphans]] for the full contract.
+          (let [orphans (semantic.repair/count-stale-orphans pgvector
+                                                             (-> active-state :index :table-name)
+                                                             (:gate-table-name index-metadata)
+                                                             repair-table-name
+                                                             (semantic.dlq/dlq-table-name-kw
+                                                              index-metadata
+                                                              (-> active-state :metadata-row :id))
+                                                             (:metadata-row active-state))]
+            ;; Gate deletes for documents absent from the current searchable set.
+            (when-let [ids-by-model
+                       (semantic.repair/find-lost-deletes-by-model
+                        pgvector (:gate-table-name index-metadata) repair-table-name)]
+              (doseq [[model ids] ids-by-model]
+                (log/infof "Repairing lost deletes for model %s: deleting %d documents" model (count ids))
+                (semantic.pgvector-api/gate-deletes! pgvector index-metadata model ids)))
+            {:index-id       (-> active-state :metadata-row :id)
+             :orphans        orphans
+             :snapshot-at    snapshot-at}))))))
 
 (comment
   (update-index! [{:model "card"

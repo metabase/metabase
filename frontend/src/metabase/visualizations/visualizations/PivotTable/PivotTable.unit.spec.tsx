@@ -8,7 +8,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders } from "__support__/ui";
 import * as domUtils from "metabase/utils/dom";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 import {
@@ -136,6 +136,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
     HTMLElement.prototype,
     "offsetHeight",
   ) as number;
+  // Unjustified type cast. FIXME
   const originalOffsetWidth = Object.getOwnPropertyDescriptor(
     HTMLElement.prototype,
     "offsetWidth",

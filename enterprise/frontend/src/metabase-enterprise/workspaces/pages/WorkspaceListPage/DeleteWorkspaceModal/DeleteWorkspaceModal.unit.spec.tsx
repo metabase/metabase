@@ -4,50 +4,103 @@ import fetchMock from "fetch-mock";
 import {
   setupDeleteWorkspaceEndpoint,
   setupDeleteWorkspaceEndpointError,
+  setupGetWorkspaceEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockWorkspace } from "metabase-types/api/mocks";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import type { WorkspaceDatabase } from "metabase-types/api";
+import {
+  createMockDatabase,
+  createMockWorkspace,
+  createMockWorkspaceDatabase,
+} from "metabase-types/api/mocks";
 
 import { DeleteWorkspaceModal } from "./DeleteWorkspaceModal";
 
-const WORKSPACE = createMockWorkspace({ id: 1, name: "My workspace" });
+function setup({
+  withError = false,
+  databases = [],
+}: {
+  withError?: boolean;
+  databases?: WorkspaceDatabase[];
+} = {}) {
+  const workspace = createMockWorkspace({
+    id: 1,
+    name: "My workspace",
+    databases,
+  });
+  setupGetWorkspaceEndpoint(workspace);
 
-function setup({ withError = false }: { withError?: boolean } = {}) {
   if (withError) {
-    setupDeleteWorkspaceEndpointError(WORKSPACE.id);
+    setupDeleteWorkspaceEndpointError(workspace.id);
   } else {
-    setupDeleteWorkspaceEndpoint(WORKSPACE.id);
+    setupDeleteWorkspaceEndpoint(workspace.id);
   }
 
   const onDelete = jest.fn();
   const onClose = jest.fn();
 
   renderWithProviders(
-    <DeleteWorkspaceModal
-      workspace={WORKSPACE}
-      opened
-      onDelete={onDelete}
-      onClose={onClose}
-    />,
+    <>
+      <DeleteWorkspaceModal
+        workspaceId={workspace.id}
+        onDelete={onDelete}
+        onClose={onClose}
+      />
+      <UndoListing />
+    </>,
   );
 
-  return { onDelete, onClose };
+  return { workspace, onDelete, onClose };
+}
+
+async function clickDelete() {
+  const button = await screen.findByRole("button", {
+    name: "Delete workspace",
+  });
+  await waitFor(() => expect(button).toBeEnabled());
+  await userEvent.click(button);
 }
 
 describe("DeleteWorkspaceModal", () => {
   it("should delete the workspace and call the callback when the confirm button is clicked", async () => {
     const { onDelete } = setup();
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Delete workspace" }),
-    );
+    await clickDelete();
 
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.called(
-          `path:/api/ee/workspace-manager/${WORKSPACE.id}`,
-          { method: "DELETE" },
-        ),
+        fetchMock.callHistory.called("path:/api/ee/workspace-manager/1", {
+          method: "DELETE",
+        }),
+      ).toBe(true);
+    });
+    await waitFor(() => expect(onDelete).toHaveBeenCalled());
+  });
+
+  it("should list pending databases and delete when confirmed", async () => {
+    const { onDelete } = setup({
+      databases: [
+        createMockWorkspaceDatabase({
+          database_id: 7,
+          status: "provisioning",
+          database: createMockDatabase({ id: 7, name: "Pending DB" }),
+        }),
+      ],
+    });
+
+    expect(
+      await screen.findByText(/still being set up or torn down/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Pending DB")).toBeInTheDocument();
+
+    await clickDelete();
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/ee/workspace-manager/1", {
+          method: "DELETE",
+        }),
       ).toBe(true);
     });
     await waitFor(() => expect(onDelete).toHaveBeenCalled());
@@ -56,9 +109,7 @@ describe("DeleteWorkspaceModal", () => {
   it("should show an error message and not call the callback when the request fails", async () => {
     const { onDelete } = setup({ withError: true });
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Delete workspace" }),
-    );
+    await clickDelete();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "An error occurred",

@@ -8,9 +8,11 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -108,11 +110,28 @@
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
-(defmethod serdes/hash-fields :model/Document
-  [_table]
-  [:name (serdes/hydrated-hash :collection) :created-at])
-
 ;;; ----------------------------------------------- Search ----------------------------------------------------------
+
+(defn- document->search-text
+  "Extract the plain searchable text from a document's prose-mirror body for the search index.
+
+  Receives the raw `:document` value as it comes off the ingestion query (a JSON string).
+  Returns nil if it can't be parsed, so a malformed/oversized body never blocks the rest of the
+  document (e.g. its name) from being indexed."
+  [document]
+  (when document
+    (try
+      (-> (cond-> document (string? document) json/decode+kw)
+          prose-mirror/ast->text
+          not-empty)
+      (catch Throwable _ nil))))
+
+;; The legacy (in-place) search engine LIKE-matches the raw `:document` JSON in SQL, but scores results
+;; against this cleaned-up text. Extracting prose here means a query that only hits JSON structure
+;; (e.g. "paragraph") matches no real content and is correctly dropped as a non-match.
+(defmethod search.config/column->string [:document :document]
+  [value _model _column]
+  (or (document->search-text value) ""))
 
 (search.spec/define-spec "document"
   {:model :model/Document
@@ -124,7 +143,11 @@
            :updated-at :updated_at
            :last-viewed-at :last_viewed_at
            :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
-   :search-terms [:name]
+   :search-terms {:name true
+                  :document document->search-text}
+   ;; Document bodies are full-text searchable (via `document->search-text` above) but are
+   ;; deliberately excluded from semantic-search embeddings.
+   :embedding-exclude #{:document}
    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
    :render-terms {:document-name :name
                   :document-id :id
@@ -218,11 +241,29 @@
                                                 :else
                                                 nil))))))
 
-(defmethod serdes/dependencies "Document"
+(defmethod serdes/deserialization-dependencies "Document"
   [{:keys [collection_id] :as document}]
   (set (concat
         (document-deps document)
         (when collection_id #{[{:model "Collection" :id collection_id}]}))))
+
+(defmethod serdes/serialization-dependencies "Document"
+  ;; Embedded cards and smart-links become content references (each must be part of the export); the containing
+  ;; Collection is included too, though a selective export may legitimately omit it.
+  [_model-name {:keys [collection_id content_type] :as document}]
+  (set
+   (concat
+    (when collection_id [[{:model "Collection" :id collection_id}]])
+    (when (= content_type prose-mirror/prose-mirror-content-type)
+      (concat
+       (for [embedded-card-id (prose-mirror/card-ids document)]
+         [{:model "Card" :id embedded-card-id}])
+       (for [{model :model link-id :entityId}
+             (prose-mirror/collect-ast document
+                                       #(when (= prose-mirror/smart-link-type (:type %))
+                                          (:attrs %)))
+             :when (contains? model->serdes-model model)]
+         [{:model (model->serdes-model model) :id link-id}]))))))
 
 (defmethod serdes/descendants "Document"
   [_model-name id _opts]

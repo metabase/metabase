@@ -1,28 +1,26 @@
-import type { ReactNode } from "react";
-
-import type { MetricPageProps } from "metabase/common/metrics/types";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import type {
+  MetricPageParams,
+  MetricPageProps,
+} from "metabase/common/metrics/types";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { Outlet, useParams } from "metabase/router";
 import { Card } from "metabase/ui";
 
 import { MetricPageCard } from "../../components/MetricPageCard";
 import { MetricPageShell } from "../../components/MetricPageShell";
 import { metricUrls as defaultUrls } from "../../urls";
 
-interface MetricDependenciesPageProps extends MetricPageProps {
-  children?: ReactNode;
-}
-
 export function MetricDependenciesPage({
-  params,
-  children,
   urls = defaultUrls,
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
-}: MetricDependenciesPageProps) {
+}: MetricPageProps) {
+  const { cardId } = useParams<MetricPageParams>();
+
   return (
-    <MetricPageCard cardId={params.cardId}>
+    <MetricPageCard cardId={cardId}>
       {(card) => (
         <PageContainer>
           <MetricPageShell
@@ -39,7 +37,7 @@ export function MetricDependenciesPage({
             }}
           >
             <Card withBorder p={0} flex={1}>
-              {children}
+              <Outlet />
             </Card>
           </PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider>
         </PageContainer>

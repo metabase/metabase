@@ -390,12 +390,13 @@
                    :model/Notification     {n-unsent :id}  {:payload_type :notification/card
                                                             :payload_id   nc-b
                                                             :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          {run-id :id}    {:run_type    :alert
-                                                            :entity_type :card
-                                                            :entity_id   card-a
-                                                            :status      :success
-                                                            :started_at  (t/instant)
-                                                            :ended_at    (t/instant)}
+                   :model/TaskRun          {run-id :id}    {:run_type        :alert
+                                                            :entity_type     :card
+                                                            :entity_id       card-a
+                                                            :notification_id n-sent
+                                                            :status          :success
+                                                            :started_at      (t/instant)
+                                                            :ended_at        (t/instant)}
                    :model/TaskHistory      _th             {:task         "channel-send"
                                                             :run_id       run-id
                                                             :status       :success
@@ -420,12 +421,13 @@
                    :model/Notification     {nid :id}     {:payload_type :notification/card
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          {run-id :id}  {:run_type    :alert
-                                                          :entity_type :card
-                                                          :entity_id   card-id
-                                                          :status      :failed
-                                                          :started_at  (t/instant)
-                                                          :ended_at    (t/instant)}
+                   :model/TaskRun          {run-id :id}  {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id nid
+                                                          :status          :failed
+                                                          :started_at      (t/instant)
+                                                          :ended_at        (t/instant)}
                    :model/TaskHistory      _th           {:task         "channel-send"
                                                           :run_id       run-id
                                                           :status       :failed
@@ -447,12 +449,13 @@
                    :model/Notification     {nid :id}        {:payload_type :notification/card
                                                              :payload_id   nc
                                                              :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          _run             {:run_type    :alert
-                                                             :entity_type :card
-                                                             :entity_id   card-id
-                                                             :status      :success
-                                                             :started_at  (t/instant)
-                                                             :ended_at    (t/instant)}]
+                   :model/TaskRun          _run             {:run_type        :alert
+                                                             :entity_type     :card
+                                                             :entity_id       card-id
+                                                             :notification_id nid
+                                                             :status          :success
+                                                             :started_at      (t/instant)
+                                                             :ended_at        (t/instant)}]
       (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "notification/admin")]
         (is (=? {:last_check {:at     some?
                               :status "successful"
@@ -466,12 +469,13 @@
                    :model/Notification     {nid :id}     {:payload_type :notification/card
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          {run-id :id}  {:run_type    :alert
-                                                          :entity_type :card
-                                                          :entity_id   card-id
-                                                          :status      :failed
-                                                          :started_at  (t/instant)
-                                                          :ended_at    (t/instant)}
+                   :model/TaskRun          {run-id :id}  {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id nid
+                                                          :status          :failed
+                                                          :started_at      (t/instant)
+                                                          :ended_at        (t/instant)}
                    :model/TaskHistory      _th           {:task         "notification-send"
                                                           :run_id       run-id
                                                           :status       :failed
@@ -491,12 +495,13 @@
                    :model/Notification     {nid :id}     {:payload_type :notification/card
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          {run-id :id}  {:run_type    :alert
-                                                          :entity_type :card
-                                                          :entity_id   card-id
-                                                          :status      :failed
-                                                          :started_at  (t/instant)
-                                                          :ended_at    (t/instant)}
+                   :model/TaskRun          {run-id :id}  {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id nid
+                                                          :status          :failed
+                                                          :started_at      (t/instant)
+                                                          :ended_at        (t/instant)}
                    ;; Outer notification-send succeeded; only the channel-send failed.
                    :model/TaskHistory      _ns-th        {:task         "notification-send"
                                                           :run_id       run-id
@@ -526,12 +531,13 @@
                    :model/Notification     {nid :id}     {:payload_type :notification/card
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          _run          {:run_type    :alert
-                                                          :entity_type :card
-                                                          :entity_id   card-id
-                                                          :status      :abandoned
-                                                          :started_at  (t/instant)
-                                                          :ended_at    (t/instant)}]
+                   :model/TaskRun          _run          {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id nid
+                                                          :status          :abandoned
+                                                          :started_at      (t/instant)
+                                                          :ended_at        (t/instant)}]
       (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "notification/admin")]
         (is (=? {:last_check {:status "failing"}}
                 (find-row-by-id data nid)))
@@ -546,15 +552,65 @@
                    :model/Notification     {nid :id}     {:payload_type :notification/card
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          _run          {:run_type    :alert
-                                                          :entity_type :card
-                                                          :entity_id   card-id
-                                                          :status      :started
-                                                          :started_at  (t/instant)}]
+                   :model/TaskRun          _run          {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id nid
+                                                          :status          :started
+                                                          :started_at      (t/instant)}]
       (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "notification/admin")]
         (is (=? {:last_check nil
                  :last_send  nil}
                 (find-row-by-id data nid)))))))
+
+(deftest list-attributes-run-per-notification-no-bleed-test
+  (testing "a run is shown only on the notification it was stamped for, never bled onto a sibling
+   notification that shares the same card (the original bug)"
+    (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                   :model/NotificationCard {nc-ran :id}  {:card_id card-id}
+                   :model/NotificationCard {nc-idle :id} {:card_id card-id}
+                   :model/Notification     {ran :id}     {:payload_type :notification/card
+                                                          :payload_id   nc-ran
+                                                          :creator_id   (mt/user->id :crowberto)}
+                   :model/Notification     {idle :id}    {:payload_type :notification/card
+                                                          :payload_id   nc-idle
+                                                          :creator_id   (mt/user->id :crowberto)}
+                   :model/TaskRun          _run          {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id ran
+                                                          :status          :success
+                                                          :started_at      (t/instant)
+                                                          :ended_at        (t/instant)}]
+      (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "notification/admin")
+            by-id          (into {} (map (juxt :id identity) data))]
+        (is (=? {:last_check {:status "successful"}} (by-id ran))
+            "the run shows on the notification it was stamped for")
+        (is (=? {:last_check nil} (by-id idle))
+            "the sibling notification on the same card, with no run of its own, shows no last_check")))))
+
+(deftest list-and-detail-agree-on-last-check-test
+  (testing "the list and the detail endpoint report the SAME last_check for a notification, including
+   an abandoned run — which is attributed via task_run.notification_id and has no task_history
+   (this is the list-vs-detail mismatch from the bug report)"
+    (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                   :model/NotificationCard {nc :id}      {:card_id card-id}
+                   :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                          :payload_id   nc
+                                                          :creator_id   (mt/user->id :crowberto)}
+                   :model/TaskRun          _run          {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id nid
+                                                          :status          :abandoned
+                                                          :started_at      (t/instant)
+                                                          :ended_at        (t/instant)}]
+      (let [list-row (-> (mt/user-http-request :crowberto :get 200 "notification/admin")
+                         :data (find-row-by-id nid))
+            detail   (mt/user-http-request :crowberto :get 200 (str "notification/admin/" nid))]
+        (is (=? {:last_check {:status "failing"}} list-row))
+        (is (= (:last_check list-row) (:last_check detail))
+            "list and detail must agree on last_check, abandoned run included")))))
 
 (deftest response-shape-includes-pagination-metadata-test
   (testing "GET / response shape echoes the {:data :total :limit :offset} pagination convention"
@@ -586,18 +642,20 @@
                    :model/Notification     no-send-n          {:payload_type :notification/card
                                                                :payload_id   nc-no-send
                                                                :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          {ok-run :id}       {:run_type    :alert
-                                                               :entity_type :card
-                                                               :entity_id   success-card
-                                                               :status      :success
-                                                               :started_at  (t/instant)
-                                                               :ended_at    (t/instant)}
-                   :model/TaskRun          {fail-run :id}     {:run_type    :alert
-                                                               :entity_type :card
-                                                               :entity_id   fail-card
-                                                               :status      :failed
-                                                               :started_at  (t/instant)
-                                                               :ended_at    (t/instant)}
+                   :model/TaskRun          {ok-run :id}       {:run_type        :alert
+                                                               :entity_type     :card
+                                                               :entity_id       success-card
+                                                               :notification_id (:id success-n)
+                                                               :status          :success
+                                                               :started_at      (t/instant)
+                                                               :ended_at        (t/instant)}
+                   :model/TaskRun          {fail-run :id}     {:run_type        :alert
+                                                               :entity_type     :card
+                                                               :entity_id       fail-card
+                                                               :notification_id (:id fail-n)
+                                                               :status          :failed
+                                                               :started_at      (t/instant)
+                                                               :ended_at        (t/instant)}
                    ;; channel-send rows drive the filter
                    :model/TaskHistory      _ok-th             {:task         "channel-send"
                                                                :run_id       ok-run
@@ -643,26 +701,29 @@
                    :model/Notification     query-fail-n          {:payload_type :notification/card
                                                                   :payload_id   nc-query-fail
                                                                   :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          {ok-run :id}          {:run_type    :alert
-                                                                  :entity_type :card
-                                                                  :entity_id   ok-card
-                                                                  :status      :success
-                                                                  :started_at  (t/instant)
-                                                                  :ended_at    (t/instant)}
+                   :model/TaskRun          {ok-run :id}          {:run_type        :alert
+                                                                  :entity_type     :card
+                                                                  :entity_id       ok-card
+                                                                  :notification_id (:id ok-n)
+                                                                  :status          :success
+                                                                  :started_at      (t/instant)
+                                                                  :ended_at        (t/instant)}
                    ;; heartbeat-killed run that never reached the channel-send step
-                   :model/TaskRun          _abandoned-run        {:run_type    :alert
-                                                                  :entity_type :card
-                                                                  :entity_id   abandoned-card
-                                                                  :status      :abandoned
-                                                                  :started_at  (t/instant)
-                                                                  :ended_at    (t/instant)}
+                   :model/TaskRun          _abandoned-run        {:run_type        :alert
+                                                                  :entity_type     :card
+                                                                  :entity_id       abandoned-card
+                                                                  :notification_id (:id abandoned-n)
+                                                                  :status          :abandoned
+                                                                  :started_at      (t/instant)
+                                                                  :ended_at        (t/instant)}
                    ;; query failure: notification-send failed, never produced a channel-send row
-                   :model/TaskRun          {qf-run :id}          {:run_type    :alert
-                                                                  :entity_type :card
-                                                                  :entity_id   query-fail-card
-                                                                  :status      :failed
-                                                                  :started_at  (t/instant)
-                                                                  :ended_at    (t/instant)}
+                   :model/TaskRun          {qf-run :id}          {:run_type        :alert
+                                                                  :entity_type     :card
+                                                                  :entity_id       query-fail-card
+                                                                  :notification_id (:id query-fail-n)
+                                                                  :status          :failed
+                                                                  :started_at      (t/instant)
+                                                                  :ended_at        (t/instant)}
                    :model/TaskHistory      _ok-th                {:task         "channel-send"
                                                                   :run_id       ok-run
                                                                   :status       :success
@@ -745,18 +806,20 @@
                    :model/Notification     {never-id :id}   {:payload_type :notification/card
                                                              :payload_id   nc-never
                                                              :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          {old-run :id}    {:run_type    :alert
-                                                             :entity_type :card
-                                                             :entity_id   card-old
-                                                             :status      :success
-                                                             :started_at  (t/minus (t/instant) (t/days 5))
-                                                             :ended_at    (t/minus (t/instant) (t/days 5))}
-                   :model/TaskRun          {new-run :id}    {:run_type    :alert
-                                                             :entity_type :card
-                                                             :entity_id   card-new
-                                                             :status      :success
-                                                             :started_at  (t/instant)
-                                                             :ended_at    (t/instant)}
+                   :model/TaskRun          {old-run :id}    {:run_type        :alert
+                                                             :entity_type     :card
+                                                             :entity_id       card-old
+                                                             :notification_id old-id
+                                                             :status          :success
+                                                             :started_at      (t/minus (t/instant) (t/days 5))
+                                                             :ended_at        (t/minus (t/instant) (t/days 5))}
+                   :model/TaskRun          {new-run :id}    {:run_type        :alert
+                                                             :entity_type     :card
+                                                             :entity_id       card-new
+                                                             :notification_id new-id
+                                                             :status          :success
+                                                             :started_at      (t/instant)
+                                                             :ended_at        (t/instant)}
                    :model/TaskHistory      _old-th          {:task         "channel-send"
                                                              :run_id       old-run
                                                              :status       :success
@@ -819,12 +882,13 @@
                    :model/Notification     {unsent-id :id}   {:payload_type :notification/card
                                                               :payload_id   nc-unsent
                                                               :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          {run-id :id}      {:run_type    :alert
-                                                              :entity_type :card
-                                                              :entity_id   card-sent
-                                                              :status      :success
-                                                              :started_at  (t/instant)
-                                                              :ended_at    (t/instant)}
+                   :model/TaskRun          {run-id :id}      {:run_type        :alert
+                                                              :entity_type     :card
+                                                              :entity_id       card-sent
+                                                              :notification_id sent-id
+                                                              :status          :success
+                                                              :started_at      (t/instant)
+                                                              :ended_at        (t/instant)}
                    :model/TaskHistory      _th               {:task         "channel-send"
                                                               :run_id       run-id
                                                               :status       :success
@@ -1060,18 +1124,20 @@
                    :model/Notification     {never-id :id}   {:payload_type :notification/card
                                                              :payload_id   nc-never
                                                              :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          _old-run         {:run_type    :alert
-                                                             :entity_type :card
-                                                             :entity_id   card-old
-                                                             :status      :failed
-                                                             :started_at  (t/minus (t/instant) (t/days 5))
-                                                             :ended_at    (t/minus (t/instant) (t/days 5))}
-                   :model/TaskRun          _new-run         {:run_type    :alert
-                                                             :entity_type :card
-                                                             :entity_id   card-new
-                                                             :status      :failed
-                                                             :started_at  (t/instant)
-                                                             :ended_at    (t/instant)}]
+                   :model/TaskRun          _old-run         {:run_type        :alert
+                                                             :entity_type     :card
+                                                             :entity_id       card-old
+                                                             :notification_id old-id
+                                                             :status          :failed
+                                                             :started_at      (t/minus (t/instant) (t/days 5))
+                                                             :ended_at        (t/minus (t/instant) (t/days 5))}
+                   :model/TaskRun          _new-run         {:run_type        :alert
+                                                             :entity_type     :card
+                                                             :entity_id       card-new
+                                                             :notification_id new-id
+                                                             :status          :failed
+                                                             :started_at      (t/instant)
+                                                             :ended_at        (t/instant)}]
       (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "notification/admin"
                                                  :sort_column "last_check"
                                                  :sort_direction "desc")
@@ -1114,18 +1180,20 @@
                    :model/Notification     {nid :id}     {:payload_type :notification/card
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          {r1 :id}      {:run_type    :alert
-                                                          :entity_type :card
-                                                          :entity_id   card-id
-                                                          :status      :success
-                                                          :started_at  (t/minus (t/instant) (t/hours 2))
-                                                          :ended_at    (t/minus (t/instant) (t/hours 2))}
-                   :model/TaskRun          {r2 :id}      {:run_type    :alert
-                                                          :entity_type :card
-                                                          :entity_id   card-id
-                                                          :status      :failed
-                                                          :started_at  (t/minus (t/instant) (t/hours 1))
-                                                          :ended_at    (t/minus (t/instant) (t/hours 1))}
+                   :model/TaskRun          {r1 :id}      {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id nid
+                                                          :status          :success
+                                                          :started_at      (t/minus (t/instant) (t/hours 2))
+                                                          :ended_at        (t/minus (t/instant) (t/hours 2))}
+                   :model/TaskRun          {r2 :id}      {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id nid
+                                                          :status          :failed
+                                                          :started_at      (t/minus (t/instant) (t/hours 1))
+                                                          :ended_at        (t/minus (t/instant) (t/hours 1))}
                    ;; notification-send rows with notification_id — required for per-notification filter
                    :model/TaskHistory      _th1          {:task         "notification-send"
                                                           :run_id       r1
@@ -1157,18 +1225,20 @@
                    :model/Notification     {nid :id}     {:payload_type :notification/card
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          {run-ok :id}  {:run_type    :alert
-                                                          :entity_type :card
-                                                          :entity_id   card-id
-                                                          :status      :success
-                                                          :started_at  (t/minus (t/instant) (t/hours 2))
-                                                          :ended_at    (t/minus (t/instant) (t/hours 2))}
-                   :model/TaskRun          {run-fail :id} {:run_type    :alert
-                                                           :entity_type :card
-                                                           :entity_id   card-id
-                                                           :status      :failed
-                                                           :started_at  (t/minus (t/instant) (t/hours 1))
-                                                           :ended_at    (t/minus (t/instant) (t/hours 1))}
+                   :model/TaskRun          {run-ok :id}  {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id nid
+                                                          :status          :success
+                                                          :started_at      (t/minus (t/instant) (t/hours 2))
+                                                          :ended_at        (t/minus (t/instant) (t/hours 2))}
+                   :model/TaskRun          {run-fail :id} {:run_type        :alert
+                                                           :entity_type     :card
+                                                           :entity_id       card-id
+                                                           :notification_id nid
+                                                           :status          :failed
+                                                           :started_at      (t/minus (t/instant) (t/hours 1))
+                                                           :ended_at        (t/minus (t/instant) (t/hours 1))}
                    :model/TaskHistory      _ok-th        {:task         "channel-send"
                                                           :run_id       run-ok
                                                           :status       :success
@@ -1216,12 +1286,13 @@
                    :model/Notification     {nid :id}     {:payload_type :notification/card
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          {run-id :id}  {:run_type    :alert
-                                                          :entity_type :card
-                                                          :entity_id   card-id
-                                                          :status      :failed
-                                                          :started_at  (t/instant)
-                                                          :ended_at    (t/instant)}
+                   :model/TaskRun          {run-id :id}  {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id nid
+                                                          :status          :failed
+                                                          :started_at      (t/instant)
+                                                          :ended_at        (t/instant)}
                    ;; notification-send: failure-wrapped (notification_id only under :original-info)
                    :model/TaskHistory      _ns-th        {:task         "notification-send"
                                                           :run_id       run-id
@@ -1270,12 +1341,13 @@
                    :model/Notification     {nid :id}     {:payload_type :notification/card
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          {run-id :id}  {:run_type    :alert
-                                                          :entity_type :card
-                                                          :entity_id   card-id
-                                                          :status      :failed
-                                                          :started_at  (t/instant)
-                                                          :ended_at    (t/instant)}
+                   :model/TaskRun          {run-id :id}  {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id nid
+                                                          :status          :failed
+                                                          :started_at      (t/instant)
+                                                          :ended_at        (t/instant)}
                    ;; Outer notification-send: succeeded
                    :model/TaskHistory      _ns-th        {:task         "notification-send"
                                                           :run_id       run-id
@@ -1304,12 +1376,13 @@
                    :model/Notification     {nid :id}     {:payload_type :notification/card
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          {run-id :id}  {:run_type    :alert
-                                                          :entity_type :card
-                                                          :entity_id   card-id
-                                                          :status      :failed
-                                                          :started_at  (t/instant)
-                                                          :ended_at    (t/instant)}
+                   :model/TaskRun          {run-id :id}  {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id nid
+                                                          :status          :failed
+                                                          :started_at      (t/instant)
+                                                          :ended_at        (t/instant)}
                    :model/TaskHistory      _ns-th        {:task         "notification-send"
                                                           :run_id       run-id
                                                           :status       :failed
@@ -1334,12 +1407,13 @@
                    :model/Notification     {nid :id}     {:payload_type :notification/card
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          {run-id :id}  {:run_type    :alert
-                                                          :entity_type :card
-                                                          :entity_id   card-id
-                                                          :status      :success
-                                                          :started_at  (t/instant)
-                                                          :ended_at    (t/instant)}
+                   :model/TaskRun          {run-id :id}  {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id nid
+                                                          :status          :success
+                                                          :started_at      (t/instant)
+                                                          :ended_at        (t/instant)}
                    :model/TaskHistory      _email-th     {:task         "channel-send"
                                                           :run_id       run-id
                                                           :status       :success
@@ -1371,12 +1445,13 @@
                    :model/Notification     {nid :id}     {:payload_type :notification/card
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :crowberto)}
-                   :model/TaskRun          {run-id :id}  {:run_type    :alert
-                                                          :entity_type :card
-                                                          :entity_id   card-id
-                                                          :status      :success
-                                                          :started_at  (t/instant)
-                                                          :ended_at    (t/instant)}
+                   :model/TaskRun          {run-id :id}  {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id nid
+                                                          :status          :success
+                                                          :started_at      (t/instant)
+                                                          :ended_at        (t/instant)}
                    :model/TaskHistory      _email-th     {:task         "channel-send"
                                                           :run_id       run-id
                                                           :status       :success
@@ -1424,10 +1499,11 @@
       ;; create 12 runs, each with a matching notification-send row so the per-notification filter passes
       (doseq [i (range 12)]
         (let [run-id (t2/insert-returning-pk! :model/TaskRun
-                                              {:run_type     "alert"
-                                               :entity_type  "card"
-                                               :entity_id    card-id
-                                               :status       "success"
+                                              {:run_type        "alert"
+                                               :entity_type     "card"
+                                               :entity_id       card-id
+                                               :notification_id nid
+                                               :status          "success"
                                                :started_at   (t/minus (t/instant) (t/hours (inc i)))
                                                :ended_at     (t/minus (t/instant) (t/hours (inc i)))
                                                :process_uuid "test"})]
@@ -1483,12 +1559,13 @@
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :crowberto)}
                    ;; tick-A: fires for n1 only
-                   :model/TaskRun          {run-a :id}   {:run_type    :alert
-                                                          :entity_type :card
-                                                          :entity_id   card-id
-                                                          :status      :success
-                                                          :started_at  (t/minus (t/instant) (t/hours 2))
-                                                          :ended_at    (t/minus (t/instant) (t/hours 2))}
+                   :model/TaskRun          {run-a :id}   {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id n1
+                                                          :status          :success
+                                                          :started_at      (t/minus (t/instant) (t/hours 2))
+                                                          :ended_at        (t/minus (t/instant) (t/hours 2))}
                    :model/TaskHistory      _ns-a         {:task         "notification-send"
                                                           :run_id       run-a
                                                           :status       :success
@@ -1503,12 +1580,13 @@
                                                           :task_details {:channel_type    "channel/email"
                                                                          :notification_id n1}}
                    ;; tick-B: fires for n2 only
-                   :model/TaskRun          {run-b :id}   {:run_type    :alert
-                                                          :entity_type :card
-                                                          :entity_id   card-id
-                                                          :status      :success
-                                                          :started_at  (t/minus (t/instant) (t/hours 1))
-                                                          :ended_at    (t/minus (t/instant) (t/hours 1))}
+                   :model/TaskRun          {run-b :id}   {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id n2
+                                                          :status          :success
+                                                          :started_at      (t/minus (t/instant) (t/hours 1))
+                                                          :ended_at        (t/minus (t/instant) (t/hours 1))}
                    :model/TaskHistory      _ns-b         {:task         "notification-send"
                                                           :run_id       run-b
                                                           :status       :success
@@ -1549,12 +1627,13 @@
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :crowberto)}
                    ;; tick-1: goal not met — notification-send row exists but no channel-send
-                   :model/TaskRun          {run-skip :id} {:run_type    :alert
-                                                           :entity_type :card
-                                                           :entity_id   card-id
-                                                           :status      :success
-                                                           :started_at  (t/minus (t/instant) (t/hours 2))
-                                                           :ended_at    (t/minus (t/instant) (t/hours 2))}
+                   :model/TaskRun          {run-skip :id} {:run_type        :alert
+                                                           :entity_type     :card
+                                                           :entity_id       card-id
+                                                           :notification_id nid
+                                                           :status          :success
+                                                           :started_at      (t/minus (t/instant) (t/hours 2))
+                                                           :ended_at        (t/minus (t/instant) (t/hours 2))}
                    :model/TaskHistory      _ns-skip      {:task         "notification-send"
                                                           :run_id       run-skip
                                                           :status       :success
@@ -1563,12 +1642,13 @@
                                                           :task_details {:notification_id nid
                                                                          :skip_reason     "goal-not-met"}}
                    ;; tick-2: goal met — has channel-send
-                   :model/TaskRun          {run-sent :id} {:run_type    :alert
-                                                           :entity_type :card
-                                                           :entity_id   card-id
-                                                           :status      :success
-                                                           :started_at  (t/minus (t/instant) (t/hours 1))
-                                                           :ended_at    (t/minus (t/instant) (t/hours 1))}
+                   :model/TaskRun          {run-sent :id} {:run_type        :alert
+                                                           :entity_type     :card
+                                                           :entity_id       card-id
+                                                           :notification_id nid
+                                                           :status          :success
+                                                           :started_at      (t/minus (t/instant) (t/hours 1))
+                                                           :ended_at        (t/minus (t/instant) (t/hours 1))}
                    :model/TaskHistory      _ns-sent      {:task         "notification-send"
                                                           :run_id       run-sent
                                                           :status       :success
@@ -1603,12 +1683,13 @@
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :crowberto)}
                    ;; Only n2 has ever fired
-                   :model/TaskRun          {run2 :id}    {:run_type    :alert
-                                                          :entity_type :card
-                                                          :entity_id   card-id
-                                                          :status      :success
-                                                          :started_at  (t/instant)
-                                                          :ended_at    (t/instant)}
+                   :model/TaskRun          {run2 :id}    {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id n2
+                                                          :status          :success
+                                                          :started_at      (t/instant)
+                                                          :ended_at        (t/instant)}
                    :model/TaskHistory      _ns2          {:task         "notification-send"
                                                           :run_id       run2
                                                           :status       :success

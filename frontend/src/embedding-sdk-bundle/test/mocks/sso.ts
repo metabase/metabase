@@ -124,6 +124,7 @@ export const setupSamlPopup = () => {
 
   jest
     .spyOn(window, "open")
+    // Unjustified type cast. FIXME
     .mockImplementation(() => popupMock as unknown as Window);
 
   // Wait until the next tick to simulate popup message

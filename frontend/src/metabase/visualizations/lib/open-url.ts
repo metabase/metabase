@@ -1,9 +1,11 @@
 import querystring from "querystring";
 
-import type { LocationDescriptor, LocationDescriptorObject } from "history";
-
 import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import type {
+  LocationDescriptor,
+  LocationDescriptorObject,
+} from "metabase/router";
 import {
   clickLink,
   getPathnameWithoutSubPath,
@@ -37,6 +39,7 @@ type ShouldOpenInBlankWindowOptions = {
 export function shouldOpenInBlankWindow(
   url: string,
   {
+    // Unjustified type cast. FIXME
     event = (typeof window !== "undefined" ? window.event : undefined) as
       | MouseEvent
       | undefined,

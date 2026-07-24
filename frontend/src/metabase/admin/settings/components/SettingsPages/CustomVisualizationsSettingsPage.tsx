@@ -106,7 +106,7 @@ function CustomVizEmptyState() {
 
   return (
     <SettingsPageWrapper title={t`Custom visualizations`}>
-      <Card bg="background-primary" p={48} maw={640} withBorder>
+      <Card bg="background_page-primary" p={48} maw={640} withBorder>
         <Stack gap="3rem">
           <Stack gap="md">
             <Stack gap="sm">
@@ -114,7 +114,11 @@ function CustomVizEmptyState() {
               <Text c="text-secondary" lh="1.25rem">
                 {t`Show your data the way you need to with custom visualizations. Use the custom viz SDK to build visualization plugins and upload them here as packaged bundles (.tgz).`}
               </Text>
-              <Alert title={t`Security risk`} icon={<Icon name="warning" />}>
+              <Alert
+                size="compact"
+                title={t`Security risk`}
+                icon={<Icon name="warning" />}
+              >
                 {t`Be aware that custom visualizations can execute arbitrary code, and should only be added from trusted sources.`}
               </Alert>
 
@@ -178,7 +182,7 @@ type FeatureCardProps = {
 
 function FeatureCard({ icon, title, description }: FeatureCardProps) {
   return (
-    <Paper bg="background-secondary" p="md" radius="md" shadow="none">
+    <Paper bg="background_page-secondary" p="md" radius="md" shadow="none">
       <Group gap="sm" align="flex-start" wrap="nowrap">
         <Icon name={icon} size={16} c="core-brand" style={{ flexShrink: 0 }} />
         <Stack gap="xs">

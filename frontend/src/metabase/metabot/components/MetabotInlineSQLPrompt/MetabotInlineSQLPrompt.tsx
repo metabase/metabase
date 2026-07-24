@@ -117,7 +117,12 @@ export const MetabotInlineSQLPrompt = ({
       )}
 
       <Flex justify="space-between" align="center" gap="sm" mt="xs">
-        <Box data-testid="metabot-inline-sql-error" w="100%" fz="sm" c="error">
+        <Box
+          data-testid="metabot-inline-sql-error"
+          w="100%"
+          fz="sm"
+          c="feedback-negative"
+        >
           {error?.type === "locked" ? (
             <MetabotManagedProviderLimitHoverCard />
           ) : (
@@ -141,7 +146,7 @@ export const MetabotInlineSQLPrompt = ({
                 {isLoading ? (
                   <Loader
                     size="xs"
-                    color="text-tertiary"
+                    color="text-disabled"
                     data-testid="metabot-inline-sql-generating"
                   />
                 ) : (

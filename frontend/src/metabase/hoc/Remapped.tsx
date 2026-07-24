@@ -1,7 +1,7 @@
 import { Component, type ComponentType } from "react";
 
 import { connect } from "metabase/redux";
-import { fetchRemapping } from "metabase/redux/metadata";
+import { fetchRemapping } from "metabase/redux/remappings";
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -141,5 +141,6 @@ export default (ComposedComponent: ComponentType<any>) => {
   return connect(
     mapStateToProps,
     mapDispatchToProps,
+    // Unjustified type cast. FIXME
   )(RemappedComponent as ComponentType<any>) as unknown as ComponentType<any>;
 };

@@ -14,13 +14,15 @@
    (java.net URI)
    (org.apache.commons.io FileUtils)
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
-   (org.eclipse.jgit.dircache DirCache DirCacheEditor$DeletePath DirCacheEditor$DeleteTree
-                              DirCacheEditor$PathEdit DirCacheEntry)
-   (org.eclipse.jgit.lib CommitBuilder Constants FileMode PersonIdent Ref)
-   (org.eclipse.jgit.revwalk RevCommit RevWalk)
+   (org.eclipse.jgit.dircache DirCache DirCacheBuilder DirCacheEditor DirCacheEditor$DeletePath
+                              DirCacheEditor$DeleteTree DirCacheEditor$PathEdit DirCacheEntry)
+   (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId PersonIdent ProgressMonitor Ref Repository)
+   (org.eclipse.jgit.lib ObjectInserter ObjectReader)
+   (org.eclipse.jgit.revwalk RevCommit RevTree RevWalk)
    (org.eclipse.jgit.transport PushResult RefSpec RemoteRefUpdate
                                RemoteRefUpdate$Status UsernamePasswordCredentialsProvider)
-   (org.eclipse.jgit.treewalk TreeWalk)))
+   (org.eclipse.jgit.treewalk TreeWalk)
+   (org.eclipse.jgit.treewalk.filter TreeFilter)))
 
 (set! *warn-on-reflection* true)
 
@@ -204,6 +206,55 @@
               (recur (conj files (.getPathString tree-walk)))
               files)))))
 
+(defn- tree-children
+  "Paths of the entries at the walk's current depth, consuming the walk. `next` climbs back out of a
+  subtree once it's exhausted, so a drop in depth is what marks the end of the children.
+
+  Sorted rather than left in tree order: git orders a tree's entries as if directories ended in `/`, so
+  raw order puts a sibling `a-b` before the directory `a` (`\\-` < `\\/`). Sorting gives plain
+  lexicographic order instead — the one rule the flat snapshots can honour too, since they have no tree
+  order to inherit."
+  [^TreeWalk tree-walk]
+  (let [depth (.getDepth tree-walk)]
+    (loop [paths []]
+      (if (and (.next tree-walk) (= depth (.getDepth tree-walk)))
+        (recur (conj paths (.getPathString tree-walk)))
+        (vec (sort paths))))))
+
+(defn list-dir
+  "Lists the immediate children of one directory in the git repository at the snapshot.
+
+  Takes a GitSnapshot containing a :git Git instance and :version specifying which commit to read, and a
+  repo-root relative directory path (no trailing slash).
+
+  Resolves the commit's root tree, looks `path` up in it and reads that single tree object, iterating its
+  entries non-recursively — so the cost is proportional to the depth of `path` plus the number of entries
+  it holds, not to the size of the repository. The clone is bare (git objects, no working tree), which is
+  exactly what this walks.
+
+  `.isSubtree` is what makes a non-directory return `[]`: a symlink and a submodule are entries with
+  their own modes, not trees, so neither can be descended into (and a submodule's tree isn't in this
+  repository at all).
+
+  See [[metabase-enterprise.remote-sync.source.protocol/list-dir]] for the contract this implements and
+  why it takes the shape it does."
+  [{:keys [^Git git ^String version]} ^String path]
+  (let [repo (.getRepository git)]
+    (with-open [rev-walk (RevWalk. repo)]
+      (or (when-let [commit-id (.resolve repo version)]
+            (let [tree (.getTree (.parseCommit rev-walk commit-id))]
+              (if (str/blank? path)
+                (with-open [^TreeWalk tree-walk (TreeWalk. repo)]
+                  (.addTree tree-walk tree)
+                  (tree-children tree-walk))
+                ;; one binary search per path segment down to the entry, then a single tree object read
+                (when-let [found (TreeWalk/forPath repo path tree)]
+                  (with-open [^TreeWalk tree-walk found]
+                    (when (.isSubtree tree-walk)
+                      (.enterSubtree tree-walk)
+                      (tree-children tree-walk)))))))
+          []))))
+
 (defn read-file
   "Reads the contents of a specific file from the git snapshot.
 
@@ -217,27 +268,107 @@
       (let [loader (.open repo object-id)]
         (String. (.getBytes loader) "UTF-8")))))
 
+(defn changed-files
+  "Paths whose blob differs between commit `from-version` and this snapshot's `version`, classified into
+  `{:added #{} :modified #{} :deleted #{}}`. jgit prunes unchanged subtrees as it walks, so the cost is
+  proportional to the number of changed entries, not the size of the tree.
+
+  Takes a GitSnapshot (:git instance and current :version) and a `from-version` commit-ish to diff against.
+
+  Returns nil when `from-version` cannot be resolved or is no longer present in the local object store
+  (e.g. orphaned by a force-push or rebase), signalling the caller to fall back to a full import."
+  [{:keys [^Git git ^String version]} ^String from-version]
+  (let [^Repository repo (.getRepository git)
+        objects (.getObjectDatabase repo)
+        old-id (.resolve repo from-version)
+        new-id (.resolve repo version)]
+    (when (and old-id new-id (.has objects old-id) (.has objects new-id))
+      (with-open [rw (RevWalk. repo)
+                  ^TreeWalk tw (TreeWalk. repo)]
+        (.addTree tw (.getTree (.parseCommit rw old-id)))
+        (.addTree tw (.getTree (.parseCommit rw new-id)))
+        (.setRecursive tw true)
+        (.setFilter tw TreeFilter/ANY_DIFF)
+        (let [zero (ObjectId/zeroId)]
+          (loop [acc {:added #{} :modified #{} :deleted #{}}]
+            (if (.next tw)
+              (let [in-old? (not (.equals zero (.getObjectId tw 0)))
+                    in-new? (not (.equals zero (.getObjectId tw 1)))
+                    bucket  (cond (not in-old?) :added
+                                  (not in-new?) :deleted
+                                  :else         :modified)]
+                (recur (update acc bucket conj (.getPathString tw))))
+              acc)))))))
+
+(def ^:private commit-progress-checkpoint
+  "Export progress fraction reported once the local commit is durable, just before the network push begins."
+  0.8)
+
+(def ^:private push-progress-start
+  "Progress fraction at which the network push begins."
+  0.8)
+
+(def ^:private push-progress-end
+  "Progress fraction the network push approaches as it completes; the final 1.0 is reported elsewhere."
+  0.99)
+
+(defn- ->push-progress-monitor
+  "A JGit ProgressMonitor that maps the client-side \"Writing objects\" phase onto
+  [push-progress-start, push-progress-end] and calls `report-progress` (a 1-arg fraction fn) on every
+  `update` tick — even outside the writing phase, falling back to `push-progress-start` — so the push
+  always heartbeats regardless of JVM locale (which can rename or suppress the \"Writing objects\" title)
+  or an unknown (zero) total. Upstream throttling/monotonicity is handled by the reporter, so the repeated
+  fallback values are cheap and safe."
+  ^ProgressMonitor [report-progress]
+  (let [writing? (volatile! false)
+        total    (volatile! 0)
+        done     (volatile! 0)
+        report!  (fn []
+                   (report-progress
+                    (if (and @writing? (pos? @total))
+                      (+ push-progress-start
+                         (* (- push-progress-end push-progress-start)
+                            (min 1.0 (/ (double @done) @total))))
+                      push-progress-start)))]
+    (reify ProgressMonitor
+      (start [_ _total-tasks])
+      (beginTask [_ title tot]
+        (vreset! writing? (= title "Writing objects"))
+        (vreset! total (max 0 tot))
+        (vreset! done 0)
+        (report!))
+      (update [_ completed]
+        (vswap! done + completed)
+        (report!))
+      (endTask [_]
+        (vreset! writing? false))
+      (isCancelled [_] false)
+      (showDuration [_ _]))))
+
 (defn push-branch!
-  "Pushes a local branch to the remote repository.
+  "Pushes a local branch to the remote repository. Optional `progress-monitor` (a JGit ProgressMonitor)
+  reports push progress.
 
   Takes a git-source map containing a :git Git instance, :branch, and optional :token for
   authentication. Uses the 'origin' remote which is configured by ensure-origin-configured!.
 
   Returns the push response from JGit. Throws ExceptionInfo if the push operation fails or returns a
   non-OK/UP_TO_DATE status."
-  [{:keys [^Git git ^String branch] :as git-source}]
-  (let [branch-name (qualify-branch branch)
-        push-response (call-remote-command
-                       (-> (.push git)
-                           (.setRefSpecs (doto (java.util.ArrayList.)
-                                           (.add (RefSpec. (str branch-name ":" branch-name))))))
-                       git-source)
-        push-results (->> push-response
-                          (map #(into [] (.getRemoteUpdates ^PushResult %)))
-                          flatten)]
-    (when-let [failures (seq (remove #(#{RemoteRefUpdate$Status/OK RemoteRefUpdate$Status/UP_TO_DATE} %) (map #(.getStatus ^RemoteRefUpdate %) push-results)))]
-      (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
-    push-response))
+  ([git-source] (push-branch! git-source nil))
+  ([{:keys [^Git git ^String branch] :as git-source} ^ProgressMonitor progress-monitor]
+   (let [branch-name (qualify-branch branch)
+         push-cmd    (cond-> (-> (.push git)
+                                 (.setRefSpecs (doto (java.util.ArrayList.)
+                                                 (.add (RefSpec. (str branch-name ":" branch-name))))))
+                       progress-monitor (.setProgressMonitor progress-monitor))
+         push-response (call-remote-command push-cmd git-source)
+         push-results  (->> push-response
+                            (map #(into [] (.getRemoteUpdates ^PushResult %)))
+                            flatten)]
+     (when-let [failures (seq (remove #(#{RemoteRefUpdate$Status/OK RemoteRefUpdate$Status/UP_TO_DATE} %)
+                                      (map #(.getStatus ^RemoteRefUpdate %) push-results)))]
+       (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
+     push-response)))
 
 (defn default-branch
   "Retrieves the default branch name of the git repository.
@@ -256,68 +387,93 @@
               (str/replace-first (.getName ^Ref target) "refs/heads/" ""))))
         (throw (ex-info "Failed to get a default branch for git repository." {:head-ref head-ref})))))
 
-(defn- commit-edits!
-  "Builds a commit by editing the branch tip's tree in place and pushes it. Seeds an in-core index from
-  the parent commit's tree — so every unchanged entry and subtree is carried forward by object id — then
-  applies only the edits: whole subtrees named in `delete-dirs` are removed (used to fully replace a
-  managed directory), paths in `delete-paths` are removed, and `upserts` (file specs with :path/:content)
-  are written as new blobs. `writeTree` only rewrites the subtrees on the path to an edit, so the work is
-  proportional to the number of changes rather than the size of the repo.
+(defn- close-commit-resources! [inserter reader rev-walk]
+  (.close ^ObjectInserter inserter)
+  (.close ^ObjectReader reader)
+  (.close ^RevWalk rev-walk))
 
-  Returns the new commit sha. Throws ExceptionInfo if the write or push fails."
-  [{:keys [^Git git ^String version ^String branch] :as snapshot} ^String message upserts delete-paths delete-dirs]
-  (let [repo       (.getRepository git)
-        branch-ref (qualify-branch branch)
-        parent-id  (.resolve repo version)]
-    (with-open [inserter (.newObjectInserter repo)
-                reader   (.newObjectReader repo)
-                rev-walk (RevWalk. repo)]
-      (let [index (DirCache/newInCore)]
-        ;; Seed the index from the parent tree; unchanged entries and subtrees carry forward by id.
-        (let [builder (.builder index)]
-          (when parent-id
-            (.addTree builder (byte-array 0) DirCacheEntry/STAGE_0 reader
-                      (.getTree (.parseCommit rev-walk parent-id))))
-          (.finish builder))
-        ;; Apply only the edits.
-        (let [editor (.editor index)]
-          (doseq [^String dir delete-dirs]
-            (.add editor (DirCacheEditor$DeleteTree. dir)))
-          (doseq [^String path delete-paths]
-            (.add editor (DirCacheEditor$DeletePath. path)))
-          (doseq [{:keys [^String path content]} upserts]
-            (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))]
-              (.add editor (proxy [DirCacheEditor$PathEdit] [path]
-                             (apply [^DirCacheEntry entry]
-                               (.setFileMode entry FileMode/REGULAR_FILE)
-                               (.setObjectId entry blob-id))))))
-          (.finish editor))
-        (let [tree-id        (.writeTree index inserter)
-              commit-builder (doto (CommitBuilder.)
-                               (.setTreeId tree-id)
-                               (.setAuthor (PersonIdent. "Metabase Library" "library@metabase.com"))
-                               (.setCommitter (PersonIdent. "Metabase Library" "library@metabase.com"))
-                               (.setMessage message))]
-          (when parent-id
-            (.setParentId commit-builder parent-id))
-          (let [commit-id (.insert inserter commit-builder)]
-            (.flush inserter)
-            (doto (.updateRef repo branch-ref)
-              (.setNewObjectId commit-id)
-              (.update))
-            (push-branch! snapshot)
-            (.name commit-id)))))))
+(defn- written-tree-id
+  "Finalize the editor and write the staged tree, memoizing it in `tree-id` so repeated calls (e.g.
+  `empty-commit?` then `finish-commit!`) finalize and write the tree only once."
+  ^ObjectId [{:keys [^DirCacheEditor editor ^DirCache index ^ObjectInserter inserter tree-id]}]
+  (or @tree-id
+      (do (.finish editor)
+          (reset! tree-id (.writeTree index inserter)))))
 
-(defn- write-files!
-  "Full export: replace every managed dir wholesale with `files` (managed-dir files not in `files` are
-  removed), preserving everything outside the managed dirs."
-  [{:keys [managed-dirs] :as snapshot} ^String message files]
-  (commit-edits! snapshot message files nil managed-dirs))
+;; A commit being built incrementally against a GitSnapshot. Holds the open JGit resources (inserter, reader,
+;; rev-walk) and the in-core index/editor; blobs are inserted as files are staged and the tree is written and
+;; pushed at finish. Edits the branch tip's tree in place — unchanged entries/subtrees carry forward by object
+;; id — so writeTree's work is proportional to the number of changes, not the repo size.
+(defrecord GitCommit [snapshot inserter reader rev-walk index editor parent-id parent-tree-id tree-id]
+  source.p/CommitBuilder
+  (stage-upsert! [_ {:keys [^String path content]}]
+    (let [blob-id (.insert ^ObjectInserter inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))]
+      (.add ^DirCacheEditor editor
+            (proxy [DirCacheEditor$PathEdit] [path]
+              (apply [^DirCacheEntry entry]
+                (.setFileMode entry FileMode/REGULAR_FILE)
+                (.setObjectId entry blob-id)))))
+    nil)
 
-(defn- apply-changes!
-  "Incremental patch: write `upserts`, remove `delete-paths`, and preserve every other file."
-  [snapshot ^String message upserts delete-paths]
-  (commit-edits! snapshot message upserts delete-paths nil))
+  (stage-delete! [_ path]
+    (.add ^DirCacheEditor editor (DirCacheEditor$DeletePath. ^String path))
+    nil)
+
+  (replace-all! [_]
+    (doseq [^String dir (:managed-dirs snapshot)]
+      (.add ^DirCacheEditor editor (DirCacheEditor$DeleteTree. dir)))
+    nil)
+
+  (empty-commit? [this]
+    (boolean (when parent-tree-id
+               (.equals (written-tree-id this) ^ObjectId parent-tree-id))))
+
+  (finish-commit! [this message]
+    (source.p/finish-commit! this message nil))
+
+  (finish-commit! [this message report-progress]
+    (let [^Git git   (:git snapshot)
+          repo       (.getRepository git)
+          branch-ref (qualify-branch (:branch snapshot))
+          tree-id    (written-tree-id this)
+          commit-builder (doto (CommitBuilder.)
+                           (.setTreeId tree-id)
+                           (.setAuthor (PersonIdent. "Metabase Library" "library@metabase.com"))
+                           (.setCommitter (PersonIdent. "Metabase Library" "library@metabase.com"))
+                           (.setMessage ^String message))]
+      (when parent-id
+        (.setParentId commit-builder parent-id))
+      (let [commit-id (.insert ^ObjectInserter inserter commit-builder)]
+        (.flush ^ObjectInserter inserter)
+        (doto (.updateRef repo branch-ref)
+          (.setNewObjectId commit-id)
+          (.update))
+        ;; local commit durable; push about to start — force this one-shot checkpoint past the throttle
+        (when report-progress (report-progress commit-progress-checkpoint {:force? true}))
+        (push-branch! snapshot (when report-progress (->push-progress-monitor report-progress)))
+        (close-commit-resources! inserter reader rev-walk)   ; close only after a successful push
+        (.name commit-id))))
+
+  (abort-commit! [_]
+    (close-commit-resources! inserter reader rev-walk)
+    nil))
+
+(defn- open-commit*
+  "Begin a GitCommit against `snapshot`, seeding the in-core index from the parent tree."
+  [{:keys [^Git git ^String version] :as snapshot}]
+  (let [repo        (.getRepository git)
+        parent-id   (.resolve repo version)
+        inserter    (.newObjectInserter repo)
+        reader      (.newObjectReader repo)
+        rev-walk    (RevWalk. repo)
+        index       (DirCache/newInCore)
+        parent-tree (when parent-id (.getTree (.parseCommit rev-walk parent-id)))]
+    (let [^DirCacheBuilder builder (.builder index)]
+      (when parent-tree
+        (.addTree builder (byte-array 0) DirCacheEntry/STAGE_0 reader ^RevTree parent-tree))
+      (.finish builder))
+    (->GitCommit snapshot inserter reader rev-walk index (.editor index) parent-id
+                 (when parent-tree (.copy ^RevTree parent-tree)) (atom nil))))
 
 (defn branches
   "Retrieves all branch names from the remote repository.
@@ -393,17 +549,21 @@
   (list-files [this]
     (list-files this))
 
+  (list-dir [this path]
+    (list-dir this path))
+
   (read-file [this path]
     (read-file this path))
 
-  (write-files! [this message files]
-    (write-files! this message files))
-
-  (apply-changes! [this message upserts delete-paths]
-    (apply-changes! this message upserts delete-paths))
+  (open-commit [this]
+    (open-commit* this))
 
   (version [this]
-    (:version this)))
+    (:version this))
+
+  source.p/Diffable
+  (changed-files* [this from-version]
+    (changed-files this from-version)))
 
 (def ^:private jgit (atom {}))
 

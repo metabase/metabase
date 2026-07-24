@@ -6,6 +6,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import type { RemoteSyncOutcome } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { SyncProgressModal } from "./SyncProgressModal";
@@ -13,16 +14,24 @@ import { SyncProgressModal } from "./SyncProgressModal";
 const setup = ({
   taskType = "import" as const,
   progress = 0.5,
+  isStalled = false,
+  minutesSinceLastUpdate = null,
   isError = false,
   errorMessage = "",
+  isSuccess = false,
+  outcome = null,
   isAdmin = true,
   onDismiss = jest.fn(),
   cancelResponse,
 }: {
   taskType?: "import" | "export";
   progress?: number;
+  isStalled?: boolean;
+  minutesSinceLastUpdate?: number | null;
   isError?: boolean;
   errorMessage?: string;
+  isSuccess?: boolean;
+  outcome?: RemoteSyncOutcome | null;
   isAdmin?: boolean;
   onDismiss?: jest.Mock;
   cancelResponse?: { status?: number; body?: any; delay?: number };
@@ -37,8 +46,12 @@ const setup = ({
       <SyncProgressModal
         taskType={taskType}
         progress={progress}
+        isStalled={isStalled}
+        minutesSinceLastUpdate={minutesSinceLastUpdate}
         isError={isError}
         errorMessage={errorMessage}
+        isSuccess={isSuccess}
+        outcome={outcome}
         onDismiss={onDismiss}
       />,
       {
@@ -94,6 +107,29 @@ describe("SyncProgressModal", () => {
     });
   });
 
+  describe("stalled progress state (GHY-4132)", () => {
+    it("replaces the frozen progress bar with a 'still working' message when the task has stalled", () => {
+      // Reproduces GHY-4132: a large push stops reporting progress, the backend marks the still-running
+      // task :timed-out, and the UI used to sit on a frozen 'Exporting content…' bar. Instead we report
+      // honestly that it is still running but hasn't reported progress recently.
+      setup({ taskType: "export", isStalled: true, minutesSinceLastUpdate: 6 });
+
+      expect(
+        screen.getByText("Still working. No update for 6 minutes."),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+      expect(screen.queryByText("Exporting content…")).not.toBeInTheDocument();
+    });
+
+    it("uses the singular 'minute' when only one minute has passed", () => {
+      setup({ taskType: "export", isStalled: true, minutesSinceLastUpdate: 1 });
+
+      expect(
+        screen.getByText("Still working. No update for 1 minute."),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("error state", () => {
     it("should show error modal with message", () => {
       setup({ isError: true, errorMessage: "Connection timeout" });
@@ -116,6 +152,135 @@ describe("SyncProgressModal", () => {
       setup({ isError: true, onDismiss });
 
       await userEvent.click(screen.getByTestId("sync-error-close-button"));
+
+      expect(onDismiss).toHaveBeenCalled();
+    });
+  });
+
+  describe("success state", () => {
+    it("should render the pulled outcome with count and branch", () => {
+      setup({
+        taskType: "import",
+        isSuccess: true,
+        outcome: { kind: "pulled", count: 12, branch: "main" },
+      });
+
+      expect(screen.getByText("Pull complete")).toBeInTheDocument();
+      expect(
+        screen.getByText("Successfully pulled 12 changes from main."),
+      ).toBeInTheDocument();
+    });
+
+    it("should render the pushed outcome with count and branch", () => {
+      setup({
+        taskType: "export",
+        isSuccess: true,
+        outcome: { kind: "pushed", count: 3, branch: "main" },
+      });
+
+      expect(screen.getByText("Push complete")).toBeInTheDocument();
+      expect(
+        screen.getByText("Successfully pushed 3 changes to main."),
+      ).toBeInTheDocument();
+    });
+
+    it("should render the merged outcome with both counts", () => {
+      setup({
+        taskType: "export",
+        isSuccess: true,
+        outcome: { kind: "merged", pulled: 1, pushed: 1, branch: "main" },
+      });
+
+      expect(
+        screen.getByText(
+          "Successfully pulled 1 changes and pushed 1 changes to main.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("should render the skipped outcomes", () => {
+      setup({
+        taskType: "import",
+        isSuccess: true,
+        outcome: { kind: "pull-skipped" },
+      });
+      expect(screen.getByText("Skipped pull: no changes.")).toBeInTheDocument();
+    });
+
+    it("should fall back to generic copy when there is no outcome", () => {
+      setup({ taskType: "import", isSuccess: true, outcome: null });
+
+      expect(
+        screen.getByText("Successfully pulled changes."),
+      ).toBeInTheDocument();
+    });
+
+    it("should fall back to task-type copy when the outcome shape is unrecognized", () => {
+      // An unknown kind (e.g. from a newer/older server) must not render a broken message.
+      setup({
+        taskType: "export",
+        isSuccess: true,
+        // Unjustified type cast. FIXME
+        outcome: { kind: "teleported" } as unknown as RemoteSyncOutcome,
+      });
+
+      expect(
+        screen.getByText("Successfully pushed changes."),
+      ).toBeInTheDocument();
+    });
+
+    it("should fall back to generic pull copy when a pulled outcome is missing fields", () => {
+      setup({
+        taskType: "import",
+        isSuccess: true,
+        // Unjustified type cast. FIXME
+        outcome: { kind: "pulled" } as unknown as RemoteSyncOutcome,
+      });
+
+      expect(
+        screen.getByText("Successfully pulled changes."),
+      ).toBeInTheDocument();
+    });
+
+    it("should fall back to generic push copy when a pushed outcome is missing fields", () => {
+      setup({
+        taskType: "export",
+        isSuccess: true,
+        // Unjustified type cast. FIXME
+        outcome: { kind: "pushed", count: 3 } as unknown as RemoteSyncOutcome,
+      });
+
+      expect(
+        screen.getByText("Successfully pushed changes."),
+      ).toBeInTheDocument();
+    });
+
+    it("should fall back to combined pull-and-push copy when a merged outcome is missing fields", () => {
+      setup({
+        taskType: "export",
+        isSuccess: true,
+        // Unjustified type cast. FIXME
+        outcome: { kind: "merged", pulled: 1 } as unknown as RemoteSyncOutcome,
+      });
+
+      expect(
+        screen.getByText("Successfully pulled and pushed changes."),
+      ).toBeInTheDocument();
+    });
+
+    it("should not show a cancel button in the success state", () => {
+      setup({ isSuccess: true, isAdmin: true });
+
+      expect(
+        screen.queryByRole("button", { name: "Cancel" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should call onDismiss when the close button is clicked", async () => {
+      const onDismiss = jest.fn();
+      setup({ isSuccess: true, onDismiss });
+
+      await userEvent.click(screen.getByTestId("sync-success-close-button"));
 
       expect(onDismiss).toHaveBeenCalled();
     });

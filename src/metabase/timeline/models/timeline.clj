@@ -48,12 +48,13 @@
 
 ;;;; serialization
 
-(defmethod serdes/hash-fields :model/Timeline
-  [_timeline]
-  [:name (serdes/hydrated-hash :collection) :created_at])
-
-(defmethod serdes/dependencies "Timeline" [{:keys [collection_id]}]
+(defmethod serdes/deserialization-dependencies "Timeline" [{:keys [collection_id]}]
   [[{:model "Collection" :id collection_id}]])
+
+(defmethod serdes/serialization-dependencies "Timeline" [_model-name {:keys [collection_id]}]
+  ;; A Timeline only references its containing Collection, which a selective export may legitimately omit.
+  (when collection_id
+    #{[{:model "Collection" :id collection_id}]}))
 
 (defmethod serdes/make-spec "Timeline" [_model-name opts]
   {:copy      [:archived :default :description :entity_id :icon :name]

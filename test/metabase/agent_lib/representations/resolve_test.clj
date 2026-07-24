@@ -134,6 +134,44 @@
       (is (schema-valid? q)))))
 
 ;;; ============================================================
+;;; :absolute-datetime literal validation (fail-fast for the agent)
+;;; ============================================================
+
+(defn- resolve-absolute-datetime
+  "Resolve a query whose only filter is `[= CREATED_AT [absolute-datetime <literal> <unit>]]` and
+  return the (still-string) literal at position 2 of the resolved `:absolute-datetime` clause."
+  [literal unit]
+  (let [parsed {"lib/type" "mbql/query"
+                "database" "Sample"
+                "stages"   [{"lib/type"     "mbql.stage/mbql"
+                             "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                             "filters"      [["=" {}
+                                              ["field" {"temporal-unit" "month"}
+                                               ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+                                              ["absolute-datetime" {} literal unit]]]}]}
+        q      (repr.resolve/resolve-query mp parsed)]
+    (nth (get-in q [:stages 0 :filters 0 3]) 2)))
+
+(deftest validate-absolute-datetime-literals-accepts-all-formats-test
+  (testing "every valid :absolute-datetime string shape passes validation and is left as a string"
+    (doseq [[literal unit] [["2024-01-15"                "day"]
+                            ["2024-01-15T10:30:00"       "default"]
+                            ["2024-01-15T10:30:00+02:00" "default"]
+                            ["2024"                      "year"]
+                            ["2024-03"                   "month"]]]
+      (testing (str literal " / " unit)
+        ;; validation does not coerce — the string survives for the QP to parse at execution time
+        (is (= literal (resolve-absolute-datetime literal unit)))))))
+
+(deftest validate-absolute-datetime-literals-rejects-invalid-test
+  (testing "a structurally-ISO but out-of-range literal fails fast with an agent-facing error"
+    (let [ex (try (resolve-absolute-datetime "2024-13-45" "day") nil
+                  (catch clojure.lang.ExceptionInfo e e))]
+      (is (some? ex))
+      (is (re-find #"Invalid temporal literal" (ex-message ex)))
+      (is (true? (:agent-error? (ex-data ex)))))))
+
+;;; ============================================================
 ;;; fields (projection)
 ;;; ============================================================
 
@@ -286,6 +324,64 @@
       (is (= "Orders_A" (:source-field-join-alias opts)))
       (is (= 103 (:source-field opts))
           "the portable `source-field` FK is still resolved to its numeric id alongside the alias"))))
+
+;;; ============================================================
+;;; annotate-field-types — base-type / effective-type stamping
+;;; ============================================================
+
+(def ^:private mp-with-effective-type
+  "Provider that has a field whose effective-type differs from its base-type."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample" :dbms-version {:flavor "PostgreSQL"} :engine :postgres}
+    :tables   [{:id 10 :name "ORDERS"   :schema "PUBLIC" :db-id 1}
+               {:id 11 :name "PRODUCTS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "TOTAL"      :table-id 10 :base-type :type/Float}
+               {:id 102 :name "CREATED_AT" :table-id 10 :base-type :type/DateTime}
+               {:id 103 :name "PRODUCT_ID" :table-id 10 :base-type :type/Integer
+                :fk-target-field-id 110}
+               {:id 104 :name "UNIX_TS" :table-id 10
+                :base-type :type/Integer :effective-type :type/Temporal}
+               {:id 110 :name "ID"         :table-id 11 :base-type :type/Integer}
+               {:id 111 :name "CATEGORY"   :table-id 11 :base-type :type/Text}]}))
+
+(deftest annotate-field-types-effective-type-test
+  (testing "when a field has :effective-type it is also stamped on the clause"
+    ;; UNIX_TS is stored as Integer but coerced to Temporal — a real pattern for Unix timestamps.
+    (let [parsed {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "filters"      [["=" {}
+                                                ["field" {}
+                                                 ["Sample" "PUBLIC" "ORDERS" "UNIX_TS"]]
+                                                0]]}]}
+          q     (repr.resolve/resolve-query mp-with-effective-type parsed)
+          [_ _ field-clause] (get-in q [:stages 0 :filters 0])
+          opts  (nth field-clause 1)]
+      (is (= 104 (nth field-clause 2)))
+      (is (= :type/Integer  (:base-type opts)))
+      (is (= :type/Temporal (:effective-type opts))))))
+
+(deftest annotate-field-types-idempotent-test
+  (testing "clauses that already carry :base-type are not overwritten"
+    (let [parsed {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "filters"      [["=" {"base-type" "type/Text"}
+                                                ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                                "x"]]}]}
+          q   (repr.resolve/resolve-query mp-with-effective-type parsed)
+          ;; TOTAL is :type/Float in the provider, but the LLM authored :type/Text — we must
+          ;; not clobber it.
+          [_ _ field-clause] (get-in q [:stages 0 :filters 0])
+          opts (nth field-clause 1)]
+      ;; The outer `=` opts had "base-type" authored on it (wrong place structurally, but the
+      ;; point is the inner field clause itself has no authored base-type, so it should get
+      ;; the Float from the provider.
+      (is (= :type/Float (:base-type opts))
+          "inner field clause still gets provider type when it has none"))))
 
 ;;; ============================================================
 ;;; try-export-query: structured + native + nil/error fallback

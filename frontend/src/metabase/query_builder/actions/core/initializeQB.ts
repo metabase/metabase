@@ -1,6 +1,3 @@
-import type { LocationDescriptorObject } from "history";
-import { replace } from "react-router-redux";
-
 import { cardApi, databaseApi, snippetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
@@ -15,17 +12,16 @@ import {
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
-import {
-  fetchDatabaseMetadata,
-  fetchTableMetadata,
-  updateMetadata,
-} from "metabase/redux/metadata";
+import { fetchDatabaseMetadata, updateMetadata } from "metabase/redux/metadata";
 import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
 import type {
   Dispatch,
   GetState,
   QueryBuilderUIControls,
 } from "metabase/redux/store";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
+import type { LocationDescriptorObject } from "metabase/router";
+import { replace } from "metabase/router";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canUserCreateQueries, getUser } from "metabase/selectors/user";
@@ -36,7 +32,7 @@ import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
-import type { Card, SegmentId } from "metabase-types/api";
+import type { Card, SegmentId, UnsavedCard } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
 
@@ -200,7 +196,7 @@ export async function resolveCards({
 }: {
   cardId?: string | number;
   token?: EntityToken | null;
-  deserializedCard?: Card;
+  deserializedCard?: UnsavedCard;
   options: BlankQueryOptions;
   dispatch: Dispatch;
   getState: GetState;
@@ -219,6 +215,7 @@ export async function resolveCards({
   return cardId
     ? fetchAndPrepareSavedQuestionCards({ cardId, token }, dispatch, getState)
     : fetchAndPrepareAdHocQuestionCards(
+        // Unjustified type cast. FIXME
         deserializedCard as Card,
         dispatch,
         getState,
@@ -253,6 +250,7 @@ export async function updateTemplateTagNames(
 
   query = updateCardTemplateTagNames(query, referencedCards);
   if (query.hasSnippets()) {
+    // Unjustified type cast. FIXME
     const action = (dispatch as DispatchFn)(
       snippetApi.endpoints.listSnippets.initiate(undefined, {
         forceRefetch: true,
@@ -314,7 +312,7 @@ async function handleQBInit(
   const currentUser = getUser(getState());
 
   if (isTableRoute && slugEntityId != null) {
-    await dispatch(fetchTableMetadata(slugEntityId));
+    await dispatch(fetchTableMetadataAndForeignKeys({ id: slugEntityId }));
     if (isStale()) {
       return;
     }
@@ -447,6 +445,7 @@ async function handleQBInit(
   }
 
   if (isNative && isEditable) {
+    // Unjustified type cast. FIXME
     const query = question.legacyNativeQuery() as NativeQuery;
     const newQuery = await updateTemplateTagNames(query, getState, dispatch);
     question = question.setLegacyQuery(newQuery);

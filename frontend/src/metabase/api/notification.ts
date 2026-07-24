@@ -7,6 +7,8 @@ import type {
   ListNotificationsRequest,
   Notification,
   NotificationId,
+  UnsubscribeRequest,
+  UnsubscribeResponse,
   UpdateNotificationRequest,
 } from "metabase-types/api/notification";
 
@@ -140,6 +142,26 @@ export const notificationApi = Api.injectEndpoints({
       providesTags: (result) =>
         result ? provideAdminNotificationTags(result) : [],
     }),
+    unsubscribeFromNotificationByEmail: builder.mutation<
+      UnsubscribeResponse,
+      UnsubscribeRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/notification/unsubscribe",
+        body,
+      }),
+    }),
+    undoUnsubscribeFromNotificationByEmail: builder.mutation<
+      UnsubscribeResponse,
+      UnsubscribeRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/notification/unsubscribe/undo",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -155,6 +177,9 @@ export const {
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
   useAdminListNotificationsQuery,
+  useLazyAdminListNotificationsQuery,
   useBulkNotificationActionMutation,
   useAdminNotificationDetailQuery,
+  useUnsubscribeFromNotificationByEmailMutation,
+  useUndoUnsubscribeFromNotificationByEmailMutation,
 } = notificationApi;

@@ -1,6 +1,5 @@
 import { useDisclosure, useHotkeys } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
@@ -14,7 +13,6 @@ import {
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Modal } from "metabase/common/components/Modal";
 import {
   DetailsGroup,
   Header,
@@ -26,6 +24,7 @@ import {
   getRowName,
 } from "metabase/detail-view/utils";
 import { useDispatch } from "metabase/redux";
+import { Link } from "metabase/router";
 import {
   Box,
   Button,
@@ -33,15 +32,16 @@ import {
   Group,
   Icon,
   Menu,
+  Modal,
   Stack,
   Tooltip,
   rem,
 } from "metabase/ui";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
+  ColumnSettings,
   DatasetColumn,
   ForeignKey,
   RowValues,
@@ -56,7 +56,7 @@ import { extractData, getActionItems, getModelId } from "./utils";
 interface Props {
   columnSettings: TableColumnOrderSetting[] | undefined;
   columns: DatasetColumn[];
-  columnsSettings: (OptionsType | undefined)[];
+  columnsSettings: (ColumnSettings | undefined)[];
   query: Lib.Query | undefined;
   row: RowValues | undefined;
   rowId: string | number;
@@ -383,7 +383,12 @@ export function DetailViewSidesheet({
             hasPk &&
             tableForeignKeys &&
             tableForeignKeys.length > 0 && (
-              <Box flex="1" bg="background-secondary" px={rem(56)} py={rem(48)}>
+              <Box
+                flex="1"
+                bg="background_page-secondary"
+                px={rem(56)}
+                py={rem(48)}
+              >
                 <Relationships
                   rowId={rowId}
                   rowName={rowName}
@@ -405,7 +410,13 @@ export function DetailViewSidesheet({
         onSuccess={handleActionSuccess}
       />
 
-      <Modal isOpen={isDeleteModalOpen} onClose={handleDeleteModalClose}>
+      <Modal
+        opened={isDeleteModalOpen}
+        onClose={handleDeleteModalClose}
+        size="lg"
+        withCloseButton={false}
+        padding={0}
+      >
         <DeleteObjectModal
           actionId={deleteActionId}
           objectId={rowId}

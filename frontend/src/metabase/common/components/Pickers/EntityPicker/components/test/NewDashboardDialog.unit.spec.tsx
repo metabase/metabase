@@ -99,6 +99,7 @@ describe("NewDashboardDialog", () => {
     const apiCalls = fetchMock.callHistory.calls("path:/api/dashboard");
     expect(apiCalls).toHaveLength(1);
     const call = apiCalls[0];
+    // Unjustified type cast. FIXME
     const body = JSON.parse(call.options?.body as string);
     expect(body.name).toBe("My New Dashboard");
     expect(body.collection_id).toBe(33);
@@ -118,6 +119,7 @@ describe("NewDashboardDialog", () => {
     const apiCalls = fetchMock.callHistory.calls("path:/api/dashboard");
     expect(apiCalls).toHaveLength(1);
     const call = apiCalls[0];
+    // Unjustified type cast. FIXME
     const body = JSON.parse(call.options?.body as string);
     expect(body.name).toBe("My New Dashboard");
     expect(body.collection_id).toBe(null);

@@ -21,6 +21,7 @@ type EmbeddingDataPickerProps = {
   query: Lib.Query;
   stageIndex: number;
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
+  title: string;
   placeholder: string;
   canChangeDatabase: boolean;
   isDisabled: boolean;
@@ -30,6 +31,7 @@ export function EmbeddingDataPicker({
   query,
   stageIndex,
   table,
+  title,
   placeholder,
   canChangeDatabase,
   isDisabled,
@@ -140,6 +142,7 @@ export function EmbeddingDataPicker({
       canSelectModel={entityTypes.includes("model")}
       canSelectTable={entityTypes.includes("table")}
       canSelectQuestion={entityTypes.includes("question")}
+      popoverAriaLabel={title}
       triggerElement={
         <DataPickerTarget
           table={table}
@@ -166,6 +169,7 @@ function useSourceEntityCollectionId(query: Lib.Query) {
   const sourceTable = useSourceTable(query);
   const isCard =
     sourceTable?.type &&
+    // Unjustified type cast. FIXME
     (["model", "question"] as CardType[]).includes(sourceTable.type);
   const cardId = isCard
     ? getQuestionIdFromVirtualTableId(sourceTable?.id)

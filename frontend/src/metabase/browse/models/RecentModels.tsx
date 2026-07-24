@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
+import PinnedItemCard from "metabase/common/collections/components/PinnedItemCard";
 import { Box, Repeat, Text } from "metabase/ui";
 import type { RecentCollectionItem } from "metabase-types/api";
 

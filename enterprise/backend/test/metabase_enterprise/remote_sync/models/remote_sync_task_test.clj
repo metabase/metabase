@@ -91,6 +91,15 @@
       (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
         (is (= 1.0 (:progress completed-task)))
         (is (some? (:ended_at completed-task)))
+        (is (nil? (:error_message completed-task)))
+        (is (nil? (:outcome completed-task)))))))
+
+(deftest complete-sync-task-stores-outcome-test
+  (testing "stores the structured outcome map (round-tripped as JSON) when one is provided"
+    (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
+      (rst/complete-sync-task! (:id task) {:kind "pulled" :count 12 :branch "main"})
+      (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+        (is (= {:kind "pulled" :count 12 :branch "main"} (:outcome completed-task)))
         (is (nil? (:error_message completed-task)))))))
 
 ;;; ------------------------------------------------------------------------------------------------
@@ -463,3 +472,42 @@
         (is (false? (:cancelled after)))
         (is (= (:ended_at before) (:ended_at after))
             "ended_at must not be overwritten")))))
+
+;;; ------------------------------------------------------------------------------------------------
+;;; Tests for make-progress-reporter
+;;; ------------------------------------------------------------------------------------------------
+
+(deftest make-progress-reporter-throttles-and-forces-test
+  (testing "intra-phase writes are throttled; :force? bypasses the throttle; boundaries always land"
+    (let [now    (atom 0)
+          writes (atom [])
+          report (rst/make-progress-reporter 1 {:throttle-ms 10000
+                                                :now-fn      (fn [] @now)
+                                                :write-fn    (fn [f] (swap! writes conj f))})]
+      (report 0.33 {:force? true})          ; boundary — always writes
+      (report 0.40)                          ; 0ms since last throttled anchor set by forced write -> throttled out
+      (reset! now 5000)  (report 0.50)       ; 5s < 10s -> throttled out
+      (reset! now 10000) (report 0.60)       ; 10s -> writes
+      (report 0.66 {:force? true})           ; boundary -> writes
+      (is (= [0.33 0.60 0.66] @writes)))))
+
+(deftest make-progress-reporter-is-monotonic-test
+  (testing "the reporter never writes a fraction lower than the last written"
+    (let [now    (atom 0)
+          writes (atom [])
+          report (rst/make-progress-reporter 1 {:throttle-ms 0
+                                                :now-fn      (fn [] @now)
+                                                :write-fn    (fn [f] (swap! writes conj f))})]
+      (report 0.5)
+      (report 0.4)   ; lower -> dropped
+      (report 0.6)
+      (is (= [0.5 0.6] @writes)))))
+
+(deftest make-progress-reporter-clamps-test
+  (testing "fractions are clamped into [0.0, 1.0]"
+    (let [writes (atom [])
+          report (rst/make-progress-reporter 1 {:throttle-ms 0
+                                                :now-fn      (constantly 0)
+                                                :write-fn    (fn [f] (swap! writes conj f))})]
+      (report 1.5)
+      (is (= [1.0] @writes)))))

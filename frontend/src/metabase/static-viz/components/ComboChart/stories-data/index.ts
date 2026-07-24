@@ -127,6 +127,7 @@ import trendMultiSeriesStackedBar from "./trend-multi-series-stacked-bar.json";
 import trendSingleSeriesArea from "./trend-single-series-area.json";
 import trendSingleSeriesBar from "./trend-single-series-bar.json";
 import trendSingleSeriesLine from "./trend-single-series-line.json";
+import twoTimeSeriesBarsShouldNotOverlap from "./two-timeseries-bars-should-not-overlap.json";
 import visualizerTimeseriesDifferentUnits from "./visualizer-timeseries-different-units.json";
 import wrongYAxisRange37306 from "./wrong-y-axis-range-37306.json";
 import yAxisCompactWithoutDataLabels from "./y-axis-compact-without-data-labels.json";
@@ -264,4 +265,5 @@ export const data = {
   comboSplitPanelsMixedSeriesDisplaySettings,
   barSplitPanelsOrdinalMixedTicksWidthsPerPanel,
   bar45DegreeLabels,
+  twoTimeSeriesBarsShouldNotOverlap,
 };

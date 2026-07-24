@@ -16,13 +16,16 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.util :as u]
-   [metabase.util.log :as log])
-  (:import (java.time Instant)))
+   [metabase.util.log :as log]
+   [next.jdbc :as jdbc])
+  (:import
+   (java.sql Connection)
+   (java.time Instant)))
 
 (set! *warn-on-reflection* true)
 
-#_{:clj-kondo/ignore [unresolved-require]}
 (comment
   (require '[metabase-enterprise.semantic-search.db.datasource :as semantic.db])
   (def pgvector (or @semantic.db/data-source (semantic.db/init-db!)))
@@ -61,6 +64,53 @@
       (semantic.index-metadata/activate-index! tx index-metadata index-id))
     index))
 
+(defn- with-hnsw-index-lock
+  [pgvector index-name f]
+  (with-open [^Connection conn (jdbc/get-connection pgvector)]
+    (let [autocommit (.getAutoCommit conn)
+          lock-name  (str "metabase-semantic-hnsw:" index-name)]
+      (.setAutoCommit conn true)
+      (try
+        (jdbc/execute-one! conn ["SELECT pg_advisory_lock(hashtextextended(?, 0))" lock-name])
+        (try
+          (f conn)
+          (finally
+            (jdbc/execute-one! conn ["SELECT pg_advisory_unlock(hashtextextended(?, 0))" lock-name])))
+        (finally
+          (.setAutoCommit conn autocommit))))))
+
+(defn- ensure-hnsw-index-under-lock!
+  [conn index]
+  (let [index-name (semantic.index/schema-qualified-index-name index (semantic.index/hnsw-index-name index))]
+    (case (semantic.util/index-state conn index-name)
+      :ready
+      (log/debug "HNSW index is already ready" index-name)
+      :building
+      (log/info "HNSW index build is already in progress" index-name)
+      :invalid
+      (do
+        (log/warn "Replacing invalid HNSW index" index-name)
+        (semantic.index/drop-index-concurrently-if-exists! conn index-name)
+        (semantic.index/create-hnsw-index-if-not-exists! conn index {:concurrently? true}))
+      nil
+      (do
+        (log/info "Building HNSW index" index-name)
+        (semantic.index/create-hnsw-index-if-not-exists! conn index {:concurrently? true})))))
+
+(defn ensure-active-hnsw-index!
+  "Ensure that the active index has a usable HNSW index.
+
+  Called when an instance is (re)configured to the `:hnsw` vector-search strategy. No-ops when there is no
+  active index. Serializes maintenance across instances, leaves active concurrent builds alone, and replaces
+  abandoned invalid indexes. Builds with concurrent DDL because the table is typically populated."
+  [pgvector index-metadata]
+  (if-let [{:keys [index]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
+    (do
+      (let [index-name (semantic.index/schema-qualified-index-name index (semantic.index/hnsw-index-name index))]
+        (with-hnsw-index-lock pgvector index-name #(ensure-hnsw-index-under-lock! % index)))
+      nil)
+    (log/info "No active semantic search index; skipping HNSW index build")))
+
 (defn init-semantic-search!
   "Initialises a pgvector database for semantic search if it does not exist and creates an index for the provided
   embedding model (if it does not exist).
@@ -86,6 +136,12 @@
   [pgvector index-metadata search-context]
   (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]
     (semantic.index/query-index pgvector index search-context)))
+
+(defn diagnose
+  "Engine-owned diagnostic stages for the active semantic index. See [[semantic.index/diagnose-row]]."
+  [pgvector index-metadata search-context model id]
+  (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]
+    (semantic.index/diagnose-row pgvector index search-context model id)))
 
 (defn index-documents!
   "Indexes documents into the active semantic search index.
@@ -160,8 +216,7 @@
   (def index (:index index-state))
 
   ;; warning: deletes everything
-  (require 'next.jdbc)
-  (next.jdbc/execute! pgvector ((requiring-resolve 'honey.sql/format) {:delete-from (keyword (:table-name index))} :quoted true))
+  (jdbc/execute! pgvector ((requiring-resolve 'honey.sql/format) {:delete-from (keyword (:table-name index))} :quoted true))
   (def searchable-documents (vec ((requiring-resolve 'metabase.search.ingestion/searchable-documents))))
   (index-documents! pgvector index-metadata searchable-documents)
   (mt/as-admin (query pgvector index-metadata {:search-string "sharp objects"})))

@@ -1,12 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback } from "react";
-import { Link as RouterLink } from "react-router";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { RouterLink } from "metabase/router";
+import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
@@ -14,7 +13,6 @@ import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 import {
   ActionCardContainer,
   ActionHeader,
-  ActionRunButton,
   ActionRunButtonContainer,
   ActionSubtitle,
   ActionSubtitlePart,
@@ -135,14 +133,17 @@ function ModelActionListItem({
         {canRun && (
           <>
             <ActionRunButtonContainer>
-              <ActionRunButton
-                as={Link}
-                icon="play"
-                onlyIcon
-                tooltip={t`Run`}
-                aria-label={t`Run`}
-                onClick={openExecuteModal}
-              />
+              <Tooltip label={t`Run`}>
+                <ActionIcon
+                  variant="subtle"
+                  bg="background_page-primary"
+                  c="text-primary"
+                  aria-label={t`Run`}
+                  onClick={openExecuteModal}
+                >
+                  <Icon name="play" />
+                </ActionIcon>
+              </Tooltip>
             </ActionRunButtonContainer>
             <ActionExecuteModal
               opened={executeModalOpened}

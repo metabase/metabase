@@ -1,7 +1,8 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DottedBackground } from "metabase/common/components/upsells/components/DottedBackground";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useSelector } from "metabase/redux/hooks";
+import { useParams } from "metabase/router";
 import { getIsHosted } from "metabase/selectors/settings";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -13,14 +14,9 @@ import { reload } from "metabase/utils/dom";
 
 import { PythonTransformsUpsell } from "./PythonTransformsUpsellModal";
 
-type TransformInspectorUpsellPageProps = {
-  params: { transformId: string };
-};
-
-export function TransformInspectorUpsellPage({
-  params,
-}: TransformInspectorUpsellPageProps) {
-  const transformId = Urls.extractEntityId(params.transformId);
+export function TransformInspectorUpsellPage() {
+  const { transformId: transformIdParam } = useParams();
+  const transformId = Urls.extractEntityId(transformIdParam);
   const { transform, isLoading, error } = useTransformWithPolling(transformId);
   const isHosted = useSelector(getIsHosted);
   const { isStoreUser } = useSelector(getStoreUsers);

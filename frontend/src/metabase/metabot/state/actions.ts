@@ -1,6 +1,11 @@
-import { type UnknownAction, isRejected, nanoid } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
+import {
+  type ThunkDispatch,
+  type UnknownAction,
+  isRejected,
+  nanoid,
+} from "@reduxjs/toolkit";
 import { P, isMatching, match } from "ts-pattern";
+import { t } from "ttag";
 import _ from "underscore";
 
 import {
@@ -8,34 +13,48 @@ import {
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
+import { metabotApi } from "metabase/api/metabot";
+import { listTag } from "metabase/api/tags";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { createAsyncThunk } from "metabase/redux/utils";
+import { push } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
+import * as Urls from "metabase/urls";
+import { retry } from "metabase/utils/retry";
+import { uuid } from "metabase/utils/uuid";
 import type {
   JSONValue,
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotChatContext,
   MetabotCodeEditorBufferContext,
+  MetabotStateContext,
   MetabotTransformInfo,
 } from "metabase-types/api";
 
-import { METABOT_ERR_MSG, type MetabotProfileId } from "../constants";
+import {
+  METABOT_ERR_MSG,
+  type MetabotProfileId,
+  isHistoryEnabledProfile,
+} from "../constants";
+import { normalizeFetchedChatMessages } from "../utils/normalize-fetched-chat-messages";
 
 import { metabot } from "./reducer";
 import {
   getAgentRequestMetadata,
   getDebugMode,
   getDeveloperMessage,
-  getHistory,
+  getIsCurrentConversation,
+  getIsPollingForTitle,
   getIsProcessing,
   getMessageIdToRewind,
   getMetabotConversation,
+  getMetabotConversationTitle,
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
@@ -54,10 +73,13 @@ export const {
   addDeveloperMessage,
   addUserMessage,
   setIsProcessing,
+  setMessageExternalIds,
+  setConversationSnapshot,
+  setConversationTitle,
   setNavigateToPath,
-  setPendingMessageExternalId,
   setProfileOverride,
   toolCallStart,
+  toolCallArgs,
   toolCallEnd,
   setMetabotReqIdOverride,
   setDebugMode,
@@ -69,7 +91,68 @@ export const {
   destroyAgent,
   addSuggestedCodeEdit,
   removeSuggestedCodeEdit,
+  setIsPollingForTitle,
+  markChartSaved,
 } = metabot.actions;
+
+const TITLE_POLL_INTERVAL_MS = 1500;
+const TITLE_POLL_MAX_ATTEMPTS = 40;
+const TITLE_PENDING = new Error("Metabot conversation title pending");
+
+type PollConversationTitleOptions = {
+  dispatch: ThunkDispatch<State, unknown, UnknownAction>;
+  getState: () => State;
+  agentId: MetabotAgentId;
+  conversationId: string;
+};
+
+const pollConversationTitle = async ({
+  dispatch,
+  getState,
+  agentId,
+  conversationId,
+}: PollConversationTitleOptions) => {
+  dispatch(setIsPollingForTitle({ conversationId, isPollingForTitle: true }));
+  try {
+    const title = await retry(
+      async () => {
+        const result = await dispatch(
+          metabotApi.endpoints.getMetabotConversationTitle.initiate(
+            conversationId,
+            { forceRefetch: true, subscribe: false },
+          ),
+        );
+
+        if (result.data?.status !== "ready") {
+          throw TITLE_PENDING;
+        }
+
+        return result.data.title;
+      },
+      {
+        maxRetries: TITLE_POLL_MAX_ATTEMPTS - 1,
+        shouldRetry: (error) => error === TITLE_PENDING,
+        delayMs: () => TITLE_POLL_INTERVAL_MS,
+      },
+    ).catch(() => null);
+
+    if (!title) {
+      return;
+    }
+
+    const convo = getMetabotConversation(getState(), agentId);
+    if (convo.conversationId === conversationId) {
+      dispatch(setConversationTitle({ agentId, title }));
+    }
+    dispatch(
+      metabotApi.util.invalidateTags([listTag("metabot-conversations")]),
+    );
+  } finally {
+    dispatch(
+      setIsPollingForTitle({ conversationId, isPollingForTitle: false }),
+    );
+  }
+};
 
 type HandledResponseError = {
   error: MetabotAgentTurnError;
@@ -83,6 +166,13 @@ const handleResponseError = (
   // HTTP failures arrive as the legacy client's `{ status, data }` shape, with
   // the parsed response body under `data`.
   return match(error)
+    .with({ status: 400 }, () => ({
+      error: { type: "http_error", message: t`Invalid request format` },
+      display: {
+        type: "message" as const,
+        message: METABOT_ERR_MSG.format(t`Invalid request format`),
+      },
+    }))
     .with({ status: 401 }, () => ({
       error: { type: "unauthenticated" },
       display: {
@@ -107,6 +197,10 @@ const handleResponseError = (
         display: { type: "message" as const, message },
       }),
     )
+    .with({ status: 409 }, () => ({
+      error: { type: "conversation_out_of_sync" },
+      display: { type: "message" as const, message: METABOT_ERR_MSG.outOfSync },
+    }))
     .with(
       { status: P.number, data: { message: P.string } },
       ({ data: { message } }) => ({
@@ -160,6 +254,7 @@ export const executeSlashCommand = createAsyncThunk<
           dispatch(
             setProfileOverride({
               agentId,
+              // Unjustified type cast. FIXME
               profile: args[0] as MetabotProfileId | undefined,
             }),
           );
@@ -229,12 +324,19 @@ export const submitInput = createAsyncThunk<
     agentId: MetabotAgentId;
     metabot_id?: string;
     profile?: MetabotProfileId;
+    retryMessageId?: string;
   }
 >(
   "metabase/metabot/submitInput",
   async (payload, { dispatch, getState, signal }) => {
     const state = getState();
-    const { agentId, message: rawPrompt, profile, ...data } = payload;
+    const {
+      agentId,
+      message: rawPrompt,
+      profile,
+      retryMessageId,
+      ...data
+    } = payload;
     const convo = getMetabotConversation(state, agentId);
 
     const prompt = rawPrompt.trim();
@@ -274,8 +376,14 @@ export const submitInput = createAsyncThunk<
 
       // it's important that we get the current metadata containing the history before
       // altering it by adding the current message the user is wanting to send
-      const agentMetadata = getAgentRequestMetadata(getState(), agentId);
+      const agentMetadata = getAgentRequestMetadata(
+        getState(),
+        agentId,
+        retryMessageId,
+      );
       const messageId = createMessageId();
+      const userMessageId = retryMessageId ?? uuid();
+      const assistantMessageId = uuid();
       const promptWithDevMessage = getDeveloperMessage(state, agentId) + prompt;
       dispatch(
         addUserMessage({
@@ -292,7 +400,10 @@ export const submitInput = createAsyncThunk<
           message: promptWithDevMessage,
           agentId,
           conversation_id: convo.conversationId,
+          loadId: getMetabotConversation(getState(), agentId).loadId,
           ...agentMetadata,
+          user_message_id: userMessageId,
+          assistant_message_id: assistantMessageId,
           ...(profile ? { profile_id: profile } : {}),
         }),
       );
@@ -361,7 +472,7 @@ const findCodeEditBuffer = (
 
 export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
-  MetabotAgentRequest & { agentId: MetabotAgentId },
+  MetabotAgentRequest & { agentId: MetabotAgentId; loadId: string },
   { rejectValue: SendAgentRequestError }
 >(
   "metabase/metabot/sendAgentRequest",
@@ -369,10 +480,29 @@ export const sendAgentRequest = createAsyncThunk<
     payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const { agentId, ...request } = payload;
+    const { agentId, loadId, ...request } = payload;
 
-    let state = {};
+    // Keep the stream alive for persistence, but ignore it after switching conversations.
+    const dispatchToConvo = (action: Parameters<typeof dispatch>[0]) => {
+      if (
+        getIsCurrentConversation(
+          getState(),
+          agentId,
+          request.conversation_id,
+          loadId,
+        )
+      ) {
+        dispatch(action);
+      }
+    };
+
+    let state: MetabotStateContext | undefined;
     let response: ProcessedChatResponse | undefined;
+    let receivedTitle = false;
+    const hadTitleBeforeTurn = Boolean(
+      getMetabotConversationTitle(getState(), agentId),
+    );
+
     try {
       // store error object streamed across the wire
       let streamedError: MetabotAgentTurnError | undefined;
@@ -392,19 +522,27 @@ export const sendAgentRequest = createAsyncThunk<
                 MetabotAgentDataPartMessage,
                 "id" | "role" | "externalId"
               >,
-            ) => dispatch(addAgentMessage({ ...message, agentId }));
+            ) => dispatchToConvo(addAgentMessage({ ...message, agentId }));
 
             match(part)
               // only update the convo state if the request is successful
-              .with({ type: "state" }, (part) => (state = part.value))
-              .with({ type: "todo_list" }, (part) => {
+              .with({ type: "data-state" }, (part) => (state = part.data))
+              .with({ type: "data-conversation-title" }, (part) => {
+                receivedTitle = true;
+                dispatchToConvo(
+                  setConversationTitle({ agentId, title: part.data }),
+                );
+              })
+              .with({ type: "data-todo_list" }, (part) => {
                 pushDataPart({ type: "data_part", part });
               })
-              .with({ type: "code_edit" }, (part) => {
-                dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
+              .with({ type: "data-code_edit" }, (part) => {
+                dispatchToConvo(
+                  addSuggestedCodeEdit({ ...part.data, active: true }),
+                );
 
-                if (part.value.buffer_id === "qb") {
-                  dispatch(setIsNativeEditorOpen(true));
+                if (part.data.buffer_id === "qb") {
+                  dispatchToConvo(setIsNativeEditorOpen(true));
                 }
                 pushDataPart({
                   type: "data_part",
@@ -412,28 +550,20 @@ export const sendAgentRequest = createAsyncThunk<
                   metadata: {
                     codeEditBuffer: findCodeEditBuffer(
                       request.context,
-                      part.value.buffer_id,
+                      part.data.buffer_id,
                     ),
                   },
                 });
               })
-              .with({ type: "navigate_to" }, (part) => {
-                dispatch(setNavigateToPath(part.value));
-
-                if (!isEmbeddingSdk()) {
-                  dispatch(push(part.value) as UnknownAction);
-                }
-                pushDataPart({ type: "data_part", part });
-              })
-              .with({ type: "transform_suggestion" }, (part) => {
+              .with({ type: "data-transform_suggestion" }, (part) => {
                 const suggestionId = nanoid();
                 const suggestedTransform = {
-                  ...part.value,
-                  id: part.value.id || undefined,
+                  ...part.data,
+                  id: part.data.id || undefined,
                   active: true,
                   suggestionId,
                 };
-                dispatch(addSuggestedTransform(suggestedTransform));
+                dispatchToConvo(addSuggestedTransform(suggestedTransform));
 
                 const editorTransform = request.context.user_is_viewing
                   .filter(
@@ -446,37 +576,100 @@ export const sendAgentRequest = createAsyncThunk<
                   metadata: { editorTransform, suggestionId },
                 });
               })
-              .with(
-                { type: "generated_entity" },
-                { type: "adhoc_viz" },
-                { type: "static_viz" },
-                (part) => {
+              .with({ type: "data-generated_entity" }, (part) => {
+                if (agentId === "ask") {
                   pushDataPart({ type: "data_part", part });
-                },
+                  return;
+                }
+
+                const path = Urls.generatedEntity(part.data);
+
+                if (isEmbeddingSdk()) {
+                  if (part.data.type === "card") {
+                    dispatchToConvo(setNavigateToPath(path));
+                  }
+                  pushDataPart({ type: "data_part", part });
+                  return;
+                }
+
+                // Unjustified type cast. FIXME
+                dispatchToConvo(push(path) as UnknownAction);
+              })
+              .with({ type: "data-entity_saved" }, (part) => {
+                dispatch(
+                  markChartSaved({
+                    entityId: part.data.chart_id,
+                    cardId: part.data.card_id,
+                  }),
+                );
+                pushDataPart({ type: "data_part", part });
+              })
+              .with(
+                { type: "data-navigate_to" },
+                { type: "data-adhoc_viz" },
+                { type: "data-static_viz" },
+                () => {},
               )
               .exhaustive();
           },
-          onStartMessagePart: function handleStartMessagePart(part) {
-            dispatch(
-              setPendingMessageExternalId({
+          onStart: function handleStart(event) {
+            dispatchToConvo(
+              setMessageExternalIds({
                 agentId,
-                externalId: part.messageId,
+                agentMessageId: event.messageId,
+                userMessageId: event.messageMetadata?.userMessageId,
               }),
             );
           },
-          onTextPart: function handleTextPart(part) {
-            dispatch(addAgentTextDelta({ agentId, text: String(part) }));
+          onTextPart: function handleTextPart(delta) {
+            dispatchToConvo(addAgentTextDelta({ agentId, text: delta }));
           },
-          onToolCallPart: function handleToolCallPart(part) {
-            dispatch(toolCallStart({ ...part, agentId }));
+          onToolInputStart: function handleToolInputStart(event) {
+            dispatchToConvo(
+              toolCallStart({
+                toolCallId: event.toolCallId,
+                toolName: event.toolName,
+                agentId,
+              }),
+            );
           },
-          onToolResultPart: function handleToolResultPart(part) {
-            dispatch(toolCallEnd({ ...part, agentId }));
+          onToolInputAvailable: function handleToolInputAvailable(event) {
+            dispatchToConvo(
+              toolCallArgs({
+                toolCallId: event.toolCallId,
+                toolName: event.toolName,
+                args: JSON.stringify(event.input),
+                agentId,
+              }),
+            );
           },
-          onError: function handleError(part) {
-            streamedError = isMatching({ message: P.string }, part)
-              ? part
-              : { message: String(part) };
+          onToolResultPart: function handleToolResultPart(event) {
+            dispatchToConvo(
+              toolCallEnd({
+                toolCallId: event.toolCallId,
+                result:
+                  typeof event.output === "string"
+                    ? event.output
+                    : JSON.stringify(event.output),
+                agentId,
+              }),
+            );
+          },
+          onToolErrorPart: function handleToolErrorPart(event) {
+            dispatchToConvo(
+              toolCallEnd({
+                toolCallId: event.toolCallId,
+                result: event.errorText,
+                isError: true,
+                agentId,
+              }),
+            );
+          },
+          onError: function handleError(error) {
+            // the `error` chunk carries only the message; a typed error's code
+            // rides the trailing `finish` event's messageMetadata, folded in at
+            // rejection time below
+            streamedError = { message: error.errorText };
           },
         },
       );
@@ -486,13 +679,16 @@ export const sendAgentRequest = createAsyncThunk<
       }
 
       if (streamedError) {
+        // a typed error's code arrives on finish.messageMetadata, after the
+        // `error` chunk — fold it in so the display branch can match on it
+        streamedError.type = response.messageMetadata?.errorCode;
         return rejectWithValue({
           type: "error",
           conversation_id: request.conversation_id,
           shouldRetry: true,
           error: streamedError,
           display: isMatching(
-            { "error-code": "ai_usage_limit_reached", message: P.string },
+            { type: "ai_usage_limit_reached", message: P.string },
             streamedError,
           )
             ? // special case where we want to show the returned error from the backend
@@ -501,9 +697,22 @@ export const sendAgentRequest = createAsyncThunk<
         });
       }
 
+      const shouldPollForTitle =
+        !receivedTitle &&
+        !hadTitleBeforeTurn &&
+        !getIsPollingForTitle(getState(), request.conversation_id) &&
+        isHistoryEnabledProfile(request.profile_id);
+      if (shouldPollForTitle) {
+        void pollConversationTitle({
+          dispatch,
+          getState,
+          agentId,
+          conversationId: request.conversation_id,
+        });
+      }
+
       return fulfillWithValue({
         conversation_id: request.conversation_id,
-        history: [...getHistory(getState(), agentId), ...response.history],
         state,
         processedResponse: response,
       });
@@ -514,12 +723,7 @@ export const sendAgentRequest = createAsyncThunk<
           conversation_id: request.conversation_id,
           unresolved_tool_calls:
             response?.toolCalls.filter((tc) => tc.state === "call") ?? [],
-          history: [
-            ...getHistory(getState(), agentId),
-            ...(response?.history ?? []),
-          ],
-          // reuse new state if we recieved it
-          state: Object.keys(state).length === 0 ? request.state : state,
+          state,
           shouldRetry: false,
         });
       }
@@ -620,6 +824,7 @@ export const retryPrompt = createAsyncThunk<
         message: prompt.message,
         context,
         metabot_id,
+        retryMessageId: prompt.externalId,
       }),
     ).unwrap();
   },
@@ -630,5 +835,48 @@ export const resetConversation = createAsyncThunk(
   (payload: { agentId: MetabotAgentId }, { dispatch }) => {
     dispatch(cancelInflightAgentRequests(payload.agentId));
     dispatch(metabot.actions.resetConversation(payload));
+  },
+);
+
+export const loadConversation = createAsyncThunk(
+  "metabase/metabot/loadConversation",
+  async (
+    {
+      agentId,
+      conversationId,
+    }: { agentId: MetabotAgentId; conversationId: string },
+    { dispatch },
+  ) => {
+    // NOTE: deliberately doesn't cancel the inflight streaming-request;
+    // as we do not want to record it as an aborted response.
+
+    const { data: detail, error } = await dispatch(
+      metabotApi.endpoints.getMetabotConversation.initiate(conversationId, {
+        forceRefetch: true,
+        subscribe: false,
+      }),
+    );
+
+    if (error || !detail) {
+      dispatch(
+        addUndo({
+          icon: "warning",
+          toastColor: "feedback-negative",
+          message: t`Sorry, we couldn't load that conversation.`,
+        }),
+      );
+      return;
+    }
+
+    dispatch(
+      setConversationSnapshot({
+        agentId,
+        conversationId: detail.conversation_id,
+        title: detail.title ?? undefined,
+        messages: normalizeFetchedChatMessages(detail.messages),
+        state: detail.state,
+        activeToolCalls: [],
+      }),
+    );
   },
 );

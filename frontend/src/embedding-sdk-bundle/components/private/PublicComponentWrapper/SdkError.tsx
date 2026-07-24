@@ -2,14 +2,22 @@ import { useDisclosure } from "@mantine/hooks";
 import { type PropsWithChildren, useMemo } from "react";
 import { jt, t } from "ttag";
 
-import { ERROR_DOC_LINKS } from "embedding-sdk-bundle/errors";
-import type { MetabaseErrorCode } from "embedding-sdk-bundle/errors/error-code";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getErrorComponent } from "embedding-sdk-bundle/store/selectors";
 import type { SdkErrorComponentProps } from "embedding-sdk-bundle/types";
-import { Alert } from "metabase/common/components/Alert";
+import { ERROR_DOC_LINKS } from "embedding-sdk-shared/errors";
+import type { MetabaseErrorCode } from "embedding-sdk-shared/errors/error-code";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
-import { Anchor, Box, Center, Code, Flex, Portal } from "metabase/ui";
+import {
+  Alert,
+  Anchor,
+  Box,
+  Center,
+  Code,
+  Flex,
+  Icon,
+  Portal,
+} from "metabase/ui";
 
 export const SdkError = ({
   message,
@@ -23,6 +31,7 @@ export const SdkError = ({
 
   const errorMessage = useMemo(() => {
     if (error && "code" in error && typeof error.code === "string") {
+      // Unjustified type cast. FIXME
       const docsLink = ERROR_DOC_LINKS[error.code as MetabaseErrorCode];
 
       if (docsLink) {
@@ -94,7 +103,12 @@ export function SdkPortalErrorWrapper({ children }: PropsWithChildren) {
 
 const DefaultErrorMessage = ({ message, onClose }: SdkErrorComponentProps) => (
   <Box p="sm" maw={600}>
-    <Alert variant="error" icon="warning" onClose={onClose}>
+    <Alert
+      color="error"
+      icon={<Icon name="warning" />}
+      withCloseButton={Boolean(onClose)}
+      onClose={onClose}
+    >
       <Box
         style={{
           WebkitLineClamp: 2,
@@ -121,7 +135,7 @@ const ResourceNotFoundError = ({
   <SdkError
     message={jt`${resource} ${(
       <Code
-        bg="background-error-secondary"
+        bg="background_surface-error-subtle"
         c="text-secondary"
         key="question-id"
       >

@@ -1,5 +1,4 @@
 import cx from "classnames";
-import Color from "color";
 import * as d3 from "d3";
 import type { Feature, FeatureCollection } from "geojson";
 import type L from "leaflet";
@@ -8,13 +7,12 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { Link } from "metabase/common/components/Link";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Flex, Text } from "metabase/ui";
+import { Flex, Loader, Text } from "metabase/ui";
 import MetabaseSettings from "metabase/utils/settings";
 import {
   HEAT_MAP_ZERO_COLOR,
@@ -22,10 +20,7 @@ import {
   getLegendTitles,
 } from "metabase/visualizations/lib/choropleth";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
-import {
-  computeMinimalBounds,
-  getCanonicalRowKey,
-} from "metabase/visualizations/lib/mapping";
+import { getCanonicalRowKey } from "metabase/visualizations/lib/mapping";
 import {
   getDefaultSize,
   getMinSize,
@@ -46,42 +41,7 @@ import type {
 import { ChartWithLegend } from "./ChartWithLegend";
 import { LeafletChoropleth } from "./LeafletChoropleth";
 import { LegacyChoropleth } from "./LegacyChoropleth";
-
-type ColorScaleOptions = {
-  lightness?: number;
-  darken?: number;
-  darkenLast?: number;
-  saturate?: number;
-};
-
-export function getColorplethColorScale(
-  color: string,
-  {
-    lightness = 92,
-    darken = 0.2,
-    darkenLast = 0.3,
-    saturate = 0.1,
-  }: ColorScaleOptions = {},
-): string[] {
-  const lightColor = Color(color).lightness(lightness).saturate(saturate);
-  const darkColor = Color(color).darken(darken).saturate(saturate);
-
-  const scale = d3.scaleLinear<string>(
-    [0, 1],
-    [lightColor.string(), darkColor.string()],
-  );
-
-  const colors = d3.range(0, 1.25, 0.25).map((value) => scale(value));
-
-  if (darkenLast) {
-    colors[colors.length - 1] = Color(color)
-      .darken(darkenLast)
-      .saturate(saturate)
-      .string();
-  }
-
-  return colors;
-}
+import { computeMinimalBounds } from "./leaflet-bounds";
 
 const geoJsonCache = new Map<string, GeoJSONData>();
 
@@ -387,7 +347,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
   if (!geoJson) {
     return (
       <div className={cx(className, CS.flex, CS.layoutCentered)}>
-        <LoadingSpinner />
+        <Loader size="lg" />
       </div>
     );
   }

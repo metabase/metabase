@@ -27,6 +27,10 @@
 (set! *warn-on-reflection* true)
 
 (defmulti ^:private check-permissions-for-model
+  "Whether the current user (per `search-ctx`) may see `search-result`, applying the per-model post-query
+  permission rules. The query already filters most rows out in SQL; this catches the archived-write check and the
+  table / indexed-entity special cases. Used in the [[search]] pipeline and, via [[check-result-permissions]], by
+  the search debug API."
   {:arglists '([search-ctx search-result])}
   (fn [_search-ctx search-result] ((comp keyword :model) search-result)))
 
@@ -194,6 +198,7 @@
         (dissoc
          :all-scores
          :dataset_query
+         :document
          :relevant-scores
          :collection_effective_ancestors
          :collection_id
@@ -242,6 +247,9 @@
 (defmethod search.engine/model-set :default [search-ctx]
   (search.engine/model-set (apply-default-engine search-ctx)))
 
+(defmethod search.engine/diagnose :default [search-ctx expected-model expected-id]
+  (search.engine/diagnose (apply-default-engine search-ctx) expected-model expected-id))
+
 (mr/def ::search-context.input
   [:map {:closed true}
    [:search-string                                        [:maybe ms/NonBlankString]]
@@ -265,15 +273,18 @@
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
    [:search-engine                       {:optional true} [:maybe string?]]
    [:vector-search-strategy              {:optional true} [:maybe string?]]
+   [:vector-search-ef-search             {:optional true} [:maybe ms/PositiveInt]]
+   [:vector-search-max-scan-tuples       {:optional true} [:maybe ms/PositiveInt]]
+   [:vector-search-explain?              {:optional true} [:maybe boolean?]]
+   [:vector-search-force-index?          {:optional true} [:maybe boolean?]]
    [:search-native-query                 {:optional true} [:maybe boolean?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
+   [:curated                             {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
-   [:non-temporal-dim-ids                {:optional true} [:maybe ms/NonBlankString]]
-   [:has-temporal-dim                    {:optional true} [:maybe :boolean]]
    [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]
    [:weights                             {:optional true} [:maybe [:map-of :keyword number?]]]])
 
@@ -304,12 +315,15 @@
            offset
            search-engine
            vector-search-strategy
+           vector-search-ef-search
+           vector-search-max-scan-tuples
+           vector-search-explain?
+           vector-search-force-index?
            search-native-query
            search-string
            table-db-id
            verified
-           non-temporal-dim-ids
-           has-temporal-dim
+           curated
            weights]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
@@ -348,13 +362,16 @@
                  (some? limit)                               (assoc :limit-int limit)
                  (some? offset)                              (assoc :offset-int offset)
                  (not (str/blank? vector-search-strategy))    (assoc :vector-search-strategy (keyword vector-search-strategy))
+                 (some? vector-search-ef-search)             (assoc :vector-search-ef-search vector-search-ef-search)
+                 (some? vector-search-max-scan-tuples)       (assoc :vector-search-max-scan-tuples vector-search-max-scan-tuples)
+                 (some? vector-search-explain?)              (assoc :vector-search-explain? vector-search-explain?)
+                 (some? vector-search-force-index?)          (assoc :vector-search-force-index? vector-search-force-index?)
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
+                 (some? curated)                             (assoc :curated? curated)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
                  (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
                  (seq ids)                                   (assoc :ids ids)
-                 (some? non-temporal-dim-ids)                (assoc :non-temporal-dim-ids non-temporal-dim-ids)
-                 (some? has-temporal-dim)                    (assoc :has-temporal-dim has-temporal-dim)
                  (seq display-type)                          (assoc :display-type display-type))]
     (when (and (seq ids)
                (not= (count models) 1))
@@ -389,6 +406,12 @@
         ;; Collections require some transformation before being scored and returned by search.
         (cond-> (t2/instance-of? :model/Collection instance) map-collection))))
 
+(defn check-result-permissions
+  "Run the post-query permission check on a single raw engine result map (the rehydrated shape an engine's
+  `results` produces). Returns a boolean. Public for the search debug API."
+  [search-ctx result]
+  (check-permissions-for-model search-ctx (normalize-result result)))
+
 (defn- add-can-write [search-ctx row]
   (if (some #(mi/instance-of? % row) [:model/Dashboard :model/Card :model/Collection])
     (assoc row :can_write (can-write? search-ctx row))
@@ -419,14 +442,22 @@
              item))
          search-results)))
 
-(defn- search-results [search-ctx model-set-fn ranked-results]
+(defn search-results
+  "Paginate `ranked` per `search-ctx`, hydrate and serialize that page, and wrap it in the search
+  API response shape. `ranked` is any ranked seq of normalized index records — the output of
+  [[ranked-results]] for a single search, or a combination of several. `:total` reports the size of
+  the ranked set it was handed, so a caller that fuses rankings gets the total for the fused set.
+
+  `model-set-fn` computes `:available_models` from the context, and is only called when the context
+  asks for them."
+  [search-ctx model-set-fn ranked]
   ;; Slice the ranked window down to the requested page *before* hydration/serialization so
   ;; display-only work (including the expensive per-row `:can_write` permission check) only runs
   ;; on the rows we actually return. The pagination of search is for UI improvement, not for
   ;; performance — the ranked set is already capped by `max-filtered-results` — but doing the
   ;; slice here lets downstream steps amortize their batch hydrations over ~limit rows instead
   ;; of the full cap.
-  (let [paginated-results (cond->> ranked-results
+  (let [paginated-results (cond->> ranked
                             (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
                             (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
                             true hydrate-dashboards
@@ -446,10 +477,30 @@
              :offset      (:offset-int search-ctx)
              :table_db_id (:table-db-id search-ctx)
              :engine      (:search-engine search-ctx)
-             :total       (count ranked-results)}
+             :total       (count ranked)}
 
       (:calculate-available-models? search-ctx)
       (assoc :available_models (model-set-fn search-ctx)))))
+
+(mu/defn ranked-results
+  "The scored, permission-filtered result set for `search-ctx`, ordered best-first and capped at
+  [[search.config/max-filtered-results]]. Rows are normalized index records — not yet paginated,
+  hydrated or serialized — each carrying at least `:id` and `:model`.
+
+  Exposed as its own step so a caller holding several ranked sets can combine them (e.g. fusing
+  the rankings of several queries) and paginate the combination *before* anything is hydrated.
+  Hydration is the expensive part, so it should only ever run on the rows actually returned.
+  Pass the result to [[search-results]] for the API response shape; [[search]] composes the two."
+  [search-ctx :- SearchContext]
+  (let [reducible-results (search.engine/results search-ctx)
+        scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
+        xf                (comp
+                           (take search.config/*db-max-results*)
+                           (map normalize-result)
+                           (filter (partial check-permissions-for-model search-ctx))
+                           (map (partial normalize-result-more search-ctx))
+                           (keep #(search.engine/score scoring-ctx %)))]
+    (scoring/top-results reducible-results search.config/max-filtered-results xf)))
 
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
@@ -457,13 +508,4 @@
   (tracing/with-span :search "search.execute" {:search/engine       (name (:search-engine search-ctx))
                                                :search/query-length (count (:search-string search-ctx))
                                                :search/model-count  (count (:models search-ctx))}
-    (let [reducible-results (search.engine/results search-ctx)
-          scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
-          xf                (comp
-                             (take search.config/*db-max-results*)
-                             (map normalize-result)
-                             (filter (partial check-permissions-for-model search-ctx))
-                             (map (partial normalize-result-more search-ctx))
-                             (keep #(search.engine/score scoring-ctx %)))
-          ranked-results    (scoring/top-results reducible-results search.config/max-filtered-results xf)]
-      (search-results search-ctx search.engine/model-set ranked-results))))
+    (search-results search-ctx search.engine/model-set (ranked-results search-ctx))))

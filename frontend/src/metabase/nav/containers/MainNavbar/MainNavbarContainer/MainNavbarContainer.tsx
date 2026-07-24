@@ -1,4 +1,3 @@
-import type { LocationDescriptor } from "history";
 import { memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -9,26 +8,27 @@ import {
   useListDatabasesQuery,
   useReorderBookmarksMutation,
 } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
-import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
-import type { CollectionTreeItem } from "metabase/collections/utils";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import CreateCollectionModal from "metabase/common/collections/containers/CreateCollectionModal";
+import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   buildCollectionTree,
   currentUserPersonalCollections,
   getCollectionIcon,
   nonPersonalOrArchivedCollection,
-} from "metabase/collections/utils";
-import { Modal } from "metabase/common/components/Modal";
+} from "metabase/common/collections/utils";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import { logout } from "metabase/redux/auth";
 import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
+import type { LocationDescriptor } from "metabase/router";
 import {
   getIsTenantUser,
   getUser,
   getUserCanWriteToCollections,
 } from "metabase/selectors/user";
+import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection, User } from "metabase-types/api";
 
@@ -166,7 +166,7 @@ function MainNavbarContainer({
         dispatch(
           addUndo({
             icon: "warning",
-            toastColor: "error",
+            toastColor: "feedback-negative",
             message: t`Something went wrong`,
           }),
         );
@@ -223,7 +223,15 @@ function MainNavbarContainer({
         showExternalCollectionsSection={showExternalCollectionsSection}
       />
 
-      {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
+      <Modal
+        opened={Boolean(modal)}
+        onClose={closeModal}
+        size="lg"
+        withCloseButton={false}
+        padding={0}
+      >
+        {renderModalContent()}
+      </Modal>
     </>
   );
 }

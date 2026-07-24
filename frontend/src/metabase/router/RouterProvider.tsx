@@ -1,46 +1,18 @@
-import type { History } from "history";
 import { type PropsWithChildren, createContext } from "react";
-import { Route, Router, type WithRouterProps, withRouter } from "react-router";
 
-import { useHistory } from "metabase/history";
+import type { WithRouterProps } from "./types";
+import { RouterProviderV7 } from "./v7/RouterProviderV7";
 
 type RouterContextType = WithRouterProps;
 
+/**
+ * The router state the facade hooks read, published per route by `RouterBridge`.
+ */
 export const RouterContext = createContext<RouterContextType | null>(null);
 
-const RouterContextProviderBase = ({
-  router,
-  location,
-  params,
-  routes,
-  children,
-}: PropsWithChildren<RouterContextType>) => {
-  return (
-    <RouterContext.Provider value={{ router, location, params, routes }}>
-      {children}
-    </RouterContext.Provider>
-  );
-};
-
-const RouterContextProvider = withRouter(RouterContextProviderBase);
-
-type RouterProviderProps = {
-  history?: History | undefined;
-};
-
 /**
- * This provider encapsulates react-router initiation and puts router and routes references to the context
- * This is v3's only solution to provide a router and routes.
- * Without extra Route component it doesn't work.
- * Additionally, it provides the history reference
+ * Hosts the app on react-router v7.
  */
-export const RouterProvider = ({
-  children,
-}: PropsWithChildren<RouterProviderProps>) => {
-  const { history } = useHistory();
-  return (
-    <Router history={history}>
-      <Route component={RouterContextProvider}>{children}</Route>
-    </Router>
-  );
-};
+export const RouterProvider = ({ children }: PropsWithChildren) => (
+  <RouterProviderV7>{children}</RouterProviderV7>
+);

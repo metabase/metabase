@@ -46,7 +46,7 @@ export const useGetCurrentResource = ({
 
       await dispatch(
         fetchDashboard({
-          dashId: dashboardId as number,
+          dashId: dashboardId,
           queryParams: {},
         }),
       );
@@ -58,6 +58,7 @@ export const useGetCurrentResource = ({
     error: cardLoadingError,
     isLoading: isCardLoading,
     isFetching: isCardFetching,
+    // Unjustified type cast. FIXME
   } = useGetCardQuery(questionId ? { id: questionId as number } : skipToken, {
     refetchOnMountOrArgChange: true,
   });

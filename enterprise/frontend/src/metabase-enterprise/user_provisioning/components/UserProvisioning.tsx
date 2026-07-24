@@ -96,6 +96,7 @@ export const UserProvisioning = () => {
   );
 
   const samlUserProvisioningEnabled = useSetting(
+    // Unjustified type cast. FIXME
     "saml-user-provisioning-enabled?" as any,
   );
   const showSamlWarning = samlUserProvisioningEnabled && !isScimInitialized;
@@ -178,6 +179,7 @@ export const UserProvisioning = () => {
               )}
               {isScimEnabledWithoutToken && !hasTokenGenerationError && (
                 <Alert
+                  size="compact"
                   color="warning"
                   icon={<Icon name="warning" />}
                 >{t`Generate a SCIM token below to complete the setup.`}</Alert>

@@ -154,11 +154,11 @@ export const TableColumnCard = ({
             w="100%"
             px="0.75rem"
             py="sm"
-            bg="background-primary"
+            bg="background_page-primary"
             bdrs="xs"
           >
             <Text
-              c={selectedTableName ? "text-primary" : "text-tertiary"}
+              c={selectedTableName ? "text-primary" : "text-disabled"}
               size="md"
             >
               {selectedTableName ?? t`Pick a table`}
@@ -175,6 +175,7 @@ export const TableColumnCard = ({
             onBrowseAll={handleBrowseAll}
             onChange={handleTableSelect}
             shouldShowLibrary={false}
+            // Unjustified type cast. FIXME
             shouldHide={(item) => shouldHidePickerItem(item as MiniPickerItem)}
           />
 

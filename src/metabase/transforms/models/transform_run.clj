@@ -7,11 +7,10 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.run-tracking.core :as rt]
    [metabase.transforms.models.transform-run-cancelation :as cancel]
+   [metabase.transforms.models.util :as transforms.models.u]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -193,7 +192,7 @@
   "Time out active runs whose `last_heartbeat` is older than `stale-minutes` (their owning process is
   presumed dead). Returns the rows that were timed out."
   [stale-minutes]
-  (reap-transform-runs! :last_heartbeat stale-minutes :minute "Timed out: no heartbeat"))
+  (reap-transform-runs! :last_heartbeat stale-minutes :minute "Timed out: crashed"))
 
 (defn cancel-old-canceling-runs!
   "Atomically force-cancels active runs whose cancelation requests are older than `age` `unit`. Returns the
@@ -248,23 +247,6 @@
                                  [:= :status [:inline "succeeded"]]]
                       :group-by [:transform_id]}))))
 
-(defn- timestamp-constraint
-  [field-name date-string]
-  (let [{:keys [start end]}
-        (try
-          (params.dates/date-string->range date-string {:inclusive-end? false})
-          (catch Exception e
-            (throw (ex-info (tru "Failed to parse datetime value: {0}" date-string)
-                            {:status-code 400}
-                            e))))
-        start (some-> start u.date/parse)
-        end   (some-> end   u.date/parse)]
-    (into [:and] (remove nil?)
-          [(when start
-             [:>= field-name start])
-           (when end
-             [:< field-name end])])))
-
 (defn- paged-runs-join-clause
   "Returns a `:left-join` clause for transform runs sort columns that require joining other tables."
   [{:keys [sort-column]}]
@@ -277,10 +259,10 @@
   [{:keys [start-time end-time run-methods transform-ids transform-tag-ids statuses user-id]}]
   (let [where-cond (cond-> []
                      (some? start-time)
-                     (conj (timestamp-constraint :start_time start-time))
+                     (conj (transforms.models.u/timestamp-constraint :start_time start-time))
 
                      (some? end-time)
-                     (conj (timestamp-constraint :end_time end-time))
+                     (conj (transforms.models.u/timestamp-constraint :end_time end-time))
 
                      (seq run-methods)
                      (conj [:in :run_method (set run-methods)])

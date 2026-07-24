@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { ReactElement, ReactNode } from "react";
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
@@ -15,17 +14,18 @@ import type {
   OnToggleBookmark,
   OnTogglePreview,
   OnToggleSelected,
-} from "metabase/collections/types";
+} from "metabase/common/collections/types";
 import {
   isFullyParameterized,
   isItemModel,
   isItemPinned,
   isPreviewShown,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Swapper } from "metabase/common/components/Swapper";
 import type { IconData } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
+import { Link } from "metabase/router";
 import type { IconProps } from "metabase/ui";
 import {
   ActionIcon,
@@ -35,6 +35,7 @@ import {
   Menu,
   Tooltip,
 } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
 import type { CollectionItem, IconName } from "metabase-types/api";
 
@@ -42,7 +43,6 @@ import S from "./EntityItem.module.css";
 import {
   EntityIconWrapper,
   EntityItemActions,
-  EntityItemSpinner,
   EntityItemWrapper,
   EntityMenuContainer,
 } from "./EntityItem.styled";
@@ -317,10 +317,14 @@ function EntityItemMenu({
             const disabledProps = action.disabled
               ? { "aria-disabled": true, "data-disabled": true }
               : {};
+            const dangerColor: ColorName | undefined = action.danger
+              ? "danger"
+              : undefined;
             const menuItemProps = {
               ...disabledProps,
               className: cx(S.menuItem, { [S.dangerItem]: action.danger }),
               leftSection: getLeftSection(action.icon),
+              c: dangerColor,
             };
 
             if (action.link) {
@@ -384,7 +388,6 @@ export const EntityItem = ({
   buttons,
   extraInfo,
   pinned,
-  loading,
   disabled,
 }: {
   name: string;
@@ -401,7 +404,6 @@ export const EntityItem = ({
   buttons?: ReactNode;
   extraInfo?: ReactNode;
   pinned?: boolean;
-  loading?: boolean;
   disabled?: boolean;
 }) => {
   const icon = useMemo(() => ({ name: iconName }), [iconName]);
@@ -431,7 +433,6 @@ export const EntityItem = ({
 
       <EntityItemActions onClick={(e) => e.preventDefault()}>
         {buttons}
-        {loading && <EntityItemSpinner size={24} borderWidth={3} />}
         <EntityItemMenu
           item={item}
           onPin={onPin}

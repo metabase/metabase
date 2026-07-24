@@ -1,7 +1,8 @@
 (ns metabase.transforms.models.job-run
   (:require
    [metabase.models.interface :as mi]
-   [metabase.run-tracking.core :as rt]
+   [metabase.transforms.coordinated-run :as coordinated-run]
+   [metabase.transforms.models.util :as transforms.models.u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -35,65 +36,25 @@
           (t2/reducible-select :model/TransformJobRun (latest-runs-query job-ids)))))
 
 (defn start-run!
-  "Start a run"
+  "Start a run. Snapshots the job's name and entity_id so the run stays displayable after the job
+  is deleted (`transform_job_run.job_id` has no FK; job runs outlive their job)."
   ([job-id run-method]
-   (t2/insert-returning-instance! :model/TransformJobRun
-                                  {:job_id job-id
-                                   :run_method run-method
-                                   :status :started
-                                   :is_active true})))
-
-(defn add-run-activity!
-  "Notes that a run has had activity"
-  [run-id]
-  (t2/update! :model/TransformJobRun
-              :id        run-id
-              :is_active true
-              {:updated_at :%now}))
-
-(defn succeed-started-run!
-  "Mark a started run as successfully completed."
-  ([run-id]
-   (succeed-started-run! run-id {}))
-  ([run-id properties]
-   (t2/update! :model/TransformJobRun
-               :id        run-id
-               :is_active true
-               (merge {:end_time :%now}
-                      properties
-                      {:status    :succeeded
-                       :is_active nil}))))
-
-(defn fail-started-run!
-  "Mark the started active run as failed and inactive."
-  [run-id properties]
-  (t2/update! :model/TransformJobRun
-              :id        run-id
-              :is_active true
-              (merge {:end_time :%now}
-                     properties
-                     {:status :failed
-                      :is_active nil})))
-
-(defn heartbeat-runs!
-  "Stamp `last_heartbeat = now` on the given still-active job-run-ids."
-  [run-ids]
-  (rt/heartbeat-ids! :model/TransformJobRun [:= :is_active true] :last_heartbeat run-ids))
+   ;; :built_in_type so the after-select hook localizes built-in job names; str realizes the
+   ;; LocalizedString into the snapshot
+   (let [job (t2/select-one [:model/TransformJob :name :entity_id :built_in_type] :id job-id)]
+     (t2/insert-returning-instance! :model/TransformJobRun
+                                    {:job_id        job-id
+                                     :job_name      (some-> (:name job) str)
+                                     :job_entity_id (:entity_id job)
+                                     :run_method    run-method
+                                     :status        :started
+                                     :is_active     true}))))
 
 (defn reap-orphaned-runs!
   "Time out active job runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator
   process is presumed dead). Returns the rows that were timed out so callers can notify."
   [stale-minutes]
-  (rt/reap-orphaned!
-   {:model    :model/TransformJobRun
-    :active   [:= :is_active true]
-    :stale    [:< :last_heartbeat (rt/cutoff stale-minutes :minute)]
-    :terminal {:status "timeout" :end_time :%now :is_active nil :message "Timed out: no heartbeat"}
-    :metrics  {:total-metric   :metabase-transforms/timeouts-total
-               :latency-metric :metabase-transforms/timeout-detection-latency-ms
-               :tags           {:type "job"}
-               :latency-column :last_heartbeat
-               :timeout-ms     (rt/unit->ms stale-minutes :minute)}}))
+  (coordinated-run/reap-orphaned-runs! :model/TransformJobRun "job" stale-minutes))
 
 (defn running-run-for-job-id
   "Return a single active job run or nil."
@@ -102,39 +63,32 @@
                  :job_id id
                  :is_active true))
 
-(defn paged-runs
-  "Return a page of the list of the runs.
+(defn paged-job-runs
+  "Return a page of the list of job runs.
 
   Follows the conventions used by the FE."
-  [{:keys [offset
-           limit
-           sort_column
-           sort_direction
-           job_id
-           status]}]
-  (let [offset (or offset 0)
-        limit  (or limit 20)
-        sort-direction (or (keyword sort_direction) :desc)
-        nulls-sort (if (= sort-direction :asc)
-                     :nulls-last
-                     :nulls-first)
-        sort-column (keyword sort_column)
-        order-by (case sort_column
-                   :started_at [[sort-column sort-direction]]
-                   :ended_at   [[sort-column sort-direction nulls-sort]]
-                   [[:start_time sort-direction]
-                    [:end_time   sort-direction nulls-sort]])
-        conditions (concat (when job_id
-                             [:job_id job_id])
-                           (when status
-                             [:= :status status])
-                           (when (= status "started")
-                             [:is_active true]))
-        conditions-with-sort-and-pagination (concat conditions [{:order-by order-by
-                                                                 :offset offset
-                                                                 :limit limit}])
-        runs (apply t2/select :model/TransformJobRun conditions-with-sort-and-pagination)]
-    {:data (t2/hydrate runs :transform)
-     :limit limit
+  [{:keys [sort-column sort-direction job-id status run-method start-time offset limit]}]
+  (let [offset     (or offset 0)
+        limit      (or limit 20)
+        where-cond (cond-> []
+                     job-id               (conj [:= :job_id job-id])
+                     status               (conj [:= :status status])
+                     (= status "started") (conj [:= :is_active true])
+                     run-method           (conj [:= :run_method run-method])
+                     start-time           (conj (transforms.models.u/timestamp-constraint :start_time start-time)))
+        where      (when (seq where-cond) (into [:and] where-cond))]
+    {:data   (t2/select :model/TransformJobRun
+                        (cond-> {:order-by (transforms.models.u/run-order-by sort-column sort-direction)
+                                 :offset   offset
+                                 :limit    limit}
+                          where (assoc :where where)))
+     :limit  limit
      :offset offset
-     :total (apply t2/count :model/TransformJobRun conditions)}))
+     :total  (t2/count :model/TransformJobRun (if where {:where where} {}))}))
+
+(defn transform-runs-for-job-run
+  "Return transform runs that were part of the given job run, ordered by start time."
+  [job-run-id]
+  (t2/select :model/TransformRun
+             {:where    [:= :job_run_id job-run-id]
+              :order-by [[:start_time :asc]]}))

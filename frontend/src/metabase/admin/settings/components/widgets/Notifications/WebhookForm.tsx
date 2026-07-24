@@ -24,7 +24,6 @@ import {
   Group,
   Icon,
   ScrollArea,
-  Text,
   Title,
 } from "metabase/ui";
 import { getResponseErrorMessage } from "metabase/utils/errors";
@@ -224,19 +223,12 @@ export const WebhookForm = ({
     >
       {({ dirty, values, setFieldError, setFieldValue }) => (
         <Form>
-          <Alert
-            variant="light"
-            mb="1.5rem"
-            style={{ backgroundColor: "var(--mb-color-background-secondary)" }}
-            px="1.5rem"
-            py="1rem"
-            radius="0.5rem"
-          >
-            <Text>{jt`You can send the payload of any Alert to this destination whenever the Alert is triggered. ${(
+          <Alert size="compact" variant="light" mb="1.5rem">
+            {jt`You can send the payload of any Alert to this destination whenever the Alert is triggered. ${(
               <ExternalLink key="link" href={docsUrl}>
                 {t`Learn about Alerts`}
               </ExternalLink>
-            )}`}</Text>
+            )}`}
           </Alert>
           <Box mb="1.5rem">
             <Flex align="end" gap="1rem">
@@ -264,7 +256,7 @@ export const WebhookForm = ({
                 <Box
                   py="0.5rem"
                   px="1.5rem"
-                  bg="background-secondary"
+                  bg="background_page-secondary"
                   style={{ borderRadius: "0.5rem" }}
                   data-testid="notification-test-response"
                 >

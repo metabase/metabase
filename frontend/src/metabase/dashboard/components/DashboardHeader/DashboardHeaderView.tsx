@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { EditBar } from "metabase/common/components/EditBar";
 import { LastEditInfoLabel } from "metabase/common/components/LastEditInfoLabel";
 import { SIDEBAR_WIDTH } from "metabase/common/components/Sidebar";
@@ -115,6 +115,7 @@ export function DashboardHeaderView({
             isSidebarOpen && !isInfoSidebarOpen && !isSettingsSidebarOpen,
         })}
         style={
+          // Unjustified type cast. FIXME
           {
             "--sidebar-width": `${SIDEBAR_WIDTH}px`,
           } as React.CSSProperties

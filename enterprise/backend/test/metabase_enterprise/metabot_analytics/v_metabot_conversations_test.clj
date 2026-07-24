@@ -29,7 +29,7 @@
   (testing "view correctly counts messages by role and sums tokens from ai_usage_log"
     (let [convo-id (str (random-uuid))]
       (mt/with-temp [:model/User {user-id :id} {}
-                     :model/MetabotConversation _ {:id convo-id :user_id user-id :summary "token counting"}
+                     :model/MetabotConversation _ {:id convo-id :user_id user-id :title "token counting"}
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "user"      :profile_id "nlq" :total_tokens 0 :data []}
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "assistant" :profile_id "nlq" :total_tokens 0 :data []}
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "assistant" :profile_id "nlq" :total_tokens 0 :data []}
@@ -75,9 +75,9 @@
           convo-3 (str (random-uuid))]
       (mt/with-temp [:model/User              {user-a :id} {}
                      :model/User              {user-b :id} {}
-                     :model/MetabotConversation _ {:id convo-1 :user_id user-a :summary "multi-turn chat"}
-                     :model/MetabotConversation _ {:id convo-2 :user_id user-b :summary "quick question"}
-                     :model/MetabotConversation _ {:id convo-3 :user_id user-a :summary "long conversation"}
+                     :model/MetabotConversation _ {:id convo-1 :user_id user-a :title "multi-turn chat"}
+                     :model/MetabotConversation _ {:id convo-2 :user_id user-b :title "quick question"}
+                     :model/MetabotConversation _ {:id convo-3 :user_id user-a :title "long conversation"}
                      ;; convo-1: 3 messages
                      :model/MetabotMessage      _ {:conversation_id convo-1 :role "user"      :profile_id "nlq" :total_tokens 0 :data []}
                      :model/MetabotMessage      _ {:conversation_id convo-1 :role "assistant" :profile_id "nlq" :total_tokens 0 :data []}
@@ -195,8 +195,8 @@
                    :profile_id              "nlq"}
                   r3)))))))
 
-(deftest deleted-messages-excluded-test
-  (testing "soft-deleted messages are excluded from counts"
+(deftest deleted-messages-included-test
+  (testing "soft-deleted messages are included in counts"
     (let [convo-id (str (random-uuid))
           now      (java.time.OffsetDateTime/now)
           earlier  (.minusHours now 1)]
@@ -205,9 +205,9 @@
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "user"      :profile_id "nlq" :total_tokens 0 :data [] :created_at earlier}
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "assistant" :profile_id "nlq" :total_tokens 0 :data [] :created_at now}
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "assistant" :profile_id "nlq" :total_tokens 0 :data [] :deleted_at now}]
-        (is (=? {:message_count           2
+        (is (=? {:message_count           3
                  :user_message_count      1
-                 :assistant_message_count 1}
+                 :assistant_message_count 2}
                 (first (query-view [convo-id]))))))))
 
 (deftest user-display-name-test
@@ -329,8 +329,8 @@
   (testing "conversation with no messages returns zero counts and nil profile_id"
     (let [convo-id (str (random-uuid))]
       (mt/with-temp [:model/User {user-id :id} {}
-                     :model/MetabotConversation _ {:id convo-id :user_id user-id :summary "empty conversation"}]
-        (is (=? {:summary                 "empty conversation"
+                     :model/MetabotConversation _ {:id convo-id :user_id user-id :title "empty conversation"}]
+        (is (=? {:title                   "empty conversation"
                  :message_count           0
                  :user_message_count      0
                  :assistant_message_count 0
@@ -343,7 +343,7 @@
           (is (nil? (:last_message_at row))))))))
 
 (deftest last-message-at-test
-  (testing "last_message_at reflects the most recent non-deleted message"
+  (testing "last_message_at reflects the most recent message"
     (let [convo-id (str (random-uuid))
           t1       (java.time.OffsetDateTime/parse "2026-01-01T12:00:00Z")
           t2-ts    (java.time.OffsetDateTime/parse "2026-01-02T12:00:00Z")
@@ -352,19 +352,18 @@
                      :model/MetabotConversation _ {:id convo-id :user_id user-id}
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "user"      :profile_id "nlq" :total_tokens 0 :data [] :created_at t1}
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "assistant" :profile_id "nlq" :total_tokens 0 :data [] :created_at t2-ts}
-                     ;; newest message is deleted — should not count
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "assistant" :profile_id "nlq" :total_tokens 0 :data [] :created_at t3 :deleted_at t3}]
         (let [row (first (query-view [convo-id]))]
           ;; Compare instants to avoid DB-specific timestamp type differences
-          (is (= (t/instant t2-ts) (t/instant (:last_message_at row)))))))))
+          (is (= (t/instant t3) (t/instant (:last_message_at row)))))))))
 
 (deftest multiple-conversations-independent-test
   (testing "multiple conversations aggregate independently"
     (let [convo-1 (str (random-uuid))
           convo-2 (str (random-uuid))]
       (mt/with-temp [:model/User {user-id :id} {}
-                     :model/MetabotConversation _ {:id convo-1 :user_id user-id :summary "conversation one"}
-                     :model/MetabotConversation _ {:id convo-2 :user_id user-id :summary "conversation two"}
+                     :model/MetabotConversation _ {:id convo-1 :user_id user-id :title "conversation one"}
+                     :model/MetabotConversation _ {:id convo-2 :user_id user-id :title "conversation two"}
                      :model/MetabotMessage      _ {:conversation_id convo-1 :role "user"      :profile_id "nlq"      :total_tokens 0 :data []}
                      :model/MetabotMessage      _ {:conversation_id convo-1 :role "assistant" :profile_id "nlq"      :total_tokens 0 :data []}
                      :model/MetabotMessage      _ {:conversation_id convo-2 :role "user"      :profile_id "internal" :total_tokens 0 :data []}

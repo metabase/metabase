@@ -35,11 +35,11 @@ interface CardBadgeProps {
 
 export const CardBadge = styled.div<CardBadgeProps>`
   color: ${(props) =>
-    props.isEnabled ? color("core-brand") : color("danger")};
+    props.isEnabled ? color("core-brand") : color("feedback-negative")};
   background-color: ${(props) =>
     props.isEnabled
-      ? "var(--mb-color-background-brand)"
-      : "var(--mb-color-background-secondary)"};
+      ? "var(--mb-color-background_surface-brand-subtle)"
+      : "var(--mb-color-background_page-secondary)"};
   padding: 0.25rem 0.375rem;
   border-radius: 0.25rem;
   font-weight: bold;

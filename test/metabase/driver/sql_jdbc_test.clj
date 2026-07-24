@@ -29,7 +29,7 @@
                                      "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS"]]
                           {:name table, :schema "PUBLIC",
                            :description nil, :is_writable true}))
-                   (:tables (driver/describe-database :h2 (mt/db))))))
+                   (into #{} (:tables (driver/describe-database :h2 (mt/db)))))))
 
 (deftest describe-fields-sync-with-composite-pks-test
   (testing "Make sure syncing a table that has a composite pks works"
@@ -74,8 +74,9 @@
                  (update :category_id int)
                  (update :id int)))))))
 
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel invalid-ssh-credentials-test
+  ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (mt/test-driver :postgres
     (testing "Make sure invalid ssh credentials are detected if a direct connection is possible"
       (is (thrown?

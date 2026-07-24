@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
 import { useSetArchive } from "metabase/archive/hooks";
-import { canArchiveItem } from "metabase/collections/utils";
+import { canArchiveItem } from "metabase/common/collections/utils";
 import { BulkActionButton } from "metabase/common/components/BulkActionBar";
 import { canMoveItem } from "metabase/common/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";

@@ -713,7 +713,9 @@ describe("issue 30314", () => {
     H.sidebar().within(() => {
       cy.findByText("Email it").click();
 
-      cy.findByLabelText("Attach results").should("not.be.checked").click();
+      cy.findByLabelText("Attach results")
+        .should("not.be.checked")
+        .click({ force: true }); // Input is placed behind the lable due to tooltip in label
       cy.findByLabelText("Questions to attach")
         .should("not.be.checked")
         .click();
@@ -1034,7 +1036,9 @@ describe("issue 49525", { tags: "@external" }, () => {
     H.sidebar().within(() => {
       // Click this just to close the popover that is blocking the "Send email now" button
       cy.findByText("To:").click();
-      cy.findByLabelText("Attach results").click();
+      cy.findByLabelText("Attach results")
+        .should("not.be.checked")
+        .click({ force: true }); // Input is placed behind the lable due to tooltip in label
       cy.findByText("Keep the data pivoted").click();
       cy.findByText("Questions to attach").click();
     });
@@ -1053,11 +1057,13 @@ describe("issue 49525", { tags: "@external" }, () => {
         url: `http://localhost:${WEB_PORT}/email/${email.id}/attachment/${csvAttachment.generatedFileName}`,
         encoding: "utf8",
       }).then((response) => {
-        const csvContent = response.body;
-        const rows = csvContent.split("\n");
+        // CSV exports begin with a UTF-8 BOM; strip it, and tolerate either
+        // \n or \r\n line endings, before asserting on the header row.
+        const csvContent = response.body.replace(/^\uFEFF/, "");
+        const rows = csvContent.split(/\r?\n/);
         const headers = rows[0];
         expect(headers).to.equal(
-          "Created At: Year,Doohickey,Gadget,Gizmo,Widget,Row totals\r",
+          "Created At: Year,Doohickey,Gadget,Gizmo,Widget,Row totals",
         );
       });
     });

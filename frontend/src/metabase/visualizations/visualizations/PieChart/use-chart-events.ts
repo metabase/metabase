@@ -10,7 +10,10 @@ import type {
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import { getTotalValue } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
-import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/types";
+import type {
+  PieChartModel,
+  SliceTreeNode,
+} from "metabase/visualizations/echarts/pie/model/types";
 import type { EChartsSunburstSeriesMouseEvent } from "metabase/visualizations/echarts/pie/types";
 import {
   getArrayFromMapValues,
@@ -27,6 +30,8 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
+import type { ClickObjectDimension } from "metabase-lib";
+import type { DatasetColumn, RowValue } from "metabase-types/api";
 
 export const getTooltipModel = (
   sliceKeyPath: string[],
@@ -113,6 +118,60 @@ function getHoverData(
   };
 }
 
+function getNodeColumnIndex(chartModel: PieChartModel, nodeIndex: number) {
+  return [
+    chartModel.colDescs.dimensionDesc.index,
+    chartModel.colDescs.middleDimensionDesc?.index,
+    chartModel.colDescs.outerDimensionDesc?.index,
+  ][nodeIndex];
+}
+
+function hasObjectDimensionValue(
+  node: SliceTreeNode,
+  nodeIndex: number,
+  row: VisualizationProps["data"]["rows"][number] | undefined,
+  dataProp: VisualizationProps["data"],
+  chartModel: PieChartModel,
+) {
+  const columnIndex = getNodeColumnIndex(chartModel, nodeIndex);
+
+  if (columnIndex == null) {
+    return false;
+  }
+
+  const values = node.isOther
+    ? getArrayFromMapValues(node.children)
+        .map((childNode) => childNode.rowIndex)
+        .filter((rowIndex) => rowIndex != null)
+        .map((rowIndex) => dataProp.rows[rowIndex]?.[columnIndex])
+    : [row?.[columnIndex]];
+
+  return values.some((value) => value != null && typeof value === "object");
+}
+
+function getOtherSliceDimensionValue(node: SliceTreeNode): RowValue {
+  return getArrayFromMapValues(node.children).map((childNode) =>
+    getValueFromDimensionKey(childNode.key),
+  );
+}
+
+function getDimensionColumn(node: SliceTreeNode): DatasetColumn {
+  return checkNotNull(
+    node.column ?? getArrayFromMapValues(node.children)[0]?.column,
+  );
+}
+
+function getClickObjectDimensions(
+  nodes: SliceTreeNode[],
+): ClickObjectDimension[] {
+  return nodes.map((node) => ({
+    value: node.isOther
+      ? getOtherSliceDimensionValue(node)
+      : getValueFromDimensionKey(node.key),
+    column: getDimensionColumn(node),
+  }));
+}
+
 function handleClick(
   event: EChartsSunburstSeriesMouseEvent,
   dataProp: VisualizationProps["data"],
@@ -121,7 +180,7 @@ function handleClick(
   onVisualizationClick: VisualizationProps["onVisualizationClick"],
   chartModel: PieChartModel,
 ) {
-  if (event.dataIndex == null) {
+  if (event.name == null) {
     return;
   }
 
@@ -130,24 +189,14 @@ function handleClick(
     getSliceKeyPath(event),
   );
 
-  if (sliceTreeNode.isOther) {
-    return;
-  }
-
   const rowIndex = sliceTreeNode.rowIndex;
   const row = rowIndex != null ? dataProp.rows[rowIndex] : undefined;
 
   // the underlying records filter doesn't support objects, so return early if any of the dimension values are objects
   if (
-    row &&
-    [
-      chartModel.colDescs.dimensionDesc.index,
-      chartModel.colDescs.middleDimensionDesc?.index,
-      chartModel.colDescs.outerDimensionDesc?.index,
-    ]
-      .filter((index) => index != null)
-      .map((index) => row[index])
-      .some((value) => value != null && typeof value === "object")
+    nodes.some((node, index) =>
+      hasObjectDimensionValue(node, index, row, dataProp, chartModel),
+    )
   ) {
     return;
   }
@@ -168,10 +217,7 @@ function handleClick(
     value: sliceTreeNode.value,
     column: chartModel.colDescs.metricDesc.column,
     data,
-    dimensions: nodes.map((node) => ({
-      value: getValueFromDimensionKey(node.key),
-      column: checkNotNull(node.column),
-    })),
+    dimensions: getClickObjectDimensions(nodes),
     settings,
     event: event.event.event,
   };

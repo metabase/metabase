@@ -264,22 +264,31 @@
   "Style for the `<table>` element of a rendered `:pivot` table."
   []
   (merge (font-style)
+         ;; CSSBox ignores border-collapse, so for a uniform 1px grid we set border-spacing:0 and draw each line
+         ;; once via per-cell borders (see pivot-cell-style: right+bottom, plus top/left on the first row/column).
          {:border-collapse :collapse
+          :border-spacing  0
           :font-size       (format "%spx" font-size)}))
 
 (defn pivot-cell-style
-  "Style for one cell of a rendered `:pivot` table. `header?`/`label?` select the cell role; `bg`, when
-  non-nil, is the conditional-formatting background color for a value cell."
-  [header? label? bg]
-  (merge {:border      (str "1px solid " color-border)
-          :padding     "5px 10px"
-          :white-space :nowrap}
-         (cond
-           header? {:background  color-pivot-header-bg
-                    :font-weight 700
-                    :text-align  :left}
-           label?  {:background  color-pivot-label-bg
-                    :font-weight 600
-                    :text-align  :left}
-           :else   {:text-align :right})
-         (when bg {:background-color bg})))
+  "Style for one cell of a rendered `:pivot` table. `header?`/`label?` select the cell role; `first-col?` is the
+  leftmost column; `bg`, when non-nil, is the conditional-formatting background color for a value cell. Each cell
+  draws only its right+bottom border (plus top/left on the first row/column) so abutting cells form a uniform 1px
+  grid -- CSSBox renders `border-collapse:collapse` as `separate`, which would otherwise double interior lines."
+  [header? label? first-col? bg]
+  (let [edge (str "1px solid " color-border)]
+    (merge {:border-right  edge
+            :border-bottom edge
+            :padding       "5px 10px"
+            :white-space   :nowrap}
+           (when header?    {:border-top  edge})
+           (when first-col? {:border-left edge})
+           (cond
+             header? {:background  color-pivot-header-bg
+                      :font-weight 700
+                      :text-align  :left}
+             label?  {:background  color-pivot-label-bg
+                      :font-weight 600
+                      :text-align  :left}
+             :else   {:text-align :right})
+           (when bg {:background-color bg}))))

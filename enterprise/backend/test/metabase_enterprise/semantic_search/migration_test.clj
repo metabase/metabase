@@ -11,7 +11,9 @@
    [metabase-enterprise.semantic-search.db.migration.impl :as semantic.db.migration.impl]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -34,9 +36,9 @@
                               semantic.db.migration.impl/migrate-dynamic-schema! (constantly nil)]
                   (log.capture/with-log-messages-for-level [messages [metabase-enterprise.semantic-search.db.migration :info]]
                     (semantic.db.connection/with-migrate-tx [tx]
-                      (semantic.db.migration/maybe-migrate! tx nil)
+                      (semantic.db.migration/maybe-migrate! tx {:index-metadata semantic.index-metadata/default-index-metadata})
                       {:messages (messages)
-                       :db-version (@#'semantic.db.migration/db-version tx)}))))]
+                       :db-version (@#'semantic.db.migration/db-version semantic.index-metadata/default-index-metadata tx)}))))]
         (testing "Migration up works"
           (u/prog1 (migrate-and-get-db-version 130)
             (is (= 130 (:db-version <>)))
@@ -55,6 +57,76 @@
             (is (= 130 (:db-version <>)))
             (is (m/find-first (comp #{"Migration already performed, skipping."} :message)
                               (:messages <>)))))))))
+
+(deftest schema-scoped-migration-drop-test
+  (mt/with-premium-features #{:semantic-search}
+    (semantic.tu/with-test-db-defaults!
+      (testing "app-db-mode migration reset only ever drops tables inside the module's schema"
+        (let [pgvector       (semantic.env/get-pgvector-datasource!)
+              index-metadata semantic.index-metadata/app-db-index-metadata
+              schema-tables  (fn []
+                               (->> (jdbc/execute! pgvector
+                                                   ["SELECT tablename FROM pg_tables WHERE schemaname = 'semantic_search'"]
+                                                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                                    (map :tablename)
+                                    set))]
+          ;; decoys playing the role of application tables; the second is a real app-db table name
+          ;; (migration 056) squarely inside the module's naming family — the worst case for any
+          ;; name-pattern-based scoping
+          (jdbc/execute! pgvector ["CREATE TABLE decoy_app_table (id int)"])
+          (jdbc/execute! pgvector ["CREATE TABLE semantic_search_token_tracking (id int)"])
+          ;; positive control: a leftover table inside the module schema is fair game for the reset
+          (jdbc/execute! pgvector ["CREATE SCHEMA semantic_search"])
+          (jdbc/execute! pgvector ["CREATE TABLE semantic_search.legacy_junk (id int)"])
+          (semantic.db.connection/with-migrate-tx [tx]
+            (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata}))
+          (testing "tables outside the schema survive the version<2 drop-everything reset"
+            (is (semantic.util/table-exists? pgvector "public.decoy_app_table"))
+            (is (semantic.util/table-exists? pgvector "public.semantic_search_token_tracking")))
+          (testing "inside the schema: junk dropped, module tables created"
+            (is (= #{"migration" "index_metadata" "index_control" "index_gate"}
+                   (schema-tables)))))))))
+
+(deftest dedicated-reset-stays-in-default-schema-test
+  (mt/with-premium-features #{:semantic-search}
+    (semantic.tu/with-test-db-defaults!
+      (testing "the dedicated-mode reset wipes only the default schema — cohabitant schemas survive"
+        (let [pgvector (semantic.env/get-pgvector-datasource!)]
+          (jdbc/execute! pgvector ["CREATE SCHEMA cohabitant"])
+          (jdbc/execute! pgvector ["CREATE TABLE cohabitant.precious (id int)"])
+          (jdbc/execute! pgvector ["CREATE TABLE doomed (id int)"])
+          (semantic.db.connection/with-migrate-tx [tx]
+            (semantic.db.migration/maybe-migrate! tx {:index-metadata semantic.index-metadata/default-index-metadata}))
+          (is (true? (semantic.util/table-exists? pgvector "cohabitant.precious")))
+          (is (false? (semantic.util/table-exists? pgvector "public.doomed"))))))))
+
+(deftest dedicated-reset-refuses-app-db-test
+  (mt/with-premium-features #{:semantic-search}
+    (semantic.tu/with-test-db-defaults!
+      (testing "the dedicated-mode reset refuses a database that looks like a Metabase app db"
+        (let [pgvector (semantic.env/get-pgvector-datasource!)]
+          ;; core_user is the app-db sentinel; a generic Liquibase table alongside it must not mask the refusal
+          (jdbc/execute! pgvector ["CREATE TABLE databasechangelog (id int)"])
+          (jdbc/execute! pgvector ["CREATE TABLE core_user (id int)"])
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Metabase application"
+                                (semantic.db.connection/with-migrate-tx [tx]
+                                  (semantic.db.migration/maybe-migrate!
+                                   tx {:index-metadata semantic.index-metadata/default-index-metadata}))))
+          (testing "nothing was dropped"
+            (is (true? (semantic.util/table-exists? pgvector "public.core_user")))))))))
+
+(deftest dedicated-reset-allows-liquibase-only-test
+  (mt/with-premium-features #{:semantic-search}
+    (semantic.tu/with-test-db-defaults!
+      (testing "a generic Liquibase databasechangelog does not, on its own, look like a Metabase app db"
+        (let [pgvector (semantic.env/get-pgvector-datasource!)]
+          (jdbc/execute! pgvector ["CREATE TABLE databasechangelog (id int)"])
+          (semantic.db.connection/with-migrate-tx [tx]
+            (semantic.db.migration/maybe-migrate!
+             tx {:index-metadata semantic.index-metadata/default-index-metadata}))
+          (testing "migration proceeds: the module tables are created and the stray table is wiped"
+            (is (true? (semantic.util/table-exists? pgvector "public.index_metadata")))
+            (is (false? (semantic.util/table-exists? pgvector "public.databasechangelog")))))))))
 
 (defn- executions-overlap?
   "Check if any two executions overlap in time. Each entry is [tid :started/:ended timestamp].
@@ -176,8 +248,10 @@
                       "content"
                       "created_at"
                       "creator_id"
+                      "curated"
                       "dashboardcard_count"
                       "database_id"
+                      "data_authority"
                       "data_layer"
                       "display_type"
                       "embedding"
@@ -225,6 +299,21 @@
                                           :where [:and
                                                   [:= :table_name [:inline table-name]]
                                                   [:= :column_name [:inline column-name]]]}))))
+
+(deftest current-schema-version-adds-health-metric-columns-test
+  (mt/with-premium-features #{:semantic-search}
+    (semantic.tu/with-test-db-defaults!
+      (let [pgvector       (semantic.env/get-pgvector-datasource!)
+            index-metadata semantic.index-metadata/default-index-metadata]
+        (semantic.db.connection/with-migrate-tx [tx]
+          (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata}))
+        (jdbc/execute! pgvector [(str "ALTER TABLE index_metadata "
+                                      "DROP COLUMN repair_orphan_count, "
+                                      "DROP COLUMN repair_snapshot_at")])
+        (semantic.db.connection/with-migrate-tx [tx]
+          (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata}))
+        (is (has-column?! pgvector "index_metadata" "repair_orphan_count"))
+        (is (has-column?! pgvector "index_metadata" "repair_snapshot_at"))))))
 
 (deftest dynamic-schema-migration-test
   (mt/with-premium-features #{:semantic-search}
@@ -377,3 +466,33 @@
                       "6" nil              ; non-library collection, no gate doc
                       "7" "library-data"}  ; pre-existing value preserved
                      rows-by-id)))))))))
+
+(deftest candidate-table-ids-test
+  (testing "Migration 5 sweeps only active published/authoritative tables, sorted into the two id lists it
+            backfills — others are implicitly not curated (table curation never uses root_collection_type)"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {pub :id}      {:db_id db-id :active true  :is_published true :data_layer :final}
+                   :model/Table {auth :id}     {:db_id db-id :active true  :data_authority :authoritative}
+                   :model/Table {inactive :id} {:db_id db-id :active false :is_published true :data_layer :final}
+                   :model/Table {plain :id}    {:db_id db-id :active true}]
+      (let [{:keys [authoritative published]} (#'semantic.db.migration.impl/candidate-table-ids)
+            authoritative (set authoritative)
+            published     (set published)]
+        (is (contains? published (str pub))      "published-final tables go in :published")
+        (is (contains? authoritative (str auth)) "authoritative tables go in :authoritative")
+        (is (not (contains? published (str inactive))) "inactive tables are skipped")
+        (is (not (contains? published (str plain)))    "plain tables aren't candidates")
+        (is (not (contains? authoritative (str plain))))))))
+
+(deftest official-collection-dashboard-ids-test
+  (testing "Migration 5 backfills official-only dashboards (official_collection is new on the spec, so
+            existing index rows lack it)"
+    (mt/with-temp [:model/Collection {official :id} {:authority_level :official}
+                   :model/Collection {normal :id}   {}
+                   :model/Dashboard {od :id} {:collection_id official}
+                   :model/Dashboard {nd :id} {:collection_id normal}
+                   :model/Dashboard {ad :id} {:collection_id official :archived true}]
+      (let [ids (set (#'semantic.db.migration.impl/official-collection-dashboard-ids))]
+        (is (contains? ids (str od))      "dashboards in official collections are backfilled")
+        (is (not (contains? ids (str nd))) "dashboards in normal collections are not")
+        (is (not (contains? ids (str ad))) "archived dashboards are skipped")))))

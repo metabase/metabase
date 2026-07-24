@@ -4,10 +4,10 @@ import L from "leaflet";
 
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/ui/utils/colors";
-import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
 import type { GeoJSONData, Series } from "metabase-types/api";
 
 import { CardRenderer } from "./CardRenderer";
+import { computeMinimalBounds } from "./leaflet-bounds";
 
 type FeatureInteraction = {
   feature: Feature;

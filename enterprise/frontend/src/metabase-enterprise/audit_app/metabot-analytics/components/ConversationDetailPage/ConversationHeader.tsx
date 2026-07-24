@@ -3,7 +3,6 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
-import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
 import {
   skipToken,
   useListPermissionsGroupsQuery,
@@ -15,6 +14,7 @@ import {
 } from "metabase/common/components/Breadcrumbs";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import {
@@ -73,7 +73,9 @@ export function ConversationHeader({
       <Flex justify="space-between" align="flex-start" gap="md">
         <Stack gap="sm">
           <Flex align="baseline">
-            <Title order={2}>{t`Conversation with ${userName}`}</Title>
+            <Title order={2}>
+              {conversation.title || t`Conversation with ${userName}`}
+            </Title>
             {conversation.user && (
               <Menu shadow="md" position="bottom-start" withinPortal>
                 <Menu.Target>
@@ -98,14 +100,14 @@ export function ConversationHeader({
           </Flex>
           <Flex gap="lg" align="center" wrap="wrap">
             <Flex gap="xs" align="center">
-              <Icon name="calendar" size={16} c="text-tertiary" />
+              <Icon name="calendar" size={16} c="text-disabled" />
               <Text size="md" c="text-secondary">
                 <DateTime value={conversation.created_at} unit="day" />
               </Text>
             </Flex>
             {firstProfile && (
               <Flex gap="xs" align="center">
-                <Icon name="metabot" size={16} c="text-tertiary" />
+                <Icon name="metabot" size={16} c="text-disabled" />
                 <Text size="md" c="text-secondary">
                   {renderMetabotProfileLabel(firstProfile)}
                 </Text>
@@ -114,13 +116,13 @@ export function ConversationHeader({
             {(userGroupsInfo.userGroups.length > 0 ||
               userGroupsInfo.isAdmin) && (
               <Flex gap="xs" align="center">
-                <Icon name="group" size={16} c="text-tertiary" />
+                <Icon name="group" size={16} c="text-disabled" />
                 <UserGroupsMenu {...userGroupsInfo} />
               </Flex>
             )}
             {tenant && (
               <Flex gap="xs" align="center">
-                <Icon name="company" size={16} c="text-tertiary" />
+                <Icon name="company" size={16} c="text-disabled" />
                 <Anchor
                   component={ForwardRefLink}
                   to={EnterpriseUrls.editTenant(tenant.id)}
@@ -205,7 +207,7 @@ function UserGroupsMenu({
         >
           <Flex component="span" align="center" gap={4}>
             <span>{summaryText}</span>
-            <Icon name="chevrondown" size={10} c="text-tertiary" />
+            <Icon name="chevrondown" size={10} c="text-disabled" />
           </Flex>
         </Anchor>
       </Menu.Target>

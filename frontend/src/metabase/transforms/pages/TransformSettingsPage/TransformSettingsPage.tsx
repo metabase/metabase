@@ -1,5 +1,6 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useParams } from "metabase/router";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -14,11 +15,8 @@ type TransformSettingsPageParams = {
   transformId: string;
 };
 
-type TransformTargetPageProps = {
-  params: TransformSettingsPageParams;
-};
-
-export const TransformSettingsPage = ({ params }: TransformTargetPageProps) => {
+export const TransformSettingsPage = () => {
+  const params = useParams<TransformSettingsPageParams>();
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     transform,

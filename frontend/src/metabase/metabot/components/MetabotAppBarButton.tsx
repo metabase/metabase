@@ -45,9 +45,9 @@ export function MetabotAppBarButton({
       <ActionIcon
         className={className}
         variant="subtle"
-        c={isAskPage ? "text-tertiary" : "text-primary"}
+        c={isAskPage ? "text-disabled" : "text-primary"}
         opacity={isAskPage ? 0.5 : undefined}
-        bd="1px solid var(--mb-color-border)"
+        bd="1px solid var(--mb-color-border-neutral)"
         p="sm"
         h="2.25rem"
         w="2.25rem"

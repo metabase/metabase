@@ -50,6 +50,10 @@ const baseMetabaseRestrictedConfig = {
       message: "Please import from `metabase/redux` instead.",
     },
     {
+      name: "react-router",
+      message: "Please import routing from `metabase/router` instead.",
+    },
+    {
       name: "@mantine/core",
       message: "Please import from `metabase/ui` instead.",
     },
@@ -83,6 +87,10 @@ const configs = [
       "e2e/tmp/**",
       "frontend/test/__support__/custom-viz-fixtures/**/*.js",
       "**/custom-viz/fixtures/example_custom_viz_plugin/**",
+      // The data-app dev entry is served verbatim to the consumer's Vite (it
+      // imports `@metabase/embedding-sdk-react/*` + a virtual config module), so
+      // it can't be resolved/linted in this repo.
+      "enterprise/frontend/src/embedding-sdk-package/data-app-dev-entry.tsx",
       "node_modules/**",
       "**/dist/**",
       "**/target/**",
@@ -290,12 +298,7 @@ const configs = [
     },
     settings: {
       "boundaries/elements": boundaryElements,
-      "boundaries/ignore": [
-        "**/*.unit.spec.*",
-        "**/e2e/**",
-        "*.stories.*",
-        "test/**",
-      ],
+      "boundaries/ignore": ["**/e2e/**", "test/**"],
     },
     rules: {
       "boundaries/element-types": [
@@ -306,6 +309,8 @@ const configs = [
           message: "${file.type} cannot import from ${dependency.type}",
         },
       ],
+      // Every file frontend/src/ and enterprise/frontend/src/ must belong to a declared module.
+      "boundaries/no-unknown-files": "error",
     },
   },
   {
@@ -326,6 +331,7 @@ const configs = [
     files: [
       "**/*.unit.spec.*",
       "frontend/src/metabase/admin/**/*",
+      "frontend/src/metabase/monitor/tools/**/*",
       "frontend/src/metabase/setup/**/*",
       "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
       "enterprise/frontend/src/metabase-enterprise/embedding/**/*",
@@ -373,6 +379,7 @@ const configs = [
       parser: tseslint.parser,
     },
     rules: {
+      "metabase/no-unjustified-type-casts": "error",
       "prefer-rest-params": "off",
       "react/prop-types": "off",
       "@typescript-eslint/explicit-module-boundary-types": "off",
@@ -453,6 +460,10 @@ const configs = [
     plugins: {
       cypress: cypressPlugin,
       "chai-friendly": chaiFriendlyPlugin,
+      // Declared here so the metabase and import rules below also resolve for non-JS/TS e2e files
+      // which don't match the `**/*.{js,ts,...}` base.
+      metabase: metabasePlugin,
+      import: importXPlugin,
     },
     rules: {
       "metabase/no-unscoped-text-selectors": "error",
@@ -542,6 +553,13 @@ const configs = [
     },
   },
   {
+    // Standalone Node service — console logging is appropriate here.
+    files: ["frontend/src/static-viz-server/**/*.ts"],
+    rules: {
+      "no-console": "off",
+    },
+  },
+  {
     files: ["frontend/src/metabase/**/*"],
     plugins: {
       ttag: fixupPluginRules(ttagPlugin),
@@ -611,6 +629,14 @@ const configs = [
     },
   },
   {
+    // The router facade is the single seam allowed to import `react-router`
+    // directly; every other file goes through `metabase/router`.
+    files: ["frontend/src/metabase/router/**/*"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
+  {
     files: ["frontend/src/metabase/ui/**/*.{js,jsx,ts,tsx}"],
     rules: {
       "no-restricted-imports": [
@@ -622,6 +648,10 @@ const configs = [
             "cljs/metabase.lib*",
           ],
           paths: [
+            {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
+            },
             {
               name: "@emotion/styled",
               message: "Please style components using css modules.",
@@ -657,6 +687,10 @@ const configs = [
               name: "react-redux",
               importNames: ["useSelector", "useDispatch", "connect"],
               message: "Please import from `metabase/redux` instead.",
+            },
+            {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
             },
             {
               name: "@mantine/core",
@@ -833,6 +867,10 @@ const configs = [
           ],
           paths: [
             {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
+            },
+            {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
             },
@@ -905,6 +943,10 @@ const configs = [
         {
           patterns: [{ group: ["cljs/metabase.lib*"] }],
           paths: [
+            {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
+            },
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
@@ -1044,7 +1086,7 @@ const configs = [
     },
   },
   {
-    files: ["frontend/lint/**/*.js"],
+    files: ["frontend/lint/**/*.js", "frontend/lint/**/*.mjs"],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -1067,6 +1109,7 @@ const configs = [
       "rspack.*.js",
       "bin/**/*.js",
       ".github/scripts/**/*.js",
+      ".github/scripts/**/*.mjs",
     ],
     languageOptions: {
       globals: {

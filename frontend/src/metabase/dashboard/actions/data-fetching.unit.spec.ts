@@ -22,6 +22,8 @@ import {
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
   createMockDashboardTab,
+  createMockVirtualCard,
+  createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -270,6 +272,65 @@ describe("fetchDashboard", () => {
     // Second fetch completes with the API response
     expect(secondResult.payload).toMatchObject({ result: { foo: true } });
   });
+
+  it("loads an embedded dashboard with virtual cards without mutating the frozen RTK response", async () => {
+    // RTK Query freezes its cached responses, so the virtual-card merge must
+    // not mutate the returned dashcards in place (metabase public/embed/x-ray
+    // dashboards otherwise fail to load).
+    const token = "header.payload.signature";
+    const dashboard = createMockDashboard({
+      // Unjustified type cast. FIXME
+      id: token as unknown as number,
+      dashcards: [
+        createMockVirtualDashCard({
+          id: 1,
+          visualization_settings: {
+            virtual_card: createMockVirtualCard({ display: "heading" }),
+            text: "A heading",
+          },
+        }),
+      ],
+    });
+
+    fetchMock.get(`path:/api/embed/dashboard/${token}`, dashboard);
+
+    const store = setup();
+
+    const result = await store.dispatch(
+      fetchDashboard({
+        dashId: token,
+        queryParams: {},
+        options: {},
+      }),
+    );
+
+    expect(result.type).toBe("metabase/dashboard/FETCH_DASHBOARD/fulfilled");
+  });
+
+  it("uses a prefetched dashboard instead of re-fetching it", async () => {
+    const dashboard = createMockDashboard({ id: 1, name: "Prefetched" });
+
+    // setup() mocks GET /api/dashboard/1, so reaching it here would succeed —
+    // the assertion below proves the prefetched path skips it entirely.
+    const store = setup({ dashboards: [dashboard] });
+
+    const result = await store.dispatch(
+      fetchDashboard({
+        dashId: 1,
+        queryParams: {},
+        options: { prefetchedDashboard: dashboard },
+      }),
+    );
+
+    expect(result.type).toBe("metabase/dashboard/FETCH_DASHBOARD/fulfilled");
+    expect(result.payload).toMatchObject({
+      dashboardId: 1,
+      dashboard: { id: 1, name: "Prefetched" },
+    });
+    expect(
+      fetchMock.callHistory.called("path:/api/dashboard/1", { method: "GET" }),
+    ).toBe(false);
+  });
 });
 
 /**
@@ -365,6 +426,7 @@ describe("fetchDashboardCardData", () => {
       8,
     );
 
+    // Unjustified type cast. FIXME
     await fetchDashboardCardData()(dispatch as never, getState as never);
 
     expect(getMaxConcurrent()).toBe(5);
@@ -446,7 +508,9 @@ describe("fetchDashboardCardData", () => {
 
     // Start loading Tab 1 (slow query)
     const tab1Fetch = fetchDashboardCardData()(
+      // Unjustified type cast. FIXME
       dispatch as never,
+      // Unjustified type cast. FIXME
       getState as never,
     );
 
@@ -456,7 +520,9 @@ describe("fetchDashboardCardData", () => {
     // Switch to Tab 2
     (state.dashboard as DashboardState).selectedTabId = tab2.id;
     const tab2Fetch = fetchDashboardCardData()(
+      // Unjustified type cast. FIXME
       dispatch as never,
+      // Unjustified type cast. FIXME
       getState as never,
     );
 
@@ -469,7 +535,9 @@ describe("fetchDashboardCardData", () => {
     // and reused — no new query execution.
     (state.dashboard as DashboardState).selectedTabId = tab1.id;
     const backToTab1Fetch = fetchDashboardCardData()(
+      // Unjustified type cast. FIXME
       dispatch as never,
+      // Unjustified type cast. FIXME
       getState as never,
     );
 
@@ -490,6 +558,7 @@ describe("reloadDashboardCards", () => {
       8,
     );
 
+    // Unjustified type cast. FIXME
     await reloadDashboardCards()(dispatch as never, getState as never);
 
     expect(getMaxConcurrent()).toBe(5);

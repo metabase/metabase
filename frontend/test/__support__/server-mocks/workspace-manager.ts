@@ -8,6 +8,10 @@ export function setupListWorkspacesEndpoint(workspaces: Workspace[]) {
   fetchMock.get(BASE_URL, workspaces);
 }
 
+export function setupGetWorkspaceEndpoint(workspace: Workspace) {
+  fetchMock.get(`${BASE_URL}/${workspace.id}`, workspace);
+}
+
 export function setupCreateWorkspaceEndpoint(workspace: Workspace) {
   fetchMock.post(BASE_URL, workspace);
 }
@@ -17,10 +21,7 @@ export function setupUpdateWorkspaceEndpoint(workspace: Workspace) {
 }
 
 export function setupDeleteWorkspaceEndpoint(workspaceId: WorkspaceId) {
-  fetchMock.delete(`${BASE_URL}/${workspaceId}`, {
-    id: workspaceId,
-    deleted: true,
-  });
+  fetchMock.delete(`${BASE_URL}/${workspaceId}`, { status: 204 });
 }
 
 export function setupDeleteWorkspaceEndpointError(workspaceId: WorkspaceId) {

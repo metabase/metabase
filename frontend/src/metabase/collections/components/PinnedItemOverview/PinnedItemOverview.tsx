@@ -1,15 +1,18 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import PinDropZone from "metabase/collections/components/PinDropZone";
-import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItemSortDropTarget";
 import PinnedQuestionCard from "metabase/collections/components/PinnedQuestionCard";
+import PinDropZone from "metabase/common/collections/components/PinDropZone";
+import PinnedItemCard from "metabase/common/collections/components/PinnedItemCard";
 import type {
   CreateBookmark,
   DeleteBookmark,
-} from "metabase/collections/types";
-import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
+} from "metabase/common/collections/types";
+import {
+  isPreviewShown,
+  isRootCollection,
+} from "metabase/common/collections/utils";
 import { ItemDragSource } from "metabase/common/components/dnd/ItemDragSource";
 import CS from "metabase/css/core/index.css";
 import { Box, Group, Icon, Stack } from "metabase/ui";

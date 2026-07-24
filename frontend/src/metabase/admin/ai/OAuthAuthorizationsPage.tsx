@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
@@ -16,8 +15,10 @@ import {
   useUrlState,
 } from "metabase/common/hooks/use-url-state";
 import CS from "metabase/css/core/index.css";
+import type { WithRouterProps } from "metabase/router";
 import {
   Badge,
+  type BadgeColor,
   Box,
   Card,
   Ellipsified,
@@ -27,7 +28,6 @@ import {
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { MetabaseColorKey } from "metabase/ui/colors/types";
 import type {
   OAuthAuthorization,
   OAuthClientEventType,
@@ -45,10 +45,10 @@ const ALL_EVENT_TYPES = "all";
 
 type EventTypeFilter = OAuthClientEventType | typeof ALL_EVENT_TYPES;
 
-const EVENT_COLORS: Record<OAuthClientEventType, MetabaseColorKey> = {
-  registered: "text-secondary",
-  approved: "success",
-  denied: "error",
+const EVENT_COLORS: Record<OAuthClientEventType, BadgeColor> = {
+  registered: "neutral",
+  approved: "positive",
+  denied: "negative",
 };
 
 type UrlState = {

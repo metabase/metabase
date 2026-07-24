@@ -6,6 +6,7 @@
    [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.models.transform-job :as transform-job]
    [metabase.transforms.models.transform-run :as transform-run]
@@ -371,3 +372,53 @@
           "only the active job's schedule is included")
       (is (= {} (transform-tag/schedules-for-transforms #{(:id untagged)}))
           "a transform with no scheduling job is absent"))))
+
+(deftest start-run-stores-job-run-id-test
+  (testing "start-run! stores job_run_id when provided in properties"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/TransformJob {job-id :id} {:name "Test Job" :schedule "0 0 0 * * ?"}
+                     :model/TransformJobRun {job-run-id :id} {:job_id     job-id
+                                                              :status     "started"
+                                                              :run_method "cron"
+                                                              :start_time #t "2025-09-01T10:00:00Z"
+                                                              :is_active  true}
+                     :model/Transform {transform-id :id} {}]
+        (let [run (transform-run/start-run! transform-id {:run_method "cron"
+                                                          :job_run_id job-run-id})]
+          (is (= job-run-id (:job_run_id run))))))))
+
+(deftest paged-job-runs-test
+  (testing "paged-job-runs returns paginated runs for a job"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/TransformJob {j1-id :id} {:name "Job 1" :schedule "0 0 0 * * ?"}
+                     :model/TransformJob {j2-id :id} {:name "Job 2" :schedule "0 0 0 * * ?"}
+                     :model/TransformJobRun {r1-id :id} {:job_id j1-id :status "succeeded" :run_method "cron"
+                                                         :start_time #t "2025-09-01T10:00:00Z"}
+                     :model/TransformJobRun {r2-id :id} {:job_id j1-id :status "failed" :run_method "manual"
+                                                         :start_time #t "2025-09-02T10:00:00Z"}
+                     :model/TransformJobRun _ {:job_id j2-id :status "succeeded" :run_method "cron"
+                                               :start_time #t "2025-09-03T10:00:00Z"}]
+        (let [result (transforms.job-run/paged-job-runs {:job-id j1-id})]
+          (is (= #{r1-id r2-id} (into #{} (map :id) (:data result))))
+          (is (= 2 (:total result))))
+        (testing "filters by status"
+          (let [result (transforms.job-run/paged-job-runs {:job-id j1-id :status "failed"})]
+            (is (= [r2-id] (map :id (:data result))))
+            (is (= 1 (:total result)))))
+        (testing "filters by run-method"
+          (let [result (transforms.job-run/paged-job-runs {:job-id j1-id :run-method "manual"})]
+            (is (= [r2-id] (map :id (:data result))))
+            (is (= 1 (:total result)))))
+        (testing "filters by start-time (date string range)"
+          (testing "exact date matches only runs on that day"
+            (let [result (transforms.job-run/paged-job-runs {:job-id j1-id :start-time "2025-09-01"})]
+              (is (= [r1-id] (map :id (:data result))))
+              (is (= 1 (:total result)))))
+          (testing "range string matches both runs"
+            (let [result (transforms.job-run/paged-job-runs {:job-id j1-id :start-time "2025-09-01~2025-09-03"})]
+              (is (= #{r1-id r2-id} (into #{} (map :id) (:data result))))
+              (is (= 2 (:total result))))))
+        (testing "honors offset/limit"
+          (let [result (transforms.job-run/paged-job-runs {:job-id j1-id :limit 1 :offset 0})]
+            (is (= 1 (count (:data result))))
+            (is (= 2 (:total result)))))))))

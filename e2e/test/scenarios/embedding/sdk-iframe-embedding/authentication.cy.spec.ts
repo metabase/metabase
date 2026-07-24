@@ -217,7 +217,9 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
     const frame = H.loadSdkIframeEmbedTestPage({
       onVisitPage: (win) => {
+        // Unjustified type cast. FIXME
         (win as any).metabaseConfig = {
+          // Unjustified type cast. FIXME
           ...(win as any).metabaseConfig,
           fetchRequestToken: async () => {
             const jwt = await getSignedJwtForUser({ user: USERS.admin });
@@ -244,7 +246,9 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
     const frame = H.loadSdkIframeEmbedTestPage({
       onVisitPage: (win) => {
+        // Unjustified type cast. FIXME
         (win as any).metabaseConfig = {
+          // Unjustified type cast. FIXME
           ...(win as any).metabaseConfig,
           fetchRequestToken: async () => {
             return { jwt: "" };
@@ -443,7 +447,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
       signOut: true,
     });
 
-    const frame = H.loadSdkIframeEmbedTestPage({
+    H.loadSdkIframeEmbedTestPage({
       elements: [
         {
           component: "metabase-dashboard",
@@ -455,22 +459,22 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
       metabaseConfig: {
         preferredAuthMethod: "saml",
       },
+      // Once SAML is chosen, the SDK opens the IdP AuthnRequest URL in a popup.
+      // The IdP isn't real here and we don't simulate the callback, so stub
+      // window.open to keep it from actually navigating — we only care that SAML
+      // (not JWT) was selected.
+      onVisitPage: () =>
+        cy.window().then((win) => {
+          cy.stub(win, "open").returns({ closed: false, close: () => {} });
+        }),
     });
 
-    cy.log("must fail to login via SAML as the SAML endpoint does not exist");
-
-    // If the error message returns a 500 (internal server error) status code,
-    // we should show a generic error message.
-    // This happens because the SAML endpoint is not mocked in this test.
-    cy.wait("@authSso").its("response.statusCode").should("eq", 500);
-
-    frame.within(() => {
-      cy.findByTestId("sdk-error-container")
-        .should("be.visible")
-        .and(
-          "contain",
-          "Unable to connect to instance at http://localhost:4000 (status: 500)",
-        );
+    // preferredAuthMethod: "saml" must route to the SAML initiate endpoint. It now
+    // returns a 200 with the AuthnRequest redirect (the RelayState is stored
+    // server-side and only a short key is sent to the IdP).
+    cy.wait("@authSso").then(({ response }) => {
+      expect(response?.statusCode).to.eq(200);
+      expect(response?.body?.method).to.eq("saml");
     });
   });
 });

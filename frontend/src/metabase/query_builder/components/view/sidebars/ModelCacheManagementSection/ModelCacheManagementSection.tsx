@@ -79,13 +79,13 @@ export function ModelCacheManagementSection({ model }: Props) {
           justify="space-between"
           align="center"
           data-testid="model-cache-section"
-          c={canManageDB ? "text-primary" : "text-tertiary"}
+          c={canManageDB ? "text-primary" : "text-disabled"}
           fz="md"
         >
           <Box>
             <Flex align="center" fw="bold" gap="sm">
               {statusMessage}
-              {isError && <Icon name="warning" c="error" ml="sm" />}
+              {isError && <Icon name="warning" c="feedback-negative" ml="sm" />}
             </Flex>
             {isError && <Box pt="sm">{lastRefreshLabel}</Box>}
           </Box>

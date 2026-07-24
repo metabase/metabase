@@ -10,6 +10,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
 
 import { CustomVisualizationsNav } from "./CustomVisualizationsNav";
+import { DataAppsNav } from "./DataAppsNav";
 import { SettingsNavItem } from "./SettingsNavItem";
 import { UpdatesNavItem } from "./UpdatesNavItem";
 
@@ -79,6 +80,7 @@ export function SettingsNav() {
       />
       {/* do not allow users with "Settings access" permissions to access custom viz pages */}
       {isAdmin && <CustomVisualizationsNav />}
+      {isAdmin && <DataAppsNav />}
       <SettingsNavItem path="maps" label={t`Maps`} icon="pinmap" />
       <SettingsNavItem
         path={!hasWhitelabel ? "whitelabel" : undefined}
@@ -137,7 +139,7 @@ export function SettingsNav() {
           pos="sticky"
           bottom={0}
           pt="md"
-          bg="background-primary"
+          bg="background_page-primary"
           style={{ marginTop: "auto", zIndex: 1 }}
         >
           <SecurityCenterPromoCard />

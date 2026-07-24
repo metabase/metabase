@@ -7,6 +7,8 @@ import worldCountriesGeoJson from "assets/geojson/world.json";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { RawSeries } from "metabase-types/api";
 
+import { getStaticChoroplethSettings } from "./utils";
+
 // A user-defined custom region (non-us_states, non-default region_key): exercises the Mercator + fitWidth branch.
 const customRegionGeoJson: FeatureCollection = {
   type: "FeatureCollection",
@@ -51,10 +53,15 @@ const stateCols = [
   { name: "count", base_type: "type/Integer", semantic_type: "type/Quantity" },
 ];
 
-const makeRawSeries = (cols: unknown[], rows: unknown[][]): RawSeries =>
+const makeRawSeries = (
+  cols: unknown[],
+  rows: unknown[][],
+  visualizationSettings: Record<string, unknown> = {},
+): RawSeries =>
+  // Unjustified type cast. FIXME
   [
     {
-      card: { display: "map" },
+      card: { display: "map", visualization_settings: visualizationSettings },
       data: { cols, rows },
     },
   ] as unknown as RawSeries;
@@ -130,6 +137,50 @@ export const customRegion = {
       ["south", 3],
     ],
   ),
+};
+
+// A currency metric with thousands-scale values: the legend abbreviates to "$1.4k"-style labels
+// (matching the live dashboard) only when the metric column's formatting reaches getLegendTitles via
+// getStaticChoroplethSettings — the behavior this story guards.
+const revenueCols = [
+  { name: "state", base_type: "type/Text", semantic_type: "type/State" },
+  {
+    name: "revenue",
+    base_type: "type/Float",
+    semantic_type: "type/Income",
+    settings: {
+      number_style: "currency",
+      currency: "USD",
+      currency_style: "symbol",
+    },
+  },
+];
+
+const revenueRawSeries = makeRawSeries(
+  revenueCols,
+  [
+    ["CA", 108500],
+    ["TX", 66000],
+    ["NY", 44700],
+    ["FL", 42600],
+    ["IL", 30000],
+    ["PA", 27200],
+    ["OH", 16800],
+    ["GA", 12400],
+    ["WA", 1400],
+  ],
+  {
+    "map.region": "us_states",
+    "map.dimension": "state",
+    "map.metric": "revenue",
+  },
+);
+
+export const usStatesCurrency = {
+  geoJson: usStatesGeoJson,
+  geoJsonDetails: { region_key: "STATE", region_name: "NAME" },
+  rawSeries: revenueRawSeries,
+  settings: getStaticChoroplethSettings(revenueRawSeries),
 };
 
 // Same region as `usStates` but no rows join — exercises the all-gray, no-legend (no-data) branch.

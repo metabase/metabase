@@ -9,12 +9,33 @@
    [metabase.test :as mt]
    [metabase.util :as u])
   (:import (java.io File)
+           (java.nio.file Files Paths)
+           (java.nio.file.attribute FileAttribute)
            (org.apache.commons.io FileUtils)
            (org.eclipse.jgit.api Git TransportCommand)
-           (org.eclipse.jgit.lib PersonIdent)
+           (org.eclipse.jgit.dircache DirCacheEditor DirCacheEditor$PathEdit DirCacheEntry)
+           (org.eclipse.jgit.lib AnyObjectId FileMode PersonIdent)
            (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider)))
 
 (set! *warn-on-reflection* true)
+
+(defn- write-files!
+  "Test seeding helper: wholesale-write `files` ({:path :content}) to `snapshot` via the commit builder
+  (clear the managed dirs, stage every file, push). Returns the new version."
+  [snapshot message files]
+  (let [c (source.p/open-commit snapshot)]
+    (source.p/replace-all! c)
+    (doseq [f files] (source.p/stage-upsert! c f))
+    (source.p/finish-commit! c message)))
+
+(defn- apply-changes!
+  "Test helper: incremental patch via the commit builder — stage `upserts`, remove `delete-paths`, push.
+  Returns the new version."
+  [snapshot message upserts delete-paths]
+  (let [c (source.p/open-commit snapshot)]
+    (doseq [u upserts] (source.p/stage-upsert! c u))
+    (doseq [p delete-paths] (source.p/stage-delete! c p))
+    (source.p/finish-commit! c message)))
 
 (defn- git-working-branch
   "The working branch in the given repo"
@@ -51,6 +72,30 @@
     (-> (.add git)
         (.addFilepattern path)
         (.call))))
+
+(defn- git-working-link!
+  "Writes a symlink in the working path and stages it, so a test can cover the mode-120000 entries a real
+  repo can hold. Git stores the link's *target text* as the blob, and never follows it."
+  [{:keys [^Git git]} ^String path ^String target]
+  (let [full-path (io/file (.getWorkTree (.getRepository git)) path)]
+    (io/make-parents full-path)
+    (Files/createSymbolicLink (.toPath full-path)
+                              (Paths/get target (into-array String []))
+                              (into-array FileAttribute []))
+    (-> (.add git)
+        (.addFilepattern path)
+        (.call))))
+
+(defn- git-working-gitlink!
+  "Stages a submodule entry (mode 160000) pointing at `commit-id`. A gitlink has no working-tree file to
+  add, so this edits the index directly, as `git update-index --cacheinfo 160000,<sha>,<path>` does."
+  [{:keys [^Git git]} ^String path ^AnyObjectId commit-id]
+  (let [^DirCacheEditor editor (.editor (.lockDirCache (.getRepository git)))]
+    (.add editor (proxy [DirCacheEditor$PathEdit] [path]
+                   (apply [^DirCacheEntry entry]
+                     (.setFileMode entry FileMode/GITLINK)
+                     (.setObjectId entry commit-id))))
+    (.commit editor)))
 
 (defn- git-working-create-branch!
   "Creates a branch with an initial commit and file using the working directory"
@@ -180,6 +225,72 @@
       (is (= ["file-in-branch-1.txt" "master.txt" "subdir/path.txt"] (source.p/list-files branch-1)))
       (is (= ["file-in-branch-2.txt" "master.txt" "subdir/path.txt"] (source.p/list-files branch-2))))))
 
+(deftest list-dir
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[master _remote] (init-source! "master" remote-dir
+                                         :files {"root.txt"                 "at the root"
+                                                 "dir/readme.md"            "a file, not a directory"
+                                                 "dir/alpha/one.txt"        "ONE"
+                                                 "dir/alpha/two.txt"        "TWO"
+                                                 "dir/alpha/deep/leaf.txt"  "LEAF"
+                                                 "dir/beta/three.txt"       "THREE"
+                                                 ;; \- sorts before \/, so git's own tree order here is
+                                                 ;; ("d/a-b" "d/a") — the case the sort normalizes
+                                                 "d/a-b"                    "a sibling"
+                                                 "d/a/x"                    "inside a directory"
+                                                 "zzz/other.txt"            "elsewhere"})
+          snap (source.p/snapshot master)]
+      (testing "immediate children only — no descendants, no siblings of the directory itself"
+        (is (= ["dir/alpha" "dir/beta" "dir/readme.md"] (source.p/list-dir snap "dir"))))
+      (testing "children are full repo-root relative paths, so they feed straight back into read-file"
+        (let [child (some #{"dir/alpha/one.txt"} (source.p/list-dir snap "dir/alpha"))]
+          (is (= "ONE" (source.p/read-file snap child)))))
+      (testing "files and directories are both listed, sorted — `deep` is a directory"
+        (is (= ["dir/alpha/deep" "dir/alpha/one.txt" "dir/alpha/two.txt"]
+               (source.p/list-dir snap "dir/alpha"))))
+      (testing "the repo root"
+        (is (= ["d" "dir" "root.txt" "zzz"] (source.p/list-dir snap ""))))
+      (testing "ordering is plain lexicographic, not git's own tree order"
+        ;; git compares a directory as if it ended in "/", so its tree order here is ("d/a-b" "d/a").
+        ;; We normalize to lexicographic — the one order a flat path list can produce too, so every
+        ;; snapshot implementation agrees.
+        (is (= ["d/a" "d/a-b"] (source.p/list-dir snap "d"))))
+      (testing "nesting: each call steps down exactly one level, and paths stay rooted at the repo"
+        (is (= ["dir/alpha/deep/leaf.txt"] (source.p/list-dir snap "dir/alpha/deep"))))
+      (testing "a path that is a file, or absent, has no children rather than throwing"
+        (is (= [] (source.p/list-dir snap "dir/readme.md")))
+        (is (= [] (source.p/list-dir snap "nope")))
+        (is (= [] (source.p/list-dir snap "dir/alpha/nope")))))))
+
+(deftest list-dir-dotfiles-and-symlinks
+  (testing "the entry kinds a real repo can hold, beyond plain files and directories"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [remote (init-remote! remote-dir
+                                 :files {"dir/plain.txt"        "a file"
+                                         "dir/.dotfile"         "a dotfile"
+                                         "dir/.hidden/file.txt" "inside a dot-directory"
+                                         "outside/target.txt"   "outside dir"})
+            _      (git-working-link! remote "dir/linkdir" "../outside")
+            _      (git-working-link! remote "dir/linkfile" "plain.txt")
+            head   (git-working-commit! remote "add symlinks")
+            _      (git-working-gitlink! remote "dir/sub" head)
+            _      (git-working-commit! remote "add submodule")
+            snap   (source.p/snapshot (->source! "master" remote))]
+        (testing "git has no notion of a hidden file, so neither do we — dotted names are listed as-is"
+          (is (= ["dir/.dotfile" "dir/.hidden" "dir/linkdir" "dir/linkfile" "dir/plain.txt" "dir/sub"]
+                 (source.p/list-dir snap "dir")))
+          (is (= ["dir/.hidden/file.txt"] (source.p/list-dir snap "dir/.hidden"))
+              "a dot-directory is an ordinary tree we descend into"))
+        (testing "only a tree has children: everything else lists nothing, whatever it points at"
+          (is (= [] (source.p/list-dir snap "dir/linkdir")) "a symlink to a directory")
+          (is (= [] (source.p/list-dir snap "dir/linkfile")) "a symlink to a file")
+          (is (= [] (source.p/list-dir snap "dir/sub")) "a submodule (gitlink) — its tree isn't in this repo")
+          (is (= [] (source.p/list-dir snap "dir/plain.txt")) "a plain file"))
+        (testing "reading a symlink yields its target text, never the target's content: git does not follow
+                  links, so a link can neither escape the repo nor pull in a file from outside the directory"
+          (is (= "../outside" (source.p/read-file snap "dir/linkdir")))
+          (is (= "plain.txt" (source.p/read-file snap "dir/linkfile"))))))))
+
 (deftest read-file
   (mt/with-temp-dir [remote-dir nil]
     (let [[master _remote] (init-source! "master" remote-dir
@@ -210,11 +321,11 @@
                                                   (str thirddir-path "path2.txt") "File 2 in third dir"}
                                           :branches ["branch-1" "branch-2"])]
         (testing "All files in managed dirs not in write set are removed; root files outside managed dirs are preserved"
-          (source.p/write-files! (source.p/snapshot master) "Update 1" [{:path "master.txt" :content "Updated master content"}
-                                                                        {:path (str subdir-path "path.txt") :content "Updated subdir content"}
-                                                                        {:path (str subdir-path "path3.txt") :content "Updated subdir content 3"}
-                                                                        {:path (str thirddir-path "path.txt") :content "Updated third dir content"}
-                                                                        {:path (str thirddir-path "path3.txt") :content "Updated third dir content 3"}])
+          (write-files! (source.p/snapshot master) "Update 1" [{:path "master.txt" :content "Updated master content"}
+                                                               {:path (str subdir-path "path.txt") :content "Updated subdir content"}
+                                                               {:path (str subdir-path "path3.txt") :content "Updated subdir content 3"}
+                                                               {:path (str thirddir-path "path.txt") :content "Updated third dir content"}
+                                                               {:path (str thirddir-path "path3.txt") :content "Updated third dir content 3"}])
           (is (= ["Update 1" "Initial commit"] (map :message (git/log master))))
           (let [master-snap (source.p/snapshot master)]
             ;; otherdir files are removed because collections/ is a managed dir and those files weren't in the write set
@@ -240,7 +351,7 @@
                    (git/list-files (assoc remote :version "master"))))
             (is (= ["Update 1" "Initial commit"] (map :message (git/log (assoc remote :branch "master")))))))
         (testing "Writing only to collections/ removes all other collection files"
-          (source.p/write-files! (source.p/snapshot master) "Update 2" [{:path (str thirddir-path "path.txt") :content "Only third dir content"}])
+          (write-files! (source.p/snapshot master) "Update 2" [{:path (str thirddir-path "path.txt") :content "Only third dir content"}])
           (is (= [(str thirddir-path "path.txt")
                   "master.txt"
                   "master2.txt"]
@@ -255,10 +366,10 @@
                                                   (str subdir "edit.yaml") "old content"
                                                   (str subdir "remove.yaml") "delete me"})]
         (testing "apply-changes! overwrites/adds upserts, removes delete-paths, and PRESERVES every other file"
-          (source.p/apply-changes! (source.p/snapshot master) "Incremental"
-                                   [{:path (str subdir "edit.yaml") :content "new content"}
-                                    {:path (str subdir "new.yaml") :content "brand new"}]
-                                   [(str subdir "remove.yaml")])
+          (apply-changes! (source.p/snapshot master) "Incremental"
+                          [{:path (str subdir "edit.yaml") :content "new content"}
+                           {:path (str subdir "new.yaml") :content "brand new"}]
+                          [(str subdir "remove.yaml")])
           (is (= ["Incremental" "Initial commit"] (map :message (git/log master))))
           (let [snap (source.p/snapshot master)]
             (is (= [(str subdir "edit.yaml")
@@ -277,6 +388,42 @@
             (is (= ["Incremental" "Initial commit"]
                    (map :message (git/log (assoc remote :branch "master")))))))))))
 
+(deftest empty-commit?-detects-no-op-tree-test
+  (testing "empty-commit? is true exactly when the staged tree matches the parent commit's tree"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"collections/a.yaml" "content A"
+                                                   "collections/b.yaml" "content B"})]
+        (testing "re-staging identical content is empty"
+          (let [c (source.p/open-commit (source.p/snapshot master))]
+            (source.p/stage-upsert! c {:path "collections/a.yaml" :content "content A"})
+            (is (true? (source.p/empty-commit? c)))
+            (source.p/abort-commit! c)))
+        (testing "staging a real content change is not empty"
+          (let [c (source.p/open-commit (source.p/snapshot master))]
+            (source.p/stage-upsert! c {:path "collections/a.yaml" :content "changed A"})
+            (is (false? (source.p/empty-commit? c)))
+            (source.p/abort-commit! c)))
+        (testing "adding a new file is not empty"
+          (let [c (source.p/open-commit (source.p/snapshot master))]
+            (source.p/stage-upsert! c {:path "collections/c.yaml" :content "content C"})
+            (is (false? (source.p/empty-commit? c)))
+            (source.p/abort-commit! c)))
+        (testing "deleting a path that isn't in the tree is empty"
+          (let [c (source.p/open-commit (source.p/snapshot master))]
+            (source.p/stage-delete! c "collections/does-not-exist.yaml")
+            (is (true? (source.p/empty-commit? c)))
+            (source.p/abort-commit! c)))
+        (testing "none of the aborted no-op checks moved the branch"
+          (is (= ["Initial commit"] (map :message (git/log master)))))
+        (testing "empty-commit? then finish-commit! still commits a real change (tree written once, memoized)"
+          (let [c (source.p/open-commit (source.p/snapshot master))]
+            (source.p/stage-upsert! c {:path "collections/a.yaml" :content "changed A"})
+            (is (false? (source.p/empty-commit? c)))
+            (source.p/finish-commit! c "Edit A"))
+          (is (= ["Edit A" "Initial commit"] (map :message (git/log master))))
+          (is (= "changed A" (source.p/read-file (source.p/snapshot master) "collections/a.yaml"))))))))
+
 (deftest apply-changes-preserves-deep-unchanged-subtree-test
   (testing "an incremental upsert leaves deeply-nested, unrelated subtrees untouched (carried forward by id)"
     (mt/with-temp-dir [remote-dir nil]
@@ -285,9 +432,9 @@
                                                    "collections/a/deep/sibling.yaml"     "deep sibling"
                                                    "collections/b/edit.yaml"             "old"
                                                    "notes.txt"                           "root note"})]
-        (source.p/apply-changes! (source.p/snapshot master) "Incremental deep"
-                                 [{:path "collections/b/edit.yaml" :content "new"}]
-                                 [])
+        (apply-changes! (source.p/snapshot master) "Incremental deep"
+                        [{:path "collections/b/edit.yaml" :content "new"}]
+                        [])
         (let [snap (source.p/snapshot master)]
           (is (= "new" (source.p/read-file snap "collections/b/edit.yaml")))
           (is (= "deep keep" (source.p/read-file snap "collections/a/deep/nested/keep.yaml"))
@@ -303,8 +450,8 @@
                                                    "transforms/t1/t.yaml"     "a transform"
                                                    "transforms/t2/t.yaml"     "another transform"
                                                    "notes.txt"                "root note"})]
-        (source.p/write-files! (source.p/snapshot master) "Full"
-                               [{:path "collections/new/new.yaml" :content "new collection"}])
+        (write-files! (source.p/snapshot master) "Full"
+                      [{:path "collections/new/new.yaml" :content "new collection"}])
         (let [snap (source.p/snapshot master)]
           (is (= ["collections/new/new.yaml" "notes.txt"] (source.p/list-files snap))
               "transforms/ (managed, no upserts) fully removed; collections/ reconciled to the write set; non-managed notes.txt preserved")
@@ -318,13 +465,43 @@
     (mt/with-temp-dir [remote-dir nil]
       (let [[master _remote] (init-source! "master" remote-dir
                                            :files {"collections/a/keep.yaml" "keep"})]
-        (source.p/apply-changes! (source.p/snapshot master) "Delete missing + add"
-                                 [{:path "collections/a/new.yaml" :content "new"}]
-                                 ["collections/a/gone.yaml"])
+        (apply-changes! (source.p/snapshot master) "Delete missing + add"
+                        [{:path "collections/a/new.yaml" :content "new"}]
+                        ["collections/a/gone.yaml"])
         (let [snap (source.p/snapshot master)]
           (is (= ["collections/a/keep.yaml" "collections/a/new.yaml"] (source.p/list-files snap)))
           (is (= "new" (source.p/read-file snap "collections/a/new.yaml")))
           (is (= "keep" (source.p/read-file snap "collections/a/keep.yaml"))))))))
+
+(deftest changed-files-test
+  (testing "changed-files classifies the paths whose blob differs between two commits"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"keep.txt"             "unchanged"
+                                                   "edit.txt"             "old content"
+                                                   "remove.txt"           "delete me"
+                                                   "deep/nested/keep.txt" "deep unchanged"})
+            from-version (:version (source.p/snapshot master))]
+        (apply-changes! (source.p/snapshot master) "Change set"
+                        [{:path "edit.txt" :content "new content"}
+                         {:path "add.txt"  :content "brand new"}]
+                        ["remove.txt"])
+        (let [snap (source.p/snapshot master)]
+          (testing "added / modified / deleted are reported in their own buckets"
+            (is (= {:added    #{"add.txt"}
+                    :modified #{"edit.txt"}
+                    :deleted  #{"remove.txt"}}
+                   (git/changed-files snap from-version))))
+          (testing "unchanged files — including deep untouched subtrees — are not reported"
+            (let [{:keys [added modified deleted]} (git/changed-files snap from-version)
+                  touched (reduce into #{} [added modified deleted])]
+              (is (not (contains? touched "keep.txt")))
+              (is (not (contains? touched "deep/nested/keep.txt")))))
+          (testing "comparing a version against itself reports no changes"
+            (is (= {:added #{} :modified #{} :deleted #{}}
+                   (git/changed-files snap (:version snap)))))
+          (testing "an unresolvable from-version returns nil, signalling a full import"
+            (is (nil? (git/changed-files snap "no-such-ref-or-sha")))))))))
 
 (deftest write-special-collections
   (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")]
@@ -356,7 +533,7 @@
           ;; Make source be behind again
           (git-working-add! remote "only-on-remote.txt" "Initially on remote")
           (git-working-commit! remote "Only on remote")
-          (source.p/write-files! (source.p/snapshot master) "Added to source" [{:path "initially-source.txt" :content "Initially on source"}])
+          (write-files! (source.p/snapshot master) "Added to source" [{:path "initially-source.txt" :content "Initially on source"}])
           (testing "Remote has the new commit with just the files committed, but only version is in history"
             (is (= ["Added to source" "Only on remote" "Added additional file" "Initial commit"] (map :message (git/log (assoc remote :branch "master")))))
             (is (= ["additional-file.txt" "initially-source.txt" "master.txt" "only-on-remote.txt" "subdir/path.txt"] (git/list-files (assoc remote :version "master"))))
@@ -370,8 +547,8 @@
           (git-working-commit! remote "New-branch on remote")
           (is (= ["New-branch on remote" "Added to source" "Only on remote" "Added additional file" "Initial commit"] (map :message (git/log (assoc remote :branch "new-branch")))))
           (is (nil? (git/log new-branch)))
-          (source.p/write-files! (source.p/snapshot new-branch) "New-branch on source" [{:path "new-branch-source.txt" :content "Initially on source"}
-                                                                                        {:path "new-branch-file.txt" :content "Updated on source"}])
+          (write-files! (source.p/snapshot new-branch) "New-branch on source" [{:path "new-branch-source.txt" :content "Initially on source"}
+                                                                               {:path "new-branch-file.txt" :content "Updated on source"}])
           (is (= ["New-branch on source" "New-branch on remote" "Added to source" "Only on remote" "Added additional file" "Initial commit"] (map :message (git/log (assoc remote :branch "new-branch"))))))))))
 
 (deftest git-source-using-commit-ref
@@ -380,8 +557,8 @@
                                          :files {"master.txt" "File in master"
                                                  "subdir/path.txt" "File in subdir"})
           old-master (source.p/snapshot master)]
-      (source.p/write-files! (source.p/snapshot master) "Update file" [{:path "master.txt" :content "Updated file in master"}
-                                                                       {:path "new-file.txt" :content "New file in master"}])
+      (write-files! (source.p/snapshot master) "Update file" [{:path "master.txt" :content "Updated file in master"}
+                                                              {:path "new-file.txt" :content "New file in master"}])
       (is (= "File in master" (source.p/read-file old-master "master.txt")))
       (is (= "Updated file in master" (source.p/read-file (source.p/snapshot master) "master.txt")))
       (is (= ["master.txt" "subdir/path.txt"] (source.p/list-files old-master))))))
@@ -397,7 +574,7 @@
         (is (= (git/commit-sha master "master") initial-version)
             "version should match the commit id for the branch")
         (testing "version changes after writing files"
-          (source.p/write-files! (source.p/snapshot master) "Update file" [{:path "master.txt" :content "Updated content"}])
+          (write-files! (source.p/snapshot master) "Update file" [{:path "master.txt" :content "Updated content"}])
           (let [new-version (source.p/version (source.p/snapshot master))]
             (is (not= initial-version new-version) "version should change after commit")
             (is (= 40 (count new-version)) "new version should also be a full SHA-1 hash")
@@ -439,13 +616,13 @@
                                                    (str old-col-path "cards/card2.yaml") "Card 2 in old col"
                                                    (str kept-col-path "dashboards/dash1.yaml") "Dashboard in kept col"})]
         (testing "Writing to a managed dir removes all stale files in ALL managed dirs"
-          (source.p/write-files! (source.p/snapshot master) "Rename database"
-                                 [{:path "databases/new_db/new_db.yaml" :content "Renamed database"}
-                                  {:path "databases/new_db/schemas/public.yaml" :content "Same schema"}
-                                  {:path (str old-col-path "cards/card1.yaml") :content "Card in old col"}
-                                  {:path (str old-col-path "cards/card2.yaml") :content "Card 2 in old col"}
-                                  {:path (str kept-col-path "dashboards/dash1.yaml") :content "Dashboard in kept col"}
-                                  {:path "snippets/old_snippet.yaml" :content "Old snippet"}])
+          (write-files! (source.p/snapshot master) "Rename database"
+                        [{:path "databases/new_db/new_db.yaml" :content "Renamed database"}
+                         {:path "databases/new_db/schemas/public.yaml" :content "Same schema"}
+                         {:path (str old-col-path "cards/card1.yaml") :content "Card in old col"}
+                         {:path (str old-col-path "cards/card2.yaml") :content "Card 2 in old col"}
+                         {:path (str kept-col-path "dashboards/dash1.yaml") :content "Dashboard in kept col"}
+                         {:path "snippets/old_snippet.yaml" :content "Old snippet"}])
           (let [files (set (source.p/list-files (source.p/snapshot master)))]
             (is (contains? files "databases/new_db/new_db.yaml") "New database file should exist")
             (is (contains? files "databases/new_db/schemas/public.yaml") "New schema file should exist")
@@ -455,11 +632,11 @@
             (is (contains? files "snippets/old_snippet.yaml") "Written snippet file should remain")
             (is (contains? files "unmanaged/keep_me.txt") "Unmanaged files should be untouched")))
         (testing "Entity moved between collections removes files from old collection"
-          (source.p/write-files! (source.p/snapshot master) "Move card to new collection"
-                                 [{:path (str new-col-path "cards/card1.yaml") :content "Card moved to new col"}
-                                  {:path (str kept-col-path "dashboards/dash1.yaml") :content "Dashboard still here"}
-                                  {:path "databases/new_db/new_db.yaml" :content "Renamed database"}
-                                  {:path "databases/new_db/schemas/public.yaml" :content "Same schema"}])
+          (write-files! (source.p/snapshot master) "Move card to new collection"
+                        [{:path (str new-col-path "cards/card1.yaml") :content "Card moved to new col"}
+                         {:path (str kept-col-path "dashboards/dash1.yaml") :content "Dashboard still here"}
+                         {:path "databases/new_db/new_db.yaml" :content "Renamed database"}
+                         {:path "databases/new_db/schemas/public.yaml" :content "Same schema"}])
           (let [files (set (source.p/list-files (source.p/snapshot master)))]
             (is (contains? files (str new-col-path "cards/card1.yaml")) "Moved card should exist in new collection")
             (is (contains? files (str kept-col-path "dashboards/dash1.yaml")) "Kept collection files should remain")
@@ -475,9 +652,9 @@
                                            :files {(str col-path "cards/eid123_OldCardName.yaml") "Card with old name"
                                                    (str col-path "cards/eid456_OtherCard.yaml") "Other card"})]
         (testing "Entity renamed within a collection removes the old-named file"
-          (source.p/write-files! (source.p/snapshot master) "Rename card"
-                                 [{:path (str col-path "cards/eid123_NewCardName.yaml") :content "Card with new name"}
-                                  {:path (str col-path "cards/eid456_OtherCard.yaml") :content "Other card"}])
+          (write-files! (source.p/snapshot master) "Rename card"
+                        [{:path (str col-path "cards/eid123_NewCardName.yaml") :content "Card with new name"}
+                         {:path (str col-path "cards/eid456_OtherCard.yaml") :content "Other card"}])
           (let [files (set (source.p/list-files (source.p/snapshot master)))]
             (is (contains? files (str col-path "cards/eid123_NewCardName.yaml")) "Renamed card should exist")
             (is (contains? files (str col-path "cards/eid456_OtherCard.yaml")) "Other card should still exist")

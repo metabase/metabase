@@ -7,7 +7,7 @@ import {
   useListCollectionItemsQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { PERSONAL_COLLECTIONS } from "metabase/collections/constants";
+import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
 import {
   useGetPersonalCollection,
   useHasTokenFeature,

@@ -47,6 +47,7 @@ export function ImageUploadWidget({
 
       const reader = new FileReader();
       reader.onload = async (readerEvent) => {
+        // Unjustified type cast. FIXME
         const dataUri = readerEvent.target?.result as string;
         if (!(await isFileIntact(dataUri))) {
           setErrorMessage(
@@ -87,7 +88,7 @@ export function ImageUploadWidget({
         description={descriptionProp ?? description}
       />
       {errorMessage && (
-        <Text size="sm" c="error" mb="sm">
+        <Text size="sm" c="feedback-negative" mb="sm">
           {errorMessage}
         </Text>
       )}
@@ -100,7 +101,9 @@ export function ImageUploadWidget({
               align="center"
               justify="center"
               w="7.5rem"
-              style={{ borderRight: "1px solid var(--mb-color-border)" }}
+              style={{
+                borderRight: "1px solid var(--mb-color-border-neutral)",
+              }}
             >
               {!isDefaultImage && typeof imageSource === "string" && (
                 <PreviewImage src={imageSource} aria-label={t`Image preview`} />

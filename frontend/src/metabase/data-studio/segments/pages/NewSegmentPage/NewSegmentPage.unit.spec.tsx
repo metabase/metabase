@@ -1,10 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupSchemaEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { Table } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -61,16 +61,19 @@ function setup({ table = TEST_TABLE }: SetupOpts = {}) {
     `${successUrl}/${segment.id}`;
 
   const { history } = renderWithProviders(
+    // Catch-all so the page stays mounted after a successful save navigates to
+    // the deep success URL; the test asserts the form survived the save.
     <Route
-      path="/"
-      component={() => (
+      path="*"
+      element={
         <NewSegmentPage
+          // Unjustified type cast. FIXME
           route={{ path: "/" } as never}
           table={table}
           breadcrumbs={<DataModelSegmentBreadcrumbs table={table} />}
           getSuccessUrl={getSuccessUrl}
         />
-      )}
+      }
     />,
     {
       withRouter: true,

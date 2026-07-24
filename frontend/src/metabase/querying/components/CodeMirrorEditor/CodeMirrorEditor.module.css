@@ -1,7 +1,7 @@
 .editor {
-  --change: var(--mb-color-success);
+  --change: var(--mb-color-feedback-positive);
   --change-light: color-mix(in srgb, var(--change) 11%, transparent);
-  --remove: var(--mb-color-danger);
+  --remove: var(--mb-color-feedback-negative);
   --remove-mid: color-mix(in srgb, var(--remove) 25%, transparent);
   --remove-light: color-mix(in srgb, var(--remove) 11%, transparent);
 
@@ -11,18 +11,18 @@
   flex-shrink: 1;
   height: 100%;
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 
   :global {
     /* merge view styles */
     .cm-collapsedLines {
-      background: var(--mb-color-background-secondary) !important;
-      color: var(--mb-color-text-tertiary);
+      background: var(--mb-color-background_page-secondary) !important;
+      color: var(--mb-color-text-disabled);
 
       &:before,
       &:after {
         content: "-";
-        color: var(--mb-color-text-tertiary);
+        color: var(--mb-color-text-disabled);
       }
     }
 

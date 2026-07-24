@@ -4,13 +4,10 @@
   (:require
    [clojure.string :as str]
    [diehard.core :as dh]
-   [medley.core :as m]
-   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.transient-error :as transient-error]
-   [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -49,10 +46,6 @@
    "Document"  #{:document}
    "Card"      #{:dashboard_id :document_id :parameters}})
 
-(def ^:private ^:dynamic *warned-version-mismatch*
-  "Used to avoid double-logging on version mismatches. Warns if nil or set to true"
-  nil)
-
 (defn- keys-to-strip [ingested]
   (let [model (-> ingested :serdes/meta last :model)]
     (or (model->circular-dependency-keys model)
@@ -66,22 +59,21 @@
   If [[load-one]] throws because it can't find that entity in the filesystem, check if it's already loaded in
   our database."
   [ctx deps]
-  (binding [*warned-version-mismatch* (if (nil? *warned-version-mismatch*) (atom false) *warned-version-mismatch*)]
-    (if (empty? deps)
-      ctx
-      (letfn [(loader [ctx dep]
-                (try
-                  (load-one! ctx dep)
-                  (catch Exception e
-                    (cond
-                      ;; It was missing, but we found it locally, so just return the context.
-                      (and (= (:error (ex-data e)) ::not-found)
-                           (serdes/load-find-local dep))
-                      ctx
+  (if (empty? deps)
+    ctx
+    (letfn [(loader [ctx dep]
+              (try
+                (load-one! ctx dep)
+                (catch Exception e
+                  (cond
+                    ;; It was missing, but we found it locally, so just return the context.
+                    (and (= (:error (ex-data e)) ::not-found)
+                         (serdes/load-find-local dep))
+                    ctx
 
-                      :else
-                      (throw e)))))]
-        (reduce loader ctx deps)))))
+                    :else
+                    (throw e)))))]
+      (reduce loader ctx deps))))
 
 (defn- safe-local-id
   "Looks up the local primary key for `path`, swallowing any exception from the DB lookup.
@@ -107,6 +99,30 @@
      :table      (some->> last-model (keyword "model") t2/table-name)
      :error      error-type}))
 
+(defn- entity-reference
+  "Describes the entity at `path` as `{:model :id :name}` for use in user-facing error messages.
+  `:name` is nil for models whose name is absent or not a plain string (e.g. Settings, templated Card names)."
+  [path ingested]
+  (let [self (last path)]
+    {:model (:model self)
+     :id    (:id self)
+     :name  (when (string? (:name ingested))
+              (:name ingested))}))
+
+(defn- rethrow-with-referrer
+  "Always throws. Rethrows `e` with `referrer` attached when it is a `::not-found` error that does not name one yet,
+  and unchanged otherwise.
+
+  Only the nearest enclosing [[load-one!]] attaches itself, since it unwinds first and later frames see the key
+  already present. The replacement inherits `e`'s cause rather than nesting `e` beneath itself: error reporting
+  renders the whole cause chain, so nesting would print the same message twice joined by `caused by:`."
+  [e referrer]
+  (let [data (ex-data e)]
+    (if (and (= ::not-found (:error data))
+             (not (contains? data :referrer)))
+      (throw (ex-info (ex-message e) (assoc data :referrer referrer) (ex-cause e)))
+      (throw e))))
+
 (defn- valid-model-name-for-load? [model-name]
   ;; linear scan, but small n
   (->> (concat serdes.models/inlined-models
@@ -119,24 +135,7 @@
   [model-name]
   (when (valid-model-name-for-load? model-name)
     (let [model (t2.model/resolve-model (symbol model-name))]
-      (serdes.backfill/has-entity-id? model))))
-
-(defn- warn-if-version-mismatch
-  "Checks if the version in the exported entity differs from the current Metabase version.
-  Logs a warning if there is a mismatch. Entities without a `:metabase_version` (eg. Settings,
-  which are bundled into settings.yaml without per-entity metadata) are skipped."
-  [ingested path]
-  (when (and (or (nil? *warned-version-mismatch*) (not @*warned-version-mismatch*))
-             (:metabase_version ingested))
-    (let [current-version  config/mb-version-string
-          exported-version (:metabase_version ingested)]
-      (when (not= exported-version current-version)
-        (log/warnf "Version mismatch loading %s: exported with: %s, current version: %s"
-                   path
-                   exported-version
-                   current-version)
-        (when (not (nil? *warned-version-mismatch*))
-          (reset! *warned-version-mismatch* true))))))
+      (serdes/has-entity-id? model))))
 
 (defn- load-one!
   "Loads a single entity, specified by its `:serdes/meta` abstract path, into the appdb, doing some bookkeeping to
@@ -188,7 +187,7 @@
               ;; in the yaml file.
               ;; In all other cases we should expect an :entity_id:
               ;; - exported entities have a :entity_id for every model that can have one
-              ;; - backfill (pre import) guarantees all entities have ids in the appdb
+              ;; - a migration backfilled historical NULLs and the insert hook always generates one
               expect-entity-id   (some-> rebuilt-path peek :model exported-with-entity-id?)
               require-new-entity (and expect-entity-id (nil? (:entity_id ingested)))
               ingested           (cond-> ingested
@@ -196,24 +195,26 @@
                                    ;; `::strip` is handled in `metabase.serialization`
                                    (circular path)    (assoc ::serdes/strip (keys-to-strip ingested)))
               ;; we need less deps when trying to load "stripped" data
-              deps               (->> (serdes/dependencies (apply dissoc ingested (::serdes/strip ingested)))
+              deps               (->> (serdes/deserialization-dependencies (apply dissoc ingested (::serdes/strip ingested)))
                                       (remove seen))
               _                  (when (seq deps)
                                    (log/debug "Loading dependencies"
                                               {:entity_id (:entity_id ingested)
                                                :level     (count expanding)
                                                :deps      (str "[" (str/join ", " (map serdes/log-path-str deps)) "]")}))
-              ctx                (-> ctx
-                                     (update :expanding conj path)
-                                     (load-deps! deps)
-                                     (update :seen conj path)
-                                     (update :expanding disj path))
+              ctx                (try
+                                   (-> ctx
+                                       (update :expanding conj path)
+                                       (load-deps! deps)
+                                       (update :seen conj path)
+                                       (update :expanding disj path))
+                                   (catch Exception e
+                                     (rethrow-with-referrer e (entity-reference rebuilt-path ingested))))
               _                  (when (seq deps)
                                    (log/debug "Ended loading dependencies" {:entity_id (:entity_id ingested)
                                                                             :level     (count expanding)}))
               local-or-nil       (when-not require-new-entity (serdes/load-find-local rebuilt-path))]
           (try
-            (warn-if-version-mismatch ingested path)
             (with-retries 3 200
               (fn []
                 (t2/with-transaction [_tx]
@@ -230,8 +231,9 @@
                                           (format " (it may have been left without these keys, which were stripped to break a circular dependency: %s)"
                                                   (str/join ", " (sort (map name (keys-to-strip ingested)))))
                                           ""))
-                                (cond-> (path-error-data ::load-failure expanding path)
-                                  stripped? (assoc :stripped-keys (keys-to-strip ingested)))
+                                (-> (path-error-data ::load-failure expanding path)
+                                    (assoc :entity (entity-reference rebuilt-path ingested))
+                                    (cond-> stripped? (assoc :stripped-keys (keys-to-strip ingested))))
                                 e))))))))))
 
 (defn new-context
@@ -248,50 +250,43 @@
    :seen      #{}
    :circular  #{}
    :ingestion ingestion
-   :from-ids  (->> ingestion serdes.ingest/ingest-list (m/index-by :id))
    :errors    []})
 
 (defn load-metabase!
   "Loads in a database export from an ingestion source, which is any Ingestable instance."
-  [ingestion & {:keys [backfill? continue-on-error reindex?]
-                :or   {backfill?         true
-                       continue-on-error false
+  [ingestion & {:keys [continue-on-error reindex?]
+                :or   {continue-on-error false
                        reindex?          true}}]
-  (binding [*warned-version-mismatch* (atom false)]
-    (u/prog1
-      ;; Each entity is loaded in its own transaction (inside load-one!), so a deadlock or transient
-      ;; failure on one entity doesn't abort the entire import. See #74412.
-      (do
-        (when backfill?
-          (t2/with-transaction [_tx]
-            (serdes.backfill/backfill-ids!)))
-        ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared
-        ;; dependencies guide the import, and make sure all containers are imported before contents, etc.
-        (let [contents      (serdes.ingest/ingest-list ingestion)
-              ingest-errors (serdes.ingest/ingest-errors ingestion)
-              ctx           (cond-> (new-context ingestion)
-                              (seq ingest-errors) (update :errors into ingest-errors))]
-          (when (and (seq ingest-errors) (not continue-on-error))
-            (let [file-names (mapv #(or (:file (ex-data %)) (ex-message %)) ingest-errors)]
-              (throw (ex-info (format "Failed to read %d file(s) during ingestion: %s"
-                                      (count ingest-errors)
-                                      (str/join ", " file-names))
-                              {:ingest-errors ingest-errors
-                               :files         file-names}
-                              (first ingest-errors)))))
-          (log/infof "Starting deserialization, total %s documents" (count contents))
-          (reduce (fn [ctx item]
-                    (try
-                      (load-one! ctx item)
-                      (catch Exception e
-                        (when-not continue-on-error
-                          (throw e))
-                        ;; eschew big and scary stacktrace
-                        (log/warnf (u/strip-error e "Skipping deserialization error"))
-                        (update ctx :errors conj e))))
-                  ctx
-                  contents)))
-      (when reindex?
-        ;; Reindex after all entities are loaded. Individual entity commits may have produced stale
-        ;; search index entries; this ensures the index reflects the final state.
-        (search/reindex!)))))
+  (u/prog1
+    ;; Each entity is loaded in its own transaction (inside load-one!), so a deadlock or transient
+    ;; failure on one entity doesn't abort the entire import. See #74412.
+    ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared
+    ;; dependencies guide the import, and make sure all containers are imported before contents, etc.
+    (let [contents      (serdes.ingest/ingest-list ingestion)
+          ingest-errors (serdes.ingest/ingest-errors ingestion)
+          ctx           (cond-> (new-context ingestion)
+                          (seq ingest-errors) (update :errors into ingest-errors))]
+      (when (and (seq ingest-errors) (not continue-on-error))
+        (let [file-names (mapv #(or (:file (ex-data %)) (ex-message %)) ingest-errors)]
+          (throw (ex-info (format "Failed to read %d file(s) during ingestion: %s"
+                                  (count ingest-errors)
+                                  (str/join ", " file-names))
+                          {:ingest-errors ingest-errors
+                           :files         file-names}
+                          (first ingest-errors)))))
+      (log/infof "Starting deserialization, total %s documents" (count contents))
+      (reduce (fn [ctx item]
+                (try
+                  (load-one! ctx item)
+                  (catch Exception e
+                    (when-not continue-on-error
+                      (throw e))
+                    ;; eschew big and scary stacktrace
+                    (log/warnf (u/strip-error e "Skipping deserialization error"))
+                    (update ctx :errors conj e))))
+              ctx
+              contents))
+    (when reindex?
+      ;; Reindex after all entities are loaded. Individual entity commits may have produced stale
+      ;; search index entries; this ensures the index reflects the final state.
+      (search/reindex!))))

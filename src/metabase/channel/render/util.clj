@@ -5,7 +5,8 @@
    [metabase.channel.render.style :as style]
    [metabase.parameters.shared :as shared.params]
    [metabase.system.core :as system]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 ;;; --------------------------------------------------- Helpers ---------------------------------------------------
 
@@ -51,6 +52,16 @@
   "Merge a card's and dashcard's `:visualization_settings`, with the dashcard's taking precedence."
   [card dashcard]
   (merge (:visualization_settings card) (:visualization_settings dashcard)))
+
+(defn dashcard-title
+  "The title to display for `card` on `dashcard`: a non-blank dashboard-level `card.title` override wins over the
+  card's own name. The override lives at the visualizer's nested location (`[:visualization :settings :card.title]`)
+  for visualizer dashcards, otherwise directly on the dashcard's viz settings. Shared by the PDF, email, and Slack
+  renderers (and the attachment-filename logic) so they all resolve titles the same way."
+  [card dashcard]
+  (or (not-empty (get-in dashcard [:visualization_settings :visualization :settings :card.title]))
+      (not-empty (get-in dashcard [:visualization_settings :card.title]))
+      (:name card)))
 
 (defn viz-setting
   "Look up the `map.*`-style setting `k` (a string) in `viz-settings`, tolerating either string or keyword
@@ -212,18 +223,24 @@
      :rows (apply mapv vector unzipped-rows)}))
 
 (defn render-parameters
-  "Renders parameters as inline left-aligned spans for use inside a dashcard."
+  "Renders parameters as inline left-aligned spans for use inside a dashcard. A parameter that fails to render is
+  skipped so it doesn't fail the whole notification."
   [parameters]
   (html
    (let [locale (system/site-locale)]
      [:div {:style (style/style {:font-size "14px"
                                  :font-weight 700
                                  :padding-bottom "8px"})}
-      (for [{:keys [name] :as param} parameters]
+      (for [{:keys [name] :as param} parameters
+            :let [value-str (try
+                              (shared.params/value-string param locale)
+                              (catch Throwable e
+                                (log/errorf e "Error rendering filter %s; skipping it" name)))]
+            :when value-str]
         [:div
          {:style (style/style {:margin-bottom "4px"})}
          [:span {:style (style/style {:color style/color-text-dark
                                       :padding-right "8px"})}
           name]
          [:span {:style (style/style {:color style/color-text-medium})}
-          (shared.params/value-string param locale)]])])))
+          value-str]])])))

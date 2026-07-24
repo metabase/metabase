@@ -74,11 +74,13 @@ const writableNestedDataCollection = createMockCollection({
 
 const libraryRootItems = [
   createMockCollectionItem({
+    // Unjustified type cast. FIXME
     id: promotedDataCollection.id as number,
     model: "collection",
     name: promotedDataCollection.name,
     type: "library-data",
     can_write: false,
+    // Unjustified type cast. FIXME
     collection_id: libraryCollection.id as number,
     location: "/9/10/",
     effective_location: "/9/",
@@ -91,6 +93,7 @@ const libraryRootItems = [
     name: "LibraryCollection5",
     type: "library-data",
     can_write: true,
+    // Unjustified type cast. FIXME
     collection_id: libraryCollection.id as number,
     location: "/9/10/",
     effective_location: "/9/",
@@ -102,6 +105,7 @@ const libraryRootItems = [
     type: "library-metrics",
     is_library_root: true,
     can_write: false,
+    // Unjustified type cast. FIXME
     collection_id: libraryCollection.id as number,
     location: "/9/",
     effective_location: "/9/",
@@ -112,11 +116,13 @@ const libraryRootItems = [
 
 const promotedDataCollectionItems = [
   createMockCollectionItem({
+    // Unjustified type cast. FIXME
     id: writableNestedDataCollection.id as number,
     model: "collection",
     name: writableNestedDataCollection.name,
     type: "library-data",
     can_write: true,
+    // Unjustified type cast. FIXME
     collection_id: promotedDataCollection.id as number,
     location: "/9/10/28/",
     effective_location: "/9/28/",
@@ -339,12 +345,14 @@ describe("EntityPickerModal", () => {
         ...libraryPickerSetup,
         libraryCollectionItems: [
           createMockCollectionItem({
+            // Unjustified type cast. FIXME
             id: hiddenDataCollection.id as number,
             model: "collection",
             name: "Data",
             type: "library-data",
             can_write: true,
             is_library_root: true,
+            // Unjustified type cast. FIXME
             collection_id: libraryCollection.id as number,
             location: "/9/",
             effective_location: "/9/",
@@ -382,6 +390,7 @@ describe("EntityPickerModal", () => {
             name: "Promoted Metric Collection",
             type: "library-metrics",
             can_write: true,
+            // Unjustified type cast. FIXME
             collection_id: libraryCollection.id as number,
             location: "/9/11/",
             effective_location: "/9/",

@@ -8,7 +8,9 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   whitelabel: "metabase-enterprise/whitelabel",
   sandboxes: "metabase-enterprise/sandboxes",
   clean_up: "metabase-enterprise/clean_up",
-  tools: "metabase-enterprise/tools",
+  tools: "metabase-enterprise/monitor/tools",
+  monitor_dependency_diagnostics:
+    "metabase-enterprise/monitor/dependency-diagnostics",
   advanced_permissions: "metabase-enterprise/advanced_permissions",
   sharing: "metabase-enterprise/sharing",
   metabot: "metabase-enterprise/metabot",

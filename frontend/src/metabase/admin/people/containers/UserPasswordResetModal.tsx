@@ -134,7 +134,7 @@ const UserPasswordResetModalInner = ({
             onClick={handleGetResetLink}
           >{t`Get reset link`}</Button>
           <Button
-            color="danger"
+            color="feedback-negative"
             variant="filled"
             onClick={handleResetConfirm}
           >{t`Reset password`}</Button>

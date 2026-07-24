@@ -10,6 +10,7 @@
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -86,6 +87,83 @@
           (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model1)
           (is (true? (@#'semantic.index-metadata/index-table-exists? pgvector index))))))))
 
+(deftest ensure-active-hnsw-index!-test
+  (mt/with-premium-features #{:semantic-search}
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.tu/unique-index-metadata)
+          model          semantic.tu/mock-embedding-model
+          cleanup        (fn [_] (semantic.tu/cleanup-index-metadata! pgvector index-metadata))]
+      (with-open [index-ref ^Closeable (semantic.tu/closeable
+                                        (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model)
+                                        cleanup)]
+        (let [index     @index-ref
+              hnsw-name (semantic.index/hnsw-index-name index)]
+          (testing "builds the HNSW index on the active index table when it is missing"
+            ;; init only builds the HNSW index when configured for :hnsw, so drop it for a deterministic
+            ;; starting point regardless of the ambient strategy -- mimics a brute-force-configured instance.
+            (jdbc/execute! pgvector [(str "DROP INDEX IF EXISTS \"" hnsw-name "\"")])
+            (is (not (semantic.tu/table-has-index? (:table-name index) hnsw-name)))
+            (semantic.pgvector-api/ensure-active-hnsw-index! pgvector index-metadata)
+            (is (semantic.tu/table-has-index? (:table-name index) hnsw-name)))
+          (testing "is a noop when the HNSW index already exists"
+            (let [before (semantic.tu/index-relfilenode hnsw-name)]
+              (semantic.pgvector-api/ensure-active-hnsw-index! pgvector index-metadata)
+              (is (= before (semantic.tu/index-relfilenode hnsw-name))
+                  "relfilenode unchanged => the existing index was reused, not rebuilt")))))
+      (testing "is a noop when there is no active index"
+        (is (nil? (semantic.pgvector-api/ensure-active-hnsw-index! pgvector index-metadata)))))))
+
+(deftest ensure-hnsw-index-under-lock!-test
+  (let [index {:table-name "index_1"}
+        calls (atom [])]
+    (mt/with-dynamic-fn-redefs
+      [semantic.index/drop-index-concurrently-if-exists! (fn [& args] (swap! calls conj [:drop args]))
+       semantic.index/create-hnsw-index-if-not-exists!    (fn [& args] (swap! calls conj [:create args]))]
+      (doseq [[state expected-operations] [[:ready []]
+                                           [:building []]
+                                           [nil [:create]]
+                                           [:invalid [:drop :create]]]]
+        (reset! calls [])
+        (mt/with-dynamic-fn-redefs [semantic.util/index-state (constantly state)]
+          (#'semantic.pgvector-api/ensure-hnsw-index-under-lock! ::connection index))
+        (is (= expected-operations (mapv first @calls)) (str state " maintenance operations"))))))
+
+(deftest with-hnsw-index-lock-serializes-callers-test
+  (let [pgvector   (semantic.env/get-pgvector-datasource!)
+        index-name (str "test-hnsw-lock-" (random-uuid))
+        lock-name  (str "metabase-semantic-hnsw:" index-name)
+        entered   (promise)
+        release   (promise)
+        worker    (future
+                    (#'semantic.pgvector-api/with-hnsw-index-lock
+                     pgvector
+                     index-name
+                     (fn [_]
+                       (deliver entered true)
+                       @release)))]
+    (try
+      (is (true? (deref entered 30000 false)) "the first caller acquired the lock")
+      (with-open [probe (jdbc/get-connection pgvector)]
+        (.setAutoCommit probe true)
+        (is (false? (:locked (jdbc/execute-one!
+                              probe
+                              ["SELECT pg_try_advisory_lock(hashtextextended(?, 0)) AS locked" lock-name]
+                              {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+            "a second caller cannot acquire the held lock"))
+      (deliver release true)
+      (is (not= ::timeout (deref worker 30000 ::timeout)) "the first caller released the lock")
+      (with-open [probe (jdbc/get-connection pgvector)]
+        (.setAutoCommit probe true)
+        (is (true? (:locked (jdbc/execute-one!
+                             probe
+                             ["SELECT pg_try_advisory_lock(hashtextextended(?, 0)) AS locked" lock-name]
+                             {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+            "the lock is available after the first caller releases it")
+        (jdbc/execute-one! probe ["SELECT pg_advisory_unlock(hashtextextended(?, 0))" lock-name]))
+      (finally
+        (deliver release true)
+        (deref worker 30000 nil)))))
+
 (defn- open-semantic-search! ^Closeable [pgvector index-metadata embedding-model]
   (semantic.tu/closeable
    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
@@ -107,9 +185,9 @@
     (with-open [index-ref (open-semantic-search! pgvector index-metadata model1)]
       ;; no specific behaviour, only proxies the active index to the index search
       (testing "is only a proxy for the active index call"
-        (let [{:keys [proxy calls]} (semantic.tu/spy semantic.index/upsert-index!)
+        (let [{:keys [proxy calls]} (semantic.tu/spy (mt/original-fn #'semantic.index/upsert-index!))
               documents (semantic.tu/mock-documents)]
-          (with-redefs [semantic.index/upsert-index! proxy]
+          (mt/with-dynamic-fn-redefs [semantic.index/upsert-index! proxy]
             (testing "check proxies correct args and ret is untouched"
               (let [ret (sut pgvector index-metadata documents)]
                 (is (= [{:args [pgvector @index-ref documents]
@@ -138,8 +216,8 @@
       ;; no specific behaviour, only proxies the active index to the index search
       (testing "is only a proxy for the active index call"
         (semantic.pgvector-api/index-documents! pgvector index-metadata documents)
-        (let [{:keys [calls proxy]} (semantic.tu/spy semantic.index/delete-from-index!)]
-          (with-redefs [semantic.index/delete-from-index! proxy]
+        (let [{:keys [calls proxy]} (semantic.tu/spy (mt/original-fn #'semantic.index/delete-from-index!))]
+          (mt/with-dynamic-fn-redefs [semantic.index/delete-from-index! proxy]
             (testing "check proxies correct args and ret is untouched"
               (let [ret1 (sut pgvector index-metadata dash dash-ids)
                     ret2 (sut pgvector index-metadata card card-ids)

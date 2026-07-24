@@ -7,7 +7,6 @@ import type {
 import type { Dispatch, QueryBuilderMode } from "metabase/redux/store";
 import type { IconProps } from "metabase/ui";
 import type { ColorGetter } from "metabase/ui/colors/types";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import type {
   TextHeightMeasurer,
   TextWidthMeasurer,
@@ -23,6 +22,7 @@ import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
+  ColumnSettings,
   Dashboard,
   DashboardCard,
   DashboardId,
@@ -51,6 +51,7 @@ import type { ChartSettingTableColumnsProps } from "../components/settings/Chart
 import type { LegacySeriesSettingsObjectKey } from "../echarts/cartesian/model/types";
 import type { DimensionsWidgetProps } from "../visualizations/PieChart/DimensionsWidget";
 import type { SmartScalarComparisonWidgetProps } from "../visualizations/SmartScalar/SettingsComponents/SmartScalarSettingsWidgets";
+import type { TreemapGroupsPickerProps } from "../visualizations/TreemapChart/TreemapGroupsPicker";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HoveredObject } from "./hover";
@@ -64,7 +65,7 @@ export interface Padding {
 
 export type Formatter = (
   value: RowValue,
-  options?: OptionsType,
+  options?: ColumnSettings,
 ) => string | null;
 export type TableCellFormatter = (value: RowValue) => ReactNode;
 
@@ -118,13 +119,6 @@ export type OnChangeCardAndRunOpts = {
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
-export type ColumnSettings = OptionsType & {
-  _column_title_full?: string;
-  "pivot_table.column_show_totals"?: boolean;
-  text_align?: "left" | "middle" | "right";
-  [key: string]: unknown;
-};
-
 export type ComputedVisualizationSettings = VisualizationSettings & {
   column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
   series?: (key: LegacySeriesSettingsObjectKey) => SeriesSettings;
@@ -136,6 +130,9 @@ export interface StaticVisualizationProps {
   renderingContext: RenderingContext;
   isStorybook?: boolean;
   hasDevWatermark?: boolean;
+  width?: number;
+  height?: number;
+  fitWithinBounds?: boolean;
 }
 
 export interface VisualizationProps {
@@ -208,7 +205,7 @@ export interface VisualizationProps {
   ) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
-  onOpenTimelines?: () => void;
+  onOpenTimelines?: (eventIds?: number[]) => void;
 
   canToggleSeriesVisibility?: boolean;
   onUpdateWarnings?: any;
@@ -231,7 +228,7 @@ export type VisualizationPassThroughProps = {
   zoomedRowIndex?: number;
   onZoomRow?: (rowIndex: number) => void;
   onDeselectTimelineEvents?: () => void;
-  onOpenTimelines?: () => void;
+  onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
 
   // Table
@@ -279,9 +276,17 @@ export type VisualizationPassThroughProps = {
    * Props used for Audit Table visualization
    */
   isSelectable?: boolean;
-  rowChecked?: [];
-  onAllSelectClick?: () => void;
-  onRowSelectClick?: () => void;
+  rowChecked?: Record<string, boolean>;
+  onAllSelectClick?: (event: { rows: RowValues[] }) => void;
+  onRowSelectClick?: (event: { row: RowValues; rowIndex: number }) => void;
+  isSortable?: boolean;
+  sorting?: AuditTableSorting;
+  onSortingChange?: (sorting: AuditTableSorting) => void;
+};
+
+export type AuditTableSorting = {
+  column: string;
+  isAscending: boolean;
 };
 
 export type ColumnSettingDefinition<TValue, TProps = unknown> = {
@@ -291,12 +296,12 @@ export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   props?: TProps;
   inline?: boolean;
   readDependencies?: string[];
-  getDefault?: (col: DatasetColumn, settings: OptionsType) => TValue;
-  getHidden?: (col: DatasetColumn, settings: OptionsType) => boolean;
-  isValid?: (col: DatasetColumn, settings: OptionsType) => boolean;
+  getDefault?: (col: DatasetColumn, settings: ColumnSettings) => TValue;
+  getHidden?: (col: DatasetColumn, settings: ColumnSettings) => boolean;
+  isValid?: (col: DatasetColumn, settings: ColumnSettings) => boolean;
   getProps?: (
     col: DatasetColumn,
-    settings: OptionsType,
+    settings: ColumnSettings,
     onChange: (value: TValue) => void,
     extra: { series: Series },
   ) => TProps;
@@ -582,6 +587,18 @@ export type VisualizationSettingsDefinitions = {
   time_enabled?: DatasetColumnSettingDefinition<Value, Props>;
   time_style?: DatasetColumnSettingDefinition<Value, Props>;
   title?: SingleSeriesSettingDefinition<Value, Props>;
+  "treemap._groups_widget"?: SeriesSettingDefinition<
+    Value,
+    TreemapGroupsPickerProps
+  >;
+  "treemap.grouping"?: SeriesSettingDefinition<Value, Props>;
+  "treemap.rows"?: SeriesSettingDefinition<Value, Props>;
+  "treemap.show_leaf_labels"?: SeriesSettingDefinition<Value, Props>;
+  "treemap.show_leaf_values"?: SeriesSettingDefinition<Value, Props>;
+  "treemap.show_parent_labels"?: SeriesSettingDefinition<Value, Props>;
+  "treemap.show_parent_values"?: SeriesSettingDefinition<Value, Props>;
+  "treemap.sub_grouping"?: SeriesSettingDefinition<Value, Props>;
+  "treemap.value"?: SeriesSettingDefinition<Value, Props>;
   view_as?: SeriesSettingDefinition<Value, Props>;
   "waterfall.decrease_color"?: SeriesSettingDefinition<Value, Props>;
   "waterfall.increase_color"?: SeriesSettingDefinition<Value, Props>;
@@ -637,6 +654,10 @@ export type VisualizationDefinition = {
   disableClickBehavior?: boolean;
   canSavePng?: boolean;
   noHeader?: boolean;
+  // True for visualizations that render through the (lazily loaded)
+  // EChartsRenderer. Used to prefetch the echarts chunk while the chart's data
+  // is still loading. See prefetchEChartsRenderer.
+  usesEChartsRenderer?: boolean;
   hidden?: boolean;
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;

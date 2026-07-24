@@ -40,6 +40,7 @@ const renderingContext: RenderingContext = {
 export const DefaultSettings = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.defaultSettings as any,
     renderingContext,
   },
@@ -48,6 +49,7 @@ export const DefaultSettings = {
 export const Watermark = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.defaultSettings as any,
     renderingContext,
     hasDevWatermark: true,

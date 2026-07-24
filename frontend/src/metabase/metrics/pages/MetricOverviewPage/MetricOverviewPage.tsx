@@ -1,14 +1,15 @@
 import { useEffect } from "react";
-import { replace } from "react-router-redux";
 
 import { useGetMetricQuery } from "metabase/api/metric";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import type {
+  MetricPageParams,
   MetricPageProps,
   MetricUrls,
 } from "metabase/common/metrics/types";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useDispatch } from "metabase/redux";
+import { replace, useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
@@ -18,14 +19,15 @@ import { MetricPageShell } from "../../components/MetricPageShell";
 import { metricUrls as defaultUrls } from "../../urls";
 
 export function MetricOverviewPage({
-  params,
   urls = defaultUrls,
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
 }: MetricPageProps) {
+  const { cardId } = useParams<MetricPageParams>();
+
   return (
-    <MetricPageCard cardId={params.cardId}>
+    <MetricPageCard cardId={cardId}>
       {(card) => (
         <MetricOverviewPageBody
           card={card}
@@ -39,7 +41,7 @@ export function MetricOverviewPage({
   );
 }
 
-interface MetricOverviewPageBodyProps extends Omit<MetricPageProps, "params"> {
+interface MetricOverviewPageBodyProps extends MetricPageProps {
   card: Card;
   urls: MetricUrls;
 }

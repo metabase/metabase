@@ -7,7 +7,7 @@
    [metabase-enterprise.action-v2.coerce :as coerce]
    [metabase.test :as mt]))
 
-(deftest coercion-conversions-test
+(deftest ^:parallel coercion-conversions-test
   (mt/with-clock #t "2000-01-01T00:00:00Z"
     (let [test-cases
           [{:strategy :Coercion/UNIXSeconds->DateTime
@@ -59,9 +59,12 @@
                   (format "Roundtrip conversion failed for %s: %s -> %s -> %s"
                           strategy input (in input) (out (in input)))))))))))
 
-(deftest coercion-fns-static-test
+(deftest ^:parallel coercion-fns-static-test
   (testing "all coercion pair have to have an in and out function"
-    (testing (every? #(and (fn? (:in %)) (fn? (:out %))) coerce/coercion-fns)))
+    (doseq [[k {:keys [in out]}] coerce/coercion-fns]
+      (testing k
+        (is (or (fn? in) (fn? @in)) ":in")
+        (is (or (fn? out) (fn? @in)) ":out"))))
   ;; TODO: fix this test by implementing all strategies
   (let [implemented (set (keys coerce/coercion-fns))
         expected-fns (into #{} (filter (comp #{"Coercion"} namespace)) (descendants :Coercion/*))

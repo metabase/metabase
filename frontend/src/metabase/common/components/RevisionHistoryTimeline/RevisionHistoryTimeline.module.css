@@ -10,7 +10,7 @@
   top: calc(var(--mantine-spacing-md) + var(--icon-size) / 2);
   bottom: calc(-1 * var(--mantine-spacing-md) - var(--icon-size) / 2);
   left: calc(var(--mantine-spacing-lg) + var(--icon-size) / 2 - 1px);
-  border-inline-start: 2px dotted var(--mb-color-text-tertiary);
+  border-inline-start: 2px dotted var(--mb-color-text-disabled);
 }
 
 .event {
@@ -27,12 +27,12 @@
 }
 
 .event:hover {
-  background: var(--mb-color-background-hover);
+  background: var(--mb-color-background_surface-hover);
   border-radius: var(--mantine-radius-lg);
 }
 
 .event:hover .title {
-  color: var(--mb-color-text-hover);
+  color: var(--mb-color-text-brand-hover);
 }
 
 .revertButton {
@@ -42,7 +42,7 @@
 
 .event:hover .revertButton {
   opacity: 1;
-  color: var(--mb-color-text-hover);
+  color: var(--mb-color-text-brand-hover);
 }
 
 .iconCircle {

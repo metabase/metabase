@@ -348,7 +348,7 @@
 (deftest ^:parallel remove-empty-stage-metadata-test
   (is (= {:lib/type :mbql/query
           :database 1493
-          :stages   [{:template-tags {"x" {:id "6c3d5730-6f9b-4bd6-ae25-3496e8b95011", :type :text, :name "x", :display-name "X"}}
+          :stages   [{:template-tags [{:id "6c3d5730-6f9b-4bd6-ae25-3496e8b95011", :type :text, :name "x", :display-name "X"}]
                       :lib/type      :mbql.stage/native
                       :native        "update users set name = 'foo' where id = {{x}}"}]}
          (lib/normalize
@@ -384,30 +384,30 @@
                  AND CREATED_AT > {{after_date}}
                  AND USER_ID = {{user_id}}
                  AND {{is_active}}"
-     :template-tags {"min_total" {:type :number
-                                  :name "min_total"
-                                  :id "aa000001-0000-0000-0000-000000000001"
-                                  :display-name "Minimum Total"
-                                  :default 50
-                                  :required true
-                                  :sectionid "number"}
-                     "after_date" {:type :date
-                                   :name "after_date"
-                                   :id "aa000002-0000-0000-0000-000000000002"
-                                   :display-name "After Date"
-                                   :default "2024-01-01"
-                                   :sectionid "date"}
-                     "user_id" {:type :text
-                                :name "user_id"
-                                :id "aa000003-0000-0000-0000-000000000003"
-                                :display-name "User ID"
-                                :default "1"}
-                     "is_active" {:type :boolean
-                                  :name "is_active"
-                                  :id "aa000004-0000-0000-0000-000000000004"
-                                  :display-name "Is Active"
-                                  :default true
-                                  :sectionid "boolean"}}}]})
+     :template-tags [{:type :number
+                      :name "min_total"
+                      :id "aa000001-0000-0000-0000-000000000001"
+                      :display-name "Minimum Total"
+                      :default 50
+                      :required true
+                      :sectionid "number"}
+                     {:type :date
+                      :name "after_date"
+                      :id "aa000002-0000-0000-0000-000000000002"
+                      :display-name "After Date"
+                      :default "2024-01-01"
+                      :sectionid "date"}
+                     {:type :text
+                      :name "user_id"
+                      :id "aa000003-0000-0000-0000-000000000003"
+                      :display-name "User ID"
+                      :default "1"}
+                     {:type :boolean
+                      :name "is_active"
+                      :id "aa000004-0000-0000-0000-000000000004"
+                      :display-name "Is Active"
+                      :default true
+                      :sectionid "boolean"}]}]})
 
 (deftest ^:parallel external-test
   ;; this one is not valid according to the internal schema because it
@@ -429,3 +429,30 @@
       (is (=? {:page  {:page 1, :items 15}
                :limit (symbol "nil #_\"key is not present.\"")}
               (lib/normalize ::lib.schema/stage stage))))))
+
+(deftest ^:parallel normalize-template-tags-map-to-vector-test
+  (testing "Template tags should get transformed from a map to a vector; preserve `:name` from map keys"
+    (let [query      {:lib/type :mbql/query
+                      :stages   [{:lib/type :mbql.stage/native
+                                  :template-tags {"parameter_0" {:widget-type  :category
+                                                                 :id           "00000000-0000-0000-0000-000000000000"
+                                                                 :name         "<WRONG NAME>"
+                                                                 :display-name "Parameter 0"
+                                                                 :type         :dimension
+                                                                 :dimension    [:field {} 1]
+                                                                 :default      nil}
+                                                  "parameter_1" {:widget-type  :category
+                                                                 :id           "00000000-0000-0000-0000-000000000001"
+                                                                 ;; (`:name` is missing)
+                                                                 :display-name "Parameter 1"
+                                                                 :type         :dimension
+                                                                 :dimension    [:field {} 1]
+                                                                 :default      nil}}
+                                  :native   "<<NATIVE QUERY>>"}]
+                      :database 2}
+          normalized (lib/normalize ::lib.schema/query query)]
+      (is (=? {:stages   [{:template-tags [{:name "parameter_0"}
+                                           {:name "parameter_1"}]
+                           :lib/type      :mbql.stage/native}]
+               :lib/type :mbql/query}
+              normalized)))))

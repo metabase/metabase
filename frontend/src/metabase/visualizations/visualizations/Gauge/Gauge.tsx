@@ -12,7 +12,6 @@ import { GaugeArc } from "./GaugeArc";
 import { GaugeNeedle } from "./GaugeNeedle";
 import { GaugeSegmentLabel } from "./GaugeSegmentLabel";
 import { HideIfOverflowingSVG } from "./HideIfOverflowingSVG";
-import { GAUGE_CHART_DEFINITION } from "./chart-definition";
 import {
   ARC_DEGREES,
   FONT_SIZE_CENTER_LABEL_MAX,
@@ -27,6 +26,7 @@ import {
   getCenterLabelColor,
   getSegmentLabelColor,
 } from "./constants";
+import { GAUGE_CHART_DEFINITION } from "./definition";
 import { isGaugeRange, isGaugeSegmentsArray } from "./types";
 import { getValue, radians } from "./utils";
 
@@ -229,11 +229,11 @@ export function Gauge({
               ref={labelRef}
               x={0}
               y={0}
+              textAnchor="middle"
               style={{
                 fill: getCenterLabelColor(),
                 fontSize: "1em",
                 fontWeight: "bold",
-                textAnchor: "middle",
                 transform: "translate(0,0.2em)",
               }}
             >

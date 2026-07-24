@@ -1422,7 +1422,6 @@
   ->legacy-MBQL
   ->mbql5
   legacy-default-join-alias
-  with-aggregation-list
   without-cleaning]
  [metabase.lib.convert.metadata-to-legacy
   lib-metadata-column->legacy-metadata-column
@@ -1513,6 +1512,7 @@
   native-query
   raw-native-query
   recognize-template-tags
+  replace-template-tag-names
   required-native-extras
   native-query-card-ids
   native-query-snippet-ids
@@ -1561,7 +1561,7 @@
   ->query
   can-preview
   can-run
-  can-save
+  can-save?
   check-card-overwrite
   native?
   preview-query
@@ -1579,7 +1579,8 @@
  [lib.ref
   field-ref-id
   field-ref-name
-  ref]
+  ref
+  with-field-ref-id]
  [lib.referenced-columns
   referenced-columns]
  [lib.remove-replace
@@ -1663,7 +1664,11 @@
   all-template-tags-map
   all-template-tags-id->field-ids
   any-native-stage?
-  any-native-stage-not-introduced-by-sandbox?])
+  any-native-stage-not-introduced-by-sandbox?
+  replace-field-ids
+  replace-table-ids])
+
+(shared.ns/import-macro lib.convert/with-aggregation-list)
 
 #?(:clj
    (defmacro with-card-clean-hook

@@ -3,14 +3,14 @@ import type { ReactNode } from "react";
 import { skipToken, useGetCardQueryQuery } from "metabase/api";
 import { Unauthorized } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
+import { useLoadCardWithMetadata } from "metabase/metrics/common/use-load-card-with-metadata";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { is403Error } from "metabase/utils/errors";
 import type { Card } from "metabase-types/api";
 
 interface MetricPageCardProps {
-  cardId: string;
+  cardId: string | undefined;
   children: (card: Card) => ReactNode;
 }
 

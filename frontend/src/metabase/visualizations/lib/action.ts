@@ -1,8 +1,8 @@
-import type { LocationDescriptorObject } from "history";
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import type { Dispatch } from "metabase/redux/store";
+import type { LocationDescriptorObject } from "metabase/router";
+import { push } from "metabase/router";
 import type Question from "metabase-lib/v1/Question";
 
 import type {

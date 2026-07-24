@@ -1,11 +1,11 @@
-import { cardApi, dashboardApi } from "metabase/api";
+import { cardApi, dashboardApi, parametersApi } from "metabase/api";
 import type {
   CardParameterValuesRequest,
   SearchCardParameterValuesRequest,
 } from "metabase/api/card";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { DispatchFn } from "metabase/redux";
 import type { GetState } from "metabase/redux/store";
-import { ParameterApi } from "metabase/services";
 import { stableStringify } from "metabase/utils/objects";
 import { getNonVirtualFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -71,7 +71,8 @@ export const fetchCardParameterValues =
   }: FetchCardParameterValuesOpts) =>
   (dispatch: DispatchFn, getState: GetState) => {
     const baseRequest: CardParameterValuesRequest = {
-      ...(entityIdentifier ? { entityIdentifier } : { cardId }),
+      cardId,
+      ...(entityIdentifier && { entityIdentifier }),
       paramId: parameter.id,
     };
     const request:
@@ -106,7 +107,8 @@ export const fetchDashboardParameterValues =
   }: FetchDashboardParameterValuesOpts) =>
   (dispatch: DispatchFn, getState: GetState) => {
     const baseRequest: DashboardParameterValuesRequest = {
-      ...(entityIdentifier ? { entityIdentifier } : { dashId: dashboardId }),
+      dashId: dashboardId,
+      ...(entityIdentifier && { entityIdentifier }),
       paramId: parameter.id,
       ...getFilteringParameterValuesMap(parameter, parameters),
     };
@@ -130,10 +132,17 @@ interface ParameterValuesRequest {
   query?: string;
 }
 
-const loadParameterValues = async (request: ParameterValuesRequest) => {
-  const { values, has_more_values } = request.query
-    ? await ParameterApi.parameterSearch(request)
-    : await ParameterApi.parameterValues(request);
+const loadParameterValues = async (
+  request: ParameterValuesRequest,
+  dispatch: DispatchFn,
+) => {
+  const { values, has_more_values } = await runRtkEndpoint(
+    request,
+    dispatch,
+    request.query
+      ? parametersApi.endpoints.searchParameterValues
+      : parametersApi.endpoints.getParameterValues,
+  );
 
   return {
     values: values,
@@ -151,10 +160,9 @@ const loadCardParameterValues = async (
   // a refetch after that reset actually hits the network.
   const queryAction = dispatch(
     isSearch
-      ? cardApi.endpoints.searchCardParameterValues.initiate(
-          request as SearchCardParameterValuesRequest,
-          { forceRefetch: true },
-        )
+      ? cardApi.endpoints.searchCardParameterValues.initiate(request, {
+          forceRefetch: true,
+        })
       : cardApi.endpoints.getCardParameterValues.initiate(request, {
           forceRefetch: true,
         }),
@@ -182,7 +190,7 @@ const loadDashboardParameterValues = async (
   const queryAction = dispatch(
     isSearch
       ? dashboardApi.endpoints.searchDashboardParameterValues.initiate(
-          request as SearchDashboardParameterValuesRequest,
+          request,
           { forceRefetch: true },
         )
       : dashboardApi.endpoints.getDashboardParameterValues.initiate(request, {

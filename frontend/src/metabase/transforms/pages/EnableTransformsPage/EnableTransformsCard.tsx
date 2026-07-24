@@ -73,9 +73,10 @@ export function EnableTransformsCard({
                   )}
                   {!hasDbThatSupportsTransforms && (
                     <Alert
+                      size="compact"
                       color="warning"
                       variant="light"
-                      icon={<Icon name="warning" size={16} />}
+                      icon={<Icon name="warning" />}
                       title={t`No compatible database connection`}
                     >
                       {jt`None of your connected databases can be used with transforms. ${(
@@ -128,7 +129,7 @@ const SimpleCard = ({
   title: string;
   description: string;
 }) => (
-  <Card bg="background-secondary" shadow="none">
+  <Card bg="background_page-secondary" shadow="none">
     <Group wrap="nowrap" align="start" gap="sm">
       <Icon name={icon} c="core-brand" size={16} flex="0 0 1rem" />
       <Stack gap="xs">

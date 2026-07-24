@@ -29,11 +29,13 @@ export const DatabaseRoutingWarning = ({
     const databases = databasesResponse?.data || [];
 
     if (resourceType === "question") {
+      // Unjustified type cast. FIXME
       return questionUsesRoutingEnabledDatabase(resource as Card, databases);
     }
 
     if (resourceType === "dashboard") {
       return dashboardUsesRoutingEnabledDatabases(
+        // Unjustified type cast. FIXME
         resource as Dashboard,
         databases,
       );
@@ -48,6 +50,7 @@ export const DatabaseRoutingWarning = ({
 
   return (
     <Alert
+      size="compact"
       variant="light"
       color="warning"
       icon={<Icon name="warning" />}

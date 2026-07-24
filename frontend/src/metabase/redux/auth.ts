@@ -1,18 +1,22 @@
 import {
-  type UnknownAction,
+  type ThunkDispatch,
   createAction,
   createReducer,
 } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
 
 import { loadLocalization } from "metabase/api/localization";
+import {
+  type MfaChallengeResponse,
+  isMfaChallenge,
+  sessionApi,
+} from "metabase/api/session";
 import { openNavbar } from "metabase/redux/app";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
+import { push } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
-import { SessionApi } from "metabase/services";
 import * as Urls from "metabase/urls";
 import { isSmallScreen, reload } from "metabase/utils/dom";
 import { isResourceNotFoundError } from "metabase/utils/errors";
@@ -54,9 +58,24 @@ export const refreshSession = createAsyncThunk(
   },
 );
 
+export const COMPLETE_LOGIN = "metabase/auth/COMPLETE_LOGIN";
+export const completeLogin = createAsyncThunk(
+  COMPLETE_LOGIN,
+  async (_, { dispatch }) => {
+    await dispatch(refreshSession()).unwrap();
+    if (!isSmallScreen()) {
+      dispatch(openNavbar());
+    }
+  },
+);
+
 interface LoginPayload {
   data: LoginData;
   redirectUrl?: string;
+}
+
+export interface LoginResult {
+  mfaChallenge?: MfaChallengeResponse;
 }
 
 export const LOGIN = "metabase/auth/LOGIN";
@@ -64,11 +83,18 @@ export const login = createAsyncThunk(
   LOGIN,
   async ({ data }: LoginPayload, { dispatch, rejectWithValue }) => {
     try {
-      await SessionApi.create(data);
-      await dispatch(refreshSession()).unwrap();
-      if (!isSmallScreen()) {
-        dispatch(openNavbar());
+      const result = await dispatch(
+        sessionApi.endpoints.createSession.initiate(data),
+      ).unwrap();
+
+      if (isMfaChallenge(result)) {
+        const challenge: LoginResult = { mfaChallenge: result };
+        return challenge;
       }
+
+      await dispatch(completeLogin()).unwrap();
+      const success: LoginResult = {};
+      return success;
     } catch (error) {
       return rejectWithValue(error);
     }
@@ -89,14 +115,13 @@ export const loginGoogle = createAsyncThunk(
     { dispatch, rejectWithValue },
   ) => {
     try {
-      await SessionApi.createWithGoogleAuth({
-        token: credential,
-        remember,
-      });
-      await dispatch(refreshSession()).unwrap();
-      if (!isSmallScreen()) {
-        dispatch(openNavbar());
-      }
+      await dispatch(
+        sessionApi.endpoints.createSessionWithGoogleAuth.initiate({
+          token: credential,
+          remember,
+        }),
+      ).unwrap();
+      await dispatch(completeLogin()).unwrap();
     } catch (error) {
       return rejectWithValue(error);
     }
@@ -115,7 +140,8 @@ export const logout = createAsyncThunk(
       const user = getUser(state);
 
       if (user?.sso_source === "saml") {
-        const { "saml-logout-url": samlLogoutUrl } = await initiateSLO();
+        const { "saml-logout-url": samlLogoutUrl } =
+          (await initiateSLO(dispatch)) ?? {};
 
         dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
@@ -124,13 +150,11 @@ export const logout = createAsyncThunk(
           window.location.href = samlLogoutUrl;
         }
       } else {
-        await deleteSession();
+        await deleteSession(dispatch);
         dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
 
-        // We use old react-router-redux which references old redux, which does not require
-        // action type to be a string - unlike RTK v2+
-        dispatch(push(Urls.login()) as unknown as UnknownAction);
+        dispatch(push(Urls.login()));
         reload(); // clears redux state and browser caches
       }
     } catch (error) {
@@ -142,9 +166,11 @@ export const logout = createAsyncThunk(
 export const FORGOT_PASSWORD = "metabase/auth/FORGOT_PASSWORD";
 export const forgotPassword = createAsyncThunk(
   FORGOT_PASSWORD,
-  async (email: string, { rejectWithValue }) => {
+  async (email: string, { dispatch, rejectWithValue }) => {
     try {
-      await SessionApi.forgot_password({ email });
+      await dispatch(
+        sessionApi.endpoints.forgotPassword.initiate(email),
+      ).unwrap();
     } catch (error) {
       return rejectWithValue(error);
     }
@@ -161,20 +187,23 @@ export const resetPassword = createAsyncThunk(
   RESET_PASSWORD,
   async (
     { token, password }: ResetPasswordPayload,
-    { dispatch, rejectWithValue },
+    { dispatch, getState, rejectWithValue },
   ) => {
     try {
-      await SessionApi.reset_password({ token, password });
+      await dispatch(
+        sessionApi.endpoints.resetPassword.initiate({ token, password }),
+      ).unwrap();
       await dispatch(refreshSession()).unwrap();
+      return { sessionCreated: getUser(getState()) != null };
     } catch (error) {
       return rejectWithValue(error);
     }
   },
 );
 
-const initiateSLO = async () => {
+const initiateSLO = async (dispatch: ThunkDispatch<any, any, any>) => {
   try {
-    return await SessionApi.slo();
+    return await dispatch(sessionApi.endpoints.logoutSso.initiate()).unwrap();
   } catch (error) {
     if (!isResourceNotFoundError(error)) {
       console.error("Problem clearing session", error);
@@ -182,9 +211,9 @@ const initiateSLO = async () => {
   }
 };
 
-export const deleteSession = async () => {
+const deleteSession = async (dispatch: ThunkDispatch<any, any, any>) => {
   try {
-    await SessionApi.delete();
+    await dispatch(sessionApi.endpoints.deleteSession.initiate()).unwrap();
   } catch (error) {
     if (!isResourceNotFoundError(error)) {
       console.error("Problem clearing session", error);
@@ -209,6 +238,16 @@ export const reducer = createReducer(initialState, (builder) => {
     state.loginPending = true;
   });
   builder.addCase(loginGoogle.fulfilled, (state) => {
+    state.loginPending = false;
+  });
+
+  builder.addCase(completeLogin.pending, (state) => {
+    state.loginPending = true;
+  });
+  builder.addCase(completeLogin.fulfilled, (state) => {
+    state.loginPending = false;
+  });
+  builder.addCase(completeLogin.rejected, (state) => {
     state.loginPending = false;
   });
   builder.addCase(pauseRedirect.toString(), (state) => {

@@ -20,6 +20,7 @@ jest.mock("metabase-enterprise/settings", () => ({
   hasPremiumFeature: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
   typeof hasPremiumFeature
 >;
