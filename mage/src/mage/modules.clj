@@ -126,6 +126,7 @@
      llm
      login-history
      mcp
+     measures
      metabot
      mq
      notification
@@ -139,6 +140,7 @@
      sample-data
      search
      secrets
+     segments
      server
      session
      settings

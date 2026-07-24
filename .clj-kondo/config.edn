@@ -194,6 +194,9 @@
      metabase.mcp.usage/record-mcp-session-end!
      metabase.mcp.usage/record-mcp-tool-call!
      metabase.mcp.v2.tools.browse/validate-args-for-action!
+     ;; Drives registry/call-tool, whose only side effect is the append-only usage log
+     ;; (record-mcp-tool-call!, whitelisted above); safe for parallel tool-contract tests.
+     metabase.mcp.v2.tools.definitions-test/call-tool!
      metabase.notification.models/create-notification!
      metabase.oauth-server.core/reset-provider!
      metabase.pulse.send/send-pulse!

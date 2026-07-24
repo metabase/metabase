@@ -21,7 +21,6 @@
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
-   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -267,12 +266,6 @@
                                (cond-> query
                                  (seq query) lib/->legacy-MBQL))))))
 
-(defn- check-allowed-to-remove-from-existing-dashboards [card]
-  (let [dashboards (or (:in_dashboards card)
-                       (:in_dashboards (t2/hydrate card :in_dashboards)))]
-    (doseq [dashboard dashboards]
-      (api/write-check dashboard))))
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -480,42 +473,6 @@
 
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
-(mu/defn- check-if-card-can-be-saved
-  [dataset-query :- [:maybe ::queries.schema/query]
-   card-type     :- [:maybe ::queries.schema/card-type]]
-  (when (and (seq dataset-query) (= card-type :metric))
-    (when-not (lib/can-save? dataset-query card-type)
-      (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (name card-type))
-                      {:type        card-type
-                       :status-code 400})))))
-
-(defn- actual-collection-id
-  "Given a body from the `POST` endpoint to create a card, returns the `collection_id` that the card will be placed in.
-  Because creating a Dashboard Question does not require specifying a `collection_id` (it's inferred from the
-  `dashboard_id`), this may be different from the `collection_id`. Normally if you don't specify a `collection_id`
-  that means we put it in the root collection (`nil` id), but if you specify a `dashboard_id` we'll need to look it
-  up."
-  [body]
-  (let [[_ collection-id :as specified-collection-id?] (find body :collection_id)
-        ;; unlike collection_id, `dashboard_id=null` isn't different than not specifying it at all.
-        dashboard-id (:dashboard_id body)
-        dashboard-id->collection-id #(t2/select-one-fn :collection_id [:model/Dashboard :collection_id] %)]
-    (cond
-      ;; you specified both - they must match
-      (and specified-collection-id? dashboard-id)
-      (let [dashboard-collection-id (dashboard-id->collection-id dashboard-id)]
-        (api/check-400 (= collection-id dashboard-collection-id)
-                       (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
-                            dashboard-collection-id
-                            collection-id))
-        collection-id)
-
-      specified-collection-id? collection-id
-
-      dashboard-id (dashboard-id->collection-id dashboard-id)
-
-      :else nil)))
-
 (def ^:private CardCreateSchema
   "Schema for creating a new card"
   [:map
@@ -562,20 +519,8 @@
                  (cond-> (some? collection-id)
                    ;; Strict check to prevent a malformed query (coerced to `{}` by [[lib-be/normalize-query]])
                    ;; from being written into the DB (#74615).
-                   (update :collection_id #(eid-translation/->id-or-404 :collection %))))
-        query (:dataset_query card)]
-    (check-if-card-can-be-saved query card-type)
-    ;; check that we have permissions to run the query that we're trying to save.
-    ;; Strip :query-permissions/perms first -- it is populated internally by the QP
-    ;; middleware, so any value already on the incoming query is dropped here.
-    (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
-    ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
-    ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
-    (api/create-check :model/Card {:collection_id (actual-collection-id card)})
-    (try
-      (lib/check-card-overwrite ::no-id query)
-      (catch clojure.lang.ExceptionInfo e
-        (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))
+                   (update :collection_id #(eid-translation/->id-or-404 :collection %))))]
+    (queries/check-allowed-to-create-card! card card-type)
     (let [created-card (queries/create-card! card @api/*current-user*)]
       (when (and (some? (:result_metadata card))
                  (= (name (:type created-card)) "question"))
@@ -602,38 +547,6 @@
         (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
-
-(mu/defn- check-allowed-to-modify-query
-  "If the query is being modified, check that we have data permissions to run the query."
-  [card-before-updates :- ::queries.schema/card
-   card-updates        :- ::queries.schema/card]
-  (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-    (query-perms/check-run-permissions-for-query (dissoc (:dataset_query card-updates) :query-permissions/perms))))
-
-(defn- check-allowed-to-change-embedding
-  "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be
-  enabled."
-  [card-before-updates card-updates]
-  (when (or (api/column-will-change? :enable_embedding card-before-updates card-updates)
-            (api/column-will-change? :embedding_type card-before-updates card-updates)
-            (api/column-will-change? :embedding_params card-before-updates card-updates))
-    (embedding.validation/check-embedding-enabled)
-    (api/check-superuser)))
-
-(mu/defn- check-allowed-to-move
-  [card-before-update :- ::queries.schema/card
-   card-updates       :- ::queries.schema/card]
-  (when (api/column-will-change? :dashboard_id card-before-update card-updates)
-    (check-allowed-to-remove-from-existing-dashboards card-before-update))
-  (collection/check-allowed-to-change-collection card-before-update card-updates))
-
-(mu/defn- check-update-result-metadata-data-perms
-  [card-before-updates :- ::queries.schema/card
-   card-updates        :- ::queries.schema/card]
-  (when (api/column-will-change? :result_metadata card-before-updates card-updates)
-    (let [database-id (some :database_id [card-before-updates card-updates])
-          result-metadata (:result_metadata card-updates)]
-      (query-perms/check-result-metadata-data-perms database-id result-metadata))))
 
 ;;; TODO -- merge this into `:metabase.queries.schema/card`
 (def ^:private CardUpdateSchema
@@ -665,7 +578,7 @@
   [card-before-update card-updates]
   (let [collection-id (when (or (contains? card-updates :collection_id)
                                 (contains? card-updates :dashboard_id))
-                        (actual-collection-id card-updates))]
+                        (queries/actual-collection-id card-updates))]
     (cond-> card-updates
       (or (api/column-will-change? :dashboard_id card-before-update card-updates)
           (api/column-will-change? :collection_id card-before-update card-updates))
@@ -680,12 +593,9 @@
   ;; from being written into the DB (#74615).
   (let [card-updates (m/update-existing card-updates :dataset_query normalize-dataset-query-or-400)
         query        (:dataset_query card-updates)]
-    (check-if-card-can-be-saved query card-type)
+    (queries/check-card-can-be-saved! query card-type)
     (when-some [query (:dataset_query card-updates)]
-      (try
-        (lib/check-card-overwrite id query)
-        (catch clojure.lang.ExceptionInfo e
-          (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400))))))
+      (queries/check-no-save-cycle! id query))
     (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
                                              [:moderation_reviews :moderator_details])
           card-updates           (maybe-populate-collection-id
@@ -694,12 +604,7 @@
           is-model-after-update? (if (nil? card-type)
                                    (queries/model? card-before-update)
                                    (queries/model? card-updates))]
-      ;; Do various permissions checks
-      (doseq [f [check-update-result-metadata-data-perms
-                 check-allowed-to-move
-                 check-allowed-to-modify-query
-                 check-allowed-to-change-embedding]]
-        (f card-before-update card-updates))
+      (queries/check-allowed-to-update-card! card-before-update card-updates)
       (let [{:keys [metadata metadata-future]} (queries/maybe-async-result-metadata
                                                 {:original-query    (:dataset_query card-before-update)
                                                  :query             query

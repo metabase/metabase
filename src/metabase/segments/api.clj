@@ -32,15 +32,11 @@
                          table-id))))
                  (tru "Segment definition must specify a source table.")))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/"
-  "Create a new `Segment`. The Segment's table is derived from its `definition`."
-  [_route-params
-   _query-params
-   {:keys [name description definition], :as body} :- [:map
-                                                       [:name        ms/NonBlankString]
-                                                       [:definition  ms/Map]
-                                                       [:description {:optional true} [:maybe :string]]]]
+(defn create-segment!
+  "Create-check and insert a new Segment whose table is derived from its `definition`; publishes
+  `:event/segment-create` and returns the hydrated Segment. The shared domain create path, so
+  the create-check runs wherever a Segment is authored."
+  [{:keys [name description definition], :as body}]
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (let [table-id (definition-table-id definition)]
     (api/create-check :model/Segment (assoc body :table_id table-id))
@@ -53,6 +49,17 @@
                                                           :definition  definition)))]
       (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
       (t2/hydrate segment :creator))))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/"
+  "Create a new `Segment`. The Segment's table is derived from its `definition`."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:name        ms/NonBlankString]
+            [:definition  ms/Map]
+            [:description {:optional true} [:maybe :string]]]]
+  (create-segment! body))
 
 (mu/defn- hydrated-segment [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one :model/Segment :id id))
@@ -81,9 +88,10 @@
     (filter mi/can-read? segments)
     (t2/hydrate segments :creator :definition_description)))
 
-(defn- write-check-and-update-segment!
+(defn write-check-and-update-segment!
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate
-  event and returns updated/hydrated Segment."
+  event and returns updated/hydrated Segment. The shared domain update path, so the write-check runs
+  wherever a Segment is edited."
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check :model/Segment id)
         clean-body (u/select-keys-when body
