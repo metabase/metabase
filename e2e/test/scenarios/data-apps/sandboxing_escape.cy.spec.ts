@@ -100,4 +100,22 @@ describe("scenarios > data apps > sandbox escape (security)", () => {
     runEscape("escape-react-srcdoc");
     assertVictimNotCreated();
   });
+
+  it("does not escape by replacing the SDK bundle global", () => {
+    setUpEscape();
+    runEscape("escape-replace-bundle");
+    assertVictimNotCreated();
+  });
+
+  it("does not escape by mutating the SDK bundle object", () => {
+    setUpEscape();
+    runEscape("escape-mutate-bundle");
+    assertVictimNotCreated();
+  });
+
+  it("does not escape by smuggling an element through mediated props", () => {
+    setUpEscape();
+    runEscape("escape-props-smuggle");
+    assertVictimNotCreated();
+  });
 });

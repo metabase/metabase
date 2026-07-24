@@ -40,6 +40,69 @@ async function attemptPrivilegedCall(
   return `escaped:${res.status}`;
 }
 
+type SdkMountBridge = (
+  container: HTMLElement,
+  ComponentProvider: unknown,
+  providerProps: unknown,
+  Component: unknown,
+  componentProps: unknown,
+) => { unmount: () => void };
+
+const getMountBridge = (): SdkMountBridge | undefined =>
+  (window as unknown as { __MB_DATA_APP_SDK_MOUNT__?: SdkMountBridge })
+    .__MB_DATA_APP_SDK_MOUNT__;
+
+const getSdkBundle = ():
+  | (Record<string, unknown> & { ComponentProvider?: unknown })
+  | undefined =>
+  (
+    window as unknown as {
+      METABASE_EMBEDDING_SDK_BUNDLE?: Record<string, unknown>;
+    }
+  ).METABASE_EMBEDDING_SDK_BUNDLE;
+
+// The real provider props (auth config + redux store), read from the endowed
+// props store — the same shape the SDK facade feeds the mediated ComponentProvider,
+// so the trusted component actually renders (and reaches the smuggled children)
+// instead of crashing on a missing authConfig.
+const getProviderProps = (): Record<string, unknown> => {
+  const store = (
+    window as unknown as {
+      METABASE_PROVIDER_PROPS_STORE?: {
+        getState?: () => {
+          props?: Record<string, unknown>;
+          internalProps?: { reduxStore?: unknown };
+        };
+      };
+    }
+  ).METABASE_PROVIDER_PROPS_STORE;
+  const state = store?.getState?.();
+
+  return {
+    ...(state?.props ?? {}),
+    reduxStore: state?.internalProps?.reduxStore,
+  };
+};
+
+/**
+ * A React element object hand-crafted *without* the sandbox's gated
+ * `createElement`, using the realm-shared `react.element` symbol. If host React
+ * ever rendered it, it would create a real (non-sandboxed) iframe; its ref hands
+ * that iframe's window back so the caller can attempt the privileged call.
+ */
+const makeEscapeIframeElement = (onWindow: (w: Window | null) => void) => ({
+  $$typeof: Symbol.for("react.element"),
+  type: "iframe",
+  key: null,
+  ref: (element: HTMLIFrameElement | null) => {
+    if (element) {
+      onWindow(element.contentWindow);
+    }
+  },
+  props: { style: { display: "none" } },
+  _owner: null,
+});
+
 /**
  * When the app runs on guest React, rendering a blocked tag makes the guest
  * `createElement` throw inside the reconciler. This boundary catches that so the
@@ -91,6 +154,86 @@ export default function App() {
     }
   };
 
+  // Mount an attacker-chosen component through the host mediated-mount bridge.
+  // `<div>` is not a blocked tag, so the container itself is created normally.
+  const mountViaBridge = (
+    component: unknown,
+    componentProps: Record<string, unknown>,
+  ) => {
+    const bridge = getMountBridge();
+    const bundle = getSdkBundle();
+    if (!bridge || !bundle) {
+      throw new Error("no mount bridge / SDK bundle");
+    }
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    bridge(
+      container,
+      bundle.ComponentProvider,
+      getProviderProps(),
+      component,
+      componentProps,
+    );
+  };
+
+  // Vector 1: swap the whole endowed bundle for an evil one whose component
+  // renders an escape iframe host-side.
+  const runReplaceBundle = () => {
+    const evilBundle = {
+      ComponentProvider: (props: { children?: ReactNode }) =>
+        props.children ?? null,
+      StaticQuestion: () => makeEscapeIframeElement(escapeVia),
+    };
+    try {
+      (
+        window as unknown as { METABASE_EMBEDDING_SDK_BUNDLE?: unknown }
+      ).METABASE_EMBEDDING_SDK_BUNDLE = evilBundle;
+
+      if (getSdkBundle() !== (evilBundle as unknown)) {
+        setResult("blocked:bundle-global-is-read-only");
+        return;
+      }
+      mountViaBridge(evilBundle.StaticQuestion, {});
+    } catch (err) {
+      setResult(`blocked:${describeError(err)}`);
+    }
+  };
+
+  // Vector 2: add an evil component to the bundle object, then mount it by name.
+  const runMutateBundle = () => {
+    try {
+      const bundle = getSdkBundle();
+      if (!bundle) {
+        setResult("blocked:no-bundle");
+        return;
+      }
+      const evilComponent = () => makeEscapeIframeElement(escapeVia);
+      (bundle as Record<string, unknown>).EvilComponent = evilComponent;
+      mountViaBridge((bundle as Record<string, unknown>).EvilComponent, {});
+    } catch (err) {
+      setResult(`blocked:${describeError(err)}`);
+    }
+  };
+
+  // Vector 3: mount a real, trusted SDK component (passes the bridge's identity
+  // check) but smuggle the escape iframe through props as a hand-crafted element.
+  const runPropsSmuggle = () => {
+    try {
+      const bundle = getSdkBundle();
+
+      if (!bundle) {
+        setResult("blocked:no-bundle");
+        return;
+      }
+
+      mountViaBridge(bundle.InteractiveQuestion, {
+        children: makeEscapeIframeElement(escapeVia),
+      });
+    } catch (err) {
+      setResult(`blocked:${describeError(err)}`);
+    }
+  };
+
   return (
     <div data-testid="data-app-escape" style={{ padding: 24 }}>
       <h1>Escape probe</h1>
@@ -117,6 +260,15 @@ export default function App() {
           onClick={() => setReactMode("react-iframe-srcdoc")}
         >
           React iframe srcdoc
+        </button>
+        <button data-testid="escape-replace-bundle" onClick={runReplaceBundle}>
+          Replace SDK bundle global
+        </button>
+        <button data-testid="escape-mutate-bundle" onClick={runMutateBundle}>
+          Mutate SDK bundle object
+        </button>
+        <button data-testid="escape-props-smuggle" onClick={runPropsSmuggle}>
+          Smuggle element via props
         </button>
       </div>
 
