@@ -153,6 +153,13 @@
            clojure.lang.ExceptionInfo #"Unsupported provider \"openrouter\" for metabase managed AI"
            (metabot.settings/llm-metabot-provider! "metabase/openrouter/anthropic/claude-haiku-4-5"))))))
 
+(deftest validate-metabot-provider-rejects-direct-only-provider-as-managed-zai-test
+  (testing "rejects zai under metabase/ prefix (not in the managed allow-list)"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Unsupported provider \"zai\" for metabase managed AI"
+           (metabot.settings/llm-metabot-provider! "metabase/zai/glm-5.2"))))))
+
 (deftest validate-metabot-provider-rejects-unsupported-metabase-managed-model-test
   (testing "rejects unsupported model for an allowed metabase managed provider"
     (mt/with-premium-features #{:metabase-ai-managed}
@@ -182,6 +189,11 @@
   (testing "accepts valid direct openrouter provider string"
     (mt/with-temporary-setting-values [llm-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
       (is (= "openrouter/anthropic/claude-haiku-4-5" (metabot.settings/llm-metabot-provider))))))
+
+(deftest validate-metabot-provider-accepts-valid-direct-zai-test
+  (testing "accepts valid direct zai provider string"
+    (mt/with-temporary-setting-values [llm-metabot-provider "zai/glm-5.2"]
+      (is (= "zai/glm-5.2" (metabot.settings/llm-metabot-provider))))))
 
 (deftest validate-metabot-provider-accepts-allowed-metabase-managed-provider-and-model-test
   (testing "accepts allow-listed metabase managed provider/model"
@@ -236,6 +248,14 @@
                                        llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
                                        llm-bedrock-secret-access-key nil]
       (is (false? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest configured-provider-credentials-zai-test
+  (testing "returns the api-key map when a zai key is configured, nil when blank or missing"
+    (mt/with-temporary-setting-values [llm-zai-api-key "zai-key.test"]
+      (is (= {:api-key "zai-key.test"}
+             (metabot.settings/configured-provider-credentials "zai"))))
+    (mt/with-temporary-setting-values [llm-zai-api-key nil]
+      (is (nil? (metabot.settings/configured-provider-credentials "zai"))))))
 
 (deftest configured-provider-credentials-bedrock-fully-configured-test
   (testing "returns the AWS credentials map when bedrock is fully configured"
