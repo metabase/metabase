@@ -352,7 +352,27 @@ describe("dataAppSandboxDevPlugin", () => {
         );
 
         expect(mockedBuild).toHaveBeenCalledTimes(1);
-        expect(server.ws.send).not.toHaveBeenCalled();
+        expect(server.ws.send).not.toHaveBeenCalledWith({
+          type: "custom",
+          event: DATA_APP_REBUILT_EVENT,
+        });
+      });
+
+      it("nudges clients to re-read the feed when data_app.yaml changes", async () => {
+        const { server } = await setup();
+
+        await server.watcher.emit(
+          "all",
+          "change",
+          path.join("/app", "data_app.yaml"),
+        );
+
+        // The manifest is served from the feed, so the toolbar's Manifest tab
+        // only refreshes when told to re-read — otherwise it lags the edit.
+        expect(server.ws.send).toHaveBeenCalledWith({
+          type: "custom",
+          event: DATA_APP_DIAGNOSTICS_CHANGED_EVENT,
+        });
       });
     });
 
