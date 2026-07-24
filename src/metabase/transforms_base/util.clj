@@ -367,7 +367,11 @@
                                "Please add a table variable to the query and update the checkpoint field."))]
         (throw (ex-info msg {:transform-message msg}))))
     (when (and (incremental-target? transform)
-               (not checkpoint-filter-field-id))
+               (not checkpoint-filter-field-id)
+               ;; source-less python transforms manage their own cursor via :sync_state,
+               ;; so no checkpoint field is required
+               (not (and (python-transform? transform)
+                         (empty? (get-in transform [:source :source-tables])))))
       (let [msg (i18n/tru (str "Incremental transform is enabled but no checkpoint field is selected. "
                                "Please select a checkpoint field in the transform settings."))]
         (throw (ex-info msg {:transform-message msg}))))
