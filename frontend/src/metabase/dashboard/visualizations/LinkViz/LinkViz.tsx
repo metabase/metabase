@@ -12,10 +12,12 @@ import { modelToUrl } from "metabase/urls";
 import { getUrlTarget } from "metabase/visualizations/lib/open-url";
 import type {
   Dashboard,
+  DashboardCard,
   LinkCardSettings,
   SearchModel,
   UnrestrictedLinkEntity,
   VirtualDashboardCard,
+  VisualizationSettings,
 } from "metabase-types/api";
 import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
 
@@ -46,14 +48,14 @@ const MODELS_TO_SEARCH: SearchModel[] = [
 ];
 
 export interface LinkVizProps {
-  dashcard: VirtualDashboardCard;
-  dashboard: Dashboard;
+  dashcard?: DashboardCard;
+  dashboard?: Dashboard;
   isEditing: boolean;
   onUpdateVisualizationSettings: (
     newSettings: Partial<VirtualDashboardCard["visualization_settings"]>,
   ) => void;
-  settings: VirtualDashboardCard["visualization_settings"] & {
-    link: LinkCardSettings;
+  settings: VisualizationSettings & {
+    link?: LinkCardSettings;
   };
 }
 
@@ -65,9 +67,7 @@ function LinkVizInner({
   settings,
 }: LinkVizProps) {
   const parameterValues = useSelector(getParameterValues);
-  const {
-    link: { url, entity },
-  } = settings;
+  const { url, entity } = settings.link ?? {};
 
   const isNew = !!dashcard?.justAdded;
   const [autoFocus, setAutoFocus] = useState(isNew);
@@ -103,13 +103,15 @@ function LinkVizInner({
 
   const interpolatedUrl = useMemo(
     () =>
-      fillParametersInText({
-        dashcard,
-        dashboard,
-        parameterValues,
-        text: url ?? "",
-        urlEncode: true,
-      }),
+      dashboard != null
+        ? fillParametersInText({
+            dashcard,
+            dashboard,
+            parameterValues,
+            text: url ?? "",
+            urlEncode: true,
+          })
+        : (url ?? ""),
     [dashboard, dashcard, parameterValues, url],
   );
 

@@ -28,13 +28,9 @@ const storeInitialState = createMockState({
   settings,
   entities: createMockEntitiesState({}),
 });
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(SmartScalar);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(ComboChart);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(LineChart);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
 
 // Unjustified type cast. FIXME

@@ -151,9 +151,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     className,
     data,
     series,
-    height,
+    height: heightProp,
     settings,
-    width,
+    width: widthProp,
     isPivoted = false,
     question,
     clicked,
@@ -181,6 +181,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const width = widthProp ?? 0;
+  const height = heightProp ?? 0;
   const tableTheme = theme?.other?.table;
   const dispatch = useDispatch();
   const isClientSideSortingEnabled = isDashboard;

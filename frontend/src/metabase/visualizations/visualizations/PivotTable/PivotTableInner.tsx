@@ -63,8 +63,8 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     {
       data,
       settings,
-      width,
-      height,
+      width: widthProp,
+      height: heightProp,
       onUpdateVisualizationSettings,
       isDashboard,
       fontFamily,
@@ -73,6 +73,8 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     },
     ref,
   ) {
+    const width = widthProp ?? 0;
+    const height = heightProp ?? 0;
     const [viewPortWidth, setViewPortWidth] = useState(width);
     const [shouldOverflow, setShouldOverflow] = useState(false);
     const columnWidthSettings = settings["pivot_table.column_widths"];

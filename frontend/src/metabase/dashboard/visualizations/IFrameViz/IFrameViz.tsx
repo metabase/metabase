@@ -14,9 +14,10 @@ import {
   getAllowedIframeAttributes,
   isAllowedIframeUrl,
 } from "metabase/visualizations/lib/iframe";
+import type { VisualizationGridSize } from "metabase/visualizations/types";
 import type {
   Dashboard,
-  VirtualDashboardCard,
+  DashboardCard,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -29,23 +30,20 @@ import {
 import { settings } from "./IFrameVizSettings";
 
 export interface IFrameVizProps {
-  dashcard: VirtualDashboardCard;
-  dashboard: Dashboard;
+  dashcard?: DashboardCard;
+  dashboard?: Dashboard;
   isEditing: boolean;
-  isPreviewing: boolean;
+  isPreviewing?: boolean;
   onUpdateVisualizationSettings: (newSettings: VisualizationSettings) => void;
   settings: VisualizationSettings;
   isEditingParameter?: boolean;
-  width: number;
-  height: number;
-  gridSize: {
-    width: number;
-    height: number;
-  };
-  onTogglePreviewing: () => void;
+  width?: number | null;
+  height?: number | null;
+  gridSize?: VisualizationGridSize;
+  onTogglePreviewing?: () => void;
 }
 
-export function IFrameViz({
+function IFrameVizInner({
   dashcard,
   dashboard,
   isEditing,
@@ -76,13 +74,15 @@ export function IFrameViz({
 
   const interpolatedSrc = useMemo(
     () =>
-      fillParametersInText({
-        dashcard,
-        dashboard,
-        parameterValues,
-        text: allowedIframeAttributes?.src ?? "",
-        urlEncode: true,
-      }),
+      dashboard != null
+        ? fillParametersInText({
+            dashcard,
+            dashboard,
+            parameterValues,
+            text: allowedIframeAttributes?.src ?? "",
+            urlEncode: true,
+          })
+        : (allowedIframeAttributes?.src ?? ""),
     [dashcard, dashboard, parameterValues, allowedIframeAttributes?.src],
   );
 
@@ -143,8 +143,8 @@ export function IFrameViz({
       {hasAllowedIFrameUrl ? (
         <iframe
           data-testid="iframe-visualization"
-          width={width}
-          height={height}
+          width={width ?? undefined}
+          height={height ?? undefined}
           frameBorder={0}
           sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts"
           referrerPolicy="strict-origin-when-cross-origin"
@@ -211,4 +211,4 @@ function GenericError() {
   );
 }
 
-Object.assign(IFrameViz, settings);
+export const IFrameViz = Object.assign(IFrameVizInner, settings);

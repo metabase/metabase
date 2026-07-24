@@ -118,7 +118,9 @@ function createMockActionDashboardCard(
   });
 }
 
-type SetupOpts = Partial<ActionProps>;
+type SetupOpts = Omit<Partial<ActionProps>, "dashcard"> & {
+  dashcard?: ActionDashboardCard;
+};
 
 async function setup({
   database = DATABASE,
@@ -147,10 +149,7 @@ async function setup({
       dashboard={dashboard}
       dashcard={dashcard}
       settings={settings}
-      parameterValues={parameterValues}
       isSettings={false}
-      isEditingDashcard={false}
-      dispatch={jest.fn()}
       {...props}
     />,
     {

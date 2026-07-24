@@ -233,7 +233,11 @@ export function PinMap(props: PinMapProps) {
   const pinType = settings["map.pin_type"];
   const MapComponent = pinType ? MAP_COMPONENTS_BY_TYPE[pinType] : undefined;
 
-  const mapProps = { ...props };
+  const mapProps = {
+    ...props,
+    width: props.width ?? 0,
+    height: props.height ?? 0,
+  };
   mapProps.series[0].data.rows = rows;
 
   // For static embedding we hide the button

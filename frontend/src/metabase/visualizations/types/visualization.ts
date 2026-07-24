@@ -178,8 +178,10 @@ export interface VisualizationProps {
   queryBuilderMode?: QueryBuilderMode;
 
   gridSize?: VisualizationGridSize;
-  width: number;
-  height: number;
+  // Provided by ExplicitSize measurement, which is async and can stay unmeasured
+  // for hidden containers, so components must tolerate null/undefined.
+  width?: number | null;
+  height?: number | null;
 
   visualizationIsClickable: (clickObject: ClickObject | null) => boolean;
   getExtraDataForClick?: (
@@ -628,12 +630,8 @@ export type VisualizationGridSize = {
   height: number;
 };
 
-// TODO: add component property for the react component instead of the intersection
 export type Visualization = ComponentType<
-  Omit<VisualizationProps, "width" | "height"> & {
-    width?: number | null;
-    height?: number | null;
-  } & VisualizationPassThroughProps
+  VisualizationProps & VisualizationPassThroughProps
 > &
   VisualizationDefinition;
 

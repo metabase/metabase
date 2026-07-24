@@ -5,12 +5,12 @@ import { siteLocale, withInstanceLanguage } from "metabase/utils/i18n";
 import { isTextTagTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Dashboard,
+  DashboardCard,
   ParameterValuesMap,
-  VirtualDashboardCard,
 } from "metabase-types/api";
 
 type FillParametersInTextProps = {
-  dashcard?: VirtualDashboardCard;
+  dashcard?: DashboardCard;
   dashboard: Dashboard;
   parameterValues: ParameterValuesMap;
   text: string;

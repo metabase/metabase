@@ -18,7 +18,7 @@ import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/Car
 import { SANKEY_CHART_DEFINITION } from "./definition";
 import { useChartEvents } from "./events";
 
-export const SankeyChart = ({
+const SankeyChartComponent = ({
   rawSeries,
   settings,
   fontFamily,
@@ -42,7 +42,13 @@ export const SankeyChart = ({
   );
   const layout = useMemo(
     () =>
-      getSankeyLayout(chartModel, settings, width, height, renderingContext),
+      getSankeyLayout(
+        chartModel,
+        settings,
+        width ?? 0,
+        height ?? 0,
+        renderingContext,
+      ),
     [chartModel, settings, width, height, renderingContext],
   );
   const option = useMemo(
@@ -85,4 +91,7 @@ export const SankeyChart = ({
   );
 };
 
-Object.assign(SankeyChart, SANKEY_CHART_DEFINITION);
+export const SankeyChart = Object.assign(
+  SankeyChartComponent,
+  SANKEY_CHART_DEFINITION,
+);

@@ -4,8 +4,11 @@ import type { VisualizationProps } from "../../types";
 
 import { AREA_CHART_DEFINITION } from "./definition";
 
-Object.assign(AreaChart, AREA_CHART_DEFINITION);
-
-export function AreaChart(props: VisualizationProps) {
+function AreaChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
 }
+
+export const AreaChart = Object.assign(
+  AreaChartComponent,
+  AREA_CHART_DEFINITION,
+);

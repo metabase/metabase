@@ -65,7 +65,7 @@ function CartesianChartInner(props: VisualizationProps) {
 
   const settings = useMemo(
     () =>
-      autoAdjustSettings
+      autoAdjustSettings && outerWidth != null && outerHeight != null
         ? getDashboardAdjustedSettings?.({
             settings: originalSettings,
             height: outerHeight,
@@ -185,7 +185,7 @@ function CartesianChartInner(props: VisualizationProps) {
           onSelectTitle={
             canSelectTitle ? () => onOpenQuestion(card.id) : undefined
           }
-          width={outerWidth}
+          width={outerWidth ?? undefined}
           titleMenuItems={titleMenuItems}
         />
       )}
@@ -202,8 +202,8 @@ function CartesianChartInner(props: VisualizationProps) {
           canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined
         }
         onHoverChange={onHoverChange}
-        width={outerWidth}
-        height={outerHeight}
+        width={outerWidth ?? undefined}
+        height={outerHeight ?? undefined}
       >
         <ResponsiveEChartsRenderer
           ref={containerRef}

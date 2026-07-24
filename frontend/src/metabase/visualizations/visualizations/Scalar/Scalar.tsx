@@ -54,13 +54,16 @@ function ScalarComponent(
     settings,
     visualizationIsClickable,
     onVisualizationClick,
-    height,
-    width,
+    height: heightProp,
+    width: widthProp,
     gridSize,
     totalNumGridCols,
     fontFamily,
     rawSeries,
   } = props;
+
+  const width = widthProp ?? 0;
+  const height = heightProp ?? 0;
 
   if (rawSeries.length > 1) {
     return (
