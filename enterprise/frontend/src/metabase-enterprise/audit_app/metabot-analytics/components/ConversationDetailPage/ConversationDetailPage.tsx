@@ -46,6 +46,7 @@ import { useGetMetabotAnalyticsConversationQuery } from "../../api";
 import type { ConversationFeedback, GeneratedQuery } from "../../types";
 
 import { ConversationHeader } from "./ConversationHeader";
+import { ForkBoundary } from "./ForkBoundary";
 
 export function ConversationDetailPage({ params }: WithRouterProps) {
   const convoId = params.convoId;
@@ -106,6 +107,14 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
       )
     : undefined;
 
+  const forkBoundaryMessage = fork_boundary_message_id
+    ? messages.findLast(
+        (message) =>
+          "externalId" in message &&
+          message.externalId === fork_boundary_message_id,
+      )
+    : undefined;
+
   return (
     <MetabotAdminLayout>
       <Stack gap="2.5rem">
@@ -154,8 +163,11 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
               debug
               readonly
               conversationId={convoId}
-              forkBoundaryMessageId={fork_boundary_message_id}
-              forkBoundaryHref={forkBoundaryHref}
+              renderAfterMessage={(message) =>
+                message === forkBoundaryMessage ? (
+                  <ForkBoundary href={forkBoundaryHref} />
+                ) : null
+              }
             />
           </Card>
         </Stack>
