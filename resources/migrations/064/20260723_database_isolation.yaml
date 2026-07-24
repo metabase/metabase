@@ -1,0 +1,94 @@
+## Standing database isolations: one row per warehouse database that has a
+## provisioned isolation schema + confined principal (GHY-4188). The row id is
+## the isolation handle consumers hold; credentials are encrypted at rest.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-23T10:00:00
+      author: galdre
+      comment: Create database_isolation table
+      changes:
+        - createTable:
+            tableName: database_isolation
+            remarks: Provisioned isolation schema + confined principal per warehouse database
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID; the isolation handle consumers hold
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: The isolated warehouse database
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: idx_unique_database_isolation_database_id
+              - column:
+                  name: schema
+                  type: varchar(254)
+                  remarks: The isolation schema/dataset name on the warehouse
+                  constraints:
+                    nullable: true
+              - column:
+                  name: database_details
+                  type: ${text.type}
+                  remarks: Encrypted connection details of the confined isolation principal
+                  constraints:
+                    nullable: true
+              - column:
+                  name: status
+                  type: varchar(254)
+                  remarks: Provisioning lifecycle state of the isolation
+                  defaultValue: provisioning
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status_details
+                  type: ${text.type}
+                  remarks: Encrypted details for the current status, e.g. the provisioning failure message
+                  constraints:
+                    nullable: true
+              - column:
+                  name: read_namespaces
+                  type: ${text.type}
+                  remarks: JSON array of warehouse namespaces the principal was granted read access on
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_used_at
+                  type: ${timestamp_type}
+                  remarks: Last time an execution entered this isolation; read by the stale sweep
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the row was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When the row was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.2026-07-23T10:00:01
+      author: galdre
+      comment: FK database_isolation.database_id -> metabase_database.id (cascade on delete)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: database_isolation
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_database_isolation_database_id
+            deleteCascade: true

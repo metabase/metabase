@@ -3152,6 +3152,16 @@
                     :model/Field
                     :model/Table}}
 
+  enterprise/database-isolation
+  {:team "Graphy"
+   :api  #{metabase-enterprise.database-isolation.core
+           metabase-enterprise.database-isolation.provisioner}
+   :uses #{api
+           driver
+           models
+           util}
+   :model-imports #{:model/Database}}
+
   enterprise/database-replication
   {:team "Cloud"
    :api  #{metabase-enterprise.database-replication.api
@@ -3787,7 +3797,8 @@
            transforms
            transforms-base
            upload
-           util}
+           util
+           enterprise/database-isolation}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -3823,6 +3834,7 @@
            sql-tools
            util
            workspaces
+           enterprise/database-isolation
            enterprise/remote-sync}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database :model/Table :model/User}}}

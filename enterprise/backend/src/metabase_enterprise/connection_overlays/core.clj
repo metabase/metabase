@@ -13,9 +13,12 @@
   (:write-data-details database))
 
 (defenterprise database-admin-details
-  "Returns the `:admin-details` for a database when the `:workspaces` feature is available.
+  "Returns the `:admin-details` for a database. An ungated EE capability: the admin overlay is
+  required for warehouse provisioning (workspaces, database isolation) regardless of which
+  premium feature drives it, so it carries no feature check of its own — consumers gate at
+  their own entry points.
 
   `database` is a [[lib/metadata]] database instance. To pass a Toucan2 database instance, use [[driver.u/ensure-lib-database]]."
-  :feature :workspaces
+  :feature :none
   [database]
   (:admin-details database))

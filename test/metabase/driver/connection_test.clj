@@ -153,16 +153,17 @@
                       (driver.conn/effective-details database))))))))))
 
 (deftest effective-details-admin-without-feature-test
-  (testing "without :workspaces feature, with-admin-connection falls back to main connection details"
-    (mt/with-premium-features #{}
-      (let [details       {:host "read-host" :port 5432}
-            admin-details {:host "admin-host" :port 5432 :user "root"}
-            database      {:lib/type      :metadata/database
-                           :details       details
-                           :admin-details admin-details}]
-        (driver.conn/with-admin-connection
-          (is (=? details
-                  (driver.conn/effective-details database))))))))
+  (testing "the admin overlay is an ungated EE capability — it resolves without any premium feature"
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{}
+       (let [details       {:host "read-host" :port 5432}
+             admin-details {:host "admin-host" :port 5432 :user "root"}
+             database      {:lib/type      :metadata/database
+                            :details       details
+                            :admin-details admin-details}]
+         (driver.conn/with-admin-connection
+           (is (=? admin-details
+                   (driver.conn/effective-details database)))))))))
 
 (deftest connection-pool-type-admin-test
   (mt/when-ee-evailable
