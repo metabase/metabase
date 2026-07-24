@@ -9,10 +9,12 @@ import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Button, Center, Flex, Icon } from "metabase/ui";
 import type * as Urls from "metabase/urls";
+import type { Sorting } from "metabase/utils/sorting";
 import {
   useListStaleFindingsQuery,
   useRunContentDiagnosticsScanMutation,
 } from "metabase-enterprise/api";
+import type { ContentDiagnosticsSortColumn } from "metabase-types/api";
 
 import { ContentDiagnosticsSidebar } from "./ContentDiagnosticsSidebar";
 import { ContentDiagnosticsTable } from "./ContentDiagnosticsTable";
@@ -28,6 +30,7 @@ import {
   getEntityTypesParam,
   getFilterOptions,
   getFilterParams,
+  getSortOptions,
 } from "./utils";
 
 type ContentDiagnosticsProps = {
@@ -61,6 +64,8 @@ export function ContentDiagnostics({
       query,
       "entity-types": getEntityTypesParam(filterOptions.entityTypes),
       "include-personal-collections": filterOptions.includePersonalCollections,
+      "sort-column": params.sortColumn,
+      "sort-direction": params.sortDirection,
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
     },
@@ -116,6 +121,20 @@ export function ContentDiagnostics({
     onParamsChange({ ...params, page });
   };
 
+  const handleSortOptionsChange = (
+    sortOptions: Sorting<ContentDiagnosticsSortColumn> | undefined,
+  ) => {
+    onParamsChange(
+      {
+        ...params,
+        sortColumn: sortOptions?.column,
+        sortDirection: sortOptions?.direction,
+        page: undefined,
+      },
+      { withSetLastUsedParams: true },
+    );
+  };
+
   useLayoutEffect(() => {
     if (selectedFindingId != null && selectedFinding == null) {
       setSelectedFindingId(undefined);
@@ -152,8 +171,12 @@ export function ContentDiagnostics({
         ) : (
           <ContentDiagnosticsTable
             findings={findings}
+            page={page}
+            sortOptions={getSortOptions(params)}
+            isFetching={isFetching}
             isLoading={isLoading}
             onSelect={(finding) => setSelectedFindingId(finding.id)}
+            onSortOptionsChange={handleSortOptionsChange}
           />
         )}
         {!isLoading && error == null && (

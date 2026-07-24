@@ -4,6 +4,7 @@
 
 import type { CollectionId } from "./collection";
 import type { PaginationRequest } from "./pagination";
+import type { SortDirection } from "./sorting";
 import type { UserId } from "./user";
 
 export const CONTENT_DIAGNOSTICS_FINDING_TYPES = ["stale"] as const;
@@ -30,12 +31,27 @@ export const CONTENT_DIAGNOSTICS_FILTER_TYPES = [
 export type ContentDiagnosticsFilterType =
   (typeof CONTENT_DIAGNOSTICS_FILTER_TYPES)[number];
 
-// Persisted (last-used) filter state, stored per finding-type tab via the
-// `content_diagnostics` user-key-value namespace. Snake_case to match the
+// Server-sortable stale-list columns (denormalized at scan time). A subset of
+// the shown table columns — Collection is hydrated live and has no sort column.
+// Values match the backend `stale-sort-column->field` param keys.
+export const CONTENT_DIAGNOSTICS_SORT_COLUMNS = [
+  "name",
+  "entity-type",
+  "created-by",
+  "created-at",
+  "last-active-at",
+] as const;
+export type ContentDiagnosticsSortColumn =
+  (typeof CONTENT_DIAGNOSTICS_SORT_COLUMNS)[number];
+
+// Persisted (last-used) filter + sort state, stored per finding-type tab via
+// the `content_diagnostics` user-key-value namespace. Snake_case to match the
 // stored JSON shape.
 export type ContentDiagnosticsUserParams = {
   entity_types?: ContentDiagnosticsFilterType[];
   include_personal_collections?: boolean;
+  sort_column?: ContentDiagnosticsSortColumn;
+  sort_direction?: SortDirection;
 };
 
 // A finding's `owner`/`creator`. A Metabase account carries `id`/`name`; an
@@ -96,6 +112,9 @@ export type ListStaleFindingsRequest = {
   // When false (default), findings whose entity lives in a personal collection
   // are excluded. Results are always permission-filtered for the current user.
   "include-personal-collections"?: boolean;
+  // Server-side sort. Omit for the backend default (detected-at asc).
+  "sort-column"?: ContentDiagnosticsSortColumn;
+  "sort-direction"?: SortDirection;
 } & PaginationRequest;
 
 export type ListStaleFindingsResponse = {

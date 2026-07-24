@@ -10,8 +10,23 @@ import {
   getEntityTypeLabel,
   getEntityTypesParam,
   getFilterTypeLabel,
+  getSortOptions,
   getUserName,
 } from "./utils";
+
+describe("getSortOptions", () => {
+  it("returns undefined when either sort field is missing", () => {
+    expect(getSortOptions({})).toBeUndefined();
+    expect(getSortOptions({ sortColumn: "name" })).toBeUndefined();
+    expect(getSortOptions({ sortDirection: "asc" })).toBeUndefined();
+  });
+
+  it("maps params to a { column, direction } sorting", () => {
+    expect(
+      getSortOptions({ sortColumn: "last-active-at", sortDirection: "desc" }),
+    ).toEqual({ column: "last-active-at", direction: "desc" });
+  });
+});
 
 describe("content-diagnostics utils", () => {
   describe("getEntityIcon", () => {

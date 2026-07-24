@@ -2,7 +2,9 @@ import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import {
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
+  CONTENT_DIAGNOSTICS_SORT_COLUMNS,
   type ContentDiagnosticsUserParams,
+  SORT_DIRECTIONS,
 } from "metabase-types/api";
 
 export function parseUrlParams(
@@ -13,6 +15,8 @@ export function parseUrlParams(
     query,
     "entity-types": entityTypes,
     "include-personal-collections": includePersonalCollections,
+    "sort-column": sortColumn,
+    "sort-direction": sortDirection,
   } = location.query;
 
   return {
@@ -24,6 +28,11 @@ export function parseUrlParams(
     includePersonalCollections: Urls.parseBooleanParam(
       includePersonalCollections,
     ),
+    sortColumn: Urls.parseEnumParam(
+      sortColumn,
+      CONTENT_DIAGNOSTICS_SORT_COLUMNS,
+    ),
+    sortDirection: Urls.parseEnumParam(sortDirection, SORT_DIRECTIONS),
   };
 }
 
@@ -35,6 +44,8 @@ export function getUserParams(
   return {
     entity_types: params.entityTypes,
     include_personal_collections: params.includePersonalCollections,
+    sort_column: params.sortColumn,
+    sort_direction: params.sortDirection,
   };
 }
 
@@ -49,6 +60,8 @@ export function parseUserParams(
   return {
     entityTypes: params.entity_types,
     includePersonalCollections: params.include_personal_collections,
+    sortColumn: params.sort_column,
+    sortDirection: params.sort_direction,
   };
 }
 

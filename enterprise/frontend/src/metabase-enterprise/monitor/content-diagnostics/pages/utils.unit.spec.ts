@@ -57,4 +57,23 @@ describe("parseUrlParams", () => {
         .entityTypes,
     ).toEqual(["card"]);
   });
+
+  it("parses sort-column and sort-direction", () => {
+    const params = parseUrlParams(
+      createLocation({
+        "sort-column": "last-active-at",
+        "sort-direction": "desc",
+      }),
+    );
+    expect(params.sortColumn).toBe("last-active-at");
+    expect(params.sortDirection).toBe("desc");
+  });
+
+  it("drops sort values that are not allowed", () => {
+    const params = parseUrlParams(
+      createLocation({ "sort-column": "collection", "sort-direction": "up" }),
+    );
+    expect(params.sortColumn).toBeUndefined();
+    expect(params.sortDirection).toBeUndefined();
+  });
 });
