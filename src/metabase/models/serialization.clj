@@ -163,8 +163,8 @@
 
 (defn primary-key
   "The application-db primary-key column of serdes model `model-name` — usually `:id`, but the
-  *UserSettings mirror models use their parent's FK. Resolves the model first so its
-  `t2/primary-keys` method is registered."
+  `*UserSettings` mirror models use their parent's FK. Resolves the model first so its
+  [[t2/primary-keys]] method is registered."
   [model-name]
   ;; the let is load-bearing: resolving the model may load its namespace, whose `defmethod` replaces
   ;; the `t2/primary-keys` multifn var — inlining the resolve as an argument would capture the stale
