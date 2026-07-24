@@ -515,6 +515,14 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
   (format "returned %d rows, more available — narrow with `parameters`, or raise `row_limit` (max %d)"
           returned max-row-limit))
 
+(def ^:private scalar-parameter-value-schema
+  "A parameter value is a scalar or a list of scalars, never a nested structure — so a value can
+   never smuggle an MBQL fragment (a field ref, a clause) into the filter it feeds. Defense in
+   depth with [[check-parameter-value!]], which additionally checks each scalar against the
+   parameter's declared type; this schema stops the structural cases before the tool runs."
+  (let [scalar [:or :string number? :boolean]]
+    [:or scalar [:sequential scalar]]))
+
 (def ^:private run-saved-question-args-schema
   [:map {:closed true}
    [:id [:or
@@ -527,8 +535,8 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
                [:maybe [:string {:min 1 :description "The parameter's id (or slug) from the card's parameter list."}]]]
               [:slug {:optional true}
                [:maybe [:string {:min 1 :description "The parameter's slug — equivalent to passing it as id."}]]]
-              [:value {:description "The parameter value; an array for multi-value parameters. The parameter's stored target and type always apply."}
-               :any]]]]]
+              [:value {:description "The parameter value: a scalar, or an array of scalars for multi-value parameters (an equality field filter takes an array even for a single value). The parameter's stored target and type always apply."}
+               scalar-parameter-value-schema]]]]]
    [:row_limit {:optional true}
     [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
 

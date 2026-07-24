@@ -267,7 +267,33 @@
                 (str "should reject " (pr-str v)))))))
     (testing "one bad element rejects the whole multi-value array, naming that element"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid value \"abc\""
-                            (check {:type :number :slug "n"} [1 "abc"]))))))
+                            (check {:type :number :slug "n"} [1 "abc"]))))
+    (testing "a structured value can never satisfy any family — no MBQL fragment reaches a filter"
+      ;; The second injection surface after target: the value position. Even for the permissive
+      ;; string family, a keyword, map, or nested-vector element is rejected, so a value cannot
+      ;; smuggle a field ref or clause into the filter it feeds.
+      (doseq [v [:keyword
+                 {:x 1}
+                 [["field" 1 nil]]
+                 [:field 1 nil]]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid value"
+                              (check {:type :string/= :slug "p"} v))
+            (str "should reject structured value " (pr-str v)))))))
+
+(deftest ^:parallel structured-value-rejected-at-schema-test
+  (testing "a non-scalar parameter value is rejected by the args schema, not swallowed as an internal error"
+    ;; Defense in depth with `check-parameter-value!`: the tightened `:value` schema stops a
+    ;; structured value (map, nested vector) at the boundary, so it can never reach the filter.
+    ;; A boundary rejection is a caller-facing "Invalid arguments" teaching error — the opposite
+    ;; of the opaque "Internal error" a value that slipped through to the QP would produce.
+    (mt/with-temp [:model/Card {card-id :id} (variable-card "rsq structured value")]
+      (mt/with-current-user (mt/user->id :rasta)
+        (doseq [bad-value [{:x 1} [["field" 1 nil]]]]
+          (let [message (tool-error (call-run-saved-question
+                                     {:id card-id :parameters [{:id "cat" :value bad-value}]}))]
+            (is (str/includes? message "Invalid arguments")
+                (str "should reject structured value " (pr-str bad-value)))
+            (is (not= "Internal error" message))))))))
 
 ;; not ^:parallel: mutates the permission graph for the temp collection.
 (deftest not-found-and-unreadable-collapse-test
