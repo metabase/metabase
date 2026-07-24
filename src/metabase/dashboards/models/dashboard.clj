@@ -133,10 +133,6 @@
       migrate-parameters-list
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled))
 
-(defmethod serdes/hash-fields :model/Dashboard
-  [_dashboard]
-  [:name (serdes/hydrated-hash :collection) :created_at])
-
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:default :tabs]

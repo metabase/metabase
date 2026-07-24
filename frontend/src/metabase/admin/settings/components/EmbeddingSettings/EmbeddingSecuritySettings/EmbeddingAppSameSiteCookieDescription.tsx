@@ -1,11 +1,10 @@
 import { jt, t } from "ttag";
 
-import { Alert } from "metabase/common/components/Alert";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
-import { Box, Center, Stack, Text } from "metabase/ui";
+import { Alert, Box, Center, Stack, Text } from "metabase/ui";
 import { isSameOrigin } from "metabase/utils/dom";
 
 import S from "./EmbeddingAppSameSiteCookieDescription.module.css";
@@ -41,13 +40,15 @@ export const EmbeddingAppSameSiteCookieDescription = () => {
 function AuthorizedOriginsNote() {
   return (
     <Box data-testid="authorized-origins-note" w="22rem">
-      <Alert className={S.SameSiteAlert} variant="warning" hasBorder>
+      <Alert size="compact" className={S.SameSiteAlert} color="warning">
         <Center>
-          <Text>{jt`You should probably change this setting to ${(
-            <Text key="inner" component="span" fw="bold">
-              {t`None`}
-            </Text>
-          )}.`}</Text>
+          <Text component="span" ta="center">
+            {jt`You should probably change this setting to ${(
+              <Text key="inner" component="span" fw="bold" c="text-secondary">
+                {t`None`}
+              </Text>
+            )}.`}
+          </Text>
         </Center>
       </Alert>
     </Box>

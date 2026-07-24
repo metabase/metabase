@@ -1048,6 +1048,7 @@
   health-inspector
   {:team "Querying Platform"
    :api #{metabase.health-inspector.api
+          metabase.health-inspector.core
           metabase.health-inspector.init}
    :uses #{api
            lib
@@ -1303,7 +1304,8 @@
               metabase.metabot.core
               metabase.metabot.init
               metabase.metabot.self
-              metabase.metabot.settings}
+              metabase.metabot.settings
+              metabase.metabot.tools.entity-details}
    :friends #{agent-api
               enterprise/metabot
               enterprise/metabot-analytics
@@ -1323,6 +1325,7 @@
               documents
               driver
               entity-retrieval
+              events
               interestingness
               legacy-mbql
               lib
@@ -1335,6 +1338,8 @@
               permissions
               premium-features
               pulse
+              queries
+              query-permissions
               query-processor
               request
               search
@@ -1360,6 +1365,7 @@
                     :model/DashboardCard
                     :model/DashboardTab
                     :model/Database
+                    :model/Document
                     :model/Field
                     :model/Glossary
                     :model/Measure
@@ -2011,6 +2017,7 @@
            metabase.search.core
            metabase.search.engine
            metabase.search.in-place.scoring
+           metabase.search.index-health
            metabase.search.ingestion
            metabase.search.init
            metabase.search.scoring
@@ -2025,6 +2032,7 @@
            collections
            config
            events
+           health-inspector
            lib
            lib-be
            models
@@ -2442,6 +2450,7 @@
    :friends #{models
               enterprise/transforms-python}
    :model-exports #{:model/Transform
+                    :model/TransformDagRun
                     :model/TransformJob
                     :model/TransformJobRun
                     :model/TransformJobTransformTag
@@ -2499,11 +2508,34 @@
            transforms-base
            util}
    :model-imports #{:model/Transform
+                    :model/TransformDagRun
                     :model/TransformJob
                     :model/TransformJobRun
                     :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}}
+
+  typed-schemas
+  {:team "Embedding"
+   :api  #{metabase.typed-schemas.api}
+   :uses #{actions
+           api
+           collections
+           lib
+           lib-be
+           metabot
+           metrics
+           models
+           system
+           types
+           util}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Field
+                    :model/Measure
+                    :model/Table}}
 
   types
   {:team "Querying Platform"
@@ -2687,6 +2719,7 @@
            warehouses}
    :model-exports #{:model/Dimension
                     :model/Field
+                    :model/FieldUserSettings
                     :model/FieldValues
                     :model/Table}
    :model-imports #{:model/Card
@@ -2991,20 +3024,6 @@
                     :model/QueryCache
                     :model/QueryExecution}}
 
-  enterprise/checker
-  {:team "Graphy"
-   ;; todo: add ability to prevent usage (transitive even) of app db
-   :api  #{}
-   :uses #{classloader
-           lib
-           models
-           plugins
-           query-processor
-           sql-tools
-           util
-           enterprise/dependencies}
-   :model-imports #{:model/Database}}
-
   enterprise/cloud-add-ons
   {:team "Cloud"
    :api  #{metabase-enterprise.cloud-add-ons.api}
@@ -3071,6 +3090,17 @@
   {:team "Graphy"
    :api  #{}
    :uses #{premium-features}}
+
+  enterprise/data-apps
+  {:team "Gadget"
+   :api  #{metabase-enterprise.data-apps.api
+           metabase-enterprise.data-apps.init
+           metabase-enterprise.data-apps.sync}
+   :uses #{api
+           models
+           premium-features
+           settings
+           util}}
 
   enterprise/data-complexity-score
   {:team "Metabot"
@@ -3149,8 +3179,7 @@
 
   enterprise/dependencies
   {:team "Graphy"
-   :api  #{metabase-enterprise.dependencies.analysis
-           metabase-enterprise.dependencies.api
+   :api  #{metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init
            metabase-enterprise.dependencies.models.dependency}
@@ -3233,7 +3262,9 @@
    :uses #{analytics-interface
            collections
            entity-retrieval
+           health-inspector
            premium-features
+           search
            task
            util
            enterprise/semantic-search}
@@ -3420,6 +3451,7 @@
            task
            task-history
            util
+           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms-python}
    :model-exports #{:model/RemoteSyncTask}
@@ -3428,6 +3460,7 @@
                     :model/Dashboard
                     :model/Document
                     :model/Field
+                    :model/FieldUserSettings
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/PythonLibrary
@@ -3512,8 +3545,7 @@
            settings
            system
            users
-           util
-           enterprise/serialization}
+           util}
    :model-imports #{:model/ApiKey
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
@@ -3554,6 +3586,7 @@
            metabase-enterprise.semantic-search.core
            metabase-enterprise.semantic-search.db.datasource
            metabase-enterprise.semantic-search.embedding
+           metabase-enterprise.semantic-search.embedding-health
            metabase-enterprise.semantic-search.init}
    :uses #{activity-feed
            analytics
@@ -3564,6 +3597,7 @@
            config
            connection-pool
            events
+           health-inspector
            lib-be
            llm
            metabot
@@ -3581,12 +3615,7 @@
 
   enterprise/serialization
   {:team "Graphy"
-   :api  #{metabase-enterprise.serialization.api
-           metabase-enterprise.serialization.cmd
-           metabase-enterprise.serialization.core
-           metabase-enterprise.serialization.init
-           metabase-enterprise.serialization.schema
-           metabase-enterprise.serialization.v2.backfill-ids}
+   :api  #{metabase-enterprise.serialization.api metabase-enterprise.serialization.cmd metabase-enterprise.serialization.core}
    :friends #{enterprise/memoize-monitor}
    :uses #{analytics
            api
@@ -3602,9 +3631,7 @@
            search
            server
            setup
-           sync
-           util
-           warehouse-schema}
+           util}
    :model-imports :bypass}
 
   enterprise/snippet-collections
@@ -3765,12 +3792,10 @@
            premium-features
            query-processor
            sample-data
-           server
            settings
            sql-tools
            util
-           workspaces
-           enterprise/serialization}
+           workspaces}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
                     :model/Table

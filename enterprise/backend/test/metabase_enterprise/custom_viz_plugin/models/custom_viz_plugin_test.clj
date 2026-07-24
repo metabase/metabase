@@ -86,11 +86,6 @@
       (is (= [{:label "custom_viz_plugins"} {:label "my-viz"}]
              (serdes/storage-path entity nil))))))
 
-(deftest hash-fields-test
-  (testing "hash-fields is [:identifier]"
-    (is (= [:identifier]
-           (serdes/hash-fields :model/CustomVizPlugin)))))
-
 (deftest load-find-local-test
   (testing "load-find-local finds plugin by identifier"
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "find-local"

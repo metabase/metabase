@@ -1,8 +1,85 @@
+.root {
+  --alert-control-size: 24px;
+
+  padding: var(--mantine-spacing-lg) var(--mantine-spacing-md)
+    var(--mantine-spacing-lg) var(--mantine-spacing-lg);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
 .wrapper {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) var(--alert-control-size);
+  grid-template-areas: "icon body close";
+  align-items: start;
+}
+
+.icon {
+  grid-area: icon;
+  width: auto;
+  height: var(--alert-control-size);
+  margin: 0;
+  margin-inline-end: 12px;
   align-items: center;
+  color: var(--alert-color);
+}
+
+.body {
+  grid-area: body;
+  gap: var(--mantine-spacing-sm);
+  margin-inline-end: var(--mantine-spacing-md);
 }
 
 .title {
+  padding: 1px 0; /* with lh 22px keeps the 24px title height */
+  font-size: 1rem;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--alert-title-color);
+}
+
+.message {
+  font-size: var(--mantine-font-size-md);
+  line-height: 20px;
+  color: var(--mb-color-text-secondary);
+}
+
+.closeButton {
+  --cb-icon-size: 12px !important; /* Alert hardcodes inline iconSize=16; only !important overrides it */
+
+  grid-area: close;
+  width: var(--alert-control-size);
+  height: var(--alert-control-size);
+  border-radius: var(--mantine-radius-xs);
   color: var(--mb-color-text-primary);
-  line-height: 1rem;
+}
+
+.root[data-size="compact"] {
+  padding: var(--mantine-spacing-md) 12px var(--mantine-spacing-md)
+    var(--mantine-spacing-md);
+
+  & .body {
+    gap: var(--mantine-spacing-xs);
+  }
+
+  & .title {
+    padding: 3px 0; /* with lh 18px keeps the 24px title height */
+    font-size: var(--mantine-font-size-md);
+    line-height: 18px;
+  }
+
+  & .message {
+    font-size: var(--mantine-font-size-sm);
+    line-height: 16px;
+  }
+}
+
+.root[data-variant="default"][data-color="default"] {
+  box-shadow: var(--mantine-shadow-xs);
+}
+
+.root[data-variant="default"],
+.root[data-variant="light"]:not([data-color="default"]),
+[data-mantine-color-scheme="dark"] .root {
+  border: 0.5px solid var(--alert-border-color);
 }

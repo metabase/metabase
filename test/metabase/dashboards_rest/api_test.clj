@@ -4146,7 +4146,7 @@
                         {:keys [action-id model-id]} {:type                   :implicit
                                                       :visualization_settings {:fields {"name" {:id     "name"
                                                                                                 :hidden true}}}}]
-        (testing "Supplying a hidden parameter value should fail gracefully for GET /api/dashboard/:id/dashcard/:id/execute"
+        (testing "Supplying a hidden parameter value should fail gracefully for POST /api/dashboard/:id/dashcard/:id/execute"
           (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                          :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
                                                                  :action_id    action-id
@@ -4312,16 +4312,16 @@
                          :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
                                                                  :card_id model-id
                                                                  :action_id action-id}]
-            (let [path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
+            (let [path (format "dashboard/%s/dashcard/%s/execute/values" dashboard-id dashcard-id)]
               (testing "It succeeds with appropriate parameters"
                 (is (partial= {:id 1 :name "African"}
-                              (mt/user-http-request :crowberto :get 200
-                                                    path :parameters (json/encode {"id" 1})))))
+                              (mt/user-http-request :crowberto :post 200
+                                                    path {:parameters {"id" 1}}))))
               (testing "Missing pk parameter should fail gracefully"
                 (is (partial= "Missing primary key parameter: \"id\""
                               (mt/user-http-request
-                               :crowberto :get 400
-                               path :parameters (json/encode {"name" 1}))))))))))))
+                               :crowberto :post 400
+                               path {:parameters {"name" 1}})))))))))))
 
 (deftest dashcard-implicit-action-only-expose-and-allow-model-fields
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -4336,9 +4336,10 @@
             (testing "Dashcard should only have id and name params"
               (is (partial= {:dashcards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))
-            (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)
+                  values-path  (format "dashboard/%s/dashcard/%s/execute/values" dashboard-id dashcard-id)]
               (testing "Prefetch should limit to id and name"
-                (let [values (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1}))]
+                (let [values (mt/user-http-request :crowberto :post 200 values-path {:parameters {"id" 1}})]
                   (is (= {:id 1 :name "Red Medicine"} values))))
               (testing "Update should only allow name"
                 (is (= {:rows-updated 1}
@@ -4366,10 +4367,11 @@
             (testing "Dashcard should only have id and name params"
               (is (partial= {:dashcards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))
-            (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)
+                  values-path  (format "dashboard/%s/dashcard/%s/execute/values" dashboard-id dashcard-id)]
               (testing "Prefetch should only return non-hidden fields"
                 (is (= {:id 1 :name "Red Medicine"} ; price is hidden
-                       (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1})))))
+                       (mt/user-http-request :crowberto :post 200 values-path {:parameters {"id" 1}}))))
               (testing "Update should only allow name"
                 (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
@@ -5291,6 +5293,28 @@
     (testing "The foreign dashboard-internal card was not persisted onto the other dashboard"
       (is (not (t2/exists? :model/DashboardCard :dashboard_id other-dash-id :card_id dq-card-id)))
       (is (not (t2/exists? :model/DashboardCardSeries :card_id dq-card-id))))))
+
+(deftest ^:parallel pre-existing-foreign-internal-card-does-not-block-dashboard-save-test
+  ;; UXW-4870: dashboards that already reference a question internal to another dashboard (a state that can
+  ;; pre-date the UXW-4731 guard) must remain savable. Only *newly introduced* foreign internal cards are
+  ;; rejected; card ids already associated with the dashboard are grandfathered — including moving one to a
+  ;; different dashcard (delete + re-add) in a single save.
+  (mt/with-temp [:model/Dashboard     {source-dash-id :id}  {}
+                 :model/Card          {dq-card-id :id}      {:dashboard_id source-dash-id}
+                 :model/Dashboard     {other-dash-id :id}   {}
+                 :model/Card          {normal-card-id :id}  {}
+                 :model/DashboardCard {dashcard-id :id}     {:card_id dq-card-id :dashboard_id other-dash-id}]
+    (testing "An unrelated edit (resize the dashcard, add a separate normal card) succeeds"
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" other-dash-id)
+                            {:dashcards [{:id dashcard-id :size_x 4 :size_y 4 :row 0 :col 0 :card_id dq-card-id}
+                                         {:id -1 :size_x 1 :size_y 1 :row 4 :col 0 :card_id normal-card-id}]})
+      (is (= 4 (t2/select-one-fn :size_x :model/DashboardCard :id dashcard-id)))
+      (is (t2/exists? :model/DashboardCard :dashboard_id other-dash-id :card_id normal-card-id)))
+    (testing "Deleting the dashcard and re-adding its grandfathered card on a new dashcard in one save succeeds"
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" other-dash-id)
+                            {:dashcards [{:id -1 :size_x 2 :size_y 2 :row 1 :col 1 :card_id dq-card-id}]})
+      (is (not (t2/exists? :model/DashboardCard :id dashcard-id)))
+      (is (t2/exists? :model/DashboardCard :dashboard_id other-dash-id :card_id dq-card-id)))))
 
 (deftest dashboard-questions-are-archived-with-the-dashboard
   (testing "It gets archived with the dashboard"

@@ -41,7 +41,7 @@ function setup({ runs = [] }: SetupOpts = {}) {
 
   const path = Urls.transformRunList();
 
-  renderWithProviders(<Route path={path} component={RunListPage} />, {
+  renderWithProviders(<Route path={path} element={<RunListPage />} />, {
     withRouter: true,
     initialRoute: path,
   });

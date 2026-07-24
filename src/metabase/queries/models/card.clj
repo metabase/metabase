@@ -852,6 +852,19 @@
         (card.metadata/populate-result-metadata changes))
       (m/update-existing :result_metadata #(some->> % (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
 
+(defn- clear-metabot-origin
+  "A card edited after being saved from a Metabot conversation no longer materializes
+  the chart it was saved from, so sever the link back to its origin — the conversation
+  then stops showing that chart as saved. Only content edits count (query, display, viz
+  settings); renames, moves, and archiving keep the link. The Metabot save paths stamp
+  these columns with raw table updates, so stamping never re-enters this hook."
+  [card changes]
+  (if (and (some (partial contains? changes)
+                 [:dataset_query :display :visualization_settings])
+           (or (:metabot_conversation_id card) (:metabot_chart_id card)))
+    (assoc card :metabot_conversation_id nil :metabot_chart_id nil)
+    card))
+
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
   (let [changes (some-> card t2/changes queries.schema/normalize-card)
@@ -866,6 +879,7 @@
         ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
         ;; Only allow it to nil out a stale table_id when the query itself is changing.
         (populate-query-fields (contains? changes :dataset_query))
+        (clear-metabot-origin changes)
         (pre-update changes)
         maybe-populate-initially-published-at)))
 
@@ -887,10 +901,6 @@
                                                                         :from   [:notification_card]
                                                                         :where  [:= :card_id id]}]))]
     (t2/delete! :model/Notification :id [:in notification-ids])))
-
-(defmethod serdes/hash-fields :model/Card
-  [_card]
-  [:name (serdes/hydrated-hash :collection) :created_at])
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
   [_model & {:keys [table-alias]}]
@@ -1397,7 +1407,7 @@
           ;; cache invalidation is instance-specific
           :cache_invalidated_at
           ;; those are instance-specific analytic columns
-          :view_count :last_used_at :initially_published_at
+          :view_count :initially_published_at
           ;; this is data migration column
           :dataset_query_metrics_v2_migration_backup
           ;; this column is not used anymore
@@ -1409,9 +1419,13 @@
           ;; always derivable from dataset_query by populate-query-fields; nil when not derivable
           :query_type
           ;; always re-derived from dataset_query by populate-query-fields on import
-          :table_id :source_card_id]
+          :table_id :source_card_id
+          ;; instance-specific Metabot origin (which conversation/chart the card was saved from)
+          :metabot_conversation_id :metabot_chart_id]
    :transform
    {:created_at             (serdes/date)
+    ;; exported so imported cards don't look freshly used to stale-content detection (GDGT-217)
+    :last_used_at           (serdes/date)
     ;; database_id is usually derivable from dataset_query, but must be kept when the query
     ;; is empty (e.g. a native card with no query yet) and database_id is the only reference.
     :database_id            (let [{:keys [import]} (serdes/fk :model/Database)]
@@ -1437,6 +1451,10 @@
               :archived_directly   false
               :collection_preview  true
               :enable_embedding    false}})
+
+(defmethod serdes/load-update! "Card" [_ ingested local]
+  ;; when the card already exists, its own usage history wins over the source's
+  (serdes/default-load-update! "Card" (dissoc ingested :last_used_at) local))
 
 (defn- card-deps
   "The serdes dependencies of a Card as `:serdes/meta` paths. `allow-int-ids?` selects raw-appdb vs serialized ref semantics for

@@ -1,16 +1,16 @@
 import { memo } from "react";
 import { t } from "ttag";
 
-import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import {
-  PaneHeader,
-  type PaneHeaderTab,
-  PaneHeaderTabs,
-} from "metabase/common/data-studio/components/PaneHeader";
+  type MonitorHeaderTab,
+  MonitorHeaderTabs,
+} from "metabase/monitor/components/MonitorHeaderTabs";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
-  const tabs: PaneHeaderTab[] = [
+  const tabs: MonitorHeaderTab[] = [
     {
       label: t`Broken dependencies`,
       to: Urls.brokenDependencies(),
@@ -24,12 +24,9 @@ export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
   ];
 
   return (
-    <PaneHeader
-      breadcrumbs={
-        <DataStudioBreadcrumbs>{t`Dependency diagnostics`}</DataStudioBreadcrumbs>
-      }
-      tabs={<PaneHeaderTabs tabs={tabs} />}
-      py={0}
-    />
+    <Stack gap="lg">
+      <MonitorHeaderTitle>{t`Dependency diagnostics`}</MonitorHeaderTitle>
+      <MonitorHeaderTabs tabs={tabs} />
+    </Stack>
   );
 });

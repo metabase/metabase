@@ -475,7 +475,6 @@
     (when (or force-reset? (not (exists? (active-table))))
       (reset-index!))))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temp-index-table
   "Create a temporary index table for the duration of the body. Uses the existing index if we're already mocking."
   [& body]
