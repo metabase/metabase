@@ -435,6 +435,13 @@
   [query]
   (-> query
       (update-in [:middleware :js-int-to-string?] (fnil identity true))
+      ;; Force the row-cap middleware on. The /v1/execute and /v2/query payloads are
+      ;; client-supplied opaque maps, so a caller could otherwise smuggle
+      ;; `:middleware {:disable-max-results? true}` into the query and bypass the row cap
+      ;; entirely (see `query-processor.middleware.limit/determine-query-max-rows`). We never
+      ;; want callers disabling the cap, so we overwrite it unconditionally rather than
+      ;; defaulting it.
+      (assoc-in [:middleware :disable-max-results?] false)
       qp/userland-query-with-default-constraints
       (update :info merge {:executed-by api/*current-user-id*
                            :context     :agent})))
@@ -652,7 +659,9 @@
   - On success: {:data {:cols [...] :rows [...]} :row_count N :status :completed :running_time M}
   - On failure: {:status :failed :error \"message\" ...}
 
-  Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated)."
+  Results are capped at a single page of `page-size` (200) rows; this endpoint does not
+  paginate and the cap cannot be overridden by the query payload. Use /v2/query when you
+  need to fetch more rows via continuation tokens."
   {:scope metabot/agent-query-execute
    :tool  {:name "execute_query"
            :description (str "Execute a previously constructed query and return raw results with column metadata, "

@@ -361,6 +361,21 @@
                      (str (mt/user-http-request :rasta :post 400 "agent/v1/execute"
                                                 {:query (u/encode-base64 (json/encode q))}))))))))
 
+(deftest execute-query-row-cap-cannot-be-disabled-by-payload-test
+  (testing "A crafted base64 payload cannot disable the 200-row cap via :middleware.
+            The /v1/execute payload is client-supplied and opaque, so without this guard a
+            caller could smuggle `:disable-max-results? true` into the query and stream the
+            whole table. `prepare-agent-query` forces the flag off."
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-query)})
+          tampered       (-> construct-resp :query u/decode-base64 json/decode+kw
+                             (assoc-in [:middleware :disable-max-results?] true))
+          base64-query   (u/encode-base64 (json/encode tampered))
+          execute-resp   (mt/user-http-request :rasta :post 202 "agent/v1/execute"
+                                               {:query base64-query})]
+      (is (=? {:status "completed" :row_count 200}
+              execute-resp)))))
+
 (deftest construct-metric-query-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                      :type          :metric
