@@ -369,3 +369,26 @@
         (let [loaded (t2/select-one :model/DashboardCard :id (:id dc))]
           (is (= [{:sourceId (str "card:" (:id src))}]
                  (get-in loaded [:visualization_settings :visualization :columnValuesMapping :COLUMN_1]))))))))
+
+(deftest ^:parallel virtual-card-settings-test
+  (testing "GHY-4147: virtual-card-settings covers every virtual display type the dashboard_write
+            tool's add ops produce, all sharing the same virtual_card envelope"
+    (testing "the string-text arity kept for existing callers (x-rays, agent-api)"
+      (is (=? {:virtual_card {:name nil :display "text" :visualization_settings {} :archived false}
+               :text "Hello"}
+              (dashboard-card/virtual-card-settings "text" "Hello"))))
+    (testing "text"
+      (is (=? {:virtual_card {:display "text"} :text "Hello"}
+              (dashboard-card/virtual-card-settings "text" {:text "Hello"}))))
+    (testing "heading gets a transparent background, matching the frontend default"
+      (is (=? {:virtual_card {:display "heading"} :text "Revenue" :dashcard.background false}
+              (dashboard-card/virtual-card-settings "heading" {:text "Revenue"}))))
+    (testing "link with a url"
+      (is (=? {:virtual_card {:display "link"} :link {:url "https://example.com"}}
+              (dashboard-card/virtual-card-settings "link" {:link {:url "https://example.com"}}))))
+    (testing "link with an entity reference"
+      (is (=? {:virtual_card {:display "link"} :link {:entity {:model "dashboard" :id 12}}}
+              (dashboard-card/virtual-card-settings "link" {:link {:entity {:model "dashboard" :id 12}}}))))
+    (testing "iframe"
+      (is (=? {:virtual_card {:display "iframe"} :iframe "https://example.com/embed"}
+              (dashboard-card/virtual-card-settings "iframe" {:iframe "https://example.com/embed"}))))))
