@@ -1661,12 +1661,16 @@
                                                             (assoc :private-key-value priv-key-val)
                                                             (assoc :use-password false)
                                                             (assoc :dbname nil))}]
-              (is (= #{{:name "continent",    :schema "PUBLIC", :description nil}
-                       {:name "municipality", :schema "PUBLIC", :description nil}
-                       {:name "region",       :schema "PUBLIC", :description nil}
-                       {:name "country",      :schema "PUBLIC", :description nil}
-                       {:name "airport",      :schema "PUBLIC", :description nil}}
-                     (:tables (driver/describe-database :snowflake db)))))))))))
+              ;; we would ideally check = here, but there are some other completely
+              ;; unrelated tests which create tables in the PUBLIC schema and
+              ;; fail to clean them up correctly, manifesting as failure here
+              (is (set/subset?
+                   #{{:name "continent",    :schema "PUBLIC", :description nil}
+                     {:name "municipality", :schema "PUBLIC", :description nil}
+                     {:name "region",       :schema "PUBLIC", :description nil}
+                     {:name "country",      :schema "PUBLIC", :description nil}
+                     {:name "airport",      :schema "PUBLIC", :description nil}}
+                   (:tables (driver/describe-database :snowflake db)))))))))))
 
 ;;; ------------------------------------------------ Fake Sync Tests ------------------------------------------------
 ;; Tests to validate that fake sync produces correct metadata for Snowflake.
