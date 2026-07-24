@@ -157,7 +157,6 @@
   returned in an MBQL query. e.g.
 
     [\"_id\" \"date\" \"user_id\" \"venue_id\"]"
-
   [:and
    [:sequential ::projection]
    [:fn
