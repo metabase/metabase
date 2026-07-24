@@ -1,7 +1,6 @@
 import { useField } from "formik";
 import type { HTMLAttributes } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
 import { FormField } from "metabase/common/components/FormField";
@@ -63,8 +62,7 @@ const FormGroupsWidget = ({
     return null;
   }
 
-  const defaultGroup = _.find(
-    groups,
+  const defaultGroup = groups.find(
     external ? PLUGIN_TENANTS.isExternalUsersGroup : isDefaultGroup,
   );
 
@@ -72,23 +70,18 @@ const FormGroupsWidget = ({
     formValue ??
     (defaultGroup ? [{ id: defaultGroup.id, is_group_manager: false }] : []);
 
-  // Preserve each group's manager flag across selection changes.
-  const managerFlagByGroupId = new Map(
-    memberships.map((membership) => [
-      membership.id,
-      membership.is_group_manager ?? false,
-    ]),
-  );
-
   const handleChange = (groupIds: GroupId[]) => {
     const ids = defaultGroup
       ? Array.from(new Set([defaultGroup.id, ...groupIds]))
       : groupIds;
 
+    // Preserve each group's manager flag across selection changes.
     setValue(
       ids.map((id) => ({
         id,
-        is_group_manager: managerFlagByGroupId.get(id) ?? false,
+        is_group_manager:
+          memberships.find((membership) => membership.id === id)
+            ?.is_group_manager ?? false,
       })),
     );
   };

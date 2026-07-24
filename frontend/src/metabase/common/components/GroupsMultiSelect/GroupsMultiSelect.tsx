@@ -215,6 +215,7 @@ export const GroupsMultiSelect = ({
     <Combobox
       store={combobox}
       floatingStrategy="fixed"
+      classNames={{ groupLabel: S.groupLabel }}
       onOptionSubmit={handleOptionSubmit}
     >
       <Combobox.DropdownTarget>
