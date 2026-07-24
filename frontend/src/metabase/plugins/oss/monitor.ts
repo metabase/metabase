@@ -1,11 +1,15 @@
 import type { ComponentType, ReactNode } from "react";
 
 type MonitorPlugin = {
+  isContentDiagnosticsEnabled: boolean;
+  getContentDiagnosticsRoutes: () => ReactNode;
   isDependencyDiagnosticsEnabled: boolean;
   getDependencyDiagnosticsRoutes: () => ReactNode;
 };
 
 const getDefaultPluginMonitor = (): MonitorPlugin => ({
+  isContentDiagnosticsEnabled: false,
+  getContentDiagnosticsRoutes: () => null,
   isDependencyDiagnosticsEnabled: false,
   getDependencyDiagnosticsRoutes: () => null,
 });

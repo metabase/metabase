@@ -3,6 +3,8 @@ import { createElement } from "react";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import { canAccessMonitorDiagnostics } from "metabase/common/monitor/selectors";
+import { ContentDiagnosticsSectionLayout } from "metabase/monitor/content-diagnostics/ContentDiagnosticsSectionLayout";
+import { ContentDiagnosticsUpsellPage } from "metabase/monitor/content-diagnostics/ContentDiagnosticsUpsellPage";
 import { DependencyDiagnosticsSectionLayout } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout";
 import { DependencyDiagnosticsUpsellPage } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage";
 import { JobInfoApp } from "metabase/monitor/tools/components/JobInfoApp";
@@ -61,6 +63,19 @@ export function getMonitorRoutes(
             <Route path="dependency-diagnostics">
               <Route index element={<DependencyDiagnosticsUpsellPage />} />
               <Route path="*" element={<DependencyDiagnosticsUpsellPage />} />
+            </Route>
+          )}
+          {PLUGIN_MONITOR.isContentDiagnosticsEnabled ? (
+            <Route
+              path="content-diagnostics"
+              element={<ContentDiagnosticsSectionLayout />}
+            >
+              {PLUGIN_MONITOR.getContentDiagnosticsRoutes()}
+            </Route>
+          ) : (
+            <Route path="content-diagnostics">
+              <Route index element={<ContentDiagnosticsUpsellPage />} />
+              <Route path="*" element={<ContentDiagnosticsUpsellPage />} />
             </Route>
           )}
         </Route>

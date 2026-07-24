@@ -33,6 +33,10 @@ function getActiveSection(pathname: string): MonitorSection | null {
       () => "diagnostics",
     )
     .with(
+      P.string.startsWith(Urls.contentDiagnostics()),
+      () => "content-diagnostics",
+    )
+    .with(
       P.string.startsWith(Urls.monitorErroringQuestions()),
       () => "erroring-questions",
     )
@@ -88,6 +92,16 @@ export function MonitorLayout() {
               showLabel={isNavbarOpened}
               isGated={!hasDependenciesFeature}
               onClick={() => trackMonitorSectionClicked("diagnostics")}
+            />
+          )}
+          {canAccessDiagnostics && (
+            <AreaTab
+              label={t`Content diagnostics`}
+              icon="document"
+              to={Urls.contentDiagnostics()}
+              isSelected={activeSection === "content-diagnostics"}
+              showLabel={isNavbarOpened}
+              onClick={() => trackMonitorSectionClicked("content-diagnostics")}
             />
           )}
           {canAccessTools && (

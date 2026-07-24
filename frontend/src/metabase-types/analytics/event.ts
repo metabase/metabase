@@ -70,6 +70,7 @@ export type MonitorSectionClickedEvent = ValidateEvent<{
   event: "monitor_section_clicked";
   event_detail:
     | "diagnostics"
+    | "content-diagnostics"
     | "erroring-questions"
     | "alerts"
     | "tasks"

@@ -1,0 +1,4 @@
+[:map
+ [:value [:map
+          [:entity_types {:optional true} [:sequential [:enum "card" "dashboard" "document" "transform"]]]
+          [:include_personal_collections {:optional true} :boolean]]]]
