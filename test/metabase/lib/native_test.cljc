@@ -664,7 +664,7 @@
               :database (meta/id)
               :stages   [{:lib/type      :mbql.stage/native
                           :native        sql
-                          :template-tags [tag]}]}))
+                          :template-tags {(:name tag) tag}}]}))
 
 (deftest ^:parallel replace-template-tag-names-test
   (testing "renamed tags get their name, default display name, and {{...}} text rewritten; other tags untouched"
@@ -675,11 +675,12 @@
                                  :id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
                                  :card-id      1206})]
       (is (=? {:stages [{:native        "select * from {{#1206-bh-population-model}} where {{ state }}"
-                         :template-tags [{:type         :card
+                         :template-tags {"#1206-bh-population-model"
+                                         {:type         :card
                                           :name         "#1206-bh-population-model"
                                           :display-name "#1206 Bh Population Model"
                                           :id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
-                                          :card-id      1206}]}]}
+                                          :card-id      1206}}}]}
               (lib.native/replace-template-tag-names
                query
                {"#133-bh-population-model" "#1206-bh-population-model"}))))))
@@ -700,8 +701,9 @@
 
 (deftest ^:parallel replace-template-tag-names-custom-display-name-test
   (testing "a customized display name is preserved through the rename"
-    (is (=? {:stages [{:template-tags [{:name         "#1206-new-card"
-                                        :display-name "My Custom Label"}]}]}
+    (is (=? {:stages [{:template-tags {"#1206-new-card"
+                                       {:name         "#1206-new-card"
+                                        :display-name "My Custom Label"}}}]}
             (lib.native/replace-template-tag-names
              (card-tag-query "select * from {{#133-old-card}}"
                              {:type         :card
@@ -730,18 +732,18 @@
                             :database (meta/id)
                             :stages   [{:lib/type      :mbql.stage/native
                                         :native        "select * from {{#133-foo}} a, {{#133-bar}} b"
-                                        :template-tags [{:type         :card
-                                                         :name         "#133-foo"
-                                                         :display-name "Foo"
-                                                         :id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
-                                                         :card-id      1206}
-                                                        {:type         :card
-                                                         :name         "#133-bar"
-                                                         :display-name "Bar"
-                                                         :id           "6ebf6c2e-d6e2-449e-97b7-7005047928e5"
-                                                         :card-id      1206}]}]})]
+                                        :template-tags {"#133-foo" {:type         :card
+                                                                    :name         "#133-foo"
+                                                                    :display-name "Foo"
+                                                                    :id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
+                                                                    :card-id      1206}
+                                                        "#133-bar" {:type         :card
+                                                                    :name         "#133-bar"
+                                                                    :display-name "Bar"
+                                                                    :id           "6ebf6c2e-d6e2-449e-97b7-7005047928e5"
+                                                                    :card-id      1206}}}]})]
       (is (=? {:stages [{:native        "select * from {{#1206-foo}} a, {{#1206-foo}} b"
-                         :template-tags [{:name "#1206-foo", :display-name "Foo"}]}]}
+                         :template-tags {"#1206-foo" {:name "#1206-foo", :display-name "Foo"}}}]}
               (lib.native/replace-template-tag-names
                query
                {"#133-foo" "#1206-foo", "#133-bar" "#1206-foo"}))))))

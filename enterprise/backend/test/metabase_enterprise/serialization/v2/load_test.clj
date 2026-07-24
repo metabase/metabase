@@ -1441,10 +1441,10 @@
                 "the referenced card must land on a different id for this test to prove anything")
             (is (= (format "SELECT * FROM {{%s}}" new-tag-name)
                    (-> query :stages first :native)))
-            (is (=? [{:type         :card
-                      :name         new-tag-name
-                      :display-name (u.humanization/name->human-readable-name :simple new-tag-name)
-                      :card-id      target-id}]
+            (is (=? {new-tag-name {:type         :card
+                                   :name         new-tag-name
+                                   :display-name (u.humanization/name->human-readable-name :simple new-tag-name)
+                                   :card-id      target-id}}
                     (-> query :stages first :template-tags)))
             (testing "re-importing over the existing card (the update path) repairs the same way"
               (serdes.load/load-metabase! (ingestion-in-memory @serialized))
