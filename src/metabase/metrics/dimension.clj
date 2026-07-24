@@ -3,6 +3,7 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [malli.util :as mut]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lm.schema]
    [metabase.parameters.core :as parameters]
@@ -17,23 +18,26 @@
 ;;; Convert internal (kebab) dimensions to the snake_case shape the frontend expects, and back.
 ;;; Mirrors the metric-dimensions branch's `->api-dimension` layer so the two converge.
 ;;;
-;;; The conversion is schema-driven: the wire rules are declared as transformer properties on the
-;;; schemas below and applied with compiled `malli.core/encode`/`decode` transformers (the same
-;;; pattern as `:encode/serialize` in [[metabase.lib.serialize]]):
+;;; The conversion is schema-driven: the wire rules are declared as `:encode/api` / `:decode/api`
+;;; transformer properties on the schemas below — the transformer name [[metabase.api.macros]]
+;;; applies to every request and response schema. That means an endpoint schema that references
+;;; `::dimension` or `::dimension-mapping` gets the conversion automatically at the `defendpoint`
+;;; edge: responses are validated against the internal shape, then encoded to the wire shape;
+;;; request params are decoded to the internal shape, then validated against it. The standalone
+;;; `->api-*` / `api->*` fns below apply the same rules for callers outside `defendpoint`
+;;; (e.g. the `add_research_groups` metabot tool).
 ;;;
-;;;   * the `:api-case` step renames map keys — snake_case on encode, kebab-case on decode. An
-;;;     individual map schema opts out with an `{:encode/api-case {:leave identity}}` property
-;;;     (`:sources` entries keep their kebab `field-id` key on the wire).
-;;;   * the `:api` step handles value-level rules via `:encode/api` properties: qualified keyword
-;;;     types (`:effective-type` & co.) become strings, `:display-name` falls back to `:name`,
-;;;     always-on-the-wire keys are ensured present and nil-valued optional keys dropped.
-;;;   * `strip-extra-keys-transformer` (encode only) drops keys not in the schema — internal keys
-;;;     like `:lib/source` and Field columns annotated by [[annotate-dimensions-with-field-data]]
-;;;     (other than `:dimension-interestingness`) — so the schema doubles as the wire whitelist.
+;;; Per map schema, [[wire-map]] declares: strip keys not in the schema and apply the map's
+;;; defaulting policy on encode-enter, snake_case the keys on encode-leave, and kebab-case the
+;;; keys on decode-enter. `::source` opts out of key renaming — entries keep their kebab
+;;; `field-id` key on the wire (a quirk preserved from the previous hand-rolled shape).
 
 (defn- kw->str
   [k]
   (some-> k u/qualified-name))
+
+(defn- snake-case-keys [m] (cond-> m (map? m) (update-keys u/->snake_case_en)))
+(defn- kebab-case-keys [m] (cond-> m (map? m) (update-keys u/->kebab-case-en)))
 
 (defn- drop-nil-keys
   [m ks]
@@ -44,7 +48,7 @@
           ks))
 
 (defn- encode-dimension-map
-  "Map-level `:encode/api` rules for a dimension: `:display-name` falls back to `:name`, the five
+  "Encode-time defaulting policy for a dimension: `:display-name` falls back to `:name`, the five
    always-on-the-wire keys are present even when nil, nil-valued optional keys are dropped."
   [dim]
   (-> (merge {:id nil :name nil :effective-type nil :semantic-type nil} dim)
@@ -52,66 +56,84 @@
       (drop-nil-keys [:has-field-values :status :status-message :dimension-interestingness :group :sources])))
 
 (defn- encode-mapping-map
-  "Map-level `:encode/api` rules for a dimension mapping: `:dimension-id` and `:target` are always
+  "Encode-time defaulting policy for a dimension mapping: `:dimension-id` and `:target` are always
    on the wire (even when nil), `:type`/`:table-id` only when non-nil."
   [mapping]
   (-> (merge {:dimension-id nil :target nil} mapping)
       (drop-nil-keys [:type :table-id])))
 
+(defn- wire-map
+  "Annotate map schema `schema-form` with the standard wire-conversion rules, keyed to the `:api`
+   transformer applied by `defendpoint` (and by the conversion fns below). On encode: keys not in
+   the schema are stripped and `enter` (the defaulting policy) runs before child entries encode,
+   then map keys are renamed to snake_case. On decode: map keys are kebab-cased before child
+   entries decode; unknown keys are kept and values pass through untouched."
+  ([schema-form]
+   (wire-map schema-form identity))
+  ([schema-form enter]
+   (let [schema (mr/resolve-schema schema-form)
+         ks     (into #{} (map first) (mc/entries schema))]
+     (mut/update-properties
+      schema assoc
+      :encode/api {:enter (fn [m] (if (map? m) (enter (select-keys m ks)) m))
+                   :leave snake-case-keys}
+      :decode/api {:enter kebab-case-keys}))))
+
 (mr/def ::source
   "A dimension source annotated with its wire-encoding rules. Quirks preserved from the previous
-   hand-rolled shape: entries keep their kebab-case `:field-id` key on the wire, `:field-id` is
-   always present (nil when missing), and other keys (e.g. `:binning`) are dropped."
-  [:map {:encode/api-case {:leave identity}
-         :encode/api      {:enter #(merge {:field-id nil} %)}}
+   hand-rolled shape: entries keep their kebab-case `:field-id` key on the wire (no key renaming),
+   `:field-id` is always present (nil when missing), and other keys (e.g. `:binning`) are dropped."
+  [:map {:encode/api {:enter #(merge {:field-id nil} (select-keys % [:type :field-id]))}}
    [:type ::lm.schema/dimension-source.type]
-   [:field-id [:maybe :int]]])
+   [:field-id {:optional true} [:maybe :int]]])
+
+(mr/def ::group
+  "The internal dimension-group shape annotated with wire-conversion rules."
+  (wire-map ::lm.schema/dimension-group))
 
 (mr/def ::dimension
   "The internal (kebab-case) dimension shape from [[metabase.lib-metric.schema]], annotated with
-   its wire-encoding rules. Entries are overridden only where a wire rule applies."
-  [:merge
-   ::lm.schema/persisted-dimension
-   [:map {:encode/api {:enter encode-dimension-map}}
-    [:effective-type {:optional true} [:maybe {:encode/api kw->str} :keyword]]
-    [:semantic-type {:optional true} [:maybe {:encode/api kw->str} :keyword]]
-    [:has-field-values {:optional true} [:maybe {:encode/api kw->str} :keyword]]
-    [:dimension-interestingness {:optional true} [:maybe number?]]
-    [:sources {:optional true} [:maybe [:sequential ::source]]]]])
+   its wire-conversion rules. Entries are overridden only where a wire rule applies. `:id` is
+   loosened from the strict uuid the model boundary enforces to any non-blank string, so
+   endpoint validation stays tolerant of hand-built fixtures and older payloads."
+  (wire-map
+   [:merge
+    ::lm.schema/persisted-dimension
+    [:map
+     [:id ms/NonBlankString]
+     [:effective-type {:optional true} [:maybe {:encode/api kw->str} :keyword]]
+     [:semantic-type {:optional true} [:maybe {:encode/api kw->str} :keyword]]
+     [:has-field-values {:optional true} [:maybe {:encode/api kw->str} :keyword]]
+     [:dimension-interestingness {:optional true} [:maybe number?]]
+     [:group {:optional true} [:maybe ::group]]
+     [:sources {:optional true} [:maybe [:sequential ::source]]]]]
+   encode-dimension-map))
 
 (mr/def ::dimension-mapping
-  "The internal (kebab-case) dimension-mapping shape annotated with its wire-encoding rules.
+  "The internal (kebab-case) dimension-mapping shape annotated with its wire-conversion rules.
    `:target` is re-typed as `:any` so the transformer never walks into the MBQL ref and renames
-   its option-map keys — it passes through untouched in both directions."
-  [:merge
-   ::lm.schema/dimension-mapping
-   [:map {:encode/api {:enter encode-mapping-map}}
-    [:target :any]]])
+   its option-map keys — it passes through untouched in both directions. `:type` is optional on
+   the wire (FE payloads may omit it) and `:dimension-id` is loosened to any non-blank string
+   (see `::dimension`)."
+  (wire-map
+   [:merge
+    ::lm.schema/dimension-mapping
+    [:map
+     [:type {:optional true} ::lm.schema/dimension-mapping.type]
+     [:dimension-id ms/NonBlankString]
+     [:target :any]]]
+   encode-mapping-map))
 
-(def ^:private rename-keys-transformer
-  "Transformer step that renames map keys: snake_case on encode, kebab-case on decode. Named so
-   individual map schemas can override it with an `:encode/api-case` property."
-  (mtx/transformer
-   {:name     :api-case
-    :encoders {:map {:leave #(cond-> % (map? %) (update-keys u/->snake_case_en))}}
-    :decoders {:map {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}}))
-
-(def ^:private api-encode-transformer
-  (mtx/transformer
-   (mtx/strip-extra-keys-transformer)
-   {:name :api}
-   rename-keys-transformer))
-
-(def ^:private api-decode-transformer
-  ;; decode is purely mechanical key renaming: unknown keys are kept (no strip) and values pass
-  ;; through untouched (no `:decode/api` rules exist).
-  rename-keys-transformer)
+(def ^:private api-transformer
+  "Matches the `:api`-named step of the transformers `defendpoint` applies to request and response
+   schemas, so the standalone fns below produce exactly what an endpoint-schema reference produces."
+  (mtx/transformer {:name :api}))
 
 (defn- api-encoder [schema]
-  (mr/cached ::api-encoder schema #(mc/encoder schema api-encode-transformer)))
+  (mr/cached ::api-encoder schema #(mc/encoder schema api-transformer)))
 
 (defn- api-decoder [schema]
-  (mr/cached ::api-decoder schema #(mc/decoder schema api-decode-transformer)))
+  (mr/cached ::api-decoder schema #(mc/decoder schema api-transformer)))
 
 (defn ->api-dimension
   "Convert an internal (kebab) persisted or computed dimension to the API shape consumed by the
