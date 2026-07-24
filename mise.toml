@@ -59,7 +59,7 @@ node = "22.13.1"
 
 # Java - for Clojure backend
 # We require Eclipse *Temurin* (AdoptOpenJDK successor) for consistency.
-java = "temurin-21.0.9+10.0.LTS"
+java = "temurin-25.0.3+9.0.LTS"
 
 # Clojure CLI - for backend development and REPL
 clojure = "1.12.3"
