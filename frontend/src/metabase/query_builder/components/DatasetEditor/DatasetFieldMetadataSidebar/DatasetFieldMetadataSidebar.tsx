@@ -168,7 +168,7 @@ function DatasetFieldMetadataSidebarInner({
       value: field.settings,
       onChangeSetting: handleFormattingSettingsChange,
       inheritedSettings: getGlobalSettingsForColumn(),
-      variant: "form-field",
+      variant: "form-field" as const,
       style: undefined,
     }),
     [field, handleFormattingSettingsChange],
