@@ -1,0 +1,10 @@
+/* Both labels occupy the same grid cell, so the button keeps the width of the
+   wider one and the popover doesn't resize when the label swaps. */
+.labelStack {
+  display: inline-grid;
+  text-align: center;
+}
+
+.labelStack > span {
+  grid-area: 1 / 1;
+}
