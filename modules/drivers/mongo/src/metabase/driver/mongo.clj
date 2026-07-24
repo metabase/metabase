@@ -175,15 +175,25 @@
 
 (defn ^:dynamic *sample-stages*
   "Stages to get sample of a collection in [[describe-table-pipeline]]. Dynamic for testing purposes."
-  [collection-name sample-size]
-  (let [start-n       (quot sample-size 2)
-        end-n         (- sample-size start-n)]
+  [_collection-name sample-size]
+  (let [start-n (quot sample-size 2)
+        end-n   (- sample-size start-n)]
     [{"$sort" {"_id" 1}}
-     {"$limit" start-n}
-     {"$unionWith"
-      {"coll" collection-name
-       "pipeline" [{"$sort" {"_id" -1}}
-                   {"$limit" end-n}]}}]))
+     {"$group" {"_id" nil
+                "docs" {"$push" "$$ROOT"}}}
+     {"$project" {"_id" 0
+                  "docs" 1
+                  "head" {"$slice" ["$docs" 0 start-n]}
+                  "tail-offset" {"$cond" [{"$lt" [{"$size" "$docs"} end-n]}
+                                          0
+                                          {"$subtract" [{"$size" "$docs"} end-n]}]}}}
+     {"$project" {"sample-docs" {"$concatArrays"
+                                 ["$head"
+                                  {"$reduce" {"input" {"$slice" ["$docs" "$tail-offset" end-n]}
+                                              "initialValue" []
+                                              "in" {"$concatArrays" [["$$this"] "$$value"]}}}]}}}
+     {"$unwind" "$sample-docs"}
+     {"$replaceRoot" {"newRoot" "$sample-docs"}}]))
 
 (def ^:private unwind-stages
   "Sequence of stages repeated in _search_ phase of [[describe-table-pipeline]]
