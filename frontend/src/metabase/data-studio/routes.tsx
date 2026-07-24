@@ -1,4 +1,6 @@
 import { NotFound } from "metabase/common/components/ErrorPages";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -114,9 +116,21 @@ export function getDataStudioDependencyDiagnosticsRedirects() {
   );
 }
 
-function DataStudioIndexRedirect() {
+export function DataStudioIndexRedirect() {
   const indexPath = useSelector(getIndexPath);
-  return <Navigate to={indexPath} replace />;
+  const { value: hasSeenGuide, isLoading } = useUserKeyValue({
+    namespace: "data_studio",
+    key: "hasSeenGuide",
+    defaultValue: false,
+  });
+
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
+  return (
+    <Navigate to={hasSeenGuide ? indexPath : Urls.dataStudioGuide()} replace />
+  );
 }
 
 function getIndexPath(state: State) {

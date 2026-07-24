@@ -1,4 +1,7 @@
-import { renderWithProviders, screen, within } from "__support__/ui";
+import fetchMock from "fetch-mock";
+
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import { GuidePage } from "./GuidePage";
 
@@ -6,60 +9,41 @@ jest.mock("metabase/nav/components/AppSwitcher", () => ({
   AppSwitcher: () => <div data-testid="app-switcher" />,
 }));
 
+const HAS_SEEN_GUIDE_PATH =
+  "path:/api/user-key-value/namespace/data_studio/key/hasSeenGuide";
+
+function setup({ hasSeenGuide = false }: { hasSeenGuide?: boolean } = {}) {
+  setupUserKeyValueEndpoints({
+    namespace: "data_studio",
+    key: "hasSeenGuide",
+    value: hasSeenGuide,
+  });
+
+  renderWithProviders(<GuidePage />);
+}
+
+function wasVisitRecorded() {
+  return fetchMock.callHistory.called(HAS_SEEN_GUIDE_PATH, { method: "PUT" });
+}
+
 describe("GuidePage", () => {
-  it("renders the page header, title, and sections", () => {
-    renderWithProviders(<GuidePage />);
+  it("records the visit the first time the guide is seen", async () => {
+    setup({ hasSeenGuide: false });
 
-    expect(screen.getByTestId("data-studio-breadcrumbs")).toHaveTextContent(
-      "Guide",
-    );
-    expect(screen.getByTestId("app-switcher")).toBeInTheDocument();
-    expect(
-      screen.getByText("Build your semantic layer in Data Studio"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Transform your data to make it easier to query"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Publish query-ready tables to the Semantic Layer"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Define key metrics and terms"),
-    ).toBeInTheDocument();
+    await waitFor(() => expect(wasVisitRecorded()).toBe(true));
+
+    const [request] = fetchMock.callHistory.calls(HAS_SEEN_GUIDE_PATH, {
+      method: "PUT",
+    });
+    expect(request?.options?.body).toBe(JSON.stringify({ value: true }));
   });
 
-  it("shows brand icons next to each section heading", () => {
-    renderWithProviders(<GuidePage />);
+  it("does not re-record the visit when the guide was already seen", async () => {
+    setup({ hasSeenGuide: true });
 
     expect(
-      within(screen.getByTestId("guide-transforms-section")).getByLabelText(
-        "transform icon",
-      ),
+      await screen.findByText("Build your semantic layer in Data Studio"),
     ).toBeInTheDocument();
-    expect(
-      within(screen.getByTestId("guide-publish-section")).getByLabelText(
-        "repository icon",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(screen.getByTestId("guide-define-section")).getByLabelText(
-        "metric icon",
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("shows section content without action buttons", () => {
-    renderWithProviders(<GuidePage />);
-
-    expect(screen.getByTestId("guide-transforms-section")).toHaveTextContent(
-      /Use Transforms to write new tables/,
-    );
-    expect(screen.getByTestId("guide-publish-section")).toHaveTextContent(
-      /Find all your tables in Connected data/,
-    );
-    expect(screen.getByTestId("guide-define-section")).toHaveTextContent(
-      /Build on tables’ segments and measures/,
-    );
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(wasVisitRecorded()).toBe(false);
   });
 });

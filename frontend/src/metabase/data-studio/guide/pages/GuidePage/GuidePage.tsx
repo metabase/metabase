@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { jt, t } from "ttag";
 
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Box, Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
@@ -12,6 +13,7 @@ import S from "./GuidePage.module.css";
 
 export function GuidePage() {
   usePageTitle(t`Guide`);
+  useMarkGuideAsSeen();
 
   return (
     <PageContainer className={S.page} gap={0}>
@@ -27,7 +29,7 @@ export function GuidePage() {
 
         <Card shadow="none" withBorder>
           <Stack className={S.cardContent} gap="2rem">
-            <Box data-testid="guide-transforms-section">
+            <Box>
               <SectionHeading icon="transform">
                 {t`Transform your data to make it easier to query`}
               </SectionHeading>
@@ -44,7 +46,7 @@ export function GuidePage() {
               </Stack>
             </Box>
 
-            <Box data-testid="guide-publish-section">
+            <Box>
               <SectionHeading icon="repository">
                 {t`Publish query-ready tables to the Semantic Layer`}
               </SectionHeading>
@@ -63,7 +65,7 @@ export function GuidePage() {
               </Stack>
             </Box>
 
-            <Box data-testid="guide-define-section">
+            <Box>
               <SectionHeading icon="metric">
                 {t`Define key metrics and terms`}
               </SectionHeading>
@@ -82,6 +84,24 @@ export function GuidePage() {
       </Box>
     </PageContainer>
   );
+}
+
+function useMarkGuideAsSeen() {
+  const {
+    value: hasSeenGuide,
+    setValue: setHasSeenGuide,
+    isLoading,
+  } = useUserKeyValue({
+    namespace: "data_studio",
+    key: "hasSeenGuide",
+    defaultValue: false,
+  });
+
+  useEffect(() => {
+    if (!isLoading && !hasSeenGuide) {
+      setHasSeenGuide(true);
+    }
+  }, [isLoading, hasSeenGuide, setHasSeenGuide]);
 }
 
 function SectionHeading({
