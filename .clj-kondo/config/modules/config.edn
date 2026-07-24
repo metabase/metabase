@@ -158,7 +158,9 @@
   agent-api
   {:team    "Metabot"
    :api     #{metabase.agent-api.api
-              metabase.agent-api.init}
+              metabase.agent-api.init
+              metabase.agent-api.query-guards
+              metabase.agent-api.settings}
    :uses    #{ai-tracing
               api
               auth-identity
@@ -584,8 +586,10 @@
 
   collections
   {:team "UX West"
-   :api  #{metabase.collections.core
+   :api  #{metabase.collections.children
+           metabase.collections.core
            metabase.collections.curation
+           metabase.collections.init
            metabase.collections.models.collection
            metabase.collections.models.collection.root
            metabase.collections.schema}
@@ -595,11 +599,19 @@
            audit-app
            config
            events
+           lib-be
            models
            permissions
            premium-features
+           queries
            remote-sync
+           request
+           revisions
            search
+           settings
+           tracing
+           transforms
+           upload
            util}
    :model-exports #{:model/Collection}
    :model-imports #{:model/Card
@@ -619,35 +631,19 @@
 
   collections-rest
   {:team "UX West"
-   :api  #{metabase.collections-rest.api
-           metabase.collections-rest.init}
+   :api  #{metabase.collections-rest.api}
    :uses #{api
-           app-db
            collections
            eid-translation
            events
-           lib-be
            models
            notification
            permissions
            premium-features
            queries
            request
-           revisions
-           settings
-           tracing
-           transforms
-           upload
            util}
-   :model-imports #{:model/Card
-                    :model/Collection
-                    :model/Dashboard
-                    :model/Document
-                    :model/NativeQuerySnippet
-                    :model/Pulse
-                    :model/Table
-                    :model/Timeline
-                    :model/Transform}}
+   :model-imports #{:model/Card :model/Collection}}
 
   comments
   {:team "UX West"
@@ -751,7 +747,6 @@
            app-db
            channel
            collections
-           collections-rest
            dashboards
            eid-translation
            embedding
@@ -1261,24 +1256,58 @@
            metabase.mcp.callback-api
            metabase.mcp.core
            metabase.mcp.init
-           metabase.mcp.usage}
+           metabase.mcp.usage
+           metabase.mcp.v2.api}
    :model-exports #{:model/McpSessionLog
                     :model/McpToolCallLog}
-   :uses #{agent-api
+   :uses #{activity-feed
+           agent-api
+           agent-lib
            ai-tracing
            api
            app-db
+           channel
+           collections
            config
+           dashboards
+           documents
+           eid-translation
+           lib
+           lib-be
            llm
            metabot
+           metrics
+           models
+           notification
            oauth-server
+           parameters
+           permissions
            premium-features
+           pulse
+           queries
+           query-processor
            request
            server
            session
            settings
            system
-           util}}
+           task
+           transforms
+           util
+           warehouse-schema}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Database
+                    :model/Document
+                    :model/Field
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/Notification
+                    :model/Pulse
+                    :model/Segment
+                    :model/Table
+                    :model/Transform}}
 
   measures
   {:team "Graphy"
@@ -1303,9 +1332,13 @@
               metabase.metabot.config
               metabase.metabot.core
               metabase.metabot.init
+              metabase.metabot.scope
               metabase.metabot.self
               metabase.metabot.settings
-              metabase.metabot.tools.entity-details}
+              metabase.metabot.tools.construct
+              metabase.metabot.tools.entity-details
+              metabase.metabot.tools.search
+              metabase.metabot.tools.shared.content-store}
    :friends #{agent-api
               enterprise/metabot
               enterprise/metabot-analytics
@@ -1350,6 +1383,7 @@
               sync
               system
               task
+              tracing
               transforms
               transforms-base
               util
@@ -1835,7 +1869,6 @@
            permissions
            public-sharing
            queries
-           query-permissions
            query-processor
            request
            revisions
@@ -1844,7 +1877,6 @@
    :model-imports #{:model/Card
                     :model/CardBookmark
                     :model/Collection
-                    :model/Dashboard
                     :model/Database
                     :model/Table}}
 
@@ -2704,7 +2736,9 @@
            api
            app-db
            audit-app
+           classloader
            collections
+           config
            driver
            lib
            lib-be
@@ -2716,7 +2750,8 @@
            remote-sync
            search
            util
-           warehouses}
+           warehouses
+           enterprise/advanced-permissions}
    :model-exports #{:model/Dimension
                     :model/Field
                     :model/FieldUserSettings

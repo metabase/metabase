@@ -56,6 +56,38 @@
   :export?    true
   :doc        false)
 
+;; The two v2 settings gate the v2 tool surface (`/api/metabase-mcp/v2`) independently of the v1
+;; `mcp-enabled?` setting, so either surface can run while the other is dark. No trailing `?` on
+;; the boolean: admins toggle it as `/api/setting/mcp-v2-enabled`, and a `?` can't ride a URL path.
+
+(defsetting mcp-v2-enabled
+  (deferred-tru "Whether the v2 MCP tool surface is enabled.")
+  :type       :boolean
+  :default    false
+  :visibility :admin
+  :getter     #(boolean (and (llm.settings/ai-features-enabled?)
+                             (setting/get-value-of-type :boolean :mcp-v2-enabled)))
+  :export?    false
+  :doc        false)
+
+(defsetting mcp-v2-disabled-tools
+  (deferred-tru "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call.")
+  :type       :csv
+  :default    []
+  :visibility :admin
+  :export?    false
+  :encryption :no
+  :audit      :getter
+  :doc        false)
+
+(defsetting mcp-query-handle-ttl-hours
+  (deferred-tru "Hours a stored MCP query handle is kept before the scheduled GC task deletes it.")
+  :type       :integer
+  :default    24
+  :visibility :internal
+  :export?    false
+  :doc        false)
+
 (defsetting mcp-apps-cors-enabled-clients
   (deferred-tru "Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).")
   :type       :csv

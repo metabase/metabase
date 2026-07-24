@@ -52,6 +52,29 @@
 
 ;;; ------------------------------------------------- Hydration -------------------------------------------------
 
+(defn compute-dimensions
+  "Reconcile an entity's freshly-computed dimensions against what is persisted and return the
+   result WITHOUT writing anything — the read-only sibling of [[sync-dimensions!]]. Returns
+   `{:dimensions … :dimension_mappings …}` in the same shape [[sync-dimensions!]] persists (and
+   [[filter-dimensions-for-user]] consumes), or nil when the entity has no dimensionable query.
+
+   `metadata-type` is `:metadata/metric` or `:metadata/measure`; `id` is the entity id."
+  [metadata-type id]
+  (when-let [entity (first (lib.metadata.protocols/metadatas
+                            (lib-metric/metadata-provider)
+                            {:lib/type metadata-type :id #{id}}))]
+    (when-let [query (lib-metric/dimensionable-query entity)]
+      (let [mp                 (lib-metric/metadata-provider)
+            computed-pairs     (lib-metric/compute-dimension-pairs mp query)
+            persisted-dims     (lib-metric/get-persisted-dimensions entity)
+            persisted-mappings (lib-metric/get-persisted-dimension-mappings entity)
+
+            {:keys [dimensions dimension-mappings]}
+            (lib-metric/reconcile-dimensions-and-mappings
+             computed-pairs persisted-dims persisted-mappings)]
+        {:dimensions         (lib-metric/extract-persisted-dimensions dimensions)
+         :dimension_mappings dimension-mappings}))))
+
 (defn sync-dimensions!
   "Compute dimensions from visible-columns, reconcile with persisted data,
    and persist to the database if changed.
