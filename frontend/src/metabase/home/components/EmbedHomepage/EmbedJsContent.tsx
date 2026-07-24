@@ -4,7 +4,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
 import { Box, Button, Group, Text } from "metabase/ui";
 
 type EmbedJsContentProps = {

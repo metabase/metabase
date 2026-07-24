@@ -2,6 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import {
   DataSourceInput,
   EntityTypeInput,
@@ -9,7 +10,6 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Link } from "metabase/router";
 import { Box, Icon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {

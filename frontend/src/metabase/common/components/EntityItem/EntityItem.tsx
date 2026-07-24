@@ -22,10 +22,10 @@ import {
   isPreviewShown,
 } from "metabase/common/collections/utils";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
+import { Link } from "metabase/common/components/Link";
 import { Swapper } from "metabase/common/components/Swapper";
 import type { IconData } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
-import { Link } from "metabase/router";
 import type { IconProps } from "metabase/ui";
 import {
   ActionIcon,

@@ -1,6 +1,6 @@
 import type { FC } from "react";
 
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
 import { Tabs, type TabsTabProps } from "metabase/ui";
 
 /**

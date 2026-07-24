@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { Link } from "metabase/router";
 import { Anchor, Breadcrumbs, FixedSizeIcon, Group } from "metabase/ui";
 import { getNodeLocationInfo } from "metabase-enterprise/dependencies/utils";
 import type { DependencyNode } from "metabase-types/api";

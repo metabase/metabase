@@ -4,9 +4,9 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { useHelpUrl } from "metabase/embedding/embedding-hub/hooks";
-import { Link } from "metabase/router";
 import { Button, Group, Stack, Text, Title } from "metabase/ui";
 
 const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";

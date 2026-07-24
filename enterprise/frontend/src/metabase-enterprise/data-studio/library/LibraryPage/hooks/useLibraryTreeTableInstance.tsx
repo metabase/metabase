@@ -4,11 +4,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { isEmptyStateData } from "metabase/data-studio/common/utils";
 import { useSelector } from "metabase/redux";
-import { Link, useRouter } from "metabase/router";
+import { useRouter } from "metabase/router";
 import {
   EntityNameCell,
   Flex,

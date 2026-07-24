@@ -2,9 +2,10 @@ import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
-import { Link, push } from "metabase/router";
+import { push } from "metabase/router";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { NativeQuerySnippet } from "metabase-types/api";

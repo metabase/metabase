@@ -9,10 +9,11 @@ import { type MouseEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { useDispatch } from "metabase/redux";
-import { Link, push } from "metabase/router";
+import { push } from "metabase/router";
 import {
   Card,
   Ellipsified,
