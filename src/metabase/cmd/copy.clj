@@ -141,7 +141,10 @@
     :model/MetabotPrompt
     :model/OsiAiContext
     ;; 63+
-    :model/McpFeedback]
+    :model/McpFeedback
+    ;; 64+
+    :model/Workspace
+    :model/WorkspaceEntityRemapping]
    (when config/ee-available?
      [:model/MetabotPermissions
       :model/MetabotGroupLimit

@@ -1,0 +1,187 @@
+## Workspaces v2: a workspace is a copy-on-write overlay for git-syncable entities.
+## workspace_entity_remapping records, per workspace and entity type, which source
+## (production) entity has been copied to which workspace-local target entity.
+## core_user.workspace_id records each user's currently-active workspace (nullable).
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v64.2026-07-24T11:00:00
+      author: ranquild
+      comment: Create workspace table
+      changes:
+        - createTable:
+            tableName: workspace
+            remarks: A copy-on-write overlay over git-syncable entities
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: Display name of the workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: User who created this workspace
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When this workspace was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When this workspace was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.2026-07-24T11:00:01
+      author: ranquild
+      comment: FK workspace.creator_id -> core_user.id (set null on delete so deleting a user keeps the workspace)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_workspace_creator_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v64.2026-07-24T11:00:02
+      author: ranquild
+      comment: Create workspace_entity_remapping table
+      changes:
+        - createTable:
+            tableName: workspace_entity_remapping
+            remarks: Copy-on-write ID remapping. Maps a source (production) entity to its workspace-local copy, per workspace and entity type.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: The workspace this remapping belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: varchar(64)
+                  remarks: Type of the remapped entity, e.g. card, dashboard, transform
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_entity_id
+                  type: int
+                  remarks: ID of the source (production) entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target_entity_id
+                  type: int
+                  remarks: ID of the workspace-local copy of the source entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When this remapping was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.2026-07-24T11:00:03
+      author: ranquild
+      comment: Unique constraint on (workspace_id, entity_type, source_entity_id)
+      ## The leading column is `workspace_id`, so MySQL reuses this index to satisfy the
+      ## FK added below — no separate index on workspace_id needed.
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_entity_remapping
+            constraintName: idx_unique_workspace_entity_remapping_source
+            columnNames: workspace_id, entity_type, source_entity_id
+
+  - changeSet:
+      id: v64.2026-07-24T11:00:04
+      author: ranquild
+      comment: Unique constraint on (workspace_id, entity_type, target_entity_id) to prevent two source entities mapping to the same copy
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_entity_remapping
+            constraintName: idx_unique_workspace_entity_remapping_target
+            columnNames: workspace_id, entity_type, target_entity_id
+
+  - changeSet:
+      id: v64.2026-07-24T11:00:05
+      author: ranquild
+      comment: FK workspace_entity_remapping.workspace_id -> workspace.id (cascade on delete)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_entity_remapping
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_workspace_entity_remapping_workspace_id
+            deleteCascade: true
+
+  - changeSet:
+      id: v64.2026-07-24T11:00:06
+      author: ranquild
+      comment: Add core_user.workspace_id -- the user's currently-active workspace
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: The workspace this user currently has active, if any
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-24T11:00:07
+      author: ranquild
+      comment: Index core_user.workspace_id
+      changes:
+        - createIndex:
+            tableName: core_user
+            indexName: idx_core_user_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+
+  - changeSet:
+      id: v64.2026-07-24T11:00:08
+      author: ranquild
+      comment: FK core_user.workspace_id -> workspace.id (set null on delete so deleting a workspace deactivates it for users)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: core_user
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_core_user_workspace_id
+            onDelete: SET NULL
