@@ -235,6 +235,12 @@
 
 ;;; --------------------------------------- missing-dimension self-healing (UXW-4475) ---------------------------------------
 
+(defn- table-query
+  "Model dataset_query selecting everything from `table-kw`."
+  [table-kw]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id table-kw)))))
+
 (defn- metric-on-card-query
   "Metric dataset_query whose source is `card-id` (a model)."
   [card-id]
@@ -254,7 +260,7 @@
                                          :type          :model
                                          :database_id   (mt/id)
                                          :table_id      (mt/id :venues)
-                                         :dataset_query (mt/mbql-query venues)}
+                                         :dataset_query (table-query :venues)}
                      :model/Card metric {:name          "Metric on MBQL model"
                                          :type          :metric
                                          :database_id   (mt/id)
