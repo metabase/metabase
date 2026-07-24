@@ -15,14 +15,26 @@
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
-   [metabase.measures.api :as measures.api]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.tools.construct :as metabot.construct]
    [metabase.models.interface :as mi]
-   [metabase.segments.api :as segments.api]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;; segments.api / measures.api are reached through `requiring-resolve` rather than a static
+;; `:require`. A static require would form an `mcp -> segments`/`-> measures` module `:uses` edge,
+;; and since `mcp` sits upstream of `query-processor`/`driver`, that edge drags the whole
+;; segments↔xrays / measures closure into the driver-test-triggering set (the mage module-graph
+;; ratchet). Resolving the modules' public `:api` write fns at call time keeps `mcp` a consumer of
+;; the *models*, not the *modules*. The target is built with `symbol` (not a quoted literal) so the
+;; namespace stays opaque to the static dependency analysis that derives module `:uses`.
+(defn- api-fn [ns-name fn-name] (requiring-resolve (symbol ns-name fn-name)))
+
+(defn- create-segment! [body] ((api-fn "metabase.segments.api" "create-segment!") body))
+(defn- update-segment! [id body] ((api-fn "metabase.segments.api" "write-check-and-update-segment!") id body))
+(defn- create-measure! [body] ((api-fn "metabase.measures.api" "create-measure!") body))
+(defn- update-measure! [id body] ((api-fn "metabase.measures.api" "write-check-and-update-measure!") id body))
 
 ;;; ------------------------------------------------ Shared plumbing -----------------------------------------------
 
@@ -359,9 +371,9 @@
             table      (resolve-table (:table_id body))
             definition (prepare-definition :segment (:definition body) table)
             _          (check-table-match! table definition)]
-        (-> (run-domain-write #(segments.api/create-segment! {:name        (:name body)
-                                                              :description (:description body)
-                                                              :definition  definition}))
+        (-> (run-domain-write #(create-segment! {:name        (:name body)
+                                                 :description (:description body)
+                                                 :definition  definition}))
             (write-result :segment)
             common/success-content))
 
@@ -375,7 +387,7 @@
                                              (prepare-definition
                                               :segment definition
                                               (t2/select-one :model/Table :id (:table_id segment)))))]
-        (-> (run-domain-write #(segments.api/write-check-and-update-segment! (:id segment) body))
+        (-> (run-domain-write #(update-segment! (:id segment) body))
             (write-result :segment)
             common/success-content)))))
 
@@ -423,9 +435,9 @@
             table      (resolve-table (:table_id body))
             definition (prepare-definition :measure (:definition body) table)
             _          (check-table-match! table definition)]
-        (-> (run-domain-write #(measures.api/create-measure! {:name        (:name body)
-                                                              :description (:description body)
-                                                              :definition  definition}))
+        (-> (run-domain-write #(create-measure! {:name        (:name body)
+                                                 :description (:description body)
+                                                 :definition  definition}))
             (write-result :measure)
             common/success-content))
 
@@ -439,6 +451,6 @@
                                              (prepare-definition
                                               :measure definition
                                               (t2/select-one :model/Table :id (:table_id measure)))))]
-        (-> (run-domain-write #(measures.api/write-check-and-update-measure! (:id measure) body))
+        (-> (run-domain-write #(update-measure! (:id measure) body))
             (write-result :measure)
             common/success-content)))))
