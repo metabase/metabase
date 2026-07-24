@@ -7,6 +7,8 @@
    [metabase.appearance.core :as appearance]
    [metabase.system.core :as system]))
 
+(set! *warn-on-reflection* true)
+
 (defn- absolute-url
   "Resolve a potentially relative path to an absolute URL using site-url."
   [path]
@@ -30,16 +32,17 @@
   [font-name]
   (let [dir-name      (str/replace font-name " " "_")
         file-stem     (str/replace font-name " " "")
-        css-font-name (css-escape-font-name font-name)]
+        css-font-name (css-escape-font-name font-name)
+        fonts-url     (absolute-url "/app/fonts")]
     (if (= font-name "Lato")
       (str "@font-face { font-family: 'Lato'; font-weight: 400; font-style: normal; font-display: swap;"
-           " src: url('/app/fonts/Lato/lato-v16-latin-regular.woff2') format('woff2'); }\n"
+           " src: url('" fonts-url "/Lato/lato-v16-latin-regular.woff2') format('woff2'); }\n"
            "@font-face { font-family: 'Lato'; font-weight: 700; font-style: normal; font-display: swap;"
-           " src: url('/app/fonts/Lato/lato-v16-latin-700.woff2') format('woff2'); }\n")
+           " src: url('" fonts-url "/Lato/lato-v16-latin-700.woff2') format('woff2'); }\n")
       (str "@font-face { font-family: '" css-font-name "'; font-weight: 400; font-style: normal; font-display: swap;"
-           " src: url('/app/fonts/" dir-name "/" file-stem "-Regular.woff2') format('woff2'); }\n"
+           " src: url('" fonts-url "/" dir-name "/" file-stem "-Regular.woff2') format('woff2'); }\n"
            "@font-face { font-family: '" css-font-name "'; font-weight: 700; font-style: normal; font-display: swap;"
-           " src: url('/app/fonts/" dir-name "/" file-stem "-Bold.woff2') format('woff2'); }\n"))))
+           " src: url('" fonts-url "/" dir-name "/" file-stem "-Bold.woff2') format('woff2'); }\n"))))
 
 (def ^:private default-logo-url "app/assets/img/logo.svg")
 
@@ -138,6 +141,8 @@
                               padding: 0.75rem 1rem; margin-bottom: 1.5rem;
                               font-size: 0.8125rem; line-height: 1.45; color: #883b34; }
                    .warning .mark { flex: 0 0 auto; font-weight: 700; }
+                   .destination { text-align: center; font-size: 0.8125rem; color: #696e7b; margin-bottom: 1.5rem; }
+                   .destination strong { font-family: monospace; color: #4c5773; }
                    .actions { display: flex; gap: 0.75rem; }
                    button { flex: 1; padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 700;
                             font-family: inherit; cursor: pointer;
@@ -162,7 +167,11 @@
              (or client-name "this application") " can do, including reading and changing all data you "
              "can reach. Only approve it for a tool you trust and control."]])
          (render-scope-list scopes)
-         [:form {:method "POST" :action "/oauth/authorize/decision"}
+         (when-let [redirect-host (some-> (:redirect_uri oauth-params) not-empty (java.net.URI.) (.getHost))]
+           [:p.destination "Redirects to " [:strong redirect-host]])
+         ;; Absolute action: a root-relative path would drop the subpath when Metabase is hosted
+         ;; under one (site-url like https://example.com/metabase).
+         [:form {:method "POST" :action (absolute-url "/oauth/authorize/decision")}
           [:input {:type "hidden" :name "csrf_token" :value csrf-token}]
           [:input {:type "hidden" :name "params_sig" :value params-sig}]
           (for [[k v] oauth-params

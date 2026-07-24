@@ -179,6 +179,9 @@
      clojure.core.async/take!
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
+     ;; only writes .clj-kondo/ratchets.edn, from a :once fixture that finishes before the parallel tests
+     dev.kondo-ratchet/fix!
+     metabase.ai-tracing.core/record!
      metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!
      metabase.channel.core/send!
      metabase.channel.render.pdf/draw-too-large!
@@ -187,10 +190,17 @@
      metabase.channel.render.pdf.font/load-fonts!
      metabase.warehouses.models.database/assert-not-h2!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
+     metabase.mcp.usage/record-mcp-session!
+     metabase.mcp.usage/record-mcp-session-end!
+     metabase.mcp.usage/record-mcp-tool-call!
      metabase.notification.models/create-notification!
      metabase.oauth-server.core/reset-provider!
      metabase.pulse.send/send-pulse!
      metabase-enterprise.transforms-python.python-runner-test/execute!
+     ;; MCP usage tests isolate their rows by unique keys (session id / tool name / duration /
+     ;; client version) and clean up only those, so these deletes are safe in parallel.
+     metabase-enterprise.mcp.usage-test/cleanup!
+     metabase-enterprise.mcp.usage-test/cleanup-calls!
      ;; Workspace isolation functions are safe in parallel tests because they operate on
      ;; isolated, test-specific workspaces and databases that don't affect other tests
      metabase-enterprise.workspaces.isolation/destroy-workspace-isolation!
@@ -252,9 +262,6 @@
   ;; misc config for built-in linters
   ;;
 
-  :invalid-arity       {:skip-args [metabase.util.match/match-one
-                                    metabase.util.match/match-many
-                                    metabase.util.match/replace]}                    ; TODO (cam): can we fix these?
   :refer-all           {:level :warning, :exclude [clojure.test]}
   :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
 
@@ -449,6 +456,9 @@
   metabase-enterprise.action-v2.test-util/with-test-tables!                             clojure.core/let
   metabase-enterprise.content-translation.routes-test/with-new-secret-key!              clojure.core/fn
   metabase-enterprise.entity-retrieval.reconcile-test/with-isolated-index                 clojure.core/fn
+  metabase-enterprise.mfa.enrollment-flow-test/with-fresh-user-session!                  clojure.core/fn
+  metabase-enterprise.mfa.login-flow-test/with-enrolled-rasta!                           clojure.core/fn
+  metabase-enterprise.mfa.recovery-codes-test/with-confirmed-enrollment!                 clojure.core/fn
   metabase-enterprise.serialization.metadata-file-import.wire-format-test/with-tiny-fixture! clojure.core/fn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
@@ -516,6 +526,7 @@
   metabase.test/with-temp-empty-app-db                                                  clojure.core/let
   metabase.test/with-temp-file                                                          clojure.core/let
   metabase.test/with-user-in-groups                                                     clojure.core/let
+  metabase.transforms-rest.api.transform-runs-test/with-runs-fixture!                   clojure.core/fn
   metabase.upload.impl-test/with-upload-table!                                          clojure.core/let
   metabase.util/for-map                                                                 clojure.core/for
   metabase.util.files/with-open-path-to-resource                                        clojure.core/let
@@ -581,7 +592,7 @@
    metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
    metabase.app-db.schema-migrations-test.impl/test-migrations                                                               hooks.metabase.app-db.schema-migrations-test.impl/test-migrations
-   metabase.channel.render.js.svg/with-static-viz-context                                                                    hooks.common/with-one-top-level-binding
+   metabase.channel.render.js.pool/with-static-viz-context                                                                   hooks.common/with-one-top-level-binding
    metabase.channel.template.handlebars-helper/defhelper                                                                     hooks.metabase.channel.template.handlebars-helper/defhelper
    metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
    metabase.classloader.core/require                                                                                         hooks.clojure.core.require/lint-require
@@ -617,6 +628,9 @@
    metabase.model-persistence.api-test/with-persistence-setup!                                                               hooks.common/with-one-top-level-binding
    metabase.model-persistence.api-test/with-setup!                                                                           hooks.common/with-one-top-level-binding
    metabase.model-persistence.test-util/with-persistence-enabled!                                                            hooks.metabase.model-persistence.test-util/with-persistence-enabled!
+   metabase.mq.core/with-queue                                                                                               hooks.common/let-second
+   metabase.mq.test-util/with-test-mq                                                                                        hooks.common/with-one-binding
+   metabase.mq.core/def-listener!                                                                                            hooks.metabase.mq.impl/def-listener
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
    metabase.permissions.core/allow-changing-all-users-group-members                                                          hooks.common/do*
@@ -708,6 +722,10 @@
    metabase.util.log/warn                                                                                                    hooks.metabase.util.log/info
    metabase.util.log/warnf                                                                                                   hooks.metabase.util.log/infof
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
+   metabase.util.match/match-one                                                                                             hooks.metabase.util.match/match-one
+   metabase.util.match/match-many                                                                                            hooks.metabase.util.match/match-many
+   metabase.util.match/replace                                                                                               hooks.metabase.util.match/replace
+   metabase.util.match/replace-in                                                                                            hooks.metabase.util.match/replace-in
    metabase.util/case-enum                                                                                                   hooks.metabase.util/case-enum
    metabase.util/format-color                                                                                                hooks.metabase.util/format-color
    metabase.xrays.api.automagic-dashboards-test/with-indexed-model!                                                          hooks.metabase.xrays.api.automagic-dashboards-test/with-indexed-model!
@@ -721,6 +739,7 @@
    clojurewerkz.quartzite.schedule.simple/schedule                                              macros.quartz/simple-schedule
    clojurewerkz.quartzite.triggers/build                                                        macros.quartz/build-trigger
    metabase-enterprise.database-routing.e2e-test/with-temp-dbs!                                 macros.metabase-enterprise.database-routing.e2e-test/with-temp-dbs!
+   metabase-enterprise.database-routing.e2e-test/with-routing-setup!                            macros.metabase-enterprise.database-routing.e2e-test/with-routing-setup!
    metabase-enterprise.impersonation.util-test/with-impersonations!                             macros.metabase-enterprise.impersonation.util-test/with-impersonations!
    metabase-enterprise.query-reference-validation.api-test/with-test-setup!                     macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup!
    metabase-enterprise.sandbox.test-util/with-gtaps!                                            macros.metabase-enterprise.sandbox.test-util/with-gtaps!
@@ -751,6 +770,7 @@
    metabase.test/with-temporary-raw-setting-values                                              macros.metabase.test.util/with-temporary-raw-setting-values
    metabase.users.models.user-test/with-groups!                                                 macros.metabase.users.models.user-test/with-groups!
    metabase.util.namespaces/import-fn                                                           macros.metabase.util.namespaces/import-fn
+   metabase.util.namespaces/import-macro                                                        macros.metabase.util.namespaces/import-macro
    metabase.xrays.related-test/with-world                                                       macros.metabase.xrays.related-test/with-world}}
 
  :config-in-comment

@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateSegmentMutation } from "metabase/api";
@@ -11,6 +9,8 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { Route } from "metabase/router";
+import { push } from "metabase/router";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -73,7 +73,6 @@ export function NewSegmentPage({
     }
     const { data: segment, error } = await createSegment({
       name: name.trim(),
-      table_id: table.id,
       definition: definition,
       description: description.trim() || undefined,
     });

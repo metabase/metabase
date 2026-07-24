@@ -46,26 +46,6 @@ const PRODUCTS_SCALAR_METRIC = {
   display: "scalar",
 };
 
-const ORDERS_MULTI_STAGE_QUESTION = {
-  name: "Orders question multi-stage",
-  type: "question",
-  query: {
-    "source-query": {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [
-        [
-          "field",
-          ORDERS.CREATED_AT,
-          { "base-type": "type/DateTime", "temporal-unit": "month" },
-        ],
-      ],
-    },
-    filter: [">", ["field", "count", { "base-type": "type/Integer" }], 10],
-  },
-  display: "table",
-};
-
 function startNewMetricWithTable(database, table) {
   H.startNewMetric();
   H.MetricPage.queryEditor().should("be.visible");
@@ -148,19 +128,6 @@ function addStringCategoryFilter({ tableName, columnName, values }) {
   });
 }
 
-function addNumberBetweenFilter({ tableName, columnName, minValue, maxValue }) {
-  startNewFilter();
-  H.popover().within(() => {
-    if (tableName) {
-      cy.findByText(tableName).click();
-    }
-    cy.findByText(columnName).click();
-    cy.findByPlaceholderText("Min").type(String(minValue));
-    cy.findByPlaceholderText("Max").type(String(maxValue));
-    cy.button("Add filter").click();
-  });
-}
-
 function addBreakout({ tableName, columnName, bucketName, stageIndex }) {
   startNewBreakout({ stageIndex });
   if (tableName) {
@@ -220,23 +187,6 @@ describe("scenarios > metrics > editing", () => {
       addBreakout({ tableName: "Product", columnName: "Created At" });
       H.MetricPage.saveButton().click();
       H.MetricPage.saveButton().should("not.exist");
-      H.MetricPage.aboutTab().click();
-      verifyLineAreaBarChart({
-        xAxis: "Product → Created At: Month",
-        yAxis: "Count",
-      });
-    });
-
-    it("should be able to change the query definition of a metric based on a model", () => {
-      cy.intercept("PUT", "/api/card/*").as("updateCard");
-      cy.intercept("GET", "/api/card/*").as("getCard");
-      H.createQuestion(ORDERS_SCALAR_MODEL_METRIC).then(({ body: card }) =>
-        cy.visit(`/metric/${card.id}/query`),
-      );
-      H.MetricPage.queryEditor().should("be.visible");
-      addBreakout({ tableName: "Product", columnName: "Created At" });
-      H.MetricPage.saveButton().click();
-      cy.wait(["@updateCard", "@getCard", "@getCard"]);
       H.MetricPage.aboutTab().click();
       verifyLineAreaBarChart({
         xAxis: "Product → Created At: Month",
@@ -304,58 +254,6 @@ describe("scenarios > metrics > editing", () => {
       });
       saveNewMetric();
       verifyScalarValue("4,939");
-    });
-
-    it("should create a metric based on a saved question", () => {
-      startNewMetricWithSavedItem("Our analytics", "Orders");
-      addStringCategoryFilter({
-        tableName: "Product",
-        columnName: "Category",
-        values: ["Gadget"],
-      });
-      saveNewMetric();
-      verifyScalarValue("4,939");
-    });
-
-    it("should create a metric based on a multi-stage saved question", () => {
-      H.createQuestion(ORDERS_MULTI_STAGE_QUESTION);
-      startNewMetricWithSavedItem(
-        "Our analytics",
-        ORDERS_MULTI_STAGE_QUESTION.name,
-      );
-      addNumberBetweenFilter({
-        columnName: "Count",
-        minValue: 5,
-        maxValue: 100,
-      });
-      saveNewMetric();
-      verifyScalarValue("5");
-    });
-
-    it("should create a metric based on a model", () => {
-      startNewMetricWithSavedItem("Our analytics", "Orders Model");
-      addStringCategoryFilter({
-        tableName: "Product",
-        columnName: "Category",
-        values: ["Gadget"],
-      });
-      saveNewMetric();
-      verifyScalarValue("4,939");
-    });
-
-    it("should create a metric based on a multi-stage model", () => {
-      H.createQuestion({ ...ORDERS_MULTI_STAGE_QUESTION, type: "model" });
-      startNewMetricWithSavedItem(
-        "Our analytics",
-        ORDERS_MULTI_STAGE_QUESTION.name,
-      );
-      addNumberBetweenFilter({
-        columnName: "Count",
-        minValue: 5,
-        maxValue: 100,
-      });
-      saveNewMetric();
-      verifyScalarValue("5");
     });
 
     it("should not allow to create a multi-stage metric", () => {
@@ -482,7 +380,8 @@ describe("scenarios > metrics > editing", () => {
       H.startNewMetric();
       H.MetricPage.queryEditor().should("be.visible");
       cy.intercept("POST", "/api/dataset/query_metadata").as("metadata");
-      H.miniPicker().within(() => {
+      H.miniPickerBrowseAll().click();
+      H.entityPickerModal().within(() => {
         cy.findByText("Our analytics").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       });

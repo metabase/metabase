@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { Location } from "history";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -7,6 +6,7 @@ import { NoDatabasesEmptyState } from "metabase/common/components/NoDatabasesEmp
 import CS from "metabase/css/core/index.css";
 import { NewModelOption } from "metabase/models/components/NewModelOption";
 import { useSelector } from "metabase/redux";
+import type { Location } from "metabase/router";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import {
   canUserCreateNativeQueries,
@@ -33,6 +33,7 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   );
 
   const collectionId = Urls.extractEntityId(
+    // Unjustified type cast. FIXME
     location.query.collectionId as string,
   );
 

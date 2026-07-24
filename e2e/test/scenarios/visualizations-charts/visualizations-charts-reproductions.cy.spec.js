@@ -7,46 +7,6 @@ const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
-describe("issue 13504", () => {
-  const questionDetails = {
-    name: "13504",
-    display: "line",
-    query: {
-      "source-query": {
-        "source-table": ORDERS_ID,
-        filter: [">", ["field", ORDERS.TOTAL, null], 50],
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-      },
-      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 100],
-    },
-    visualization_settings: {
-      "graph.dimensions": ["CREATED_AT"],
-      "graph.metrics": ["count"],
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("should remove post-aggregation filters from a multi-stage query (metabase#13504)", () => {
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    H.cartesianChartCircle().eq(0).click({ force: true });
-
-    H.popover().findByText("See these Orders").click();
-    cy.wait("@dataset");
-
-    cy.findByTestId("qb-filters-panel").within(() => {
-      cy.findByText("Total is greater than 50").should("be.visible");
-      cy.findByText("Created At: Month is Mar 1–31, 2026").should("be.visible");
-    });
-  });
-});
-
 const externalDatabaseId = 2;
 
 describe("issue 16170", { tags: "@mongo" }, () => {
@@ -719,39 +679,6 @@ describe("issue 22527", { tags: "@skip" }, () => {
     H.popover().contains(/size/i).click();
 
     assertion();
-  });
-});
-
-describe("issue 25007", () => {
-  const questionDetails = {
-    name: "11435",
-    display: "line",
-    native: {
-      query: `SELECT dateadd('day', CAST((1 - CASE WHEN ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) = 0 THEN 7 ELSE ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) END) AS long), CAST("PUBLIC"."ORDERS"."CREATED_AT" AS date)) AS "CREATED_AT", count(*) AS "count"
-  FROM "PUBLIC"."ORDERS"
-  GROUP BY dateadd('day', CAST((1 - CASE WHEN ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) = 0 THEN 7 ELSE ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) END) AS long), CAST("PUBLIC"."ORDERS"."CREATED_AT" AS date))
-  ORDER BY dateadd('day', CAST((1 - CASE WHEN ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) = 0 THEN 7 ELSE ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) END) AS long), CAST("PUBLIC"."ORDERS"."CREATED_AT" AS date)) ASC`,
-    },
-    visualization_settings: {
-      "graph.dimensions": ["CREATED_AT"],
-      "graph.metrics": ["count"],
-    },
-  };
-
-  const clickLineDot = ({ index } = {}) => {
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.cartesianChartCircle().eq(index).click({ force: true });
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should display weeks correctly in tooltips for native questions (metabase#25007)", () => {
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
-    clickLineDot({ index: 1 });
-    H.echartsTooltip().should("contain", "May 4–10, 2025");
   });
 });
 

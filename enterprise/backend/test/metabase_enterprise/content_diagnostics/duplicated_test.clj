@@ -476,7 +476,10 @@
 
 (deftest duplicated-api-transform-peers-hydrate-test
   (testing "GET /duplicated gates transform peers on transform readability, not collection visibility"
-    (mt/with-premium-features #{:content-diagnostics}
+    ;; Enable transforms via premium features, not the `transforms-enabled` setting: with no `:hosting`
+    ;; in scope, `with-temporary-setting-values` would restore an explicit global `false` that disables
+    ;; transforms for every other test in a parallel run.
+    (mt/with-premium-features #{:content-diagnostics :transforms-basic :hosting}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)
               nm     (str prefix " Nightly Sync")]

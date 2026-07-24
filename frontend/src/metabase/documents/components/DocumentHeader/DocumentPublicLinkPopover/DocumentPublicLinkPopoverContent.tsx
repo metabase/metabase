@@ -126,7 +126,7 @@ export const DocumentPublicLinkPopoverContent = ({
             <Anchor
               component="button"
               fz="sm"
-              c="error"
+              c="feedback-negative"
               fw={700}
               onClick={onRemoveLink}
               className={S.removeLinkAnchor}

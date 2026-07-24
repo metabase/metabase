@@ -17,6 +17,7 @@ type AreaTabProps = {
   showLabel: boolean;
   rightSection?: ReactNode;
   isGated?: boolean;
+  onClick?: () => void;
 };
 
 export function AreaTab({
@@ -27,6 +28,7 @@ export function AreaTab({
   showLabel,
   rightSection,
   isGated,
+  onClick,
 }: AreaTabProps) {
   const upsellGem = isGated ? <UpsellGem.New size={14} /> : null;
   const effectiveRightSection = rightSection ?? upsellGem;
@@ -42,6 +44,7 @@ export function AreaTab({
         className={cx(S.tab, { [S.selected]: isSelected })}
         component={ForwardRefLink}
         to={to}
+        onClick={onClick}
         p="sm"
         gap="sm"
         bdrs="md"

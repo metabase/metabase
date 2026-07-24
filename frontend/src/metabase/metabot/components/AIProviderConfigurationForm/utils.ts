@@ -97,7 +97,8 @@ export function isAvailableProvider(provider: MetabotProvider): boolean {
     provider === "azure" ||
     provider === "bedrock" ||
     provider === "metabase" ||
-    provider === "openai"
+    provider === "openai" ||
+    provider === "openrouter"
   );
 }
 

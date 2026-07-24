@@ -1,7 +1,7 @@
 .metabaseLink {
   /* SVG logo */
   --mb-color-logo-text: #5a6072;
-  --mb-color-logo-primary: var(--mb-color-metabase-brand);
+  --mb-color-logo-primary: var(--mb-color-core-metabase_brand);
   --mb-color-logo-secondary: #c2daf0;
 
   display: flex;

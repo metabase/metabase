@@ -4,6 +4,43 @@ const { H } = cy;
 
 const DASHBOARD_NAME = "Orders in a dashboard";
 
+const SAVED_THEME_NAME = "Sunset";
+
+const seedSavedTheme = () =>
+  cy.request("POST", "/api/embed-theme", {
+    name: SAVED_THEME_NAME,
+    settings: {
+      colors: {
+        brand: "#FF0000",
+        // Distinct chart colors are what makes the preview container remount
+        // once the saved theme resolves — see the regression test below.
+        charts: [
+          "#FF0000",
+          "#FF7F00",
+          "#FFD400",
+          "#00A86B",
+          "#0080FF",
+          "#3F00FF",
+          "#8B00FF",
+          "#FF00AA",
+        ],
+      },
+    },
+  });
+
+const assertPreviewFinishesLoading = () => {
+  cy.get("[data-iframe-loaded]", { timeout: 20_000 }).should("have.length", 1);
+  cy.findByTestId("preview-loading-indicator").should("not.exist");
+};
+
+const reopenNewEmbedModal = () => {
+  cy.findAllByTestId(/(sdk-setting-card|guest-embeds-setting-card)/)
+    .first()
+    .within(() => {
+      cy.findByText("New embed").click();
+    });
+};
+
 describe("scenarios > embedding > sdk iframe embed setup > user settings persistence", () => {
   beforeEach(() => {
     H.restore();
@@ -57,5 +94,36 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       .findAllByTestId("cell-data")
       .first()
       .should("have.css", "color", "rgb(255, 0, 0)");
+  });
+
+  it("finishes loading the preview when a persisted saved theme is restored on reopen", () => {
+    seedSavedTheme();
+
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    cy.log("select a saved theme (anything other than the instance theme)");
+    cy.findByTestId(`theme-card-${SAVED_THEME_NAME}`).click();
+
+    cy.wait("@persistSettings");
+
+    cy.log("the preview loads with the selected theme applied");
+    assertPreviewFinishesLoading();
+
+    cy.log("close the New embed modal");
+    cy.findByTestId("sdk-iframe-embed-setup-modal-content")
+      .findByLabelText("Close")
+      .click();
+    cy.findByTestId("sdk-iframe-embed-setup-modal-content").should("not.exist");
+
+    cy.log("reopen the New embed modal");
+    reopenNewEmbedModal();
+
+    cy.log(
+      "the preview must finish loading — the restored saved theme must not leave it stuck on the loader",
+    );
+    assertPreviewFinishesLoading();
   });
 });

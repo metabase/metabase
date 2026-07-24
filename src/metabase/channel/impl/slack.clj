@@ -50,22 +50,30 @@
 (def ^:private attachment-text-length-limit                  2000)
 
 (defn- parameter-markdown
+  "mrkdwn for one dashboard filter, or nil if it fails to render (a broken filter shouldn't fail the send)."
   [parameter]
-  (truncate
-   (format "*%s*\n%s" (:name parameter) (shared.params/value-string parameter (system/site-locale)))
-   attachment-text-length-limit))
+  (try
+    (truncate
+     (format "*%s*\n%s" (:name parameter) (shared.params/value-string parameter (system/site-locale)))
+     attachment-text-length-limit)
+    (catch Throwable e
+      (log/errorf e "Error rendering filter %s; skipping it" (:name parameter)))))
+
+(defn- parameter-fields
+  [parameters]
+  (for [parameter parameters
+        :let [markdown (parameter-markdown parameter)]
+        :when markdown]
+    {:type "mrkdwn"
+     :text markdown}))
 
 (defn- maybe-append-params-block
   "Appends an inline parameters block to a collection of blocks if parameters exist."
   [blocks inline-parameters]
-  (if (seq inline-parameters)
-    (conj blocks {:type "section"
-                  :fields (mapv
-                           (fn [parameter]
-                             {:type "mrkdwn"
-                              :text (parameter-markdown parameter)})
-                           inline-parameters)})
-    blocks))
+  (let [fields (parameter-fields inline-parameters)]
+    (cond-> blocks
+      (seq fields) (conj {:type "section"
+                          :fields (vec fields)}))))
 
 (defn- text->markdown-section
   [text]
@@ -154,8 +162,9 @@
       (slack/upload-file-to-channel! (:bytes pdf) (:filename pdf) channel (:comment pdf))
       (catch Throwable e
         (log/error e "Error sharing dashboard subscription PDF to Slack; posting summary without the PDF")
-        (when-let [comment (:comment pdf)]
-          (slack/post-chat-message! {:channel channel :text comment}))))))
+        ;; A DM already delivers the caption as the message that opens the conversation, so don't re-post it.
+        (when (and (:comment pdf) (not (::slack/caption-already-posted? (ex-data e))))
+          (slack/post-chat-message! {:channel channel :text (:comment pdf)}))))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    System Event Notifications                                   ;;
@@ -237,9 +246,7 @@
                                    (conj
                                     {:type "mrkdwn"
                                      :text  "Made with Metabase :blue_heart:"}))}
-        filter-fields   (for [parameter top-level-params]
-                          {:type "mrkdwn"
-                           :text (parameter-markdown parameter)})
+        filter-fields   (parameter-fields top-level-params)
         filter-section  (when (seq filter-fields)
                           {:type   "section"
                            :fields filter-fields})]
@@ -254,14 +261,14 @@
              [(format "*%s*" (:name dashboard))
               (mkdwn-link-text (urls/dashboard-url (:id dashboard) all-params)
                                (format "Sent from %s by %s" (appearance/site-name) creator-name))]
-             (for [parameter top-level-params]
-               (parameter-markdown parameter)))))
+             (keep parameter-markdown top-level-params))))
 
 (defn- dashboard-pdf
-  "Render the whole dashboard to a PDF for Slack, returning `{:bytes ... :filename ...}` or `nil` if rendering fails."
-  [dashboard creator-id parameters]
+  "Render the whole dashboard to a PDF for Slack, returning `{:bytes ... :filename ...}` or `nil` if rendering fails.
+  `parts` are the dashboard's already-executed parts, reused so the PDF generation doesn't re-run every query."
+  [dashboard creator-id parameters parts]
   (try
-    (let [pdf-bytes (channel.render/render-dashboard-to-pdf (:id dashboard) creator-id (vec parameters))]
+    (let [pdf-bytes (channel.render/render-dashboard-to-pdf (:id dashboard) creator-id (vec parameters) :a4 parts)]
       {:bytes    pdf-bytes
        :filename (-> dashboard
                      (some-> :name str/trim)
@@ -277,7 +284,8 @@
   (let [all-params       (:parameters payload)
         top-level-params (impl.util/remove-inline-parameters all-params (:dashboard_parts payload))
         dashboard        (:dashboard payload)
-        pdf              (some-> (when include_pdf (dashboard-pdf dashboard creator_id all-params))
+        pdf              (some-> (when include_pdf
+                                   (dashboard-pdf dashboard creator_id all-params (:dashboard_parts payload)))
                                  (assoc :comment (slack-dashboard-caption dashboard (:common_name creator)
                                                                           all-params top-level-params)))
         blocks           (if pdf

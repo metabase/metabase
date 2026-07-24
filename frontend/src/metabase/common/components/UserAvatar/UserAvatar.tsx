@@ -1,8 +1,8 @@
 import {
   type PartialGroup,
+  type PartialTenant,
   type PartialUser,
-  initial,
-  userInitials,
+  prepareInitials,
 } from "metabase/common/utils/user";
 
 import type { AvatarProps } from "./UserAvatar.styled";
@@ -12,14 +12,17 @@ interface UserAvatarProps extends AvatarProps {
   user: PartialUser;
 }
 
-interface GroupProps {
+interface GroupProps extends AvatarProps {
   user: PartialGroup;
 }
 
-export function UserAvatar({ user, ...props }: UserAvatarProps | GroupProps) {
-  return <StyledAvatar {...props}>{userInitials(user) || "?"}</StyledAvatar>;
+interface TenantProps extends AvatarProps {
+  user: PartialTenant;
 }
 
-export function Avatar({ children, ...props }: { children: string }) {
-  return <StyledAvatar {...props}>{initial(children) ?? "?"}</StyledAvatar>;
+export function UserAvatar({
+  user,
+  ...props
+}: UserAvatarProps | GroupProps | TenantProps) {
+  return <StyledAvatar {...props}>{prepareInitials(user) || "?"}</StyledAvatar>;
 }

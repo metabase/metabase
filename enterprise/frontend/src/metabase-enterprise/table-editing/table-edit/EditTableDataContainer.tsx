@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { Location } from "history";
 import { useCallback, useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
@@ -11,6 +10,7 @@ import {
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { useCloseNavbarOnMount } from "metabase/common/hooks/use-close-navbar-on-mount";
 import { useSelector } from "metabase/redux";
+import type { Location } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";

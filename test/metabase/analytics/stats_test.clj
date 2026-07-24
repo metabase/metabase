@@ -547,9 +547,11 @@
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
     :content-diagnostics
+    :data-apps
     :data-complexity-score
     :development-mode
     :library
+    :library-retrieval
     :embedding
     :embedding-sdk
     :embedding-simple

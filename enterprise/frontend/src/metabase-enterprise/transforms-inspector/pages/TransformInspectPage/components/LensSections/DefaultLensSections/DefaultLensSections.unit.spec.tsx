@@ -18,10 +18,15 @@ import { LensContentProvider } from "../../LensContent/LensContentContext";
 
 import { DefaultLensSections } from "./DefaultLensSections";
 
-jest.mock("metabase/transforms/lib/transforms-inspector", () => ({
-  ...jest.requireActual("metabase/transforms/lib/transforms-inspector"),
-  computeCardStats: () => null,
-}));
+jest.mock(
+  "metabase-enterprise/transforms-inspector/lib/transforms-inspector",
+  () => ({
+    ...jest.requireActual(
+      "metabase-enterprise/transforms-inspector/lib/transforms-inspector",
+    ),
+    computeCardStats: () => null,
+  }),
+);
 
 const scalarCard1 = createMockInspectorCard({
   id: "card-1",

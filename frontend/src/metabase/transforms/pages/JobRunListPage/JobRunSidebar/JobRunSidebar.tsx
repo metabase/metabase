@@ -87,7 +87,7 @@ export const JobRunSidebar = memo(function JobRunSidebar({
             <JobRunInfoSection run={run} />
             <Stack gap="md">
               <Group gap="sm" wrap="nowrap">
-                <Badge variant="filled" bg="core-brand">
+                <Badge color="brand" size="sm" variant="filled">
                   {transformRuns.length}
                 </Badge>
                 <Title order={5}>{t`Transforms`}</Title>

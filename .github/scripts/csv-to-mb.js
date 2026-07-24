@@ -30,7 +30,7 @@ class UploadError extends Error {
   }
 }
 
-async function attemptUpload(url, jsonData) {
+async function attemptUpload(url, jsonData, timeoutMs) {
   let response;
   try {
     response = await fetch(url, {
@@ -39,7 +39,11 @@ async function attemptUpload(url, jsonData) {
         "x-api-key": process.env.API_KEY
       },
       // Rebuilt per attempt: a consumed request body can't be reused.
-      body: jsonToCsvFormData(jsonData)
+      body: jsonToCsvFormData(jsonData),
+      // Without this the request can hang indefinitely on a stalled server,
+      // eating the whole job timeout. An abort surfaces below as a retryable
+      // network error, so it retries with backoff instead.
+      signal: AbortSignal.timeout(timeoutMs)
     });
   } catch (networkError) {
     throw new UploadError(networkError.message, { retryable: true });
@@ -61,16 +65,17 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 /**
  * Uploads jsonData as CSV, retrying transient API errors with exponential
  * backoff. `retries` is the number of extra attempts after the first (so the
- * default 2 means up to 3 tries). Throws the last error once attempts are
- * exhausted or the error is non-retryable.
+ * default 2 means up to 3 tries). `timeoutMs` is a per-attempt total deadline
+ * (default 60s) that aborts a stalled request. Throws the last error once
+ * attempts are exhausted or the error is non-retryable.
  */
-async function uploadCsvToMb({ baseUrl, tableId, jsonData, mode = 'append', retries = 2, retryDelayMs = 1000 }) {
+async function uploadCsvToMb({ baseUrl, tableId, jsonData, mode = 'append', retries = 2, retryDelayMs = 1000, timeoutMs = 60_000 }) {
   const operation = mode === 'replace' ? 'replace-csv' : 'append-csv';
   const url = `${baseUrl}/api/table/${tableId}/${operation}`;
 
   for (let attempt = 0; ; attempt++) {
     try {
-      await attemptUpload(url, jsonData);
+      await attemptUpload(url, jsonData, timeoutMs);
       return { success: true };
     } catch (error) {
       if (!error.retryable || attempt >= retries) {

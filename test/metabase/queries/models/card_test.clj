@@ -1,7 +1,6 @@
 (ns metabase.queries.models.card-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.queries.models.card-test]}}}}}}
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
@@ -14,6 +13,8 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
@@ -806,7 +807,10 @@
               "user-set :display_name survives"))))))
 
 (deftest ^:parallel extract-result-metadata-native-model-test
-  (testing "native model Card extraction also preserves :id (as a field FK)"
+  (testing "native model Card extraction preserves :id (as a field FK) and structural column types"
+    ;; Native model columns can't be re-derived from the query at import time without executing the
+    ;; SQL, so their :base_type/:effective_type must survive extract (GHY-4043). Unlike MBQL models,
+    ;; native models serialize through the native-card whitelist, not model-preserved-keys.
     (mt/with-temp [:model/Card {card-id :id}
                    {:type            :model
                     :dataset_query   (mt/native-query {:query "SELECT ID FROM VENUES"})
@@ -817,18 +821,14 @@
                                        :base_type     :type/BigInteger}]}]
       (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
             col      (first (:result_metadata extracted))]
-        (is (= #{:name :id :display_name :semantic_type}
+        (is (= #{:name :id :display_name :semantic_type :base_type}
                (set (keys col)))
             "exact set of keys preserved for this fixture (one col with these inputs)")
         (is (= "Venue ID" (:display_name col)))
+        (is (= :type/BigInteger (:base_type col))
+            "native model keeps structural type info the target can't re-derive")
         ;; :id should be portablized to a Field FK path: [db-name schema table-name field-name]
-        (is (=? [string? "PUBLIC" "VENUES" "ID"] (:id col)))
-        ;; cross-reference: nothing outside the snake-cased model-preserved-keys for native models.
-        ;; If `model-preserved-keys` ever changes, the exact-set assertion above stops matching;
-        ;; this guard catches unexpected drift (a new key sneaking in) on the way.
-        (let [allowed (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys true))
-              leaked  (set/difference (set (keys col)) allowed)]
-          (is (= #{} leaked) "no key outside the native-model preserved set"))))))
+        (is (=? [string? "PUBLIC" "VENUES" "ID"] (:id col)))))))
 
 (deftest ^:parallel upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
@@ -989,6 +989,23 @@
                 (t2/hydrate card :can_run_adhoc_query)))
         (is (=? {:can_run_adhoc_query false}
                 (t2/hydrate no-query :can_run_adhoc_query)))))))
+
+(deftest can-run-adhoc-query-respects-create-queries-perm-test
+  (testing "can_run_adhoc_query reflects a non-admin's create-queries permission on the card's table (#13347)"
+    (let [mp     (mt/metadata-provider)
+          venues (lib.metadata/table mp (mt/id :venues))
+          query  (lib/query mp venues)]
+      (mt/with-temp [:model/Card card {:dataset_query query}]
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (=? {:can_run_adhoc_query false}
+                    (t2/hydrate (t2/select-one :model/Card :id (:id card)) :can_run_adhoc_query))))
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (=? {:can_run_adhoc_query true}
+                    (t2/hydrate (t2/select-one :model/Card :id (:id card)) :can_run_adhoc_query)))))))))
 
 (deftest audit-card-permissions-test
   (testing "Cards in audit collections are not readable or writable on OSS, even if they exist (#42645)"
@@ -1160,6 +1177,58 @@
         (is (= "Orders, Count"
                (:query_description (t2/select-one :model/Card :id id))))))))
 
+(deftest ^:parallel query-description-skipped-for-metadata-provider-fetches-test
+  (testing "metadata-provider fetches of metric cards do not compute a query description (#74954)"
+    ;; Pins `metadata-provider-fetch?`'s coupling to the `:metadata/*` model namespace: if those models stopped
+    ;; being recognized, the after-select would compute the description during a provider fetch (re-entering the
+    ;; metric recursion), and the skip assertions below would fail.
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp
+        [:model/Card
+         {id :id}
+         {:name "My metric"
+          :type :metric
+          :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                             (lib/aggregate (lib/count))
+                             lib.convert/->legacy-MBQL)}]
+        (testing "provider fetches skip it"
+          (is (not (contains? (t2/select-one :metadata/metric :id id) :query-description)))
+          (is (not (contains? (t2/select-one :metadata/card :id id) :query-description))))
+        (testing "a real :model/Card fetch still computes it"
+          (is (= "Orders, Count"
+                 (:query_description (t2/select-one :model/Card :id id)))))))))
+
+(defn- do-with-metric-cycle
+  "Build two metric cards whose `:metric` refs form a cycle A → B → A and call `f` with their ids."
+  [f]
+  (letfn [(metric-query [metric-id]
+            {:database (mt/id)
+             :type     :query
+             :query    {:source-table (mt/id :orders)
+                        :aggregation  [["metric" metric-id]]}})]
+    (let [count-query (let [mp (mt/metadata-provider)]
+                        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                            (lib/aggregate (lib/count))
+                            lib.convert/->legacy-MBQL))]
+      ;; the cyclic cards must stay out of the shared search queue that concurrent tests drain
+      (binding [search.ingestion/*disable-updates* true]
+        (mt/with-temp
+          [:model/Card {a-id :id} {:name "Metric A", :type :metric, :dataset_query count-query}
+           :model/Card {b-id :id} {:name "Metric B", :type :metric, :dataset_query (metric-query a-id)}]
+          ;; close the cycle with a raw update -- the card API rejects cyclic saves, so this is the non-API path
+          ;; (serdes, remote sync, pre-check data) by which a cycle actually reaches the DB
+          (t2/update! :model/Card a-id {:dataset_query (metric-query b-id)})
+          (f a-id b-id))))))
+
+(deftest query-description-metric-reference-cycle-test
+  (testing "selecting a metric card whose :metric references form a cycle completes with a :query_description (#74954)"
+    (do-with-metric-cycle
+     (fn [a-id b-id]
+       (is (= "Orders, Metric B"
+              (:query_description (t2/select-one :model/Card :id a-id))))
+       (is (= "Orders, Metric A"
+              (:query_description (t2/select-one :model/Card :id b-id))))))))
+
 (deftest before-update-card-schema-test
   (testing "card_schema gets set to current-schema-version on update"
     (mt/with-temp [:model/Card {card-id :id} {:card_schema 20}]
@@ -1232,6 +1301,36 @@
         (is (not (t2/exists? :model/Card model-id))))
       (testing "converted question should survive"
         (is (t2/exists? :model/Card question-id))))))
+
+(deftest table-id-cleared-on-conversion-to-native-test
+  (testing "table_id should be set to nil when a question is converted to native SQL"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (is (= (mt/id :venues) (t2/select-one-fn :table_id :model/Card :id card-id)))
+      (t2/update! :model/Card card-id
+                  {:dataset_query (mt/native-query {:query "SELECT * FROM venues"})})
+      (is (nil? (t2/select-one-fn :table_id :model/Card :id card-id)))))
+  (testing "table_id should be set to nil when the source becomes a native model with no table"
+    (mt/with-temp [:model/Card {model-id :id} {:type          :model
+                                               :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (t2/update! :model/Card card-id
+                  {:dataset_query {:database (mt/id)
+                                   :type     :query
+                                   :query    {:source-table (str "card__" model-id)}}})
+      (let [card (t2/select-one :model/Card :id card-id)]
+        (is (= model-id (:source_card_id card)))
+        (is (nil? (:table_id card))))))
+  (testing "table_id should be preserved on updates that don't touch the query, even when it can no longer be derived"
+    (mt/with-temp [:model/Card {model-id :id} {:type          :model
+                                               :dataset_query (mt/mbql-query venues)}
+                   :model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    {:source-table (str "card__" model-id)}}}]
+      (is (= (mt/id :venues) (t2/select-one-fn :table_id :model/Card :id card-id)))
+      ;; hard-delete the source card so the table can no longer be derived from the query
+      (t2/delete! :model/Card :id model-id)
+      (t2/update! :model/Card card-id {:name "Renamed, query untouched"})
+      (is (= (mt/id :venues) (t2/select-one-fn :table_id :model/Card :id card-id))))))
 
 (deftest assert-no-source-card-id-for-native-query-test
   (testing "assertion fires if native query has source_card_id set"
@@ -1662,3 +1761,27 @@
               (is (contains? (stale-ids) public-id)))
             (tu/with-temporary-setting-values [enable-public-sharing true]
               (is (not (contains? (stale-ids) public-id))))))))))
+(deftest editing-clears-metabot-origin-test
+  (testing "editing a card's content severs its link back to the Metabot chart it came from"
+    (doseq [[change-desc changes] {"query"        {:dataset_query (mt/mbql-query checkins)}
+                                   "display"      {:display :line}
+                                   "viz settings" {:visualization_settings {"graph.goal_value" 10}}}]
+      (testing (str "changing the " change-desc " clears the link")
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :rasta)}
+                       :model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)
+                                                  :metabot_conversation_id convo-id
+                                                  :metabot_chart_id "chart-1"}]
+          (t2/update! :model/Card card-id changes)
+          (is (= {:metabot_conversation_id nil :metabot_chart_id nil}
+                 (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
+                                :id card-id)))))))
+  (testing "renaming or moving a card keeps the link"
+    (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :rasta)}
+                   :model/Collection {coll-id :id} {}
+                   :model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)
+                                              :metabot_conversation_id convo-id
+                                              :metabot_chart_id "chart-1"}]
+      (t2/update! :model/Card card-id {:name "Renamed" :collection_id coll-id})
+      (is (= {:metabot_conversation_id convo-id :metabot_chart_id "chart-1"}
+             (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
+                            :id card-id))))))

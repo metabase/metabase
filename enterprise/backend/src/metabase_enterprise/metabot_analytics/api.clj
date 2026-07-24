@@ -31,11 +31,12 @@
   [:map
    [:conversation_id         ms/UUIDString]
    [:created_at              ms/TemporalInstant]
-   [:summary                 [:maybe :string]]
+   [:title                   [:maybe :string]]
    [:message_count           ms/IntGreaterThanOrEqualToZero]
    [:user_message_count      ms/IntGreaterThanOrEqualToZero]
    [:assistant_message_count ms/IntGreaterThanOrEqualToZero]
    [:total_tokens            ms/IntGreaterThanOrEqualToZero]
+   [:cache_read_tokens       ms/IntGreaterThanOrEqualToZero]
    [:last_message_at         [:maybe ms/TemporalInstant]]
    [:profile_id              [:maybe :string]]
    [:search_count            ms/IntGreaterThanOrEqualToZero]
@@ -49,7 +50,7 @@
 
 (def ^:private SortColumn
   "Allow-list of columns the list endpoint can sort by."
-  [:enum "created_at" "message_count" "total_tokens" "user" "profile_id" "ip_address"])
+  [:enum "created_at" "message_count" "total_tokens" "cache_read_tokens" "user" "profile_id" "ip_address"])
 
 (def ^:private SortDirection
   [:enum "asc" "desc"])
@@ -97,18 +98,25 @@
    [:created_at        ms/TemporalInstant]
    [:updated_at        ms/TemporalInstant]])
 
+(def ^:private ConversationMessage
+  [:map
+   [:id                :string]
+   [:parent_message_id [:maybe :string]]
+   [:role              [:enum "user" "agent"]]
+   [:type              :string]])
+
 (def ^:private ConversationDetail
   "Schema for full conversation detail response."
   [:map
    [:conversation_id ms/UUIDString]
    [:created_at      ms/TemporalInstant]
-   [:summary         [:maybe :string]]
+   [:title           [:maybe :string]]
    [:user            [:maybe UserInfo]]
    [:message_count   ms/IntGreaterThanOrEqualToZero]
    [:total_tokens    ms/IntGreaterThanOrEqualToZero]
    [:profile_id      [:maybe :string]]
    [:slack_permalink [:maybe :string]]
-   [:chat_messages   [:sequential :map]]
+   [:messages        [:sequential ConversationMessage]]
    [:queries         [:sequential GeneratedQuery]]
    [:search_count    ms/IntGreaterThanOrEqualToZero]
    [:query_count     ms/IntGreaterThanOrEqualToZero]

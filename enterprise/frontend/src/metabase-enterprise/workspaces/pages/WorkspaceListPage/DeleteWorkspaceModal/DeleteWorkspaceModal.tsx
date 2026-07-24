@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useToast } from "metabase/common/hooks/use-toast";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import {
   Form,
   FormErrorMessage,
@@ -20,37 +20,31 @@ import {
   useDeleteWorkspaceMutation,
   useGetWorkspaceQuery,
 } from "metabase-enterprise/api";
-import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
+import type { Workspace, WorkspaceId } from "metabase-types/api";
+
+import { getWorkspaceDatabaseName, isPending } from "../../../utils";
 
 export type DeleteWorkspaceModalProps = {
-  workspace: Workspace;
-  opened: boolean;
+  workspaceId: WorkspaceId;
   onDelete: () => void;
   onClose: () => void;
 };
 
-function isPending(workspaceDatabase: WorkspaceDatabase) {
-  const { status } = workspaceDatabase;
-  return status === "provisioning" || status === "deprovisioning";
-}
-
 export function DeleteWorkspaceModal({
-  workspace,
-  opened,
+  workspaceId,
   onDelete,
   onClose,
 }: DeleteWorkspaceModalProps) {
   return (
     <Modal
       title={t`Delete this workspace?`}
-      opened={opened}
+      opened
       padding="xl"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
-      <DeleteWorkspaceForm
-        workspace={workspace}
-        opened={opened}
+      <DeleteWorkspaceLoader
+        workspaceId={workspaceId}
         onDelete={onDelete}
         onClose={onClose}
       />
@@ -58,48 +52,56 @@ export function DeleteWorkspaceModal({
   );
 }
 
+type DeleteWorkspaceLoaderProps = {
+  workspaceId: WorkspaceId;
+  onDelete: () => void;
+  onClose: () => void;
+};
+
+function DeleteWorkspaceLoader({
+  workspaceId,
+  onDelete,
+  onClose,
+}: DeleteWorkspaceLoaderProps) {
+  // Fetch the workspace on open so the pending-databases warning reflects
+  // fresh statuses, not the possibly stale list-page snapshot.
+  const {
+    data: workspace,
+    isLoading,
+    error,
+  } = useGetWorkspaceQuery(workspaceId);
+
+  if (isLoading || error != null || workspace == null) {
+    return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return (
+    <DeleteWorkspaceForm
+      workspace={workspace}
+      onDelete={onDelete}
+      onClose={onClose}
+    />
+  );
+}
+
 type DeleteWorkspaceFormProps = {
   workspace: Workspace;
-  opened: boolean;
   onDelete: () => void;
   onClose: () => void;
 };
 
 function DeleteWorkspaceForm({
   workspace,
-  opened,
   onDelete,
   onClose,
 }: DeleteWorkspaceFormProps) {
   const [deleteWorkspace] = useDeleteWorkspaceMutation();
-  const [sendToast] = useToast();
-  // The list page omits databases, so fetch the hydrated workspace to learn which
-  // databases are still provisioning/deprovisioning. Skipped while the modal is closed.
-  const { data: hydratedWorkspace, isLoading } = useGetWorkspaceQuery(
-    workspace.id,
-    { skip: !opened },
-  );
-
-  const pendingDatabases = (hydratedWorkspace?.databases ?? []).filter(
-    isPending,
-  );
+  const databases = workspace.databases ?? [];
+  const pendingDatabases = databases.filter(isPending);
   const hasPendingDatabases = pendingDatabases.length > 0;
 
   const handleSubmit = async () => {
-    const result = await deleteWorkspace({
-      id: workspace.id,
-      ignorePending: hasPendingDatabases,
-    }).unwrap();
-    // The workspace is deleted even when warehouse teardown partly fails; warn the
-    // admin so the leftover schema/user objects can be removed manually.
-    if (result.orphaned_resources?.length) {
-      sendToast({
-        message: result.message,
-        icon: "warning",
-        toastColor: "error",
-        timeout: null,
-      });
-    }
+    await deleteWorkspace(workspace.id).unwrap();
     onDelete();
   };
 
@@ -110,13 +112,12 @@ function DeleteWorkspaceForm({
           {hasPendingDatabases ? (
             <Stack gap="sm">
               <Text>
-                {t`Some of this workspace's databases are still being set up or torn down. Deleting now will remove the workspace, but their temporary database users and schemas will be left in place and must be removed manually:`}
+                {t`Some of this workspace's databases are still being set up or torn down. Deleting will wait for that work to finish, then remove the workspace along with its temporary database users and schemas:`}
               </Text>
               <List>
                 {pendingDatabases.map((workspaceDatabase) => (
                   <List.Item key={workspaceDatabase.database_id}>
-                    {workspaceDatabase.database?.name ??
-                      t`Database ${workspaceDatabase.database_id}`}
+                    {getWorkspaceDatabaseName(workspaceDatabase)}
                   </List.Item>
                 ))}
               </List>
@@ -132,8 +133,7 @@ function DeleteWorkspaceForm({
             <FormSubmitButton
               label={t`Delete workspace`}
               variant="filled"
-              color="danger"
-              disabled={isLoading}
+              color="feedback-negative"
             />
           </Group>
         </Stack>

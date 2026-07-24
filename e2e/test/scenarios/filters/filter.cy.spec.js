@@ -42,52 +42,6 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  it("'Between Dates' filter should behave consistently (metabase#12872)", () => {
-    H.createQuestion(
-      {
-        name: "12872",
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          filter: [
-            "and",
-            [
-              "between",
-              ["field", PRODUCTS.CREATED_AT, null],
-              "2028-04-15",
-              "2028-04-15",
-            ],
-            [
-              "between",
-              ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
-              "2028-04-15",
-              "2028-04-15",
-            ],
-          ],
-          joins: [
-            {
-              alias: "Products",
-              condition: [
-                "=",
-                ["field", PRODUCTS.ID, null],
-                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-              ],
-              fields: "all",
-              "source-table": PRODUCTS_ID,
-            },
-          ],
-        },
-        display: "scalar",
-      },
-      { visitQuestion: true },
-    );
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("12872");
-    cy.log("At the moment of unfixed issue, it's showing '0'");
-    cy.findByTestId("scalar-value").contains("1");
-  });
-
   it("should filter based on remapped values (metabase#13235)", () => {
     // set "Filtering on this field" = "A list of all values"
     cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
@@ -113,35 +67,6 @@ describe("scenarios > question > filter", () => {
     cy.findByTestId("loading-indicator").should("not.exist");
     cy.findAllByText("148.23"); // one of the subtotals for this product
     cy.findAllByText("Fantastic Wool Shirt").should("not.exist");
-  });
-
-  it("should filter using Custom Expression from aggregated results (metabase#12839)", () => {
-    const CE_NAME = "Simple Math";
-
-    H.createQuestion(
-      {
-        name: "12839",
-        query: {
-          filter: [">", ["field", CE_NAME, { "base-type": "type/Float" }], 0],
-          "source-query": {
-            aggregation: [
-              [
-                "aggregation-options",
-                ["+", ["count"], 1],
-                { name: CE_NAME, "display-name": CE_NAME },
-              ],
-            ],
-            breakout: [["field", PRODUCTS.CATEGORY, null]],
-            "source-table": PRODUCTS_ID,
-          },
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    cy.log("Reported failing on v0.35.4");
-    cy.log(`Error message: **Column 'source.${CE_NAME}' not found;**`);
-    cy.findAllByText("Gizmo");
   });
 
   it("should not drop aggregated filters (metabase#11957)", () => {
@@ -217,46 +142,6 @@ describe("scenarios > question > filter", () => {
     H.popover()
       .contains("[Created At] > [Product → Created At]")
       .should("be.visible");
-  });
-
-  it("should handle post-aggregation filter on questions with joined table (metabase#14811)", () => {
-    H.createQuestion(
-      {
-        name: "14811",
-        query: {
-          "source-query": {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              [
-                "sum",
-                [
-                  "field",
-                  PRODUCTS.PRICE,
-                  { "source-field": ORDERS.PRODUCT_ID },
-                ],
-              ],
-            ],
-            breakout: [
-              [
-                "field",
-                PRODUCTS.CATEGORY,
-                { "source-field": ORDERS.PRODUCT_ID },
-              ],
-            ],
-          },
-          filter: [
-            "=",
-            ["field", "CATEGORY", { "base-type": "type/Text" }],
-            "Widget",
-          ],
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    cy.get("[data-testid=cell-data]").contains("Widget");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 1 row");
   });
 
   it("should reject Enter when the filter expression is invalid", () => {
@@ -902,128 +787,6 @@ describe("scenarios > question > filter", () => {
         .click();
 
       H.visualize();
-    });
-  });
-
-  ["True", "False"].forEach((condition) => {
-    const regexCondition = new RegExp(`${condition}`, "i");
-    // We must use and return strings instead of boolean and numbers
-    const integerAssociatedWithCondition = condition === "True" ? "0" : "1";
-
-    describe(`should be able to filter on the boolean column ${condition.toUpperCase()} (metabase#16386)`, () => {
-      beforeEach(H.setupBooleanQuery);
-
-      it("from the column popover (metabase#16386-1)", () => {
-        H.tableHeaderClick("boolean");
-
-        H.popover().findByText("Filter by this column").click();
-
-        H.popover().within(() => {
-          // Not sure exactly what this popover will look like when this issue is fixed.
-          // In one of the previous versions it said "Update filter" instead of "Add filter".
-          // If that's the case after the fix, this part of the test might need to be updated accordingly.
-          cy.findByLabelText(regexCondition)
-            .check({ force: true }) // the radio input is hidden
-            .should("be.checked");
-          cy.button("Add filter").click();
-          cy.wait("@dataset");
-        });
-
-        assertOnTheResult();
-      });
-
-      it("from the custom question (metabase#16386-3)", () => {
-        H.openNotebook();
-
-        H.filter({ mode: "notebook" });
-
-        H.popover().within(() => {
-          cy.findByText("boolean").click();
-          addBooleanFilter();
-        });
-
-        H.visualize(() => {
-          assertOnTheResult();
-        });
-      });
-
-      it("from custom expressions", () => {
-        H.openNotebook();
-
-        H.filter({ mode: "notebook" });
-
-        H.popover().contains("Custom Expression").click();
-
-        H.enterCustomColumnDetails({ formula: `boolean = ${condition}` });
-        H.expressionEditorWidget().button("Done").click();
-
-        H.visualize(() => {
-          assertOnTheResult();
-        });
-      });
-
-      function addBooleanFilter() {
-        // This is really inconvenient way to ensure that the element is selected, but it's the only one currently
-        cy.findByLabelText(regexCondition)
-          .check({ force: true })
-          .should("be.checked");
-        cy.button("Add filter").click();
-      }
-
-      function assertOnTheResult() {
-        // Filter name
-        cy.findByTextEnsureVisible(`boolean is ${condition.toLowerCase()}`);
-        cy.get("[data-testid=cell-data]").should(
-          "contain",
-          integerAssociatedWithCondition,
-        );
-      }
-    });
-  });
-
-  describe("should handle boolean arguments", () => {
-    beforeEach(H.setupBooleanQuery);
-
-    it("with case", () => {
-      H.openNotebook();
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Custom column").click();
-      H.enterCustomColumnDetails({
-        formula: "Case(boolean, 45, -10)",
-        name: "Test",
-      });
-
-      cy.button("Done").click();
-
-      H.filter({ mode: "notebook" });
-
-      H.popover().contains("Custom Expression").click();
-
-      H.enterCustomColumnDetails({ formula: "boolean = true" });
-      H.expressionEditorWidget().button("Done").click();
-
-      H.visualize(() => {
-        cy.contains("45").should("exist");
-        cy.contains("-10").should("not.exist");
-      });
-    });
-
-    it("with CountIf", () => {
-      H.openNotebook();
-      H.summarize({ mode: "notebook" });
-      H.popover().contains("Custom Expression").click();
-      H.enterCustomColumnDetails({
-        formula: "CountIf(boolean)",
-        name: "count if boolean is true",
-      });
-      H.expressionEditorWidget().button("Done").click();
-      cy.findByTestId("aggregate-step")
-        .contains("count if boolean is true")
-        .should("exist");
-      H.visualize(() => {
-        cy.contains("2").should("exist");
-      });
     });
   });
 

@@ -6,6 +6,7 @@
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util.log :as log]
@@ -565,6 +566,25 @@
     (is (= 2 (count
               (mt/with-test-user :rasta
                 (:recents (recent-views/get-recents (mt/user->id :rasta) [:selections :views]))))))))
+
+(deftest context-exclusion-test
+  (mt/with-model-cleanup [:model/RecentViews]
+    (mt/with-temp
+      [:model/Card {card-id :id} {:type "question"}]
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
+      (is (= 0 (count (mt/with-test-user :rasta (recent-views (mt/user->id :rasta) [:selections])))))
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :selection)
+      (is (= 1 (count (mt/with-test-user :rasta (recent-views (mt/user->id :rasta) [:selections]))))))))
+
+(deftest dashboard-can-write-reflects-real-permission-graph-test
+  (mt/with-model-cleanup [:model/RecentViews]
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard  {dash-id :id} {:collection_id coll-id}]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
+        (is (= false
+               (:can_write (first (mt/with-test-user :rasta (recent-views (mt/user->id :rasta)))))))))))
 
 (deftest special-collections-are-treated-specially
   (mt/with-temp

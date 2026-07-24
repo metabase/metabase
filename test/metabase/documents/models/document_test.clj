@@ -450,7 +450,7 @@
       (let [document {:collection_id 123
                       :creator_id 456
                       :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-            deps (serdes/dependencies document)]
+            deps (serdes/deserialization-dependencies document)]
         (is (= #{[{:model "Collection" :id 123}]}
                deps))))))
 
@@ -465,7 +465,7 @@
                                                              :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/dependencies document)]
+          deps (serdes/deserialization-dependencies document)]
       (is (contains? deps [{:model "Card" :id 789}]))
       (is (contains? deps [{:model "Collection" :id 123}])))))
 
@@ -486,7 +486,7 @@
                                                              :model "table"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/dependencies document)]
+          deps (serdes/deserialization-dependencies document)]
       (is (contains? deps [{:model "Card" :id 789}]))
       (is (contains? deps [{:model "Dashboard" :id 456}]))
       (is (contains? deps [{:model "Table" :id 321}]))
@@ -507,7 +507,7 @@
                                                                                    :model "card"}}]}]}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/dependencies document)]
+          deps (serdes/deserialization-dependencies document)]
       (is (contains? deps [{:model "Card" :id 999}]))
       (is (contains? deps [{:model "Collection" :id 123}])))))
 
@@ -520,7 +520,7 @@
                                           :content [{:type "text" :text "Plain text only"}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/dependencies document)]
+          deps (serdes/deserialization-dependencies document)]
       (is (= #{[{:model "Collection" :id 123}]}
              deps)))))
 
@@ -538,7 +538,7 @@
                                                              :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/dependencies document)]
+          deps (serdes/deserialization-dependencies document)]
       (is (contains? deps [{:model "Card" :id 456}]))
       (is (not (some #(= (:model (first %)) "unknown-model") deps))))))
 
@@ -555,7 +555,7 @@
                                                              :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/dependencies document)]
+          deps (serdes/deserialization-dependencies document)]
       (is (contains? deps [{:model "Card" :id 456}]))
       (is (= 2 (count deps)))))) ; collection and one valid card
 
@@ -573,7 +573,7 @@
                                                              :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/dependencies document)]
+          deps (serdes/deserialization-dependencies document)]
       (is (contains? deps [{:model "Card" :id 789}]))
       (is (= 2 (count deps)))))) ; collection and one unique card
 
@@ -585,7 +585,7 @@
                                :content []}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/dependencies document)]
+          deps (serdes/deserialization-dependencies document)]
       (is (= #{[{:model "Collection" :id 123}]}
              deps)))))
 
@@ -602,7 +602,7 @@
                                                              :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/dependencies document)]
+          deps (serdes/deserialization-dependencies document)]
       (is (contains? deps [{:model "Card" :id 456}]))
       (is (= 2 (count deps)))))) ; collection and one valid card
 
@@ -619,7 +619,7 @@
                                                              :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/dependencies document)]
+          deps (serdes/deserialization-dependencies document)]
       (is (contains? deps [{:model "Card" :id 456}]))
       (is (= 2 (count deps)))))) ; collection and one valid card
 
@@ -649,7 +649,7 @@
                                                                                               :model "table"}}]}]}]}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/dependencies document)]
+          deps (serdes/deserialization-dependencies document)]
       (is (contains? deps [{:model "Card" :id 789}]))
       (is (contains? deps [{:model "Dashboard" :id 456}]))
       (is (contains? deps [{:model "Table" :id 321}]))
@@ -666,7 +666,7 @@
                                                   :model "card"}}]}
                     :content_type "application/json" ; Not prose-mirror
                     :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/dependencies document)]
+          deps (serdes/deserialization-dependencies document)]
       (is (contains? deps [{:model "Collection" :id 123}])))))
 
 (deftest document-serdes-descendants-embedded-cards-test

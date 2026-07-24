@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupListTransformRunsEndpoint,
@@ -13,6 +12,7 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import { Route, withRouteProps } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TransformRun } from "metabase-types/api";
 import {
@@ -22,6 +22,8 @@ import {
 } from "metabase-types/api/mocks";
 
 import { RunListPage } from "./RunListPage";
+
+const RoutedRunListPage = withRouteProps(RunListPage);
 
 type SetupOpts = {
   runs?: TransformRun[];
@@ -41,7 +43,7 @@ function setup({ runs = [] }: SetupOpts = {}) {
 
   const path = Urls.transformRunList();
 
-  renderWithProviders(<Route path={path} component={RunListPage} />, {
+  renderWithProviders(<Route path={path} element={<RoutedRunListPage />} />, {
     withRouter: true,
     initialRoute: path,
   });

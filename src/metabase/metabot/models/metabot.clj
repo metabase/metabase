@@ -41,9 +41,9 @@
   [_table]
   [:name])
 
-(defmethod serdes/dependencies "Metabot"
+(defmethod serdes/deserialization-dependencies "Metabot"
   [{:keys [collection_id prompts]}]
-  (cond-> (set (mapcat serdes/dependencies prompts))
+  (cond-> (set (mapcat serdes/deserialization-dependencies prompts))
     collection_id (conj [{:model "Collection" :id collection_id}])))
 
 (defmethod serdes/generate-path "Metabot" [_ metabot]

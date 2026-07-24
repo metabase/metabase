@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
-import { Route } from "react-router";
 
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -9,6 +8,7 @@ import {
   createMockAdminAppState,
   createMockAdminState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { HelpLinkSetting } from "metabase-types/api";
 import {
   createMockMetabaseInfo,
@@ -20,9 +20,18 @@ import {
 import { AppSwitcher } from "./AppSwitcher";
 import type { CurrentApp } from "./useGetCurrentApp";
 
+jest.mock("metabase/common/monitor/analytics", () => ({
+  trackMonitorOpened: jest.fn(),
+}));
+
+const { trackMonitorOpened } = jest.requireMock(
+  "metabase/common/monitor/analytics",
+);
+
 const USER = createMockUser();
 
 const REGULAR_ITEMS = [
+  // Unjustified type cast. FIXME
   USER.first_name as string,
   USER.email,
   "Help",
@@ -73,10 +82,10 @@ async function setup({
 
   renderWithProviders(
     <>
-      <Route path="/" component={AppSwitcher} />
-      <Route path="/admin" component={AppSwitcher} />
-      <Route path="/data-studio" component={AppSwitcher} />
-      <Route path="/monitor" component={AppSwitcher} />
+      <Route path="/" element={<AppSwitcher />} />
+      <Route path="/admin" element={<AppSwitcher />} />
+      <Route path="/data-studio" element={<AppSwitcher />} />
+      <Route path="/monitor" element={<AppSwitcher />} />
     </>,
     {
       withRouter: true,
@@ -101,6 +110,7 @@ describe("ProfileLink", () => {
 
     // Should always render a profile link
     expect(
+      // Unjustified type cast. FIXME
       await screen.findByText(USER.first_name as string),
     ).toBeInTheDocument();
     expect(await screen.findByText(USER.email)).toBeInTheDocument();
@@ -197,6 +207,15 @@ describe("ProfileLink", () => {
       WITH_AREAS.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
+    });
+
+    it("tracks opening Monitor from the app switcher", async () => {
+      trackMonitorOpened.mockClear();
+      await setup({ isAdmin: true });
+
+      await userEvent.click(await getMonitorMenuItem());
+
+      expect(trackMonitorOpened).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -329,7 +348,7 @@ const assertActiveApp = async (current: CurrentApp) => {
   ).toBeInTheDocument();
   expect(
     await within(await getMonitorMenuItem()).findByRole("img", {
-      name: current === "monitor" ? /check_filled/i : /gauge/i,
+      name: current === "monitor" ? /check_filled/i : /pulse/i,
     }),
   ).toBeInTheDocument();
 };

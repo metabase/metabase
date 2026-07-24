@@ -62,10 +62,12 @@ Access tokens are scoped to limit what tools a client can use:
 | `agent:sql:construct`     | `construct_native_query`                                                                                       |
 | `agent:sql:execute`       | `execute_sql`                                                                                                  |
 | `agent:question:create`   | `create_question`                                                                                              |
-| `agent:question:update`   | `update_question` (also covers "move card to collection")                                                      |
+| `agent:question:update`   | `update_question` (also covers "move card to collection" and archiving)                                        |
 | `agent:question:execute`  | `execute_question`                                                                                             |
+| `agent:metric:create`     | `create_metric`                                                                                                |
+| `agent:metric:update`     | `update_metric` (also covers "move metric to collection" and archiving)                                        |
 | `agent:dashboard:create`  | `create_dashboard`                                                                                             |
-| `agent:dashboard:update`  | `update_dashboard`                                                                                             |
+| `agent:dashboard:update`  | `update_dashboard` (also covers archiving)                                                                     |
 | `agent:collection:create` | `create_collection`                                                                                            |
 
 Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
@@ -104,10 +106,12 @@ The MCP server exposes these tools, dynamically generated from the Agent API end
 
 | Tool                | Description                                                                                                       |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `create_metric`     | Save a query as a reusable metric. Accepts a `query_handle` from `construct_query`. The query needs one aggregation and at most one date grouping. |
+| `update_metric`     | Update a saved metric. Patch semantics. Setting `collection_id` moves it; setting `archived: true` archives it — a reversible soft delete, used when asked to delete a metric. A replacement `query` must still be a valid metric. |
 | `create_question`   | Save a query as a named question (card). Accepts a `query_handle` from `construct_query` (MBQL) or `construct_native_query` (native SQL). Saving native requires native-query DB permission. |
-| `update_question`   | Update a saved question. Patch semantics. Setting `collection_id` moves the card. Setting `archived` archives it. Replacing the query accepts a `construct_query` or `construct_native_query` handle. |
+| `update_question`   | Update a saved question. Patch semantics. Setting `collection_id` moves the card. Setting `archived: true` archives it — a reversible soft delete, used when asked to delete a question. Replacing the query accepts a `construct_query` or `construct_native_query` handle. |
 | `create_dashboard`  | Create a new dashboard, optionally populated with saved questions (auto-positioned on the grid).                  |
-| `update_dashboard`  | Update a dashboard's metadata (name, description, collection, archived).                                          |
+| `update_dashboard`  | Update a dashboard's metadata (name, description, collection, archived — a reversible soft delete, used when asked to delete a dashboard). |
 | `create_collection` | Create a new collection. Optionally nested under a `parent_collection_id`.                                        |
 
 Query results are limited to 200 rows per request. When more rows are available, the response includes a

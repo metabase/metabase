@@ -67,7 +67,8 @@ export function getDataSourceParts({
 
   const table = !isNative
     ? metadata.table(Lib.sourceTableOrCardId(query))
-    : (question.legacyNativeQuery() as NativeQuery).table();
+    : // Unjustified type cast. FIXME
+      (question.legacyNativeQuery() as NativeQuery).table();
   if (table && table.hasSchema()) {
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
     if (database != null && !isBasedOnSavedQuestion) {

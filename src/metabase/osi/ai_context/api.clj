@@ -6,7 +6,9 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
    [metabase.entity-retrieval.core :as entity-retrieval]
+   [metabase.osi.models.osi-ai-context :as osi-ai-context]
    [metabase.request.core :as request]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -33,6 +35,16 @@
    [:instructions {:optional true} [:maybe [:string {:max entity-retrieval/max-instructions-len}]]]
    [:synonyms     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]
    [:examples     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]])
+
+(def ^:private AiContextInput
+  "Accepted write shape for `ai_context` — the OSI `AIContext` oneOf.
+
+  It is either an [[AiContext]] object or the bare-string shorthand. `:decode/api` folds the string into
+  `{:instructions s}` before validation, so:
+
+    - a string is length-capped as the `:instructions` it becomes, and
+    - validation (and every read) only ever sees the object form."
+  (mu/with AiContext {:decode/api osi-ai-context/->ai-context}))
 
 (def ^:private Entry
   "An ai_context row as returned on reads. `entity_type` is any string: a row can predate a type's
@@ -96,7 +108,7 @@
   upsert keep two concurrent writers from racing in a duplicate row."
   [{:keys [entity-type entity-local-id]} :- logical-key-route-schema
    _query-params
-   {:keys [ai_context]} :- [:map [:ai_context AiContext]]]
+   {:keys [ai_context]} :- [:map [:ai_context AiContextInput]]]
   (api/check-superuser)
   (api/check-400 (contains? writable-entity-types entity-type)
                  "entity_type must be one of: measure, metric, model, segment, table")
@@ -125,12 +137,14 @@
   This call never reuses a reconcile already in progress (it may have started before your latest change);
   it starts one if the index is idle, otherwise it queues a single follow-up that any other waiting calls
   share.
-  Requires the semantic search feature; returns a 400 when it isn't configured."
+  Requires the library entity-retrieval feature; returns a 400 when the index is unavailable (the feature
+  isn't licensed, or the pgvector store or embedding backend isn't configured)."
   [_route-params
    _query-params]
   (api/check-superuser)
   (api/check-400 (entity-retrieval/force-reconcile!)
-                 "The library entity index requires semantic search, which is not configured."))
+                 (str "The library entity index is unavailable: it needs the library entity-retrieval "
+                      "feature plus a configured pgvector store and embedding backend.")))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:entity-type/:entity-local-id"

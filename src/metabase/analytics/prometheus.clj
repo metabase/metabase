@@ -531,6 +531,10 @@
    (prometheus/counter :metabase-notification/template-update
                        {:description "Number of notification templates updated."
                         :labels [:channel-type]})
+   (prometheus/counter :metabase-notification/image-buffer-pooled
+                       {:description "Number of chart rasterization images backed by a pooled buffer."})
+   (prometheus/counter :metabase-notification/image-buffer-unpooled
+                       {:description "Number of chart rasterization images too large for the pool, allocated fresh."})
    (prometheus/counter :metabase-gsheets/connection-creation-began
                        {:description "How many times the instance has initiated a Google Sheets connection creation."})
    (prometheus/counter :metabase-gsheets/connection-creation-error
@@ -760,6 +764,41 @@
                          {:description "Duration in milliseconds of used-tables extraction."
                           ;; 1ms -> 30s
                           :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
+   ;; messaging metrics
+   (prometheus/gauge :metabase-mq/queue-depth
+                     {:description "Batch count per queue by status, across all queue backends."
+                      :labels [:backend :channel :status]})
+   (prometheus/counter :metabase-mq/queue-poll-results
+                       {:description "Queue poll results by outcome, across all queue backends."
+                        :labels [:backend :result]})
+   (prometheus/counter :metabase-mq/batch-stale-recoveries
+                       {:description "Batches recovered from stale processing state."
+                        :labels [:backend :transport :channel]})
+   (prometheus/counter :metabase-mq/batches-handled
+                       {:description "Batches handled by status."
+                        :labels [:transport :channel :status]})
+   (prometheus/counter :metabase-mq/dedup-messages-dropped
+                       {:description "Messages dropped by dedup before publishing."
+                        :labels [:channel]})
+   (prometheus/histogram :metabase-mq/handle-duration-ms
+                         {:description "Duration in milliseconds to process a batch."
+                          :labels [:transport :channel]
+                          :buckets [1 5 10 50 100 500 1000 5000 10000 30000]})
+   (prometheus/counter :metabase-mq/messages-published
+                       {:description "Total messages published."
+                        :labels [:transport :channel]})
+   (prometheus/gauge :metabase-mq/publish-buffer-depth
+                     {:description "Messages sitting in the publish buffer awaiting flush."
+                      :labels [:channel]})
+   (prometheus/counter :metabase-mq/messages-received
+                       {:description "Individual messages delivered to handlers."
+                        :labels [:transport :channel]})
+   (prometheus/counter :metabase-mq/batches-retried
+                       {:description "Queue batches that will be re-attempted, by `reason`"
+                        :labels [:channel :reason]})
+   (prometheus/counter :metabase-mq/batches-dropped
+                       {:description "Queue batches permanently dropped by `reason`"
+                        :labels [:channel :reason]})
    ;; release dashboard metrics
    (prometheus/counter :metabase-sync/failures
                        {:description "Number of sync operation failures."

@@ -75,6 +75,7 @@ export type QueryEditorUiOptions = {
     item: QueryEditorDatabasePickerItem,
   ) => boolean;
   editorHeight?: number;
+  canUseSampleDatabase?: boolean;
   shouldShowLibrary?: false;
   hidePreview?: boolean;
   hideRunButton?: boolean;

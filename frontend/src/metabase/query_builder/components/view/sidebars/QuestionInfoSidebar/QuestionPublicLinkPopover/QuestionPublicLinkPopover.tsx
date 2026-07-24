@@ -68,6 +68,7 @@ export const QuestionPublicLinkPopover = ({
       selectedExtension={extension}
       setSelectedExtension={setExtension}
       onCopyLink={onCopyLink}
+      canRemoveLink={question.canWrite()}
     />
   );
 };

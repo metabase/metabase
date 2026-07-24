@@ -205,7 +205,7 @@ export interface VisualizationProps {
   ) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
-  onOpenTimelines?: () => void;
+  onOpenTimelines?: (eventIds?: number[]) => void;
 
   canToggleSeriesVisibility?: boolean;
   onUpdateWarnings?: any;
@@ -228,7 +228,7 @@ export type VisualizationPassThroughProps = {
   zoomedRowIndex?: number;
   onZoomRow?: (rowIndex: number) => void;
   onDeselectTimelineEvents?: () => void;
-  onOpenTimelines?: () => void;
+  onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
 
   // Table
@@ -276,9 +276,17 @@ export type VisualizationPassThroughProps = {
    * Props used for Audit Table visualization
    */
   isSelectable?: boolean;
-  rowChecked?: [];
-  onAllSelectClick?: () => void;
-  onRowSelectClick?: () => void;
+  rowChecked?: Record<string, boolean>;
+  onAllSelectClick?: (event: { rows: RowValues[] }) => void;
+  onRowSelectClick?: (event: { row: RowValues; rowIndex: number }) => void;
+  isSortable?: boolean;
+  sorting?: AuditTableSorting;
+  onSortingChange?: (sorting: AuditTableSorting) => void;
+};
+
+export type AuditTableSorting = {
+  column: string;
+  isAscending: boolean;
 };
 
 export type ColumnSettingDefinition<TValue, TProps = unknown> = {

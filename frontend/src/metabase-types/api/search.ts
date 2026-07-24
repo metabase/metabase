@@ -150,7 +150,12 @@ export type SearchRequest = {
   table_db_id?: DatabaseId;
   models?: SearchModel[];
   ids?: SearchResultId[];
-  filter_items_in_personal_collection?: "only" | "exclude";
+  filter_items_in_personal_collection?:
+    | "all"
+    | "only"
+    | "only-mine"
+    | "exclude"
+    | "exclude-others";
   context: SearchContext;
   created_at?: string | null;
   created_by?: UserId[] | null;
@@ -161,8 +166,6 @@ export type SearchRequest = {
   model_ancestors?: boolean | null;
   include_dashboard_questions?: boolean | null;
   include_metadata?: boolean | null;
-  non_temporal_dim_ids?: string | null;
-  has_temporal_dim?: boolean | null;
   search_engine?: "appdb" | "in-place" | "semantic" | null;
   display_type?: string[] | null;
 
