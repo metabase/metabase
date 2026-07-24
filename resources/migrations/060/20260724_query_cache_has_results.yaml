@@ -1,0 +1,39 @@
+## Add query_cache.has_results so a row that only holds a compute lease can be told apart from a row that
+## holds cached results, without reading the results blob. Requests waiting on another process's computation
+## poll for its results; reading `results` on every tick would move (and, on Postgres, detoast) the whole
+## blob just to learn whether it is there yet.
+##
+## Defaults to true: every pre-existing row was written by save-results! and therefore has results.
+##
+## Lives in 060 (the oldest backported release) so the same changeSet is shared across all versions >= 60,
+## alongside the query_cache.refresh_started_at lease it works with.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+
+  - changeSet:
+      id: v60.query-cache-has-results
+      author: bgrabow
+      comment: Add query_cache.has_results to distinguish a lease-claim row from a cached entry without reading the blob
+      changes:
+        - addColumn:
+            tableName: query_cache
+            columns:
+              - column:
+                  name: has_results
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: False while the row exists only to hold a compute lease for a query with no cached results yet; true once results have been written.
+                  constraints:
+                    nullable: false
+      rollback:
+        ## Drop the lease-only rows before the column that identifies them. They hold no results, so deleting
+        ## them costs at most a recompute for whoever held the lease -- whereas leaving them behind outlives
+        ## the column: nothing distinguishes them from cached entries afterwards, and a later re-upgrade would
+        ## re-add has_results with its DEFAULT true and label rows that hold nothing as entries.
+        - delete:
+            tableName: query_cache
+            where: has_results = false
+        - dropColumn:
+            tableName: query_cache
+            columnName: has_results

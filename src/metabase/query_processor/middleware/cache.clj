@@ -19,6 +19,7 @@
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
+   [metabase.query-processor.middleware.cache.poll :as cache.poll]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
@@ -202,9 +203,20 @@
           (log/trace "All cached rows reduced"))))))
 
 (def ^:dynamic *refresh-lease-duration-ms*
-  "How long a claimed stale-while-revalidate refresh lease is honored before another process may take it over (e.g. if
-  the claiming process crashed mid-refresh). Should comfortably exceed a normal query's run time."
-  (u/minutes->ms 5))
+  "How long a claimed compute lease is honored before another process may take it over (e.g. if the claiming process
+  crashed mid-compute), and how long a request waits on another process's computation before giving up and computing
+  locally. Should comfortably exceed a normal query's run time. Settable with the env var
+  `MB_QUERY_CACHING_REFRESH_LEASE_MS`."
+  (or (config/config-int :mb-query-caching-refresh-lease-ms)
+      (u/minutes->ms 5)))
+
+(def ^:dynamic *stale-grace-period-ms*
+  "How long past its freshness boundary a cached entry may still be served to callers while another process holds the
+  compute lease. Entries are only rewritten when someone actually runs the query, so without this bound a lease loser
+  could be served results arbitrarily older than the configured TTL (#78339); beyond the grace period callers wait
+  for the in-flight refresh instead. Settable with the env var `MB_QUERY_CACHING_STALE_GRACE_MS`."
+  (or (config/config-int :mb-query-caching-stale-grace-ms)
+      (u/minutes->ms 5)))
 
 (defn- cache-fresh?
   "Whether a cache entry last written at `updated-at` is still within its TTL given `invalidated-at` (the strategy's
@@ -213,14 +225,26 @@
   (boolean (and updated-at
                 (not (t/before? (t/instant updated-at) (t/instant invalidated-at))))))
 
+(defn- stale-within-grace?
+  "Whether a cache entry last written at `updated-at` went stale recently enough -- within [[*stale-grace-period-ms*]]
+  of `invalidated-at` -- to still be served while another process refreshes it."
+  [updated-at invalidated-at]
+  (boolean (and updated-at
+                (not (t/before? (t/instant updated-at)
+                                (t/minus (t/instant invalidated-at) (t/millis *stale-grace-period-ms*)))))))
+
 (mu/defn- maybe-serve-cached-results :- [:tuple
-                                         #_status [:enum ::fresh ::stale ::miss ::canceled]
+                                         #_status [:enum ::fresh ::stale ::miss ::wait ::canceled]
                                          #_result :any]
-  "Look up the cache entry for `query-hash` and decide what to do (stale-while-revalidate):
+  "Look up the cache entry for `query-hash` and decide what to do (stale-while-revalidate + request coalescing):
     - `[::fresh result]` -- entry is within its TTL; serve it.
-    - `[::stale result]` -- entry is expired but another process holds the refresh lease; serve it stale while that
-                            process refreshes, so we don't stampede the data warehouse.
-    - `[::miss nil]`     -- no entry, or it's expired and *this* process won the lease; the caller must recompute.
+    - `[::stale result]` -- entry is expired -- but only slightly -- and another process holds the compute lease;
+                            serve it stale while that process refreshes, so we don't stampede the data warehouse.
+    - `[::miss nil]`     -- the caller must recompute: it won the compute lease (for a cold miss or an expired
+                            entry), or freshness can't be determined for this strategy.
+    - `[::wait nil]`     -- another process holds the compute lease and there is nothing servable (a cold miss, or
+                            an entry stale beyond the grace period); the caller should wait for that process's
+                            results instead of independently hitting the warehouse.
     - `[::canceled nil]` -- the request was canceled."
   [ignore-cache?
    query-hash :- bytes?
@@ -229,29 +253,39 @@
   (if ignore-cache?
     [::miss nil]
     (try
-      (or (i/with-cached-results *backend* query-hash [is updated-at]
-                                 (when is
-                                   (let [invalidated-at (backend.db/strategy->invalidated-at strategy)]
-                                     (cond
-                                       ;; can't determine freshness for this strategy -> don't serve from cache
-                                       (nil? invalidated-at)
-                                       nil
+      (or (i/with-cached-results *backend* query-hash nil [is updated-at]
+            (if-not is
+              ;; no cache entry at all: elect a single computer across processes via the lease;
+              ;; losers wait for the winner's results rather than stampeding the warehouse
+              (when-not (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*)
+                [::wait nil])
+              (let [invalidated-at (backend.db/strategy->invalidated-at strategy)]
+                (cond
+                  ;; can't determine freshness for this strategy -> don't serve from cache
+                  (nil? invalidated-at)
+                  nil
 
-                                       ;; within its TTL -> serve the fresh entry
-                                       (cache-fresh? updated-at invalidated-at)
-                                       (when-let [result (reduce-cached-stream is rff query-hash)]
-                                         [::fresh result])
+                  ;; within its TTL -> serve the fresh entry
+                  (cache-fresh? updated-at invalidated-at)
+                  (when-let [result (reduce-cached-stream is rff query-hash)]
+                    [::fresh result])
 
-                                       ;; expired, and we won the refresh lease -> recompute (don't serve stale)
-                                       (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*)
-                                       nil
+                  ;; expired, and we won the refresh lease -> recompute (don't serve stale)
+                  (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*)
+                  nil
 
-                                       ;; expired, another process is refreshing -> serve stale
-                                       :else
-                                       (when-let [result (reduce-cached-stream is rff query-hash)]
-                                         (log/debugf "Serving stale cached results for hash '%s' while another process refreshes"
-                                                     (i/short-hex-hash query-hash))
-                                         [::stale result])))))
+                  ;; expired, another process is refreshing, and the entry is only slightly
+                  ;; stale -> serve it stale while that process refreshes
+                  (stale-within-grace? updated-at invalidated-at)
+                  (when-let [result (reduce-cached-stream is rff query-hash)]
+                    (log/debugf "Serving cached results written at %s for hash '%s' while another process refreshes"
+                                updated-at (i/short-hex-hash query-hash))
+                    [::stale result])
+
+                  ;; expired beyond the grace period -> too old to serve to anyone (#78339);
+                  ;; wait for the in-flight refresh instead
+                  :else
+                  [::wait nil]))))
           [::miss nil])
       (catch EofException _
         (log/debug "Request is closed; no one to return cached results to")
@@ -271,17 +305,101 @@
   (let [start-time-ns (System/nanoTime)
         orig-reduce   qp.pipeline/*reduce*]
     (log/trace "Running query and saving cached results (if eligible)...")
-    (binding [qp.pipeline/*reduce* (fn reduce'
-                                     [rff metadata rows]
-                                     {:post [(some? %)]}
-                                     (impl/do-with-serialization
-                                      (fn [in-fn result-fn]
-                                        (binding [*in-fn*     in-fn
-                                                  *result-fn* result-fn]
-                                          (orig-reduce rff metadata rows)))))]
-      (qp query
-          (fn [metadata]
-            (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))
+    (try
+      (binding [qp.pipeline/*reduce* (fn reduce'
+                                       [rff metadata rows]
+                                       {:post [(some? %)]}
+                                       (impl/do-with-serialization
+                                        (fn [in-fn result-fn]
+                                          (binding [*in-fn*     in-fn
+                                                    *result-fn* result-fn]
+                                            (orig-reduce rff metadata rows)))))]
+        (qp query
+            (fn [metadata]
+              (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))
+      (catch Throwable e
+        ;; the failed run may hold the compute lease (acquired for an expired entry or as a cold-miss claim); release
+        ;; it so waiting requests can take over immediately instead of waiting out the lease
+        (u/ignore-exceptions (i/release-refresh-lease! *backend* query-hash))
+        (throw e)))))
+
+(def ^:private cross-process-poll-interval-ms
+  "How often the polling loop waiting on another process's computation re-checks the cache. Settable with the env var
+  `MB_QUERY_CACHING_COALESCING_POLL_INTERVAL_MS`."
+  (or (config/config-int :mb-query-caching-coalescing-poll-interval-ms)
+      100))
+
+(defn- servable-since
+  "The oldest `updated-at` an entry can have and still be servable under `strategy`: fresh entries and entries stale
+  within [[*stale-grace-period-ms*]] are exactly those written at or after this instant. Recomputed per poll tick --
+  for a `:ttl` strategy the boundary slides with the clock. Nil when freshness can't be determined for `strategy`, in
+  which case nothing is servable."
+  [strategy]
+  (when-let [invalidated-at (backend.db/strategy->invalidated-at strategy)]
+    (t/minus (t/instant invalidated-at) (t/millis *stale-grace-period-ms*))))
+
+(defn- entry-servable?
+  "Side-effect-free check of whether the cache holds something servable (fresh, or stale within the grace period) for
+  `query-hash` under `strategy`. The freshness boundary goes to the backend as the query's minimum, so a tick that
+  finds nothing costs nothing proportional to the size of the stored results."
+  [query-hash strategy]
+  (boolean
+   (when-let [since (servable-since strategy)]
+     (i/with-cached-results *backend* query-hash since [is _updated-at]
+       (some? is)))))
+
+(defn- poll-for-cross-process-results
+  "Body of the deduplicated polling loop: watch the cache until another process's results become servable, until its
+  lease frees up or is abandoned (in which case claim it, so one waiter can take over the computation), or until a
+  full lease duration passes."
+  [query-hash strategy]
+  (let [deadline-ms (+ (System/currentTimeMillis) *refresh-lease-duration-ms*)]
+    (loop []
+      (Thread/sleep (long cross-process-poll-interval-ms))
+      (cond
+        (entry-servable? query-hash strategy)
+        {:status ::ready}
+
+        ;; the computing process finished without servable results (failed, or its results weren't cache-eligible) or
+        ;; abandoned its lease; claim the lease so exactly one waiter can take over the computation
+        (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*)
+        {:status ::compute, :ticket (atom false)}
+
+        (< (System/currentTimeMillis) deadline-ms)
+        (recur)
+
+        :else
+        {:status ::timed-out}))))
+
+(defn- await-cross-process-results
+  "Another process holds the compute lease for `query-hash` and there is nothing servable. Await the (per-instance,
+  deduplicated) polling loop watching for its results, then serve them, take over the computation, or -- after a full
+  lease duration with nothing to show for it -- compute locally."
+  [qp query query-hash cache-strategy rff]
+  (let [{:keys [status ticket]} (cache.poll/await-outcome [(vec query-hash) cache-strategy]
+                                                          #(poll-for-cross-process-results query-hash cache-strategy)
+                                                          (* 2 *refresh-lease-duration-ms*)
+                                                          {:status ::timed-out})]
+    (case status
+      ;; results appeared: serve them, re-checking freshness for ourselves (if the state changed again in the
+      ;; meantime we may end up computing or waiting for the next round)
+      ::ready
+      (let [[serve-status result] (maybe-serve-cached-results false query-hash cache-strategy rff)]
+        (case serve-status
+          (::fresh ::stale) result
+          ::canceled        ::canceled
+          ::miss            (run-and-cache! qp query query-hash cache-strategy rff)
+          ::wait            (await-cross-process-results qp query query-hash cache-strategy rff)))
+
+      ;; the previous computation died without results and the poller claimed its lease: exactly one waiter
+      ;; computes; the rest wait for that computation
+      ::compute
+      (if (compare-and-set! ticket false true)
+        (run-and-cache! qp query query-hash cache-strategy rff)
+        (await-cross-process-results qp query query-hash cache-strategy rff))
+
+      ::timed-out
+      (run-and-cache! qp query query-hash cache-strategy rff))))
 
 (mu/defn- run-query-with-cache :- :some
   [qp {:keys [cache-strategy middleware], :as query} :- ::qp.schema/any-query
@@ -290,11 +408,13 @@
   ;; after normalization, instead of before. This is necessary to make caching work properly with sandboxed users, see
   ;; #14388.
   (let [query-hash      (qp.util/query-hash query)
-        [status result] (maybe-serve-cached-results (:ignore-cached-results? middleware) query-hash cache-strategy rff)]
+        ignore-cache?   (:ignore-cached-results? middleware)
+        [status result] (maybe-serve-cached-results ignore-cache? query-hash cache-strategy rff)]
     (case status
       (::fresh ::stale) result
       ::canceled        ::canceled
-      ::miss            (run-and-cache! qp query query-hash cache-strategy rff))))
+      ::miss            (run-and-cache! qp query query-hash cache-strategy rff)
+      ::wait            (await-cross-process-results qp query query-hash cache-strategy rff))))
 
 (defn- has-cache-strategy? [cache-strategy]
   (some? cache-strategy))
