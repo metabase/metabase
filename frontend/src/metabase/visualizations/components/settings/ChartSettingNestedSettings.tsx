@@ -1,4 +1,3 @@
-/* eslint-disable react/display-name */
 import { Component, type ComponentType } from "react";
 import _ from "underscore";
 

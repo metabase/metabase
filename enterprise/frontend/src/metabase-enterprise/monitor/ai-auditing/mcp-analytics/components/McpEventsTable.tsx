@@ -24,9 +24,9 @@ import {
   MCP_EVENT_SORT_COLUMNS,
   type McpEventSortColumn,
   type McpFilters,
+  buildEventsQuery,
   mcpEventColumnKeys,
 } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/query-utils";
-import { buildEventsQuery } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/query-utils";
 import type {
   CardMetadata,
   MetadataProvider,
