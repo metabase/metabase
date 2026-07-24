@@ -250,6 +250,36 @@
             (is (entity-exported? mock a-eid) "card A still on the remote")
             (is (entity-exported? mock b-eid) "card B still on the remote")))))))
 
+(deftest reenable-retracks-never-pushed-content-test
+  (testing "a card created but never pushed, dropped when its collection was disabled, is re-tracked on
+            re-enable so the next export pushes it instead of silently losing it (GHY-4189)"
+    (with-exported-collection!
+      (fn [{:keys [mock coll-id card-a card-b]}]
+        ;; Mirror production: content RSOs carry model_collection_id, so the disable can find them.
+        (t2/update! :model/RemoteSyncObject :model_type "Card" :model_id [:in [card-a card-b]]
+                    {:model_collection_id coll-id})
+        (mt/with-temp [:model/Card {card-c :id} {:name "Card C" :collection_id coll-id}]
+          ;; Card C is new and never pushed: a 'create' RSO with no file_path (as a card-create event
+          ;; produces). It exists locally in the synced collection but is not yet on the remote.
+          (t2/delete! :model/RemoteSyncObject :model_type "Card" :model_id card-c)
+          (t2/insert! :model/RemoteSyncObject
+                      {:model_type "Card" :model_id card-c :model_name "Card C"
+                       :model_collection_id coll-id :status "create"
+                       :status_changed_at (t/offset-date-time)})
+          (let [c-eid (t2/select-one-fn :entity_id :model/Card :id card-c)]
+            (is (not (entity-exported? mock c-eid)) "precondition: card C has never been pushed")
+            ;; Clear the initial-export task so the bulk-set-remote-sync guard lets us proceed.
+            (t2/delete! :model/RemoteSyncTask)
+            ;; USER ACTION: disable then re-enable before card C is ever pushed. The disable drops card C's
+            ;; never-pushed 'create' row; re-enable must re-track it.
+            (core/bulk-set-remote-sync {coll-id false})
+            (core/bulk-set-remote-sync {coll-id true})
+            ;; USER ACTION: push. Card C must reach the remote, not be silently lost.
+            (let [result (impl/export! (source.p/snapshot mock) (new-task!) "after re-enable")]
+              (is (= :success (:status result)))
+              (is (entity-exported? mock c-eid)
+                  "card C is pushed to the remote after the disable/re-enable cycle"))))))))
+
 (deftest rename-without-stored-path-falls-back-test
   (with-exported-collection!
     (fn [{:keys [mock card-a]}]

@@ -131,6 +131,35 @@
     (t2/update! :model/RemoteSyncObject :id [:in ids]
                 {:status "update" :status_changed_at (t/offset-date-time)})))
 
+(defn- collection-content-specs
+  "Specs for entities tracked by living directly in a remote-synced collection (Card, Dashboard, Document,
+  Timeline) — eligibility keyed on the collection being remote-synced, so they carry a collection_id."
+  []
+  (filter #(= :remote-synced (get-in % [:eligibility :collection])) (vals spec/remote-sync-specs)))
+
+(defn- track-untracked-contents!
+  "Inserts a 'create' RemoteSyncObject row for every eligible content entity in `collection-ids` that has
+  none — e.g. a never-pushed card whose 'create' row was dropped when its collection was previously
+  un-synced. Without this a re-enabled collection's untracked contents would be omitted by the next
+  (incremental) export. The RemoteSyncObject table only records pending changes, so already-synced content
+  is legitimately absent; re-marking it 'create' re-serializes it harmlessly (a 'create' onto its own path
+  stays a no-op)."
+  [collection-ids]
+  (doseq [{:keys [model-key model-type archived-key] :as spec} (collection-content-specs)
+          :let  [tracked  (t2/select-fn-set :model_id :model/RemoteSyncObject :model_type model-type)
+                 where    (if archived-key
+                            [:and [:in :collection_id collection-ids] [:= archived-key false]]
+                            [:in :collection_id collection-ids])
+                 entities (t2/select model-key {:where where})]
+          entity entities
+          :when  (not (contains? tracked (:id entity)))]
+    (t2/insert! :model/RemoteSyncObject
+                (merge {:model_type        model-type
+                        :model_id          (:id entity)
+                        :status            "create"
+                        :status_changed_at (t/offset-date-time)}
+                       (spec/build-sync-object-fields spec entity)))))
+
 (mu/defn bulk-set-remote-sync :- :nil
   "Sets remote sync to true/false on one or collections in a single transaction. Checks that the remote sync state
   afterwards is consistent in terms of dependency rules. Collections are provided as a map of collection-id -> sync state."
@@ -153,9 +182,12 @@
                    :where [:and
                            [:= :is_remote_synced false]
                            (subtree-where sync-on)]})
-        ;; Re-syncing before a recorded removal was pushed must not leave the contents marked for deletion.
         (when-let [ids (seq (t2/select-pks-set :model/Collection {:where (subtree-where sync-on)}))]
-          (restore-removed-rsos! ids)))
+          ;; Re-syncing before a recorded removal was pushed must not leave the contents marked for deletion.
+          (restore-removed-rsos! ids)
+          ;; ...and contents that were dropped outright (never-pushed 'create' rows) must be re-tracked, so
+          ;; the next export pushes them rather than silently omitting them.
+          (track-untracked-contents! ids)))
       (when (seq sync-off)
         (let [affected-collection-ids
               (t2/select-pks-set :model/Collection
