@@ -16,6 +16,8 @@ A question component embeds a single Metabase question (a chart, table, or other
 
 \* Only available on Pro and Enterprise plans. Requires you to log in people to your Metabase via SSO so Metabase can know what data people are allowed to query.
 
+For embedding an AI chat component, see [AI chat](./sdk/ai-chat.md).
+
 ## Embed a view-only chart
 
 ![Static question](./images/static-question.png)
@@ -28,6 +30,8 @@ A view-only (a.k.a. "static") chart displays results without letting people inte
 ### View-only charts using a web component
 
 You can use the in-app wizard to set up a view-only chart using web components.
+
+![In-app embedding wizard](./images/in-app-embedding-wizard.png)
 
 1. Go to the question in your Metabase.
 2. Click the **Share** icon in the upper right.
@@ -413,7 +417,6 @@ Colors set in a question's visualization settings override theme colors.
 
 ## Further reading
 
-- [Question embedding reference](./question-reference.md)
 - [Appearance](./appearance.md)
 - [Modular embedding parameters](./parameters.md)
 - [Guest embeds](./guest-embedding.md)

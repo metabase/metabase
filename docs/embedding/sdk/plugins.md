@@ -29,7 +29,7 @@ To use a plugin on a per-component basis, pass the plugin as a prop to the compo
 
 See docs for specific components:
 
-- [Interactive question plugins](./questions.md#interactive-question-plugins)
+- [Question plugins](../question.md#customize-what-happens-when-someone-clicks-on-a-chart)
 - [Dashboard plugins](./dashboards.md#dashboard-plugins)
 
 ## Global plugins
@@ -38,7 +38,7 @@ See docs for specific components:
 
 The plugin `mapQuestionClickActions` lets you customize what happens when people click on a data point on a dashboard or chart. `mapQuestionClickActions` can be used globally, or on component level.
 
-See [`mapQuestionClickActions` plugin](./questions.md#mapquestionclickactions) for more information and examples.
+See [`mapQuestionClickActions` plugin](../question.md#customize-what-happens-when-someone-clicks-on-a-chart) for more information and examples.
 
 ### `handleLink`
 
@@ -68,5 +68,5 @@ The plugins `getNoDataIllustration` and `getNoObjectIllustration` can only be us
 
 ## Further reading
 
-- [Interactive question plugins](./questions.md#interactive-question-plugins)
+- [Question plugins](../question.md#customize-what-happens-when-someone-clicks-on-a-chart)
 - [Dashboard plugins](./dashboards.md#dashboard-plugins)

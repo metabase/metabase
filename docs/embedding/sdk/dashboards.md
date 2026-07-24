@@ -74,7 +74,7 @@ By default, dashboard components take full page height (100vh). You can override
 
 ## Customizing drill-through question layout
 
-When drilling through or clicking on a question card in the dashboard, you will be taken to the question view. By default, the question is shown in the [default layout](./questions.md#customizing-interactive-questions) for interactive questions.
+When drilling through or clicking on a question card in the dashboard, you will be taken to the question view. By default, the question is shown in the [default layout](../question.md#customize-the-layout) for interactive questions.
 
 To customize the question layout, pass a `renderDrillThroughQuestion` prop to the `InteractiveDashboard` component, with the custom view as the child component.
 
@@ -84,7 +84,7 @@ To customize the question layout, pass a `renderDrillThroughQuestion` prop to th
 {% include_file "{{ dirname }}/snippets/dashboards/custom-drill-through-question-layout.tsx" snippet="example-2" %}
 ```
 
-The questionView prop accepts a React component that will be rendered in the question view, which you can build with namespaced components within the `InteractiveQuestion` component. See [customizing interactive questions](./questions.md#customizing-interactive-questions) for an example layout.
+The questionView prop accepts a React component that will be rendered in the question view, which you can build with namespaced components within the `InteractiveQuestion` component. See [customize the layout](../question.md#customize-the-layout) for an example layout.
 
 ## Dashboard plugins
 
@@ -136,7 +136,7 @@ If you want to replace the existing menu with your own component, you can do so 
 
 ### `mapQuestionClickActions`
 
-You can customize what happens when people click on a data point on a dashboard with the `mapQuestionClickActions` plugin. See [mapQuestionClickActions](./questions.md#mapquestionclickactions).
+You can customize what happens when people click on a data point on a dashboard with the `mapQuestionClickActions` plugin. See [mapQuestionClickActions](../question.md#customize-what-happens-when-someone-clicks-on-a-chart).
 
 ## Creating dashboards
 
