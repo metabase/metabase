@@ -262,7 +262,10 @@ describe(
       });
 
       cy.log("Simple question");
+      cy.intercept("POST", "/api/dataset/native").as("nativePreview1");
       openSidebar("native");
+      cy.wait("@nativePreview1");
+      cy.intercept("POST", "/api/dataset").as("simpleQuery");
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
         H.NativeEditor.get()
@@ -276,6 +279,7 @@ describe(
       cy.log("Database and table should be pre-selected (metabase#15946)");
       cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
       cy.findByTestId("selected-table").should("have.text", "Products");
+      cy.wait("@simpleQuery");
       cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
 
       cy.log("Nested question");
@@ -285,12 +289,17 @@ describe(
       H.saveQuestion("foo", undefined, {
         path: ["Our analytics"],
       });
+      cy.intercept("POST", "/api/dataset").as("exploreQuery");
       cy.findByTestId("qb-header").findByText("Explore results").click();
+      cy.wait("@exploreQuery");
       cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
 
       cy.log("The generated query should be valid (metabase#38181)");
       H.openNotebook();
+      cy.intercept("POST", "/api/dataset/native").as("nativePreview2");
       openSidebar("native");
+      cy.wait("@nativePreview2");
+      cy.intercept("POST", "/api/dataset").as("nestedQuery");
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
         H.NativeEditor.get()
@@ -308,6 +317,7 @@ describe(
       );
       cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
       cy.findByTestId("selected-table").should("have.text", "Products");
+      cy.wait("@nestedQuery");
       cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
     });
 
