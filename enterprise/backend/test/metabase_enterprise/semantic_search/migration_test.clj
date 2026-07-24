@@ -300,6 +300,21 @@
                                                   [:= :table_name [:inline table-name]]
                                                   [:= :column_name [:inline column-name]]]}))))
 
+(deftest current-schema-version-adds-health-metric-columns-test
+  (mt/with-premium-features #{:semantic-search}
+    (semantic.tu/with-test-db-defaults!
+      (let [pgvector       (semantic.env/get-pgvector-datasource!)
+            index-metadata semantic.index-metadata/default-index-metadata]
+        (semantic.db.connection/with-migrate-tx [tx]
+          (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata}))
+        (jdbc/execute! pgvector [(str "ALTER TABLE index_metadata "
+                                      "DROP COLUMN repair_orphan_count, "
+                                      "DROP COLUMN repair_snapshot_at")])
+        (semantic.db.connection/with-migrate-tx [tx]
+          (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata}))
+        (is (has-column?! pgvector "index_metadata" "repair_orphan_count"))
+        (is (has-column?! pgvector "index_metadata" "repair_snapshot_at"))))))
+
 (deftest dynamic-schema-migration-test
   (mt/with-premium-features #{:semantic-search}
     (semantic.tu/with-test-db-defaults!

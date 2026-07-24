@@ -16,6 +16,13 @@
     (is (= "\"semantic_search\"" (semantic.util/quote-ident "semantic_search")))
     (is (= "\"weird\"\"name\"" (semantic.util/quote-ident "weird\"name")))))
 
+(deftest ^:parallel quote-table-test
+  (testing "a schema-qualified name quotes each part separately, not the whole thing as one identifier"
+    (is (= "\"semantic_search\".\"index_table_1\""
+           (semantic.util/quote-table "semantic_search.index_table_1"))))
+  (testing "an unqualified name is a single quoted identifier"
+    (is (= "\"index_table_1\"" (semantic.util/quote-table "index_table_1")))))
+
 (deftest ^:parallel column-keyword-test
   (testing "a dotted-name keyword (renders as separate identifiers), never a namespaced one"
     (is (= :index_table_1.model (semantic.util/column-keyword "index_table_1" "model")))
@@ -25,6 +32,42 @@
   (testing "conflict-target-column drops the schema — ON CONFLICT names the target by its bare relation"
     (is (= :index_table_1.model
            (semantic.util/conflict-target-column "semantic_search.index_table_1" "model")))))
+
+(deftest index-state-test
+  (testing "classifies catalog and concurrent-build state"
+    (doseq [[row expected] [[nil nil]
+                            [{:is_ready true, :is_valid true, :is_building false} :ready]
+                            [{:is_ready false, :is_valid false, :is_building true} :building]
+                            [{:is_ready true, :is_valid false, :is_building false} :invalid]]]
+      (mt/with-dynamic-fn-redefs [jdbc/execute-one! (constantly row)]
+        (is (= expected (semantic.util/index-state ::pgvector "index_1"))))))
+  (testing "only ready indexes exist; absent and abandoned invalid indexes need a build"
+    (doseq [[state exists? needs-build?] [[nil false true]
+                                          [:ready true false]
+                                          [:building false false]
+                                          [:invalid false true]]]
+      (mt/with-dynamic-fn-redefs [semantic.util/index-state (constantly state)]
+        (is (= exists? (semantic.util/index-exists? ::pgvector "index_1")))
+        (is (= needs-build? (semantic.util/index-needs-build? ::pgvector "index_1")))))))
+
+(deftest index-state-catalog-query-test
+  (let [queries (atom [])]
+    (mt/with-dynamic-fn-redefs
+      [jdbc/execute-one! (fn [_ query _]
+                           (swap! queries conj query)
+                           {:is_ready true, :is_valid true, :is_building false})]
+      (is (= :ready (semantic.util/index-state ::pgvector "semantic_search.index_1")))
+      (is (= :ready (semantic.util/index-state ::pgvector "index_2"))))
+    (testing "both catalog queries distinguish active builds from abandoned invalid indexes"
+      (doseq [[statement] @queries]
+        (is (re-find #"x\.indisready" statement))
+        (is (re-find #"x\.indisvalid" statement))
+        (is (re-find #"pg_stat_progress_create_index" statement))))
+    (testing "qualified names retain their schema constraint"
+      (is (= ["semantic_search" "index_1"] (rest (first @queries))))
+      (is (= ["index_2"] (rest (second @queries))))
+      (is (re-find #"ORDER BY CASE" (first (second @queries)))
+          "unqualified names choose the best state deterministically"))))
 
 (deftest catalog-lookups-schema-scoping-test
   (testing "qualified names scope table/index existence checks to their schema; a same-named object in

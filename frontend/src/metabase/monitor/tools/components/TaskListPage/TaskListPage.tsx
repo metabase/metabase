@@ -1,8 +1,12 @@
-import { useListDatabasesQuery, useListTasksQuery } from "metabase/api";
+import { useMemo } from "react";
+
+import { useLazyListTasksQuery, useListDatabasesQuery } from "metabase/api";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import type { WithRouterProps } from "metabase/router";
-import { Flex } from "metabase/ui";
+import { useRouter } from "metabase/router";
+import { Center, Flex, Group } from "metabase/ui";
 
 import { TaskPicker } from "../TaskPicker";
 import { TaskStatusPicker } from "../TaskStatusPicker";
@@ -13,18 +17,24 @@ import { urlStateConfig } from "./utils";
 
 const PAGE_SIZE = 50;
 
-export const TaskListPage = ({ location }: WithRouterProps) => {
+export const TaskListPage = () => {
+  const { location } = useRouter();
   const [
     { page, sort_column, sort_direction, status, task },
     { patchUrlState },
   ] = useUrlState(location, urlStateConfig);
-  const sortingOptions = { sort_column, sort_direction };
+  const sortingOptions = useMemo(
+    () => ({ sort_column, sort_direction }),
+    [sort_column, sort_direction],
+  );
 
   const {
     data: tasksData,
+    isFetching,
     isLoading: isLoadingTasks,
     error: tasksError,
-  } = useListTasksQuery(
+  } = useAbortableQuery(
+    useLazyListTasksQuery,
     {
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
@@ -52,39 +62,49 @@ export const TaskListPage = ({ location }: WithRouterProps) => {
 
   return (
     <TasksTabs>
-      <Flex gap="md" justify="space-between">
-        <Flex gap="md">
-          <TaskPicker
-            value={task}
-            onChange={(task) => patchUrlState({ task, page: 0 })}
-          />
+      <Group gap="md" align="center" wrap="nowrap">
+        <TaskPicker
+          value={task}
+          onChange={(task) => patchUrlState({ task, page: 0 })}
+        />
 
-          <TaskStatusPicker
-            value={status}
-            onChange={(status) => patchUrlState({ status, page: 0 })}
+        <TaskStatusPicker
+          value={status}
+          onChange={(status) => patchUrlState({ status, page: 0 })}
+        />
+      </Group>
+
+      {error !== undefined ? (
+        <Center flex={1}>
+          <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
+        </Center>
+      ) : (
+        <TasksTable
+          databases={databases}
+          isFetching={isFetching}
+          isLoading={isLoading}
+          page={page}
+          sortingOptions={sortingOptions}
+          tasks={tasks}
+          onSortingOptionsChange={(sortingOptions) =>
+            patchUrlState({ ...sortingOptions, page: 0 })
+          }
+        />
+      )}
+
+      {!isLoading && error == null && (
+        <Flex justify="end">
+          <PaginationControls
+            page={page}
+            pageSize={PAGE_SIZE}
+            itemsLength={tasks.length}
+            total={total}
+            showTotal
+            onPreviousPage={() => patchUrlState({ page: page - 1 })}
+            onNextPage={() => patchUrlState({ page: page + 1 })}
           />
         </Flex>
-
-        <PaginationControls
-          onPreviousPage={() => patchUrlState({ page: page - 1 })}
-          onNextPage={() => patchUrlState({ page: page + 1 })}
-          page={page}
-          pageSize={PAGE_SIZE}
-          itemsLength={tasks.length}
-          total={total}
-        />
-      </Flex>
-
-      <TasksTable
-        databases={databases}
-        error={error}
-        isLoading={isLoading}
-        sortingOptions={sortingOptions}
-        tasks={tasks}
-        onSortingOptionsChange={(sortingOptions) =>
-          patchUrlState({ ...sortingOptions, page: 0 })
-        }
-      />
+      )}
     </TasksTabs>
   );
 };

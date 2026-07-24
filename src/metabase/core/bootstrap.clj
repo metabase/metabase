@@ -34,7 +34,6 @@
 ;;; etc.) and can run with minimal namespace loading for fast startup.
 ;;;
 ;;; Usage:
-;;;   java -jar metabase.jar --mode checker [checker-specific args...]
 ;;;   java -jar metabase.jar --mode complexity-score [scorer-specific args...]
 ;;; ===========================================================================
 
@@ -48,9 +47,6 @@
    The mode's -main function is responsible for calling System/exit."
   [mode args]
   (let [startup (case mode
-                  ;; schema checker was moved out to js. Perhaps this will get a long running server mode checker? Or
-                  ;; perhaps just this one.
-                  "checker"          'metabase-enterprise.checker.cli/entrypoint
                   "complexity-score" 'metabase-enterprise.data-complexity-score.cli/entrypoint
                   "preview"          'metabase.core.preview/entrypoint
                   nil)]
@@ -58,7 +54,7 @@
       ((requiring-resolve startup) args)
       (do (binding [*out* *err*]
             (output! (str "Unknown mode: " mode))
-            (output! "Available modes: checker, complexity-score, preview"))
+            (output! "Available modes: complexity-score, preview"))
           (System/exit 1)))))
 
 (def ^:private mode->disabled-subsystems-preset

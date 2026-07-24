@@ -120,10 +120,6 @@
 
 ;;;; model
 
-(defmethod serdes/hash-fields :model/TimelineEvent
-  [_timeline-event]
-  [:name :timestamp (serdes/hydrated-hash :timeline) :created_at])
-
 ;;;; serialization
 
 ;; nested in Timeline

@@ -256,7 +256,7 @@
                 "`{\"query\": <object>}`; returns `{\"query_handle\": \"<uuid>\"}` to feed "
                 "`execute_query` or `visualize_query`.\n"
                 "\n"
-                "Workflow: use search / entity_details first to discover the exact database, "
+                "Workflow: use search / read_resource first to discover the exact database, "
                 "schema, table, and column NAMES (not numeric IDs). Never invent identifiers.\n"
                 "\n"
                 "Shape: every clause is `[\"op\", {}, ...args]` with a MANDATORY empty options "

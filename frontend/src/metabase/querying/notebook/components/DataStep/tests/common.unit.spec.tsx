@@ -1,7 +1,8 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
-import { fireEvent, getIcon, screen } from "__support__/ui";
+import { fireEvent, getIcon, screen, waitFor } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
 import { METAKEY } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";
@@ -13,6 +14,7 @@ import {
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { CardType, IconName } from "metabase-types/api";
+import { createMockSearchResult } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   SAMPLE_DB_ID,
@@ -299,6 +301,26 @@ describe("DataStep", () => {
       ).toBeInTheDocument();
     });
 
+    it("should exclude other users' personal collections from the inline data-source search", async () => {
+      await setupEmptyQuery();
+
+      await userEvent.type(
+        await screen.findByPlaceholderText(/search for tables and more/i),
+        "accounts",
+      );
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.lastCall("path:/api/search")).toBeTruthy();
+      });
+
+      const call = fetchMock.callHistory.lastCall("path:/api/search");
+      const url = new URL(checkNotNull(call?.request?.url));
+      expect(url.searchParams.get("context")).toBe("data-picker");
+      expect(url.searchParams.get("filter_items_in_personal_collection")).toBe(
+        "exclude-others",
+      );
+    });
+
     it("meta click should open the data source in a new window", async () => {
       const { mockWindowOpen } = await setup();
 
@@ -347,6 +369,25 @@ describe("DataStep", () => {
   });
 
   describe("metrics", () => {
+    it("should hide metrics from the mini picker", async () => {
+      const step = createMockNotebookStep({
+        question: DEFAULT_QUESTION.setType("metric"),
+      });
+      const existingMetric = createMockSearchResult({
+        name: "Existing metric",
+        model: "metric",
+      });
+      await setup({ step, searchItems: [existingMetric] });
+
+      await userEvent.click(screen.getByText("Orders"));
+      await userEvent.type(
+        screen.getByPlaceholderText(/search for tables and more/i),
+        "Existing metric",
+      );
+
+      expect(screen.queryByText("Existing metric")).not.toBeInTheDocument();
+    });
+
     it("should automatically aggregate by count for metrics", async () => {
       const step = createMockNotebookStep({
         question: DEFAULT_QUESTION.setType("metric"),

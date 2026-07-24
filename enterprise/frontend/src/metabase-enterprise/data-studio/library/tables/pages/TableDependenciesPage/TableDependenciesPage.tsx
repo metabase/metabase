@@ -1,9 +1,8 @@
-import type { ReactNode } from "react";
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { Outlet } from "metabase/router";
 import { Card, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -15,13 +14,9 @@ type TableDependenciesPageParams = {
 
 type TableDependenciesPageProps = {
   params: TableDependenciesPageParams;
-  children?: ReactNode;
 };
 
-export function TableDependenciesPage({
-  params,
-  children,
-}: TableDependenciesPageProps) {
+export function TableDependenciesPage({ params }: TableDependenciesPageProps) {
   const tableId = Urls.extractEntityId(params.tableId);
   const { table, isLoading, error } = useLoadTableWithMetadata(tableId);
 
@@ -43,7 +38,7 @@ export function TableDependenciesPage({
         }}
       >
         <Card p={0} withBorder flex={1}>
-          {children}
+          <Outlet />
         </Card>
       </PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider>
     </PageContainer>

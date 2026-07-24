@@ -15,8 +15,15 @@
       "@metabase/embedding-sdk-react": [
         "../enterprise/frontend/src/embedding-sdk-package/index.ts"
       ],
+      "@metabase/embedding-sdk-react/data-app": [
+        "../enterprise/frontend/src/embedding-sdk-package/data-app.ts"
+      ],
       "*": ["../frontend/src/*"]
     }
   },
-  "include": ["**/*"]
+  "include": ["**/*"],
+  // Data-app fixtures are standalone SDK apps (built by Vite, typechecked by
+  // their own tsconfig) — not part of the e2e TS program. Including them pulls
+  // SDK source outside this project's rootDir.
+  "exclude": ["support/assets/data-apps"]
 }

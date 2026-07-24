@@ -126,21 +126,18 @@ describe("scenarios > admin > permissions > application", () => {
 
       it("allows accessing tools for non-admins", () => {
         cy.visit("/");
-        H.goToAdmin();
+        H.getProfileLink().click();
+        H.popover().findByText("Monitor").click();
 
-        cy.log("Tools smoke test");
-        cy.location("pathname").should("eq", "/admin/tools/help");
+        cy.log("Monitor tools smoke test");
+        cy.location("pathname").should("contain", "/monitor/tasks");
         cy.findByRole("heading", {
-          name: "Help",
+          name: "Background tasks",
         });
 
-        cy.findByTestId("admin-layout-sidebar")
-          .findByText("Erroring questions")
-          .click();
-        cy.location("pathname").should("eq", "/admin/tools/errors");
-        cy.findByTestId("admin-layout-content").findByText(
-          "Questions that errored when last run",
-        );
+        cy.findByTestId("monitor-nav").findByText("Erroring questions").click();
+        cy.location("pathname").should("eq", "/monitor/errors");
+        cy.findByTestId("monitor-main").findByText("Erroring questions");
       });
     });
 
@@ -152,10 +149,10 @@ describe("scenarios > admin > permissions > application", () => {
 
         H.popover().findByText(adminAppLinkText).should("not.exist");
 
-        cy.visit("/admin/tools/errors");
+        cy.visit("/monitor/errors");
         H.main().findByText("Sorry, you don’t have permission to see that.");
 
-        cy.visit("/admin/tools/help");
+        cy.visit("/monitor");
         H.main().findByText("Sorry, you don’t have permission to see that.");
       });
     });
