@@ -322,12 +322,15 @@
   x)
 
 (mu/defmethod ->rvalue :expression
-  [query stage-number [_ {:keys [temporal-unit]} expression-name] :- :mbql.clause/expression]
+  [query                                       :- ::lib.schema/query
+   stage-number                                :- :int
+   [_ {:keys [temporal-unit]} expression-name] :- :mbql.clause/expression]
   (let [expression-value (lib/resolve-expression query stage-number expression-name)
         rvalue           (cond->> (->rvalue query stage-number expression-value)
                            (driver-api/is-clause? :value expression-value) (array-map $literal))]
-    (cond-> rvalue
-      temporal-unit (with-rvalue-temporal-bucketing query temporal-unit))))
+    (if temporal-unit
+      (with-rvalue-temporal-bucketing query rvalue temporal-unit)
+      rvalue)))
 
 (def ^:private base64-decoder "
 function(bin) {
@@ -507,14 +510,13 @@ function(bin) {
 (mu/defn- with-rvalue-temporal-bucketing
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column
-   unit :- ::lib.schema.temporal-bucketing/unit]
+   unit                  :- ::lib.schema.temporal-bucketing/unit]
   {:style/indent [:form]}
   (if (= unit :default)
     column
     (let [supports-dateTrunc? (-> (get-mongo-version metadata-providerable)
                                   :semantic-version
-                                  (driver.u/semantic-version-gte [5]))
-          column column]
+                                  (driver.u/semantic-version-gte [5]))]
       (letfn [(truncate [unit]
                 (if supports-dateTrunc?
                   {:$dateTrunc {:date column
