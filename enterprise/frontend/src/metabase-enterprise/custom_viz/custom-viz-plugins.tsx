@@ -2,7 +2,6 @@ import type {
   CreateCustomVisualizationProps,
   CustomVisualization,
   CustomVisualizationProps,
-  CustomVisualizationSettingDefinition,
   ClickObject as CustomVizClickObject,
   HoverObject as CustomVizHoverObject,
 } from "custom-viz";
@@ -38,6 +37,7 @@ import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
+import { brandSettingDefinition } from "./custom-viz-settings";
 import type { SandboxMode } from "./sandbox";
 import { usePluginMount } from "./use-plugin-mount";
 
@@ -376,10 +376,7 @@ export async function loadCustomVizPlugin(
 
     const props: CreateCustomVisualizationProps<Record<string, unknown>> = {
       defineSetting(definition) {
-        // Unjustified type cast. FIXME
-        return definition as unknown as CustomVisualizationSettingDefinition<
-          Record<string, unknown>
-        >;
+        return brandSettingDefinition(definition);
       },
       locale:
         window.MetabaseUserLocalization?.headers?.language ??
