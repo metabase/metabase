@@ -94,4 +94,10 @@ describe("scenarios > data apps > sandbox escape (security)", () => {
     runEscape("escape-react-src");
     assertVictimNotCreated();
   });
+
+  it("does not escape via a srcdoc iframe", () => {
+    setUpEscape();
+    runEscape("escape-react-srcdoc");
+    assertVictimNotCreated();
+  });
 });

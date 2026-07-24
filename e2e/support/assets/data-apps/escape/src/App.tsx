@@ -6,7 +6,10 @@ type EscapeTestEnv = {
   payload: Record<string, unknown>;
 };
 
-type ReactMode = "react-iframe-about-blank" | "react-iframe-src";
+type ReactMode =
+  | "react-iframe-about-blank"
+  | "react-iframe-src"
+  | "react-iframe-srcdoc";
 
 const getEnv = (): EscapeTestEnv => {
   const env = (globalThis as { __METABASE_DATA_APP_TEST_ENV__?: EscapeTestEnv })
@@ -84,6 +87,12 @@ export default function App() {
         >
           React iframe src
         </button>
+        <button
+          data-testid="escape-react-srcdoc"
+          onClick={() => setReactMode("react-iframe-srcdoc")}
+        >
+          React iframe srcdoc
+        </button>
       </div>
 
       {reactMode === "react-iframe-about-blank" && (
@@ -102,6 +111,18 @@ export default function App() {
         <iframe
           title="escape-target"
           src={`${env.instanceUrl}/`}
+          onLoad={(e) => escapeVia(e.currentTarget.contentWindow)}
+          style={{ display: "none" }}
+        />
+      )}
+      {reactMode === "react-iframe-srcdoc" && (
+        <iframe
+          title="escape-target"
+          // A srcdoc document is a distinct inheritance path from the empty
+          // about:blank frame: it too is exempt from `frame-src` and inherits the
+          // parent's CSP, so its pristine `fetch` must still be caught by the
+          // inherited `connect-src`.
+          srcDoc={'<!doctype html><meta charset="utf-8">'}
           onLoad={(e) => escapeVia(e.currentTarget.contentWindow)}
           style={{ display: "none" }}
         />
