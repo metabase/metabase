@@ -93,7 +93,7 @@ function DataPermissionsPage() {
       diff={diff}
       isDirty={isDirty}
       helpContent={<DataPermissionsHelp />}
-      showSplitPermsModal
+      canShowSplitPermsModal
     >
       <Outlet />
     </PermissionsPageLayout>
