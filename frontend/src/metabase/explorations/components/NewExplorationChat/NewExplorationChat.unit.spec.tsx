@@ -1,8 +1,9 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import { makeMockSelection } from "metabase/explorations/test-utils";
 import { useMetabotAgent } from "metabase/metabot/hooks";
@@ -25,11 +26,23 @@ import {
 import { NewExplorationChat } from "./NewExplorationChat";
 
 jest.mock("metabase/metabot/components/MetabotChat/MetabotChatEditor", () => ({
-  MetabotChatEditor: () => null,
+  MetabotChatEditor: ({ onSubmit }: { onSubmit: () => void }) => (
+    <button data-testid="exploration-chat-submit" onClick={onSubmit} />
+  ),
 }));
 
 jest.mock("metabase/metabot/components/MetabotChat/MetabotChatMessage", () => ({
-  Messages: () => null,
+  Messages: ({
+    onRetryMessage,
+  }: {
+    onRetryMessage?: (messageId: string) => void;
+  }) =>
+    onRetryMessage ? (
+      <button
+        data-testid="metabot-chat-message-retry"
+        onClick={() => onRetryMessage("agent-1")}
+      />
+    ) : null,
 }));
 
 jest.mock("metabase/metabot/components/MetabotChat/MetabotThinking", () => ({
@@ -176,25 +189,43 @@ const agentMessage: MetabotChatMessage = {
 function mockMetabotAgentState({
   messages,
   isDoingScience,
+  prompt = "",
+  submitInput = jest.fn(),
+  retryMessage = jest.fn(),
 }: {
   messages: MetabotChatMessage[];
   isDoingScience: boolean;
+  prompt?: string;
+  submitInput?: jest.Mock;
+  retryMessage?: jest.Mock;
 }) {
   // Unjustified type cast. FIXME
   jest.mocked(useMetabotAgent).mockReturnValue({
-    prompt: "",
+    prompt,
     setPrompt: jest.fn(),
     conversation: { messages },
     messages,
     errorMessages: [],
-    retryMessage: jest.fn(),
+    retryMessage,
     isDoingScience,
     activeToolCalls: [],
-    submitInput: jest.fn(),
+    submitInput,
+    cancelRequest: jest.fn(),
+    conversationId: "conversation-1",
   } as any);
+
+  return { submitInput, retryMessage };
 }
 
-function setup() {
+function setup({
+  messages = [userMessage],
+  isDoingScience = true,
+  prompt = "",
+}: {
+  messages?: MetabotChatMessage[];
+  isDoingScience?: boolean;
+  prompt?: string;
+} = {}) {
   fetchMock.get(
     "path:/api/metabot/permissions/user-permissions",
     createMockUserMetabotPermissions(),
@@ -208,10 +239,15 @@ function setup() {
   setupEnterprisePlugins();
 
   const selection = makeMockSelection({});
+  const submitInput = jest.fn();
+  const retryMessage = jest.fn();
 
   mockMetabotAgentState({
-    messages: [userMessage],
-    isDoingScience: true,
+    messages,
+    isDoingScience,
+    prompt,
+    submitInput,
+    retryMessage,
   });
 
   const view = renderWithProviders(
@@ -228,16 +264,43 @@ function setup() {
     messages: MetabotChatMessage[];
     isDoingScience: boolean;
   }) => {
-    mockMetabotAgentState({ messages, isDoingScience });
+    mockMetabotAgentState({
+      messages,
+      isDoingScience,
+      prompt,
+      submitInput,
+      retryMessage,
+    });
     view.rerender(<NewExplorationChat selection={selection} />);
   };
 
-  return { selection, rerender };
+  return { selection, rerender, submitInput, retryMessage };
 }
 
 describe("NewExplorationChat", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it("passes the explorations profile to submitInput and retryMessage", async () => {
+    const { submitInput, retryMessage } = setup({
+      messages: [userMessage, agentMessage],
+      isDoingScience: false,
+      prompt: "Why is revenue down?",
+    });
+
+    await userEvent.click(await screen.findByTestId("exploration-chat-submit"));
+    expect(submitInput).toHaveBeenCalledWith("Why is revenue down?", {
+      preventOpenSidebar: true,
+      profile: "explorations",
+    });
+
+    await userEvent.click(
+      await screen.findByTestId("metabot-chat-message-retry"),
+    );
+    expect(retryMessage).toHaveBeenCalledWith("agent-1", {
+      profile: "explorations",
+    });
   });
 
   it("adds metric- and dimension-anchored groups from an add_research_groups tool call response", async () => {
@@ -489,5 +552,82 @@ describe("NewExplorationChat", () => {
       "agent",
       "dimensions",
     );
+  });
+
+  it("does not re-apply tool calls that survive a conversation rewind/retry", async () => {
+    const { selection, rerender } = setup();
+
+    const secondUserMessage: MetabotChatMessage = {
+      id: "user-2",
+      role: "user",
+      type: "text",
+      message: "Remove the churn block",
+    };
+    const secondAgentMessage: MetabotChatMessage = {
+      id: "agent-2",
+      role: "agent",
+      type: "text",
+      message: "Removed.",
+    };
+
+    // Turn 1: name tool call is applied when the agent finishes.
+    rerender({
+      messages: [userMessage, setNameToolCallMessage, agentMessage],
+      isDoingScience: false,
+    });
+    await waitFor(() => {
+      expect(selection.setName).toHaveBeenCalledTimes(1);
+    });
+
+    // Turn 2: a later tool call is applied.
+    rerender({
+      messages: [
+        userMessage,
+        setNameToolCallMessage,
+        agentMessage,
+        secondUserMessage,
+        removeFromResearchPlanToolCallMessage,
+        secondAgentMessage,
+      ],
+      isDoingScience: false,
+    });
+    await waitFor(() => {
+      expect(selection.removeBlock).toHaveBeenCalledTimes(2);
+    });
+
+    // Retrying turn 2 rewinds to that prompt — messages shrink, but turn 1's
+    // tool-call id remains. The regenerated turn 2 uses a fresh tool-call id.
+    const retriedRemoveToolCallMessage: MetabotDebugToolCallMessage = {
+      ...removeFromResearchPlanToolCallMessage,
+      id: "tool-call-4-retry",
+      result: JSON.stringify({ block_ids: ["metric:1"] }),
+    };
+    const retriedSecondAgentMessage: MetabotChatMessage = {
+      ...secondAgentMessage,
+      id: "agent-2-retry",
+    };
+
+    rerender({
+      messages: [userMessage, setNameToolCallMessage, agentMessage],
+      isDoingScience: true,
+    });
+    rerender({
+      messages: [
+        userMessage,
+        setNameToolCallMessage,
+        agentMessage,
+        secondUserMessage,
+        retriedRemoveToolCallMessage,
+        retriedSecondAgentMessage,
+      ],
+      isDoingScience: false,
+    });
+
+    await waitFor(() => {
+      expect(selection.removeBlock).toHaveBeenCalledTimes(3);
+    });
+    expect(selection.removeBlock).toHaveBeenLastCalledWith("metric:1");
+    // Turn 1's surviving tool call must not run again after the rewind.
+    expect(selection.setName).toHaveBeenCalledTimes(1);
   });
 });

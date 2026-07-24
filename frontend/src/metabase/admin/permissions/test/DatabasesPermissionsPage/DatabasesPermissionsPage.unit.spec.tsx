@@ -53,12 +53,25 @@ const setup = async () => {
       path="/admin/permissions/data"
       element={<RoutedDataPermissionsPage />}
     >
-      <Route
-        path="database(/:databaseId)(/schema/:schemaName)(/table/:tableId)"
-        element={<RoutedDatabasesPermissionsPage />}
-      >
-        {PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES}
-      </Route>
+      {/*
+       * v7 cannot parse v3 optional groups, so the app spells each depth out as
+       * its own route (see DATABASES_PERMISSIONS_PATHS in permissions/routes.tsx).
+       * Mirror that here.
+       */}
+      {[
+        "database",
+        "database/:databaseId",
+        "database/:databaseId/schema/:schemaName",
+        "database/:databaseId/schema/:schemaName/table/:tableId",
+      ].map((path) => (
+        <Route
+          key={path}
+          path={path}
+          element={<RoutedDatabasesPermissionsPage />}
+        >
+          {PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES}
+        </Route>
+      ))}
     </Route>,
     {
       withRouter: true,

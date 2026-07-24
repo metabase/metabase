@@ -1,6 +1,14 @@
+import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 
-import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { createPage, createQuery } from "metabase/explorations/test-utils";
 import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -53,12 +61,14 @@ let mockComments: Comment[] = [
   createMockComment({ id: 1, context: { timeline_id: 42 } }),
 ];
 let lastVisualizationProps: Record<string, unknown> | undefined;
+let visualizationCommitCount = 0;
 
 // The real `Visualization` is heavy and pulls ECharts; we only care that
 // it receives the right props from explorations.
 jest.mock("metabase/visualizations/components/Visualization", () => {
   const Visualization = (props: any) => {
     lastVisualizationProps = props;
+    visualizationCommitCount += 1;
     const actionNames =
       props.mode
         ?.actionsForClick?.(sampleClickObject)
@@ -82,14 +92,17 @@ jest.mock("metabase/comments/components/Comments", () => ({
   Comments: ({
     renderExtra,
     disableAutoFocus,
+    onCloseComments,
   }: {
     renderExtra?: (comment: Comment) => React.ReactNode;
     disableAutoFocus?: boolean;
+    onCloseComments?: () => void;
   }) => (
     <div
       data-testid="comments-stub"
       data-disable-autofocus={disableAutoFocus ? "true" : "false"}
     >
+      <button data-testid="comments-stub-close" onClick={onCloseComments} />
       {mockComments.map((comment) => (
         <div key={comment.id}>{renderExtra?.(comment)}</div>
       ))}
@@ -99,6 +112,13 @@ jest.mock("metabase/comments/components/Comments", () => ({
 
 const mockDatasetsByQueryId = new Map<number, Dataset | undefined>();
 const mockErrorsByQueryId = new Map<number, unknown>();
+// Real RTKQ selectors return identity-stable objects while the query state is
+// unchanged (the component's shallowEqual subscription relies on that), so the
+// mock memoizes per id on its inputs instead of building a fresh object per call.
+const mockSelectorResultCache = new Map<
+  number,
+  { data: Dataset | undefined; error: unknown; result: object }
+>();
 const mockMutationTrigger = () => jest.fn(() => ({ unwrap: jest.fn() }));
 jest.mock("metabase/api/exploration", () => ({
   __esModule: true,
@@ -106,12 +126,22 @@ jest.mock("metabase/api/exploration", () => ({
     endpoints: {
       getExplorationQueryResult: {
         initiate: () => () => ({ unsubscribe: jest.fn() }),
-        select: (id: number) => () => ({
-          data: mockDatasetsByQueryId.get(id),
-          error: mockErrorsByQueryId.get(id),
-          isLoading:
-            !mockDatasetsByQueryId.has(id) && !mockErrorsByQueryId.has(id),
-        }),
+        select: (id: number) => () => {
+          const data = mockDatasetsByQueryId.get(id);
+          const error = mockErrorsByQueryId.get(id);
+          const cached = mockSelectorResultCache.get(id);
+          if (cached && cached.data === data && cached.error === error) {
+            return cached.result;
+          }
+          const result = {
+            data,
+            error,
+            isLoading:
+              !mockDatasetsByQueryId.has(id) && !mockErrorsByQueryId.has(id),
+          };
+          mockSelectorResultCache.set(id, { data, error, result });
+          return result;
+        },
       },
     },
   },
@@ -204,6 +234,7 @@ interface SetupOpts {
   onSelectTimelineId?: (timelineId: number | null) => void;
   isCommentsSidebarOpen?: boolean;
   wasCommentsSidebarOpen?: boolean;
+  onCloseCommentsSidebar?: () => void;
   blockType?: ExplorationBlockNodeType;
   page?: ExplorationPageNode;
   exploreFilters?: HydratedExplorationExploreFilter[] | null;
@@ -219,12 +250,14 @@ function setup({
   onSelectTimelineId = jest.fn(),
   isCommentsSidebarOpen = false,
   wasCommentsSidebarOpen = false,
+  onCloseCommentsSidebar = jest.fn(),
   blockType = "metric",
   page: pageOverride,
   exploreFilters,
 }: SetupOpts) {
   mockDatasetsByQueryId.clear();
   mockErrorsByQueryId.clear();
+  mockSelectorResultCache.clear();
   if (datasets) {
     for (const [id, ds] of datasets) {
       mockDatasetsByQueryId.set(id, ds);
@@ -236,32 +269,36 @@ function setup({
     }
   }
 
-  return renderWithProviders(
-    <Route
-      path="*"
-      element={
-        <ExplorationGroupVisualization
-          explorationId={1}
-          page={{
-            ...(pageOverride ?? page),
-            query_ids: queries.map((q) => q.id),
-          }}
-          queries={queries}
-          blockType={blockType}
-          exploreFilters={exploreFilters}
-          availableTimelines={availableTimelines}
-          selectedTimelineId={selectedTimelineId}
-          onSelectTimelineId={onSelectTimelineId}
-          timelineEvents={timelineEvents}
-          commentDrafts={{}}
-          setCommentDrafts={jest.fn()}
-          isCommentsSidebarOpen={isCommentsSidebarOpen}
-          wasCommentsSidebarOpen={wasCommentsSidebarOpen}
-        />
-      }
-    />,
-    { withRouter: true, initialRoute: "/exploration/1" },
-  );
+  return {
+    ...renderWithProviders(
+      <Route
+        path="*"
+        element={
+          <ExplorationGroupVisualization
+            explorationId={1}
+            page={{
+              ...(pageOverride ?? page),
+              query_ids: queries.map((q) => q.id),
+            }}
+            queries={queries}
+            blockType={blockType}
+            exploreFilters={exploreFilters}
+            availableTimelines={availableTimelines}
+            selectedTimelineId={selectedTimelineId}
+            onSelectTimelineId={onSelectTimelineId}
+            timelineEvents={timelineEvents}
+            commentDrafts={{}}
+            setCommentDrafts={jest.fn()}
+            isCommentsSidebarOpen={isCommentsSidebarOpen}
+            wasCommentsSidebarOpen={wasCommentsSidebarOpen}
+            onCloseCommentsSidebar={onCloseCommentsSidebar}
+          />
+        }
+      />,
+      { withRouter: true, initialRoute: "/exploration/1" },
+    ),
+    onCloseCommentsSidebar,
+  };
 }
 
 function expectCartesianRawSeries(queryCount: number) {
@@ -278,15 +315,42 @@ function expectCartesianRawSeries(queryCount: number) {
   return rawSeries;
 }
 
+function captureSeeAllEvents(): (events: TimelineEvent[]) => void {
+  // The Visualization mock stores props as an untyped record; narrow the
+  // captured handler back to its known signature so tests can invoke it.
+  return lastVisualizationProps?.onSeeAllEvents as (
+    events: TimelineEvent[],
+  ) => void;
+}
+
 describe("ExplorationGroupVisualization", () => {
   beforeEach(() => {
     mockComments = [createMockComment({ id: 1, context: { timeline_id: 42 } })];
     lastVisualizationProps = undefined;
+    visualizationCommitCount = 0;
   });
 
   afterEach(() => {
     mockDatasetsByQueryId.clear();
     mockErrorsByQueryId.clear();
+    mockSelectorResultCache.clear();
+  });
+
+  it("does not re-render the chart when an unrelated action hits the store", () => {
+    const { store } = setup({
+      queries: [
+        createQuery({ id: 101, name: "Revenue trend", status: "done" }),
+      ],
+      datasets: new Map([[101, makeTimeseriesDataset()]]),
+    });
+    expect(screen.getByTestId("visualization-stub")).toBeInTheDocument();
+
+    const countBefore = visualizationCommitCount;
+    act(() => {
+      store.dispatch({ type: "unrelated/action" });
+    });
+
+    expect(visualizationCommitCount).toBe(countBefore);
   });
 
   it("shows a permission message (not the loading skeleton) when a settled query's result fetch is forbidden", () => {
@@ -306,7 +370,7 @@ describe("ExplorationGroupVisualization", () => {
     expect(screen.queryByTestId("visualization-stub")).not.toBeInTheDocument();
   });
 
-  it("surfaces the errored query's message when any query has errored", () => {
+  it("shows a generic error pane when any query has errored", () => {
     setup({
       queries: [
         createQuery({ id: 101, name: "OK", status: "done" }),
@@ -315,23 +379,6 @@ describe("ExplorationGroupVisualization", () => {
           name: "Boom",
           status: "error",
           error_message: "kaboom",
-        }),
-      ],
-    });
-
-    expect(screen.getByText("kaboom")).toBeInTheDocument();
-    expect(screen.queryByTestId("visualization-stub")).not.toBeInTheDocument();
-  });
-
-  it("falls back to a generic error pane when the errored query has no message", () => {
-    setup({
-      queries: [
-        createQuery({ id: 101, name: "OK", status: "done" }),
-        createQuery({
-          id: 102,
-          name: "Boom",
-          status: "error",
-          error_message: null,
         }),
       ],
     });
@@ -479,6 +526,121 @@ describe("ExplorationGroupVisualization", () => {
     expect(lastVisualizationProps?.timelineEvents).toEqual([releasesEvent]);
   });
 
+  it("opens a sidebar listing every event when the chart requests to see a whole cluster", async () => {
+    setup({
+      queries: [
+        createQuery({ id: 101, name: "Revenue trend", status: "done" }),
+      ],
+      datasets: new Map([[101, makeTimeseriesDataset()]]),
+      selectedTimelineId: 42,
+    });
+
+    // The hover popover caps at 3, so the band hands the full cluster to
+    // `onSeeAllEvents` when the user clicks "See all".
+    const clusterEvents = Array.from({ length: 5 }, (_, index) =>
+      createMockTimelineEvent({ id: index + 1, name: `Event ${index + 1}` }),
+    );
+    act(() => captureSeeAllEvents()(clusterEvents));
+
+    const sidebar = await screen.findByTestId(
+      "exploration-timeline-events-sidebar",
+    );
+    expect(within(sidebar).getByText("5 events")).toBeInTheDocument();
+    for (const event of clusterEvents) {
+      expect(within(sidebar).getByText(event.name)).toBeInTheDocument();
+    }
+
+    // The chart is told which events are open so it can render the cluster as
+    // selected.
+    expect(lastVisualizationProps?.selectedTimelineEventIds).toEqual([
+      1, 2, 3, 4, 5,
+    ]);
+
+    await userEvent.click(
+      within(sidebar).getByRole("button", { name: "Close" }),
+    );
+    expect(
+      screen.queryByTestId("exploration-timeline-events-sidebar"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("closes the comments sidebar when the events sidebar is opened", async () => {
+    const { onCloseCommentsSidebar } = setup({
+      queries: [
+        createQuery({ id: 101, name: "Revenue trend", status: "done" }),
+      ],
+      datasets: new Map([[101, makeTimeseriesDataset()]]),
+      isCommentsSidebarOpen: true,
+    });
+
+    act(() =>
+      captureSeeAllEvents()([
+        createMockTimelineEvent({ id: 1, name: "Only event" }),
+      ]),
+    );
+
+    expect(
+      await screen.findByTestId("exploration-timeline-events-sidebar"),
+    ).toBeInTheDocument();
+    expect(onCloseCommentsSidebar).toHaveBeenCalled();
+  });
+
+  it("closes the events sidebar when the comments sidebar is opened", async () => {
+    mockDatasetsByQueryId.clear();
+    mockErrorsByQueryId.clear();
+    mockDatasetsByQueryId.set(101, makeTimeseriesDataset());
+    const queries = [
+      createQuery({ id: 101, name: "Revenue trend", status: "done" }),
+    ];
+
+    function Harness() {
+      const [commentsOpen, setCommentsOpen] = useState(false);
+      return (
+        <>
+          <button onClick={() => setCommentsOpen(true)}>open comments</button>
+          <ExplorationGroupVisualization
+            explorationId={1}
+            page={{ ...page, query_ids: [101] }}
+            queries={queries}
+            blockType="metric"
+            availableTimelines={[]}
+            selectedTimelineId={null}
+            onSelectTimelineId={jest.fn()}
+            timelineEvents={[]}
+            commentDrafts={{}}
+            setCommentDrafts={jest.fn()}
+            isCommentsSidebarOpen={commentsOpen}
+            wasCommentsSidebarOpen={false}
+            onCloseCommentsSidebar={jest.fn()}
+          />
+        </>
+      );
+    }
+
+    renderWithProviders(<Route path="*" element={<Harness />} />, {
+      withRouter: true,
+      initialRoute: "/exploration/1",
+    });
+
+    act(() =>
+      captureSeeAllEvents()([
+        createMockTimelineEvent({ id: 1, name: "Only event" }),
+      ]),
+    );
+    expect(
+      await screen.findByTestId("exploration-timeline-events-sidebar"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("open comments"));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("exploration-timeline-events-sidebar"),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByTestId("comments-stub")).toBeInTheDocument();
+  });
+
   it("does not show the timeline dropdown for non-timeseries charts", () => {
     setup({
       queries: [
@@ -547,6 +709,17 @@ describe("ExplorationGroupVisualization", () => {
       setup(timeseriesSetup);
 
       expect(screen.queryByTestId("comments-stub")).not.toBeInTheDocument();
+    });
+
+    it("wires the sidebar close callback into Comments (Escape / close can dismiss it)", async () => {
+      const { onCloseCommentsSidebar } = setup({
+        ...timeseriesSetup,
+        isCommentsSidebarOpen: true,
+      });
+
+      await userEvent.click(screen.getByTestId("comments-stub-close"));
+
+      expect(onCloseCommentsSidebar).toHaveBeenCalled();
     });
 
     it("passes disableAutoFocus when the sidebar was already open", () => {

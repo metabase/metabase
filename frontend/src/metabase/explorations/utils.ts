@@ -1,4 +1,10 @@
 export function shouldIgnoreKeyboardEvent(event: KeyboardEvent) {
+  // Never hijack OS/browser chords: Cmd+C must copy, Ctrl+S must not star a
+  // chart, and Cmd/Alt+ArrowLeft must keep navigating browser history.
+  if (event.metaKey || event.ctrlKey || event.altKey) {
+    return true;
+  }
+
   if (!(event.target instanceof HTMLElement)) {
     return true;
   }
@@ -29,6 +35,9 @@ export function getAdjacentById<T extends { id: unknown }>(
     return null;
   }
   const currentIndex = items.findIndex((item) => item.id === currentId);
+  if (currentIndex === -1) {
+    return direction === 1 ? items[0] : items[items.length - 1];
+  }
   const nextIndex = (currentIndex + direction + items.length) % items.length;
   return items[nextIndex];
 }

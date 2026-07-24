@@ -120,10 +120,6 @@
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
-(defmethod serdes/hash-fields :model/Document
-  [_table]
-  [:name (serdes/hydrated-hash :collection) :created-at])
-
 ;;; ----------------------------------------------- Search ----------------------------------------------------------
 
 (defn- document->search-text

@@ -8,7 +8,10 @@ import {
   DATA_APP_DEV_ENTRY_VIRTUAL_ID,
 } from "build-configs/embedding-sdk/constants/data-app-virtual-modules";
 
-import { DATA_APP_BUNDLE_URL, DATA_APP_REBUILT_EVENT } from "../bundle";
+import {
+  DATA_APP_BUNDLE_URL,
+  DATA_APP_REBUILT_EVENT,
+} from "../constants/bundle";
 
 import { dataAppSandboxDevPlugin } from "./plugin";
 
@@ -219,11 +222,9 @@ describe("dataAppSandboxDevPlugin", () => {
     });
 
     describe("synthetic index.html document", () => {
-      // The document middleware is the second one registered: the bundle
-      // middleware from `configureServer` (index 0), then this one from the
-      // returned late hook (index 1).
+      // Registered by the post-hook, so it's always the last one added.
       const getDocumentMiddleware = (server: FakeServer) =>
-        server.middlewares.use.mock.calls[1][0];
+        server.middlewares.use.mock.calls.at(-1)[0];
 
       it("serves the transformed shell with the configured CSP for navigations", async () => {
         const { server } = await setup();

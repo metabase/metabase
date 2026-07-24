@@ -27,7 +27,7 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-import S from "./MetabotGreetings.module.css";
+import S from "./MetabotGreeting.module.css";
 
 const SUGGESTED_PROMPTS_LIMIT = 4;
 
@@ -57,7 +57,7 @@ export const MetabotGreeting = ({
     },
   ] = useDisclosure(false);
   const metabot = useMetabotAgent(agentId);
-  const { isConfigured, canUseNlq } = useUserMetabotPermissions();
+  const { canUseNlq, hasNlqAccess } = useUserMetabotPermissions();
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(
     {
@@ -65,7 +65,7 @@ export const MetabotGreeting = ({
       limit: SUGGESTED_PROMPTS_LIMIT,
       sample: true,
     },
-    { skip: !isConfigured },
+    { skip: !canUseNlq },
   );
   const suggestedPrompts = suggestedPromptsReq.currentData?.prompts;
 
@@ -97,6 +97,7 @@ export const MetabotGreeting = ({
                 mih="7.5rem"
                 featureName={t`AI explorations`}
                 inline
+                hasFeatureAccess={hasNlqAccess}
                 onConfigureAi={openAiProviderConfigurationModal}
               />
             ) : (

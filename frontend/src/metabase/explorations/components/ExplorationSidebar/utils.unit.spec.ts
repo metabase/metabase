@@ -806,6 +806,25 @@ describe("getCompactRelativeTime", () => {
       getCompactRelativeTime(dayjs().subtract(2, "year").toISOString()),
     ).toBe("2y");
   });
+
+  it("shows weeks (not '0mo') for a 4-week gap that hasn't completed a calendar month", () => {
+    // now = Feb 25, then = Jan 28: 28 days = 4 weeks, but 0 calendar months.
+    jest.useFakeTimers().setSystemTime(new Date("2026-02-25T00:00:00Z"));
+    try {
+      expect(getCompactRelativeTime("2026-01-28T00:00:00Z")).toBe("4w");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("shows months once a full calendar month has elapsed", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-03-01T00:00:00Z"));
+    try {
+      expect(getCompactRelativeTime("2026-01-28T00:00:00Z")).toBe("1mo");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 describe("getExplorationSidebarTabsInfo", () => {

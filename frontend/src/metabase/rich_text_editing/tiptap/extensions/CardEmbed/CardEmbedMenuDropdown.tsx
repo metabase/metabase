@@ -85,7 +85,7 @@ export const CardEmbedMenuDropdown = ({
               e.preventDefault();
             }
           }}
-          disabled={!commentsPath || hasUnsavedChanges || !canWrite}
+          disabled={!commentsPath || hasUnsavedChanges}
         >
           {t`Comment`}
         </Menu.Item>

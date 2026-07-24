@@ -4,12 +4,14 @@ import fetchMock from "fetch-mock";
 import { useState } from "react";
 
 import {
+  act,
   fireEvent,
   renderWithProviders,
   screen,
   waitFor,
   within,
 } from "__support__/ui";
+import { trackExplorationVisualizationChanged } from "metabase/explorations/analytics";
 import {
   DEFAULT_SORT_ORDER,
   type ExplorationSortOrder,
@@ -35,6 +37,8 @@ import {
   getExplorationSidebarTree,
   isHiddenTreeItem,
 } from "./utils";
+
+jest.mock("metabase/explorations/analytics");
 
 function getSidebarTestContext(
   exploration: ReturnType<typeof createExploration>,
@@ -137,13 +141,16 @@ function setup({
     treeItemFilter,
   } = getSidebarTestContext(exploration, tab);
 
+  // Mirrors ExplorationPage: the empty initial thread (which carries the
+  // all-hidden note) is only retained when pages are actually hidden.
+  const hasHiddenPages = allPages.some((page) => page.hidden);
   const displayTree = getExplorationSidebarTree(
     exploration,
     showHidden
       ? treeItemFilter
       : (node) => treeItemFilter(node) && !isHiddenTreeItem(node),
     sortOrder,
-    { keepEmptyInitialThread: tab === "all" },
+    { keepEmptyInitialThread: tab === "all" && hasHiddenPages },
   );
 
   const sidebar = (
@@ -206,6 +213,77 @@ function getRow(name: string): HTMLElement {
 }
 
 describe("ExplorationSidebar", () => {
+  describe("keyboard navigation", () => {
+    it("moves selection to the next page with ArrowRight", () => {
+      const { setSelectedPageId } = setup({
+        queries: [doneQuery, errorQuery],
+        selectedQueryId: 2,
+      });
+
+      fireEvent.keyDown(document.body, { key: "ArrowRight" });
+
+      expect(setSelectedPageId).toHaveBeenCalledWith("3");
+      expect(trackExplorationVisualizationChanged).toHaveBeenCalledWith(
+        expect.any(Number),
+        "keyboard",
+      );
+    });
+
+    it("moves selection to the previous page with ArrowLeft", () => {
+      const { setSelectedPageId } = setup({
+        queries: [doneQuery, errorQuery],
+        selectedQueryId: 3,
+      });
+
+      fireEvent.keyDown(document.body, { key: "ArrowLeft" });
+
+      expect(setSelectedPageId).toHaveBeenCalledWith("2");
+    });
+  });
+
+  it("collapses and re-expands a heading on click, hiding and revealing its pages", async () => {
+    setup({
+      queries: [doneQuery, errorQuery],
+      blocks: [
+        createBlock({
+          id: 10,
+          name: "Revenue group",
+          position: 0,
+          pages: [
+            createPage({
+              id: 2,
+              name: "Revenue by region",
+              position: 0,
+              query_ids: [2],
+            }),
+            createPage({
+              id: 3,
+              name: "Revenue by source",
+              position: 1,
+              query_ids: [3],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const heading = () => screen.getByRole("group", { name: /Revenue group/ });
+
+    expect(heading()).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Revenue by region")).toBeInTheDocument();
+    expect(screen.getByText("Revenue by source")).toBeInTheDocument();
+
+    await userEvent.click(heading());
+    expect(heading()).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Revenue by region")).not.toBeInTheDocument();
+    expect(screen.queryByText("Revenue by source")).not.toBeInTheDocument();
+
+    await userEvent.click(heading());
+    expect(heading()).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Revenue by region")).toBeInTheDocument();
+    expect(screen.getByText("Revenue by source")).toBeInTheDocument();
+  });
+
   it("marks pending queries as busy (shimmering text, no spinner)", () => {
     setup({ queries: [pendingQuery] });
 
@@ -535,17 +613,14 @@ describe("ExplorationSidebar", () => {
       ).toHaveAttribute("aria-expanded", "true");
     });
 
-    it("shows the all-hidden note (not the generic message) when there is nothing to show", () => {
+    it("shows the generic empty message (not the all-hidden note) when nothing is hidden yet", () => {
+      // No pages at all — e.g. an exploration still generating its charts.
+      // Nothing is hidden, so the empty state should show rather than the note.
       setup({ queries: [] });
 
-      // The thread anchor is kept on the "All" tab; whenever it has no
-      // visible children the inline note shows in place of its rows.
-      expect(screen.getByText("Initial investigation")).toBeInTheDocument();
+      expect(screen.getByText("Nothing to see here yet.")).toBeInTheDocument();
       expect(
-        screen.getByText("All items have been hidden."),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText("Nothing to see here yet."),
+        screen.queryByText("All items have been hidden."),
       ).not.toBeInTheDocument();
     });
 
@@ -697,10 +772,22 @@ describe("ExplorationSidebar", () => {
       />
     );
 
-    const { rerender } = renderWithProviders(
-      <Route path={path} element={sidebarWith(getTree())} />,
-      { withRouter: true, initialRoute: path },
-    );
+    // In-component state (not a router rerender) swaps the tree while the sidebar
+    // stays mounted, exercising the data-change effect instead of a remount.
+    function Harness() {
+      const [tree, setTree] = useState(() => getTree());
+      return (
+        <>
+          <button onClick={() => setTree(reloadedTree)}>reload tree</button>
+          {sidebarWith(tree)}
+        </>
+      );
+    }
+
+    renderWithProviders(<Route path={path} element={<Harness />} />, {
+      withRouter: true,
+      initialRoute: path,
+    });
 
     const heading = screen.getByRole("group", { name: /Revenue/ });
     expect(heading).toHaveAttribute("aria-expanded", "true");
@@ -710,7 +797,7 @@ describe("ExplorationSidebar", () => {
     expect(heading).toHaveAttribute("aria-expanded", "false");
 
     // Poll delivers a new (deep-different) tree — the collapse must be respected.
-    rerender(<Route path={path} element={sidebarWith(reloadedTree)} />);
+    await userEvent.click(screen.getByText("reload tree"));
     expect(screen.getByRole("group", { name: /Revenue/ })).toHaveAttribute(
       "aria-expanded",
       "false",
@@ -790,21 +877,30 @@ describe("ExplorationSidebar", () => {
           onChangeSortOrder={jest.fn()}
         />
       );
-      const { rerender } = renderWithProviders(
-        <Route
-          path={path}
-          element={sidebarWith(getTree(), initialSelectedId)}
-        />,
-        { withRouter: true, initialRoute: path },
-      );
+      // Drive updates through in-component state so the sidebar stays mounted
+      // (a router rerender would remount it and warn about changing routes).
+      let applyUpdate: (next: {
+        tree: ReturnType<typeof getExplorationSidebarTree>;
+        selectedId: string;
+      }) => void = () => {};
+      function Harness() {
+        const [state, setState] = useState(() => ({
+          tree: getTree(),
+          selectedId: initialSelectedId,
+        }));
+        applyUpdate = setState;
+        return sidebarWith(state.tree, state.selectedId);
+      }
+
+      renderWithProviders(<Route path={path} element={<Harness />} />, {
+        withRouter: true,
+        initialRoute: path,
+      });
       return {
         rerenderWith: (
           tree: ReturnType<typeof getExplorationSidebarTree>,
           selectedId: string,
-        ) =>
-          rerender(
-            <Route path={path} element={sidebarWith(tree, selectedId)} />,
-          ),
+        ) => act(() => applyUpdate({ tree, selectedId })),
       };
     }
 
@@ -982,7 +1078,7 @@ describe("ExplorationSidebar", () => {
       const row = headingRow();
       expect(row).toHaveAttribute("aria-busy", "false");
       expect(
-        within(row).queryByLabelText("Failed to generate"),
+        within(row).queryByTestId("exploration-error-marker"),
       ).not.toBeInTheDocument();
     });
   });
@@ -1416,7 +1512,9 @@ describe("ExplorationSidebar", () => {
       // is derived from that page's own queries.
       expect(getRow("Still running")).toHaveAttribute("aria-busy", "true");
       expect(
-        within(getRow("Has an error")).getByLabelText("Failed to generate"),
+        within(getRow("Has an error")).getByLabelText(
+          "We couldn't generate one or more of these charts.",
+        ),
       ).toBeInTheDocument();
       expect(
         within(getRow("All settled")).getByLabelText("Ready"),
@@ -1489,7 +1587,9 @@ describe("ExplorationSidebar", () => {
       expect(rowIndex("Done")).toBeLessThan(rowIndex("Running"));
       expect(rowIndex("Running")).toBeLessThan(rowIndex("Empty"));
       expect(
-        within(getRow("Empty")).getByLabelText("Failed to generate"),
+        within(getRow("Empty")).getByLabelText(
+          "We couldn't generate one or more of these charts.",
+        ),
       ).toBeInTheDocument();
     });
 
@@ -1621,7 +1721,9 @@ describe("ExplorationSidebar", () => {
 
         // The error wins — the row's icon is the warning.
         expect(
-          within(getRow("Mixed page")).getByLabelText("Failed to generate"),
+          within(getRow("Mixed page")).getByLabelText(
+            "We couldn't generate one or more of these charts.",
+          ),
         ).toBeInTheDocument();
       });
     });

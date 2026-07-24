@@ -228,8 +228,8 @@ export function createExploration({
       name: "Initial investigation",
       pages: queries.map((q, i) => ({
         id: q.id,
-        name: q.name,
-        long_name: q.name,
+        name: q.name ?? null,
+        long_name: q.name ?? null,
         position: i,
         query_ids: [q.id],
         starred: false,

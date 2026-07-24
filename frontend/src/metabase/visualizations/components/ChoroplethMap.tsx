@@ -181,18 +181,7 @@ function useGeoJson(geoJsonPath: string | null): ChoroplethMapState {
     if (!geoJsonPath) {
       return;
     }
-    // Set a cache hit synchronously so a remount (e.g. switching back to a
-    // chart group) never flashes the spinner. Only null-out for a genuine
-    // fetch.
-    const cached = geoJsonCache.get(geoJsonPath);
-    if (cached) {
-      setState({
-        geoJson: cached,
-        geoJsonPath,
-        minimalBounds: computeMinimalBounds(getFeatures(cached)),
-      });
-      return;
-    }
+
     let cancelled = false;
     setState({ geoJson: null, geoJsonPath });
     loadGeoJson(geoJsonPath, (geoJson) => {
@@ -410,9 +399,10 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
   const highlightedDimension = highlighted?.dimensions?.find(
     (d) => d.columnName === dimensionColumn?.name,
   );
-  const highlightedKey = highlightedDimension
-    ? getCanonicalRowKey(highlightedDimension.value, settings["map.region"])
-    : null;
+  const highlightedKey =
+    isSeriesHighlighted && highlightedDimension
+      ? getCanonicalRowKey(highlightedDimension.value, settings["map.region"])
+      : null;
 
   const isFeatureHighlighted = (feature: Feature): boolean | null => {
     if (!isSeriesHighlighted || !highlightedDimension) {

@@ -1,5 +1,6 @@
 import type { ComponentPropsWithoutRef, Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 import { noop } from "underscore";
 
@@ -9,6 +10,7 @@ import { Comments } from "metabase/comments/components/Comments";
 import { Warnings } from "metabase/common/components/Warnings";
 import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import {
   Box,
   Ellipsified,
@@ -39,6 +41,7 @@ import type {
   SingleSeries,
   Timeline,
   TimelineEvent,
+  TimelineEventId,
   TimelineId,
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
@@ -50,6 +53,7 @@ import { ActionToolbar } from "./ActionToolbar";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationGroupVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
+import { TimelineEventsSidebar } from "./TimelineEventsSidebar";
 import {
   type LegendItem,
   buildSeriesGroup,
@@ -71,6 +75,7 @@ interface ExplorationGroupVisualizationProps {
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
   isCommentsSidebarOpen: boolean;
   wasCommentsSidebarOpen: boolean;
+  onCloseCommentsSidebar: () => void;
   onPreviousPage?: () => void;
   onNextPage?: () => void;
 }
@@ -123,17 +128,11 @@ function ExplorationGroupVisualizationBody(
     );
   }
 
-  const erroredQueryMessage = queries.find(
-    (q) => q.status === "error" && q.error_message,
-  )?.error_message;
   if (queries.some((q) => q.status === "error")) {
     return (
       <Message
         groupName={groupName}
-        message={
-          erroredQueryMessage ??
-          t`We couldn't generate one or more of these charts.`
-        }
+        message={t`We couldn't generate one or more of these charts.`}
         iconProps={{ name: "warning", c: "error" }}
       />
     );
@@ -173,6 +172,7 @@ function ExplorationGroupVisualizationChart({
   setCommentDrafts,
   isCommentsSidebarOpen,
   wasCommentsSidebarOpen,
+  onCloseCommentsSidebar,
   onPreviousPage,
   onNextPage,
 }: ExplorationGroupVisualizationWithGroupNameProps) {
@@ -198,11 +198,21 @@ function ExplorationGroupVisualizationChart({
     };
   }, [queryIds, dispatch]);
 
-  const datasetQueries = useSelector((state) =>
-    queryIds.map((id) =>
-      explorationApi.endpoints.getExplorationQueryResult.select(id)(state),
-    ),
-  );
+  // Build the per-id selectors once per queryIds change — `select(id)` creates
+  // a fresh memoized selector on every call, which would defeat its caching if
+  // done inside the subscription below.
+  const selectDatasetQueries = useMemo(() => {
+    const selectors = queryIds.map((id) =>
+      explorationApi.endpoints.getExplorationQueryResult.select(id),
+    );
+    return (state: State) => selectors.map((select) => select(state));
+  }, [queryIds]);
+
+  // The mapped array is fresh on every store dispatch, but its entries are
+  // RTKQ cache objects with stable identity while their query state is
+  // unchanged — shallowEqual keeps unrelated dispatches (polling, toasts,
+  // metabot) from re-rendering the whole chart subtree.
+  const datasetQueries = useSelector(selectDatasetQueries, shallowEqual);
 
   const datasets = datasetQueries.map((q) => q.data);
   const datasetError = datasetQueries.find((q) => q.error)?.error;
@@ -244,6 +254,30 @@ function ExplorationGroupVisualizationChart({
 
   const [highlighted, setHighlighted] = useState<HighlightedObject | null>(
     null,
+  );
+
+  const [seeAllEvents, setSeeAllEvents] = useState<TimelineEvent[]>([]);
+  useEffect(() => {
+    setSeeAllEvents([]);
+  }, [selectedTimelineId]);
+
+  useEffect(() => {
+    if (isCommentsSidebarOpen) {
+      setSeeAllEvents([]);
+    }
+  }, [isCommentsSidebarOpen]);
+  const seeAllEventIds = useMemo(
+    () => seeAllEvents.map((event) => event.id),
+    [seeAllEvents],
+  );
+  const closeSeeAllEvents = useCallback(() => setSeeAllEvents([]), []);
+
+  const handleSeeAllEvents = useCallback(
+    (events: TimelineEvent[]) => {
+      setSeeAllEvents(events);
+      onCloseCommentsSidebar();
+    },
+    [onCloseCommentsSidebar],
   );
 
   const renderCommentExtra = useCallback(
@@ -367,6 +401,8 @@ function ExplorationGroupVisualizationChart({
               timelineEvents={timelineEvents}
               mode={clickActionsMode}
               highlighted={highlighted}
+              selectedTimelineEventIds={seeAllEventIds}
+              onSeeAllEvents={handleSeeAllEvents}
             />
           ) : series[0].card.display === "table" ? (
             <ExplorationHeatMap
@@ -399,7 +435,13 @@ function ExplorationGroupVisualizationChart({
           onNextPage={onNextPage}
         />
       </Stack>
-      {isCommentsSidebarOpen && (
+      {seeAllEvents.length > 0 && (
+        <TimelineEventsSidebar
+          events={seeAllEvents}
+          onClose={closeSeeAllEvents}
+        />
+      )}
+      {isCommentsSidebarOpen && seeAllEvents.length === 0 && (
         <Box w="23rem" h="100%" className={S.commentsSidebar}>
           <Comments
             // since ExplorationGroupVisualization is keyed on the page, Comments remounts whenever the page changes
@@ -412,6 +454,7 @@ function ExplorationGroupVisualizationChart({
             }}
             childTargetId={String(page.id)}
             showCloseButton={false}
+            onCloseComments={onCloseCommentsSidebar}
             context={{
               timeline_id: selectedTimelineId,
             }}
@@ -428,6 +471,8 @@ interface ExplorationCartesianChartProps {
   timelineEvents: TimelineEvent[];
   mode: ClickActionsMode;
   highlighted?: HighlightedObject | null;
+  selectedTimelineEventIds: TimelineEventId[];
+  onSeeAllEvents: (events: TimelineEvent[]) => void;
 }
 
 function ExplorationCartesianChart({
@@ -435,6 +480,8 @@ function ExplorationCartesianChart({
   timelineEvents,
   mode,
   highlighted,
+  selectedTimelineEventIds,
+  onSeeAllEvents,
 }: ExplorationCartesianChartProps) {
   return (
     <ExplorationVisualization
@@ -443,6 +490,8 @@ function ExplorationCartesianChart({
       className={S.chart}
       mode={mode}
       highlighted={highlighted}
+      selectedTimelineEventIds={selectedTimelineEventIds}
+      onSeeAllEvents={onSeeAllEvents}
     />
   );
 }
@@ -542,6 +591,8 @@ interface ExplorationVisualizationProps {
   className?: string;
   mode?: ClickActionsMode;
   highlighted?: HighlightedObject | null;
+  selectedTimelineEventIds?: TimelineEventId[];
+  onSeeAllEvents?: (events: TimelineEvent[]) => void;
 }
 
 export function ExplorationVisualization({
@@ -550,6 +601,8 @@ export function ExplorationVisualization({
   className,
   mode,
   highlighted,
+  selectedTimelineEventIds,
+  onSeeAllEvents,
 }: ExplorationVisualizationProps) {
   const [warnings, setWarnings] = useState<string[]>([]);
 
@@ -564,6 +617,8 @@ export function ExplorationVisualization({
         mode={mode}
         onChangeCardAndRun={noop} // needed to show ConnectedClickActionsPopover
         highlighted={highlighted}
+        selectedTimelineEventIds={selectedTimelineEventIds}
+        onSeeAllEvents={onSeeAllEvents}
       />
     </Box>
   );

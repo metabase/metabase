@@ -460,7 +460,10 @@
                             user must hold (as `:yes`) in addition to the base
                             `:permission/metabot` (which is always checked).
                             When nil, only the base check runs and a log/warn
-                            fires pointing at the caller's source/tag."
+                            fires pointing at the caller's source/tag.
+
+  A leading {:role \"system\" ...} message in `messages` is forwarded as the
+  provider system prompt, keeping untrusted content in the user channel."
   [provider-and-model messages json-schema temperature max-tokens opts]
   (warn-when-missing-required-permission "call-llm-structured-with-trace" opts)
   (when-let [limit-msg (usage/check-usage-limits!)]
@@ -470,23 +473,27 @@
                      :message    limit-msg})))
   (check-permission! (:required-permission opts))
   (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)
+        [system-msg input] (if (= "system" (some-> messages first :role name))
+                             [(:content (first messages)) (vec (rest messages))]
+                             [nil messages])
         _ (log/info "Calling LLM (structured-with-trace)" {:provider provider
                                                            :model     model
-                                                           :msg-count (count messages)
+                                                           :msg-count (count input)
                                                            :ai-proxy? ai-proxy?})
         tracking-opts  (-> opts
                            (dissoc :required-permission)
                            (assoc :model provider-and-model :ai-proxy? ai-proxy?))
         streaming-opts (cond-> {:model       model
-                                :input       messages
+                                :input       input
                                 :schema      json-schema
                                 :temperature temperature
                                 :max-tokens  max-tokens
                                 :ai-proxy?   ai-proxy?}
+                         system-msg               (assoc :system system-msg)
                          (contains? opts :cache?) (assoc :cache? (:cache? opts)))]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
-                      :msg-count (count messages)}
+                      :msg-count (count input)}
       (with-retries
         tracking-opts
         (fn []

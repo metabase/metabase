@@ -1,11 +1,12 @@
 import { makeSandboxDistortionCallback } from "metabase/utils/scripts-sandbox";
 
-import {
-  type SandboxRealm,
-  makeSandboxFetch,
-  makeSandboxXhr,
-} from "./allowed-hosts";
+import { makeSandboxFetch, makeSandboxXhr } from "./allowed-hosts";
 import { makeCreateElementDistortion } from "./create-element";
+import type {
+  SandboxBlockedListener,
+  SandboxBlockedNetworkInfo,
+  SandboxRealm,
+} from "./types";
 
 /**
  * Data-app Near Membrane distortion callback.
@@ -27,10 +28,15 @@ export function makeDistortionCallback(
   label: string,
   targetWindow: SandboxRealm,
   allowedHosts: string[],
+  onBlocked?: SandboxBlockedListener,
 ) {
   const shared = makeSandboxDistortionCallback(
     `data-app ${label}`,
     (message) => {
+      if (onBlocked) {
+        onBlocked({ type: "api", message });
+        return;
+      }
       // The thrown error usually reaches the developer only as an opaque
       // cross-realm `#<Object>` (an unhandled async rejection), so log the real
       // reason here — at the block point, where the console stack still points at
@@ -38,8 +44,22 @@ export function makeDistortionCallback(
       console.error(message);
     },
   );
-  const sandboxFetch = makeSandboxFetch(targetWindow, allowedHosts, label);
-  const sandboxXhr = makeSandboxXhr(targetWindow, allowedHosts, label);
+  const onBlockedNetwork =
+    onBlocked &&
+    ((info: SandboxBlockedNetworkInfo) =>
+      onBlocked({ type: "network", ...info }));
+  const sandboxFetch = makeSandboxFetch(
+    targetWindow,
+    allowedHosts,
+    label,
+    onBlockedNetwork,
+  );
+  const sandboxXhr = makeSandboxXhr(
+    targetWindow,
+    allowedHosts,
+    label,
+    onBlockedNetwork,
+  );
 
   return function distortionCallback(value: object): object {
     const createElementDistortion = makeCreateElementDistortion(value, shared);

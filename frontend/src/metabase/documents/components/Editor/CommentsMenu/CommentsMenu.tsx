@@ -12,7 +12,6 @@ import S from "./CommentsMenu.module.css";
 
 interface Props {
   active: boolean;
-  disabled?: boolean;
   childTargetId: EntityId;
   show: boolean;
   style: CSSProperties;

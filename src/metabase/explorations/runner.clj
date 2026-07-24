@@ -162,15 +162,15 @@
       nil)))
 
 (defn- claim-analysis-if-ready!
-  "Atomically flip `exploration_thread.analysis_started_at` from NULL to NOW() iff every
-  query on the thread has reached a terminal status (anything other than `pending`).
-  Returns true iff this caller was the one that claimed it — the unique caller who should
-  run the handler. The matching `completed_at` flip happens later, after the handler finishes."
+  "Atomically stamp BOTH `exploration_thread.analysis_started_at` AND `completed_at` from NULL to
+  NOW() iff every query on the thread has reached a terminal status (anything other than `pending`).
+  Returns true iff this caller was the one that claimed it"
   [thread-id]
   (pos?
    (t2/query-one
     {:update :exploration_thread
-     :set    {:analysis_started_at (OffsetDateTime/now)}
+     :set    {:analysis_started_at (OffsetDateTime/now)
+              :completed_at        (OffsetDateTime/now)}
      :where  [:and
               [:= :id thread-id]
               [:= :analysis_started_at nil]
@@ -181,40 +181,18 @@
                                      [:= :exploration_thread_id thread-id]
                                      [:= :status "pending"]]}]]})))
 
-(defn- mark-thread-fully-completed!
-  "Set `completed_at` to NOW(). This is what the UI polls on to decide it's done
-  watching the thread."
-  [thread-id]
-  (t2/update! :model/ExplorationThread thread-id {:completed_at (OffsetDateTime/now)}))
-
-(defn- on-thread-completed
-  "Single entry point for post-completion work. Always invoked with `thread-id` (a long)
-  exactly once per thread, on a background daemon thread. Runs after the runner's row
-  transaction has committed, so it's free to do its own DB I/O.
-
-  Stamps `completed_at` so the UI's polling loop sees a clean done signal."
-  [thread-id]
-  (log/infof "Exploration thread %d: queries+scoring done" thread-id)
-  (try
-    (mark-thread-fully-completed! thread-id)
-    (catch Throwable e
-      (log/errorf e "Failed to set completed_at for thread %d" thread-id))))
-
 (defn maybe-complete-thread!
   "Invoke after any state transition that could be the last unit of work for `thread-id`
-  (a query reaching a terminal status). If this call is the one that claims the analysis
-  run, runs `on-thread-completed` on a background `future`. Safe to call repeatedly:
-  subsequent calls are no-ops thanks to the `analysis_started_at IS NULL` predicate.
+  (a query reaching a terminal status). If this call is the one that claims the thread's
+  completion, it has already stamped `completed_at` (the write the UI polls on) atomically — see
+  [[claim-analysis-if-ready!]]. Safe to call repeatedly: subsequent calls are no-ops thanks to the
+  `analysis_started_at IS NULL` predicate.
 
   `thread-id` may be nil (e.g. the runner couldn't resolve the thread for a now-deleted
   query); in that case this is a no-op."
   [thread-id]
   (when (and thread-id (claim-analysis-if-ready! thread-id))
-    (future
-      (try
-        (on-thread-completed thread-id)
-        (catch Throwable e
-          (log/errorf e "on-thread-completed failed for thread %d" thread-id))))))
+    (log/infof "Exploration thread %d: queries+scoring done" thread-id)))
 
 (defn- exploration-creator-id
   "Walk EQ → ExplorationThread → Exploration.creator_id for stamping onto the stored_result."
@@ -296,11 +274,15 @@
   than throw, leaving the EQR row's contextual fields nil — same fail-soft
   contract as `safe-score`.
 
+  `stats` are the deep stats [[safe-deep-stats]] already computed for this chart; handing
+  them over means the scorer renders its prompt from them instead of re-running the whole
+  stats pipeline. Nil-safe — the scorer computes its own when we have none.
+
   Returns nil whenever scoring isn't applicable (no prompt, no chart-config, no
   creator) or anything throws — so a scoring failure can never break the query
   lifecycle. The cheap gates run before [[build-score-context]]'s DB reads and
   SQL compile, so non-applicable charts cost nothing here."
-  [exploration-query chart-config creator-id]
+  [exploration-query chart-config stats creator-id]
   (try
     (when-let [thread-id (and chart-config (:exploration_thread_id exploration-query))]
       (if (nil? creator-id)
@@ -312,6 +294,7 @@
               (request/with-current-user creator-id
                 (when-let [result (some-> (contextual-interestingness/score-and-describe-chart
                                            {:chart-config     chart-config
+                                            :stats            stats
                                             :card-description card-description
                                             :chart-slicing    (slicing-note exploration-query)
                                             :sql              sql
@@ -338,7 +321,7 @@
   [dataset-query db-id]
   (try
     (perms/data-access-token {:database-id db-id
-                              :table-ids   (query-perms/query->source-table-ids dataset-query)})
+                              :table-ids   (query-perms/query->resolved-source-table-ids dataset-query)})
     (catch Throwable e
       (log/warn e "Failed to compute data-access token for exploration query result")
       nil)))
@@ -350,25 +333,19 @@
 
   Deliberately holds no transaction.
 
-  The query runs as the exploration's creator, so the snapshot reflects the creator's own lens —
-  sandboxing, connection impersonation, and database routing (all applied by the QP's own
-  middleware under the bound user). The same lens is captured as a `:data_access_token` so
-  non-creator readers can be gated against it."
-  [row]
-  (let [creator-id (exploration-creator-id row)
-        db-id      (:database_id row)
-        run        (fn []
-                     {:qp-result (qp.variants/pin-other-last
-                                  (:query_type row)
-                                  (qp/process-query
-                                   (qp/userland-query-with-default-constraints
-                                    (:dataset_query row)
-                                    {:context :exploration})))
-                      :token     (compute-data-access-token (:dataset_query row) db-id)})
-        {:keys [qp-result token]} (if creator-id
-                                    (request/with-current-user creator-id
-                                      (run))
-                                    (run))
+  Must be called inside the creator's `request/with-current-user` binding — [[run-query!]] holds it
+  — so the snapshot reflects the creator's own lens: sandboxing, connection impersonation, and
+  database routing are all applied by the QP's own middleware, and only to a bound user. The same
+  lens is captured as a `:data_access_token` so non-creator readers can be gated against it."
+  [row creator-id]
+  (let [db-id        (:database_id row)
+        qp-result    (qp.variants/pin-other-last
+                      (:query_type row)
+                      (qp/process-query
+                       (qp/userland-query-with-default-constraints
+                        (:dataset_query row)
+                        {:context :exploration})))
+        token        (compute-data-access-token (:dataset_query row) db-id)
         chart-config (safe-chart-config row qp-result)
         stats        (safe-deep-stats row chart-config)]
     {:creator-id creator-id
@@ -378,7 +355,7 @@
      :token      token
      :stats      stats
      :score      (safe-score row chart-config stats)
-     :ctx        (safe-score+describe row chart-config creator-id)}))
+     :ctx        (safe-score+describe row chart-config stats creator-id)}))
 
 (defn- persist-query-result!
   "Write what [[compute-query-result]] produced and flip the query to `done` transactionally.
@@ -423,21 +400,30 @@
 (defn run-query!
   "Execute the pending `ExplorationQuery` `query-id`, flip it to `done`, and return its thread id.
 
-  Also returns the thread id — without re-running anything — for a query that is *already* `done`:
-  the delivery that ran it may have persisted the result but then failed to run its follow-up
-  completion check, and the redelivery is what re-runs that check (which is idempotent). Skipping it
-  there could strand the thread short of completion. Returns nil when there is nothing to do: the
-  query is still pending (or on a canceled thread), terminally `error`, or gone."
+  Also returns the thread id — without re-running anything — for a query that is *already* in a
+  terminal status (`done`, `error`, or `canceled`): the delivery that reached that status may have
+  persisted the outcome but then failed to run its follow-up completion check, and the redelivery is
+  what re-runs that check (which is idempotent). Skipping it there could strand the thread short of
+  completion — the `error` case especially, since a failed query's own completion check is the one
+  most likely to have been lost. Returns nil only when the query is still `pending` (or on a
+  canceled thread — where `runnable-query` declines it), or gone."
   [query-id]
   (if-let [row (runnable-query query-id)]
-    (let [row      (finalize-row! row)
-          started  (OffsetDateTime/now)
-          computed (compute-query-result row)]
-      (when (persist-query-result! row started computed)
-        (record-query-outcome! "done"))
-      (:exploration_thread_id row))
+    (let [creator-id (exploration-creator-id row)]
+      (when-not creator-id
+        ;; `exploration.creator_id` is NOT NULL, so this means the exploration was deleted out from
+        ;; under the row. Refuse rather than falling back to an unbound (unrestricted) run.
+        (throw (ex-info "Cannot run exploration query: its exploration has no creator"
+                        {:query-id query-id})))
+      (request/with-current-user creator-id
+        (let [row      (finalize-row! row)
+              started  (OffsetDateTime/now)
+              computed (compute-query-result row creator-id)]
+          (when (persist-query-result! row started computed)
+            (record-query-outcome! "done"))
+          (:exploration_thread_id row))))
     (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery
-                      :id query-id :status "done")))
+                      :id query-id :status [:in ["done" "error" "canceled"]])))
 
 (defn fail-query!
   "Terminally mark `query-id` as `error` with `message`, the user-visible failure state the UI

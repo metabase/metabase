@@ -105,7 +105,8 @@ export function buildCreateExplorationRequest(
     prompt: trimmedPrompt.length > 0 ? trimmedPrompt : null,
     timeline_ids: timelines.map((tl) => tl.id),
     collection_id: collectionId,
-    blocks: blocks.map(blockToSelection),
+    // Drop empties: the planner ignores them, but they'd linger as empty sidebar headings.
+    blocks: blocks.filter(isNonEmptyBlock).map(blockToSelection),
   };
 }
 
@@ -135,7 +136,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
   const hasUserPrompt = messages.some(
     (message) => message.role === "user" && message.message.trim().length > 0,
   );
-  const canStart = blocks.length > 0;
+  const canStart = blocks.some(isNonEmptyBlock);
 
   const isManualDataPickingDisabled = isDoingScience;
 
@@ -154,6 +155,22 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       return next;
     });
   }, []);
+
+  const handleRemoveBlock = useCallback(
+    (blockId: string, type: "metrics" | "dimensions") => {
+      removeBlock(blockId);
+      trackExplorationPlanEdited("manual", type);
+      setExpandedIds((prev) => {
+        if (prev.has(blockId)) {
+          const next = new Set(prev);
+          next.delete(blockId);
+          return next;
+        }
+        return prev;
+      });
+    },
+    [removeBlock],
+  );
 
   const handleStart = useCallback(async () => {
     const prompt =
@@ -259,6 +276,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
           leftSection={
             timelines.length ? <Icon name="add" size={12} /> : undefined
           }
+          aria-label={timelines.length ? t`Add events` : undefined}
           disabled={isManualDataPickingDisabled}
           onClick={() => setActiveModal("events")}
         >
@@ -281,10 +299,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
                   expanded={getIsExpanded(block.id)}
                   disabled={isManualDataPickingDisabled}
                   onToggleExpand={() => toggleExpanded(block.id)}
-                  onRemoveBlock={() => {
-                    removeBlock(block.id);
-                    trackExplorationPlanEdited("manual", "metrics");
-                  }}
+                  onRemoveBlock={() => handleRemoveBlock(block.id, "metrics")}
                   onToggleDimension={(dimensionId) => {
                     toggleDimensionSelected(block.id, dimensionId);
                     trackExplorationPlanEdited("manual", "dimensions");
@@ -297,10 +312,9 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
                   expanded={getIsExpanded(block.id)}
                   disabled={isManualDataPickingDisabled}
                   onToggleExpand={() => toggleExpanded(block.id)}
-                  onRemoveBlock={() => {
-                    removeBlock(block.id);
-                    trackExplorationPlanEdited("manual", "dimensions");
-                  }}
+                  onRemoveBlock={() =>
+                    handleRemoveBlock(block.id, "dimensions")
+                  }
                   onToggleMetric={(metricId) => {
                     toggleMetricSelected(block.id, metricId);
                     trackExplorationPlanEdited("manual", "metrics");
@@ -354,7 +368,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
           flex="none"
           variant="filled"
           loading={isStarting}
-          disabled={isStarting || isManualDataPickingDisabled}
+          disabled={isStarting || isManualDataPickingDisabled || !canStart}
           onClick={handleStart}
         >{t`Start research`}</Button>
       </Group>
@@ -376,4 +390,11 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       />
     </Stack>
   );
+}
+
+function isNonEmptyBlock(block: ExplorationBlock): boolean {
+  if (isMetricBlock(block)) {
+    return block.selectedDimensionIds.size > 0;
+  }
+  return block.selectedMetricIds.size > 0;
 }

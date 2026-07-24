@@ -235,22 +235,22 @@ export interface ExplorationQuery {
   id: ExplorationQueryId;
   exploration_thread_id: ExplorationThreadId;
   card_id: CardId;
-  dimension_id: string;
-  dimension_name: string;
+  dimension_id: string | null;
+  dimension_name?: string;
   query_type: ExplorationQueryType;
-  display: string | null;
-  name: string | null;
+  display?: string | null;
+  name?: string | null;
   position: number;
   status: ExplorationQueryStatus;
-  error_message: string | null;
-  started_at: string | null;
-  finished_at: string | null;
-  entity_id: string;
-  interestingness_score: number | null;
+  error_message?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  entity_id?: string | null;
+  interestingness_score?: number | null;
   contextual_interestingness_score?: number | null;
-  dataset_query: DatasetQuery;
-  segment_id: SegmentId | null;
-  segment_name: string | null;
+  dataset_query?: DatasetQuery | null;
+  segment_id?: SegmentId | null;
+  segment_name?: string | null;
   params?: ExplorationQueryParams | null;
   row_count?: number | null;
 }
@@ -360,18 +360,16 @@ export interface ExplorationThread {
   entity_id: string;
   created_at: string;
   updated_at: string;
-  metrics?: ExplorationThreadMetric[];
-  dimensions?: ExplorationThreadDimension[];
   timelines?: ExplorationThreadTimeline[];
   queries?: ExplorationQuery[];
   blocks?: ExplorationBlockNode[] | null;
 }
 
 export interface ExplorationCreator {
-  id: UserId;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
+  id?: UserId;
+  email?: string;
+  first_name?: string | null;
+  last_name?: string | null;
 }
 
 export interface ExplorationSummary {

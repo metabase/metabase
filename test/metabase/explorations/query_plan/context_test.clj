@@ -88,6 +88,53 @@
           (is (= ["d1"] (map :dimension-id (:dimensions ba))))
           (is (= ["d2"] (map :dimension-id (:dimensions bb)))))))))
 
+(deftest metric-context-builds-the-metric-query-once-test
+  (testing "metric-and-dim-context builds each metric Card's Lib query exactly once"
+    ;; Every derived field on a metric entry (applicability, default temporal breakout, segments,
+    ;; aggregation summary, result column name) used to re-run `lib/query` against the same
+    ;; `dataset_query`, so a block of N metrics paid 5N query builds. They share one base query now.
+    (mt/with-temp [:model/Card metric {:type :metric :name "Revenue"
+                                       :dataset_query (count-metric-query)}]
+      (let [cid       (:id metric)
+            card-dq   (t2/select-one-fn :dataset_query :model/Card :id cid)
+            block     {:id 1
+                       :metrics    [{:card_id cid
+                                     :dimension_mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+                                                           :target ["field" {} (mt/id :venues :price)]}]}]
+                       :dimensions [{:dimension_id "d1" :display_name "Price"
+                                     :effective_type :type/Number}]}
+            builds    (atom 0)
+            real-query lib/query]
+        (with-redefs [lib/query (fn [mp q]
+                                  (when (= card-dq q)
+                                    (swap! builds inc))
+                                  (real-query mp q))]
+          (qp.context/metric-and-dim-context [block]))
+        (is (= 1 @builds)
+            "the metric Card's dataset_query should be turned into a Lib query exactly once")))))
+
+(deftest metric-context-still-populates-every-derived-field-test
+  (testing "sharing one base query keeps every derived metric field intact"
+    (mt/with-temp [:model/Card metric {:type :metric :name "Orders"
+                                       :description "  Orders placed  "
+                                       :dataset_query (orders-count-metric-query)}]
+      (let [cid (:id metric)
+            m   (-> (qp.context/metric-and-dim-context
+                     [{:id 1
+                       :metrics    [{:card_id cid
+                                     :dimension_mappings [{:dimension_id "d1" :table_id (mt/id :orders)
+                                                           :target ["field" {} (mt/id :orders :created_at)]}]}]
+                       :dimensions [{:dimension_id "d1" :display_name "Created At"
+                                     :effective_type :type/DateTimeWithLocalTZ}]}])
+                    :blocks first :metrics first)]
+        (is (= cid (:metric-id m)))
+        (is (= "Orders" (:name m)))
+        (is (= "Orders placed" (:description m)) "description is trimmed")
+        (is (= "Count" (:aggregation m)))
+        (is (= "count" (:result-column-name m)))
+        (is (= [] (:segments m)))
+        (is (= #{"d1"} (set (keys (:applicability m)))))))))
+
 (deftest build-row-context-resolves-from-block-test
   (testing "build-row-context resolves the dim target + snapshot from the row's page's block (not per-thread tables)"
     (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}

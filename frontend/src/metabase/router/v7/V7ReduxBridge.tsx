@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import {
+  type HistoryRouterProps,
   useNavigationType,
   useLocation as useV7Location,
   useNavigate as useV7Navigate,
@@ -10,7 +11,7 @@ import { useDispatch } from "metabase/redux";
 import { LOCATION_CHANGE } from "../routing-reducer";
 
 import { toV3Location } from "./location";
-import { setV7Navigate } from "./navigator";
+import { notifyLocationListeners, setV7Navigate } from "./navigator";
 
 /**
  * Bridges the v7 router to redux, replacing what `routerMiddleware` +
@@ -21,10 +22,20 @@ import { setV7Navigate } from "./navigator";
  * - mirrors every location into `state.routing` via LOCATION_CHANGE, so
  *   `getLocation` / `isNavbarOpen` / `errorPage` keep working.
  *
- * Rendered inside the router but outside `<Routes>`, so it tracks the location
- * regardless of which route matches. Deleted with the v3 engine in Phase 4.
+ * The mirror subscribes to the history when one is passed, because v3 dispatched
+ * LOCATION_CHANGE as part of the transition rather than after a render. Thunks
+ * read the store synchronously right after navigating (`setEditingDashboard`
+ * pushes `{ ...getLocation(getState()) }`), so a store that lags a render makes
+ * them push a stale location and clobber query params that were just set.
+ * Falls back to the rendered location when no history is available, which is how
+ * tests mount the tree under a plain `<MemoryRouter>`. Deleted with the v3 engine
+ * in Phase 4.
  */
-export function V7ReduxBridge(): null {
+export function V7ReduxBridge({
+  history,
+}: {
+  history?: HistoryRouterProps["history"];
+}): null {
   const navigate = useV7Navigate();
   const location = useV7Location();
   const action = useNavigationType();
@@ -35,12 +46,16 @@ export function V7ReduxBridge(): null {
     return () => setV7Navigate(null);
   }, [navigate]);
 
+  // When a history is provided the mirroring happens synchronously in
+  // `SyncHistoryRouter`'s subscription instead, so nothing to do here.
   useEffect(() => {
-    dispatch({
-      type: LOCATION_CHANGE,
-      payload: toV3Location(location, action),
-    });
-  }, [dispatch, location, action]);
+    if (history) {
+      return;
+    }
+    const v3Location = toV3Location(location, action);
+    dispatch({ type: LOCATION_CHANGE, payload: v3Location });
+    notifyLocationListeners(v3Location);
+  }, [dispatch, history, location, action]);
 
   return null;
 }

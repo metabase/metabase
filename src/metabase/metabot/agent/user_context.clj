@@ -5,16 +5,14 @@
   recent views, user time formatting, and SQL dialect extraction from context."
   (:require
    [clojure.string :as str]
-   [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
-   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (java.time OffsetDateTime)
@@ -225,6 +223,17 @@
 
 ;;; Viewing Context Formatting
 
+(defn- query-if-database-readable
+  "The client-supplied adhoc query, only when the current user can read its database.
+  Exporting resolves table/field ids to names through an unfiltered metadata provider,
+  so gate it like the metabase://chart|query resources do. Queries with no :database
+  only ever pprint (no name resolution), so they pass through."
+  [query]
+  (let [database-id (and (map? query) (:database query))]
+    (when (or (not database-id)
+              (mi/can-read? :model/Database database-id))
+      query)))
+
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
   [item]
@@ -233,6 +242,7 @@
     (te/lines "The user is currently in the notebook editor viewing a query."
               (te/field "Query ID" (:id item))
               (te/field "Database ID" (get-in item [:query :database]))
+              (te/field "Query" (some-> (:query item) query-if-database-readable llm-shape/export-query-for-llm))
               (when-let [config-ids (format-chart-config-ids item)]
                 (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
               (te/field "Tables used" (some->> (:used_tables item)
@@ -257,27 +267,7 @@
   Falls back to a `pprint`'d query map only as a last resort, when repr export is
   unavailable (e.g. a partially-broken `dataset_query`)."
   [source]
-  (let [query (:query source)]
-    (cond
-      (string? query) query
-      (string? (:query-content query)) (:query-content query)
-      (and (map? query) (:database query))
-      (try
-        (let [normalized (lib-be/normalize-query query)
-              database-id (:database normalized)
-              mp (when database-id
-                   (lib-be/application-database-metadata-provider database-id))
-              exported (some->> mp (#(repr.resolve/try-export-query % normalized shared.content-store/default-store)))]
-          (if exported
-            (str "```json\n" (json/encode exported {:pretty true}) "\n```")
-            (u/pprint-to-str normalized)))
-        (catch Exception _
-          (u/pprint-to-str query)))
-      ;; Legacy native shape with no :database (rare). Surface the raw SQL so the LLM at
-      ;; least sees the query body; if there's no :database we can't normalise / build a MP.
-      (string? (get-in query [:native :query])) (get-in query [:native :query])
-      (map? query) (u/pprint-to-str query)
-      :else (some-> query str))))
+  (llm-shape/export-query-for-llm (:query source)))
 
 (defn- transform-source-type
   [source]
@@ -367,52 +357,6 @@
                   (log/error e "Error formatting viewing context item:" (:type item))
                   "")))))
 
-;;; Research Plan Formatting
-
-(defn- named-with-id
-  "Render a plan member as `Name (id)` so the agent can address it by id with the plan-editing
-  tools, even when the member was added directly by the user and never seen in a tool result."
-  [{:keys [id name]}]
-  (str name " (" id ")"))
-
-(defn- format-research-plan-group
-  "Format one group of the draft Research plan as a single line the LLM can act on. The
-  `block_id` is surfaced verbatim so the agent can echo it back to plan-editing tools, and each
-  member dimension/metric carries its id in parentheses."
-  [{:keys [block_id anchor metric dimensions dimension metrics]}]
-  (case anchor
-    "metric"
-    (str "- [" block_id "] " (:name metric)
-         ", broken out by: " (str/join ", " (map named-with-id dimensions)))
-    "dimension"
-    (str "- [" block_id "] by " (:name dimension)
-         ", slicing: " (str/join ", " (map named-with-id metrics)))
-    nil))
-
-(defn format-research-plan
-  "Format the user's in-progress draft Research plan for injection into the system message.
-
-  The plan lives only as front-end state until the Exploration is created, so the front-end
-  serializes it into context each turn. Returns a formatted string for template variable
-  {{research_plan}}, or nil when there is no plan to show (so the template's
-  `{% if research_plan %}` guard stays false)."
-  [context]
-  (when-let [plan (:research_plan context)]
-    (let [{:keys [name groups timelines]} plan]
-      (when (or (seq groups) (seq timelines) (not (str/blank? name)))
-        (te/lines
-         (str "The user is assembling a Research plan. Below is its current contents — the user "
-              "may have added or removed items directly in addition to your tool calls, so treat "
-              "this as the source of truth. Refer to a group by its [block_id]. Each metric, "
-              "dimension, and timeline is followed by its id in parentheses — pass those ids to "
-              "the plan-editing tools.")
-         ""
-         (te/field "Plan name" (not-empty name))
-         (when (seq groups)
-           (te/lines "Groups:" (keep format-research-plan-group groups)))
-         (when (seq timelines)
-           (te/field "Selected timelines" (str/join ", " (map named-with-id timelines)))))))))
-
 ;;; Recent Views Formatting
 
 (defn format-recent-views
@@ -457,11 +401,13 @@
   - :current_user_info - Formatted current user info and glossary
   - :viewing_context - Formatted viewing context
   - :recent_views - Formatted recent views
-  - :research_plan - Formatted draft Research plan (nil when absent)"
+
+  This is the user-message injection context only. Per-profile, feature-specific system-prompt
+  content is contributed separately, via a profile's `:system-prompt-context` hook (see
+  `metabase.metabot.agent.messages/build-system-message`)."
   [context]
   {:current_time (format-current-time context)
    :first_day_of_week (get context :first_day_of_week "Sunday")
    :current_user_info (format-current-user-info context)
    :viewing_context (format-viewing-context context)
-   :recent_views (format-recent-views context)
-   :research_plan (format-research-plan context)})
+   :recent_views (format-recent-views context)})

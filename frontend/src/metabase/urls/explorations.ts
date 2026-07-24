@@ -13,3 +13,7 @@ export function newExplorationPlan(): string {
 export function exploration(explorationId: ExplorationId): string {
   return `/${EXPLORATION_BASE_PATH}/${explorationId}`;
 }
+
+export function isExplorationUrl(pathname: string): boolean {
+  return pathname.startsWith(`/${EXPLORATION_BASE_PATH}/`);
+}

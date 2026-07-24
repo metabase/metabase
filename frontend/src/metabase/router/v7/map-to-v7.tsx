@@ -45,7 +45,7 @@ export function mapToV7(node: ReactNode): ReactNode {
 }
 
 function toV7Route(element: ReactElement<RouteElementProps>): ReactElement {
-  const { path, index, element: routeElement, children } = element.props;
+  const { path, index, element: routeElement, children, props } = element.props;
 
   // v7 defaults a route with no `element` to `<Outlet/>`; only wrap (and publish
   // context) when the facade route actually renders something.
@@ -54,8 +54,12 @@ function toV7Route(element: ReactElement<RouteElementProps>): ReactElement {
       <RouterBridge v3Element={routeElement} />
     ) : undefined;
 
+  // Keep the v3 path and the arbitrary route `props` on `handle`: v3 exposed both
+  // on the matched-route branch, and consumers still read them (the command
+  // palette reads `route.props.disableCommandPalette`).
+  const v3Path = path != null ? translatePatternToV3(path) : undefined;
   const handle =
-    path != null ? { v3Path: translatePatternToV3(path) } : undefined;
+    v3Path != null || props != null ? { v3Path, props } : undefined;
 
   if (index) {
     return <V7Route index element={bridged} handle={handle} />;

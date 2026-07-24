@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
+   [metabase.request.core :as request]
    [metabase.test :as mt]))
 
 (defn- products-count-card
@@ -200,6 +201,32 @@
       (is (= [["Widget" 54] ["Gadget" 53] ["Gizmo" 51] ["Doohickey" 42]]
              (run-top-n-other {:card-id 9000002 :k 4}))))))
 
+(def ^:private product-id-fk-dim
+  {:dimension_id   "d-product-id"
+   :display_name   "Product ID"
+   :effective_type :type/Integer
+   :semantic_type  :type/FK})
+
+(deftest top-n-other-numeric-fk-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "top-n-other on a numeric FK dim stringifies the bucket labels, so the CASE
+              expression is single-typed — a mixed CASE (numeric THEN arms, string (Other)
+              ELSE arm) is rejected by strict warehouses (UXW-4757)"
+      (let [ctx  {:mp      (mt/metadata-provider)
+                  :card    (orders-count-card 9000005)
+                  :target  [:field (mt/id :orders :product_id) nil]
+                  :dim     product-id-fk-dim
+                  :segment nil
+                  :params  {:k 2}}
+            rows (-> (variants/pin-other-last
+                      "top-n-other"
+                      (qp/process-query (variants/dataset-query "top-n-other" ctx)))
+                     :data :rows)]
+        (is (= 3 (count rows)) "top 2 ids + (Other)")
+        (is (every? string? (map first rows))
+            "every bucket label — discovered ids and (Other) — is a string")
+        (is (= "(Other)" (first (last rows))))))))
+
 (deftest pin-other-last-test
   (testing "pin-other-last stably moves the (Other) row to the end, preserving the
             metric-desc order of the named buckets"
@@ -269,6 +296,31 @@
       (is (= ["Widget"] filtered-results)
           "a Widget-scoped metric query only discovers that segment"))))
 
+(deftest cached-discovery-isolates-users-test
+  (testing "cached-discovery keys on the current user, so a top-N value set discovered under one
+            user's lens (sandboxing / impersonation / routing can all narrow it) is never served to
+            a different user"
+    (let [card-id  9000102
+          mp       (mt/metadata-provider)
+          card     (products-count-card card-id)
+          ctx      {:mp mp :card card :target (category-target) :dim category-dim
+                    :segment nil :params {:k 2} :explore-filters nil}
+          discover (fn [user-id]
+                     (request/with-current-user user-id
+                       (#'variants/cached-discovery ctx)))
+          calls    (atom 0)
+          real     @#'variants/run-top-k-discovery]
+      (with-redefs [variants/run-top-k-discovery (fn [& args]
+                                                   (swap! calls inc)
+                                                   (apply real args))]
+        (discover (mt/user->id :rasta))
+        (discover (mt/user->id :crowberto))
+        (is (= 2 @calls)
+            "each user runs its own discovery query rather than inheriting the other's cached values")
+        (discover (mt/user->id :rasta))
+        (is (= 2 @calls)
+            "a repeat for the same user still hits the cache")))))
+
 (deftest cached-discovery-key-is-stable-across-query-rebuilds-test
   (testing "the cache key is stable across per-row query rebuilds, so the discovery query runs once —"
     (testing "keying on the reconstructed :dataset_query never hit: `lib/=` mints fresh :lib/uuids per row"
@@ -290,3 +342,58 @@
             (is (= ["Widget"] (discover)) "second row is served from cache")
             (is (= 1 @runs)
                 "discovery ran once across both rebuilds — the key ignores the churning :lib/uuids")))))))
+
+(defn- discovery-ctx
+  [card-id]
+  {:mp              (mt/metadata-provider)
+   :card            (products-count-card card-id)
+   :target          (category-target)
+   :dim             category-dim
+   :segment         nil
+   :params          {:k 2}
+   :explore-filters nil})
+
+(deftest cached-discovery-does-not-cache-failures-test
+  (testing "a failed discovery query is not cached — the next row retries instead of being served [] for the whole TTL"
+    (let [ctx   (discovery-ctx 9000110)
+          runs  (atom 0)
+          ;; `run-top-k-discovery` signals a throw by returning nil; every other
+          ;; return (including `[]`) is a real answer.
+          results (atom [nil ["Widget" "Gadget"]])]
+      (with-redefs-fn {#'variants/run-top-k-discovery
+                       (fn [& _]
+                         (swap! runs inc)
+                         (let [[r & more] @results]
+                           (reset! results (vec more))
+                           r))}
+        (fn []
+          (is (= [] (#'variants/cached-discovery ctx))
+              "a failed discovery degrades to an empty result for this row")
+          (is (= ["Widget" "Gadget"] (#'variants/cached-discovery ctx))
+              "the next row re-runs discovery instead of reading the failure back out of the cache")
+          (is (= 2 @runs)))))))
+
+(deftest cached-discovery-caches-empty-results-test
+  (testing "a discovery query that legitimately finds nothing stays cached — no retry storm on an empty metric"
+    (let [ctx  (discovery-ctx 9000111)
+          runs (atom 0)]
+      (with-redefs-fn {#'variants/run-top-k-discovery (fn [& _] (swap! runs inc) [])}
+        (fn []
+          (is (= [] (#'variants/cached-discovery ctx)))
+          (is (= [] (#'variants/cached-discovery ctx)))
+          (is (= 1 @runs) "an empty answer is an answer — discovery ran once"))))))
+
+(deftest run-top-k-discovery-distinguishes-empty-from-failure-test
+  (testing "run-top-k-discovery returns [] when the query succeeds with no rows, so the caller can cache it"
+    (let [mp   (mt/metadata-provider)
+          card {:id            9000112
+                :dataset_query (lib/->legacy-MBQL
+                                (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                    (lib/aggregate (lib/count))
+                                    (lib/filter (lib/= (lib.metadata/field mp (mt/id :products :category))
+                                                       "No Such Category"))))}]
+      (is (= [] (#'variants/run-top-k-discovery mp card (category-target) category-dim 2)))))
+  (testing "and nil when the query throws, so the caller can skip caching it"
+    (is (nil? (#'variants/run-top-k-discovery (mt/metadata-provider)
+                                              {:id 9000113 :dataset_query {:not-a "query"}}
+                                              (category-target) category-dim 2)))))

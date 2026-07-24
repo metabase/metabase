@@ -28,6 +28,7 @@ import type {
   TimelineId,
 } from "metabase-types/api";
 import {
+  getExplorationPages,
   isSettledExplorationQueryStatus,
   isTerminalExplorationThreadStatus,
 } from "metabase-types/api";
@@ -98,19 +99,24 @@ function threadHasActiveWork(thread: ExplorationThread): boolean {
 // Wall-clock deadline after which each in-flight thread is treated as stalled.
 function activeThreadStaleDeadlines(
   exploration: Exploration | undefined,
-  now: number,
 ): number[] {
   return (exploration?.threads ?? [])
     .filter(threadHasActiveWork)
     .map((thread) => {
-      const startedAt = thread.started_at;
-      const start = startedAt != null ? new Date(startedAt).getTime() : now;
+      const start = new Date(thread.started_at ?? thread.created_at).getTime();
       return start + STALE_THREAD_THRESHOLD_MS;
     });
 }
 
-export function ExplorationPage({ params, location }: ExplorationPageProps) {
+export function ExplorationPage(props: ExplorationPageProps) {
+  return <ExplorationPageForId key={props.params.id} {...props} />;
+}
+
+function ExplorationPageForId({ params, location }: ExplorationPageProps) {
   const dispatch = useDispatch();
+
+  const isCommentsSidebarOpen = location.query?.comments === "true";
+  const wasCommentsSidebarOpen = usePrevious(isCommentsSidebarOpen);
 
   const selectedSidebarTab = useMemo<ExplorationSidebarTab>(() => {
     const tab = location.query?.tab;
@@ -128,6 +134,16 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
     },
     [location.pathname, location.search],
   );
+
+  const closeCommentsSidebar = useCallback(() => {
+    if (!isCommentsSidebarOpen) {
+      return;
+    }
+    const search = new URLSearchParams(location.search);
+    search.delete("comments");
+    const query = search.toString();
+    dispatch(push(`${location.pathname}${query ? `?${query}` : ""}`));
+  }, [isCommentsSidebarOpen, location.search, location.pathname, dispatch]);
 
   const shouldScrollSelectionRef = useRef(true); // initially true to scroll selection from URL into view
 
@@ -203,7 +219,7 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
 
   useEffect(() => {
     const now = Date.now();
-    const deadlines = activeThreadStaleDeadlines(exploration, now).filter(
+    const deadlines = activeThreadStaleDeadlines(exploration).filter(
       (deadline) => deadline > now,
     );
     setShouldPoll(deadlines.length > 0);
@@ -256,8 +272,12 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
       : (node: ITreeNodeItem<ExplorationTreeNode>) =>
           tabFilter(node) && !isHiddenTreeItem(node);
 
+    const hasHiddenPages = getExplorationPages(exploration).some(
+      (page) => page.hidden,
+    );
+
     return getExplorationSidebarTree(exploration, treeItemFilter, sortOrder, {
-      keepEmptyInitialThread: selectedSidebarTab === "all",
+      keepEmptyInitialThread: selectedSidebarTab === "all" && hasHiddenPages,
     });
   }, [
     exploration,
@@ -467,9 +487,6 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
     [dispatch, location.pathname, location.search],
   );
 
-  const isCommentsSidebarOpen = location.query?.comments === "true";
-  const wasCommentsSidebarOpen = usePrevious(isCommentsSidebarOpen);
-
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -531,6 +548,7 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
               setCommentDrafts={setCommentDrafts}
               isCommentsSidebarOpen={isCommentsSidebarOpen}
               wasCommentsSidebarOpen={wasCommentsSidebarOpen ?? false}
+              onCloseCommentsSidebar={closeCommentsSidebar}
               onPreviousPage={
                 previousPageId != null ? goToPreviousPage : undefined
               }

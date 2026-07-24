@@ -8,8 +8,6 @@ SELECT
     CASE a.source
         WHEN 'metabot_agent'                     THEN 'Metabot'
         WHEN 'agent'                             THEN 'Metabot'
-        WHEN 'contextual_interestingness'        THEN 'Contextual Interestingness'
-        WHEN 'exploration'                       THEN 'Explorations'
         WHEN 'document_generate_content'         THEN 'Documents'
         WHEN 'example_question_generation_batch' THEN 'Suggested Prompts'
         WHEN 'slack'                             THEN 'Slackbot'

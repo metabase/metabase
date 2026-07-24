@@ -10,7 +10,7 @@ export function ExplorationErrorMarker({
   return (
     <Tooltip label={message || t`Failed to generate`}>
       <Box
-        aria-label={t`Failed to generate`}
+        aria-label={message || t`Failed to generate`}
         data-testid="exploration-error-marker"
         bg="feedback-negative"
         w="0.375rem"

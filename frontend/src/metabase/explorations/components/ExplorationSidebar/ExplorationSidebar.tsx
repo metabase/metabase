@@ -7,7 +7,6 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -34,6 +33,7 @@ import {
   isExplorationSidebarTab,
 } from "metabase/explorations/types";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   ActionIcon,
   Box,
@@ -486,6 +486,13 @@ function ExplorationTreeHeading({
         [S.treeRowThreadSeparated]:
           depth === 0 && item.data?.headingKind === "sub-exploration",
       })}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          onToggleExpand();
+          e.preventDefault();
+        }
+      }}
       onClick={onToggleExpand}
       style={{ "--tree-depth": depth }}
     >
@@ -720,9 +727,6 @@ function ExplorationTreeItem({
 
   const pageData = item.data.type === "page" ? item.data : null;
   const isError = pageData?.status === "error";
-  const erroredQueryMessage = pageData?.queries.find(
-    (query) => query.status === "error" && query.error_message,
-  )?.error_message;
   const isHidden = pageData?.hidden === true;
   const isLoading = isLoadingStatus(item.data?.status);
   const isUnread = pageData != null && !readPageIds.has(pageData.page_id);
@@ -768,10 +772,7 @@ function ExplorationTreeItem({
       )}
       {isError && (
         <ExplorationErrorMarker
-          message={
-            erroredQueryMessage ??
-            t`We couldn't generate one or more of these charts.`
-          }
+          message={t`We couldn't generate one or more of these charts.`}
         />
       )}
     </ForwardRefLink>

@@ -539,15 +539,6 @@
                :target       [:dimension [:field 1 nil]]}]
              (t2/select-one-fn :parameter_mappings :model/Card :id card-id))))))
 
-(deftest ^:parallel identity-hash-test
-  (testing "Card hashes are composed of the name and the collection's hash"
-    (let [now #t "2022-09-01T12:34:56Z"]
-      (mt/with-temp [:model/Collection  coll {:name "field-db" :location "/" :created_at now}
-                     :model/Card card {:name "the card" :collection_id (:id coll) :created_at now}]
-        (is (= "5199edf0"
-               (serdes/raw-hash ["the card" (serdes/identity-hash coll) (:created_at card)])
-               (serdes/identity-hash card)))))))
-
 (deftest parameter-card-test
   (let [default-params {:name       "Category Name"
                         :slug       "category_name"
@@ -1808,3 +1799,27 @@
               (is (contains? (stale-ids) public-id)))
             (tu/with-temporary-setting-values [enable-public-sharing true]
               (is (not (contains? (stale-ids) public-id))))))))))
+(deftest editing-clears-metabot-origin-test
+  (testing "editing a card's content severs its link back to the Metabot chart it came from"
+    (doseq [[change-desc changes] {"query"        {:dataset_query (mt/mbql-query checkins)}
+                                   "display"      {:display :line}
+                                   "viz settings" {:visualization_settings {"graph.goal_value" 10}}}]
+      (testing (str "changing the " change-desc " clears the link")
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :rasta)}
+                       :model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)
+                                                  :metabot_conversation_id convo-id
+                                                  :metabot_chart_id "chart-1"}]
+          (t2/update! :model/Card card-id changes)
+          (is (= {:metabot_conversation_id nil :metabot_chart_id nil}
+                 (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
+                                :id card-id)))))))
+  (testing "renaming or moving a card keeps the link"
+    (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :rasta)}
+                   :model/Collection {coll-id :id} {}
+                   :model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)
+                                              :metabot_conversation_id convo-id
+                                              :metabot_chart_id "chart-1"}]
+      (t2/update! :model/Card card-id {:name "Renamed" :collection_id coll-id})
+      (is (= {:metabot_conversation_id convo-id :metabot_chart_id "chart-1"}
+             (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
+                            :id card-id))))))

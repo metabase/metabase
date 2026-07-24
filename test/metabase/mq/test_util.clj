@@ -275,6 +275,28 @@
     `(do-with-test-mq! (merge ~opts-expr {:listeners ~listeners})
                        (fn [~ctx-sym] ~@body))))
 
+(defmacro with-worker-redefs
+  "`with-redefs`, for stubbing fns that a queue *handler* calls.
+
+  Handlers run on MQ worker threads, which do not carry the test thread's dynamic bindings, so
+  `mt/with-dynamic-fn-redefs` is not an option here: the
+  worker would simply never see the rebinding. A root swap is the only thing it observes.
+
+  That swap is process-global for the duration of `body`, so a test using this must be marked
+  `^:synchronous`, exactly as it would if it reached for `with-redefs` directly.
+
+  Prefer this over a bare `with-redefs` + inline `:clj-kondo/ignore` in queue tests. Stubbing a
+  handler's collaborators is a standing requirement of testing a queue, not a code smell, and
+  spelling it once here keeps the `prefer-with-dynamic-fn-redefs` nudge — and the ignore ratchet it
+  feeds — meaningful for the redefs that really could have been dynamic.
+
+      (with-worker-redefs [runner/run-query! (fn [_id] (throw (ex-info \"boom\" {})))]
+        (with-test-mq [ctx]
+          ...))"
+  {:style/indent 1}
+  [bindings & body]
+  `(with-redefs ~bindings ~@body))
+
 ;;; ------------------------------------------- Fixture self-tests -------------------------------------------
 
 (deftest duplicate-delivery-doubles-queue-messages-test

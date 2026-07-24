@@ -23,7 +23,6 @@ SELECT
     (SELECT CASE mm.profile_id
                 WHEN 'internal'                  THEN 'Internal'
                 WHEN 'embedding_next'            THEN 'Embedding'
-                WHEN 'explorations'              THEN 'Explorations'
                 WHEN 'nlq'                       THEN 'NLQ'
                 WHEN 'sql'                       THEN 'SQL'
                 WHEN 'slackbot'                  THEN 'Slackbot'
@@ -51,8 +50,6 @@ SELECT
     (SELECT CASE aul.source
                 WHEN 'metabot_agent'                     THEN 'Metabot'
                 WHEN 'agent'                             THEN 'Metabot'
-                WHEN 'contextual_interestingness'        THEN 'Contextual Interestingness'
-                WHEN 'exploration'                       THEN 'Explorations'
                 WHEN 'document_generate_content'         THEN 'Documents'
                 WHEN 'example_question_generation_batch' THEN 'Suggested Prompts'
                 WHEN 'slack'                             THEN 'Slackbot'

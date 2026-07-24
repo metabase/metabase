@@ -2,11 +2,10 @@
 ## sources (contextual_interestingness, exploration), so they display friendly names
 ## instead of raw machine identifiers in AI usage analytics.
 ##
-## v_metabot_conversations also has a v4 (same explorations CASE branches, plus master's
-## include-deleted semantics from #77542), but its installing changeset lives in
-## migrations/064/20260713_metabot_analytics_views_include_deleted.yaml — master created it
-## in parallel, and both changesets are runOnChange against the same v4 SQL files, so a
-## second installer here would be redundant.
+## v_metabot_conversations needs the same explorations CASE branches, but they are not added
+## here — 20260714_metabot_conversation_title.yaml sorts later and recreates that view as v5,
+## dropping anything installed at this point. They live in v6, installed by
+## 20260721_metabot_conversations_v6_explorations_sources.yaml.
 ##
 ## Keep the CASE branches in sync with the known-sources / known-profile-ids allow-lists in
 ## enterprise/backend/src/metabase_enterprise/metabot/usage.clj.

@@ -28,6 +28,11 @@
 (defn- cleanup-test-usage! [user-id]
   (t2/delete! :model/AiUsageLog :user_id user-id :source "test"))
 
+(deftest ^:parallel valid-usage-profile-id-test
+  (is (= "internal" (ee.usage/valid-usage-profile-id "internal")))
+  (is (= :slackbot (ee.usage/valid-usage-profile-id :slackbot)))
+  (is (nil? (ee.usage/valid-usage-profile-id "metabot-1"))))
+
 ;;; ------------------------------------------------ log-ai-usage! ------------------------------------------------
 
 (deftest log-ai-usage!-records-usage-test

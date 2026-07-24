@@ -1,10 +1,13 @@
 (ns metabase.explorations.runner-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.contextual-interestingness.core :as contextual-interestingness]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.explorations.query-plan]
+   [metabase.explorations.query-plan.context :as qp.context]
+   [metabase.explorations.query-plan.variants :as qp.variants]
    [metabase.explorations.runner :as runner]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -167,6 +170,26 @@
                                       :exploration_query_id (:id row))]
             (is (= 0.73 (:contextual_interestingness_score result)))))))))
 
+(deftest run-one-iteration-hands-computed-stats-to-the-scorer-test
+  (testing "The deep stats the runner already computed are handed to the contextual scorer, not recomputed"
+    (mt/with-temp [:model/User u {:email "ctx-stats@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [thread (temp-thread! (:id u) "Why are venue counts dropping in this region?")
+            row    (pending-query! (:id thread) (:id card)
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))
+            seen   (atom nil)]
+        (mt/with-dynamic-fn-redefs [contextual-interestingness/score-and-describe-chart
+                                    (fn [inputs] (reset! seen inputs) {:score 0.5})]
+          (drain-until-terminal! (:id row))
+          (let [result (t2/select-one :model/ExplorationQueryResult
+                                      :exploration_query_id (:id row))]
+            (is (some? (:stats @seen))
+                "the scorer receives the already-computed stats")
+            (is (= (:chart_stats result) (:stats @seen))
+                "and they are the same deep stats persisted on the result row")))))))
+
 (deftest run-one-iteration-skips-contextual-when-prompt-blank-test
   (testing "Threads with no prompt → contextual_interestingness_score is nil and the lego is not called"
     (mt/with-temp [:model/User u {:email "ctx-noprompt@example.com"}
@@ -298,6 +321,45 @@
         (is (zero? (t2/count :model/ExplorationQueryResult
                              :exploration_query_id (:id row))))))))
 
+(defn- deferred-query!
+  "A pending row whose `dataset_query` the planner deferred to execution time (the shape
+  `top-n-other` / `per-value-time-series` rows arrive in). `finalize-row!` resolves the MBQL —
+  running top-K discovery against the warehouse — before the row is executed."
+  [thread-id card-id]
+  (first (t2/insert-returning-instances! :model/ExplorationQuery
+                                         {:exploration_thread_id thread-id
+                                          :card_id               card-id
+                                          :database_id           (mt/id)
+                                          :page_id               (thread-page! thread-id card-id)
+                                          :dimension_id          "d1"
+                                          :query_type            "top-n-other"
+                                          :dataset_query         nil
+                                          :status                "pending"
+                                          :position              0})))
+
+(deftest finalize-row-resolves-deferred-mbql-as-the-creator-test
+  (testing "resolving a deferred row's MBQL runs top-K discovery queries against the warehouse, so it
+            must happen under the exploration creator's context — otherwise the QP skips permission
+            checks entirely and the sandboxing/impersonation/routing middleware have no user to apply,
+            and discovery silently returns values from outside the creator's lens"
+    (mt/with-temp [:model/User u {:email "deferred@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [thread (temp-thread! (:id u))
+            row    (deferred-query! (:id thread) (:id card))
+            seen   (atom ::never-called)]
+        (with-redefs [qp.context/build-row-context (constantly {::stub true})
+                      qp.variants/dataset-query    (fn [_variant _ctx]
+                                                     (reset! seen api/*current-user-id*)
+                                                     (lib/->legacy-MBQL (let [mp (mt/metadata-provider)]
+                                                                          (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                              (lib/aggregate (lib/count))))))
+                      qp.variants/query-name       (constantly "stub name")]
+          (runner/run-query! (:id row)))
+        (is (= (:id u) @seen)
+            "discovery must run as the exploration's creator, not with no user bound")))))
+
 (defn- store-fake-result!
   [query-id qp-result]
   (let [bytes (qp/do-with-serialization
@@ -307,7 +369,10 @@
         sr-id (first
                (t2/insert-returning-pks!
                 :model/StoredResult
-                {:result_data bytes}))]
+                {:result_data   bytes
+                 :database_id   (mt/id)
+                 :dataset_query (let [mp (mt/metadata-provider)]
+                                  (lib/query mp (lib.metadata/table mp (mt/id :venues))))}))]
     (t2/insert! :model/ExplorationQueryResult
                 {:exploration_query_id query-id
                  :stored_result_id     sr-id})))
@@ -379,6 +444,22 @@
         (is (= 1 (t2/count :model/ExplorationQueryResult :exploration_query_id (:id row)))
             "exactly one result row, despite three deliveries")))))
 
+(deftest run-query-returns-thread-id-for-a-terminally-errored-query-test
+  (testing "a redelivery (or duplicate) of a query a prior delivery already marked `error` returns
+            the thread id — not nil — so the caller re-runs the completion check the prior delivery's
+            failed attempt may have skipped. Matching only `done` here strands an error row's thread."
+    (mt/with-temp [:model/User u {:email "err-fallback@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [thread (temp-thread! (:id u))
+            row    (pending-query! (:id thread) (:id card)
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))]
+        (runner/fail-query! (:id row) "boom")
+        (is (= "error" (:status (t2/select-one :model/ExplorationQuery :id (:id row)))))
+        (is (= (:id thread) (runner/run-query! (:id row)))
+            "run-query! returns the thread id for an already-terminal (error) query so completion re-runs")))))
+
 (deftest overlapping-runs-persist-exactly-one-result-test
   (testing "when two deliveries overlap, both run the warehouse query but only one persists: the
             loser is a benign no-op (same answer, wasted warehouse time), not an error, and no
@@ -391,8 +472,8 @@
             row    (pending-query! (:id thread) (:id card)
                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
             ;; both deliveries got past the `pending` gate and each ran the query
-            computed-a (#'runner/compute-query-result row)
-            computed-b (#'runner/compute-query-result row)
+            computed-a (#'runner/compute-query-result row (:id u))
+            computed-b (#'runner/compute-query-result row (:id u))
             now        (OffsetDateTime/now)]
         (is (true? (#'runner/persist-query-result! row now computed-a))
             "the first writer persists")
@@ -429,6 +510,31 @@
             "CAS must not fire on a canceled thread")
         (is (nil? (:analysis_started_at (t2/select-one :model/ExplorationThread :id (:id thread))))
             "analysis_started_at must remain NULL")))))
+
+(deftest claim-analysis-stamps-completed-at-atomically-test
+  (testing "claiming the analysis run stamps completed_at in the SAME update as analysis_started_at.
+            A crash between a separate claim and a follow-up completed_at write used to leave the
+            thread with analysis_started_at set — so the claim CAS never fired again — but
+            completed_at nil, stranding the client on a spinner forever."
+    (mt/with-temp [:model/User u {:email "atomic-complete@example.com"}]
+      (let [thread (temp-thread! (:id u))]
+        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        ;; no pending queries → the claim fires
+        (is (true? (claim-analysis-if-ready! (:id thread))))
+        (let [after (t2/select-one :model/ExplorationThread :id (:id thread))]
+          (is (some? (:analysis_started_at after)))
+          (is (some? (:completed_at after))
+              "completed_at is stamped atomically with the claim, closing the crash window"))))))
+
+(deftest maybe-complete-thread-completes-synchronously-test
+  (testing "maybe-complete-thread! stamps completed_at inline (no fire-and-forget future), so the
+            write cannot be lost to a crash after the claim commits"
+    (mt/with-temp [:model/User u {:email "sync-complete@example.com"}]
+      (let [thread (temp-thread! (:id u))]
+        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (runner/maybe-complete-thread! (:id thread))
+        (is (some? (:completed_at (t2/select-one :model/ExplorationThread :id (:id thread))))
+            "completed_at is set by the time maybe-complete-thread! returns")))))
 
 (deftest canceled-mid-plan-cleanup-flips-pending-rows-test
   (testing "Planner-race repair: when the planner finishes for a thread the user canceled mid-plan,

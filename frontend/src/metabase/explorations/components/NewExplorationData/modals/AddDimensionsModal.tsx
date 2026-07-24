@@ -61,7 +61,11 @@ export function AddDimensionsModal({
       filterDimensionGroupsBySearch(
         response?.dimension_groups ?? [],
         debouncedSearch,
-      ).filter((group) => !dimensionBlockIds.has(group.dimensions[0].id)),
+      ).filter(
+        (group) =>
+          group.dimensions.length > 0 && // BE ensures group.dimensions is not empty, but check again just in case
+          !dimensionBlockIds.has(group.dimensions[0].id),
+      ),
     [response, debouncedSearch, dimensionBlockIds],
   );
 
@@ -124,6 +128,11 @@ export function AddDimensionsModal({
     }
   };
 
+  const handleClose = () => {
+    setTab(ALL_TAB);
+    onClose();
+  };
+
   const tabs = showTabs ? (
     <Tabs value={activeTab} onChange={(value) => value && setTab(value)}>
       <Tabs.List>
@@ -140,7 +149,7 @@ export function AddDimensionsModal({
   return (
     <AddEntitiesModal
       opened={opened}
-      onClose={onClose}
+      onClose={handleClose}
       title={t`Add dimensions of interest to your research plan`}
       searchPlaceholder={t`Search for a dimension`}
       search={search}

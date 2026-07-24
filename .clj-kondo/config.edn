@@ -528,6 +528,7 @@
   metabase.test/with-temp-empty-app-db                                                  clojure.core/let
   metabase.test/with-temp-file                                                          clojure.core/let
   metabase.test/with-user-in-groups                                                     clojure.core/let
+  metabase.transforms-rest.api.transform-runs-test/with-runs-fixture!                   clojure.core/fn
   metabase.upload.impl-test/with-upload-table!                                          clojure.core/let
   metabase.util/for-map                                                                 clojure.core/for
   metabase.util.files/with-open-path-to-resource                                        clojure.core/let

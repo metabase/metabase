@@ -1,10 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import type { Location } from "history";
 
 import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
+import type { Location } from "metabase/router";
 import type { Advisory } from "metabase-types/api";
 import { createMockVersion } from "metabase-types/api/mocks";
 import { createAdvisory } from "metabase-types/api/mocks/security-center";

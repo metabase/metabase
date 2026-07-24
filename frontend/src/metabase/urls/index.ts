@@ -15,6 +15,7 @@ export * from "./indexed-entities";
 export * from "./metabot";
 export * from "./metrics";
 export * from "./misc";
+export * from "./monitor";
 export * from "./models";
 export * from "./modelToUrl";
 export * from "./permissions";

@@ -62,7 +62,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     timelines,
     name,
   } = selection;
-  const { canUseNlq } = useUserMetabotPermissions();
+  const { canUseNlq, hasNlqAccess } = useUserMetabotPermissions();
 
   // Surface the in-progress draft plan to Metabot each turn so it can read and edit it.
   useRegisterMetabotContextProvider(
@@ -82,11 +82,14 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       open: openAiProviderConfigurationModal,
     },
   ] = useDisclosure(false);
-  const nextUnprocessedMessageIndexRef = useRef(0);
+
+  const processedMessageIdsRef = useRef(new Set<string>());
+
   const {
     prompt,
     setPrompt,
     messages,
+    conversationId,
     retryMessage,
     isDoingScience,
     activeToolCalls,
@@ -115,7 +118,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
       try {
         for (const message of messages) {
-          // Unjustified type cast. FIXME
+          // tool result shape verified by the backend
           const { metrics, dimension_groups, groups } = JSON.parse(
             message.result,
           ) as AddResearchGroupsResponse;
@@ -210,7 +213,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
       try {
         for (const message of messages) {
-          // Unjustified type cast. FIXME
+          // tool result shape verified by the backend
           const { block_ids, members, timeline_ids } = JSON.parse(
             message.result,
           ) as RemoveFromResearchPlanResponse;
@@ -268,8 +271,11 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
         return;
       }
       try {
-        // Unjustified type cast. FIXME
-        const parsed = JSON.parse(messages[0].result) as { name: string };
+        // there can only be one name, use the latest if multiple
+        // tool result shape verified by the backend
+        const parsed = JSON.parse(messages[messages.length - 1].result) as {
+          name: string;
+        };
         setName(parsed.name);
       } catch (error) {
         console.error(error);
@@ -287,7 +293,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
       try {
         const timelineIds = messages.flatMap((message) => {
-          // Unjustified type cast. FIXME
+          // tool result shape verified by the backend
           const parsed = JSON.parse(message.result) as {
             timeline_ids: number[];
           };
@@ -308,18 +314,20 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
   );
 
   useEffect(() => {
-    if (nextUnprocessedMessageIndexRef.current > messages.length) {
-      nextUnprocessedMessageIndexRef.current = 0;
-    }
+    processedMessageIdsRef.current = new Set();
+  }, [conversationId]);
 
+  useEffect(() => {
     if (isDoingScience) {
       return;
     }
 
-    const unprocessedMessages = messages.slice(
-      nextUnprocessedMessageIndexRef.current,
+    const unprocessedMessages = messages.filter(
+      (message) => !processedMessageIdsRef.current.has(message.id),
     );
-    nextUnprocessedMessageIndexRef.current = messages.length;
+    for (const message of unprocessedMessages) {
+      processedMessageIdsRef.current.add(message.id);
+    }
 
     handleAddResearchGroupsToolCallMessages(
       unprocessedMessages.filter(isAddResearchGroupsToolCallMessage),
@@ -363,6 +371,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
               }
               isDoingScience={isDoingScience}
               debug={false}
+              conversationId={conversationId}
             />
             {isDoingScience && <MetabotThinking toolCalls={activeToolCalls} />}
           </Stack>
@@ -392,6 +401,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
               p="0.75rem"
               featureName={t`the AI agent`}
               inline
+              hasFeatureAccess={hasNlqAccess}
               onConfigureAi={openAiProviderConfigurationModal}
             />
           )}

@@ -97,13 +97,10 @@
     (do-with-fixtures!
      (fn [{:keys [card thread]}]
        (let [planned (atom nil)]
-         ;; `with-redefs`, not `mt/with-dynamic-fn-redefs`: the handler runs on an MQ worker thread,
-         ;; which does not carry this thread's dynamic bindings.
-         #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-         (with-redefs [metabase.explorations.query-plan/generate-query-plan!
-                       (fn [tid]
-                         (reset! planned (insert-query! tid (:id card) (venues-query)))
-                         :ok)]
+         (mq.tu/with-worker-redefs [metabase.explorations.query-plan/generate-query-plan!
+                                    (fn [tid]
+                                      (reset! planned (insert-query! tid (:id card) (venues-query)))
+                                      :ok)]
            (mq.tu/with-test-mq [ctx]
              (t2/with-transaction [_conn]
                (explorations.queues/start-thread! (:id thread)))
@@ -139,6 +136,36 @@
              (is (zero? (t2/count :model/ExplorationQueryResult :exploration_query_id qid))
                  "no partial result was written"))))))))
 
+(deftest completion-check-failure-in-error-path-is-retried-not-swallowed-test
+  (testing "a query that fails, then whose thread-completion check transiently fails, must NOT strand
+            its thread. The failed check propagates out of the listener (rather than being swallowed
+            with the batch acked), mq redelivers the batch, and run-query!'s terminal-status fallback
+            re-runs the check for the now-`error` query so the thread completes."
+    (mt/with-temporary-setting-values [queue-max-retries 5]
+      (do-with-fixtures!
+       (fn [{:keys [card thread]}]
+         ;; a database that doesn't exist: the QP throws on every attempt → the error path
+         (let [qid   (insert-query! (:id thread) (:id card)
+                                    {:database 999999
+                                     :type     :query
+                                     :query    {:source-table 1 :aggregation [[:count]]}})
+               calls (atom 0)
+               orig  runner/maybe-complete-thread!]
+           (mq.tu/with-worker-redefs [runner/maybe-complete-thread!
+                                      (fn [tid]
+                                        (when (and tid (= 1 (swap! calls inc)))
+                                          (throw (ex-info "transient completion blip" {})))
+                                        (orig tid))]
+             (mq.tu/with-test-mq [ctx]
+               (#'explorations.queues/publish-pending-queries! (:id thread))
+               (mq.tu/eventually! ctx
+                                  #(some? (:completed_at (t2/select-one :model/ExplorationThread
+                                                                        :id (:id thread))))
+                                  60000)))
+           (is (= "error" (status qid)) "the query is terminally errored")
+           (is (some? (:completed_at (t2/select-one :model/ExplorationThread :id (:id thread))))
+               "and the thread completed despite the completion check failing on its first attempt")))))))
+
 (deftest plan-that-keeps-failing-terminally-stamps-the-thread-test
   (testing "a plan delivery that fails every attempt ends with the thread terminally stamped — the
             same state the planner's own failure path writes — so the client stops polling and the
@@ -147,11 +174,8 @@
       (do-with-fixtures!
        (fn [{:keys [thread]}]
          ;; a failure *around* the planner (`generate-query-plan!` catches its own): the thread
-         ;; select blowing up on every delivery stands in for app-DB trouble. `with-redefs`, not
-         ;; `mt/with-dynamic-fn-redefs`: the handler runs on an MQ worker thread, which does not
-         ;; carry this thread's dynamic bindings.
-         #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-         (with-redefs [runner/plan-thread! (fn [_] (throw (ex-info "planner infrastructure down" {})))]
+         ;; select blowing up on every delivery stands in for app-DB trouble.
+         (mq.tu/with-worker-redefs [runner/plan-thread! (fn [_] (throw (ex-info "planner infrastructure down" {})))]
            (mq.tu/with-test-mq [ctx]
              (t2/with-transaction [_conn]
                (explorations.queues/start-thread! (:id thread)))
@@ -239,14 +263,75 @@
             terminal state written. deliver-batch! must isolate the fail! calls the way it isolates
             the handle! calls, or one un-recordable failure would strand every message behind it"
     (let [failed  (atom [])
-          handle! (fn [_] (throw (ex-info "always fails" {})))
+          ;; `{:id 4}` succeeds, making this a *partial* batch failure — the path that records
+          ;; terminal state inline. A batch in which every message fails is rethrown instead; see
+          ;; whole-batch-failure-is-rethrown-for-mq-backoff-test.
+          handle! (fn [msg] (if (= msg {:id 4}) 99 (throw (ex-info "always fails" {}))))
           fail!   (fn [msg _e]
                     (if (= msg {:id 1})
                       (throw (ex-info "recording THIS one blows up" {}))
                       (swap! failed conj msg)))]
-      (#'explorations.queues/deliver-batch! [{:id 1} {:id 2} {:id 3}] handle! fail!)
+      (#'explorations.queues/deliver-batch! [{:id 1} {:id 2} {:id 3} {:id 4}] handle! fail!)
       (is (= [{:id 2} {:id 3}] @failed)
           "every message whose terminal write succeeded is recorded, despite the first one throwing"))))
+
+(deftest batch-wide-outage-recovers-on-redelivery-test
+  (testing "the point of rethrowing a wholly-failed batch: a warehouse blip that takes every query in
+            the batch down must be ridden out, not burned into terminal `error` state. The batch goes
+            back to mq, is redelivered after its backoff, and the queries run — the user never sees a
+            failure. Recording them on the first delivery would have made the outage permanent"
+    (mt/with-temporary-setting-values [queue-max-retries 5]
+      (do-with-fixtures!
+       (fn [{:keys [card thread]}]
+         (let [q1        (insert-query! (:id thread) (:id card) (venues-query))
+               q2        (insert-query! (:id thread) (:id card) (venues-query))
+               calls     (atom 0)
+               run-query runner/run-query!]
+           ;; Two messages, one batch, and every attempt of the first delivery fails: each message
+           ;; gets two (auto-retry 1), so calls 1-4 are that delivery. From call 5 — the redelivery —
+           ;; the "warehouse" is back.
+           (mq.tu/with-worker-redefs [runner/run-query! (fn [id]
+                                                          (when (<= (swap! calls inc) 4)
+                                                            (throw (ex-info "warehouse is down" {})))
+                                                          (run-query id))]
+             (mq.tu/with-test-mq [ctx]
+               (t2/with-transaction [_conn]
+                 (mq/with-queue :queue/exploration-query [q]
+                   (mq/put q {:query-id q1})
+                   (mq/put q {:query-id q2})))
+               (mq.tu/eventually! ctx #(and (= "done" (status q1)) (= "done" (status q2))) 60000)))
+           (is (= "done" (status q1)))
+           (is (= "done" (status q2)))
+           (is (> @calls 4) "the batch really was redelivered rather than succeeding first time")))))))
+
+(deftest whole-batch-failure-is-rethrown-for-mq-backoff-test
+  (testing "when every message of a multi-message batch fails, no single message can be blamed — one
+            poison message cannot fail its batch-mates — so this is infrastructure-wide trouble.
+            deliver-batch! must rethrow rather than record, handing the batch back to mq to redeliver
+            on its exponential backoff ladder. Recording instead would burn a transient outage into
+            terminal, user-visible `error` state milliseconds after the first attempt"
+    (let [failed  (atom [])
+          handle! (fn [_] (throw (ex-info "warehouse is down" {})))
+          fail!   (fn [msg _e] (swap! failed conj msg))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"warehouse is down"
+           (#'explorations.queues/deliver-batch! [{:id 1} {:id 2} {:id 3}] handle! fail!))
+          "the failure propagates, so mq retries the batch with backoff")
+      (is (= [] @failed)
+          "and nothing was stamped terminally on the way out — the batch is going to be retried"))))
+
+(deftest lone-failing-message-is-recorded-not-rethrown-test
+  (testing "a batch of one that fails is far more likely a bad query than an outage — there are no
+            batch-mates whose success or failure could tell the two apart. Record it terminally right
+            away so the user sees the error promptly, rather than after the whole backoff ladder, and
+            so its thread's completion check still runs inside the listener"
+    (let [failed  (atom [])
+          handle! (fn [_] (throw (ex-info "bad query" {})))
+          fail!   (fn [msg _e] (swap! failed conj msg) 7)]
+      (is (= #{7} (#'explorations.queues/deliver-batch! [{:id 1}] handle! fail!))
+          "the thread-id from the terminal write is returned for its completion check")
+      (is (= [{:id 1}] @failed)
+          "the lone failure is recorded rather than rethrown"))))
 
 (deftest a-message-that-fails-once-is-retried-inside-its-delivery-test
   (testing "a transient failure is retried within the same delivery — a batch carries the rest of a
@@ -260,13 +345,10 @@
          (let [qid       (insert-query! (:id thread) (:id card) (venues-query))
                attempts  (atom 0)
                run-query runner/run-query!]
-           ;; `with-redefs`, not `mt/with-dynamic-fn-redefs`: the handler runs on an MQ worker
-           ;; thread, which does not carry this thread's dynamic bindings.
-           #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-           (with-redefs [runner/run-query! (fn [id]
-                                             (when (= 1 (swap! attempts inc))
-                                               (throw (ex-info "transient warehouse blip" {})))
-                                             (run-query id))]
+           (mq.tu/with-worker-redefs [runner/run-query! (fn [id]
+                                                          (when (= 1 (swap! attempts inc))
+                                                            (throw (ex-info "transient warehouse blip" {})))
+                                                          (run-query id))]
              (mq.tu/with-test-mq [ctx]
                (#'explorations.queues/publish-pending-queries! (:id thread))
                (mq.tu/eventually! ctx #(= "done" (status qid)) 60000)))

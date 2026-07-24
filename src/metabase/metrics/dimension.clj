@@ -3,9 +3,26 @@
   (:require
    [metabase.lib-metric.core :as lib-metric]
    [metabase.parameters.core :as parameters]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(defn- dimension-field-id
+  "Field id behind `dim` on `metric`, or nil when it can't be resolved — the dimension is
+   missing from the metric, orphaned, or mapped to a column name rather than a Field id.
+   Logged rather than swallowed outright: the caller's only signal is a dimension annotated
+   with nil columns, which is otherwise indistinguishable from a Field that has no value."
+  [metric dim]
+  (try
+    (lib-metric/resolve-dimension-to-field-id
+     (:dimensions metric)
+     (:dimension_mappings metric)
+     (:id dim))
+    (catch Exception e
+      (log/debugf e "Could not resolve dimension %s to a field id; annotating it with nil columns"
+                  (:id dim))
+      nil)))
 
 (mu/defn annotate-dimensions-with-field-data :- [:sequential :map]
   "Given a vector of `:model/Field` columns and a seq of metrics (each carrying
@@ -19,33 +36,26 @@
    last arg so this composes cleanly with `->>` pipelines."
   [field-cols :- [:sequential :keyword]
    metrics    :- [:sequential :map]]
-  (let [resolve-fid (fn [metric dim]
-                      (try
-                        (lib-metric/resolve-dimension-to-field-id
-                         (:dimensions metric)
-                         (:dimension_mappings metric)
-                         (:id dim))
-                        (catch Exception _ nil)))
-        field-ids   (into #{}
-                          (for [m metrics, d (:dimensions m)
-                                :let [fid (resolve-fid m d)]
-                                :when fid]
-                            fid))
-        field->row  (when (seq field-ids)
-                      (into {}
-                            (map (juxt :id #(select-keys % field-cols)))
-                            (t2/select (into [:model/Field :id] field-cols)
-                                       :id [:in field-ids])))]
-    (mapv (fn [metric]
-            (if-let [dims (seq (:dimensions metric))]
-              (assoc metric :dimensions
-                     (mapv (fn [d]
-                             (let [fid  (resolve-fid metric d)
-                                   row  (get field->row fid)]
-                               (merge d (zipmap field-cols (map #(get row %) field-cols)))))
-                           dims))
-              metric))
-          metrics)))
+  ;; Resolve each (metric, dimension) pair exactly once and carry the field id alongside its
+  ;; dimension, so the merge pass below reads it instead of resolving all over again.
+  (let [dims+fids  (mapv (fn [metric]
+                           (mapv (fn [dim] [dim (dimension-field-id metric dim)])
+                                 (:dimensions metric)))
+                         metrics)
+        field-ids  (into #{} (comp cat (keep second)) dims+fids)
+        field->row (when (seq field-ids)
+                     (t2/select-pk->fn #(select-keys % field-cols)
+                                       (into [:model/Field :id] field-cols)
+                                       :id [:in field-ids]))
+        nil-cols   (zipmap field-cols (repeat nil))]
+    (mapv (fn [metric pairs]
+            (cond-> metric
+              (seq pairs) (assoc :dimensions
+                                 (mapv (fn [[dim fid]]
+                                         (merge dim nil-cols (get field->row fid)))
+                                       pairs))))
+          metrics
+          dims+fids)))
 
 (mu/defn dimension-values :- ms/FieldValuesResult
   "Fetch values for a dimension given its UUID.

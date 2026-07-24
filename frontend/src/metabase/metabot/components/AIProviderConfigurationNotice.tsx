@@ -16,18 +16,25 @@ export function AIProviderConfigurationNotice({
   featureName,
   onConfigureAi,
   inline,
+  // Most call sites only render this notice after feature-access gating, so permission is already assumed
+  hasFeatureAccess = true,
   ...rest
 }: {
   featureName: string;
   onConfigureAi: () => void;
   inline?: boolean;
+  hasFeatureAccess?: boolean;
 } & TextProps) {
-  const { hasNlqAccess } = useUserMetabotPermissions();
   const canConfigureAi = useSelector(canAccessSettings);
+  const { isLoading: isLoadingPermissions } = useUserMetabotPermissions();
 
-  const content = match({ hasNlqAccess, canConfigureAi })
+  if (isLoadingPermissions) {
+    return null;
+  }
+
+  const content = match({ hasFeatureAccess, canConfigureAi })
     .with(
-      { hasNlqAccess: true, canConfigureAi: true },
+      { hasFeatureAccess: true, canConfigureAi: true },
       () =>
         jt`To use ${featureName}, please ${(
           <Anchor
@@ -43,7 +50,7 @@ export function AIProviderConfigurationNotice({
         )}.`,
     )
     .with(
-      { hasNlqAccess: true },
+      { hasFeatureAccess: true },
       () => t`Ask your admin to connect to a model to use ${featureName}.`,
     )
     .otherwise(

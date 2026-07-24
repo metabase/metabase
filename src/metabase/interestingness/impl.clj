@@ -32,6 +32,10 @@
   "Hard-zero fields whose data values carry no exploratory meaning regardless of the
    role they're being scored for (dimension or measure):
    - `:type/PK`: opaque row identifiers
+   - numeric `:type/FK`: opaque row references — grouping by one gives a bar per id
+     value (the QP refuses to bin `:Relation/*` columns), and aggregating one is
+     meaningless. Non-numeric FKs (e.g. a country code referencing a lookup table)
+     keep their data meaning and are not penalized.
    - `:type/Collection` / `:type/Structured`: structured blobs (JSON, XML, arrays,
      dictionaries, text-stored serialized JSON) — not groupable or aggregatable
    - `:type/UpdatedTemporal` / `:type/DeletionTemporal`: audit fields that describe
@@ -41,10 +45,13 @@
    absence of a penalty isn't a positive signal, it just means this scorer has
    nothing to say about the field."
   [field]
-  (let [semantic-type (:semantic-type field)]
+  (let [semantic-type  (:semantic-type field)
+        effective-type (or (:effective-type field) (:base-type field))]
     (cond
       (nil? semantic-type)                        nil
       (isa? semantic-type :type/PK)               0.0
+      (and (isa? semantic-type :type/FK)
+           (isa? effective-type :type/Number))    0.0
       (isa? semantic-type :type/Collection)       0.0
       (isa? semantic-type :type/Structured)       0.0
       (isa? semantic-type :type/UpdatedTemporal)  0.0

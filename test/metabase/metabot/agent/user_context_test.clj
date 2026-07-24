@@ -64,12 +64,13 @@
 (deftest ^:parallel format-viewing-context-test
   (let [mp meta/metadata-provider]
     (testing "formats adhoc notebook (MBQL) query context"
-      (is (=? (re-pattern
-               (format "(?s).*notebook editor.*Database ID: %d.*"
-                       (meta/id)))
-              (user-context/format-viewing-context
-               {:user_is_viewing [{:type  "adhoc"
-                                   :query (lib/query mp (lib.metadata/table mp (meta/id :venues)))}]}))))
+      (mt/with-test-user :crowberto
+        (is (=? (re-pattern
+                 (format "(?s).*notebook editor.*Database ID: %d.*"
+                         (meta/id)))
+                (user-context/format-viewing-context
+                 {:user_is_viewing [{:type  "adhoc"
+                                     :query (lib/query mp (lib.metadata/table mp (meta/id :venues)))}]})))))
     (testing "formats adhoc native SQL query from frontend (type: adhoc, query.type: native)"
       (let [result (user-context/format-viewing-context
                     {:user_is_viewing [{:type       "adhoc"
@@ -473,37 +474,39 @@
           (is (re-find #"\"mbql.stage/native\"" text))
           (is (re-find #"SELECT \* FROM VENUES" text)))))))
 
-(deftest ^:parallel format-research-plan-test
-  (let [plan {:name      "Why was revenue down?"
-              :groups    [{:block_id   "metric:42"
-                           :anchor     "metric"
-                           :metric     {:id 42 :name "Revenue"}
-                           :dimensions [{:id "d1" :name "Region"}
-                                        {:id "d2" :name "Plan"}]}
-                          {:block_id "dim:7"
-                           :anchor   "dimension"
-                           :dimension {:id "d7" :name "Plan"}
-                           :metrics  [{:id 42 :name "Revenue"}
-                                      {:id 43 :name "Churn"}]}]
-              :timelines [{:id 1 :name "Releases"}]}]
-    (testing "renders groups with block ids, name, and timelines"
-      (let [result (user-context/format-research-plan {:research_plan plan})]
-        (is (string? result))
-        (is (str/includes? result "Why was revenue down?"))
-        ;; metric-anchored group surfaces its block id and selected dimensions with their ids
-        (is (str/includes? result "[metric:42] Revenue, broken out by: Region (d1), Plan (d2)"))
-        ;; dimension-anchored group surfaces its block id and the metrics it slices with their ids
-        (is (str/includes? result "[dim:7] by Plan, slicing: Revenue (42), Churn (43)"))
-        (is (str/includes? result "Selected timelines: Releases (1)"))))
-    (testing "enrich-context-for-template threads the formatted plan through"
-      (is (= (user-context/format-research-plan {:research_plan plan})
-             (:research_plan (user-context/enrich-context-for-template {:research_plan plan})))))
-    (testing "returns nil when there is no plan in context"
-      (is (nil? (user-context/format-research-plan {}))))
-    (testing "returns nil for an empty plan so the template guard stays false"
-      (is (nil? (user-context/format-research-plan
-                 {:research_plan {:name "" :groups [] :timelines []}}))))
-    (testing "renders a name-only plan (empty groups/timelines)"
-      (let [result (user-context/format-research-plan
-                    {:research_plan {:name "Draft" :groups [] :timelines []}})]
-        (is (str/includes? result "Draft"))))))
+(deftest ^:parallel adhoc-viewing-context-includes-query-test
+  (testing "adhoc viewing context renders the query so the model can see the chart"
+    (let [out (user-context/format-viewing-context
+               {:user_is_viewing
+                [{:type  "adhoc"
+                  :query {:type "query" :query {:source-table 1}}}]})]
+      (is (str/includes? out "notebook editor"))
+      (is (str/includes? out "source-table")))))
+
+(deftest adhoc-viewing-context-read-checks-database-test
+  (let [viewing (fn [db-id]
+                  {:user_is_viewing [{:type  "adhoc"
+                                      :query {:database db-id
+                                              :type     "query"
+                                              :query    {:source-table (mt/id :venues)}}}]})]
+    (testing "renders the query when the user can read its database"
+      (mt/with-test-user :crowberto
+        (let [out (user-context/format-viewing-context (viewing (mt/id)))]
+          (is (str/includes? out "notebook editor"))
+          (is (str/includes? out "source-table")))))
+    (testing "omits the query when the user cannot read its database"
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-test-user :rasta
+            (let [out (user-context/format-viewing-context (viewing db-id))]
+              (is (str/includes? out "notebook editor"))
+              (is (not (str/includes? out "source-table"))))))))))
+
+(deftest ^:parallel enrich-context-omits-research-plan-test
+  (testing "the draft Research plan is an explorations-only, system-prompt concern, so it must not
+            leak into the generic user-message injection context. message_injection.selmer has no
+            {{research_plan}} placeholder; the plan is rendered into the system prompt instead (see
+            metabase.metabot.tools.explorations/research-plan-system-context)."
+    (let [plan {:name "Why was revenue down?" :groups [] :timelines []}
+          enriched (user-context/enrich-context-for-template {:research_plan plan})]
+      (is (not (contains? enriched :research_plan))))))

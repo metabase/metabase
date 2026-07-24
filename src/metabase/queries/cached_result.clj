@@ -8,7 +8,8 @@
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -17,45 +18,62 @@
   compatible with the lens the `stored-result` blob was computed under — i.e. the viewer may be
   served the creator's snapshot. See [[metabase.permissions.data-access-token]].
 
-  A `nil` `:data_access_token` (a pre-token snapshot, or a write that failed to capture one)
-  means no lens comparison is possible at all; the deliberate fallback is creator+admin-only,
-  and since this is only consulted for non-creators, that collapses to admins-only. (This branch
-  never consults `:dataset_query` — there is no token to compare it against.)
+  When both the token and the query are present we compare lenses strictly. Two degenerate cases
+  make that comparison impossible: a `nil` `:data_access_token` (a pre-token snapshot, or a write
+  that failed to capture one) and token computation throwing (the viewer is missing a
+  routing/impersonation attribute the snapshot's database requires, or the query's source-card
+  chain can no longer be resolved to its underlying tables). Both fall back to admin-only: a
+  superuser is never sandboxed or impersonated and resolves to the router db itself, so serving
+  them cannot leak; everyone else is denied.
 
-  When a token IS present we are in strict lens-comparison land, and admins get no exemption —
-  an admin's own lens isn't necessarily neutral (database routing applies to admins too). So a
-  `nil` `:dataset_query`, which makes the viewer's sandbox lens uncomputable, denies everyone
-  including admins — deny rather than guess. Token computation throwing — the viewer is missing
-  a routing/impersonation attribute the snapshot's database requires — likewise means deny."
+  A missing `:dataset_query` is not a degenerate case but a caller bug — the schema forbids NULL —
+  and [[cached-result-blocked-reason]] throws on it before we get here."
   [stored-result]
-  (cond
-    (nil? (:data_access_token stored-result))
+  (if (nil? (:data_access_token stored-result))
     (boolean api/*is-superuser?*)
-
-    (nil? (:dataset_query stored-result))
-    false
-
-    :else
     (try
       (perms/data-access-compatible?
        (:data_access_token stored-result)
        (perms/data-access-token {:database-id (:database_id stored-result)
-                                 :table-ids   (query-perms/query->source-table-ids
+                                 :table-ids   (query-perms/query->resolved-source-table-ids
                                                (:dataset_query stored-result))}))
-      (catch Throwable _ false))))
+      (catch Exception e
+        (log/debugf e "Cached result %s: computing the viewer's data-access lens threw; falling back to admin-only"
+                    (:id stored-result))
+        (boolean api/*is-superuser?*)))))
+
+(defn- viewer-can-run-underlying-query?
+  "Whether the current user holds the data perms to run the snapshot's own query.
+
+  `can-run-query?` absorbs the ordinary permission-denial `ExceptionInfo`s itself; anything else it
+  throws — a stored query malformed enough to trip its `:- :map` schema, a source table that no
+  longer exists — must not escape an authorization gate as a 500. It falls back to the same
+  admin-only access [[viewer-lens-compatible?]] gives its degenerate cases, sound here for the same
+  kind of reason: a superuser holds every data perm unconditionally, so serving them cannot leak."
+  [stored-result]
+  (try
+    (query-perms/can-run-query? (:dataset_query stored-result))
+    (catch Exception e
+      (log/debugf e "Cached result %s: the data-perms check threw; falling back to admin-only"
+                  (:id stored-result))
+      (boolean api/*is-superuser?*))))
 
 (defn- cached-result-blocked-reason
   "If the current user must NOT be served the cached blob for `stored-result`, return a keyword
   describing why. Returns nil when the cached blob is safe to stream.
+
+  Throws when `stored-result` has no `:dataset_query` (this should never happen).
 
   Reasons (in priority order):
     `:no-data-perms`        — current user lacks the data perms required to run the underlying query.
     `:incompatible-context` — current user's sandbox/impersonation/routing lens differs from the
                               lens the snapshot was computed under."
   [stored-result]
+  (when (nil? (:dataset_query stored-result))
+    (throw (ex-info "stored-result is missing its dataset_query"
+                    {:stored-result-id (:id stored-result)})))
   (cond
-    (and (:dataset_query stored-result)
-         (not (query-perms/can-run-query? (:dataset_query stored-result))))
+    (not (viewer-can-run-underlying-query? stored-result))
     :no-data-perms
 
     (not (viewer-lens-compatible? stored-result))
@@ -63,8 +81,7 @@
 
 (defn viewer-can-view-cached-result?
   "Boolean form of [[assert-can-view-cached-result!]]: true when the current user may be served the
-  blob for `stored-result`. Does not bypass for the creator — callers wanting a creator bypass must
-  check that themselves."
+  blob for `stored-result`."
   [stored-result]
   (nil? (cached-result-blocked-reason stored-result)))
 
@@ -74,7 +91,8 @@
   (when-let [reason (cached-result-blocked-reason stored-result)]
     (throw (ex-info (case reason
                       :no-data-perms        (tru "You do not have permissions to view the data underlying this cached result.")
-                      :incompatible-context (tru "Cannot show cached results: your data access differs from the user who generated them."))
+                      :incompatible-context (tru "Cannot show cached results: your data access differs from the user who generated them.")
+                      (tru "You do not have permissions to view this cached result."))
                     {:status-code      403
                      :reason           reason
                      :stored-result-id (:id stored-result)}))))

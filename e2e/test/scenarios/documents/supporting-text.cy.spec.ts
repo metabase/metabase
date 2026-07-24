@@ -24,8 +24,11 @@ describe("documents supporting text", () => {
 
     H.visitDocument("@documentId");
 
+    const ORDERS_BY_YEAR_CARD_TITLE =
+      "Orders, Count, Grouped by Created At (year)";
+
     // Wait for cards to load
-    H.getDocumentCard("Orders, Count, Grouped by Created At (year)")
+    H.getDocumentCard(ORDERS_BY_YEAR_CARD_TITLE)
       .should("be.visible")
       .findByTestId("visualization-root")
       .should("exist");
@@ -37,7 +40,7 @@ describe("documents supporting text", () => {
     H.documentContent().find('[data-type="flexContainer"]').should("not.exist");
 
     // Open the card menu and click "Add supporting text"
-    H.openDocumentCardMenu("Orders, Count, Grouped by Created At (year)");
+    H.openDocumentCardMenu(ORDERS_BY_YEAR_CARD_TITLE);
     H.popover().findByText("Add supporting text").click();
 
     // Verify a flexContainer was created
@@ -62,9 +65,7 @@ describe("documents supporting text", () => {
       });
 
     // Verify the card is still there
-    H.getDocumentCard("Orders, Count, Grouped by Created At (year)").should(
-      "exist",
-    );
+    H.getDocumentCard(ORDERS_BY_YEAR_CARD_TITLE).should("exist");
   });
 
   it("should add supporting text to a cardEmbed in a flexContainer", () => {

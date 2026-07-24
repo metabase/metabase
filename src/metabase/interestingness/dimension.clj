@@ -135,8 +135,11 @@
       (when-let [days (effective-day-span field)]
         (:score (best-temporal-buckets days)))
 
-      ;; Numeric with high cardinality and a nonzero range → auto-binning will produce good buckets
+      ;; Numeric with high cardinality and a nonzero range → auto-binning will produce good buckets.
+      ;; Keys (PK/FK) are excluded: the QP refuses to bin :Relation/* columns, so the binning
+      ;; premise doesn't hold for them — they fall through to raw distinct count below.
       (and numeric-fp (> distinct-count 50)
+           (not (isa? (:semantic-type field) :Relation/*))
            (some? (:min numeric-fp)) (some? (:max numeric-fp))
            (not= (:min numeric-fp) (:max numeric-fp)))
       0.9

@@ -1128,57 +1128,6 @@
               (is (= "Created At" (get by-dim users-created)))
               (is (= "Country"    (get by-dim users-country)))))))))) ; binding+let+with-temp+testing+deftest
 
-(deftest exploration-list-queries-endpoint-test
-  (testing "GET /:id/queries returns lightweight summaries without dataset_query"
-    (mt/with-temp [:model/User u {:email "list@example.com"}
-                   :model/Card metric (valid-metric-card (:id u))]
-      (let [resp (create-exploration! u
-                                      {:name "list"
-                                       :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                       :dimensions [{:dimension_id "d1"}]})
-            eid       (:id resp)
-            summaries (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid))]
-        (is (= 1 (count summaries)))
-        (let [s (first summaries)]
-          (is (contains? s :status))
-          (is (= "pending" (:status s)))
-          (is (contains? s :position))
-          (is (not (contains? s :dataset_query)) "dataset_query must not leak")
-          (is (not (contains? s :result_data)) "result blob must not leak")
-          (is (contains? s :interestingness_score) "score is included via the result-table left-join")
-          (is (nil? (:interestingness_score s)) "pending queries have no result row, hence nil score")
-          (is (contains? s :contextual_interestingness_score)
-              "contextual score is included via the result-table left-join")
-          (is (nil? (:contextual_interestingness_score s))
-              "pending queries have no result row, hence nil contextual score")
-          (is (contains? s :row_count) "row_count is included via the result-table left-join")
-          (is (nil? (:row_count s)) "pending queries have no result row, hence nil row_count"))))))
-
-(deftest exploration-list-queries-includes-score-from-result-test
-  (testing "GET /:id/queries surfaces both interestingness scores via the result-table left-join"
-    (mt/with-temp [:model/User u {:email "score-list@example.com"}
-                   :model/Card metric (valid-metric-card (:id u))]
-      (let [resp (create-exploration! u
-                                      {:name "score-list"
-                                       :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                       :dimensions [{:dimension_id "d1"}]})
-            eid (:id resp)
-            qid (-> resp :threads first :queries first :id)]
-        (let [sr-id (first (t2/insert-returning-pks! :model/StoredResult
-                                                     {:result_data (byte-array [0])
-                                                      :row_count   37}))]
-          (t2/insert! :model/ExplorationQueryResult
-                      {:exploration_query_id             qid
-                       :stored_result_id                 sr-id
-                       :interestingness_score            0.42
-                       :contextual_interestingness_score 0.83}))
-        (let [s (-> (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid)) first)]
-          (is (= 0.42 (:interestingness_score s)))
-          (is (= 0.83 (:contextual_interestingness_score s)))
-          (is (= 37 (:row_count s)) "row_count surfaces from the linked stored_result"))))))
-
 (deftest exploration-get-includes-interestingness-on-queries-test
   (testing "GET /:id hydrates both interestingness scores on each nested query"
     (mt/with-temp [:model/User u {:email "get-score@example.com"}
@@ -1203,9 +1152,15 @@
             (is (nil? (:row_count q)))))
         (testing "after a result row is inserted, both scores surface via hydration"
           (let [sr-id (first (t2/insert-returning-pks! :model/StoredResult
-                                                       {:result_data (byte-array [0])
-                                                        :row_count   37
-                                                        :creator_id  (:id u)}))]
+                                                       ;; Production-shaped: real query + unrestricted
+                                                       ;; token, so the derived-data gate admits the
+                                                       ;; creator on their current perms.
+                                                       {:result_data       (byte-array [0])
+                                                        :row_count         37
+                                                        :creator_id        (:id u)
+                                                        :database_id       (mt/id)
+                                                        :dataset_query     (:dataset_query metric)
+                                                        :data_access_token {}}))]
             (t2/insert! :model/ExplorationQueryResult
                         {:exploration_query_id             qid
                          :stored_result_id                 sr-id
@@ -1216,35 +1171,36 @@
             (is (= 0.83 (:contextual_interestingness_score q)))
             (is (= 37 (:row_count q)) "row_count hydrates from the linked stored_result")))))))
 
-(deftest exploration-list-queries-permissions-test
-  (testing "GET /:id/queries enforces the same read-check as the parent exploration"
-    (mt/with-temp [:model/User owner {:email "lq-owner@example.com"}
-                   :model/User other {:email "lq-other@example.com"}]
-      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration"
-                                            {:name "lq-private"
-                                             :collection_id (:id (collection/user->personal-collection (:id owner)))})]
-        (mt/user-http-request other :get 403 (format "exploration/%d/queries" eid))))))
-
 (defn- store-fake-result!
   "Insert a StoredResult holding the worker-serialized bytes plus an ExplorationQueryResult
   that points at it, mirroring what the runner produces so the read endpoints can replay it.
-  Stamps `creator_id` from the owning Exploration (as the real runner does) so the cached-read
-  gate's creator bypass behaves like production."
+  Stamps `creator_id`, `dataset_query`, `database_id`, and an unrestricted (`{}`) `data_access_token`
+  as the real runner does for a user with full data access, so the cached-read gate sees a
+  production-shaped snapshot and admits the creator on their *current* perms (not on being the
+  creator, which is no longer a bypass)."
   [query-id qp-result]
-  (let [bytes      (qp.core/do-with-serialization
-                    (fn [in result-fn]
-                      (in qp-result)
-                      (result-fn)))
-        creator-id (t2/select-one-fn :creator_id :model/Exploration
-                                     {:select [:e.creator_id]
-                                      :from   [[:exploration :e]]
-                                      :join   [[:exploration_thread :t] [:= :t.exploration_id :e.id]
-                                               [:exploration_query :q]  [:= :q.exploration_thread_id :t.id]]
-                                      :where  [:= :q.id query-id]})
-        sr-id      (first (t2/insert-returning-pks!
-                           :model/StoredResult
-                           {:result_data bytes
-                            :creator_id  creator-id}))]
+  (let [bytes         (qp.core/do-with-serialization
+                       (fn [in result-fn]
+                         (in qp-result)
+                         (result-fn)))
+        card-id       (t2/select-one-fn :card_id :model/ExplorationQuery :id query-id)
+        ;; The metric Card's own query — a real, runnable query with a source table the creator can
+        ;; query. The finalized ExplorationQuery.dataset_query is nil for these fake-dimension rows,
+        ;; and the gate needs a query it can resolve source tables from to compare the lens.
+        dataset-query (t2/select-one-fn :dataset_query :model/Card :id card-id)
+        creator-id    (t2/select-one-fn :creator_id :model/Exploration
+                                        {:select [:e.creator_id]
+                                         :from   [[:exploration :e]]
+                                         :join   [[:exploration_thread :t] [:= :t.exploration_id :e.id]
+                                                  [:exploration_query :q]  [:= :q.exploration_thread_id :t.id]]
+                                         :where  [:= :q.id query-id]})
+        sr-id         (first (t2/insert-returning-pks!
+                              :model/StoredResult
+                              {:result_data       bytes
+                               :creator_id        creator-id
+                               :database_id       (mt/id)
+                               :dataset_query     dataset-query
+                               :data_access_token {}}))]
     (t2/insert! :model/ExplorationQueryResult
                 {:exploration_query_id query-id
                  :stored_result_id     sr-id})))
@@ -1801,6 +1757,26 @@
         (is (= "new" (:name resp)))
         (is (= "yo"  (:description resp)))))))
 
+(deftest exploration-put-ignores-unlisted-columns-test
+  (testing "PUT /:id strips request-body keys outside the update schema before `t2/update!`. The
+            schema is an open map, so without an allow-list a caller with write access could
+            mass-assign protected columns — reassigning `creator_id` (ownership / \"My explorations\"
+            attribution) is the sharpest case."
+    (mt/with-temp [:model/User owner {:email "owner@example.com"}
+                   :model/User thief {:email "thief@example.com"}
+                   :model/Exploration e {:name "old" :creator_id (:id owner)}]
+      (let [before (t2/select-one :model/Exploration :id (:id e))]
+        (mt/user-http-request owner :put 200 (format "exploration/%d" (:id e))
+                              {:name       "new"
+                               :creator_id (:id thief)
+                               :entity_id  "smuggled_entity_id_00"})
+        (let [after (t2/select-one :model/Exploration :id (:id e))]
+          (is (= "new" (:name after)) "the allow-listed field is still updated")
+          (is (= (:id owner) (:creator_id after))
+              "creator_id must not be reassignable through the request body")
+          (is (= (:entity_id before) (:entity_id after))
+              "entity_id must not be overwritable through the request body"))))))
+
 (deftest exploration-create-in-collection-test
   (testing "POST / places the exploration in the requested collection when the caller can write it"
     (mt/with-temp [:model/Collection c {}]
@@ -2172,8 +2148,9 @@
                   :metrics       [{:card_id (:id metric)
                                    :dimension_mappings (venues-dimension-mappings)}]
                   :dimensions    [{:dimension_id "price" :display_name "Price"}]})]
-        ;; Mark the source thread as a follow-up so the next drill is nested.
-        (t2/update! :model/ExplorationThread (:thread-id src) {:source_page_id 999})
+        ;; Mark the source thread as a follow-up so the next drill is nested. Any real page works;
+        ;; a made-up id would violate the source_page_id FK.
+        (t2/update! :model/ExplorationThread (:thread-id src) {:source_page_id (:page-id src)})
         (mt/user-http-request :crowberto :post 200
                               (str "exploration/" (:exploration-id src) "/explore-further")
                               {:page_id         (:page-id src)
@@ -2301,6 +2278,32 @@
                                 (assoc base :timeline_ids [Integer/MAX_VALUE])))
         (testing "nothing was persisted by the rejected requests"
           (is (zero? (t2/count :model/Exploration :name "tl perm check"))))))))
+
+(deftest explore-further-checks-card-permissions-test
+  (testing "POST /:id/explore-further read-checks the metric card it re-attaches into the new thread"
+    (mt/with-temp [:model/User owner {:email "ef-card-perms@example.com"}
+                   :model/Collection hidden {:name "hidden-drill-metrics"}
+                   :model/Card metric (assoc (venues-metric-card (mt/user->id :crowberto))
+                                             :collection_id (:id hidden))]
+      ;; Temp collections auto-grant All Users read-write, so creating the exploration passes the
+      ;; attach-time read-check; the revoke below then makes the card unreadable for the drill.
+      (let [resp           (create-exploration! owner
+                                                {:name          "drill perm check"
+                                                 :collection_id (:id (collection/user->personal-collection (:id owner)))
+                                                 :metrics       [{:card_id (:id metric)
+                                                                  :dimension_mappings (venues-dimension-mappings)}]
+                                                 :dimensions    [{:dimension_id "category" :display_name "Category"}]})
+            expl-id        (:id resp)
+            page-id        (-> resp :threads first :blocks first :pages first :id)
+            body           {:page_id         page-id
+                            :explore_filters [{:field_ref ["field" {} (mt/id :venues :category_id)]
+                                               :value     1}]}
+            threads-before (t2/count :model/ExplorationThread :exploration_id expl-id)]
+        (perms/revoke-collection-permissions! (perms-group/all-users) (:id hidden))
+        (testing "an unreadable card is a 403"
+          (mt/user-http-request owner :post 403 (format "exploration/%d/explore-further" expl-id) body))
+        (testing "no follow-up thread was persisted by the rejected request"
+          (is (= threads-before (t2/count :model/ExplorationThread :exploration_id expl-id))))))))
 
 (deftest create-dedupes-timeline-ids-test
   (testing "POST / dedupes repeated timeline_ids instead of 500ing on the unique constraint"

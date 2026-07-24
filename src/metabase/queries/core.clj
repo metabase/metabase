@@ -39,6 +39,7 @@
   sole-dashboard-id
   starting-card-schema-version
   update-card!
+  visible-metric-cards-where-clause
   ;; TODO -- not convinced whether this belongs here or in `permissions`
   with-can-run-adhoc-query]
  [metabase.queries.models.card.metadata

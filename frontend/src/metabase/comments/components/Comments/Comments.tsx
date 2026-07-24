@@ -15,8 +15,6 @@ import {
 } from "metabase/comments/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
 import {
   ActionIcon,
   Box,
@@ -73,7 +71,6 @@ export const Comments = ({
     error,
   } = useListCommentsQuery(getListCommentsQuery(commentTarget));
   const comments = commentsData?.comments;
-  const dispatch = useDispatch();
   const [sendToast] = useToast();
 
   const targetComments = useMemo(() => {
@@ -92,21 +89,7 @@ export const Comments = ({
 
   const closeSidebar = useCallback(() => {
     onCloseComments?.();
-    // ModalRoute's onClose method doesn't preserve search query params
-    // we need them for explorations, so manually preserve them
-    const { pathname = "" } = location;
-    const existingCommentIndex = pathname.lastIndexOf("/comments/");
-    const nextPathname =
-      existingCommentIndex !== -1
-        ? pathname.slice(0, existingCommentIndex)
-        : pathname;
-    dispatch(
-      push({
-        pathname: nextPathname,
-        search: location.search,
-      }),
-    );
-  }, [onCloseComments, dispatch, location]);
+  }, [onCloseComments]);
 
   useEffect(() => {
     onOpenComments?.();
@@ -130,7 +113,10 @@ export const Comments = ({
 
   const [createComment] = useCreateCommentMutation();
 
-  const resolvedCommentsCount = getCommentsCount(resolvedComments);
+  const resolvedCommentsCount = useMemo(
+    () => getCommentsCount(resolvedComments),
+    [resolvedComments],
+  );
 
   const availableTabs = useMemo<SidesheetTab[]>(() => {
     // Only show tabs if there are resolved comments
@@ -262,7 +248,12 @@ export const Comments = ({
               direction="column"
               gap="md"
             >
-              <Image w={120} h={120} src={noResultsSource} />
+              <Image
+                w={120}
+                h={120}
+                src={noResultsSource}
+                alt={t`No comments`}
+              />
 
               <Text fw="700" c="text-disabled">{t`No comments`}</Text>
             </Flex>

@@ -18,13 +18,15 @@
                         `per-value-time-series`.
 
   Discovery queries (`run-top-k-discovery`) for the two variants that need
-  them are deduplicated in-process via `discovery-cache`, a bounded
-  LRU-with-TTL keyed by `[card-id dim-id k]`. Both `query-name` and
-  `dataset-query` go through the cache, so the underlying QP call runs at
-  most once per (card, dim, k) while the entry stays warm and fresh."
+  them are deduplicated in-process via `discovery-cache`, a TTL cache. Both
+  `query-name` and `dataset-query` go through the cache, so a *successful* QP
+  call runs at most once per cache key while the entry stays warm and fresh;
+  a failed one isn't cached at all, so the next row retries it. The key
+  includes the user the discovery ran as — see `cached-discovery`."
   (:require
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
+   [metabase.api.common :as api]
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp]
@@ -113,8 +115,10 @@
 (defn- run-top-k-discovery
   "Single QP query that breaks the metric out by `target` (with the dim's
   default bucket applied), orders by the aggregation descending, and limits
-  to `k`. Returns a vector of top-K dim-value cells, or `nil` on any throw.
-  Fronted by `discovery-cache` below."
+  to `k`. Returns a vector of top-K dim-value cells — possibly empty, when the
+  query ran fine but the metric has no rows — or `nil` when the query threw.
+  `nil` vs `[]` is the signal [[cached-discovery]] uses to decide whether the
+  result is worth caching, so keep the two distinct."
   [mp card target dim k]
   (try
     (let [base       (qp.mbql/build-snapshot-mbql mp (:dataset_query card) target dim)
@@ -128,14 +132,10 @@
           dim-idx    (first (keep-indexed (fn [i c]
                                             (when (= :breakout (:source c)) i))
                                           (:cols data)))]
-      (when (and dim-idx (seq (:rows data)))
-        (u/keepv #(nth % dim-idx nil) (:rows data))))
+      (if (and dim-idx (seq (:rows data)))
+        (u/keepv #(nth % dim-idx nil) (:rows data))
+        []))
     (catch Throwable _ nil)))
-
-(def ^:private discovery-cache-threshold
-  "Max distinct `[card-id dim-id k]` entries kept in [[discovery-cache]] before
-  the LRU starts evicting."
-  1024)
 
 (def ^:private discovery-cache-ttl-ms
   "How long a [[discovery-cache]] entry stays valid before the discovery query re-runs.
@@ -146,27 +146,40 @@
   (* 15 60 1000))
 
 (defonce ^:private discovery-cache
-  ;; TTL layered over LRU, keyed by [card-id dim-id k]: the LRU bounds how many entries a
-  ;; long-lived JVM accumulates; the TTL bounds how stale any one entry can get.
-  (atom (-> {}
-            (cache/lru-cache-factory :threshold discovery-cache-threshold)
-            (cache/ttl-cache-factory :ttl discovery-cache-ttl-ms))))
+  ;; A TTL cache: the TTL both freshens entries and bounds accumulation on a long-lived JVM —
+  ;; nothing survives past it. See `cached-discovery` for the key.
+  (atom (cache/ttl-cache-factory {} :ttl discovery-cache-ttl-ms)))
 
 (defn- cached-discovery
-  "Memoized `run-top-k-discovery` keyed by `[card-id dim-id k]`. Returns
-  the discovered vector (or `[]` on failure / no rows). Both `query-name`
-  and `dataset-query` go through this so the underlying QP query runs at
-  most once per (card, dim, k) while the entry stays in the LRU."
+  "Memoized `run-top-k-discovery`. Returns the discovered vector, or `[]` when discovery failed.
+  Both `query-name` and `dataset-query` go through this so the underlying QP query runs at most
+  once per key while the entry stays fresh (within the TTL).
+
+  The key leads with the executing user (usually creator) because discovery
+  is a real warehouse query run under that user's lens: sandboxing, connection impersonation, and
+  database routing can all give two users different top-K values for the same (card, dim, k), and
+  serving one user's values to another would leak rows they cannot query. This isolates explorations
+  owned by different creators that happen to share a (card, dim, k, filters) tail. Attribute changes
+  within a single user are covered by the TTL rather than the key.
+
+  Only *answers* are cached. A failed discovery (QP timeout, warehouse blip) is
+  evicted immediately so the next row retries; caching it would blank out every
+  top-N and per-value chart for the rest of the TTL on one transient error. An
+  empty result is a real answer — the metric has no rows — and stays cached."
   [{:keys [mp card target dim params explore-filters]}]
   (let [card-id   (:id card)
         dim-id    (or (:dimension_id dim) (:id dim))
         k         (:k params)
         ;; Include the "Explore further" filter chain in the key: two threads sharing a
         ;; (card, dim, k) but scoped to different segments must not share top-N discovery results.
-        cache-key [card-id dim-id k explore-filters]]
-    (cache.wrapped/lookup-or-miss
-     discovery-cache cache-key
-     (fn [_] (or (run-top-k-discovery mp card target dim k) [])))))
+        cache-key [api/*current-user-id* card-id dim-id k explore-filters]
+        ;; `lookup-or-miss` caches a delay, so concurrent callers still share one QP run.
+        result    (cache.wrapped/lookup-or-miss
+                   discovery-cache cache-key
+                   (fn [_] (run-top-k-discovery mp card target dim k)))]
+    (if (nil? result)
+      (do (cache.wrapped/evict discovery-cache cache-key) [])
+      result)))
 
 ;; ---------------------------------------------------------------------------
 ;; plan-rows — eager. Orchestrator calls this at plan time to produce one
@@ -355,7 +368,10 @@
     (when (seq top-values)
       (let [base-query             (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
             [ref-clause field-ref] (resolve-target base-query target)
-            pairs                  (mapv (fn [v] [(lib/= (or field-ref ref-clause) v) v]) top-values)
+            ;; THEN values are stringified so the CASE is single-typed: the ELSE arm is the string
+            ;; `other-bucket-label`, and a mixed CASE (numeric THEN, string ELSE) is rejected by
+            ;; Postgres and other strict warehouses. No-op for text dims.
+            pairs                  (mapv (fn [v] [(lib/= (or field-ref ref-clause) v) (str v)]) top-values)
             case-expr              (lib/case pairs other-bucket-label)
             expr-name              (or (:display_name dim) (:dimension_id dim) "value")
             with-expr              (lib/expression base-query expr-name case-expr)

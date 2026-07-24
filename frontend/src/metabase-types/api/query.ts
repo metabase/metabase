@@ -38,6 +38,16 @@ export type DatasetQuery = OpaqueDatasetQuery | LegacyDatasetQuery;
 
 export type LegacyDatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
 
+// Audit-only query shape accepted by /api/dataset.
+// `fn` names a backend function.
+export interface InternalDatasetQuery {
+  type: "internal";
+  fn: string;
+  args: string[];
+  limit?: number;
+  offset?: number;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
 declare const OpaqueDatasetQuerySymbol: unique symbol;
 export type OpaqueDatasetQuery = unknown & {

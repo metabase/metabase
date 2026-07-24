@@ -1,0 +1,53 @@
+.markdownRoot {
+  color: var(--markdown-color, inherit);
+}
+
+.lineClamp {
+  display: -webkit-box;
+  -webkit-line-clamp: var(--markdown-line-clamp);
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  white-space: pre-line;
+}
+
+.markdownRoot p {
+  margin: 0;
+  line-height: 1.57em;
+}
+
+.markdownRoot p:not(:last-child) {
+  margin-bottom: var(--mantine-spacing-sm);
+}
+
+.markdownRoot a {
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--mb-color-core-brand);
+}
+
+.markdownRoot a:hover {
+  text-decoration: underline;
+}
+
+.markdownRoot[data-unstyle-links] a {
+  color: var(--mb-color-text-primary-inverse);
+}
+
+.markdownRoot[data-unstyle-links] a:hover {
+  text-decoration: none;
+}
+
+.markdownRoot img {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdownRoot hr {
+  border: none;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.markdownRoot[data-dark] hr {
+  border-bottom-color: var(--mb-color-background_page-tertiary-inverse);
+}
