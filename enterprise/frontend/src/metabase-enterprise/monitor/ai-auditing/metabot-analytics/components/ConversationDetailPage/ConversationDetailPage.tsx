@@ -111,74 +111,84 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   } = conversation;
 
   return (
-    <Flex ref={containerRef} h="100%" wrap="nowrap">
+    <Flex ref={containerRef} wrap="nowrap">
       <MonitorMain>
-        <Stack gap="xl">
-          <ConversationHeader conversation={conversation} />
+        <Box w="100%" maw={800} mx="auto">
+          <Stack gap="xl">
+            <ConversationHeader conversation={conversation} />
 
-          <SimpleGrid cols={4}>
-            <StatCard label={t`Messages`} value={formatNumber(message_count)} />
-            <StatCard
-              label={t`Total tokens`}
-              value={formatNumber(total_tokens)}
-            />
-            <StatCard
-              label={t`Queries run`}
-              value={formatNumber(query_count)}
-            />
-            <StatCard label={t`Searches`} value={formatNumber(search_count)} />
-          </SimpleGrid>
+            <SimpleGrid cols={4}>
+              <StatCard
+                label={t`Messages`}
+                value={formatNumber(message_count)}
+              />
+              <StatCard
+                label={t`Total tokens`}
+                value={formatNumber(total_tokens)}
+              />
+              <StatCard
+                label={t`Queries run`}
+                value={formatNumber(query_count)}
+              />
+              <StatCard
+                label={t`Searches`}
+                value={formatNumber(search_count)}
+              />
+            </SimpleGrid>
 
-          {feedback.length > 0 && (
+            {feedback.length > 0 && (
+              <Stack gap="md">
+                <Title order={3}>{t`Feedback`}</Title>
+                <Stack gap="sm">
+                  {feedback.map((item) => (
+                    <FeedbackCard
+                      key={item.id}
+                      feedback={item}
+                      chatMessages={feedbackChatMessages}
+                      conversationId={convoId}
+                    />
+                  ))}
+                </Stack>
+              </Stack>
+            )}
+
             <Stack gap="md">
-              <Title order={3}>{t`Feedback`}</Title>
-              <Stack gap="sm">
-                {feedback.map((item) => (
-                  <FeedbackCard
-                    key={item.id}
-                    feedback={item}
-                    chatMessages={feedbackChatMessages}
-                    conversationId={convoId}
+              <Flex align="baseline" justify="space-between">
+                <Title order={3}>{t`Conversation`}</Title>
+                {conversation.slack_permalink && (
+                  <ExternalLink href={conversation.slack_permalink}>
+                    {t`Open in Slack`}
+                  </ExternalLink>
+                )}
+              </Flex>
+              <Card withBorder shadow="none" p="xl">
+                <Messages
+                  messages={messages}
+                  getExtraActions={getExtraActions}
+                  isDoingScience={false}
+                  debug
+                  readonly
+                  conversationId={convoId}
+                  onToolCallSelect={handleToolCallSelect}
+                />
+              </Card>
+            </Stack>
+
+            {queries.length > 0 && (
+              <Stack gap="md">
+                <Title order={3}>{t`Queries generated`}</Title>
+                {queries.map((query) => (
+                  <GeneratedQueryCard
+                    key={
+                      query.call_id ?? `${query.message_id}-${query.query_id}`
+                    }
+                    query={query}
                   />
                 ))}
               </Stack>
-            </Stack>
-          )}
-
-          <Stack gap="md">
-            <Flex align="baseline" justify="space-between">
-              <Title order={3}>{t`Conversation`}</Title>
-              {conversation.slack_permalink && (
-                <ExternalLink href={conversation.slack_permalink}>
-                  {t`Open in Slack`}
-                </ExternalLink>
-              )}
-            </Flex>
-            <Card withBorder shadow="none" p="xl">
-              <Messages
-                messages={messages}
-                getExtraActions={getExtraActions}
-                isDoingScience={false}
-                debug
-                readonly
-                conversationId={convoId}
-                onToolCallSelect={handleToolCallSelect}
-              />
-            </Card>
+            )}
           </Stack>
-
-          {queries.length > 0 && (
-            <Stack gap="md">
-              <Title order={3}>{t`Queries generated`}</Title>
-              {queries.map((query) => (
-                <GeneratedQueryCard
-                  key={query.call_id ?? `${query.message_id}-${query.query_id}`}
-                  query={query}
-                />
-              ))}
-            </Stack>
-          )}
-        </Stack>
+        </Box>
       </MonitorMain>
       {selectedToolCall && (
         <Sidebar containerWidth={containerWidth}>

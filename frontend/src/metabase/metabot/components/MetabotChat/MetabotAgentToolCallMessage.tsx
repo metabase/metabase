@@ -186,16 +186,18 @@ export const AgentToolCallMessage = ({
           <Text fw="bold">{message.name}</Text>
         </Flex>
         <Flex align="center" gap="xs" className={Styles.agentPartActions}>
-          <ActionIcon
-            h="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCopy();
-            }}
-            className={Styles.agentPartActionIcon}
-          >
-            <Icon name="copy" size="1rem" />
-          </ActionIcon>
+          <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
+            <ActionIcon
+              h="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCopy();
+              }}
+              className={Styles.agentPartActionIcon}
+            >
+              <Icon name="copy" size="1rem" />
+            </ActionIcon>
+          </Tooltip>
         </Flex>
       </Flex>
       {!onSelect && modalOpen && (
