@@ -1,4 +1,4 @@
-(ns metabase.workspaces.models.workspace
+(ns metabase-enterprise.workspaces.models.workspace
   (:require
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]

@@ -147,8 +147,8 @@
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.users.models.user-parameter-value
     :model/ViewLog                           metabase.view-log.models.view-log
-    :model/Workspace                         metabase.workspaces.models.workspace
-    :model/WorkspaceEntityRemapping          metabase.workspaces.models.workspace-entity-remapping})
+    :model/Workspace                         metabase-enterprise.workspaces.models.workspace
+    :model/WorkspaceEntityRemapping          metabase-enterprise.workspaces.models.workspace-entity-remapping})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!

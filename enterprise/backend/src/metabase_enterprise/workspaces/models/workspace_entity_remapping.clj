@@ -1,4 +1,4 @@
-(ns metabase.workspaces.models.workspace-entity-remapping
+(ns metabase-enterprise.workspaces.models.workspace-entity-remapping
   (:require
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
