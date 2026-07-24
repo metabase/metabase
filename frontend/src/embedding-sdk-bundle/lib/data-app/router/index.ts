@@ -14,6 +14,7 @@ export { useDataAppLocation } from "./useDataAppLocation";
  */
 export const dataAppRouting = {
   getBasename,
+  getPathname: () => getRawBrowserHistory().location.pathname,
   navigate: (to: string) => getRawBrowserHistory().push(getBasename() + to),
   subscribe: (callback: () => void) =>
     getRawBrowserHistory().listen(() => callback()),

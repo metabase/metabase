@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 import { SDK_BUNDLE_LOADED } from "embedding-sdk-shared/constants/event-names";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
@@ -14,12 +8,7 @@ export type UseDataAppLocationResult = {
   navigate: (to: string) => void;
 };
 
-const computeSubPath = (basename: string): string => {
-  if (typeof window === "undefined") {
-    return "/";
-  }
-
-  const pathname = window.location.pathname;
+const computeSubPath = (basename: string, pathname: string): string => {
   const subPath =
     basename && pathname.startsWith(basename)
       ? pathname.slice(basename.length)
@@ -45,24 +34,30 @@ const useDataAppRouting = () =>
 export const useDataAppLocation = (): UseDataAppLocationResult => {
   const dataAppRouting = useDataAppRouting();
 
-  const basename = useMemo(
-    () => dataAppRouting?.getBasename() ?? "",
+  const getSubPath = useCallback(
+    () =>
+      dataAppRouting
+        ? computeSubPath(
+            dataAppRouting.getBasename(),
+            dataAppRouting.getPathname(),
+          )
+        : "/",
     [dataAppRouting],
   );
 
-  const [pathname, setPathname] = useState(() => computeSubPath(basename));
+  const [pathname, setPathname] = useState(getSubPath);
 
   useEffect(() => {
     if (!dataAppRouting) {
       return;
     }
 
-    setPathname(computeSubPath(dataAppRouting.getBasename()));
+    setPathname(getSubPath());
 
     return dataAppRouting.subscribe(() => {
-      setPathname(computeSubPath(dataAppRouting.getBasename()));
+      setPathname(getSubPath());
     });
-  }, [dataAppRouting]);
+  }, [dataAppRouting, getSubPath]);
 
   const navigate = useCallback(
     (to: string) => {

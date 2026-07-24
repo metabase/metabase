@@ -167,6 +167,87 @@ const RenderComponentWithValidation = <
   return <Component {...props}>{props.children}</Component>;
 };
 
+type DataAppSdkMountHandle = {
+  update: (componentProps: Record<string, unknown>) => void;
+  unmount: () => void;
+};
+
+type DataAppSdkMount = (
+  container: HTMLElement,
+  ComponentProvider: unknown,
+  providerProps: Record<string, unknown>,
+  Component: unknown,
+  componentProps: Record<string, unknown>,
+) => DataAppSdkMountHandle;
+
+// Present only inside a data-app sandbox (endowed by the host runtime). Its
+// existence is how the facade tells it's running on guest React and must mount
+// host-React SDK components via the bridge instead of as JSX children.
+const getDataAppSdkMount = (): DataAppSdkMount | undefined => {
+  // The bridge is an untyped ad-hoc global, endowed only inside a data-app sandbox.
+  const win = getWindow() as unknown as {
+    __MB_DATA_APP_SDK_MOUNT__?: DataAppSdkMount;
+  } | null;
+
+  return win?.__MB_DATA_APP_SDK_MOUNT__;
+};
+
+/**
+ * Renders the host `<ComponentProvider><Component/>` subtree into a container
+ * this (guest) component provides, using the host runtime's mediated-mount
+ * bridge — so the SDK component runs on host React inside the guest app's DOM.
+ */
+const DataAppMediatedMount = ({
+  mount,
+  ComponentProvider,
+  providerProps,
+  Component,
+  componentProps,
+  height,
+  width,
+}: {
+  mount: DataAppSdkMount;
+  ComponentProvider: unknown;
+  providerProps: Record<string, unknown>;
+  Component: unknown;
+  componentProps: Record<string, unknown>;
+  height?: CSSProperties["height"];
+  width?: CSSProperties["width"];
+}) => {
+  const handleRef = useRef<DataAppSdkMountHandle | null>(null);
+  const latestComponentProps = useRef(componentProps);
+  latestComponentProps.current = componentProps;
+
+  useEffect(() => {
+    handleRef.current?.update(componentProps);
+  }, [componentProps]);
+
+  useEffect(
+    () => () => {
+      handleRef.current?.unmount();
+      handleRef.current = null;
+    },
+    [],
+  );
+
+  return (
+    <div
+      style={{ height: height ?? "600px", width: width ?? "100%" }}
+      ref={(el) => {
+        if (el && !handleRef.current) {
+          handleRef.current = mount(
+            el,
+            ComponentProvider,
+            providerProps,
+            Component,
+            latestComponentProps.current,
+          );
+        }
+      }}
+    />
+  );
+};
+
 const ComponentWrapperInner = <TComponentProps,>({
   getComponent,
   componentProps,
@@ -235,6 +316,34 @@ const ComponentWrapperInner = <TComponentProps,>({
       <Error
         theme={adjustedTheme}
         message={SDK_COMPONENT_NOT_YET_AVAILABLE_MESSAGE}
+      />
+    );
+  }
+
+  // Inside a data-app sandbox the app runs on guest React; the host-React SDK
+  // component can't be a JSX child of the guest tree, so mount it (with its
+  // ComponentProvider) via the host mediated-mount bridge instead.
+  const dataAppSdkMount = getDataAppSdkMount();
+  if (dataAppSdkMount) {
+    // componentProps is the generic bundle-component props; the bridge forwards
+    // them through the membrane as a plain record.
+    const bridgedComponentProps = (componentProps ?? {}) as Record<
+      string,
+      unknown
+    >;
+
+    return (
+      <DataAppMediatedMount
+        mount={dataAppSdkMount}
+        ComponentProvider={ComponentProvider}
+        providerProps={{
+          ...metabaseProviderProps,
+          reduxStore: metabaseProviderInternalProps.reduxStore,
+        }}
+        Component={Component}
+        componentProps={bridgedComponentProps}
+        height={height}
+        width={width}
       />
     );
   }

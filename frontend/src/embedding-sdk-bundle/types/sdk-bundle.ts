@@ -81,6 +81,7 @@ type PublicExports = {
 type DataAppRoutingExports = {
   dataAppRouting: {
     getBasename: () => string;
+    getPathname: () => string;
     navigate: (to: string) => void;
     subscribe: (callback: () => void) => () => void;
   };

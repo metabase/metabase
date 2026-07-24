@@ -15,26 +15,9 @@ import type { DataAppFactory, SandboxBlockedListener } from "./types";
  * SDK copy into the published `data-app-dev` entry.)
  */
 export interface DataAppSandboxEndowments {
-  /** Endowed as the `React` global the bundle externalizes `react` to. */
-  React: unknown;
-  /** Endowed as `__react_dom__` (the `react-dom` external). */
-  reactDom: unknown;
-  /** Endowed as `__react_dom_client__` (the `react-dom/client` external). */
-  reactDomClient: unknown;
-  /** Endowed as `__react_dom_server__` (the `react-dom/server` external). */
-  reactDomServer: unknown;
-  /** Endowed as `__react_jsx_runtime__` (the `react/jsx-runtime` external). */
-  reactJsxRuntime: unknown;
-  /**
-   * Endowed as `__react_jsx_dev_runtime__` (the `react/jsx-dev-runtime`
-   * external). Only a development-mode bundle references it (jsxDEV), so the
-   * production host can omit it.
-   */
-  reactJsxDevRuntime?: unknown;
-  /** Endowed as `__metabase_sdk__` (the `@metabase/embedding-sdk-react` external). */
-  sdkExports: object;
-  /** Endowed as `__metabase_data_app__` (the `.../data-app` external). */
-  dataAppExports: object;
+  sdkBundle: unknown;
+  providerPropsStore: unknown;
+  sdkMount: unknown;
 }
 
 export interface CreateDataAppSandboxOptions {
@@ -65,6 +48,7 @@ export function createDataAppSandbox({
   label = "",
   targetWindow = window,
   allowedHosts = [],
+  endowments,
   onBlocked,
 }: CreateDataAppSandboxOptions) {
   let captured: unknown;
@@ -77,9 +61,10 @@ export function createDataAppSandbox({
       onBlocked,
     ),
     liveTargetCallback: isLiveTarget,
-    // Global names come from the shared `DATA_APP_GLOBAL_NAMES`, so the bundle's
-    // externals (defined by the SDK build) and these endowments can't drift.
     endowments: Object.getOwnPropertyDescriptors({
+      METABASE_EMBEDDING_SDK_BUNDLE: endowments.sdkBundle,
+      METABASE_PROVIDER_PROPS_STORE: endowments.providerPropsStore,
+      __MB_DATA_APP_SDK_MOUNT__: endowments.sdkMount,
       get [DATA_APP_GLOBAL_NAMES.factory]() {
         return captured;
       },
