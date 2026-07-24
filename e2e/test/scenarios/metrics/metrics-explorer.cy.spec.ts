@@ -1588,9 +1588,23 @@ describe("scenarios > metrics > explorer", () => {
         waitForSerializedDimensionBreakout();
 
         cy.log("Reload the page and verify the dimension choice persists");
+        // Re-alias with fresh counters immediately before reloading. The
+        // shared `@getMetric`/`@dataset` aliases accumulate a variable number
+        // of unconsumed requests during setup, so a post-reload `cy.wait` can
+        // resolve instantly against a stale buffered request and let the test
+        // race a page that is still loading. Fresh aliases only match requests
+        // fired by the reload itself.
+        cy.intercept("GET", "/api/metric/*").as("getMetricAfterReload");
+        cy.intercept("POST", "/api/metric/dataset").as("datasetAfterReload");
         cy.reload();
-        cy.wait("@getMetric");
-        cy.wait("@dataset");
+        cy.wait("@getMetricAfterReload");
+        cy.wait("@datasetAfterReload");
+
+        cy.log("Wait for the restored non-default dimension state to render");
+        H.MetricsViewer.getDimensionPillBarContainer().should(
+          "contain.text",
+          "Multiple dimensions",
+        );
 
         cy.log(
           "Verify the per-metric dimension selections are restored after reload",
