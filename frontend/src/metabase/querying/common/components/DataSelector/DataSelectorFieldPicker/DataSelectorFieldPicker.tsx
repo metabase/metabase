@@ -7,12 +7,11 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import CS from "metabase/css/core/index.css";
+import { getColumnQueries } from "metabase/querying/common/utils";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, DelayGroup, Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
 import type Field from "metabase-lib/v1/metadata/Field";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { IconName } from "metabase-types/api";
 
@@ -55,9 +54,14 @@ export const DataSelectorFieldPicker = ({
   hasInitialFocus,
 }: DataSelectorFieldPickerProps) => {
   const metadata = useSelector(getMetadata);
-  const columnQuery = useMemo(
-    () => getColumnQuery(metadata, selectedTable),
-    [metadata, selectedTable],
+  const columnQueries = useMemo(
+    () =>
+      getColumnQueries(
+        metadata,
+        selectedTable,
+        fields.map((field) => field.getPlainObject()),
+      ),
+    [metadata, selectedTable, fields],
   );
 
   const header = <Header onBack={onBack} selectedTable={selectedTable} />;
@@ -80,13 +84,9 @@ export const DataSelectorFieldPicker = ({
     item.field && selectedField && item.field.id === selectedField.id;
 
   const renderItemIcon = (item: FieldWithName) => {
-    if (item.field == null || columnQuery == null) {
-      return null;
-    }
+    const columnQuery = columnQueries.get(item.field.getPlainObject());
 
-    const column = columnQuery.columnsByName.get(item.field.name);
-
-    if (column == null) {
+    if (!columnQuery) {
       return null;
     }
 
@@ -94,7 +94,7 @@ export const DataSelectorFieldPicker = ({
       <QueryColumnInfoIcon
         query={columnQuery.query}
         stageIndex={STAGE_INDEX}
-        column={column}
+        column={columnQuery.column}
         position="top-end"
         size={18}
         // Unjustified type cast. FIXME
@@ -124,32 +124,6 @@ export const DataSelectorFieldPicker = ({
       </DelayGroup>
     </Box>
   );
-};
-
-const getColumnQuery = (metadata: Metadata, table: Table | undefined) => {
-  if (table == null) {
-    return null;
-  }
-
-  const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
-  const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
-
-  if (tableMetadata == null) {
-    return null;
-  }
-
-  const query = Lib.queryFromTableOrCardMetadata(
-    metadataProvider,
-    tableMetadata,
-  );
-  const columnsByName = new Map(
-    Lib.returnedColumns(query, STAGE_INDEX).map((column) => [
-      Lib.displayInfo(query, STAGE_INDEX, column).name,
-      column,
-    ]),
-  );
-
-  return { query, columnsByName };
 };
 
 function renderItemWrapper(content: ReactNode) {
