@@ -224,7 +224,7 @@ export const PivotTableLightTheme = {
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const cell = await within(canvasElement).findByText("field-123");
     // Unjustified type cast. FIXME
-    (cell.parentNode?.parentNode as HTMLElement).classList.add("pseudo-hover");
+    (cell.parentNode!.parentNode as HTMLElement).classList.add("pseudo-hover");
   },
 };
 

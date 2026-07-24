@@ -1,33 +1,26 @@
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "@xyflow/react/dist/style.css";
-
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
 // Should be imported before any other metabase import
 import "ee-overrides";
-
 import "metabase/utils/dayjs";
-
 // set the locale before loading anything else
 import "metabase/utils/i18n";
-
 // NOTE: why do we need to load this here?
 import "metabase/ui/colors";
-
 // NOTE: this loads all builtin plugins
 import "metabase/plugins/builtin";
-
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
 // Set CSP nonce for dynamic style injection (e.g. CodeMirror)
 import "metabase/utils/csp";
-
+import { initializePlugins } from "ee-plugins";
 import { DragDropContextProvider } from "react-dnd";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 
-import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";

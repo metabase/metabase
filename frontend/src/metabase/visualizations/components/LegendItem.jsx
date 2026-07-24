@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component, createRef } from "react";

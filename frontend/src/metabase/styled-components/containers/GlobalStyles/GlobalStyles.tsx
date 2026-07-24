@@ -34,8 +34,7 @@ export const GlobalStyles = (): JSX.Element => {
 
   const styles = useMemo(() => {
     return css`
-      ${cssVariables}
-      :root {
+      ${cssVariables}: root {
         --mb-default-font-family: ${getFontFamilyValue(font)};
       }
 
@@ -51,8 +50,8 @@ export const GlobalStyles = (): JSX.Element => {
           }
         `,
       )}
-    ${saveDomImageStyles}
-    body {
+      ${saveDomImageStyles}
+      body {
         font-size: 0.875em;
         ${isStaticEmbedding() || isPublicEmbedding()
           ? ""

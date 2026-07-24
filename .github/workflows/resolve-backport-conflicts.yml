@@ -63,9 +63,9 @@ jobs:
         id: pkg
         run: |
           if [ -f "bun.lock" ] || [ -f "bun.lockb" ]; then
-            echo "mgr=bun" >> $GITHUB_OUTPUT
+            echo "mgr=bun" >> "$GITHUB_OUTPUT"
           else
-            echo "mgr=yarn" >> $GITHUB_OUTPUT
+            echo "mgr=yarn" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Validate backport PR
@@ -92,13 +92,15 @@ jobs:
           # Check if we're in a cherry-pick state with conflicts
           CONFLICTED=$(git diff --name-only --diff-filter=U || true)
           if [ -n "$CONFLICTED" ]; then
-            echo "has_conflicts=true" >> $GITHUB_OUTPUT
-            echo "conflicted_files<<EOF" >> $GITHUB_OUTPUT
-            echo "$CONFLICTED" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+            {
+              echo "has_conflicts=true"
+              echo "conflicted_files<<EOF"
+              echo "$CONFLICTED"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
             echo "::notice::Found conflicts in: $CONFLICTED"
           else
-            echo "has_conflicts=false" >> $GITHUB_OUTPUT
+            echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Cherry-pick applied cleanly, no conflicts to resolve"
           fi
 
@@ -137,7 +139,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_BACKPORT_FIX }}
           model: "claude-sonnet-4-20250514"
           max_turns: "${{ github.event.inputs.max_turns || '75' }}"
-          allowed_tools: "Read,Edit,Write,Bash(git:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(cat:*),Bash(clojure:*),Bash(${{ steps.pkg.outputs.mgr }} run type-check-pure:*),Bash(${{ steps.pkg.outputs.mgr }} run lint-eslint:*),Bash(./bin/mage cljfmt:*),Glob,Grep"
+          allowed_tools: "Read,Edit,Write,Bash(git:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(cat:*),Bash(clojure:*),Bash(${{ steps.pkg.outputs.mgr }} run type-check-pure:*),Bash(${{ steps.pkg.outputs.mgr }} run lint-oxlint:*),Bash(./bin/mage cljfmt:*),Glob,Grep"
           prompt: |
             You are resolving git cherry-pick merge conflicts for a Metabase backport PR.
 
@@ -174,9 +176,9 @@ jobs:
                  ```
                  ./bin/mage cljfmt-files <file1> <file2> ...
                  ```
-               - **TypeScript/JavaScript** (.ts, .tsx, .js, .jsx): run eslint with auto-fix:
+               - **TypeScript/JavaScript** (.ts, .tsx, .js, .jsx): run oxlint with auto-fix:
                  ```
-                 ${{ steps.pkg.outputs.mgr }} run lint-eslint --fix
+                 ${{ steps.pkg.outputs.mgr }} run lint-oxlint-fix
                  ```
             7. Validate resolved files before committing:
                - **Clojure/ClojureScript** (.clj, .cljc, .cljs): run clj-kondo to verify syntax:
@@ -208,23 +210,25 @@ jobs:
           if [ -f "${{ steps.claude.outputs.execution_file }}" ]; then
             SUBTYPE=$(jq -r '.[] | select(.type == "result") | .subtype' "${{ steps.claude.outputs.execution_file }}" | tail -1)
             if [ "$SUBTYPE" = "error_max_turns" ]; then
-              echo "max_turns_exceeded=true" >> $GITHUB_OUTPUT
+              echo "max_turns_exceeded=true" >> "$GITHUB_OUTPUT"
             else
-              echo "max_turns_exceeded=false" >> $GITHUB_OUTPUT
+              echo "max_turns_exceeded=false" >> "$GITHUB_OUTPUT"
             fi
           else
-            echo "max_turns_exceeded=false" >> $GITHUB_OUTPUT
+            echo "max_turns_exceeded=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Get commit details
         if: always() && steps.claude.outcome == 'success' && steps.check-failure.outputs.max_turns_exceeded != 'true'
         id: commit-info
         run: |
-          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
           FILES=$(git diff --name-only HEAD~1)
-          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
-          echo "$FILES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          {
+            echo "sha=$(git rev-parse HEAD)"
+            echo "changed_files<<EOF"
+            echo "$FILES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Comment on PR (success)
         if: always() && steps.claude.outcome == 'success' && steps.check-failure.outputs.max_turns_exceeded != 'true'

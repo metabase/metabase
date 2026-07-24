@@ -1,9 +1,3 @@
-import * as React from "react";
-import * as ReactDOM from "react-dom";
-import * as ReactDOMClient from "react-dom/client";
-import * as ReactDOMServer from "react-dom/server";
-import * as ReactJsxDevRuntime from "react/jsx-dev-runtime";
-import * as ReactJsxRuntime from "react/jsx-runtime";
 import * as sdkExports from "@metabase/embedding-sdk-react";
 import * as dataAppExports from "@metabase/embedding-sdk-react/data-app";
 import {
@@ -12,13 +6,19 @@ import {
   createDataAppSandbox,
   installDevDiagnostics,
 } from "@metabase/embedding-sdk-react/data-app-dev";
+import * as React from "react";
+import * as ReactDOM from "react-dom";
+import * as ReactDOMClient from "react-dom/client";
+import { createRoot } from "react-dom/client";
+import * as ReactDOMServer from "react-dom/server";
+import * as ReactJsxDevRuntime from "react/jsx-dev-runtime";
+import * as ReactJsxRuntime from "react/jsx-runtime";
 import {
   allowedHosts,
   appSlug,
   bundleUrl,
   rebuiltEvent,
 } from "virtual:metabase-data-app-dev-config";
-import { createRoot } from "react-dom/client";
 
 // The same baseline reset the production iframe loads (`iframe-vendors.ts`), so the
 // dev preview matches production. style-loader injects it at runtime.

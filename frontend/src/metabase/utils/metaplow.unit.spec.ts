@@ -39,7 +39,7 @@ describe("metaplow", () => {
     expect(url).toBe(METAPLOW_URL);
     expect(init?.method).toBe("POST");
     // Unjustified type cast. FIXME
-    expect((init?.headers as Record<string, string>)["Content-Type"]).toBe(
+    expect((init!.headers as Record<string, string>)["Content-Type"]).toBe(
       "application/json",
     );
     // Unjustified type cast. FIXME

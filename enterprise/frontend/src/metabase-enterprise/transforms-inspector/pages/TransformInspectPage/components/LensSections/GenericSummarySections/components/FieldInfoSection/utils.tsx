@@ -3,8 +3,8 @@ import { c, t } from "ttag";
 
 import { getFormattedTime } from "metabase/common/components/DateTime";
 import { formatNumber, formatPercent } from "metabase/static-viz/lib/numbers";
-import { Ellipsified } from "metabase/ui";
 import {
+  Ellipsified,
   EntityNameCell,
   Flex,
   Text,

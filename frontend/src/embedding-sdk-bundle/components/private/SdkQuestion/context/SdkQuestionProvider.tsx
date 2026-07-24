@@ -29,9 +29,9 @@ import {
 } from "embedding-sdk-bundle/store/selectors";
 import type { NavigateToNewCardParams } from "embedding-sdk-bundle/types";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
-import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import {
   type OnCreateOptions,
   useCreateQuestion,

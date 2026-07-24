@@ -731,16 +731,17 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
              *
              * @see https://github.com/metabase/metabase/pull/31142/files#r1211352364
              */}
-            {isEditingQuery && editorHeight > 0 && (
-              // @ts-expect-error TODO: Fix types in DatasetQueryEditor
-              <DatasetQueryEditor
-                {...props}
-                isActive={isEditingQuery}
-                height={editorHeight}
-                availableHeight={height}
-                onResizeStop={handleResize}
-              />
-            )}
+            {isEditingQuery &&
+              editorHeight > 0 && (
+                // @ts-expect-error TODO: Fix types in DatasetQueryEditor
+                <DatasetQueryEditor
+                  {...props}
+                  isActive={isEditingQuery}
+                  height={editorHeight}
+                  availableHeight={height}
+                  onResizeStop={handleResize}
+                />
+              )}
           </Box>
           <Box
             className={cx(DatasetEditorS.TableContainer, {

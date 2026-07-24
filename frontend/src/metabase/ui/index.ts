@@ -6,7 +6,6 @@ export {
   useMatches,
 } from "@mantine/core";
 export type {
-  MenuDropdownProps,
   ComboboxStore,
   FloatingPosition,
   MantineSize,

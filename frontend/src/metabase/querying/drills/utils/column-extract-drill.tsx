@@ -39,8 +39,11 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
     );
 
     function handleClick(action: RegularClickAction) {
+      // `extra` is always set by the actions constructed above, so the
+      // assertion cannot fail. Optional-calling it here and then destructuring
+      // would throw on undefined rather than short-circuit.
       // Unjustified type cast. FIXME
-      const { extraction } = action.extra?.() as {
+      const { extraction } = action.extra!() as {
         extraction: Lib.ColumnExtraction;
       };
 

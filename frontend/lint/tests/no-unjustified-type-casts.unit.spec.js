@@ -1,5 +1,4 @@
-import { RuleTester } from "eslint";
-import tseslint from "typescript-eslint";
+import { RuleTester } from "oxlint/plugins-dev";
 
 import rule from "../eslint-plugin-metabase/rules/no-unjustified-type-casts";
 
@@ -8,7 +7,6 @@ const TSX_FILENAME = "spec.tsx";
 
 const ruleTester = new RuleTester({
   languageOptions: {
-    parser: tseslint.parser,
     sourceType: "module",
   },
 });

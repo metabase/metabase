@@ -1,9 +1,9 @@
-/* eslint-disable import/order */
-
 // Must run before any dynamic import(): sets webpack's runtime publicPath so
 // on-demand chunks load from the Metabase-hosted SDK asset directory.
+// oxfmt-ignore
 import "./lib/sdk-public-path";
 
+// oxfmt-ignore
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
 // Enable SDK mode as we are in the SDK bundle
@@ -11,19 +11,25 @@ import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 
 // Import the embedding SDK vendors side-effects
+// oxfmt-ignore
 import "metabase/embedding-sdk/vendors-side-effects";
 
 // Import the EE plugins required by the embedding sdk.
+// oxfmt-ignore
 import { initializePlugins } from "sdk-ee-plugins";
 
 initializePlugins();
 
 // Imports which are only applicable to the embedding sdk, and not the new iframe embedding.
+// oxfmt-ignore
 import "sdk-specific-imports";
 
+// oxfmt-ignore
 import { sdkBundleExports } from "./sdk-bundle-exports";
 
+// oxfmt-ignore
 import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";
+// oxfmt-ignore
 import { SDK_BUNDLE_LOADED } from "embedding-sdk-shared/constants/event-names";
 
 defineBuildInfo("METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO");

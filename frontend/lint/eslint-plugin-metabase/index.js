@@ -9,7 +9,10 @@ module.exports = {
   },
   rules: {
     "jtag-missing-key": require("./rules/jtag-missing-key"),
+    "no-base-color-literals": require("./rules/no-base-color-literals"),
     "no-color-literals": require("./rules/no-color-literals"),
+    "no-conditional-expect": require("./rules/no-conditional-expect"),
+    "no-deprecated-react-api": require("./rules/no-deprecated-react-api"),
     "no-direct-helper-import": require("./rules/no-direct-helper-import"),
     "no-external-references-for-sdk-package-code": require("./rules/no-external-references-for-sdk-package-code"),
     "no-literal-metabase-strings": require("./rules/no-literal-metabase-strings"),

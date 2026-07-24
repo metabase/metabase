@@ -322,7 +322,6 @@ function formatNumberScientific(
     const [m, n] = exp.split("e");
     return (
       <span>
-        {/* eslint-disable-next-line i18next/no-literal-string */}
         {m}×10<sup>{n.replace(/^\+/, "")}</sup>
       </span>
     );

@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component, useCallback } from "react";
 import { t } from "ttag";

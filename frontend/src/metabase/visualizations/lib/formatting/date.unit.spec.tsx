@@ -7,7 +7,6 @@ import {
   formatDateTimeRangeWithUnit,
   formatDateTimeWithUnit,
 } from "metabase/visualizations/lib/formatting/date";
-
 import "dayjs/locale/es";
 import "dayjs/locale/fr";
 
@@ -46,7 +45,7 @@ describe("formatDateTimeRangeWithUnit", () => {
             );
 
             if (verboseOutput) {
-              // eslint-disable-next-line jest/no-conditional-expect
+              // eslint-disable-next-line metabase/no-conditional-expect
               expect(formatDateTimeRangeWithUnit(input, unit)).toBe(
                 verboseOutput,
               );
