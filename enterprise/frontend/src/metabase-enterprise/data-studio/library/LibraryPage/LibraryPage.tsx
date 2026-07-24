@@ -8,11 +8,14 @@ import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/Da
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
+import type { TreeItem } from "metabase/data-studio/common/types";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
+import { Link } from "metabase/router";
 import {
   Card,
   Flex,
   Icon,
+  type RenderRowLink,
   Stack,
   TextInput,
   TreeTable,
@@ -25,6 +28,11 @@ import { CreateMenu } from "./components/CreateMenu";
 import { PublishTableModal } from "./components/PublishTableModal";
 import { useLibraryCollections, useLibraryTreeTableInstance } from "./hooks";
 import { getTreeRowHref, getWritableCollection } from "./utils";
+
+const renderTreeRowLink: RenderRowLink<TreeItem> = (row, props) => {
+  const href = getTreeRowHref(row);
+  return href ? <Link to={href} {...props} /> : props.children;
+};
 
 export function LibraryPage() {
   const hasLibraryFeature = useHasTokenFeature("library");
@@ -122,7 +130,7 @@ function LibraryPageContent() {
                       }
                       // Navigation for leaf nodes is handled by the link
                     }}
-                    getRowHref={getTreeRowHref}
+                    renderRowLink={renderTreeRowLink}
                     isChildrenLoading={isChildrenLoading}
                   />
                 )}
