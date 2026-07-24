@@ -1,6 +1,10 @@
 {
   "name": "@metabase/embedding-sdk-react",
   "version": "0.62.0",
+  "sdkRelease": {
+    "distTag": "62-stable",
+    "tagAsLatest": false
+  },
   "description": "Metabase Embedding SDK for React",
   "bin": "./dist/cli.js",
   "repository": {
