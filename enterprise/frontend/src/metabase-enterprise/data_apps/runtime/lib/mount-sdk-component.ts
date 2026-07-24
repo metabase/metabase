@@ -27,6 +27,48 @@ function assertTrustedSdkComponents(
   }
 }
 
+const REACT_NODE_TYPES = new Set<unknown>([
+  Symbol.for("react.element"),
+  Symbol.for("react.portal"),
+]);
+
+const MAX_PROP_SCAN_DEPTH = 4;
+
+/**
+ * `Symbol.for("react.element")` is realm-shared, so the app can hand-craft an
+ * element (e.g. `type: "iframe"`) and smuggle it through props for host React to
+ * create ungated — reject any React node reachable in the props.
+ */
+const assertNoSmuggledReactNodes = (value: unknown, depth = 0): void => {
+  if (value === null || typeof value !== "object") {
+    return;
+  }
+
+  // Read the React element brand off an arbitrary object to detect a smuggled
+  // node; the value is untyped caller input, hence the cast.
+  const brand = (value as { $$typeof?: unknown }).$$typeof;
+  if (REACT_NODE_TYPES.has(brand)) {
+    throw new Error(
+      "data-app SDK mount: React nodes are not allowed in mediated props",
+    );
+  }
+
+  if (depth >= MAX_PROP_SCAN_DEPTH) {
+    return;
+  }
+
+  let values: unknown[];
+  try {
+    values = Object.values(value);
+  } catch {
+    return;
+  }
+
+  for (const item of values) {
+    assertNoSmuggledReactNodes(item, depth + 1);
+  }
+};
+
 /**
  * Mediated-mount bridge for SDK components in a data app.
  *
@@ -40,18 +82,20 @@ function assertTrustedSdkComponents(
  * Endowed to the guest as `__MB_DATA_APP_SDK_MOUNT__`. Only trusted SDK bundle
  * components may be mounted — see [[assertTrustedSdkComponents]].
  */
-export function mountDataAppSdkComponent(
+export const mountDataAppSdkComponent = (
   container: HTMLElement,
   ComponentProvider: HostComponent,
   providerProps: Record<string, unknown>,
   Component: HostComponent,
   componentProps: Record<string, unknown>,
-): DataAppSdkMountHandle {
+): DataAppSdkMountHandle => {
   assertTrustedSdkComponents(ComponentProvider, Component);
+  assertNoSmuggledReactNodes(providerProps);
 
   const root: Root = createRoot(container);
 
   const render = (nextComponentProps: Record<string, unknown>) => {
+    assertNoSmuggledReactNodes(nextComponentProps);
     root.render(
       createElement(
         ComponentProvider,
@@ -67,4 +111,4 @@ export function mountDataAppSdkComponent(
     update: render,
     unmount: () => root.unmount(),
   };
-}
+};
