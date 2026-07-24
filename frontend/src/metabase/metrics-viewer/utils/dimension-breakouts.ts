@@ -846,11 +846,11 @@ export function getDimensionBreakoutLabel(
   }
 
   const [firstDimension] = dimensions;
-  const haveSameName = dimensions.every(
-    (dimension) => dimension.name === firstDimension.name,
+  const haveSameDisplayName = dimensions.every(
+    (dimension) => dimension.displayName === firstDimension.displayName,
   );
 
-  return haveSameName
+  return haveSameDisplayName && !!firstDimension.displayName
     ? firstDimension.displayName
     : (getDimensionBreakoutTypeLabel(dimensionBreakout.type) ??
         dimensionBreakout.label);

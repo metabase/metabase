@@ -1,25 +1,51 @@
 import type { Collection, CollectionId } from "./collection";
 import type { DatasetColumn, RowValue } from "./dataset";
 import type { FieldValue } from "./field";
-import type {
-  AddableMetricDimension,
-  DimensionId,
-  DimensionMapping,
-  MetricDimension,
-  MetricDimensionGroup,
-  MetricDimensionSource,
-} from "./measure";
-
-export type {
-  AddableMetricDimension,
-  DimensionMapping,
-  MetricDimension,
-  MetricDimensionGroup,
-  MetricDimensionSource,
-  MetricDimensionStatus,
-} from "./measure";
 
 export type MetricId = number;
+export type DimensionId = string;
+
+export type MetricDimensionGroup = {
+  id: string;
+  type: "main" | "connection";
+  display_name: string;
+};
+
+export type MetricDimensionSource = {
+  type: string;
+  "field-id": number;
+};
+
+export type MetricDimensionStatus = "status/active" | "status/orphaned";
+
+export type MetricDimension = {
+  id: DimensionId;
+  name?: string;
+  display_name: string;
+  description?: string | null;
+  effective_type: string;
+  semantic_type: string | null;
+  default?: boolean;
+  status?: MetricDimensionStatus;
+  group?: MetricDimensionGroup;
+  sources?: MetricDimensionSource[];
+};
+
+export type DimensionMappingTarget = [
+  "field",
+  Record<string, unknown>,
+  number | string,
+];
+
+export type AddableMetricDimension = MetricDimension & {
+  mapping_target: DimensionMappingTarget;
+};
+
+export type DimensionMapping = {
+  dimension_id: DimensionId;
+  table_id: number;
+  target: DimensionMappingTarget;
+};
 
 export type Metric = {
   id: MetricId;

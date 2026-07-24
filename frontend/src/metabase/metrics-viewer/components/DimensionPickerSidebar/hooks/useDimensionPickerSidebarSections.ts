@@ -10,9 +10,6 @@ import type {
 } from "metabase/metrics-viewer/types";
 import type { DimensionPickerSection } from "metabase/metrics-viewer/utils";
 
-// Dimensions are the metric's curated list, so they are shown flat in the
-// curated order — never split by source table. With multiple metrics there is
-// one section per metric (plus a Shared one), named after the metric.
 export function useDimensionPickerSidebarSections(): DimensionPickerSection[] {
   const {
     sidebarAvailableDimensions: availableDimensions,

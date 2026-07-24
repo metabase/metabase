@@ -9,6 +9,7 @@ import {
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
+import type { ListMetricDimensionsResponse } from "metabase-types/api";
 
 const {
   ORDERS_ID,
@@ -780,9 +781,7 @@ describe("scenarios > metrics > explorer", () => {
       cy.log("Breakout legend should be visible with Source values");
       H.MetricsViewer.breakoutLegend().should("be.visible");
       H.MetricsViewer.breakoutLegend().within(() => {
-        cy.findByRole("heading", { name: "User → Source" }).should(
-          "be.visible",
-        );
+        cy.findByRole("heading", { name: "Source" }).should("be.visible");
         cy.findByText("Twitter").should("be.visible");
         cy.findByText("Facebook").should("be.visible");
         cy.findByText("Organic").should("be.visible");
@@ -855,9 +854,7 @@ describe("scenarios > metrics > explorer", () => {
       );
       H.MetricsViewer.breakoutLegend().should("be.visible");
       H.MetricsViewer.breakoutLegend().within(() => {
-        cy.findByRole("heading", { name: "User → Source" }).should(
-          "be.visible",
-        );
+        cy.findByRole("heading", { name: "Source" }).should("be.visible");
       });
 
       cy.log("First pill should have single color (breakout removed)");
@@ -926,9 +923,7 @@ describe("scenarios > metrics > explorer", () => {
       cy.log("Breakout legend should still be visible");
       H.MetricsViewer.breakoutLegend().should("be.visible");
       H.MetricsViewer.breakoutLegend().within(() => {
-        cy.findByRole("heading", { name: "User → Source" }).should(
-          "be.visible",
-        );
+        cy.findByRole("heading", { name: "Source" }).should("be.visible");
       });
 
       cy.log("Newly added third pill should have single color (no breakout)");
@@ -1292,8 +1287,8 @@ describe("scenarios > metrics > explorer", () => {
       it("should show all curated dimensions for a standalone metric", () => {
         H.MetricsViewer.getMetricVisualization().should("be.visible");
         H.MetricsViewer.getColumnPickerButton()
-          .should("contain.text", "Created At")
-          .and("not.contain.text", "Time");
+          .should("contain.text", "Time")
+          .and("not.contain.text", "Created At");
 
         H.MetricsViewer.openDimensionPickerSidebar().within(() => {
           cy.findByRole("heading", { name: "Break out" }).should("be.visible");
@@ -2750,19 +2745,6 @@ function createMetrics(metrics: StructuredQuestionDetailsWithName[]) {
   );
 }
 
-type CuratedDimension = {
-  id: string;
-  display_name: string;
-};
-
-type CuratedDimensionsResponse = {
-  added: CuratedDimension[];
-  addable: Array<{
-    group: { display_name: string; type: string };
-    dimensions: CuratedDimension[];
-  }>;
-};
-
 // Reading a metric seeds its curated dimension list with the self-table
 // columns.
 function seedMetricDimensions(metricId: number) {
@@ -2776,7 +2758,7 @@ function addConnectionDimension(
   displayName = dimensionName,
 ) {
   return cy
-    .request<CuratedDimensionsResponse>(
+    .request<ListMetricDimensionsResponse>(
       "GET",
       `/api/metric/${metricId}/dimension?with-addable=true`,
     )
@@ -2801,7 +2783,7 @@ function renameCuratedDimension(
   displayName: string,
 ) {
   return cy
-    .request<CuratedDimensionsResponse>(
+    .request<ListMetricDimensionsResponse>(
       "GET",
       `/api/metric/${metricId}/dimension`,
     )
@@ -2818,7 +2800,7 @@ function renameCuratedDimension(
 
 function getCuratedDimensionId(metricId: number, dimensionName: string) {
   return cy
-    .request<CuratedDimensionsResponse>(
+    .request<ListMetricDimensionsResponse>(
       "GET",
       `/api/metric/${metricId}/dimension`,
     )

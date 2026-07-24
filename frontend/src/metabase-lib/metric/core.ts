@@ -477,6 +477,7 @@ export function project(
   return LibMetric.project(definition, dimensionRef) as MetricDefinition;
 }
 
+/** Projects a dimension using its default temporal bucket or binning strategy. */
 export function projectDimension(
   definition: MetricDefinition,
   dimension: DimensionMetadata,

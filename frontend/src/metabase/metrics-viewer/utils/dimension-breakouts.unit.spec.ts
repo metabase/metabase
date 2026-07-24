@@ -52,6 +52,7 @@ describe("getDimensionBreakoutLabel", () => {
       }),
       createMockMetricDimension({
         id: "first-total",
+        name: "AMOUNT",
         display_name: "Total",
         effective_type: "type/Float",
         semantic_type: "type/Currency",
@@ -81,6 +82,7 @@ describe("getDimensionBreakoutLabel", () => {
       }),
       createMockMetricDimension({
         id: "second-total",
+        name: "PAID_AMOUNT",
         display_name: "Total",
         effective_type: "type/Float",
         semantic_type: "type/Currency",
@@ -126,7 +128,7 @@ describe("getDimensionBreakoutLabel", () => {
     };
   }
 
-  it("uses the curated display name when mapped columns have the same name", () => {
+  it("uses the breakout type when mapped dimensions have different curated display names", () => {
     const breakout = createBreakout(
       "category",
       { 0: "first-vendor", 1: "second-vendor" },
@@ -134,7 +136,19 @@ describe("getDimensionBreakoutLabel", () => {
     );
 
     expect(getDimensionBreakoutLabel(breakout, definitions, metricSlots)).toBe(
-      "Preferred vendor",
+      "Category",
+    );
+  });
+
+  it("uses the curated display name when mapped columns have different names", () => {
+    const breakout = createBreakout(
+      "numeric",
+      { 0: "first-total", 1: "second-total" },
+      "Number",
+    );
+
+    expect(getDimensionBreakoutLabel(breakout, definitions, metricSlots)).toBe(
+      "Total",
     );
   });
 

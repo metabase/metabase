@@ -139,7 +139,7 @@ function verifyLineChart({ yAxis }) {
 
 function verifyMetricAboutTimeseries({ yAxis }) {
   H.MetricPage.aboutPage().within(() => {
-    cy.findByRole("button", { name: "Dimension" })
+    cy.findByRole("button", { name: "Select dimension: Created At" })
       .should("be.visible")
       .and("contain.text", "Created At");
     cy.findByTestId("metric-value-preview").should("be.visible");

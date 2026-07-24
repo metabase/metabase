@@ -72,9 +72,6 @@ function curateMetricDimension(metricId, displayName) {
         .find(({ display_name }) => display_name === displayName);
 
       expect(dimension, `${displayName} metric dimension`).not.to.be.undefined;
-      if (!dimension) {
-        return;
-      }
 
       return cy
         .request("POST", `/api/metric/${metricId}/dimension/remove`, {
