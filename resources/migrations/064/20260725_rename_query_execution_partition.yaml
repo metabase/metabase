@@ -32,4 +32,3 @@ databaseChangeLog:
                              TO_CHAR(current_timestamp + '1 month'::interval, 'YYYY_MM'));
               END
               $$ language plpgsql;
-

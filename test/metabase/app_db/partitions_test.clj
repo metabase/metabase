@@ -38,17 +38,17 @@
     (is (= (partitions-for-months 4 5)
            (set (partitions/partitions-to-detach existing now 30))))
     (is (= [] (partitions/partitions-to-detach existing now 100)))
-
-    (is (= (partitions-for-months 4 5 6 7)
-           (set (partitions/partitions-to-detach existing next-month 7))))
-    (is (= (partitions-for-months 4 5 6 7)
-           (set (partitions/partitions-to-detach existing next-month 30))))
-    (is (= (partitions-for-months 4)
-           (set (partitions/partitions-to-detach existing next-month 100))))
-    (is (= (partitions-for-months 4 5 6 7)
-           (set (partitions/partitions-to-detach existing nnext-month 30))))
-    (is (= (partitions-for-months 4 5)
-           (set (partitions/partitions-to-detach existing nnext-month 100))))))
+    (testing "future months"
+      (is (= (partitions-for-months 4 5 6 7)
+             (set (partitions/partitions-to-detach existing next-month 7))))
+      (is (= (partitions-for-months 4 5 6 7)
+             (set (partitions/partitions-to-detach existing next-month 30))))
+      (is (= (partitions-for-months 4)
+             (set (partitions/partitions-to-detach existing next-month 100))))
+      (is (= (partitions-for-months 4 5 6 7)
+             (set (partitions/partitions-to-detach existing nnext-month 30))))
+      (is (= (partitions-for-months 4 5)
+             (set (partitions/partitions-to-detach existing nnext-month 100)))))))
 
 (defn drop-all-tables [conn]
   ;; can't use current-partitions because we want to get rid of them regardless
