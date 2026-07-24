@@ -72,10 +72,14 @@
   ;; if created databases for namespacing in tests we could probably remove this whole idea.
   (let [{:keys [index-table-qualifier]} index-metadata
         ;; Re-apply the 63-byte hash: the qualifier can push an already-fit name over Postgres's limit,
-        ;; and a name silently truncated on CREATE would no longer match table-exists? lookups.
+        ;; and a name silently truncated on CREATE would no longer match table-exists? lookups. The limit
+        ;; is per identifier, so hash only the table component -- a schema qualifier (app-db mode) is a
+        ;; separate short identifier that must survive, or the table lands outside its isolated schema.
         qualify (fn [table-name]
-                  (semantic.index/hash-identifier-if-exceeds-pg-limit
-                   (format index-table-qualifier table-name)))]
+                  (let [[schema table] (semantic.util/qualified-table-parts
+                                        (format index-table-qualifier table-name))]
+                    (cond->> (semantic.index/hash-identifier-if-exceeds-pg-limit table)
+                      schema (str schema "."))))]
     (-> index
         (update :table-name qualify))))
 
