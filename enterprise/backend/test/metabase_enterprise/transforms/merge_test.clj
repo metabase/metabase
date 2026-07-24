@@ -49,6 +49,18 @@
      [2 "created" #t "2026-01-31T21:00:04"]
      [3 "created" #t "2026-01-31T21:00:04"]]]])
 
+;; A unix-timestamp (epoch seconds) checkpoint column: numeric in storage, temporal via its
+;; coercion strategy / effective type (set by the test after sync).
+(mt/defdataset merge-unix-ts-data
+  "An event-log dataset whose checkpoint column is a unix-timestamp integer."
+  [["order_status_unix"
+    [{:field-name "order_id" :base-type :type/Integer}
+     {:field-name "status" :base-type :type/Text}
+     {:field-name "changed_at" :base-type :type/BigInteger}]
+    [[1 "created" 1000000]
+     [2 "created" 2000000]
+     [3 "created" 2000000]]]])
+
 ;; Two key columns (order_id, region) for testing a composite merge key.
 (mt/defdataset merge-composite-test
   "An event log keyed on (order_id, region), for testing a two-column merge key."
@@ -339,6 +351,75 @@
                     (is (= {:by-order {1 "shipped", 2 "created", 3 "created", 4 "created"} :count 4}
                            (read-target))
                         "merge does not propagate source deletes; re-read rows upsert idempotently")))))))))))
+
+(deftest merge-lookback-unix-timestamp-test
+  (testing "a lookback works on a unix-timestamp checkpoint column via its effective type (GDGT-2868)"
+    (mt/test-drivers (test-drivers)
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/dataset merge-unix-ts-data
+          (with-transform-cleanup! [target-table {:type     :table
+                                                  :name     "merge_lookback_unix"
+                                                  :schema   (t2/select-one-fn :schema :model/Table
+                                                                              (mt/id :order_status_unix))
+                                                  :database (mt/id)}]
+            (let [q           (fn [f] (sql.u/quote-name driver/*driver* :field f))
+                  ts-field-id (mt/id :order_status_unix :changed_at)
+                  _           (t2/update! :model/Field ts-field-id
+                                          {:coercion_strategy :Coercion/UNIXSeconds->DateTime
+                                           :effective_type    :type/Instant})
+                  payload     {:name               "Unix Timestamp Lookback Merge"
+                               :source_database_id (mt/id)
+                               :source             {:type  "query"
+                                                    :query {:database (mt/id)
+                                                            :type     :query
+                                                            :query    {:source-table (mt/id :order_status_unix)}}
+                                                    :source-incremental-strategy {:type "checkpoint"
+                                                                                  :checkpoint-filter-field-id ts-field-id
+                                                                                  :lookback {:value 1 :unit "day"}}}
+                               :target             (merge target-table
+                                                          {:type                        "table-incremental"
+                                                           :target-incremental-strategy {:type "merge"
+                                                                                         :unique-key [{:name "order_id"}]}})}
+                  insert!     (fn [rows]
+                                (let [[schema tbl] (t2/select-one-fn (juxt :schema :name) :model/Table
+                                                                     (mt/id :order_status_unix))
+                                      spec         (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+                                      values       (str/join ", " (map (fn [[oid st ts]]
+                                                                         (format "(%d, '%s', %d)" oid st ts))
+                                                                       rows))
+                                      sql          (format "INSERT INTO %s (%s) VALUES %s"
+                                                           (sql.u/quote-name driver/*driver* :table schema tbl)
+                                                           (str/join "," (map q ["order_id" "status" "changed_at"]))
+                                                           values)]
+                                  (driver/execute-raw-queries! driver/*driver* spec [[sql]])))
+                  read-target (fn []
+                                (let [sql  (format "SELECT %s, %s FROM %s"
+                                                   (q "order_id") (q "status")
+                                                   (sql.u/quote-name driver/*driver* :table
+                                                                     (:schema target-table) (:name target-table)))
+                                      rows (-> (qp/process-query {:database (mt/id) :type :native :native {:query sql}})
+                                               :data :rows)]
+                                  {:by-order (into {} (map (fn [[oid st]] [(long oid) st])) rows)
+                                   :count    (count rows)}))]
+              (mt/with-temp [:model/Transform transform payload]
+                (testing "first run builds the full target and stores a temporal watermark"
+                  (transforms.execute/execute! transform {:run-method :manual})
+                  (transforms.tu/wait-for-table (:name target-table) 10000)
+                  (is (= {:by-order {1 "created", 2 "created", 3 "created"} :count 3}
+                         (read-target)))
+                  (let [wm (t2/select-one-fn :last_checkpoint_value :model/Transform (:id transform))]
+                    (is (re-find #"T" (str wm))
+                        "the watermark encodes as a temporal value, not the raw epoch number")))
+                (testing "a late-arriving epoch inside the lookback window is upserted on rerun"
+                  ;; watermark = epoch 2000000; a 1-day lookback rescans from 1913600. Order 4's
+                  ;; epoch 1950000 is behind the watermark but inside the window; order 1's
+                  ;; original row (1000000) is outside it.
+                  (insert! [[1 "shipped" 2100000] [4 "created" 1950000]])
+                  (transforms.execute/execute! (t2/select-one :model/Transform (:id transform))
+                                               {:run-method :manual})
+                  (is (= {:by-order {1 "shipped", 2 "created", 3 "created", 4 "created"} :count 4}
+                         (read-target))
+                      "late order 4 picked up, order 1 upserted, re-read rows not duplicated"))))))))))
 
 (deftest merge-composite-key-test
   (testing "a merge transform can upsert on a two-column key"

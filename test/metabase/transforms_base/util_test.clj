@@ -5,7 +5,8 @@
    [metabase.config.core :as config]
    [metabase.sync.sync :as sync]
    [metabase.test :as mt]
-   [metabase.transforms-base.util :as transforms-base.u]))
+   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
 
