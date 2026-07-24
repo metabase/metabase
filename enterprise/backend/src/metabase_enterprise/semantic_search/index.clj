@@ -1185,15 +1185,19 @@
         search-string (:search-string search-context)]
     (if (str/blank? search-string)
       {:results [] :raw-count 0}
-      (do
+      (let [index-name  (schema-qualified-index-name index (hnsw-index-name index))
+            index-state (when (contains? search.config/hnsw-index-backed-strategies
+                                         (vector-search-strategy search-context))
+                          (semantic.util/index-state db index-name))
+            search-context (cond-> search-context
+                             (= :building index-state) (assoc :vector-search-strategy :brute-force))]
         ;; `:vector-search-allow-missing-index?` is a deliberate opt-out for callers that want the inner
         ;; query to run without the HNSW index (e.g. the strategy matrix test probing the exact seq-scan
         ;; path). A concurrent build also uses that exact path until PostgreSQL marks the index ready; an
         ;; absent or abandoned invalid index fails fast.
         (when (and (contains? search.config/hnsw-index-backed-strategies (vector-search-strategy search-context))
                    (not (:vector-search-allow-missing-index? search-context))
-                   (semantic.util/index-needs-build?
-                    db (schema-qualified-index-name index (hnsw-index-name index))))
+                   (contains? #{nil :invalid} index-state))
           (throw (ex-info (str "HNSW-index-backed vector-search strategy requested but no usable HNSW index exists. "
                                "The index is absent or was abandoned invalid. It will be rebuilt by the next "
                                "maintenance pass; retry shortly, or pass :vector-search-allow-missing-index? true "
