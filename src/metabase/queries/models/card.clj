@@ -1033,9 +1033,7 @@
                                                  :creator_id (:id creator)
                                                  :parameters (or parameters [])
                                                  :parameter_mappings (or parameter_mappings [])
-                                                 ;; workspace copy-on-write clones pass the source's entity_id so the
-                                                 ;; copy keeps its git identity (uniqueness is per workspace)
-                                                 :entity_id (or (:entity_id input-card-data) (u/generate-nano-id)))
+                                                 :entity_id (u/generate-nano-id))
                                                 (cond-> (nil? type)
                                                   (assoc :type :question))
                                                 ;; Strict so a malformed query throws here instead of being silently
@@ -1626,9 +1624,13 @@
 
 (defmethod workspaces/clone-entity! :model/Card
   [_model id]
-  (let [source (t2/select-one :model/Card :id id)]
-    (:id (create-card! (select-keys source
-                                    [:entity_id :name :description :display :dataset_query :visualization_settings
-                                     :type :parameters :parameter_mappings :collection_id :database_id
-                                     :table_id :query_type :result_metadata :cache_ttl])
-                       @api/*current-user*))))
+  (let [source  (t2/select-one :model/Card :id id)
+        clone-id (:id (create-card! (select-keys source
+                                                 [:name :description :display :dataset_query :visualization_settings
+                                                  :type :parameters :parameter_mappings :collection_id :database_id
+                                                  :table_id :query_type :result_metadata :cache_ttl])
+                                    @api/*current-user*))]
+    ;; the copy keeps the source's git identity — entity_id uniqueness is per workspace, and the
+    ;; clone is always inserted with the active workspace's workspace_id
+    (t2/update! :model/Card clone-id {:entity_id (:entity_id source)})
+    clone-id))
