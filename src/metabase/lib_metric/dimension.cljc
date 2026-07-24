@@ -31,9 +31,6 @@
    (dissoc opts :lib/uuid :effective-type :base-type)
    id-or-name])
 
-;;; Backwards-compatible internal alias.
-(def ^:private normalize-target field-ref->key)
-
 (defn targets-equal?
   "Compare two target refs for equality, ignoring transient options like :lib/uuid."
   [target-a target-b]
@@ -106,10 +103,10 @@
 (defn- find-orphaned-dimensions
   "Find persisted dimensions whose targets no longer exist in computed pairs."
   [computed-pairs persisted-dims persisted-mappings]
-  (let [computed-targets    (set (map (comp normalize-target :target :mapping) computed-pairs))
+  (let [computed-targets    (set (map (comp field-ref->key :target :mapping) computed-pairs))
         persisted-dims-by-id (m/index-by :id persisted-dims)]
     (->> persisted-mappings
-         (remove #(contains? computed-targets (normalize-target (:target %))))
+         (remove #(contains? computed-targets (field-ref->key (:target %))))
          (keep (fn [orphan-mapping]
                  (when-let [dim (get persisted-dims-by-id (:dimension-id orphan-mapping))]
                    (-> dim
@@ -151,13 +148,13 @@
   [computed-pairs     :- [:sequential ::lib-metric.schema/computed-pair]
    persisted-dims     :- [:sequential ::lib-metric.schema/persisted-dimension]
    persisted-mappings :- [:maybe [:sequential ::lib-metric.schema/dimension-mapping]]]
-  (let [computed-targets (into #{} (map (comp normalize-target :target :mapping))
+  (let [computed-targets (into #{} (map (comp field-ref->key :target :mapping))
                                computed-pairs)
         target-by-dim-id (into {} (map (juxt :dimension-id :target))
                                (or persisted-mappings []))
         active?          #(some->> (:id %)
                                    (get target-by-dim-id)
-                                   normalize-target
+                                   field-ref->key
                                    (contains? computed-targets))]
     {:dimensions         (perf/mapv (fn [dim]
                                       (if (active? dim)
@@ -201,9 +198,9 @@
   "Computed dimension pairs whose target is not already mapped by one of `persisted-mappings` — i.e. the columns
   available to add to the curated set."
   [computed-pairs persisted-mappings]
-  (let [mapped-target? (into #{} (map (comp normalize-target :target)) persisted-mappings)]
+  (let [mapped-target? (into #{} (map (comp field-ref->key :target)) persisted-mappings)]
     (into []
-          (remove #(-> % :mapping :target normalize-target mapped-target?))
+          (remove #(-> % :mapping :target field-ref->key mapped-target?))
           computed-pairs)))
 
 (defn add-dimensions
@@ -296,7 +293,7 @@
   (not= (dimensions-set old-persisted) (dimensions-set new-persisted)))
 
 (defn- mappings-set [mappings]
-  (into #{} (map #(update % :target normalize-target))
+  (into #{} (map #(update % :target field-ref->key))
         mappings))
 
 (mu/defn mappings-changed? :- :boolean

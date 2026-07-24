@@ -451,10 +451,13 @@
             a        (:id (first added))
             b        (:id (second added))
             defaults (fn [resp] (into #{} (comp (filter :default) (map :id)) resp))]
+        (t2/update! :model/Card (:id metric)
+                    {:dimensions (mapv #(assoc % :default true)
+                                       (t2/select-one-fn :dimensions :model/Card :id (:id metric)))})
         (is (= #{a} (defaults (mt/user-http-request :crowberto :post 200
                                                     (str "metric/" (:id metric) "/dimension/set-default")
                                                     {:dimension_id a})))
-            "A becomes the sole default")
+            "setting A repairs multiple persisted defaults")
         (is (= #{b} (defaults (mt/user-http-request :crowberto :post 200
                                                     (str "metric/" (:id metric) "/dimension/set-default")
                                                     {:dimension_id b})))

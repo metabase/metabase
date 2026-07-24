@@ -205,3 +205,13 @@
       (mt/with-temp-vals-in-db :model/Field (mt/id :orders :user_id) {:visibility_type :sensitive}
         (mt/with-test-user :rasta
           (is (false? (permissions.metric/can-use-dimension-mapping? mapping))))))))
+
+(deftest invalid-dimension-mapping-targets-test
+  (testing "Unresolved and malformed field targets fail closed (UXW-4769)"
+    (let [field-id (mt/id :orders :user_id)]
+      (doseq [target [[:field {} "USER_ID"]
+                      [:field {:source-field field-id} "USER_ID"]
+                      [:field {} field-id :extra]
+                      [:field {}]
+                      [:field [] field-id]]]
+        (is (false? (permissions.metric/can-use-dimension-mapping? {:target target})))))))

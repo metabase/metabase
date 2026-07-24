@@ -884,13 +884,6 @@
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
-(defn- card-for-query
-  [card-id dashboard-id]
-  (let [card (api/check-404 (t2/select-one :model/Card card-id))]
-    (when dashboard-id
-      (api/read-check :model/Dashboard dashboard-id))
-    card))
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -906,7 +899,9 @@
        [:collection_preview {:optional true} [:maybe :boolean]]
        [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]]]
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)
-        card             (card-for-query resolved-card-id dashboard_id)]
+        card             (api/check-404 (t2/select-one :model/Card resolved-card-id))]
+    (when dashboard_id
+      (api/read-check :model/Dashboard dashboard_id))
     (qp.card/process-query-for-card
      card :api
      :parameters parameters
@@ -1031,7 +1026,9 @@
     :or   {ignore_cache false}} :- [:map
                                     [:ignore_cache {:optional true} [:maybe :boolean]]
                                     [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (let [card (card-for-query card-id dashboard_id)]
+  (let [card (api/check-404 (t2/select-one :model/Card card-id))]
+    (when dashboard_id
+      (api/read-check :model/Dashboard dashboard_id))
     (qp.card/process-query-for-card card :api
                                     :parameters   parameters
                                     :qp           qp.pivot/run-pivot-query

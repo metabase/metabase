@@ -65,28 +65,26 @@
    Returns nil if the target is not a field ref or uses a name instead of ID."
   [target]
   (when (and (vector? target)
-             (= :field (first target))
-             (>= (count target) 3))
-    (let [id-or-name (nth target 2)]
-      (when (pos-int? id-or-name)
+             (= 3 (count target)))
+    (let [[tag options id-or-name] target]
+      (when (and (= tag :field)
+                 (map? options)
+                 (pos-int? id-or-name))
         id-or-name))))
 
 (defn can-use-dimension-mapping?
   "Whether the current user can use a dimension mapping as a query breakout."
   [{:keys [target]}]
-  (let [[tag options id-or-name] target
+  (let [[_ options]              target
+        target-field-id         (target->field-id target)
         source-field-id         (:source-field options)
         source-field-valid?     (or (not (contains? options :source-field))
                                     (pos-int? source-field-id))
-        target-valid?           (or (pos-int? id-or-name) (string? id-or-name))
         field-ids               (cond-> #{}
-                                  (pos-int? id-or-name)     (conj id-or-name)
+                                  target-field-id           (conj target-field-id)
                                   (pos-int? source-field-id) (conj source-field-id))]
-    (and (= tag :field)
-         (map? options)
-         (= 3 (count target))
+    (and (pos-int? target-field-id)
          source-field-valid?
-         target-valid?
          (let [field-info  (batch-field-info field-ids)
                table-ids   (into #{} (keep :table_id) (vals field-info))
                table->db    (batch-table-db-ids table-ids)
