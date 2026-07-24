@@ -19,9 +19,9 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
    [metabase.lib.core :as lib]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
@@ -47,46 +47,52 @@
 
 (deftest ^:parallel fix-order-bys-test
   (testing "Remove order-by from joins"
-    (let [original {:joins [{:alias        "C3"
-                             :source-query {:source-table 1
-                                            :order-by     [[:asc [:field 2 nil]]]}}
-                            {:alias        "C4"
-                             :source-query {:source-table 1
-                                            :order-by     [[:asc [:field 2 nil]]]
-                                            :limit        10}}]}
-          expected {:joins [{:alias        "C3"
-                             :source-query {:source-table 1}}
-                            {:alias        "C4"
-                             :source-query {:source-table 1
-                                            :order-by     [[:asc [:field 2 nil]]]
-                                            :limit        10}}]}]
+    (let [original [{:joins [{:alias  "C3"
+                              :stages [{:source-table 1
+                                        :order-by     [[:asc [:field 2 nil]]]}]}
+                             {:alias  "C4"
+                              :stages [{:source-table 1
+                                        :order-by     [[:asc [:field 2 nil]]]
+                                        :limit        10}]}]}]
+          expected [{:joins [{:alias  "C3"
+                              :stages [{:source-table 1}]}
+                             {:alias  "C4"
+                              :stages [{:source-table 1
+                                        :order-by     [[:asc [:field 2 nil]]]
+                                        :limit        10}]}]}]]
       (is (= expected
-             (#'sqlserver/fix-order-bys original)))
-      (testing "Inside `:source-query`"
-        (is (= {:source-query expected}
-               (#'sqlserver/fix-order-bys {:source-query original})))))))
+             (#'sqlserver/fix-order-bys original false)))
+      (testing "Inside a non-final stage"
+        (is (= (conj expected {})
+               (#'sqlserver/fix-order-bys (conj original {}) false)))))))
 
 (deftest ^:parallel fix-order-bys-test-2
-  (testing "Add limit for :source-query order bys"
+  (testing "Add limit for non-final stage order bys"
     (mt/$ids nil
       (let [original {:source-table 1
                       :order-by     [[:asc 2]]}]
-        (testing "Not in a source query -- don't do anything"
+        (testing "Final stage -- don't do anything"
           (is (= original
-                 (#'sqlserver/fix-order-bys original))))
-        (testing "In source query -- add `:limit`"
-          (is (= {:source-query (assoc original :limit limit/absolute-max-results)}
-                 (#'sqlserver/fix-order-bys {:source-query original}))))
-        (testing "In source query in source query-- add `:limit` at both levels"
-          (is (= {:source-query {:source-query (assoc original :limit limit/absolute-max-results)
-                                 :order-by     [[:asc [:field 1]]]
-                                 :limit        limit/absolute-max-results}}
-                 (#'sqlserver/fix-order-bys {:source-query {:source-query original
-                                                            :order-by     [[:asc [:field 1]]]}}))))
-        (testing "In source query inside source query for join -- add `:limit`"
-          (is (= {:joins [{:source-query {:source-query (assoc original :limit limit/absolute-max-results)}}]}
+                 (first (#'sqlserver/fix-order-bys [original] false)))))
+        (testing "Non-final stage -- add `:limit`"
+          (is (= [(assoc original :limit driver-api/absolute-max-results)
+                  {}]
+                 (#'sqlserver/fix-order-bys [original {}] false))))
+        (testing "Nested non-final stages -- add `:limit` at both levels"
+          (is (= [(assoc original :limit driver-api/absolute-max-results)
+                  {:order-by [[:asc [:field 1]]]
+                   :limit    driver-api/absolute-max-results}
+                  {}]
+                 (#'sqlserver/fix-order-bys [original
+                                             {:order-by [[:asc [:field 1]]]}
+                                             {}]
+                                            false))))
+        (testing "Non-final stage inside join -- add `:limit`"
+          (is (= [{:joins [{:stages [(assoc original :limit driver-api/absolute-max-results)
+                                     {}]}]}]
                  (#'sqlserver/fix-order-bys
-                  {:joins [{:source-query {:source-query original}}]}))))))))
+                  [{:joins [{:stages [original {}]}]}]
+                  false))))))))
 
 ;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
 
@@ -382,9 +388,11 @@
   (mt/test-driver :sqlserver
     (testing "Should use efficient functions like year() for date bucketing (#9934)"
       (letfn [(query-with-bucketing [unit]
-                (mt/mbql-query checkins
-                  {:aggregation [[:count]]
-                   :breakout    [[:field $date {:temporal-unit unit}]]}))]
+                (let [mp    (mt/metadata-provider)
+                      date  (lib.metadata/field mp (mt/id :checkins :date))]
+                  (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib/with-temporal-bucket date (keyword unit))))))]
         (doseq [[unit {:keys [expected-sql expected-rows]}]
                 {"year"
                  {:expected-sql
@@ -476,10 +484,18 @@
 (deftest ^:parallel truncated-datetime-still-datetime-test
   (mt/test-driver :sqlserver
     (testing "When truncating a `:type/DateTime` to a date-sized unit, return datetime"
-      (letfn [(query-with-bucketing [unit]
-                (mt/mbql-query orders
-                  {:aggregation [[:count]]
-                   :breakout    [[:field $created_at {:temporal-unit unit}]]}))]
+      (letfn [(orders-query-with-bucketing [unit]
+                (let [mp         (mt/metadata-provider)
+                      created-at (lib.metadata/field mp (mt/id :orders :created_at))]
+                  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib/with-temporal-bucket created-at (keyword unit))))))
+              (checkins-query-with-bucketing [unit]
+                (let [mp   (mt/metadata-provider)
+                      date (lib.metadata/field mp (mt/id :checkins :date))]
+                  (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib/with-temporal-bucket date (keyword unit))))))]
         (doseq [[unit {:keys [expected-sql expected-rows]}]
                 {"year"
                  {:expected-sql
@@ -556,40 +572,51 @@
                    ["2013-01-22T00:00:00Z" 1]
                    ["2013-01-23T00:00:00Z" 1]]}}]
           (testing (format "\nUnit = %s\n" unit)
-            (testing "Should generate the correct SQL query"
-              (is (= expected-sql
-                     (pretty-sql (:query (qp.compile/compile (query-with-bucketing unit)))))))
-            (testing "Should still return correct results"
-              (is (= expected-rows
-                     (take 5 (mt/rows
-                              (mt/run-mbql-query checkins
-                                {:aggregation [[:count]]
-                                 :breakout    [[:field $date {:temporal-unit unit}]]})))))
-              (is (= [:type/DateTime :type/Integer]
-                     (->> {:aggregation [[:count]]
-                           :breakout    [[:field $created_at {:temporal-unit unit}]]}
-                          (mt/run-mbql-query orders)
-                          :data
-                          :results_metadata
-                          :columns
-                          (map :base_type)))))))))))
+            (let [orders-query   (orders-query-with-bucketing unit)
+                  checkins-query (checkins-query-with-bucketing unit)]
+              (testing "Should generate the correct SQL query"
+                (is (= expected-sql
+                       (pretty-sql (:query (qp.compile/compile orders-query))))))
+              (testing "Should still return correct results"
+                (is (= expected-rows
+                       (take 5 (mt/rows (qp/process-query checkins-query)))))
+                (is (= [:type/DateTime :type/Integer]
+                       (->> orders-query
+                            qp/process-query
+                            :data
+                            :results_metadata
+                            :columns
+                            (map :base_type))))))))))))
 
 (deftest ^:parallel top-level-boolean-expressions-test
   (mt/test-driver :sqlserver
     (testing "BIT values like 0 and 1 get converted to equivalent boolean expressions"
-      (let [true-value  [:value true {:base_type :type/Boolean}]
-            false-value [:value false {:base_type :type/Boolean}]]
-        (letfn [(orders-query [args]
-                  (-> (mt/mbql-query orders
-                        {:expressions {"MyTrue"  true-value
-                                       "MyFalse" false-value}
-                         :fields      [[:expression "MyTrue"]]
-                         :limit       1})
-                      (update :query merge args)))]
+      (let [opts {:base-type :type/Boolean :effective-type :type/Boolean}
+            bool-val  (fn [b] (sql.qp/mbql-clause-with-opts :sqlserver :value opts b))]
+        (letfn [(expression-ref [expression-name]
+                  (sql.qp/mbql-clause :sqlserver :expression expression-name))
+                (orders-query [{:keys [expressions fields filters]
+                                :or {expressions [["MyTrue" (bool-val true)] ["MyFalse" (bool-val false)]]
+                                     fields ["MyTrue"]}}]
+                  (let [returned-expression? (fn [[expr-name _]] ((set fields) expr-name))
+                        returned-exprs (filter returned-expression? expressions)
+                        hidden-exprs (remove returned-expression? expressions)
+                        mp    (mt/metadata-provider)
+                        query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        query (reduce (fn [query [expression-name expression]]
+                                        (lib/expression query expression-name expression))
+                                      query
+                                      returned-exprs)
+                        query (lib/with-fields query (mapv #(lib/expression-ref query %) fields))
+                        query (reduce (fn [query [expr-name expr]]
+                                        (lib.expression/expression query -1 expr-name expr {:add-to-fields? false}))
+                                      query
+                                      hidden-exprs)]
+                    (-> (reduce lib/filter query filters) (lib/limit 1))))]
           (doseq [{:keys [desc query expected-sql expected-types expected-rows]}
                   [{:desc "true filter"
                     :query
-                    (orders-query {:filter true-value})
+                    (orders-query {:filters [(bool-val true)]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -601,7 +628,7 @@
                     :expected-rows  [[true]]}
                    {:desc "false filter"
                     :query
-                    (orders-query {:filter false-value})
+                    (orders-query {:filters [(bool-val false)]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -613,7 +640,7 @@
                     :expected-rows  []}
                    {:desc "not filter"
                     :query
-                    (orders-query {:filter [:not false-value]})
+                    (orders-query {:filters [(sql.qp/mbql-clause :sqlserver :not (bool-val false))]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -625,11 +652,13 @@
                     :expected-rows  [[true]]}
                    {:desc "nested logical operators"
                     :query
-                    (orders-query {:filter [:and
-                                            [:not false-value]
-                                            [:or
-                                             [:expression "MyFalse"]
-                                             [:expression "MyTrue"]]]})
+                    (orders-query {:filters [(sql.qp/mbql-clause
+                                              :sqlserver :and
+                                              (sql.qp/mbql-clause :sqlserver :not (bool-val false))
+                                              (sql.qp/mbql-clause
+                                               :sqlserver :or
+                                               (expression-ref "MyFalse")
+                                               (expression-ref "MyTrue")))]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -644,27 +673,31 @@
                     :expected-types [:type/Boolean]
                     :expected-rows  [[true]]}
                    {:desc "case expression"
-                    :query
-                    (orders-query {:expressions {"MyTrue"  true-value
-                                                 "MyFalse" false-value
-                                                 "MyCase"  [:case [[[:expression "MyFalse"] false-value]
-                                                                   [[:expression "MyTrue"]  true-value]]]}
-                                   :fields [[:expression "MyCase"]]})
+                    :query (orders-query
+                            {:expressions [["MyTrue" (bool-val true)]
+                                           ["MyFalse" (bool-val false)]
+                                           ["MyCase" (sql.qp/mbql-clause
+                                                      :sqlserver :case
+                                                      [[(expression-ref "MyFalse") (bool-val false)]
+                                                       [(expression-ref "MyTrue") (bool-val true)]])]]
+                             :fields      ["MyCase" "MyTrue" "MyFalse"]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CASE"
                      "    WHEN 0 = 1 THEN 0"
                      "    WHEN 1 = 1 THEN 1"
-                     "  END AS MyCase"
+                     "  END AS MyCase,"
+                     "  CAST(1 AS bit) AS MyTrue,"
+                     "  CAST(0 AS bit) AS MyFalse"
                      "FROM"
                      "  dbo.orders"]
-                    :expected-types [:type/Integer]
-                    :expected-rows  [[1]]}
+                    :expected-types [:type/Integer :type/Boolean :type/Boolean]
+                    :expected-rows  [[1 true false]]}
                    ;; only top-level booleans should be transformed; otherwise an expression like 1 = 1 gets compiled
                    ;; to (1 = 1) = (1 = 1)
                    {:desc "non-top-level booleans"
                     :query
-                    (orders-query {:filter [:= true-value true-value]})
+                    (orders-query {:filters [(sql.qp/mbql-clause :sqlserver := (bool-val true) (bool-val true))]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -813,9 +846,10 @@
                                           :from   [:attempts]
                                           :where  (sql.qp/->honeysql
                                                    :sqlserver
-                                                   [:=
-                                                    [:field (mt/id :attempts :datetime) nil]
-                                                    (sql.qp/compiled [:raw "?"])])})))]
+                                                   (sql.qp/mbql-clause
+                                                    :sqlserver :=
+                                                    (sql.qp/mbql-clause :sqlserver :field (mt/id :attempts :datetime))
+                                                    (sql.qp/compiled [:raw "?"])))})))]
           (doseq [param [datetime-string datetime-localdatetime]
                   :let  [query [base-query param]]]
             (testing (pr-str query)
@@ -854,20 +888,22 @@
   (driver/with-driver :sqlserver
     (qp.store/with-metadata-provider (mt/id)
       (binding [sql.qp/*inner-query* {:expressions
-                                      {"NameEquals"
-                                       [:=
-                                        [:field
-                                         "LiteralString"
+                                      [(sql.qp/mbql-clause-with-opts
+                                        :sqlserver := {:lib/expression-name "NameEquals"}
+                                        (sql.qp/mbql-clause-with-opts
+                                         :sqlserver :field
                                          {:base-type                      :type/Text
                                           :join-alias                     "JoinedCategories"
                                           driver-api/qp.add.source-table  "JoinedCategories"
                                           driver-api/qp.add.source-alias  "LiteralString"
-                                          driver-api/qp.add.desired-alias "JoinedCategories__LiteralString"}]
-                                        [:field
-                                         (mt/id :venues :name)
+                                          driver-api/qp.add.desired-alias "JoinedCategories__LiteralString"}
+                                         "LiteralString")
+                                        (sql.qp/mbql-clause-with-opts
+                                         :sqlserver :field
                                          {driver-api/qp.add.source-table  (mt/id :venues)
                                           driver-api/qp.add.source-alias  "name"
-                                          driver-api/qp.add.desired-alias "name"}]]}}]
+                                          driver-api/qp.add.desired-alias "name"}
+                                         (mt/id :venues :name)))]}]
         (is (= {:where
                 [:=
                  [::h2x/identifier :field ["JoinedCategories" "LiteralString"]]
@@ -876,11 +912,14 @@
                   {:database-type "varchar"}]]}
                (sql.qp/apply-top-level-clause
                 :sqlserver
-                :filter
+                :filters
                 {}
-                {:filter [:expression "NameEquals" {:base-type                      :type/Boolean
-                                                    driver-api/qp.add.source-table  driver-api/qp.add.none
-                                                    driver-api/qp.add.desired-alias nil}]})))))))
+                {:filters [(sql.qp/mbql-clause-with-opts
+                            :sqlserver :expression
+                            {:base-type :type/Boolean
+                             driver-api/qp.add.source-table  driver-api/qp.add.none
+                             driver-api/qp.add.desired-alias nil}
+                            "NameEquals")]})))))))
 
 (mt/defdataset ^:private bigint-identity-data
   [["bigint_identity_test"

@@ -23,7 +23,7 @@
 (deftest ^:parallel boolean->comparison-test
   (are [clause] (binding [sql.qp/*inner-query* (:query (basic-filter-query clause))]
                   (= [:= clause true]
-                     (sql.qp.boolean-to-comparison/boolean->comparison clause)))
+                     (sql.qp.boolean-to-comparison/boolean->comparison :sql clause)))
     false
     true
     true-value
@@ -37,7 +37,7 @@
 (deftest ^:parallel non-boolean->comparison-test
   (are [clause] (binding [sql.qp/*inner-query* (:query (basic-filter-query clause))]
                   (= clause
-                     (sql.qp.boolean-to-comparison/boolean->comparison clause)))
+                     (sql.qp.boolean-to-comparison/boolean->comparison :sql clause)))
     0
     1
     "not a boolean"
@@ -48,19 +48,19 @@
 
 (deftest ^:parallel boolean-expression-clause?-test
   (are [clause] (binding [sql.qp/*inner-query* (:query (basic-filter-query clause))]
-                  (sql.qp.boolean-to-comparison/boolean-expression-clause? clause))
+                  (sql.qp.boolean-to-comparison/boolean-expression-clause? :sql clause))
     [:expression "T"]
     [:expression "F"]))
 
 (deftest ^:parallel nested-boolean-expression-clause?-test
   (are [clause] (binding [sql.qp/*inner-query* (:query (nested-filter-query clause))]
-                  (sql.qp.boolean-to-comparison/boolean-expression-clause? clause))
+                  (sql.qp.boolean-to-comparison/boolean-expression-clause? :sql clause))
     [:expression "T"]
     [:expression "F"]))
 
 (deftest ^:parallel non-boolean-expression-clause?-test
   (are [clause] (binding [sql.qp/*inner-query* (:query (basic-filter-query clause))]
-                  (not (sql.qp.boolean-to-comparison/boolean-expression-clause? clause)))
+                  (not (sql.qp.boolean-to-comparison/boolean-expression-clause? :sql clause)))
     0
     1
     "not a boolean"
@@ -73,7 +73,7 @@
 
 (deftest ^:parallel case-boolean->comparison
   (are [clause expected] (= expected
-                            (sql.qp.boolean-to-comparison/case-boolean->comparison clause))
+                            (sql.qp.boolean-to-comparison/case-boolean->comparison :sql clause))
     [:case
      [[true true]
       [true-value true]
