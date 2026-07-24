@@ -19,6 +19,7 @@
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.walk :as lib.walk]
    [metabase.lib.walk.util :as lib.walk.util]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
@@ -289,6 +290,53 @@
    (fn [card-id]
      (lib.metadata/card query card-id))
    (native-query-card-ids query)))
+
+(defn- regex-escape
+  [s]
+  (str/replace s #"[.*+?^${}()|\[\]\\]" (fn [c] (str "\\" c))))
+
+(defn- replace-tag-in-text
+  [text old-name new-name]
+  (str/replace text
+               (re-pattern (str "\\{\\{\\s*" (regex-escape old-name) "\\s*\\}\\}"))
+               ;; function replacement so a `$` in the new name can't be misread as a match reference
+               (constantly (str "{{" new-name "}}"))))
+
+(defn- rename-tag
+  "Rename a template tag, replacing its `:display-name` only if it was the humanized default for the
+  old name (same rule as [[rename-template-tag]])."
+  [{tag-name :name, :keys [display-name], :as tag} new-name]
+  (cond-> (assoc tag :name new-name)
+    (= display-name (u.humanization/name->human-readable-name :simple tag-name))
+    (assoc :display-name (u.humanization/name->human-readable-name :simple new-name))))
+
+(mu/defn replace-template-tag-names :- ::lib.schema/query
+  "Apply `renames`, a map of old tag name => new tag name, across the query's native stages: each
+  affected tag is renamed (a default display name follows the rename, a customized one is kept) and
+  its `{{...}}` references in the raw query text are rewritten to match. Tags whose names collide
+  after renaming are collapsed into one; the first occurrence wins."
+  [query   :- ::lib.schema/query
+   renames :- [:map-of :string :string]]
+  (if (empty? renames)
+    query
+    (lib.walk/walk-stages
+     query
+     (fn [_query _path {stage-tags :template-tags, sql :native, :as stage}]
+       (when (and (= (:lib/type stage) :mbql.stage/native)
+                  (string? sql))
+         (let [stage-renames (select-keys renames (keys stage-tags))]
+           (when (seq stage-renames)
+             (-> stage
+                 (update :template-tags
+                         (fn [tags]
+                           (reduce-kv (fn [acc tag-name tag]
+                                        (let [new-name (get stage-renames tag-name tag-name)]
+                                          (cond-> acc
+                                            (not (contains? acc new-name))
+                                            (assoc new-name (rename-tag tag new-name)))))
+                                      {}
+                                      tags)))
+                 (update :native #(reduce-kv replace-tag-in-text % stage-renames))))))))))
 
 (mu/defn native-query-snippet-ids :- [:maybe [:set {:min 1} ::lib.schema.id/native-query-snippet]]
   "Returns the card IDs from the template tags of the native query of `query`."
