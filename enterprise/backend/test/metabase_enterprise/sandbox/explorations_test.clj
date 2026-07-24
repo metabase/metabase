@@ -23,6 +23,7 @@
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
@@ -38,6 +39,20 @@
   []
   {:gtaps      {:venues {:remappings {"price" [:dimension [:field (mt/id :venues :price) nil]]}}}
    :attributes {"price" "1"}})
+
+(defn- venues-token-for-lens
+  "The token [[metabase.permissions.data-access-token/data-access-token]] builds over the venues table
+  when the three per-dimension contributors yield these raw values.
+
+  A token stores only a one-way digest of each contributor's value, so a test can't assert \"this
+  token is the lens `{:role \\\"readonly\\\"}`\" by writing that lens down as the expected value — it
+  has to digest the same lens the same way and compare that."
+  [{:keys [sandbox impersonation routing]}]
+  (dynamic-redefs/with-dynamic-fn-redefs
+    [data-access-token/sandbox-token-for-table    (fn [_table-id] sandbox)
+     data-access-token/impersonation-token-for-db (fn [_db-id] impersonation)
+     data-access-token/routing-token-for-db       (fn [_db-id] routing)]
+    (data-access-token/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})))
 
 (defn- fake-result-bytes []
   (qp/do-with-serialization
@@ -316,6 +331,22 @@
             (is (not (str/includes? (:error_message body) "SECRET_INTERNAL_TABLE"))
                 "the creator's raw error (table/column names, SQL) must never reach the client")))))))
 
+(deftest sandbox-token-does-not-store-raw-attribute-values-test
+  (testing "a token is persisted as plaintext EDN on `stored_result.data_access_token`, and those rows
+            outlive the login attributes they were derived from, so the resolved attribute values a
+            sandbox contributor carries must not survive into the stored token"
+    (met/with-gtaps-for-user! :rasta (price-sandbox)
+      (let [raw   (sandbox.field-values/sandbox-token-for-table (mt/id :venues))
+            token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
+        (testing "the raw contributor really does carry the attribute value we expect to be hidden"
+          (is (= {"price" "1"} (last raw))))
+        (testing "the stored token is the digest of exactly that lens"
+          (is (= (venues-token-for-lens {:sandbox raw}) token)))
+        (testing "neither the attribute name nor the raw lens survives in it"
+          (let [printed (pr-str token)]
+            (is (not (str/includes? printed "price")))
+            (is (not (str/includes? printed (pr-str raw))))))))))
+
 (deftest sandbox-token-fails-closed-when-attributes-missing-test
   (testing "when the enforcement guard says the user IS sandboxed but the attribute lookup returns nil,
             the token must NOT collapse to nil (the compatibility gate reads nil as 'unrestricted')"
@@ -323,19 +354,19 @@
       (with-redefs [sandbox.field-values/field->sandbox-attributes-for-current-user (constantly nil)]
         (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
           (testing "the sandbox dimension is present, scoped to the user (fail closed)"
-            (is (= {:sandbox {(mt/id :venues) [::sandbox.field-values/indeterminate-sandbox
-                                               (mt/user->id :rasta)]}}
+            (is (= (venues-token-for-lens
+                    {:sandbox [::sandbox.field-values/indeterminate-sandbox (mt/user->id :rasta)]})
                    token)))
           (testing "an indeterminate viewer cannot see an unrestricted creator's snapshot"
             (is (false? (perms/data-access-compatible? {} token))))
           (testing "an indeterminate viewer cannot see a genuinely-sandboxed creator's snapshot"
             (is (false? (perms/data-access-compatible?
-                         {:sandbox {(mt/id :venues) [1 "2026-01-01" {"price" "1"}]}}
+                         (venues-token-for-lens {:sandbox [1 "2026-01-01" {"price" "1"}]})
                          token))))
           (testing "another user's indeterminate token does not match this one"
             (is (false? (perms/data-access-compatible?
-                         {:sandbox {(mt/id :venues) [::sandbox.field-values/indeterminate-sandbox
-                                                     (mt/user->id :lucky)]}}
+                         (venues-token-for-lens
+                          {:sandbox [::sandbox.field-values/indeterminate-sandbox (mt/user->id :lucky)]})
                          token)))))))))
 
 (deftest impersonation-token-for-db-producer-test
@@ -344,8 +375,12 @@
                                             :attributes     {"db_role" "readonly"}}
       (testing "an impersonated user's token carries the resolved database role"
         (is (= {:role "readonly"} (data-access-token/impersonation-token-for-db (mt/id))))
-        (is (= {:impersonation {(mt/id) {:role "readonly"}}}
-               (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}}))))
+        (is (= (venues-token-for-lens {:impersonation {:role "readonly"}})
+               (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})))
+        (testing "the role name itself is digested, not carried into the stored token"
+          (is (not (str/includes? (pr-str (perms/data-access-token {:database-id (mt/id)
+                                                                    :table-ids   #{(mt/id :venues)}}))
+                                  "readonly")))))
       (testing "a superuser is not impersonated: no token"
         (request/with-current-user (mt/user->id :crowberto)
           (is (nil? (data-access-token/impersonation-token-for-db (mt/id)))))))))
@@ -375,7 +410,7 @@
       (sandbox.tu/with-user-attributes! :rasta {"db_name" "sr-dest-a"}
         (mt/with-test-user :rasta
           (is (= {:destination-db-id dest-id} (data-access-token/routing-token-for-db (mt/id))))
-          (is (= {:routing {(mt/id) {:destination-db-id dest-id}}}
+          (is (= (venues-token-for-lens {:routing {:destination-db-id dest-id}})
                  (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}}))))))
     (testing "the __METABASE_ROUTER__ sentinel resolves to the router itself: no token"
       (sandbox.tu/with-user-attributes! :rasta {"db_name" "__METABASE_ROUTER__"}
@@ -413,7 +448,7 @@
                     (request/with-current-user (mt/user->id :rasta)
                       (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})))]
         (testing "the captured creator lens carries the routing dimension"
-          (is (= {:routing {(mt/id) {:destination-db-id dest-a-id}}} token)))
+          (is (= (venues-token-for-lens {:routing {:destination-db-id dest-a-id}}) token)))
         (with-done-exploration!
           {:creator-id (mt/user->id :lucky) :data-access-token token}
           (fn [{:keys [query]}]
@@ -567,9 +602,12 @@
                                   (queries/viewer-can-view-cached-result? snapshot)))))))))
 
 (deftest impersonation-and-routing-token-edn-round-trip-test
-  (testing "keyword-keyed impersonation/routing tokens survive the stored_result.data_access_token EDN round-trip"
-    (let [token {:impersonation {(mt/id) {:role "readonly"}}
-                 :routing       {(mt/id) {:destination-db-id 42}}}]
+  (testing "a real token survives the stored_result.data_access_token EDN round-trip. Its per-target
+            keys are integer table/database ids, which is why the column is EDN and not JSON — JSON
+            would mangle them into strings and every viewer comparison would then miss"
+    (let [token (merge (venues-token-for-lens {:impersonation {:role "readonly"}})
+                       (venues-token-for-lens {:routing {:destination-db-id 42}}))]
+      (is (= #{:impersonation :routing} (set (keys token))))
       (mt/with-temp [:model/StoredResult sr {:result_data       (fake-result-bytes)
                                              :creator_id        (mt/user->id :lucky)
                                              :database_id       (mt/id)

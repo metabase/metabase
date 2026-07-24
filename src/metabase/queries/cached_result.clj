@@ -8,7 +8,8 @@
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,8 +37,26 @@
        (perms/data-access-token {:database-id (:database_id stored-result)
                                  :table-ids   (query-perms/query->resolved-source-table-ids
                                                (:dataset_query stored-result))}))
-      (catch Throwable _
+      (catch Exception e
+        (log/debugf e "Cached result %s: computing the viewer's data-access lens threw; falling back to admin-only"
+                    (:id stored-result))
         (boolean api/*is-superuser?*)))))
+
+(defn- viewer-can-run-underlying-query?
+  "Whether the current user holds the data perms to run the snapshot's own query.
+
+  `can-run-query?` absorbs the ordinary permission-denial `ExceptionInfo`s itself; anything else it
+  throws — a stored query malformed enough to trip its `:- :map` schema, a source table that no
+  longer exists — must not escape an authorization gate as a 500. It falls back to the same
+  admin-only access [[viewer-lens-compatible?]] gives its degenerate cases, sound here for the same
+  kind of reason: a superuser holds every data perm unconditionally, so serving them cannot leak."
+  [stored-result]
+  (try
+    (query-perms/can-run-query? (:dataset_query stored-result))
+    (catch Exception e
+      (log/debugf e "Cached result %s: the data-perms check threw; falling back to admin-only"
+                  (:id stored-result))
+      (boolean api/*is-superuser?*))))
 
 (defn- cached-result-blocked-reason
   "If the current user must NOT be served the cached blob for `stored-result`, return a keyword
@@ -54,7 +73,7 @@
     (throw (ex-info "stored-result is missing its dataset_query"
                     {:stored-result-id (:id stored-result)})))
   (cond
-    (not (query-perms/can-run-query? (:dataset_query stored-result)))
+    (not (viewer-can-run-underlying-query? stored-result))
     :no-data-perms
 
     (not (viewer-lens-compatible? stored-result))
@@ -72,7 +91,8 @@
   (when-let [reason (cached-result-blocked-reason stored-result)]
     (throw (ex-info (case reason
                       :no-data-perms        (tru "You do not have permissions to view the data underlying this cached result.")
-                      :incompatible-context (tru "Cannot show cached results: your data access differs from the user who generated them."))
+                      :incompatible-context (tru "Cannot show cached results: your data access differs from the user who generated them.")
+                      (tru "You do not have permissions to view this cached result."))
                     {:status-code      403
                      :reason           reason
                      :stored-result-id (:id stored-result)}))))

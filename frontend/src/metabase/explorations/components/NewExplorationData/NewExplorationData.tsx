@@ -325,7 +325,6 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         >{t`${applicationName} will automate running combinations of these pairings and then do a basic analysis of the results.`}</Text>
         <Button
           className={cx(!canStart && CS.hidden)} // hide with css to make sure caption text is aligned vertically
-          aria-hidden={!canStart || undefined}
           size="sm"
           flex="none"
           variant="filled"

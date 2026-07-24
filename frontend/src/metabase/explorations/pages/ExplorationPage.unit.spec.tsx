@@ -103,7 +103,7 @@ function renderExplorationPage(initialRoute?: string) {
   const path = Urls.exploration(explorationData.id);
   return renderWithProviders(
     <Route
-      path={`/${Urls.EXPLORATION_BASE_PATH}/:id(/page/:pageId)`}
+      path={`/${Urls.EXPLORATION_BASE_PATH}/:id/page?/:pageId?`}
       element={<ExplorationPageHarness />}
     />,
     {

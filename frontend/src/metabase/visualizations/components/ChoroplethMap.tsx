@@ -181,18 +181,7 @@ function useGeoJson(geoJsonPath: string | null): ChoroplethMapState {
     if (!geoJsonPath) {
       return;
     }
-    // Set a cache hit synchronously so a remount (e.g. switching back to a
-    // chart group) never flashes the spinner. Only null-out for a genuine
-    // fetch.
-    const cached = geoJsonCache.get(geoJsonPath);
-    if (cached) {
-      setState({
-        geoJson: cached,
-        geoJsonPath,
-        minimalBounds: computeMinimalBounds(getFeatures(cached)),
-      });
-      return;
-    }
+
     let cancelled = false;
     setState({ geoJson: null, geoJsonPath });
     loadGeoJson(geoJsonPath, (geoJson) => {
