@@ -161,6 +161,17 @@
    ;; toucan2 models
    (isa? model :hook/entity-id)))
 
+(defn primary-key
+  "The application-db primary-key column of serdes model `model-name` — usually `:id`, but the
+  *UserSettings mirror models use their parent's FK. Resolves the model first so its
+  `t2/primary-keys` method is registered."
+  [model-name]
+  ;; the let is load-bearing: resolving the model may load its namespace, whose `defmethod` replaces
+  ;; the `t2/primary-keys` multifn var — inlining the resolve as an argument would capture the stale
+  ;; multifn before the method exists
+  (let [model (t2/resolve-model (keyword "model" model-name))]
+    (first (t2/primary-keys model))))
+
 (defn eid->id
   "Given model name and its entity id, returns it database-local id.
 
@@ -170,7 +181,7 @@
   done if a need arises."
   [model-name eid]
   (let [model (keyword "model" model-name)
-        pk    (first (t2/primary-keys model))
+        pk    (primary-key model-name)
         eid   (cond-> eid
                 (str/starts-with? eid "eid:") (subs 4))]
     (t2/select-one-fn pk [model pk] :entity_id eid)))
@@ -680,7 +691,7 @@
 
 (defmethod load-update! :default [model-name ingested local]
   (let [model    (t2.model/resolve-model (symbol model-name))
-        pk       (first (t2/primary-keys model))
+        pk       (primary-key model-name)
         id       (get local pk)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
     (t2/update! model id ingested)

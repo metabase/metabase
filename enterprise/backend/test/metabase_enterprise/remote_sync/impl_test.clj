@@ -2126,3 +2126,32 @@ serdes/meta:
                                  :base-snapshot nil)]
         (is (= :conflict (:status result)))
         (is (str/includes? (:message result) "rewritten"))))))
+
+;;; ------------------------------------------ *UserSettings Import Reconciliation ------------------------------------
+
+(deftest remove-unsynced-user-settings-test
+  (testing "settings rows in sync scope whose side-car was not imported are deleted; others are kept"
+    (mt/with-temp [:model/Collection coll    {:is_remote_synced true :name "Synced" :type "library-data"}
+                   :model/Database   db      {:name "DB"}
+                   :model/Table      kept    {:db_id (:id db) :name "KEPT" :schema nil
+                                              :is_published true :collection_id (:id coll)}
+                   :model/Table      stale   {:db_id (:id db) :name "STALE" :schema nil
+                                              :is_published true :collection_id (:id coll)}
+                   :model/Table      unpub   {:db_id (:id db) :name "UNPUB"}
+                   :model/Field      field   {:table_id (:id kept) :name "F" :base_type :type/Text}]
+      (doseq [t [kept stale unpub]]
+        (t2/insert! :model/TableUserSettings {:table_id (:id t) :description "curated"}))
+      (t2/insert! :model/FieldUserSettings {:field_id (:id field) :description "curated"})
+      (#'impl/remove-unsynced-user-settings!
+       (spec/all-syncable-collection-ids)
+       {:by-path {:model/TableUserSettings [{:db_name "DB" :table_name "KEPT"}]}})
+      (testing "the imported side-car keeps its row"
+        (is (t2/exists? :model/TableUserSettings :table_id (:id kept))))
+      (testing "a missing side-car deletes the row"
+        (is (not (t2/exists? :model/TableUserSettings :table_id (:id stale)))))
+      (testing "rows outside the sync scope are untouched"
+        (is (t2/exists? :model/TableUserSettings :table_id (:id unpub))))
+      (testing "field side-cars reconcile the same way"
+        (is (not (t2/exists? :model/FieldUserSettings :field_id (:id field)))))
+      (testing "the parent table rows are never touched"
+        (is (t2/exists? :model/Table :id (:id stale)))))))

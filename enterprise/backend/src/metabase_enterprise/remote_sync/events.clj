@@ -223,7 +223,10 @@
 
 ;;; --------------------------------- Spec-based Event Registration (Non-Collection) -----------------------------------
 
-(doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection :model/Field :model/Table)]
+;; Specs without :events (the *UserSettings mirrors) have no events of their own — their RSO
+;; tracking piggybacks on the parent model's events below.
+(doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection :model/Field :model/Table)
+        :when (:events model-spec)]
   (register-events-for-spec! model-spec))
 
 ;;; ------------------------------------- Table + TableUserSettings Tracking -------------------------------------------

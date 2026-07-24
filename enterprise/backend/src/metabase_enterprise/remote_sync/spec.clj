@@ -220,6 +220,32 @@
     :removal        {:statuses #{"removed"}}
     :enabled?       true}
 
+   :model/TableUserSettings
+   {:model-type   "TableUserSettings"
+    :model-key    :model/TableUserSettings
+    :identity     :path
+    :path-keys    [:database :schema :table]
+    :events       nil
+    :eligibility  {:type :table-user-settings}
+    :parent-model :model/Table
+    :archived-key nil
+    :tracking     nil
+    :removal      nil
+    :enabled?     true}
+
+   :model/FieldUserSettings
+   {:model-type   "FieldUserSettings"
+    :model-key    :model/FieldUserSettings
+    :identity     :path
+    :path-keys    [:database :schema :table :field]
+    :events       nil
+    :eligibility  {:type :field-user-settings}
+    :parent-model :model/Table
+    :archived-key nil
+    :tracking     nil
+    :removal      nil
+    :enabled?     true}
+
    :model/Segment
    {:model-type     "Segment"
     :model-key      :model/Segment
@@ -795,6 +821,21 @@
      (when-let [table (t2/select-one parent-model :id table_id)]
        (check-eligibility (spec-for-model-key parent-model) table)))))
 
+(defmethod check-eligibility :table-user-settings
+  [{:keys [parent-model]} {:keys [table_id]}]
+  (boolean
+   (when table_id
+     (when-let [table (t2/select-one parent-model :id table_id)]
+       (check-eligibility (spec-for-model-key parent-model) table)))))
+
+(defmethod check-eligibility :field-user-settings
+  [{:keys [parent-model]} {:keys [field_id]}]
+  (boolean
+   (when field_id
+     (when-let [table-id (t2/select-one-fn :table_id :model/Field :id field_id)]
+       (when-let [table (t2/select-one parent-model :id table-id)]
+         (check-eligibility (spec-for-model-key parent-model) table))))))
+
 (defmethod check-eligibility :setting
   [{:keys [eligibility]} _object]
   (boolean (setting/get-value-of-type :boolean (:setting eligibility))))
@@ -1125,6 +1166,42 @@
                    :status              "synced"
                    :status_changed_at   timestamp})))
 
+      :model/TableUserSettings
+      (->> (t2/query {:select [[:tus.table_id :id] [:t.name :name] [:t.collection_id :collection_id]]
+                      :from   [[:metabase_table_user_settings :tus]]
+                      :join   [[:metabase_table :t] [:= :t.id :tus.table_id]
+                               [:metabase_database :db] [:= :db.id :t.db_id]]
+                      :where  (build-path-where-clause paths false)})
+           (map (fn [{:keys [id name collection_id]}]
+                  {:model_type          model-type
+                   :model_id            id
+                   :model_name          name
+                   :model_collection_id collection_id
+                   :model_display       nil
+                   :model_table_id      id
+                   :model_table_name    name
+                   :status              "synced"
+                   :status_changed_at   timestamp})))
+
+      :model/FieldUserSettings
+      (->> (t2/query {:select [[:fus.field_id :id] [:f.name :name] [:f.table_id :table_id]
+                               [:t.collection_id :collection_id] [:t.name :table_name]]
+                      :from   [[:metabase_field_user_settings :fus]]
+                      :join   [[:metabase_field :f] [:= :f.id :fus.field_id]
+                               [:metabase_table :t] [:= :t.id :f.table_id]
+                               [:metabase_database :db] [:= :db.id :t.db_id]]
+                      :where  (build-path-where-clause paths true)})
+           (map (fn [{:keys [id name table_id table_name collection_id]}]
+                  {:model_type          model-type
+                   :model_id            id
+                   :model_name          name
+                   :model_collection_id collection_id
+                   :model_display       nil
+                   :model_table_id      table_id
+                   :model_table_name    table_name
+                   :status              "synced"
+                   :status_changed_at   timestamp})))
+
       ;; Default for unknown path models
       nil)))
 
@@ -1204,6 +1281,20 @@
 (defmethod query-export-roots :published-table [_] nil)
 (defmethod query-export-roots :parent-table [_] nil)
 
+(defmethod query-export-roots :table-user-settings
+  ;; TableUserSettings is standalone in serdes (not a Table descendant), so its export roots are
+  ;; queried directly: settings rows of published tables in remote-synced collections.
+  [{:keys [model-type] :as spec}]
+  (when (spec-enabled? spec)
+    (let [synced-collection-ids (all-syncable-collection-ids)]
+      (when (seq synced-collection-ids)
+        (map (fn [id] [model-type id])
+             (t2/select-fn-vec :table_id :model/TableUserSettings
+                               {:join  [[:metabase_table :t] [:= :t.id :table_id]]
+                                :where [:and
+                                        [:= :t.is_published true]
+                                        [:in :t.collection_id synced-collection-ids]]}))))))
+
 (defmethod query-export-roots :library-synced
   [{:keys [export-scope model-key model-type archived-key] :as spec}]
   (when (spec-enabled? spec)
@@ -1248,7 +1339,7 @@
    3. Are in one of the provided collections (or descendants)"
   []
   (eduction (map (fn [[model ids]]
-                   (serdes/extract-all model {:where         [:in (first (t2/primary-keys (t2/resolve-model (keyword "model" model)))) ids]
+                   (serdes/extract-all model {:where         [:in (serdes/primary-key model) ids]
                                               :skip-archived true})))
             cat
             (exportable-entities)))
@@ -1260,7 +1351,7 @@
   [rows]
   (let [by-model (u/group-by :model_type :model_id conj #{} rows)]
     (eduction (map (fn [[model ids]]
-                     (serdes/extract-all model {:where         [:in (first (t2/primary-keys (t2/resolve-model (keyword "model" model)))) ids]
+                     (serdes/extract-all model {:where         [:in (serdes/primary-key model) ids]
                                                 :skip-archived true})))
               cat
               by-model)))
