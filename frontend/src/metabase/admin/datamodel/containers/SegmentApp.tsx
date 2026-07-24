@@ -13,8 +13,7 @@ import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
-import type { Route } from "metabase/router";
-import { push } from "metabase/router";
+import { push, useParams } from "metabase/router";
 import type {
   CreateSegmentRequest,
   Segment,
@@ -23,19 +22,15 @@ import type {
 
 import { SegmentForm } from "../components/SegmentForm";
 
-type SegmentAppOwnProps = {
-  params: {
-    id: string;
-  };
-  route: Route;
+type SegmentAppParams = {
+  id: string;
 };
 
 type UpdateSegmentFormProps = {
-  route: Route;
   segmentId: number;
 };
 
-function UpdateSegmentForm({ route, segmentId }: UpdateSegmentFormProps) {
+function UpdateSegmentForm({ segmentId }: UpdateSegmentFormProps) {
   const dispatch = useDispatch();
   const [isDirty, setIsDirty] = useState(false);
   const [updateSegment] = useUpdateSegmentMutation();
@@ -82,16 +77,12 @@ function UpdateSegmentForm({ route, segmentId }: UpdateSegmentFormProps) {
         onSubmit={handleSubmit}
       />
 
-      <LeaveRouteConfirmModal isEnabled={isDirty} route={route} />
+      <LeaveRouteConfirmModal isEnabled={isDirty} />
     </>
   );
 }
 
-type CreateSegmentFormProps = {
-  route: Route;
-};
-
-function CreateSegmentForm({ route }: CreateSegmentFormProps) {
+function CreateSegmentForm() {
   const dispatch = useDispatch();
   const [isDirty, setIsDirty] = useState(false);
   const { sendErrorToast } = useMetadataToasts();
@@ -132,19 +123,19 @@ function CreateSegmentForm({ route }: CreateSegmentFormProps) {
     <>
       <SegmentForm onIsDirtyChange={setIsDirty} onSubmit={handleSubmit} />
 
-      <LeaveRouteConfirmModal isEnabled={isDirty} route={route} />
+      <LeaveRouteConfirmModal isEnabled={isDirty} />
     </>
   );
 }
 
-export function SegmentApp({ params, route }: SegmentAppOwnProps) {
+export function SegmentApp() {
+  const params = useParams<SegmentAppParams>();
+
   if (params.id) {
-    return (
-      <UpdateSegmentForm route={route} segmentId={parseInt(params.id, 10)} />
-    );
+    return <UpdateSegmentForm segmentId={parseInt(params.id, 10)} />;
   }
 
-  return <CreateSegmentForm route={route} />;
+  return <CreateSegmentForm />;
 }
 
 function toUpdateSegmentRequest(

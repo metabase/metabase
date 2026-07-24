@@ -15,7 +15,7 @@ import {
   useUrlState,
 } from "metabase/common/hooks/use-url-state";
 import CS from "metabase/css/core/index.css";
-import type { WithRouterProps } from "metabase/router";
+import { useRouter } from "metabase/router";
 import {
   Badge,
   type BadgeColor,
@@ -77,7 +77,8 @@ function parseEventType(param: QueryParam): EventTypeFilter {
   return value && isOAuthEventType(value) ? value : ALL_EVENT_TYPES;
 }
 
-export const OAuthAuthorizationsPage = ({ location }: WithRouterProps) => {
+export const OAuthAuthorizationsPage = () => {
+  const { location } = useRouter();
   const [{ page, eventType }, { patchUrlState }] = useUrlState(
     location,
     urlStateConfig,

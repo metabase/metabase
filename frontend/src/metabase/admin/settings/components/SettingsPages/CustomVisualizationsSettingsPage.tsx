@@ -7,6 +7,7 @@ import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import { useParams } from "metabase/router";
 import {
   Alert,
   Button,
@@ -40,11 +41,8 @@ export function CustomVisualizationsManagePage() {
   return <PLUGIN_CUSTOM_VIZ.ManageCustomVizPage />;
 }
 
-export function CustomVisualizationsFormPage({
-  params,
-}: {
-  params?: { id?: string };
-}) {
+export function CustomVisualizationsFormPage() {
+  const params = useParams<{ id: string }>();
   const customVizFeatureLoaded = useHasTokenFeature("custom-viz");
   const hasCustomVizAvailable = useHasTokenFeature("custom-viz-available");
 

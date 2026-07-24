@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import { setupOAuthAuthorizationsEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import type { ListOAuthAuthorizationsResponse } from "metabase-types/api";
 import {
   createMockListOAuthAuthorizationsResponse,
@@ -47,8 +47,6 @@ jest.mock("metabase/ui/components/data-display/TreeTable/TreeTable", () => {
   };
 });
 
-const RoutedOAuthAuthorizationsPage = withRouteProps(OAuthAuthorizationsPage);
-
 const PATHNAME = "/admin/metabot/mcp/authorizations";
 
 const setup = ({
@@ -67,7 +65,7 @@ const setup = ({
   }
 
   return renderWithProviders(
-    <Route path={PATHNAME} element={<RoutedOAuthAuthorizationsPage />} />,
+    <Route path={PATHNAME} element={<OAuthAuthorizationsPage />} />,
     { withRouter: true, initialRoute },
   );
 };
