@@ -259,18 +259,7 @@ function selectDateFilter(
   dateLabel: DateFilterLabel,
   waitAlias = "@dataset",
 ): void {
-  // Scroll the filter into view and settle before clicking. Asserting the charts
-  // rendered (assertMetricChartsRenderedForDate) scrolls the page down to reach the
-  // lower charts, leaving this select off-screen on the next loop iteration.
-  // realClick's own scroll-into-view can race the layout and click stale
-  // coordinates that miss the input, so the Select dropdown never opens and
-  // H.selectDropdown() times out ("popover never found"). Let Cypress settle the
-  // scroll first, mirroring getChartCard/clickLastTimeseriesChartDot in this file.
-  H.main()
-    .findByTestId("conversation-filters-date-select")
-    .scrollIntoView()
-    .should("be.visible")
-    .realClick();
+  H.main().findByTestId("conversation-filters-date-select").realClick();
   H.selectDropdown().findByText(dateLabel).realClick();
   H.main()
     .findByTestId("conversation-filters-date-select")
@@ -443,6 +432,16 @@ describe("scenarios > metabot > usage auditing", () => {
     visitUsageStatsPage();
 
     const metric = "conversations";
+
+    // Let the initial charts finish loading before driving the date filter.
+    // The page mounts six charts, each firing its own /api/dataset request, but
+    // visitUsageStatsPage only waits for the metadata request. Clicking the date
+    // select while those initial requests are still in flight lets a late
+    // response re-render the filter bar and close the just-opened dropdown, so
+    // H.selectDropdown() times out ("popover never found"). Asserting the
+    // default-range charts rendered settles the page first (as the sibling
+    // "shows conversation usage stats charts" test does).
+    assertMetricChartsRendered(metric);
 
     DATE_FILTER_CASES.forEach((label) => {
       cy.log(`${METRIC_TAB_NAMES[metric]} date filter: ${label}`);
