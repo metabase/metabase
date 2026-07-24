@@ -168,4 +168,3 @@ jobs:
         with:
           path: ~/.cache/Cypress
           key: ${{ env.CYPRESS_CACHE_KEY }}
-
