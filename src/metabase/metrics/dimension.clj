@@ -1,48 +1,124 @@
 (ns metabase.metrics.dimension
   "API-layer functions for fetching dimension values from the metrics API endpoints."
   (:require
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.lib-metric.core :as lib-metric]
+   [metabase.lib-metric.schema :as lm.schema]
    [metabase.parameters.core :as parameters]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------- API Shape -------------------------------------------------
-;;; Convert internal (kebab) dimensions to the snake_case shape the frontend expects.
+;;; Convert internal (kebab) dimensions to the snake_case shape the frontend expects, and back.
 ;;; Mirrors the metric-dimensions branch's `->api-dimension` layer so the two converge.
+;;;
+;;; The conversion is schema-driven: the wire rules are declared as transformer properties on the
+;;; schemas below and applied with compiled `malli.core/encode`/`decode` transformers (the same
+;;; pattern as `:encode/serialize` in [[metabase.lib.serialize]]):
+;;;
+;;;   * the `:api-case` step renames map keys — snake_case on encode, kebab-case on decode. An
+;;;     individual map schema opts out with an `{:encode/api-case {:leave identity}}` property
+;;;     (`:sources` entries keep their kebab `field-id` key on the wire).
+;;;   * the `:api` step handles value-level rules via `:encode/api` properties: qualified keyword
+;;;     types (`:effective-type` & co.) become strings, `:display-name` falls back to `:name`,
+;;;     always-on-the-wire keys are ensured present and nil-valued optional keys dropped.
+;;;   * `strip-extra-keys-transformer` (encode only) drops keys not in the schema — internal keys
+;;;     like `:lib/source` and Field columns annotated by [[annotate-dimensions-with-field-data]]
+;;;     (other than `:dimension-interestingness`) — so the schema doubles as the wire whitelist.
 
-(defn ->api-group
-  "Convert an internal dimension group `{:id :type :display-name}` to the API shape."
-  [group]
-  (when group
-    {:id           (:id group)
-     :type         (:type group)
-     :display_name (:display-name group)}))
+(defn- kw->str
+  [k]
+  (some-> k u/qualified-name))
 
-(defn- ->api-source
-  [source]
-  {:type     (:type source)
-   :field-id (:field-id source)})
+(defn- drop-nil-keys
+  [m ks]
+  (reduce (fn [m k]
+            (cond-> m
+              (nil? (get m k)) (dissoc k)))
+          m
+          ks))
+
+(defn- encode-dimension-map
+  "Map-level `:encode/api` rules for a dimension: `:display-name` falls back to `:name`, the five
+   always-on-the-wire keys are present even when nil, nil-valued optional keys are dropped."
+  [dim]
+  (-> (merge {:id nil :name nil :effective-type nil :semantic-type nil} dim)
+      (as-> dim (update dim :display-name #(or % (:name dim))))
+      (drop-nil-keys [:has-field-values :status :status-message :dimension-interestingness :group :sources])))
+
+(defn- encode-mapping-map
+  "Map-level `:encode/api` rules for a dimension mapping: `:dimension-id` and `:target` are always
+   on the wire (even when nil), `:type`/`:table-id` only when non-nil."
+  [mapping]
+  (-> (merge {:dimension-id nil :target nil} mapping)
+      (drop-nil-keys [:type :table-id])))
+
+(mr/def ::source
+  "A dimension source annotated with its wire-encoding rules. Quirks preserved from the previous
+   hand-rolled shape: entries keep their kebab-case `:field-id` key on the wire, `:field-id` is
+   always present (nil when missing), and other keys (e.g. `:binning`) are dropped."
+  [:map {:encode/api-case {:leave identity}
+         :encode/api      {:enter #(merge {:field-id nil} %)}}
+   [:type ::lm.schema/dimension-source.type]
+   [:field-id [:maybe :int]]])
+
+(mr/def ::dimension
+  "The internal (kebab-case) dimension shape from [[metabase.lib-metric.schema]], annotated with
+   its wire-encoding rules. Entries are overridden only where a wire rule applies."
+  [:merge
+   ::lm.schema/persisted-dimension
+   [:map {:encode/api {:enter encode-dimension-map}}
+    [:effective-type {:optional true} [:maybe {:encode/api kw->str} :keyword]]
+    [:semantic-type {:optional true} [:maybe {:encode/api kw->str} :keyword]]
+    [:has-field-values {:optional true} [:maybe {:encode/api kw->str} :keyword]]
+    [:dimension-interestingness {:optional true} [:maybe number?]]
+    [:sources {:optional true} [:maybe [:sequential ::source]]]]])
+
+(mr/def ::dimension-mapping
+  "The internal (kebab-case) dimension-mapping shape annotated with its wire-encoding rules.
+   `:target` is re-typed as `:any` so the transformer never walks into the MBQL ref and renames
+   its option-map keys — it passes through untouched in both directions."
+  [:merge
+   ::lm.schema/dimension-mapping
+   [:map {:encode/api {:enter encode-mapping-map}}
+    [:target :any]]])
+
+(def ^:private rename-keys-transformer
+  "Transformer step that renames map keys: snake_case on encode, kebab-case on decode. Named so
+   individual map schemas can override it with an `:encode/api-case` property."
+  (mtx/transformer
+   {:name     :api-case
+    :encoders {:map {:leave #(cond-> % (map? %) (update-keys u/->snake_case_en))}}
+    :decoders {:map {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}}))
+
+(def ^:private api-encode-transformer
+  (mtx/transformer
+   (mtx/strip-extra-keys-transformer)
+   {:name :api}
+   rename-keys-transformer))
+
+(def ^:private api-decode-transformer
+  ;; decode is purely mechanical key renaming: unknown keys are kept (no strip) and values pass
+  ;; through untouched (no `:decode/api` rules exist).
+  rename-keys-transformer)
+
+(defn- api-encoder [schema]
+  (mr/cached ::api-encoder schema #(mc/encoder schema api-encode-transformer)))
+
+(defn- api-decoder [schema]
+  (mr/cached ::api-decoder schema #(mc/decoder schema api-decode-transformer)))
 
 (defn ->api-dimension
   "Convert an internal (kebab) persisted or computed dimension to the API shape consumed by the
    frontend: snake_case top-level keys, fully-qualified type strings, and a `:sources` list
    whose entries keep the kebab `field-id` key."
   [dim]
-  (cond-> {:id             (:id dim)
-           :name           (:name dim)
-           :display_name   (or (:display-name dim) (:name dim))
-           :effective_type (some-> (:effective-type dim) u/qualified-name)
-           :semantic_type  (some-> (:semantic-type dim) u/qualified-name)}
-    (:has-field-values dim)         (assoc :has_field_values (u/qualified-name (:has-field-values dim)))
-    (:status dim)                   (assoc :status (:status dim))
-    (:status-message dim)           (assoc :status_message (:status-message dim))
-    (some? (:dimension-interestingness dim))
-    (assoc :dimension_interestingness (:dimension-interestingness dim))
-    (:group dim)                    (assoc :group (->api-group (:group dim)))
-    (:sources dim)                  (assoc :sources (mapv ->api-source (:sources dim)))))
+  ((api-encoder ::dimension) dim))
 
 (defn ->api-dimensions
   "Convert a sequence of internal dimensions to the API shape. nil-safe (returns `[]`)."
@@ -53,10 +129,7 @@
   "Convert an internal (kebab) dimension mapping to the API shape: snake_case keys, with the
    MBQL `:target` ref passing through untouched."
   [mapping]
-  (cond-> {:dimension_id (:dimension-id mapping)
-           :target       (:target mapping)}
-    (:type mapping)     (assoc :type (:type mapping))
-    (:table-id mapping) (assoc :table_id (:table-id mapping))))
+  ((api-encoder ::dimension-mapping) mapping))
 
 (defn ->api-dimension-mappings
   "Convert a sequence of internal dimension mappings to the API shape. nil-safe (returns `[]`)."
@@ -65,11 +138,10 @@
 
 (defn api->dimension
   "Convert an API-shape (snake_case) dimension object to the internal kebab-case shape.
-   Mechanical: kebab-cases the top-level keys and a nested `:group`; `:sources` entries and
-   `:target` refs are kebab-case on both sides and pass through untouched."
+   Mechanical: kebab-cases map keys (unknown keys included); `:sources` entries and `:target`
+   refs are kebab-case on both sides and pass through untouched."
   [dim]
-  (cond-> (update-keys dim u/->kebab-case-en)
-    (:group dim) (update :group #(update-keys % u/->kebab-case-en))))
+  ((api-decoder ::dimension) dim))
 
 (defn api->dimensions
   "Convert a sequence of API-shape dimensions to the internal shape. nil-safe (returns `[]`)."
@@ -80,7 +152,7 @@
   "Convert an API-shape (snake_case) dimension mapping to the internal kebab-case shape.
    `:target` (an MBQL ref) passes through untouched."
   [mapping]
-  (update-keys mapping u/->kebab-case-en))
+  ((api-decoder ::dimension-mapping) mapping))
 
 (defn api->dimension-mappings
   "Convert a sequence of API-shape dimension mappings to the internal shape. nil-safe (returns `[]`)."

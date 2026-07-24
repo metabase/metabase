@@ -8,6 +8,83 @@
    [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2]))
 
+;;; ------------------------------------------------- API Shape -------------------------------------------------
+
+(deftest ->api-dimension-test
+  (testing "snake_case keys, stringified type keywords, sources keep the kebab :field-id key"
+    (is (= {:id                        "aaaaaaaa-0000-0000-0000-000000000000"
+            :name                      "CATEGORY"
+            :display_name              "Category"
+            :effective_type            "type/Text"
+            :semantic_type             "type/Category"
+            :has_field_values          "list"
+            :status                    :status/active
+            :dimension_interestingness 0.5
+            :group                     {:id "g1" :type "main" :display_name "Venues"}
+            :sources                   [{:type :field :field-id 123}]}
+           (metrics.dimension/->api-dimension
+            {:id                        "aaaaaaaa-0000-0000-0000-000000000000"
+             :name                      "CATEGORY"
+             :display-name              "Category"
+             :effective-type            :type/Text
+             :semantic-type             :type/Category
+             :has-field-values          :list
+             :status                    :status/active
+             :dimension-interestingness 0.5
+             :group                     {:id "g1" :type "main" :display-name "Venues"}
+             :sources                   [{:type :field :field-id 123}]}))))
+  (testing ":display_name falls back to :name; the always-on-the-wire keys are present even when nil"
+    (is (= {:id "d2" :name "FOO" :display_name "FOO" :effective_type nil :semantic_type nil}
+           (metrics.dimension/->api-dimension {:id "d2" :name "FOO"}))))
+  (testing "internal keys and annotated Field columns other than :dimension-interestingness are stripped"
+    (is (= {:id "d3" :name "BAR" :display_name "BAR" :effective_type nil :semantic_type nil}
+           (metrics.dimension/->api-dimension
+            {:id "d3" :name "BAR" :lib/source :source/table-defaults :source-type :metric :description "field col"}))))
+  (testing "a zero :dimension-interestingness is kept, nil is dropped"
+    (is (= 0 (:dimension_interestingness (metrics.dimension/->api-dimension {:id "d4" :dimension-interestingness 0}))))
+    (is (not (contains? (metrics.dimension/->api-dimension {:id "d5" :dimension-interestingness nil})
+                        :dimension_interestingness))))
+  (testing "source entries always carry :field-id (nil when missing) and drop other keys"
+    (is (= [{:type :field :field-id nil}]
+           (:sources (metrics.dimension/->api-dimension {:id "d8" :sources [{:type :field :binning true}]}))))))
+
+(deftest ->api-dimension-mapping-test
+  (testing "snake_case keys; the MBQL :target ref passes through untouched"
+    (is (= {:dimension_id "m1"
+            :type         :table
+            :table_id     7
+            :target       [:field {:source-field 1 :lib/uuid "u"} 2]}
+           (metrics.dimension/->api-dimension-mapping
+            {:dimension-id "m1"
+             :type         :table
+             :table-id     7
+             :target       [:field {:source-field 1 :lib/uuid "u"} 2]}))))
+  (testing "nil :type/:table-id are dropped; :dimension_id and :target are always present"
+    (is (= {:dimension_id "m2" :target [:field {} 9]}
+           (metrics.dimension/->api-dimension-mapping {:dimension-id "m2" :target [:field {} 9]})))))
+
+(deftest api->dimension-test
+  (testing "kebab-cases keys (unknown keys included); values pass through untouched"
+    (is (= {:id             "x"
+            :display-name   "X"
+            :effective-type "type/Text"
+            :group          {:id "g" :type "main" :display-name "G"}
+            :sources        [{:type "field" :field-id 3}]
+            :unknown-key    1}
+           (metrics.dimension/api->dimension
+            {:id             "x"
+             :display_name   "X"
+             :effective_type "type/Text"
+             :group          {:id "g" :type "main" :display_name "G"}
+             :sources        [{:type "field" :field-id 3}]
+             :unknown_key    1})))))
+
+(deftest api->dimension-mapping-test
+  (testing "kebab-cases keys; the MBQL :target ref passes through untouched"
+    (is (= {:dimension-id "m1" :type "table" :table-id 7 :target [:field {:source-field 1} 2]}
+           (metrics.dimension/api->dimension-mapping
+            {:dimension_id "m1" :type "table" :table_id 7 :target [:field {:source-field 1} 2]})))))
+
 (defn- metric
   "A metric-shaped map with one dimension per `[dim-id field-id]` pair."
   [& dim-id+field-id]
