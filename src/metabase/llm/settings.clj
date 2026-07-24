@@ -483,7 +483,7 @@
   :visibility       :settings-manager
   :export?          false
   :setter           :none
-  :getter           #(some? (llm-proxy-base-url))
+  :getter           #(boolean (u/trimmed-string (llm-proxy-base-url)))
   :doc              false)
 
 ;;; -------------------------------------------------- General --------------------------------------------------
