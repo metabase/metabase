@@ -69,25 +69,19 @@ import SegmentListContainer from "metabase/reference/segments/SegmentListContain
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import {
+  CanAccessOnboarding,
+  CanAccessSettings,
+  IsAdmin,
+  IsAuthenticated,
+  IsNotAuthenticated,
+} from "metabase/route-guards";
+import {
   Navigate,
   Route,
   redirect,
   useParams,
   withRouteProps,
 } from "metabase/router";
-import {
-  CanAccessAlertsManagement,
-  CanAccessDataModel,
-  CanAccessDataStudio,
-  CanAccessMonitor,
-  CanAccessMonitorDiagnostics,
-  CanAccessMonitoringTools,
-  CanAccessOnboarding,
-  CanAccessSettings,
-  IsAdmin,
-  IsAuthenticated,
-  IsNotAuthenticated,
-} from "metabase/router/guards";
 import { SearchApp } from "metabase/search/containers/SearchApp";
 import { RedirectIfSetup } from "metabase/setup/components/RedirectIfSetup";
 import { Setup } from "metabase/setup/components/Setup";
@@ -409,19 +403,10 @@ export const getRoutes = (store: AppStore) => {
           {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
 
           {/* DATA STUDIO */}
-          {getDataStudioRoutes(
-            CanAccessDataStudio,
-            CanAccessDataModel,
-            IsAdmin,
-          )}
+          {getDataStudioRoutes(IsAdmin)}
 
           {/* MONITOR */}
-          {getMonitorRoutes(
-            CanAccessMonitor,
-            CanAccessMonitorDiagnostics,
-            CanAccessMonitoringTools,
-            CanAccessAlertsManagement,
-          )}
+          {getMonitorRoutes()}
         </Route>
       </Route>
 

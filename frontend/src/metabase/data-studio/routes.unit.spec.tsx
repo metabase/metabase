@@ -3,19 +3,24 @@ import { Outlet, Route } from "metabase/router";
 
 import { getDataStudioRoutes } from "./routes";
 
-const DenyingDataStudioGuard = () => (
-  <div data-testid="data-studio-access-denied" />
-);
+/**
+ * These specs assert that the legacy redirects sit outside the Data Studio
+ * access guard, so the guard is stubbed to always deny.
+ */
+jest.mock("./route-guards", () => {
+  const { Outlet } = jest.requireActual("metabase/router");
+  return {
+    CanAccessDataStudio: () => <div data-testid="data-studio-access-denied" />,
+    CanAccessDataModel: () => <Outlet />,
+  };
+});
+
 const AllowingGuard = () => <Outlet />;
 
 function setup(initialRoute: string) {
   renderWithProviders(
     <Route path="/">
-      {getDataStudioRoutes(
-        DenyingDataStudioGuard,
-        AllowingGuard,
-        AllowingGuard,
-      )}
+      {getDataStudioRoutes(AllowingGuard)}
       <Route
         path="monitor/dependency-diagnostics"
         element={<div data-testid="diagnostics-index" />}

@@ -4,8 +4,8 @@ import { shouldShowTenantsUpsell } from "metabase/admin/people/selectors";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { AdminPath } from "metabase/redux/store/admin";
+import { createRedirectGuard } from "metabase/route-guards";
 import { push, replace } from "metabase/router";
-import { createRedirectGuard } from "metabase/router/guards";
 import { getAdminPaths } from "metabase/selectors/admin";
 import { getSetting } from "metabase/selectors/settings";
 
