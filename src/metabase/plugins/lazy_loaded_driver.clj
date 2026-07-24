@@ -10,7 +10,6 @@
    [clojure.java.io :as io]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
-   [metabase.plugins.init-steps :as init-steps]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -57,33 +56,29 @@
                       (u/one-or-many parsed)))))
         connection-properties))
 
-(defn- make-initialize! [driver add-to-classpath! init-steps]
-  (fn [_]
-    ;; First things first: add the driver to the classpath!
-    (when add-to-classpath!
-      (add-to-classpath!))
-    ;; remove *this* implementation of `initialize!`, because as you will see below, we want to give
-    ;; lazy-load drivers the option to implement `initialize!` and do other things, which means we need to
-    ;; manually call it. When we do so we don't want to get stuck in an infinite loop of calls back to this
-    ;; implementation
-    (remove-method driver/initialize! driver)
-    ;; ok, do the init steps listed in the plugin manifest
+(defn- make-initialize! [driver load-plugin!]
+  (fn this-method [_]
+    ;; Load first, so a failed load throws before we touch the method table -- the next `initialize!` retries
+    ;; the load rather than falling through to the no-op default. Adds the JAR to the classpath and runs the
+    ;; manifest init steps exactly once.
     (u/profile (u/format-color 'magenta (trs "Load lazy loading driver {0}" driver))
-      (init-steps/do-init-steps! init-steps))
-    ;; ok, now go ahead and call `driver/initialize!` a second time on the driver in case it actually has
-    ;; an implementation of `initialize!` other than this one. If it does not, we'll just end up hitting
-    ;; the default implementation, which is a no-op
+      (load-plugin!))
+    ;; Drop this placeholder now that the plugin is loaded -- unless loading installed the driver's own
+    ;; `initialize!`, in which case removing it would strand the driver on the no-op default. Dropping it also
+    ;; stops the call below from looping back into this method.
+    (when (identical? this-method (get-method driver/initialize! driver))
+      (remove-method driver/initialize! driver))
+    ;; Call `initialize!` again: the driver's own implementation if it installed one, else the no-op default.
     (driver/initialize! driver)))
 
 (defn register-lazy-loaded-driver!
   "Register a basic shell of a Metabase driver using the information from its Metabase plugin"
-  [{:keys                                                                                            [add-to-classpath!]
-    init-steps                                                                                       :init
+  [{:keys                                                                                            [load-plugin!]
     extra-info                                                                                       :extra
     contact-info                                                                                     :contact-info
     superseded-by                                                                                    :superseded-by
     {driver-name :name, :keys [abstract display-name parent], :or {abstract false}, :as driver-info} :driver}]
-  {:pre [(map? driver-info)]}
+  {:pre [(map? driver-info) (fn? load-plugin!)]}
   (let [driver           (keyword driver-name)
         connection-props (parse-connection-properties driver-info)]
     ;; Make sure the driver has required properties like driver-name
@@ -97,7 +92,7 @@
       (log/warn (u/format-color :red "Warning: plugin manifest for %s does not include connection properties" driver)))
     ;; ok, now add implementations for the so-called "non-trivial" driver multimethods
     (doseq [[^MultiFn multifn, f]
-            {driver/initialize!           (make-initialize! driver add-to-classpath! init-steps)
+            {driver/initialize!           (make-initialize! driver load-plugin!)
              driver/display-name          (when display-name (constantly display-name))
              driver/contact-info          (constantly contact-info)
              driver/connection-properties (constantly connection-props)
