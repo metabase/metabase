@@ -3,10 +3,9 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { Fragment, forwardRef, useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import { useSubmitMetabotFeedbackMutation } from "metabase/api/metabot";
-import { ForwardRefLink } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import { useMetabotName } from "metabase/metabot/hooks";
@@ -25,11 +24,9 @@ import { forkConversation } from "metabase/metabot/state";
 import { useDispatch } from "metabase/redux";
 import {
   ActionIcon,
-  Anchor,
   Box,
   Button,
   Card,
-  Divider,
   Flex,
   type FlexProps,
   Icon,
@@ -486,31 +483,6 @@ export const getFullAgentReply = (
   return messages.slice(firstMessageIndex, lastMessageIndex + 1);
 };
 
-const ForkBoundary = ({ href }: { href?: string | null }) => (
-  <Divider
-    my="md"
-    label={
-      <Text span fz="sm" px="md">
-        {href
-          ? jt`Forked from ${(
-              <Anchor
-                key="fork-boundary-link"
-                component={ForwardRefLink}
-                to={href}
-                underline="hover"
-                fz="sm"
-              >
-                {t`a previous conversation`}
-              </Anchor>
-            )}`
-          : t`Forked from a previous conversation`}
-      </Text>
-    }
-    labelPosition="center"
-    data-testid="metabot-fork-boundary"
-  />
-);
-
 export const Messages = ({
   messages,
   onRetryMessage,
@@ -522,8 +494,7 @@ export const Messages = ({
   conversationId,
   onInternalLinkClick,
   getExtraActions,
-  forkBoundaryMessageId,
-  forkBoundaryHref,
+  renderAfterMessage,
 }: {
   messages: MetabotChatMessage[];
   onRetryMessage?: (messageId: string) => void;
@@ -535,8 +506,7 @@ export const Messages = ({
   conversationId: string;
   onInternalLinkClick?: (navigateToPath: string) => void;
   getExtraActions?: (messageId: string) => ReactNode;
-  forkBoundaryMessageId?: string | null;
-  forkBoundaryHref?: string | null;
+  renderAfterMessage?: (message: MetabotChatMessage) => ReactNode;
 }) => {
   const dispatch = useDispatch();
   const visibleMessages = useMemo(
@@ -546,15 +516,6 @@ export const Messages = ({
   const lastUserIndex = useMemo(
     () => visibleMessages.findLastIndex((m) => m.role === "user"),
     [visibleMessages],
-  );
-  const forkBoundaryIndex = useMemo(
-    () =>
-      forkBoundaryMessageId
-        ? visibleMessages.findLastIndex(
-            (m) => "externalId" in m && m.externalId === forkBoundaryMessageId,
-          )
-        : -1,
-    [visibleMessages, forkBoundaryMessageId],
   );
   const [sendToast] = useToast();
   const [forkingMessageId, setForkingMessageId] = useState<string | null>(null);
@@ -670,9 +631,7 @@ export const Messages = ({
         return (
           <Fragment key={"msg-" + message.id}>
             {messageElement}
-            {index === forkBoundaryIndex && (
-              <ForkBoundary href={forkBoundaryHref} />
-            )}
+            {renderAfterMessage?.(message)}
           </Fragment>
         );
       })}
