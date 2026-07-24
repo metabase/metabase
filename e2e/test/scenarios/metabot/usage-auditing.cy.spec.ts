@@ -259,7 +259,18 @@ function selectDateFilter(
   dateLabel: DateFilterLabel,
   waitAlias = "@dataset",
 ): void {
-  H.main().findByTestId("conversation-filters-date-select").realClick();
+  // Scroll the filter into view and settle before clicking. Asserting the charts
+  // rendered (assertMetricChartsRenderedForDate) scrolls the page down to reach the
+  // lower charts, leaving this select off-screen on the next loop iteration.
+  // realClick's own scroll-into-view can race the layout and click stale
+  // coordinates that miss the input, so the Select dropdown never opens and
+  // H.selectDropdown() times out ("popover never found"). Let Cypress settle the
+  // scroll first, mirroring getChartCard/clickLastTimeseriesChartDot in this file.
+  H.main()
+    .findByTestId("conversation-filters-date-select")
+    .scrollIntoView()
+    .should("be.visible")
+    .realClick();
   H.selectDropdown().findByText(dateLabel).realClick();
   H.main()
     .findByTestId("conversation-filters-date-select")
