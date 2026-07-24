@@ -1,4 +1,8 @@
-import type { ContentDiagnosticsFilterType } from "metabase-types/api";
+import type {
+  ContentDiagnosticsFilterType,
+  ContentDiagnosticsSortColumn,
+  SortDirection,
+} from "metabase-types/api";
 
 const CONTENT_DIAGNOSTICS_URL = `/monitor/content-diagnostics`;
 
@@ -11,6 +15,8 @@ export type ContentDiagnosticsParams = {
   query?: string;
   entityTypes?: ContentDiagnosticsFilterType[];
   includePersonalCollections?: boolean;
+  sortColumn?: ContentDiagnosticsSortColumn;
+  sortDirection?: SortDirection;
 };
 
 function contentDiagnosticsQueryString({
@@ -18,6 +24,8 @@ function contentDiagnosticsQueryString({
   query,
   entityTypes,
   includePersonalCollections,
+  sortColumn,
+  sortDirection,
 }: ContentDiagnosticsParams = {}) {
   const searchParams = new URLSearchParams();
 
@@ -37,6 +45,12 @@ function contentDiagnosticsQueryString({
       "include-personal-collections",
       String(includePersonalCollections),
     );
+  }
+  if (sortColumn != null) {
+    searchParams.set("sort-column", sortColumn);
+  }
+  if (sortDirection != null) {
+    searchParams.set("sort-direction", sortDirection);
   }
 
   const queryString = searchParams.toString();

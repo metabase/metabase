@@ -1,12 +1,14 @@
 import { t } from "ttag";
 
 import * as Urls from "metabase/urls";
+import type { Sorting } from "metabase/utils/sorting";
 import {
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
   type ContentDiagnosticsCollection,
   type ContentDiagnosticsEntityType,
   type ContentDiagnosticsFilterType,
   type ContentDiagnosticsFinding,
+  type ContentDiagnosticsSortColumn,
   type ContentDiagnosticsUser,
   type IconName,
 } from "metabase-types/api";
@@ -235,4 +237,16 @@ export function getEntityTypesParam(
   return entityTypes.length === ALL_FILTER_TYPES.length
     ? undefined
     : entityTypes;
+}
+
+export function getSortOptions({
+  sortColumn,
+  sortDirection,
+}: Urls.ContentDiagnosticsParams):
+  | Sorting<ContentDiagnosticsSortColumn>
+  | undefined {
+  if (sortColumn == null || sortDirection == null) {
+    return undefined;
+  }
+  return { column: sortColumn, direction: sortDirection };
 }
