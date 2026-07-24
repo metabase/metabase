@@ -2669,7 +2669,9 @@ LIMIT
         .blur();
       cy.wait("@updateTransform");
 
-      cy.log("Dismiss the success toast so it can't outlive the later error toast");
+      cy.log(
+        "Dismiss the success toast so it can't outlive the later error toast",
+      );
       H.undoToast().findByText("Transform name updated").should("be.visible");
       H.undoToast().icon("close").click();
       H.undoToast().should("not.exist");
@@ -2682,7 +2684,9 @@ LIMIT
         .blur();
       cy.wait("@updateTransform");
 
-      cy.log("Dismiss the success toast so it can't outlive the later error toast");
+      cy.log(
+        "Dismiss the success toast so it can't outlive the later error toast",
+      );
       H.undoToast().findByText("Transform name updated").should("be.visible");
       H.undoToast().icon("close").click();
       H.undoToast().should("not.exist");
