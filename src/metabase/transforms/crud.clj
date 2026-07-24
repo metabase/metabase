@@ -82,15 +82,15 @@
   "Validates a configured lookback window: only temporal checkpoint columns support one, and
   date-only columns need a day-or-coarser unit."
   [{:keys [source] :as transform}]
-  (when-let [{:keys [unit]} (and (transforms-base.u/checkpoint-source? transform)
-                                 (get-in source [:source-incremental-strategy :lookback]))]
-    (when-let [field (t2/select-one :model/Field (get-in source [:source-incremental-strategy :checkpoint-filter-field-id]))]
-      (let [base-type (:base_type field)]
-        (api/check-400 (isa? base-type :type/Temporal)
-                       (deferred-tru "A lookback window is only supported for temporal checkpoint columns."))
-        (when-not (isa? base-type :type/DateTime)
-          (api/check-400 (contains? #{"day" "week" "month" "quarter" "year"} unit)
-                         (deferred-tru "A lookback window on a date checkpoint column must use days or a coarser unit.")))))))
+  (let [{:keys [lookback checkpoint-filter-field-id]} (:source-incremental-strategy source)]
+    (when-let [{:keys [unit]} (and (transforms-base.u/checkpoint-source? transform) lookback)]
+      (when-let [field (t2/select-one :model/Field checkpoint-filter-field-id)]
+        (let [base-type (:base_type field)]
+          (api/check-400 (isa? base-type :type/Temporal)
+                         (deferred-tru "A lookback window is only supported for temporal checkpoint columns."))
+          (when-not (isa? base-type :type/DateTime)
+            (api/check-400 (contains? #{"day" "week" "month" "quarter" "year"} unit)
+                           (deferred-tru "A lookback window on a date checkpoint column must use days or a coarser unit."))))))))
 
 (defn validate-incremental-table-tag!
   "Reject a table-incremental native-query transform whose source query has no table template tag for
