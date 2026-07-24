@@ -27,6 +27,15 @@ export const AppContentContainer = styled.div<{
   }
 `;
 
+export const AppMain = styled.div`
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+`;
+
 export const AppContent = styled.main`
   width: 100%;
   height: 100%;

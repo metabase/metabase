@@ -2,7 +2,9 @@ import type React from "react";
 import { useEffect, useRef } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useRegisterAdminSettingsMetabotContext } from "metabase/admin/settings/hooks/use-register-admin-settings-metabot-context";
 import { NotFound } from "metabase/common/components/ErrorPages";
+import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import { useRouter } from "metabase/router";
 import { Box } from "metabase/ui";
 
@@ -21,6 +23,7 @@ export const AdminSettingsLayout = ({
 }) => {
   const contentRef = useRef<HTMLDivElement>(null);
   useScrollToTop(contentRef);
+  useRegisterAdminSettingsMetabotContext();
 
   return (
     <Box className={S.Wrapper}>
@@ -43,6 +46,7 @@ export const AdminSettingsLayout = ({
           </Box>
         </Box>
       </Box>
+      <MetabotAppBarButton pos="absolute" top="1rem" right="1rem" />
     </Box>
   );
 };

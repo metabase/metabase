@@ -321,6 +321,12 @@
             (te/field "Created at" (:created_at item))
             (te/field "Updated at" (:updated_at item))))
 
+(defmethod format-entity "admin_settings"
+  [{:keys [section path]}]
+  (te/lines
+   (str "The user is viewing the '" section "' admin settings page (" path ").")
+   "You can read and change instance settings for this admin using the list_settings, get_setting, and update_setting tools."))
+
 (defmethod format-entity "code_editor"
   [{:keys [buffers]}]
   (if (empty? buffers)
