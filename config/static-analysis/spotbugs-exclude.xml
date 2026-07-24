@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs exclusion filter for Metabase.
+
+  Metabase is 99.9% Clojure. AOT-compiled Clojure bytecode triggers many
+  false positives from detectors designed for hand-written Java.  We suppress
+  those noise categories on metabase.* and clojure.* packages while keeping
+  ALL security findings everywhere (including transitive Java deps like
+  clickhouse-jdbc, Apache HttpClient, etc.).
+-->
+<FindBugsFilter>
+
+  <!-- ── Suppress specific Clojure AOT patterns ────────────────────── -->
+  <!--
+    SE_NO_SERIALVERSIONID  - Clojure records implement Serializable
+    MS_SHOULD_BE_FINAL     - Clojure `def` compiles to mutable static fields
+    UWF_UNWRITTEN_FIELD    - Clojure deftype/defrecord field init patterns
+    EI_EXPOSE_REP/REP2     - Clojure closure inner classes
+    URF_UNREAD_FIELD       - Clojure deftype fields read via interop
+    UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD - Clojure deftype public fields
+  -->
+  <Match>
+    <Or>
+      <Class name="~metabase\..*"/>
+      <Class name="~clojure\..*"/>
+    </Or>
+    <Bug pattern="SE_NO_SERIALVERSIONID,MS_SHOULD_BE_FINAL,UWF_UNWRITTEN_FIELD,EI_EXPOSE_REP,EI_EXPOSE_REP2,URF_UNREAD_FIELD,UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD"/>
+  </Match>
+
+  <!-- ── Suppress noise categories on Clojure-generated code ────────── -->
+  <!--
+    STYLE          - naming/convention checks (irrelevant for generated code)
+    I18N            - internationalization warnings
+    MALICIOUS_CODE - mutable field exposure (Clojure def/defonce pattern)
+  -->
+  <Match>
+    <Or>
+      <Class name="~metabase\..*"/>
+      <Class name="~clojure\..*"/>
+    </Or>
+    <Bug category="STYLE,I18N,MALICIOUS_CODE"/>
+  </Match>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SECURITY findings are NEVER suppressed — not here, not anywhere.
+       FindSecBugs detectors run against ALL packages including transitive
+       Java dependencies (clickhouse-jdbc, Apache HttpClient, etc.).
+       ═══════════════════════════════════════════════════════════════════ -->
+
+</FindBugsFilter>
