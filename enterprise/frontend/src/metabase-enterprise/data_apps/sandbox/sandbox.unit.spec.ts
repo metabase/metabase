@@ -12,13 +12,8 @@ type EnvEndowments = Record<string, PropertyDescriptor>;
 
 function baseEndowments(overrides: Partial<Endowments> = {}): Endowments {
   return {
-    React: { marker: "REACT" },
-    reactDom: {},
-    reactDomClient: {},
-    reactDomServer: {},
-    reactJsxRuntime: {},
-    sdkExports: { marker: "SDK" },
-    dataAppExports: { marker: "DATA_APP" },
+    providerPropsStore: { marker: "STORE" },
+    sdkMount: jest.fn(),
     ...overrides,
   };
 }
@@ -49,46 +44,59 @@ function setup({ overrides, runBundle = () => {} }: SetupOpts = {}) {
     throw new Error("createVirtualEnvironment was called without endowments");
   }
 
-  const endowed = Object.fromEntries(
-    Object.entries(endowments).map(([name, descriptor]) => [
-      name,
-      descriptor.value,
-    ]),
-  );
-
-  return { sandbox, endowed };
+  return { sandbox, endowments };
 }
 
 describe("createDataAppSandbox", () => {
   describe("endowment injection", () => {
-    it("endows the React externals under their global names and the SDK/data-app as spread copies", () => {
+    it("endows the provider-props store and the mediated-mount bridge as values", () => {
       const original = baseEndowments();
-      const { endowed } = setup({ overrides: original });
+      const { endowments } = setup({ overrides: original });
 
-      expect(endowed).toMatchObject({
-        [DATA_APP_GLOBAL_NAMES.react]: original.React,
-        [DATA_APP_GLOBAL_NAMES.reactDom]: original.reactDom,
-        [DATA_APP_GLOBAL_NAMES.reactDomClient]: original.reactDomClient,
-        [DATA_APP_GLOBAL_NAMES.reactDomServer]: original.reactDomServer,
-        [DATA_APP_GLOBAL_NAMES.reactJsxRuntime]: original.reactJsxRuntime,
-        [DATA_APP_GLOBAL_NAMES.sdk]: original.sdkExports,
-        [DATA_APP_GLOBAL_NAMES.dataApp]: original.dataAppExports,
-      });
+      expect(endowments.METABASE_PROVIDER_PROPS_STORE.value).toBe(
+        original.providerPropsStore,
+      );
+      expect(endowments.__MB_DATA_APP_SDK_MOUNT__.value).toBe(
+        original.sdkMount,
+      );
     });
 
-    it("omits the dev jsx-runtime endowment unless one is provided", () => {
-      const withoutDev = setup();
+    it("endows the SDK bundle as a live getter off the host window", () => {
+      const { endowments } = setup();
+      const descriptor = endowments.METABASE_EMBEDDING_SDK_BUNDLE;
 
-      expect(
-        DATA_APP_GLOBAL_NAMES.reactJsxDevRuntime in withoutDev.endowed,
-      ).toBe(false);
+      expect(typeof descriptor.get).toBe("function");
 
-      const reactJsxDevRuntime = { marker: "DEV" };
-      const withDev = setup({ overrides: { reactJsxDevRuntime } });
+      const asBundle = (value: unknown) =>
+        // The getter only reads the reference through, so a marker object can
+        // stand in for the real (huge) bundle shape.
+        value as typeof window.METABASE_EMBEDDING_SDK_BUNDLE;
 
-      expect(withDev.endowed[DATA_APP_GLOBAL_NAMES.reactJsxDevRuntime]).toBe(
-        reactJsxDevRuntime,
-      );
+      const original = window.METABASE_EMBEDDING_SDK_BUNDLE;
+      try {
+        // Absent at sandbox creation — in the dev entry the bundle only lands on
+        // the window once it loads from the instance.
+        window.METABASE_EMBEDDING_SDK_BUNDLE = asBundle(undefined);
+        expect(descriptor.get?.()).toBeUndefined();
+
+        // Picked up live on the next read once the load lands.
+        const bundle = asBundle({ marker: "BUNDLE" });
+        window.METABASE_EMBEDDING_SDK_BUNDLE = bundle;
+        expect(descriptor.get?.()).toBe(bundle);
+      } finally {
+        window.METABASE_EMBEDDING_SDK_BUNDLE = original;
+      }
+    });
+
+    it("wires the factory global as a get/set pair backed by the captured factory", () => {
+      const { endowments } = setup();
+      const descriptor = endowments[DATA_APP_GLOBAL_NAMES.factory];
+
+      expect(descriptor.get?.()).toBeUndefined();
+
+      const factory = () => ({ component: () => null });
+      descriptor.set?.(factory);
+      expect(descriptor.get?.()).toBe(factory);
     });
   });
 

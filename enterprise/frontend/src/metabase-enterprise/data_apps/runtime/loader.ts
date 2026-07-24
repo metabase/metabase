@@ -114,7 +114,6 @@ export const instantiateDataAppBundle = (
     targetWindow,
     allowedHosts,
     endowments: {
-      sdkBundle: targetWindow.METABASE_EMBEDDING_SDK_BUNDLE,
       providerPropsStore: ensureMetabaseProviderPropsStore(),
       sdkMount: mountDataAppSdkComponent,
     },

@@ -7,15 +7,14 @@ import type { DataAppFactory, SandboxBlockedListener } from "./types";
 /**
  * The realm objects the sandbox exposes to the bundle as globals.
  *
- * These are injected by the caller rather than imported here so the sandbox
- * stays decoupled from any single SDK instance: the host passes its own realm's
- * React/SDK, and the data-app template's dev entry passes the React/SDK from
- * its installed `@metabase/embedding-sdk-react` — in both cases the bundle runs
- * against exactly one SDK instance. (Importing them here would bundle a second
- * SDK copy into the published `data-app-dev` entry.)
+ * Injected by the caller rather than imported here so the sandbox stays
+ * decoupled from any single SDK instance (importing them would bundle a second
+ * copy into the published `data-app-dev` entry). The SDK bundle itself is not
+ * passed in: the sandbox reads it live off `targetWindow` (see below), so the
+ * dev entry works even though its bundle loads from the instance only after the
+ * sandbox is created.
  */
 export interface DataAppSandboxEndowments {
-  sdkBundle: unknown;
   providerPropsStore: unknown;
   sdkMount: unknown;
 }
@@ -27,7 +26,7 @@ export interface CreateDataAppSandboxOptions {
   targetWindow?: Window & typeof globalThis;
   /** Origins the bundle may fetch/XHR; empty keeps the default hard block. */
   allowedHosts?: string[];
-  /** The realm's React/SDK exposed to the bundle. See [[DataAppSandboxEndowments]]. */
+  /** Host objects exposed to the bundle as globals. See [[DataAppSandboxEndowments]]. */
   endowments: DataAppSandboxEndowments;
   /**
    * Structured listener for sandbox blocks (dev toolbar). When absent the
@@ -62,7 +61,9 @@ export function createDataAppSandbox({
     ),
     liveTargetCallback: isLiveTarget,
     endowments: Object.getOwnPropertyDescriptors({
-      METABASE_EMBEDDING_SDK_BUNDLE: endowments.sdkBundle,
+      get METABASE_EMBEDDING_SDK_BUNDLE() {
+        return targetWindow.METABASE_EMBEDDING_SDK_BUNDLE;
+      },
       METABASE_PROVIDER_PROPS_STORE: endowments.providerPropsStore,
       __MB_DATA_APP_SDK_MOUNT__: endowments.sdkMount,
       get [DATA_APP_GLOBAL_NAMES.factory]() {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getRawBrowserHistory } from "metabase/router";
 
-import { getBasename } from "./DataAppRouter";
+import { getBasename, subscribeToDataAppHistory } from "./DataAppRouter";
 
 const computeSubPath = (basename: string): string => {
   const pathname = window.location.pathname;
@@ -31,9 +31,7 @@ export const useDataAppLocation = (): {
   const [pathname, setPathname] = useState(() => computeSubPath(basename));
 
   useEffect(() => {
-    // `listen` fires for every navigation: `<Link>` clicks, imperative `push`
-    // calls, and browser back/forward. One subscription covers all of them.
-    return getRawBrowserHistory().listen(() => {
+    return subscribeToDataAppHistory(() => {
       setPathname(computeSubPath(basename));
     });
   }, [basename]);

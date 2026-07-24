@@ -7,3 +7,5 @@ export { instanceConnectionCheck } from "./data-app-dev/lib/instance-connection-
 export { installDiagnosticsReporter } from "./data-app-dev/lib/diagnostics-reporter";
 export { sdkCallCapture } from "./data-app-dev/lib/sdk-call-capture";
 export { createDataAppSandbox } from "metabase-enterprise/data_apps/sandbox/sandbox";
+export { mountDataAppSdkComponent } from "metabase-enterprise/data_apps/runtime/lib/mount-sdk-component";
+export { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
