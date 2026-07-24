@@ -79,11 +79,11 @@
     (let [checkpoint-filter-field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])
           field (t2/select-one :model/Field checkpoint-filter-field-id)]
       (api/check-400 field (deferred-tru "Checkpoint field not found."))
-      (let [checkpoint-type (lib.types.isa/column-type (field->column field))]
-        (api/check-400 (transforms-base.u/supported-incremental-filter-type? checkpoint-type)
+      (let [column (field->column field)]
+        (api/check-400 (transforms-base.u/supported-checkpoint-column? column)
                        (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
                                      (:name field)
-                                     (pr-str checkpoint-type)))))))
+                                     (pr-str (lib.types.isa/column-type column))))))))
 
 (defn validate-lookback!
   "Validates a configured lookback window: only date and datetime checkpoint columns support one

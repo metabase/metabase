@@ -238,15 +238,15 @@
 
 ;;; ------------------------------------------------- Incremental/Checkpoint Helpers -------------------------------------------------
 
-(defn supported-incremental-filter-type?
-  "Returns true if the given base-type is supported for incremental filtering.
+(defn supported-checkpoint-column?
+  "Returns true if `column` (or any map with `:base-type`/`:effective-type`) can be used for
+  incremental checkpoint filtering.
 
-  We support date/datetime and numeric (int/float) types. Time-only columns are excluded:
+  We support date/datetime and numeric (int/float) columns. Time-only columns are excluded:
   their watermarks wrap at midnight, so `>` comparisons against them are meaningless."
-  [base-type]
-  (or (and (isa? base-type :type/Temporal)
-           (not (isa? base-type :type/Time)))
-      (isa? base-type :type/Number)))
+  [column]
+  (or (lib.types.isa/date-or-datetime? column)
+      (lib.types.isa/numeric? column)))
 
 (defn- encode-checkpoint-value [v]
   (if (number? v)
@@ -367,7 +367,7 @@
     (when (or (nil? column) (not (:active column)))
       (throw (ex-info "Checkpoint field does not exist or is not active"
                       {:checkpoint-filter-field-id checkpoint-filter-field-id})))
-    (when-not (supported-incremental-filter-type? (lib.types.isa/column-type column))
+    (when-not (supported-checkpoint-column? column)
       (throw (ex-info (str "Checkpoint column '" (:name column) "' has unsupported type "
                            (pr-str (lib.types.isa/column-type column)) ". "
                            "Only numeric and temporal columns are supported for incremental filtering.")
