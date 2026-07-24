@@ -78,7 +78,7 @@ jobs:
             echo "Skipping build: artifacts exist for this commit hash"
           fi
 
-          echo "should_build=$SHOULD_BUILD" >> $GITHUB_OUTPUT
+          echo "should_build=$SHOULD_BUILD" >> "$GITHUB_OUTPUT"
 
   # if this is on a release branch, we need to check the build requirements
   get-build-requirements:
@@ -127,6 +127,7 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
+      MB_PARALLEL_BUILD: "true"
       SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}  # faster builds for dev
       # Emit bundle stats on trunk/release builds (tracked over time) and on PRs
       # (the bundle-size check reads them for both the PR head and its base ref).
