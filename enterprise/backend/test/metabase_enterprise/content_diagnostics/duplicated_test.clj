@@ -540,3 +540,64 @@
       (testing "unlicensed → 402"
         (mt/with-premium-features #{}
           (mt/user-http-request :rasta :get 402 "ee/content-diagnostics/duplicated"))))))
+
+;;; ------------------------------------------- collection subject ----------------------------------------
+
+(deftest duplicated-checker-flags-collection-name-clusters-test
+  (testing "same-named eligible collections cluster instance-wide; archived / non-default-namespace ones sit out"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (let [prefix (scope-prefix)
+              nm     (str prefix " Reports")]
+          (mt/with-temp [:model/Collection {coll-a :id}   {:name nm}
+                         :model/Collection {coll-b :id}   {:name nm}
+                         :model/Collection {solo :id}     {:name (str prefix " Unique")}
+                         :model/Collection {archived :id} {:name nm :archived true}
+                         :model/Collection {snippet :id}  {:name nm :namespace "snippets"}]
+            (let [by-entity (duplicated-findings-by-entity!)]
+              (testing "the two eligible same-named collections are symmetric peers, duplicate_count 1"
+                (is (= 1 (:duplicate_count (by-entity [:collection coll-a]))))
+                (is (= [coll-b] (get-in (by-entity [:collection coll-a]) [:details :duplicate_entity_ids])))
+                (is (= [coll-a] (get-in (by-entity [:collection coll-b]) [:details :duplicate_entity_ids]))))
+              (testing "a uniquely-named collection and the ineligible (archived / snippet-namespace) ones get no finding"
+                (is (nil? (by-entity [:collection solo])))
+                (is (nil? (by-entity [:collection archived])))
+                (is (nil? (by-entity [:collection snippet]))))
+              (testing "the ineligible collections do not count as peers either"
+                (is (= [coll-b] (get-in (by-entity [:collection coll-a]) [:details :duplicate_entity_ids])))))))))))
+
+(deftest duplicated-api-collection-peers-hydrate-test
+  (testing "GET /duplicated hydrates collection peers gated on the collection's own read visibility (its own :id)"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (let [prefix (scope-prefix)
+                nm     (str prefix " Shared")]
+            (mt/with-temp [:model/Collection {parent :id} {:name (str prefix " Parent")}
+                           :model/Collection {coll-a :id} {:name        nm
+                                                           :description "the A one"
+                                                           :location    (str "/" parent "/")}
+                           :model/Collection {coll-b :id} {:name nm}]
+              ;; the caller can read the flagged collection but NOT its peer
+              (perms/grant-collection-read-permissions! (perms/all-users-group) coll-a)
+              (scan/scan!)
+              (let [finding (fn [user]
+                              (some #(when (= [coll-a "collection"] [(:entity_id %) (:entity_type %)]) %)
+                                    (:data (mt/user-http-request user :get 200
+                                                                 "ee/content-diagnostics/duplicated"
+                                                                 :query prefix :entity-types "collection"))))]
+                (testing "superuser: the peer hydrates as a bare collection object - no card_type, no view_count"
+                  (let [f (finding :crowberto)]
+                    (is (some? f))
+                    (is (= [{:id coll-b :name nm :entity_type "collection"}]
+                           (get-in f [:details :duplicate_entities])))
+                    (testing "context: the breadcrumb anchor is the parent (where it lives), plus description; no owner/creator"
+                      (is (= parent (get-in f [:details :collection :id])))
+                      (is (= "the A one" (get-in f [:details :description])))
+                      (is (nil? (get-in f [:details :owner])))
+                      (is (nil? (get-in f [:details :creator]))))))
+                (testing "non-admin who can read the flagged collection but not the peer: finding shows, peer drops out"
+                  (let [f (finding :rasta)]
+                    (is (some? f))
+                    (is (= [] (get-in f [:details :duplicate_entities])))
+                    (is (= 1 (:duplicate_count f)))))))))))))

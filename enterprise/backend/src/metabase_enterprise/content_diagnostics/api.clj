@@ -162,6 +162,12 @@
   plus the duplicated-specific `duplicate-count` magnitude column."
   (assoc api.common/base-sort-column->field :duplicate-count :duplicate_count))
 
+(def ^:private duplicated-entity-types
+  "Entity types the `duplicated` finding can emit - the shared `api.common/covered-entity-types` plus
+  `:collection`, which only this finding type covers (its own endpoint enum, not the shared set, so the
+  stale/slow endpoints stay collection-free)."
+  (conj api.common/covered-entity-types :collection))
+
 (defn- stale-where-clause
   "The shared finding-list WHERE plus the stale-specific `threshold-days` filter - keeps findings whose
   `last_active_at` is on or before `today - threshold-days` (never-used always pass)."
@@ -317,7 +323,8 @@
 
   Params: `include-personal-collections` (default false) - when false, entities currently in a personal
   collection are excluded and personal-collection peers are omitted from `duplicate_entities`.
-  `entity-types` (repeatable; `card`|`dashboard`|`document`|`transform`, omitted = all).
+  `entity-types` (repeatable; `card`|`collection`|`dashboard`|`document`|`transform`, omitted = all;
+  `collection` finds same-named collections instance-wide, regardless of parent).
   `min-duplicate-count` (positive int) keeps findings with at least that many peers. `query`
   case-insensitively substring-matches the entity name. `sort-column`
   (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`duplicate-count`, default `detected-at`)
@@ -332,8 +339,8 @@
        [:sort-column         {:optional true} (ms/enum-decode-keyword (keys duplicated-sort-column->field))]
        [:sort-direction      {:optional true} (ms/enum-decode-keyword api.common/sort-directions)]
        [:entity-types        {:optional true} [:or
-                                               (ms/enum-decode-keyword api.common/covered-entity-types)
-                                               [:sequential (ms/enum-decode-keyword api.common/covered-entity-types)]]]
+                                               (ms/enum-decode-keyword duplicated-entity-types)
+                                               [:sequential (ms/enum-decode-keyword duplicated-entity-types)]]]
        [:min-duplicate-count {:optional true} ms/PositiveInt]
        [:query               {:optional true} :string]]]
   (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)

@@ -41,22 +41,24 @@
 ;;; `scope_collection_id`): visibility (always) + personal-collection exclusion (param-gated).
 
 (defn entity-collection-clauses
-  "Per entity-type, a clause keeping findings whose entity's current `collection_id` satisfies `coll-pred`.
-  Resolved live against the entity's own table (`common/entity-type->model`); entity-types with no model
-  contribute nothing. Callers combine the seq with `:or`/`:and`."
-  [coll-pred]
+  "Per entity-type, a clause keeping findings whose entity's current collection satisfies the predicate
+  built by `coll-pred-fn` - a fn of the column holding the entity's collection id. Resolved live against
+  the entity's own table (`common/entity-type->model`); entity-types with no model contribute nothing.
+  For every containable type that column is `:collection_id`; a `:collection` subject *is* the collection,
+  so its predicate is keyed on its own `:id`. Callers combine the seq with `:or`/`:and`."
+  [coll-pred-fn]
   (for [[etype model] common/entity-type->model]
     [:and
      [:= :entity_type (name etype)]
      [:in :entity_id {:select [:id]
                       :from   [(t2/table-name model)]
-                      :where  coll-pred}]]))
+                      :where  (coll-pred-fn (if (= etype :collection) :id :collection_id))}]]))
 
 (defn visible-findings-clause
   "Keep only findings whose entity is in a collection the current user can read - always applied.
   Fail-closed: an entity-type with no collection model is dropped."
   []
-  (into [:or] (entity-collection-clauses (collection/visible-collection-filter-clause :collection_id))))
+  (into [:or] (entity-collection-clauses collection/visible-collection-filter-clause)))
 
 (defn- personal-collection-ids
   "Live set of collection ids that are, or are nested under, a personal collection - a `personal_owner_id`
@@ -92,7 +94,7 @@
   (when excluded-personal-ids
     (into [:and]
           (map (fn [clause] [:not clause]))
-          (entity-collection-clauses [:in :collection_id excluded-personal-ids]))))
+          (entity-collection-clauses (fn [coll-col] [:in coll-col excluded-personal-ids])))))
 
 (defn findings-where
   "Base WHERE for one finding-type's list: the valid + caller-visible base narrowed by the filters every
@@ -149,6 +151,31 @@
 
 (defmethod entity-context ::common/collection-item [entity-type ids] (context-rows entity-type ids))
 (defmethod entity-context :transform [entity-type ids] (context-rows entity-type ids))
+
+(defn- collection-context
+  "The `entity-context` arm for `:collection` subjects, which have no `collection_id`/`creator_id`
+  columns: `collection_id` (the breadcrumb anchor) is the **parent** parsed from `location` - consistent
+  \"where it lives\" semantics; the subject itself is already the finding's identity - and `owner` is the
+  owning user when the collection is personal (api-design: collection carries `owner` only when personal,
+  `creator` always null). Nil at root / for regular collections respectively. Empty `ids` → nil (skips a
+  degenerate `IN ()`; callers use `get-in`, so nil is fine)."
+  [ids]
+  (when (seq ids)
+    (let [rows   (t2/select [:model/Collection :id :description :location :personal_owner_id]
+                            :id [:in (set ids)])
+          ;; default-fields select: :common_name is computed from first/last name, not a real column
+          owners (when-let [owner-ids (not-empty (into #{} (keep :personal_owner_id) rows))]
+                   (t2/select-pk->fn #(select-keys % [:id :common_name :email])
+                                     :model/User :id [:in owner-ids]))]
+      (m/index-by :id
+                  (for [{:keys [location personal_owner_id] :as row} rows]
+                    (assoc row
+                           :collection_id (collection/location-path->parent-id location)
+                           ;; same {:id :common_name :email} shape the transform :owner hydrate returns,
+                           ;; so normalized-owner serves both
+                           :owner (get owners personal_owner_id)))))))
+
+(defmethod entity-context :collection [_ ids] (collection-context ids))
 
 (defn- collection-breadcrumbs
   "For a set of collection ids → `{collection-id → {:id :name :effective_ancestors [{:id :name} …]}}`.
@@ -214,6 +241,16 @@
   (t2/select (into [(common/entity-type->model entity-type) :id :name] (common/peer-select-cols entity-type))
              {:where (readable-entities-where ids excluded-personal-ids)}))
 
+(defmethod read-entity-rows :collection
+  [_ ids excluded-personal-ids]
+  ;; a `:collection` subject *is* the read-permission unit, so it gates on its own `:id` rather than a
+  ;; parent `:collection_id`, and has no root row to preserve.
+  (t2/select [:model/Collection :id :name]
+             {:where [:and
+                      [:in :id ids]
+                      (collection/visible-collection-filter-clause :id)
+                      (when excluded-personal-ids [:not [:in :id excluded-personal-ids]])]}))
+
 (defmethod read-entity-rows :transform
   [_ ids excluded-personal-ids]
   ;; mi/can-read? on a transform = source-type feature gate + (superuser, or data-analyst with readable
@@ -238,8 +275,9 @@
               row   (read-entity-rows etype ids excluded-personal-ids)]
           [[etype (:id row)]
            (cond-> {:id (:id row) :name (:name row) :entity_type etype}
-             (not= etype :transform) (assoc :view_count (:view_count row))
-             (= etype :card)         (assoc :card_type (:type row)))])))
+             ;; only card/dashboard/document carry view_count (transform + collection have none)
+             (contains? #{:card :dashboard :document} etype) (assoc :view_count (:view_count row))
+             (= etype :card)                                 (assoc :card_type (:type row)))])))
 
 (defn- normalized-owner
   "Normalized `owner` from the transform `:owner` hydrate: `{id,name,email,type:user}` or, for an external
