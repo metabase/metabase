@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.metrics.dimension :as metrics.dimension]
    [metabase.test :as mt]
@@ -63,27 +64,25 @@
     (is (= {:dimension_id "m2" :target [:field {} 9]}
            (metrics.dimension/->api-dimension-mapping {:dimension-id "m2" :target [:field {} 9]})))))
 
-(deftest api->dimension-test
-  (testing "kebab-cases keys (unknown keys included); values pass through untouched"
-    (is (= {:id             "x"
-            :display-name   "X"
-            :effective-type "type/Text"
-            :group          {:id "g" :type "main" :display-name "G"}
-            :sources        [{:type "field" :field-id 3}]
-            :unknown-key    1}
-           (metrics.dimension/api->dimension
-            {:id             "x"
-             :display_name   "X"
-             :effective_type "type/Text"
-             :group          {:id "g" :type "main" :display_name "G"}
-             :sources        [{:type "field" :field-id 3}]
-             :unknown_key    1})))))
+(defn- entry-form
+  "The declared form of `k`'s entry in map schema `schema`."
+  [schema k]
+  (some (fn [[entry-k _props entry-schema]]
+          (when (= k entry-k)
+            (mc/form entry-schema)))
+        (mc/children (mc/deref-all (mc/schema schema)))))
 
-(deftest api->dimension-mapping-test
-  (testing "kebab-cases keys; the MBQL :target ref passes through untouched"
-    (is (= {:dimension-id "m1" :type "table" :table-id 7 :target [:field {:source-field 1} 2]}
-           (metrics.dimension/api->dimension-mapping
-            {:dimension_id "m1" :type "table" :table_id 7 :target [:field {:source-field 1} 2]})))))
+(deftest wire-schemas-keep-named-references-test
+  (testing "wire annotation preserves registry references instead of inlining them, so a change to a
+           referenced schema propagates and OpenAPI/error output keeps the schema names"
+    (is (= [:maybe :metabase.metrics.dimension/group]
+           (entry-form ::metrics.dimension/dimension :group)))
+    (is (= [:maybe [:sequential :metabase.metrics.dimension/source]]
+           (entry-form ::metrics.dimension/dimension :sources)))
+    (is (= :metabase.lib-metric.schema/dimension-id
+           (entry-form ::metrics.dimension/dimension :id)))
+    (is (= :metabase.lib-metric.schema/dimension-id
+           (entry-form ::metrics.dimension/dimension-mapping :dimension-id)))))
 
 (defn- metric
   "A metric-shaped map with one dimension per `[dim-id field-id]` pair."

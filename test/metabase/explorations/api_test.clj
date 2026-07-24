@@ -596,8 +596,9 @@
    :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))})
 
 (defn- venues-dimension-mappings
-  "Wire-shape (snake_case) dimension mappings for HTTP request payloads. The API edge converts
-  these to the internal kebab-case shape (`metabase.metrics.dimension/api->dimension-mapping`)."
+  "Wire-shape (snake_case) dimension mappings for HTTP request payloads. `defendpoint` decodes
+  these to the internal kebab-case shape via the `:metabase.metrics.core/dimension-mapping`
+  schema the request schemas reference."
   []
   [{:dimension_id (duid "category") :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
    {:dimension_id (duid "price")    :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}])

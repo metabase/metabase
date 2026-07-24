@@ -18,6 +18,7 @@
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.queues :as explorations.queues]
    [metabase.lib-be.core :as lib-be]
+   [metabase.metrics.core :as metrics]
    [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -310,11 +311,11 @@
 
 (def ^:private MetricSelection
   ;; Mapping objects are decoded from the snake_case wire shape to the internal kebab-case shape
-  ;; at the `defendpoint` edge by the wire-annotated schema (see `metabase.metrics.dimension`);
+  ;; at the `defendpoint` edge by the wire-annotated schema (see [[metabase.metrics.core]]);
   ;; the envelope `:dimension_mappings` key itself stays snake_case, matching storage.
   [:map
    [:card_id ms/PositiveInt]
-   [:dimension_mappings {:optional true} [:maybe [:sequential :metabase.metrics.dimension/dimension-mapping]]]])
+   [:dimension_mappings {:optional true} [:maybe [:sequential ::metrics/dimension-mapping]]]])
 
 (def ^:private DimensionSelection
   ;; The FE sends snake_case dimension snapshots; the `:decode/api` rule kebab-cases them at the
@@ -554,7 +555,7 @@
                                              [:id [:maybe ms/PositiveInt]]
                                              [:name :string]]]]
    [:dimension_ids        [:sequential :any]]
-   [:dimension_mappings   {:optional true} [:maybe [:sequential :metabase.metrics.dimension/dimension-mapping]]]
+   [:dimension_mappings   {:optional true} [:maybe [:sequential ::metrics/dimension-mapping]]]
    [:database_id          {:optional true} [:maybe ms/PositiveInt]]
    [:result_column_name   {:optional true} [:maybe :string]]
    [:in_library           {:optional true} :boolean]])
@@ -566,7 +567,7 @@
   [:map
    [:name                       :string]
    [:dimension_interestingness  [:maybe number?]]
-   [:dimensions                 [:sequential :metabase.metrics.dimension/dimension]]])
+   [:dimensions                 [:sequential ::metrics/dimension]]])
 
 (mr/def ::DimensionsResponse
   "Schema for GET /dimensions: metrics referencing dimensions by id, plus the grouped dimension list."
