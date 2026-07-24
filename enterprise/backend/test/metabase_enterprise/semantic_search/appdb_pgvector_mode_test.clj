@@ -13,6 +13,7 @@
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
@@ -118,7 +119,7 @@
                     (is (contains? tables "index_metadata"))
                     (is (contains? tables "index_control"))
                     (is (contains? tables "index_gate"))
-                    (is (contains? tables "index_mock_model_4"))
+                    (is (contains? tables (semantic.index/model-table-name semantic.tu/mock-embedding-model)))
                     (is (some #(str/starts-with? % "dlq_") tables))))
                 (testing "search round-trips through the app-db pool"
                   ;; results are reconstructed from legacy_input, so the mock card comes back as model+id

@@ -1,5 +1,6 @@
 (ns metabase-enterprise.semantic-search.settings
   (:require
+   [clojure.string :as str]
    [metabase.events.core :as events]
    [metabase.llm.settings :as llm-settings]
    [metabase.search.config :as search.config]
@@ -10,12 +11,8 @@
 ;; here, not there, so it's valid wherever the setter runs regardless of handler-namespace load order.
 (derive :event/semantic-search-hnsw-enabled :metabase/event)
 
-(def ^:private valid-embedding-providers
-  "The set of valid embedding provider names."
-  #{"ai-service" "openai" "ollama"})
-
 (defsetting ee-embedding-provider
-  (deferred-tru "The embedding provider to use (`openai`, `ollama`, or `ai-service`)")
+  (deferred-tru "The registered embedding provider to use")
   :encryption :no
   :visibility :settings-manager
   :default "ai-service"
@@ -23,11 +20,12 @@
   :export? false
   :doc false
   :setter (fn [new-value]
-            (when (and new-value (not (contains? valid-embedding-providers new-value)))
-              (throw (ex-info (str "Invalid embedding provider: " (pr-str new-value)
-                                   ". Valid providers are: " (pr-str valid-embedding-providers))
-                              {:invalid-value new-value
-                               :valid-values  valid-embedding-providers})))
+            ;; Provider plugins may be configured before they are loaded. Readiness reports an unregistered
+            ;; provider as unavailable, so validation here only needs to protect the registry key contract.
+            (when-not (or (nil? new-value)
+                          (and (string? new-value) (not (str/blank? new-value))))
+              (throw (ex-info "Embedding provider must be a non-blank string."
+                              {:invalid-value new-value})))
             (setting/set-value-of-type! :string :ee-embedding-provider new-value)))
 
 (defsetting ee-embedding-model
