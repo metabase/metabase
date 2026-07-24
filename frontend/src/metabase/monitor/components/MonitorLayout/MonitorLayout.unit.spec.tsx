@@ -141,6 +141,7 @@ describe("MonitorLayout", () => {
 
     const expectedTabs: [string, string][] = [
       ["Dependency diagnostics", Urls.dependencyDiagnostics()],
+      ["Content diagnostics", Urls.contentDiagnostics()],
       ["Erroring questions", Urls.monitorErroringQuestions()],
       ["Alerts management", Urls.monitorNotifications()],
       ["Background tasks", Urls.monitorTasks()],
@@ -159,6 +160,11 @@ describe("MonitorLayout", () => {
       label: "Dependency diagnostics",
       route: Urls.dependencyDiagnostics(),
       section: "diagnostics",
+    },
+    {
+      label: "Content diagnostics",
+      route: Urls.contentDiagnostics(),
+      section: "content-diagnostics",
     },
     {
       label: "Erroring questions",

@@ -1,0 +1,6 @@
+[:map
+ [:value [:map
+          [:entity_types {:optional true} [:sequential [:enum "card" "dashboard" "document" "transform"]]]
+          [:include_personal_collections {:optional true} :boolean]
+          [:sort_column {:optional true} [:enum "name" "entity-type" "created-by" "created-at" "last-active-at"]]
+          [:sort_direction {:optional true} [:enum "asc" "desc"]]]]]
