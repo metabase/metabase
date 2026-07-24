@@ -1,19 +1,18 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { useDispatch } from "metabase/redux";
-import { Link, Outlet, Route, push, useLocation } from "metabase/router";
+import { Link, Outlet, Route, useLocation, useNavigate } from "metabase/router";
 
 function Home() {
   const { pathname, key } = useLocation();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   return (
     <div>
       <span data-testid="location">{pathname}</span>
       <span data-testid="location-key">{key}</span>
       <Link to="/other">go</Link>
       {/* A `<Link>` used as a button: it navigates through its own onClick. */}
-      <Link onClick={() => dispatch(push("/other"))}>act</Link>
+      <Link onClick={() => navigate("/other")}>act</Link>
       {/* A button-like `<Link to="">` (e.g. the undo toast) must not navigate. */}
       <Link to="" onClick={() => undefined}>
         noop
@@ -122,8 +121,8 @@ describe("RouterLink", () => {
       initialRoute: "/",
     });
 
-    // The click handler dispatches the navigation; the link itself must not
-    // navigate, or on v7 it would clobber the push and never reach /other.
+    // The click handler performs the navigation; the link itself must not
+    // navigate, or on v7 it would clobber it and never reach /other.
     await userEvent.click(screen.getByText("act"));
 
     expect(await screen.findByTestId("other")).toBeInTheDocument();

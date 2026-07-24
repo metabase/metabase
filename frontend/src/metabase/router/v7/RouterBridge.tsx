@@ -176,7 +176,7 @@ function makeRouterShim(navigate: V7NavigateFunction): InjectedRouter {
     createHref: href,
     isActive: () => false,
     // Stands in for v3's `router.listen` (used by e.g. `use-dashboard-url-query`).
-    // `V7ReduxBridge` feeds these subscribers every location change.
+    // `V7RouterBridge` feeds these subscribers every location change.
     listen: subscribeLocation,
   } as InjectedRouter;
 }
