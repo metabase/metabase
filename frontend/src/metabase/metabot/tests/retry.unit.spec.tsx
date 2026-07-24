@@ -1,11 +1,19 @@
+import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
+import { assocIn } from "icepick";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
 import {
+  getMessages,
   getMetabotConversation,
   getMetabotRequestState,
+  retryPrompt,
+  submitInput,
 } from "metabase/metabot/state";
+import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
+import type { State } from "metabase/redux/store";
+import { checkNotNull } from "metabase/utils/types";
 import { isUuid } from "metabase/utils/uuid";
 
 import {
@@ -20,6 +28,12 @@ import {
   stopResponseButton,
   whoIsYourFavoriteResponse,
 } from "./utils";
+
+const emptyContext = {
+  user_is_viewing: [],
+  current_time_with_timezone: "",
+  capabilities: [],
+};
 
 const turnEvents = (opts: {
   messageId: string;
@@ -50,6 +64,101 @@ describe("metabot > retry", () => {
     expect(
       await within(lastMessage!).findByTestId("metabot-chat-message-retry"),
     ).toBeInTheDocument();
+  });
+
+  it("should reuse the conversation profileOverride when retrying a response", async () => {
+    const metabotInitialState = assocIn(
+      assocIn(
+        getMetabotInitialState(),
+        ["conversations", "omnibot", "visible"],
+        true,
+      ),
+      ["conversations", "omnibot", "profileOverride"],
+      "nlq",
+    );
+    setup({ metabotInitialState });
+
+    const firstSpy = mockAgentEndpoint({
+      events: turnEvents({
+        messageId: "msg_1",
+        userMessageId: "user_msg_1",
+        text: "first reply",
+      }),
+    });
+    await enterChatMessage("first prompt");
+    expect(await screen.findByText("first reply")).toBeInTheDocument();
+    expect((await lastReqBody(firstSpy)).profile_id).toBe("nlq");
+
+    const retrySpy = mockAgentEndpoint({
+      events: turnEvents({
+        messageId: "msg_2",
+        userMessageId: "user_msg_1",
+        text: "regenerated reply",
+      }),
+    });
+    await userEvent.click(
+      await screen.findByTestId("metabot-chat-message-retry"),
+    );
+
+    const retryBody = await lastReqBody(retrySpy);
+    expect(retryBody.profile_id).toBe("nlq");
+    expect(retryBody.retry_message_id).toBe("user_msg_1");
+  });
+
+  it("should send an explicit profile on both the original prompt and the retry", async () => {
+    const { store } = setup();
+    // renderWithProviders types dispatch as plain Dispatch; RTK thunks need ThunkDispatch
+    const dispatch = store.dispatch as ThunkDispatch<
+      State,
+      void,
+      UnknownAction
+    >;
+
+    const firstSpy = mockAgentEndpoint({
+      events: turnEvents({
+        messageId: "msg_1",
+        userMessageId: "user_msg_1",
+        text: "first reply",
+      }),
+    });
+    act(() => {
+      dispatch(
+        submitInput({
+          type: "text",
+          message: "first prompt",
+          context: emptyContext,
+          agentId: "explorations",
+          profile: "explorations",
+        }),
+      );
+    });
+    expect((await lastReqBody(firstSpy)).profile_id).toBe("explorations");
+
+    const messageId = checkNotNull(
+      getMessages(store.getState(), "explorations").at(-1),
+    ).id;
+
+    const retrySpy = mockAgentEndpoint({
+      events: turnEvents({
+        messageId: "msg_2",
+        userMessageId: "user_msg_1",
+        text: "regenerated reply",
+      }),
+    });
+    act(() => {
+      dispatch(
+        retryPrompt({
+          messageId,
+          context: emptyContext,
+          agentId: "explorations",
+          profile: "explorations",
+        }),
+      );
+    });
+
+    const retryBody = await lastReqBody(retrySpy);
+    expect(retryBody.profile_id).toBe("explorations");
+    expect(retryBody.retry_message_id).toBe("user_msg_1");
   });
 
   it("should show retry option for error messages", async () => {

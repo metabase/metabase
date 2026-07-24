@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useInterval } from "react-use";
 
 import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
+import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { Text, Tooltip } from "metabase/ui";
 
 import { getCompactRelativeTime } from "./utils";
@@ -12,15 +13,8 @@ export function ExplorationLastActivity({
 }: {
   lastActivityAt: string;
 }) {
-  const [, forceUpdate] = useState(0);
-
-  useEffect(() => {
-    const intervalId = setInterval(
-      () => forceUpdate((tick) => tick + 1),
-      LAST_ACTIVITY_REFRESH_INTERVAL,
-    );
-    return () => clearInterval(intervalId);
-  }, []);
+  const forceUpdate = useForceUpdate();
+  useInterval(forceUpdate, LAST_ACTIVITY_REFRESH_INTERVAL);
 
   return (
     <Tooltip label={getFormattedTime(lastActivityAt)}>
