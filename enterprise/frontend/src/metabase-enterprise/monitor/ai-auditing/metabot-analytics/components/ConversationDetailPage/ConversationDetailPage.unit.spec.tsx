@@ -19,6 +19,10 @@ jest.mock("metabase/monitor/components/MonitorLayout", () => ({
   MonitorMain: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+jest.mock("metabase/monitor/components/MonitorLayout/Sidebar", () => ({
+  Sidebar: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 type ConversationMessage = ConversationDetail["messages"][number];
 
 function userMessage(
@@ -57,6 +61,19 @@ function inProgressMessage(id: string, parentId: string): ConversationMessage {
     role: "agent",
     type: "turn_in_progress",
     externalId: id,
+  };
+}
+
+function toolCallMessage(id: string, parentId: string): ConversationMessage {
+  return {
+    id,
+    parent_message_id: parentId,
+    role: "agent",
+    type: "tool_call",
+    name: "search",
+    status: "ended",
+    args: JSON.stringify({ query: "orders" }),
+    result: JSON.stringify({ count: 3 }),
   };
 }
 
@@ -247,5 +264,61 @@ describe("ConversationDetailPage", () => {
     );
 
     expect(await screen.findByText("discarded answer")).toBeInTheDocument();
+  });
+
+  it("shows tool call details in a sidebar instead of a modal, and closes it", async () => {
+    setup(
+      createConversation([
+        userMessage("u1", null, "search orders"),
+        toolCallMessage("t1", "u1"),
+        agentMessage("a1", "t1", "found 3 orders"),
+      ]),
+    );
+
+    expect(await screen.findByText("search")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("tool-call-details-sidebar"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("search"));
+
+    const sidebar = await screen.findByTestId("tool-call-details-sidebar");
+    expect(within(sidebar).getByText("Tool Call")).toBeInTheDocument();
+    expect(within(sidebar).getAllByText("search")).not.toHaveLength(0);
+    expect(
+      screen.queryByTestId("tool-call-details-modal"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      within(sidebar).getByRole("button", { name: "Close" }),
+    );
+
+    expect(
+      screen.queryByTestId("tool-call-details-sidebar"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("closes the sidebar when the same tool call is clicked again", async () => {
+    setup(
+      createConversation([
+        userMessage("u1", null, "search orders"),
+        toolCallMessage("t1", "u1"),
+        agentMessage("a1", "t1", "found 3 orders"),
+      ]),
+    );
+
+    await screen.findByText("search");
+    const toolCallRow = screen.getAllByTestId("metabot-chat-message")[1];
+
+    await userEvent.click(within(toolCallRow).getByText("search"));
+    expect(
+      await screen.findByTestId("tool-call-details-sidebar"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(within(toolCallRow).getByText("search"));
+
+    expect(
+      screen.queryByTestId("tool-call-details-sidebar"),
+    ).not.toBeInTheDocument();
   });
 });

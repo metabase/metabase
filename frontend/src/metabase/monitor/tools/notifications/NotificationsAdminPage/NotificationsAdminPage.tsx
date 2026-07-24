@@ -362,8 +362,12 @@ export const NotificationsAdminPage = ({
               itemsLength={notifications.length}
               total={total}
               showTotal
-              onPreviousPage={() => patchUrlState({ page: urlState.page - 1 })}
-              onNextPage={() => patchUrlState({ page: urlState.page + 1 })}
+              onPreviousPage={() =>
+                patchUrlState({ page: urlState.page - 1 }, { immediate: true })
+              }
+              onNextPage={() =>
+                patchUrlState({ page: urlState.page + 1 }, { immediate: true })
+              }
             />
           </Flex>
         </MonitorMain>

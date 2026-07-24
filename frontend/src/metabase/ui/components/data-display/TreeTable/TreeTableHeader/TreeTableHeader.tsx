@@ -117,6 +117,7 @@ export function TreeTableHeader<TData extends TreeNodeData>({
             }
 
             const sortValue = sortDirection || undefined;
+            const toggleSorting = column.getToggleSortingHandler();
 
             return (
               <Flex
@@ -124,7 +125,8 @@ export function TreeTableHeader<TData extends TreeNodeData>({
                 className={cx(S.cell, classNames?.headerCell)}
                 align="center"
                 style={columnStyle}
-                role={isSortable ? "columnheader" : undefined}
+                role="columnheader"
+                tabIndex={isSortable ? 0 : undefined}
                 aria-sort={
                   sortDirection
                     ? sortDirection === "asc"
@@ -132,8 +134,20 @@ export function TreeTableHeader<TData extends TreeNodeData>({
                       : "descending"
                     : undefined
                 }
-                onClick={
-                  isSortable ? column.getToggleSortingHandler() : undefined
+                onClick={isSortable ? toggleSorting : undefined}
+                onKeyDown={
+                  isSortable
+                    ? (event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          // Consume the key here so it doesn't bubble to the treegrid root's
+                          // keyboard handler, which would otherwise also activate whatever row
+                          // was last keyboard-focused via arrow keys.
+                          event.stopPropagation();
+                          toggleSorting?.(event);
+                        }
+                      }
+                    : undefined
                 }
               >
                 {typeof headerContent === "string" ? (

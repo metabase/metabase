@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useEffectOnce, useLatest } from "react-use";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
@@ -13,8 +13,21 @@ export type UrlStateConfig<State extends BaseState> = {
   serialize: (state: State) => Query;
 };
 
+type PatchUrlStateOptions = {
+  /**
+   * Sync this patch to the URL right away instead of waiting out the debounce
+   * — use for direct clicks (pagination, sorting) where the URL should
+   * reflect the change immediately, as opposed to rapid-fire changes (e.g.
+   * typing into a filter) that should be batched into one URL update.
+   */
+  immediate?: boolean;
+};
+
 type UrlStateActions<State extends BaseState> = {
-  patchUrlState: (patch: Partial<State>) => void;
+  patchUrlState: (
+    patch: Partial<State>,
+    options?: PatchUrlStateOptions,
+  ) => void;
 };
 
 export const URL_UPDATE_DEBOUNCE_DELAY = 300;
@@ -29,11 +42,29 @@ export function useUrlState<State extends BaseState>(
 ): [State, UrlStateActions<State>] {
   const dispatch = useDispatch();
   const [state, setState] = useState(parse(location.query));
-  const urlState = useDebouncedValue(state, URL_UPDATE_DEBOUNCE_DELAY);
 
-  const patchUrlState = useCallback((patch: Partial<State>) => {
-    setState((state) => ({ ...state, ...patch }));
+  const immediateRef = useRef(false);
+  const shouldDebounce = useCallback(() => {
+    const isImmediate = immediateRef.current;
+    immediateRef.current = false;
+    return !isImmediate;
   }, []);
+  const urlState = useDebouncedValue(
+    state,
+    URL_UPDATE_DEBOUNCE_DELAY,
+    shouldDebounce,
+  );
+
+  const patchUrlState = useCallback(
+    (
+      patch: Partial<State>,
+      { immediate = false }: PatchUrlStateOptions = {},
+    ) => {
+      immediateRef.current = immediate;
+      setState((state) => ({ ...state, ...patch }));
+    },
+    [],
+  );
 
   const updateUrl = useCallback(
     (state: State) => {

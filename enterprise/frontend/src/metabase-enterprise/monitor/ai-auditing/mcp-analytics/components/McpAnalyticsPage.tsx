@@ -1,9 +1,10 @@
+import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useSetting } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import type { WithRouterProps } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
@@ -17,7 +18,6 @@ import { useAuditTable } from "../../metabot-analytics/hooks/useAuditTable";
 import { VIEW_GROUP_MEMBERS, VIEW_MCP_TOOL_CALLS } from "../constants";
 import { useMcpHasData } from "../hooks/useMcpHasData";
 import { buildCallsByDayByStatusQuery } from "../query-utils";
-import type { McpTab } from "../url-state";
 import { mcpUrlStateConfig } from "../url-state";
 
 import { McpAnalyticsEmptyState } from "./McpAnalyticsEmptyState";
@@ -28,7 +28,8 @@ import { McpEventsTable } from "./McpEventsTable";
 /**
  * AI Auditing MCP analytics page. Renders live ad-hoc queries over the `v_mcp_tool_calls` audit view
  * across two tabs (Charts and a row-level Events table), sharing URL-state date/user/group
- * filters. Shows a single empty state (no tabs) when the filtered view has no activity.
+ * filters. The tabs and filters stay visible when the filtered view has no activity; only the
+ * active tab's content is replaced with an empty state.
  */
 export function McpAnalyticsPage({ location }: WithRouterProps) {
   const [
@@ -62,6 +63,11 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
 
   const chartFilters = { dateFilter, userId, groupId, tenantId };
 
+  const sortingOptions = useMemo(
+    () => ({ sort_column: sortColumn, sort_direction: sortDirection }),
+    [sortColumn, sortDirection],
+  );
+
   const { isInitialLoading, isRefetching, hasData, count } = useMcpHasData({
     ...dataSources,
     ...chartFilters,
@@ -79,11 +85,34 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
     errorsOnly: true,
   });
 
-  return (
+  // The events (Tool calls) tab is a data grid that should scroll internally.
+  const isEventsTab = tab === "events";
+
+  const content = (
     <MonitorMain>
-      <SettingsPageWrapper mt="sm">
-        <Flex align="center" justify="space-between">
-          <Title order={2}>{t`MCP analytics`}</Title>
+      <Stack gap="lg" {...(isEventsTab ? { flex: 1, mih: 0 } : {})}>
+        <MonitorHeaderTitle>{t`MCP analytics`}</MonitorHeaderTitle>
+
+        <Tabs
+          variant="pills"
+          value={tab}
+          onChange={(val) =>
+            patchUrlState({ tab: val === "events" ? "events" : "charts" })
+          }
+          keepMounted={false}
+          {...(isEventsTab
+            ? {
+                flex: 1,
+                mih: 0,
+                display: "flex",
+                style: { flexDirection: "column" },
+              }
+            : {})}
+        >
+          <Tabs.List mb="md">
+            <Tabs.Tab value="charts">{t`Usage`}</Tabs.Tab>
+            <Tabs.Tab value="events">{t`Tool calls`}</Tabs.Tab>
+          </Tabs.List>
 
           <McpToolCallsFilter
             date={date}
@@ -100,112 +129,124 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
             tenantOptions={tenantOptions}
             hasTenants={hasTenants}
           />
-        </Flex>
 
-        {match({ isInitialLoading, showEmpty })
-          .with({ isInitialLoading: true }, () => (
-            <Flex mih="60vh" align="center" justify="center">
-              <Loader size="lg" />
-            </Flex>
-          ))
-          .with({ showEmpty: true }, () => <McpAnalyticsEmptyState />)
-          .otherwise(() => (
-            <Tabs
-              value={tab}
-              // Unjustified type cast. FIXME
-              onChange={(val) => patchUrlState({ tab: val as McpTab })}
-              keepMounted={false}
-            >
-              <Tabs.List mb="lg">
-                <Tabs.Tab value="charts">{t`Usage`}</Tabs.Tab>
-                <Tabs.Tab value="events">{t`Tool calls`}</Tabs.Tab>
-              </Tabs.List>
-
-              <Tabs.Panel value="charts">
-                <Stack gap="lg">
-                  <McpCallsTimelineChart
-                    {...dataSources}
-                    {...chartFilters}
-                    title={t`Calls by client over time`}
-                  />
-                  <SimpleGrid cols={2} spacing="lg">
-                    <McpBreakoutChart
+          {match({ isInitialLoading, showEmpty })
+            .with({ isInitialLoading: true }, () => (
+              // Keeps the active tab's panel/tabpanel relationship intact (aria-controls on the
+              // selected tab must point at a rendered element) while the initial load is pending.
+              <Tabs.Panel value={tab} mt="md">
+                <Flex mih="60vh" align="center" justify="center">
+                  <Loader size="lg" />
+                </Flex>
+              </Tabs.Panel>
+            ))
+            .with({ showEmpty: true }, () => (
+              <Tabs.Panel value={tab} mt="md">
+                <McpAnalyticsEmptyState />
+              </Tabs.Panel>
+            ))
+            .otherwise(() => (
+              <>
+                <Tabs.Panel value="charts" mt="md">
+                  <Stack gap="lg">
+                    <McpCallsTimelineChart
                       {...dataSources}
                       {...chartFilters}
-                      title={t`Calls by tool`}
-                      display="pie"
-                      breakoutColumn="tool_name"
-                      h={500}
+                      title={t`Calls by client over time`}
                     />
-                    <McpBreakoutChart
-                      {...dataSources}
-                      {...chartFilters}
-                      title={t`Calls by user`}
-                      display="row"
-                      breakoutColumn="user_display_name"
-                      h={500}
-                    />
-                  </SimpleGrid>
-
-                  {hasErrors && (
-                    <>
-                      <Title order={3} mt="md">{t`Errors`}</Title>
-                      <McpCallsTimelineChart
+                    <SimpleGrid cols={2} spacing="lg">
+                      <McpBreakoutChart
                         {...dataSources}
                         {...chartFilters}
-                        title={t`Calls by status over time`}
-                        buildQuery={buildCallsByDayByStatusQuery}
+                        title={t`Calls by tool`}
+                        display="pie"
+                        breakoutColumn="tool_name"
+                        h={500}
                       />
-                      <SimpleGrid cols={2} spacing="lg">
-                        <McpBreakoutChart
-                          {...dataSources}
-                          {...chartFilters}
-                          title={t`Errors by type`}
-                          display="pie"
-                          breakoutColumn="error_type"
-                          errorsOnly
-                          h={500}
-                        />
-                        <McpBreakoutChart
-                          {...dataSources}
-                          {...chartFilters}
-                          title={t`Errors by tool`}
-                          display="row"
-                          breakoutColumn="tool_name"
-                          errorsOnly
-                          h={500}
-                        />
-                      </SimpleGrid>
-                    </>
-                  )}
-                </Stack>
-              </Tabs.Panel>
+                      <McpBreakoutChart
+                        {...dataSources}
+                        {...chartFilters}
+                        title={t`Calls by user`}
+                        display="row"
+                        breakoutColumn="user_display_name"
+                        h={500}
+                      />
+                    </SimpleGrid>
 
-              <Tabs.Panel value="events">
-                <McpEventsTable
-                  {...dataSources}
-                  {...chartFilters}
-                  hasTenants={hasTenants}
-                  hasPii={hasPii}
-                  page={page}
-                  total={count}
-                  onPageChange={(newPage) => patchUrlState({ page: newPage })}
-                  sortingOptions={{
-                    sort_column: sortColumn,
-                    sort_direction: sortDirection,
-                  }}
-                  onSortingOptionsChange={(newSorting) =>
-                    patchUrlState({
-                      sortColumn: newSorting.sort_column,
-                      sortDirection: newSorting.sort_direction,
-                      page: 0,
-                    })
-                  }
-                />
-              </Tabs.Panel>
-            </Tabs>
-          ))}
-      </SettingsPageWrapper>
+                    {hasErrors && (
+                      <>
+                        <Title order={3} mt="md">{t`Errors`}</Title>
+                        <McpCallsTimelineChart
+                          {...dataSources}
+                          {...chartFilters}
+                          title={t`Calls by status over time`}
+                          buildQuery={buildCallsByDayByStatusQuery}
+                        />
+                        <SimpleGrid cols={2} spacing="lg">
+                          <McpBreakoutChart
+                            {...dataSources}
+                            {...chartFilters}
+                            title={t`Errors by type`}
+                            display="pie"
+                            breakoutColumn="error_type"
+                            errorsOnly
+                            h={500}
+                          />
+                          <McpBreakoutChart
+                            {...dataSources}
+                            {...chartFilters}
+                            title={t`Errors by tool`}
+                            display="row"
+                            breakoutColumn="tool_name"
+                            errorsOnly
+                            h={500}
+                          />
+                        </SimpleGrid>
+                      </>
+                    )}
+                  </Stack>
+                </Tabs.Panel>
+
+                <Tabs.Panel
+                  value="events"
+                  mt="md"
+                  flex={1}
+                  mih={0}
+                  display="flex"
+                  style={{ flexDirection: "column" }}
+                >
+                  <McpEventsTable
+                    {...dataSources}
+                    {...chartFilters}
+                    hasTenants={hasTenants}
+                    hasPii={hasPii}
+                    page={page}
+                    total={count}
+                    onPageChange={(newPage) =>
+                      patchUrlState({ page: newPage }, { immediate: true })
+                    }
+                    sortingOptions={sortingOptions}
+                    onSortingOptionsChange={(newSorting) =>
+                      patchUrlState({
+                        sortColumn: newSorting.sort_column,
+                        sortDirection: newSorting.sort_direction,
+                        page: 0,
+                      })
+                    }
+                  />
+                </Tabs.Panel>
+              </>
+            ))}
+        </Tabs>
+      </Stack>
     </MonitorMain>
+  );
+
+  return isEventsTab ? (
+    <Flex h="100%" wrap="nowrap">
+      {content}
+    </Flex>
+  ) : (
+    content
   );
 }

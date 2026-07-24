@@ -8,25 +8,15 @@ import {
   useListPermissionsGroupsQuery,
   useListUserMembershipsQuery,
 } from "metabase/api";
-import {
-  Breadcrumbs,
-  type Crumb,
-} from "metabase/common/components/Breadcrumbs";
+import type { Crumb } from "metabase/common/components/Breadcrumbs";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
+import { MonitorBreadcrumbs } from "metabase/monitor/components/MonitorBreadcrumbs";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import {
-  ActionIcon,
-  Anchor,
-  Flex,
-  Icon,
-  Menu,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { ActionIcon, Anchor, Flex, Icon, Menu, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
 import { useGetTenantQuery } from "metabase-enterprise/api";
@@ -68,14 +58,14 @@ export function ConversationHeader({
 
   return (
     <>
-      <Breadcrumbs crumbs={crumbs} />
+      <MonitorBreadcrumbs crumbs={crumbs} />
 
       <Flex justify="space-between" align="flex-start" gap="md">
         <Stack gap="sm">
-          <Flex align="baseline">
-            <Title order={2}>
+          <Flex align="center">
+            <MonitorHeaderTitle>
               {conversation.title || t`Conversation with ${userName}`}
-            </Title>
+            </MonitorHeaderTitle>
             {conversation.user && (
               <Menu shadow="md" position="bottom-start" withinPortal>
                 <Menu.Target>

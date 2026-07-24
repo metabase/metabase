@@ -38,6 +38,7 @@ export type ConversationSummary = {
 
 export const CONVERSATION_SORT_COLUMNS = [
   "created_at",
+  "title",
   "message_count",
   "total_tokens",
   "cache_read_tokens",

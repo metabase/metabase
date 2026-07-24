@@ -1,29 +1,56 @@
-import cx from "classnames";
+import type { Row } from "@tanstack/react-table";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import AdminS from "metabase/css/admin.module.css";
-import CS from "metabase/css/core/index.css";
+import { useScrollToTop } from "metabase/common/hooks";
+import { useSortingStateChange } from "metabase/common/hooks/use-sorting-state-change";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
+import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
-import { Badge, Ellipsified, Flex, Tooltip } from "metabase/ui";
+import {
+  Badge,
+  Card,
+  Center,
+  Ellipsified,
+  SortableHeaderPill,
+  Tooltip,
+  TreeTable,
+  type TreeTableColumnDef,
+  TreeTableSkeleton,
+  useTreeTableInstance,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatNumber } from "metabase/utils/formatting";
 import { getUserName } from "metabase/utils/user";
 import type { SortingOptions } from "metabase-types/api";
 
-import type { ConversationSortColumn, ConversationSummary } from "../../types";
+import {
+  CONVERSATION_SORT_COLUMNS,
+  type ConversationSortColumn,
+  type ConversationSummary,
+} from "../../types";
 
-import S from "./ConversationsTable.module.css";
+const COLUMN_WIDTHS = [
+  0.14, 0.14, 0.11, 0.12, 0.08, 0.09, 0.1, 0.08, 0.08, 0.06,
+];
+
+const DEFAULT_SORTING: SortingOptions<ConversationSortColumn> = {
+  sort_column: "created_at",
+  sort_direction: "desc",
+};
+
+type ConversationRow = ConversationSummary & { id: string };
 
 type Props = {
   conversations: ConversationSummary[];
   isLoading: boolean;
+  isFetching: boolean;
   error: unknown;
+  page: number;
   sortingOptions: SortingOptions<ConversationSortColumn>;
   onSortingOptionsChange: (
     options: SortingOptions<ConversationSortColumn>,
@@ -33,126 +60,228 @@ type Props = {
 export function ConversationsTable({
   conversations,
   isLoading,
+  isFetching,
   error,
+  page,
   sortingOptions,
   onSortingOptionsChange,
 }: Props) {
   const dispatch = useDispatch();
-  const showLoadingAndError = isLoading || error != null;
 
-  const handleRowClick = (convo: ConversationSummary) => {
-    dispatch(
-      push(Urls.monitorAiAuditingConversationDetail(convo.conversation_id)),
+  const rows: ConversationRow[] = useMemo(
+    () =>
+      conversations.map((convo) => ({ ...convo, id: convo.conversation_id })),
+    [conversations],
+  );
+  const columns = useMemo(() => getColumns(), []);
+
+  const { sortingState, onSortingChange } = useSortingStateChange({
+    sortingOptions,
+    columns: CONVERSATION_SORT_COLUMNS,
+    defaultSorting: DEFAULT_SORTING,
+    onSortingOptionsChange,
+  });
+
+  const getRowHref = useCallback(
+    (row: Row<ConversationRow>) =>
+      Urls.monitorAiAuditingConversationDetail(row.original.conversation_id),
+    [],
+  );
+
+  // Pointer navigation is handled by the row's link (getRowHref below), which also gives
+  // modified clicks (Cmd/Ctrl/Shift) their native new-tab/context-menu behavior for free.
+  // This only covers keyboard activation (Enter on a keyboard-focused row).
+  const handleRowActivate = useCallback(
+    (row: Row<ConversationRow>) => {
+      dispatch(push(getRowHref(row)));
+    },
+    [dispatch, getRowHref],
+  );
+
+  const treeTableInstance = useTreeTableInstance<ConversationRow>({
+    data: rows,
+    columns,
+    sorting: sortingState,
+    manualSorting: true,
+    getNodeId: (convo) => convo.id,
+    onRowActivate: handleRowActivate,
+    onSortingChange,
+  });
+
+  useScrollToTop({
+    ref: treeTableInstance.containerRef,
+    keys: [page, sortingOptions],
+    skip: isFetching,
+  });
+
+  if (error != null) {
+    return (
+      <Card
+        flex="0 1 auto"
+        mih={0}
+        p={0}
+        withBorder
+        data-testid="conversations-table"
+      >
+        <Center p="xl">
+          <LoadingAndErrorWrapper loading={false} error={error} />
+        </Center>
+      </Card>
     );
-  };
+  }
 
   return (
-    <table className={cx(AdminS.ContentTable, S.table)}>
-      <thead>
-        <tr>
-          <th>{t`Title`}</th>
-          <SortableColumnHeader
-            name="user"
-            sortingOptions={sortingOptions}
-            onSortingOptionsChange={onSortingOptionsChange}
-          >{t`User`}</SortableColumnHeader>
-          <SortableColumnHeader
-            name="profile_id"
-            sortingOptions={sortingOptions}
-            onSortingOptionsChange={onSortingOptionsChange}
-          >{t`Profile`}</SortableColumnHeader>
-          <SortableColumnHeader
-            name="created_at"
-            sortingOptions={sortingOptions}
-            onSortingOptionsChange={onSortingOptionsChange}
-          >{t`Date`}</SortableColumnHeader>
-          <SortableColumnHeader
-            name="message_count"
-            sortingOptions={sortingOptions}
-            onSortingOptionsChange={onSortingOptionsChange}
-            columnHeaderProps={{ style: { width: "5rem" } }}
-          >{t`Messages`}</SortableColumnHeader>
-          <SortableColumnHeader
-            name="total_tokens"
-            sortingOptions={sortingOptions}
-            onSortingOptionsChange={onSortingOptionsChange}
-          >{t`Tokens`}</SortableColumnHeader>
-          <SortableColumnHeader
-            name="cache_read_tokens"
-            sortingOptions={sortingOptions}
-            onSortingOptionsChange={onSortingOptionsChange}
-          >
-            <Tooltip
-              label={t`Portion of tokens served from the provider cache. A subset of Tokens, not an additional count.`}
-            >
-              <span>{t`Cached tokens`}</span>
-            </Tooltip>
-          </SortableColumnHeader>
-          <th>{t`Queries`}</th>
-          <th>{t`Searches`}</th>
-          <SortableColumnHeader
-            name="ip_address"
-            sortingOptions={sortingOptions}
-            onSortingOptionsChange={onSortingOptionsChange}
-          >{t`IP`}</SortableColumnHeader>
-        </tr>
-      </thead>
-      <tbody>
-        {showLoadingAndError && (
-          <tr>
-            <td colSpan={10}>
-              <LoadingAndErrorWrapper loading={isLoading} error={error} />
-            </td>
-          </tr>
-        )}
-
-        {!showLoadingAndError && (
-          <>
-            {conversations.length === 0 && (
-              <tr>
-                <td colSpan={10}>
-                  <Flex c="text-disabled" justify="center">
-                    {t`No conversations found`}
-                  </Flex>
-                </td>
-              </tr>
-            )}
-
-            {conversations.map((convo) => (
-              <tr
-                key={convo.conversation_id}
-                className={CS.cursorPointer}
-                onClick={() => handleRowClick(convo)}
-              >
-                <td>
-                  <Ellipsified style={{ maxWidth: 280 }}>
-                    {convo.title ?? t`Untitled`}
-                  </Ellipsified>
-                </td>
-                <td>{convo.user ? getUserName(convo.user) : t`Unknown`}</td>
-                <td>
-                  {convo.profile_id && (
-                    <Badge color="brand" variant="filled">
-                      {renderMetabotProfileLabel(convo.profile_id)}
-                    </Badge>
-                  )}
-                </td>
-                <td>
-                  <Ellipsified style={{ maxWidth: 180 }}>
-                    <DateTime value={convo.created_at} unit="day" />
-                  </Ellipsified>
-                </td>
-                <td>{formatNumber(convo.message_count)}</td>
-                <td>{formatNumber(convo.total_tokens)}</td>
-                <td>{formatNumber(convo.cache_read_tokens)}</td>
-                <td>{formatNumber(convo.query_count)}</td>
-                <td>{formatNumber(convo.search_count)}</td>
-                <td>{convo.ip_address ?? EMPTY_CELL_PLACEHOLDER}</td>
-              </tr>
-            ))}
-          </>
-        )}
-      </tbody>
-    </table>
+    <Card
+      flex="0 1 auto"
+      mih={0}
+      p={0}
+      withBorder
+      data-testid="conversations-table"
+    >
+      {isLoading ? (
+        <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
+      ) : (
+        <TreeTable
+          instance={treeTableInstance}
+          hierarchical={false}
+          ariaLabel={t`Conversations`}
+          emptyState={<MonitorEmptyState label={t`No conversations found`} />}
+          getRowProps={() => ({ "data-testid": "conversation" })}
+          getRowHref={getRowHref}
+        />
+      )}
+    </Card>
   );
+}
+
+function getColumns(): TreeTableColumnDef<ConversationRow>[] {
+  return [
+    {
+      id: "title",
+      header: t`Title`,
+      width: "auto",
+      minWidth: 160,
+      maxAutoWidth: 280,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (convo) => convo.title ?? "",
+      cell: ({ row }) => (
+        <Ellipsified style={{ maxWidth: 280 }}>
+          {row.original.title ?? t`Untitled`}
+        </Ellipsified>
+      ),
+    },
+    {
+      id: "user",
+      header: t`User`,
+      width: "auto",
+      minWidth: 120,
+      maxAutoWidth: 240,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (convo) =>
+        convo.user ? getUserName(convo.user) : t`Unknown`,
+      cell: ({ row }) =>
+        row.original.user ? getUserName(row.original.user) : t`Unknown`,
+    },
+    {
+      id: "profile_id",
+      header: t`Profile`,
+      width: "auto",
+      minWidth: 100,
+      maxAutoWidth: 200,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (convo) => convo.profile_id ?? "",
+      cell: ({ row }) =>
+        row.original.profile_id ? (
+          <Badge color="brand" variant="filled">
+            {renderMetabotProfileLabel(row.original.profile_id)}
+          </Badge>
+        ) : (
+          EMPTY_CELL_PLACEHOLDER
+        ),
+    },
+    {
+      id: "created_at",
+      header: t`Date`,
+      width: "auto",
+      minWidth: 120,
+      enableSorting: true,
+      sortDescFirst: true,
+      accessorFn: (convo) => convo.created_at,
+      cell: ({ row }) => (
+        <Ellipsified style={{ maxWidth: 180 }}>
+          <DateTime value={row.original.created_at} unit="day" />
+        </Ellipsified>
+      ),
+    },
+    {
+      id: "message_count",
+      header: t`Messages`,
+      width: "auto",
+      minWidth: 80,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (convo) => convo.message_count,
+      cell: ({ row }) => formatNumber(row.original.message_count),
+    },
+    {
+      id: "total_tokens",
+      header: t`Tokens`,
+      width: "auto",
+      minWidth: 90,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (convo) => convo.total_tokens,
+      cell: ({ row }) => formatNumber(row.original.total_tokens),
+    },
+    {
+      id: "cache_read_tokens",
+      header: ({ column }) => (
+        <Tooltip
+          label={t`Portion of tokens served from the provider cache. A subset of Tokens, not an additional count.`}
+        >
+          <SortableHeaderPill
+            name={t`Cached tokens`}
+            sort={column.getIsSorted() || undefined}
+          />
+        </Tooltip>
+      ),
+      width: "auto",
+      minWidth: 110,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (convo) => convo.cache_read_tokens,
+      cell: ({ row }) => formatNumber(row.original.cache_read_tokens),
+    },
+    {
+      id: "query_count",
+      header: t`Queries`,
+      width: "auto",
+      minWidth: 80,
+      enableSorting: false,
+      accessorFn: (convo) => convo.query_count,
+      cell: ({ row }) => formatNumber(row.original.query_count),
+    },
+    {
+      id: "search_count",
+      header: t`Searches`,
+      width: "auto",
+      minWidth: 80,
+      enableSorting: false,
+      accessorFn: (convo) => convo.search_count,
+      cell: ({ row }) => formatNumber(row.original.search_count),
+    },
+    {
+      id: "ip_address",
+      header: t`IP`,
+      width: "auto",
+      minWidth: 100,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (convo) => convo.ip_address ?? "",
+      cell: ({ row }) => row.original.ip_address ?? EMPTY_CELL_PLACEHOLDER,
+    },
+  ];
 }

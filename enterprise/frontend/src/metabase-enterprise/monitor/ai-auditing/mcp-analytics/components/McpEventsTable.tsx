@@ -1,12 +1,21 @@
-import cx from "classnames";
 import { type ReactNode, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import AdminS from "metabase/css/admin.module.css";
-import { Box, Card, Flex, LoadingOverlay } from "metabase/ui";
+import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
+import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
+import {
+  Box,
+  Card,
+  Flex,
+  LoadingOverlay,
+  Stack,
+  TreeTable,
+  type TreeTableColumnDef,
+  TreeTableSkeleton,
+  useTreeTableInstance,
+} from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatNumber } from "metabase/utils/formatting";
 import type {
@@ -17,12 +26,19 @@ import type {
 import type { RowValue, RowValues, SortingOptions } from "metabase-types/api";
 
 import { useMcpEventsQuery } from "../hooks/useMcpEventsQuery";
-import type { McpEventSortColumn, McpFilters } from "../query-utils";
+import {
+  MCP_EVENT_SORT_COLUMNS,
+  type McpEventSortColumn,
+  type McpFilters,
+} from "../query-utils";
 import { buildEventsQuery } from "../query-utils";
 
-import S from "./McpEventsTable.module.css";
-
 export const EVENTS_PAGE_SIZE = 25;
+
+const DEFAULT_SORTING: SortingOptions<McpEventSortColumn> = {
+  sort_column: "created_at",
+  sort_direction: "desc",
+};
 
 type EventColumn = {
   /** View column name, matched case-insensitively against the result columns. */
@@ -45,7 +61,7 @@ export function eventColumns(
   hasPii: boolean,
 ): EventColumn[] {
   const columns: (EventColumn | false)[] = [
-    { key: "tool_call_id", title: t`ID` },
+    { key: "tool_call_id", title: t`ID`, sort: "tool_call_id" },
     {
       key: "created_at",
       title: t`Created at`,
@@ -63,10 +79,18 @@ export function eventColumns(
       title: t`Client`,
       sort: "client_display_name",
     },
-    { key: "client_version", title: t`Client version` },
+    {
+      key: "client_version",
+      title: t`Client version`,
+      sort: "client_version",
+    },
     { key: "user_display_name", title: t`User`, sort: "user_display_name" },
-    hasTenants && { key: "tenant_name", title: t`Tenant` },
-    hasPii && { key: "ip_address", title: t`IP address` },
+    hasTenants && {
+      key: "tenant_name",
+      title: t`Tenant`,
+      sort: "tenant_name",
+    },
+    hasPii && { key: "ip_address", title: t`IP address`, sort: "ip_address" },
     { key: "status", title: t`Status`, sort: "status" },
     {
       key: "duration_ms",
@@ -76,8 +100,12 @@ export function eventColumns(
       render: (value) =>
         value == null ? EMPTY_CELL_PLACEHOLDER : formatNumber(Number(value)),
     },
-    { key: "error_type", title: t`Error type` },
-    hasPii && { key: "error_message", title: t`Error message` },
+    { key: "error_type", title: t`Error type`, sort: "error_type" },
+    hasPii && {
+      key: "error_message",
+      title: t`Error message`,
+      sort: "error_message",
+    },
   ];
   return columns.filter((column): column is EventColumn => column !== false);
 }
@@ -88,6 +116,8 @@ function renderCell(column: EventColumn, value: RowValue): ReactNode {
   }
   return value == null || value === "" ? EMPTY_CELL_PLACEHOLDER : String(value);
 }
+
+type EventRow = { id: string } & Record<string, RowValue>;
 
 type PaginationProps = {
   /** Current page, 0-indexed. */
@@ -163,7 +193,7 @@ export function McpEventsTable({
 
 /**
  * Loaded variant of {@link McpEventsTable}: builds the paginated, sorted row-level query, runs it,
- * and renders the tool calls as a sortable table with pagination controls.
+ * and renders the tool calls as a sortable {@link TreeTable} with pagination controls.
  */
 function McpEventsTableInner({
   provider,
@@ -181,6 +211,20 @@ function McpEventsTableInner({
   sortingOptions,
   onSortingOptionsChange,
 }: InnerProps) {
+  const columns = useMemo(
+    () => eventColumns(hasTenants, hasPii),
+    [hasTenants, hasPii],
+  );
+
+  const effectiveSorting = useMemo(() => {
+    const visibleSortColumns = new Set(
+      columns.map((column) => column.sort).filter(Boolean),
+    );
+    return visibleSortColumns.has(sortingOptions.sort_column)
+      ? sortingOptions
+      : DEFAULT_SORTING;
+  }, [columns, sortingOptions]);
+
   const query = useMemo(
     () =>
       buildEventsQuery({
@@ -191,8 +235,8 @@ function McpEventsTableInner({
         userId,
         groupId,
         tenantId,
-        sortColumn: sortingOptions.sort_column,
-        sortDirection: sortingOptions.sort_direction,
+        sortColumn: effectiveSorting.sort_column,
+        sortDirection: effectiveSorting.sort_direction,
       }),
     [
       provider,
@@ -202,7 +246,7 @@ function McpEventsTableInner({
       userId,
       groupId,
       tenantId,
-      sortingOptions,
+      effectiveSorting,
     ],
   );
 
@@ -216,87 +260,117 @@ function McpEventsTableInner({
   // simply the warehouse result — the retention is an implementation detail of the hook.
   const data = useRetainedValue(latestData);
 
-  const columns = useMemo(
-    () => eventColumns(hasTenants, hasPii),
-    [hasTenants, hasPii],
-  );
-  const rows: RowValues[] = data?.data?.rows ?? [];
   // The result columns (`data.data.cols`) are the full, warehouse-ordered set the query returns —
-  // not the curated `columns` we render. So we can't reuse the `columns` index; we map each curated
-  // column to its position in the result by name. Names are upper- or lower-cased depending on the
-  // warehouse (the audit DB is H2, which upper-cases; Postgres lower-cases), so match
-  // case-insensitively.
+  // not the curated `columns` we render. So we map each curated column to its position in the
+  // result by name. Names are upper- or lower-cased depending on the warehouse (the audit DB is H2,
+  // which upper-cases; Postgres lower-cases), so match case-insensitively.
   const columnIndex = useMemo(() => {
     const cols = data?.data?.cols ?? [];
     return new Map(cols.map((col, index) => [col.name.toLowerCase(), index]));
   }, [data]);
 
-  const showEmpty = !isFetching && rows.length === 0;
+  const rows: EventRow[] = useMemo(() => {
+    const rawRows: RowValues[] = data?.data?.rows ?? [];
+    return rawRows.map((rawRow, rowIndex) => {
+      const values = Object.fromEntries(
+        columns.map((column) => {
+          const index = columnIndex.get(column.key);
+          return [column.key, index != null ? rawRow[index] : null];
+        }),
+      );
+      const id = String(values.tool_call_id ?? `${page}-${rowIndex}`);
+      return { id, ...values };
+    });
+  }, [data, columns, columnIndex, page]);
+
+  const treeColumns = useMemo<TreeTableColumnDef<EventRow>[]>(
+    () =>
+      columns.map((column) => ({
+        id: column.key,
+        header: column.title,
+        width: "auto",
+        minWidth: 120,
+        maxAutoWidth: 320,
+        enableSorting: column.sort != null,
+        sortDescFirst: column.sort === "created_at",
+        accessorFn: (row) => row[column.key],
+        cell: ({ row }) => {
+          const node = renderCell(column, row.original[column.key]);
+          return column.align === "right" ? (
+            <Box ta="right" w="100%">
+              {node}
+            </Box>
+          ) : (
+            node
+          );
+        },
+      })),
+    [columns],
+  );
+
+  const { sortingState, onSortingChange } = useSortingStateChange({
+    sortingOptions: effectiveSorting,
+    columns: MCP_EVENT_SORT_COLUMNS,
+    defaultSorting: DEFAULT_SORTING,
+    onSortingOptionsChange,
+  });
+
+  const treeTableInstance = useTreeTableInstance<EventRow>({
+    data: rows,
+    columns: treeColumns,
+    sorting: sortingState,
+    manualSorting: true,
+    getNodeId: (row) => row.id,
+    onSortingChange,
+  });
+
+  useScrollToTop({
+    ref: treeTableInstance.containerRef,
+    keys: [page, effectiveSorting],
+    skip: isFetching,
+  });
+
+  const skeletonColumnWidths = columns.map(() => 1 / columns.length);
 
   return (
-    <>
-      <Card withBorder shadow="none" p={0} pos="relative">
-        <LoadingOverlay visible={isFetching} />
-        <Box className={S.scroll}>
-          <table className={cx(AdminS.ContentTable, S.table)}>
-            <thead>
-              <tr>
-                {columns.map((column) => (
-                  <SortableColumnHeader
-                    key={column.key}
-                    name={column.sort}
-                    sortingOptions={sortingOptions}
-                    onSortingOptionsChange={onSortingOptionsChange}
-                    columnHeaderProps={{ style: { textAlign: column.align } }}
-                  >
-                    {column.title}
-                  </SortableColumnHeader>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {showEmpty ? (
-                <tr>
-                  <td colSpan={columns.length}>
-                    <Flex c="text-disabled" justify="center">
-                      {t`No tool calls found`}
-                    </Flex>
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row, rowIndex) => (
-                  <tr key={rowIndex}>
-                    {columns.map((column) => {
-                      const index = columnIndex.get(column.key);
-                      const value = index != null ? row[index] : null;
-                      return (
-                        <td
-                          key={column.key}
-                          style={{ textAlign: column.align }}
-                        >
-                          {renderCell(column, value)}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </Box>
+    <Stack gap="md" flex={1} mih={0}>
+      <Card
+        flex="0 1 auto"
+        mih={0}
+        p={0}
+        pos="relative"
+        withBorder
+        data-testid="mcp-events-table"
+      >
+        {data == null ? (
+          <TreeTableSkeleton columnWidths={skeletonColumnWidths} />
+        ) : (
+          <>
+            <LoadingOverlay visible={isFetching} />
+            <TreeTable
+              instance={treeTableInstance}
+              hierarchical={false}
+              ariaLabel={t`Tool calls`}
+              emptyState={<MonitorEmptyState label={t`No tool calls found`} />}
+              getRowProps={() => ({ "data-testid": "mcp-event" })}
+            />
+          </>
+        )}
       </Card>
 
-      <Flex justify="flex-end" mt="md">
-        <PaginationControls
-          page={page}
-          pageSize={EVENTS_PAGE_SIZE}
-          itemsLength={rows.length}
-          total={total}
-          showTotal
-          onPreviousPage={() => onPageChange(page - 1)}
-          onNextPage={() => onPageChange(page + 1)}
-        />
-      </Flex>
-    </>
+      {data != null && (
+        <Flex justify="flex-end">
+          <PaginationControls
+            page={page}
+            pageSize={EVENTS_PAGE_SIZE}
+            itemsLength={rows.length}
+            total={total}
+            showTotal
+            onPreviousPage={() => onPageChange(page - 1)}
+            onNextPage={() => onPageChange(page + 1)}
+          />
+        </Flex>
+      )}
+    </Stack>
   );
 }

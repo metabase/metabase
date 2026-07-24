@@ -317,6 +317,8 @@ export interface TreeTableRowProps<
   href?: string | null;
   renderSubRow?: RenderSubRow<TData>;
   hierarchical?: boolean;
+  /** Whether the row actually responds to a click (an `onRowClick` handler or `href` is set). Purely cosmetic — controls the hover cursor so non-interactive rows don't look clickable. */
+  isClickable?: boolean;
 }
 
 /**

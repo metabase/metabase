@@ -7,7 +7,13 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route, withRouteProps } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -179,6 +185,9 @@ function setupEndpoints(dataset: Dataset = datasetResponse) {
 
 /** Render `McpAnalyticsPage` at its route with EE plugins + `audit_app`, optionally overriding the dataset response. */
 function setup({ dataset }: { dataset?: Dataset } = {}) {
+  // TreeTable measures column/row sizes via the DOM; jsdom needs a stubbed rect
+  // for its virtualized rows to render.
+  mockGetBoundingClientRect({ width: 100, height: 100 });
   setupEnterprisePlugins();
   setupEndpoints(dataset);
 
@@ -233,7 +242,9 @@ describe("McpAnalyticsPage", () => {
     );
 
     const eventsPanel = screen.getByRole("tabpanel");
-    expect(await within(eventsPanel).findByRole("table")).toBeInTheDocument();
+    expect(
+      await within(eventsPanel).findByRole("treegrid", { name: "Tool calls" }),
+    ).toBeInTheDocument();
     // curated column header + a cell value from the mocked dataset row
     expect(within(eventsPanel).getByText("Tool")).toBeInTheDocument();
     expect(
@@ -250,7 +261,9 @@ describe("McpAnalyticsPage", () => {
     );
 
     // The Tool header is sortable; clicking it re-sorts ascending (it wasn't the active column).
-    await userEvent.click(await screen.findByRole("button", { name: "Tool" }));
+    await userEvent.click(
+      await screen.findByRole("columnheader", { name: "Tool" }),
+    );
 
     await waitFor(() => {
       const sortedAscending = fetchMock.callHistory
@@ -300,6 +313,22 @@ describe("McpAnalyticsPage", () => {
     });
   });
 
+  it("updates the page URL param immediately when Next is clicked", async () => {
+    const { history } = setup({ dataset: multiPageDatasetResponse });
+
+    await screen.findByRole("heading", { name: "MCP analytics" });
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Tool calls" }),
+    );
+
+    const pagination = await screen.findByRole("navigation", {
+      name: "pagination",
+    });
+    await userEvent.click(within(pagination).getByLabelText("Next page"));
+
+    expect(history?.getCurrentLocation().search).toContain("page=1");
+  });
+
   it("orders the events query by a total order (created_at + tool_call_id) for stable paging", async () => {
     setup();
 
@@ -331,7 +360,7 @@ describe("McpAnalyticsPage", () => {
     });
   });
 
-  it("shows a single empty state (no tabs, no charts) when there is no activity", async () => {
+  it("keeps the header, tabs, and filters visible and shows an empty state in place of the tab content when there is no activity", async () => {
     setup({ dataset: emptyDatasetResponse });
 
     expect(
@@ -339,12 +368,18 @@ describe("McpAnalyticsPage", () => {
     ).toBeInTheDocument();
     expect(await screen.findByText("No MCP activity")).toBeInTheDocument();
 
-    // No tabs render when the view is empty — so neither the charts nor the events table can.
+    // Tabs and filters stay visible even when the view is empty — only the tab content swaps out.
+    const usageTab = screen.getByRole("tab", { name: "Usage" });
+    expect(usageTab).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Tool calls" })).toBeInTheDocument();
     expect(
-      screen.queryByRole("tab", { name: "Usage" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("tab", { name: "Tool calls" }),
-    ).not.toBeInTheDocument();
+      screen.getByTestId("conversation-filters-date-select"),
+    ).toBeInTheDocument();
+
+    // The empty state must render inside the active tab's panel, not as a bare sibling of the
+    // tab list — otherwise the selected tab's aria-controls points at nothing.
+    const panel = screen.getByRole("tabpanel");
+    expect(usageTab).toHaveAttribute("aria-controls", panel.id);
+    expect(within(panel).getByText("No MCP activity")).toBeInTheDocument();
   });
 });
