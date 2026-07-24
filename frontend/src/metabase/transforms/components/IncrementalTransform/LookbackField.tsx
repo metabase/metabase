@@ -5,8 +5,11 @@ import { t } from "ttag";
 import { skipToken, useGetFieldQuery } from "metabase/api";
 import { FormField, FormNumberInput, FormSelect } from "metabase/forms";
 import { Group } from "metabase/ui";
-import { TYPE } from "metabase-lib/v1/types/constants";
-import { isa } from "metabase-lib/v1/types/utils/isa";
+import {
+  isDate,
+  isDateWithoutTime,
+  isTime,
+} from "metabase-lib/v1/types/utils/isa";
 import type { LookbackUnit } from "metabase-types/api";
 
 import type { IncrementalSettingsFormValues } from "./form";
@@ -42,14 +45,8 @@ export function LookbackField({ readOnly }: { readOnly?: boolean }) {
     fieldId != null ? { id: Number(fieldId) } : skipToken,
   );
 
-  // Effective type first, so coerced columns (e.g. unix timestamps) count as temporal.
-  // Time-only columns are excluded — their watermarks wrap at midnight, so the BE rejects them.
-  const fieldType = field?.effective_type ?? field?.base_type;
-  const isSupported =
-    fieldType != null &&
-    isa(fieldType, TYPE.Temporal) &&
-    !isa(fieldType, TYPE.Time);
-  const isDateOnly = isSupported && !isa(fieldType, TYPE.DateTime);
+  const isSupported = isDate(field) && !isTime(field);
+  const isDateOnly = isDateWithoutTime(field);
 
   // Date-only columns only take day-or-coarser units; snap a finer unit (possible after a
   // checkpoint-field change) back to days. Guarded on a set value — a write here counts as a
