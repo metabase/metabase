@@ -5,7 +5,6 @@ import {
 
 import { Api } from "./api";
 
-/* eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types */
 const validEntityTypes = [
   "action",
   "card",

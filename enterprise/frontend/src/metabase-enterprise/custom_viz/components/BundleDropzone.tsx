@@ -3,7 +3,7 @@ import { useField } from "formik";
 import { useCallback } from "react";
 import { type FileRejection, useDropzone } from "react-dropzone";
 import { match } from "ts-pattern";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { Box, Icon, Stack, Text } from "metabase/ui";
 
@@ -110,7 +110,8 @@ function SelectedFile({ file }: { file: File }) {
       <Icon name="document" size={24} c="core-brand" />
       <Text fw={500}>{file.name}</Text>
       <Text c="text-secondary" size="sm">
-        {(file.size / 1024).toFixed(1)} KB
+        {c("{0} is a file size in kilobytes")
+          .t`${(file.size / 1024).toFixed(1)} KB`}
       </Text>
     </>
   );
