@@ -39,7 +39,7 @@
     (t2/update! :model/Workspace id {:name name}))
   (t2/select-one :model/Workspace :id id))
 
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- :nil
   "Delete a workspace. Remappings cascade; users who had it active fall back to no workspace
   (`core_user.workspace_id` is set to null by the FK)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
