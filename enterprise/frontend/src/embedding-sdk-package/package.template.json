@@ -1,6 +1,6 @@
 {
   "name": "@metabase/embedding-sdk-react",
-  "version": "0.64.0-alpha",
+  "version": "0.64.0-alpha.0",
   "sdkRelease": {
     "distTag": "alpha",
     "tagAsLatest": false
@@ -40,7 +40,9 @@
   },
   "typesVersions": {
     "*": {
-      "next": ["./dist/next.d.ts"]
+      "next": [
+        "./dist/next.d.ts"
+      ]
     }
   },
   "types": "./dist/index.d.ts",
