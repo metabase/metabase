@@ -5,6 +5,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
+   [metabase.entity-retrieval.spec :as entity-retrieval.spec]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -691,3 +692,69 @@
                   [:not= :db_id [:inline audit/audit-db-id]]]
    :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
                   :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}})
+
+;;;; -------------------------------------------- Library retrieval ----------------------------------------------------
+
+(defn- table-label
+  "A published table's user-facing label: display_name, falling back to the raw name."
+  [table]
+  (or (:display_name table) (:name table)))
+
+(defn- table->index-docs
+  "The `:library-index` projection for a Table: the shared doc derivation over the hydrated entity."
+  [table]
+  (entity-retrieval.spec/library-index-docs table))
+
+(defn- table-field-names
+  "Batch `:field-names` hydration for the Table `:osi-context` projection: map of
+  [[entity-retrieval.spec/hydration-key]] -> the table's active field names, sorted by name, capped at 500.
+  Deterministic and bounded by contract — an unstable or unbounded value here makes every table
+  perpetually dirty at LLM prices, and nothing else bounds the stored `osi_ai_context.basis` blob."
+  [tables]
+  (when-let [ids (not-empty (into [] (keep :id) tables))]
+    (into {}
+          (map (fn [[table-id fields]]
+                 [(entity-retrieval.spec/hydration-key "table" table-id)
+                  (into [] (take 500) (sort (map :name fields)))]))
+          ;; Exclude sensitive/retired fields — they are hidden from metadata by default, and these names
+          ;; are handed to an external LLM provider and stored in `basis`. Same filter sync/classify use.
+          (group-by :table_id (t2/select [:model/Field :table_id :name]
+                                         :table_id [:in ids]
+                                         :active true
+                                         :visibility_type [:not-in ["sensitive" "retired"]])))))
+
+(defn- table->llm-input
+  "The `:osi-context` projection for a Table: the deterministic map handed to the generation prompt.
+  Prompt-only additions (sampled content, fk summaries) belong here and must never move into `:basis` —
+  basis exclusion is what keeps volatile inputs from making every table perpetually dirty."
+  [table]
+  ;; Complete v1 prompt projection. Prompt-only additions stay out of :basis unless they should
+  ;; invalidate previously generated metadata.
+  {:entity-type  "table"
+   :name         (:name table)
+   :display-name (:display_name table)
+   :description  (:description table)
+   :field-names  (:field-names table)})
+
+(def ^:private library-table-membership
+  ;; shared by both projections — :osi-context membership is fixed to :library-index's for v1.
+  {:where [:and
+           [:in :collection_id :library/collection-ids]
+           [:= :is_published true]
+           [:= :active true]]})
+
+(entity-retrieval.spec/define-source :model/Table
+  {:entity-type "table"
+   :fields      [:id :name :display_name :description :collection_id :is_published :active]
+   :label       #'table-label})
+
+(entity-retrieval.spec/define-projection :library-index :model/Table
+  {:membership library-table-membership
+   :project    #'table->index-docs
+   :hydrate    {:ai-context #'entity-retrieval.spec/ai-context-by-entity}})
+
+(entity-retrieval.spec/define-projection :osi-context :model/Table
+  {:membership library-table-membership
+   :project    #'table->llm-input
+   :hydrate    {:field-names #'table-field-names}
+   :basis      [:name :display_name :description :field-names]})

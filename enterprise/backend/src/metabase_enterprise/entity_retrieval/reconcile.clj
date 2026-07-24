@@ -18,22 +18,22 @@
   - [[reconcile-entity!]] — the same diff scoped to one entity's doc slice, driven by the
     `osi_ai_context` write hooks so a curator edit becomes searchable without a full scan.
 
+  Library membership and the doc derivation are declared per model in [[metabase.entity-retrieval.spec]];
+  this namespace consumes them and owns only the pgvector diff/write half.
+
   Callers pass the datasource and a model resolver, so this namespace reads no settings."
   (:require
-   [buddy.core.hash :as buddy-hash]
-   [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase-enterprise.entity-retrieval.index-table :as index-table]
    [metabase-enterprise.semantic-search.embedding :as embedding]
-   [metabase.collections.core :as collections]
    [metabase.entity-retrieval.core :as entity-retrieval]
+   [metabase.entity-retrieval.spec :as spec]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as jdbc.rs]
-   [toucan2.core :as t2])
+   [next.jdbc.result-set :as jdbc.rs])
   (:import
    (java.sql Connection)))
 
@@ -90,144 +90,30 @@
 (defn- with-index-write-lock
   [pgvector f]
   (with-index-lock pgvector "pg_advisory_lock" "pg_advisory_unlock" f))
-
-(defn doc-id
-  "Content-addressed primary key for an index document.
-  `instructions` is intentionally not an input: editing it must not re-embed an entity's name/synonyms."
-  [entity-type entity-local-id doc-type doc-text]
-  (u/encode-base64-bytes
-   (buddy-hash/sha1 (str entity-type "|" entity-local-id "|" doc-type "|" doc-text))))
-
-;;; ------------------------------------------------- Desired docs -------------------------------------------------
-
-(def ^:private max-doc-chars
-  "Char cap on a doc's text, applied before [[doc-id]] and embedding.
-  The embedding layer skips a single text over the per-item token budget, which drops the doc and
-  under-indexes the entity; truncating keeps it indexed.
-  Coarse (chars-per-token varies) — a residual over-budget outlier is dropped by [[insert-batch!]], never
-  inserted as an empty vector."
-  8000)
-
-(def ^:private max-values-per-kind
-  "Cap on synonym docs (and, separately, example docs) indexed per entity, mirroring the API's per-list cap.
-  Bounds index bloat from rows that bypass the API schema — SerDes, direct appdb writes, or rows predating
-  the cap — since reconcile reads osi_ai_context directly."
-  50)
-
-(defn- make-doc [entity-type entity-local-id doc-type doc-text]
-  (let [doc-text (cond-> doc-text
-                   (and (string? doc-text) (> (count doc-text) max-doc-chars)) (subs 0 max-doc-chars))]
-    {:doc_id          (doc-id entity-type entity-local-id doc-type doc-text)
-     :entity_type     entity-type
-     :entity_local_id entity-local-id
-     :doc_type        doc-type
-     :doc_text        doc-text}))
-
-(defn- entity->docs
-  "All desired docs for one library entity: a `name` doc (always), a `description` doc (non-blank), and a
-  `synonym`/`example` doc per `ai_context` value.
-  Instructions are not indexed — the tool reads them live from `osi_ai_context`."
-  [{:keys [entity_type entity_local_id name description]} ai_context]
-  (let [doc #(make-doc entity_type entity_local_id %1 %2)]
-    (concat
-     [(doc "name" name)]
-     (when-not (str/blank? description) [(doc "description" description)])
-     ;; cap the list length (each value is also char-capped in make-doc) so a row that skipped the API's
-     ;; bounds can't bloat the index with an unbounded number of synonym/example docs.
-     (map #(doc "synonym" %) (take max-values-per-kind (remove str/blank? (:synonyms ai_context))))
-     (map #(doc "example" %) (take max-values-per-kind (remove str/blank? (:examples ai_context)))))))
-
-(defn- ->library-entity [entity-type id nm description]
-  {:entity_type     entity-type
-   :entity_local_id id
-   :name            nm
-   :description     description})
-
 ;;; ------------------------------------------- Library membership ------------------------------------------------
 ;;;
-;;; The four per-type selects are the single source of membership truth, shared by the full-scan
-;;; [[library-entities]] and the point [[library-entity]]. Each takes an optional `id` to restrict to one
-;;; entity. Headless: the reconcile job runs with no current user, so these selects must NOT permission-filter.
-
-(defn- library-ids
-  "Collection ids that count as library content: the Library root and its descendants. Content usually
-  lives in the Data/Metrics sub-collections, but an entity placed directly in the root is library content
-  too, so the root id is included."
-  [lib]
-  (vec (distinct (cons (:id lib) (collections/descendant-ids lib)))))
-
-(defn- library-cards [lib-ids id]
-  ;; :card_schema is mandatory in any column-scoped Card SELECT (toucan guard). Card :type is keywordized
-  ;; (:metric / :model); the entity_type is its name string.
-  (->> (apply t2/select [:model/Card :id :name :description :type :card_schema]
-              (cond-> [:collection_id [:in lib-ids], :archived false, :type [:in ["metric" "model"]]]
-                id (conj :id id)))
-       (map (fn [c] (->library-entity (name (:type c)) (:id c) (:name c) (:description c))))))
-
-(defn- library-tables [lib-ids id]
-  ;; A published table's user-facing label is its display_name; fall back to the raw name.
-  (->> (apply t2/select [:model/Table :id :name :display_name :description]
-              (cond-> [:collection_id [:in lib-ids], :is_published true, :active true]
-                id (conj :id id)))
-       (map (fn [t] (->library-entity "table" (:id t) (or (:display_name t) (:name t)) (:description t))))))
-
-(defn- library-measures [table-ids id]
-  (->> (apply t2/select [:model/Measure :id :name :description]
-              (cond-> [:table_id [:in table-ids], :archived false]
-                id (conj :id id)))
-       (map (fn [mv] (->library-entity "measure" (:id mv) (:name mv) (:description mv))))))
-
-(defn- library-segments [table-ids id]
-  (->> (apply t2/select [:model/Segment :id :name :description]
-              (cond-> [:table_id [:in table-ids], :archived false]
-                id (conj :id id)))
-       (map (fn [s] (->library-entity "segment" (:id s) (:name s) (:description s))))))
-
-(defn- library-entities
-  "Uniform `{:entity_type :entity_local_id :name :description}` maps for every entity in the library."
-  []
-  (when-let [lib (collections/library-collection)]
-    (let [lib-ids   (library-ids lib)
-          cards     (library-cards lib-ids nil)
-          tables    (library-tables lib-ids nil)
-          table-ids (not-empty (mapv :entity_local_id tables))
-          measures  (when table-ids (library-measures table-ids nil))
-          segments  (when table-ids (library-segments table-ids nil))]
-      (concat cards tables measures segments))))
+;;; Membership truth and the doc derivation live in the OSS declaration layer: per-model
+;;; `define-source`/`define-projection` calls next to the models, consumed here through
+;;; [[spec/member-entities]] / [[spec/member-entity]] / [[spec/hydrate]] / [[spec/project]].
+;;; Those selects are headless by construction (no permission filtering) — see the spec namespace.
 
 (defn library-entity
   "The `{:entity_type :entity_local_id :name :description}` map for one entity if it is currently a library
-  member, else nil. Shares [[library-entities]]' membership rules via the per-type selects.
+  member, else nil. Shares [[library-entity-keys]]' membership truth via the per-model spec declarations.
   The hook may pass either Card label; the returned map carries the entity's *stored* type, so a
   metric↔model relabel keeps `doc_id`s stable."
   [entity-type entity-local-id]
-  (when-let [lib (collections/library-collection)]
-    (let [lib-ids (library-ids lib)]
-      (cond
-        (entity-retrieval/card-entity-type? entity-type)
-        (first (library-cards lib-ids entity-local-id))
-
-        (= "table" entity-type)
-        (first (library-tables lib-ids entity-local-id))
-
-        (#{"measure" "segment"} entity-type)
-        ;; A measure/segment is a member only when its parent table is a current library table.
-        (when-let [table-id (t2/select-one-fn :table_id
-                                              (if (= entity-type "measure") :model/Measure :model/Segment)
-                                              :id entity-local-id)]
-          (when (seq (library-tables lib-ids table-id))
-            (first (if (= entity-type "measure")
-                     (library-measures [table-id] entity-local-id)
-                     (library-segments [table-id] entity-local-id)))))
-
-        :else nil))))
+  (some-> (spec/member-entity :library-index entity-type entity-local-id)
+          spec/entity-summary))
 
 (defn library-entity-keys
   "Set of `[entity_type entity_local_id]` for every entity currently in the library.
   The tool post-filters its index hits against this so a stale index never surfaces an entity that has
   since left the library, the same way it post-filters on read permissions."
   []
-  (into #{} (map (juxt :entity_type :entity_local_id)) (library-entities)))
+  (into #{} (map (juxt :entity_type :entity_local_id)) (spec/member-entities :library-index)))
+
+;;; ------------------------------------------------- Desired docs ------------------------------------------------
 
 (defn- entity-class
   "Map-taking adapter over [[entity-retrieval/entity-class]] for the `{:entity_type :entity_local_id}` maps
@@ -237,39 +123,42 @@
   [{:keys [entity_type entity_local_id]}]
   (entity-retrieval/entity-class entity_type entity_local_id))
 
-(defn- ai-context-by-entity
-  "Map of entity [[entity-class]] -> ai_context for every `osi_ai_context` row, so a card's curated context
-  (stored under the canonical `card` type) is found under the same class as its index docs (keyed by the
-  card's live metric/model type). One row per card is guaranteed by the normalized storage key."
-  []
-  (u/index-by entity-class :ai_context
-              (t2/select [:model/OsiAiContext :entity_type :entity_local_id :ai_context])))
-
 (defn- dedup-by-doc-id [docs]
   ;; distinct-by doc_id so an exact duplicate (same doc_type and text, e.g. a synonym listed twice)
   ;; collapses; a synonym equal to the name does NOT collapse — different doc_type, different doc_id.
   (into [] (m/distinct-by :doc_id) docs))
 
 (defn- desired-docs
-  "The full set of docs the index should hold, deduped by `doc_id` (identical values collapse to one)."
+  "The full desired document set plus entity classes whose projection failed. Projection is isolated per
+  entity: healthy entities continue reconciling, while failed classes are returned so their existing index
+  rows can be retained rather than mistaken for orphans."
   []
-  (let [ac-by-entity (ai-context-by-entity)]
-    (dedup-by-doc-id
-     (mapcat (fn [ent] (entity->docs ent (get ac-by-entity (entity-class ent))))
-             (library-entities)))))
+  (let [entities (spec/hydrate :library-index (spec/member-entities :library-index))
+        result   (reduce (fn [acc entity]
+                           (try
+                             (update acc :docs into (spec/project :library-index entity))
+                             (catch Throwable e
+                               ;; TODO (Chris 2026-07-24) -- Retention protects an entity's EXISTING docs,
+                               ;; but on a first build or full rebuild there are none, so a projection
+                               ;; failure drops the entity entirely — including its name/description docs,
+                               ;; which don't depend on ai_context. The tolerance filter (usable-index-value?)
+                               ;; keeps malformed ai_context from reaching here, so this is the
+                               ;; unforeseen-error path; hardening is to project the base name/description
+                               ;; docs independently of the ai_context enrichment so they survive a failure.
+                               (log/error e "library entity index: projection failed; retaining existing docs"
+                                          (select-keys entity [:entity_type :entity_local_id]))
+                               (update acc :failed conj (entity-class entity)))))
+                         {:docs [] :failed #{}}
+                         entities)]
+    (update result :docs dedup-by-doc-id)))
 
 (defn- entity-desired-docs
   "Desired docs for one entity: its `ai_context` synonym/example docs plus name/description, but only if
   it is still a library member. A non-member (left the library) yields no docs, so its stored docs all
   GC. `entity-type` may be either Card label; membership resolves the canonical stored type."
   [entity-type entity-local-id]
-  (if-let [member (library-entity entity-type entity-local-id)]
-    ;; Match ai_context by the normalized storage type: a card's row is stored as `card`, so look it up by
-    ;; `card` whichever live label (metric/model) drove this targeted run.
-    (let [ai-ctx (t2/select-one-fn :ai_context :model/OsiAiContext
-                                   :entity_local_id entity-local-id
-                                   :entity_type (entity-retrieval/normalize-entity-type entity-type))]
-      (dedup-by-doc-id (entity->docs member ai-ctx)))
+  (if-let [member (spec/member-entity :library-index entity-type entity-local-id)]
+    (dedup-by-doc-id (spec/project :library-index (first (spec/hydrate :library-index [member]))))
     []))
 
 ;;; ------------------------------------------------- Index writes -------------------------------------------------
@@ -379,12 +268,19 @@
 (defn- reconcile-against-appdb!
   "The full diff body — assumes the reconcile advisory lock is held on `conn`. See the namespace docstring."
   [conn embedding-model]
-  (let [reconciled-at (capture-reconcile-watermark conn)
-        desired       (desired-docs)
-        desired-ids   (set (map :doc_id desired))
-        stored        (stored-docs conn)
-        to-insert     (remove #(contains? stored (:doc_id %)) desired)
-        orphans       (remove desired-ids (keys stored))
+  (let [reconciled-at         (capture-reconcile-watermark conn)
+        {:keys [docs failed]} (desired-docs)
+        projection-failed     failed
+        desired               docs
+        desired-ids           (set (map :doc_id desired))
+        stored                (stored-docs conn)
+        to-insert             (remove #(contains? stored (:doc_id %)) desired)
+        ;; A projection failure means we do not know that entity's desired set. Preserve its current slice;
+        ;; deleting it as absent would turn a recoverable bad row into search data loss.
+        orphans     (remove (fn [doc-id]
+                              (or (contains? desired-ids doc-id)
+                                  (contains? projection-failed (entity-class (get stored doc-id)))))
+                            (keys stored))
         ;; entity classes whose insert failed this run — their orphans are spared (see below).
         failed      (volatile! #{})
         inserted    (transduce
@@ -406,14 +302,16 @@
         to-delete   (cond->> orphans
                       (seq @failed) (remove #(contains? @failed (entity-class (get stored %)))))]
     (delete-rows! conn to-delete)
-    ;; Record freshness when the run converged as far as it can -- no *transient* batch failure this run
-    ;; (@failed is populated only by a caught insert exception). A doc silently dropped for exceeding the
-    ;; per-item token limit is a permanent, expected shortfall (`inserted` < `(count to-insert)` forever), so
-    ;; gating on the insert count instead would freeze reconciled_at the moment one un-embeddable doc enters
-    ;; the library -- NLQ staleness would then climb to critical (or stay NaN) even though every reconcile is
-    ;; doing all it can. Gate on the absence of retryable failures, not on full insertion. Persist the
-    ;; pre-read watermark so changes made during a long reconcile never look newer than the source snapshot.
-    (when (empty? @failed)
+    ;; Record freshness when the run converged as far as it can -- no *retryable* failure this run: no
+    ;; insert-batch failure (@failed) and no projection failure (`projection-failed`). Both leave an
+    ;; entity's stale docs in place for a later run to fix, so advancing the watermark past either would
+    ;; make the staleness health check report a fresh, converged index while a corrupt entity stays
+    ;; stale. A doc silently dropped for exceeding the per-item token limit is different -- a permanent,
+    ;; expected shortfall (`inserted` < `(count to-insert)` forever) -- so gating on the insert count
+    ;; instead would freeze reconciled_at the moment one un-embeddable doc enters the library. Gate on
+    ;; the absence of retryable failures, not on full insertion. Persist the pre-read watermark so
+    ;; changes made during a long reconcile never look newer than the source snapshot.
+    (when (and (empty? @failed) (empty? projection-failed))
       (index-table/touch-reconciled-at! conn reconciled-at))
     ;; index-size after the writes feeds the document/entity gauges (full reconcile only).
     (merge (diff-result desired to-insert inserted (count to-delete))
