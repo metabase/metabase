@@ -638,7 +638,16 @@ describe("scenarios > table-editing", () => {
         )`,
         "postgres",
       );
-      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+      // Wait for the freshly created table to finish syncing before looking up
+      // its id — a bare resync only waits for the DB to have *any* tables (true
+      // immediately here), so getTableId could run before `date_create_test`
+      // was synced and throw "Table ... cannot be found". retrigger guards
+      // against occasionally-dropped one-shot schema syncs.
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: TABLE_NAME,
+        retrigger: true,
+      });
 
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
       cy.intercept("POST", "api/ee/action-v2/execute-bulk").as("executeBulk");
