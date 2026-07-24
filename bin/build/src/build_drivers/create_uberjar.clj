@@ -33,7 +33,7 @@
   `metabase-core` or the parent driver that provided that lib."
   [driver edition]
   (into (parent-provided-libs driver edition)
-        plugin-uberjar/metabase-core-provided-libs))
+        @plugin-uberjar/metabase-core-provided-libs))
 
 (defn- remove-provided-libs [basis driver edition]
   (plugin-uberjar/prune-provided-libs! basis (provided-libs driver edition)))

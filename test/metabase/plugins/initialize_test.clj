@@ -6,7 +6,8 @@
    [metabase.plugins.dependencies :as deps]
    [metabase.plugins.init-steps :as init-steps]
    [metabase.plugins.initialize :as initialize]
-   [metabase.plugins.lazy-loaded-driver :as lazy-loaded-driver]))
+   [metabase.plugins.lazy-loaded-driver :as lazy-loaded-driver]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,6 +30,24 @@
           (is (= :ok (plugins/load-plugin! plugin-name)))
           (is (= :ok (plugins/load-plugin! plugin-name)) "loading is idempotent"))
         (is (= [:classpath [:init (:init plugin)]] @calls))))))
+
+(deftest bundled-plugin-never-touches-the-classpath-test
+  ;; A plugin whose manifest is discovered on the classpath (compiled into the uberjar) carries no
+  ;; add-to-classpath! -- its code is already loaded. Activation runs the init steps only, so a bundled
+  ;; plugin never adds bytes from the writable plugins directory. This is what keeps drivers, and any
+  ;; bundled non-driver plugin, on the same root-owned-classpath footing.
+  (let [calls       (atom [])
+        plugin-name (str "test bundled plugin " (random-uuid))
+        plugin      {:metabase-plugin-api-version initialize/plugin-api-version
+                     :info                        {:name plugin-name :version "1.0.0"}
+                     :init                        [{:step "load-namespace" :namespace "example.plugin"}]}]
+    (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied? (constantly true)
+                                deps/update-unsatisfied-deps!    (constantly [])
+                                init-steps/do-init-steps!        #(swap! calls conj [:init %])]
+      (is (= :ok (initialize/register-plugin-with-info! plugin)))
+      (is (= :ok (plugins/load-plugin! plugin-name))))
+    (is (= [[:init (:init plugin)]] @calls)
+        "activation runs init steps only; nothing is added to the classpath")))
 
 (deftest non-driver-plugin-must-declare-api-version-test
   (doseq [driver-value [nil []]]

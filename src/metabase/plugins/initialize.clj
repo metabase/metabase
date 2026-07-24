@@ -114,8 +114,3 @@
       (locking registered-plugins
         (or (registered? info)
             (register! info)))))
-
-(defn init-plugin-with-info!
-  "Deprecated compatibility alias for `register-plugin-with-info!`."
-  [info]
-  (register-plugin-with-info! info))
