@@ -4,8 +4,6 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { useDispatch } from "metabase/redux";
 import { Link, Outlet, Route, push, useLocation } from "metabase/router";
 
-import type { RouterEngine } from "./engine";
-
 function Home() {
   const { pathname, key } = useLocation();
   const dispatch = useDispatch();
@@ -41,124 +39,110 @@ const tree = (
   </Route>
 );
 
-// A v3 `<Link>` reads v3's legacy router context, which the v7 engine does not
-// provide, so it threw "rendered outside of a router context" on click. The
-// engine-aware `RouterLink` renders v7's `<Link>` on v7, so clicking navigates on
-// both engines.
-describe.each<RouterEngine>(["v3", "v7"])(
-  "RouterLink on the %s engine",
-  (routerEngine) => {
-    it("navigates on click without throwing", async () => {
-      renderWithProviders(tree, {
-        withRouter: true,
-        routerEngine,
-        initialRoute: "/",
-      });
-
-      await userEvent.click(screen.getByRole("link", { name: "go" }));
-
-      expect(await screen.findByTestId("other")).toBeInTheDocument();
-      expect(screen.getByTestId("location")).toHaveTextContent("/other");
+describe("RouterLink", () => {
+  it("navigates on click without throwing", async () => {
+    renderWithProviders(tree, {
+      withRouter: true,
+      initialRoute: "/",
     });
 
-    // Only the destination is asserted: v3's memory history leaves the bare path
-    // literal in tests, though a real browser resolves it against the root the way
-    // v7 now does.
-    it("resolves a bare relative path against the root", async () => {
-      renderWithProviders(tree, {
-        withRouter: true,
-        routerEngine,
-        initialRoute: "/",
-      });
+    await userEvent.click(screen.getByRole("link", { name: "go" }));
 
-      await userEvent.click(screen.getByRole("link", { name: "bare" }));
+    expect(await screen.findByTestId("other")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/other");
+  });
 
-      expect(await screen.findByTestId("other")).toBeInTheDocument();
+  // Only the destination is asserted: v3's memory history leaves the bare path
+  // literal in tests, though a real browser resolves it against the root the way
+  // v7 now does.
+  it("resolves a bare relative path against the root", async () => {
+    renderWithProviders(tree, {
+      withRouter: true,
+      initialRoute: "/",
     });
 
-    // Anchoring bare paths must not touch absolute URLs, or a docs link becomes
-    // `/https:/www.metabase.com/...`.
-    it("leaves absolute urls untouched", async () => {
-      renderWithProviders(tree, {
-        withRouter: true,
-        routerEngine,
-        initialRoute: "/",
-      });
+    await userEvent.click(screen.getByRole("link", { name: "bare" }));
 
-      expect(screen.getByRole("link", { name: "external" })).toHaveAttribute(
-        "href",
-        "https://www.metabase.com/docs",
-      );
-      expect(screen.getByRole("link", { name: "mail" })).toHaveAttribute(
-        "href",
-        "mailto:help@metabase.com",
-      );
+    expect(await screen.findByTestId("other")).toBeInTheDocument();
+  });
+
+  // Anchoring bare paths must not touch absolute URLs, or a docs link becomes
+  // `/https:/www.metabase.com/...`.
+  it("leaves absolute urls untouched", async () => {
+    renderWithProviders(tree, {
+      withRouter: true,
+      initialRoute: "/",
     });
 
-    // v7's `<Link>` downgrades a click to a `replace` when the target equals the
-    // current URL, which leaves the location key untouched. v3 always pushed, and
-    // the documents page shows its unsaved-changes prompt when the key changes.
-    it("pushes a new entry when linking to the current url", async () => {
-      renderWithProviders(tree, {
-        withRouter: true,
-        routerEngine,
-        initialRoute: "/other",
-      });
+    expect(screen.getByRole("link", { name: "external" })).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs",
+    );
+    expect(screen.getByRole("link", { name: "mail" })).toHaveAttribute(
+      "href",
+      "mailto:help@metabase.com",
+    );
+  });
 
-      await screen.findByTestId("other");
-      const keyBefore = screen.getByTestId("location-key").textContent;
-
-      await userEvent.click(screen.getByRole("link", { name: "go" }));
-
-      expect(screen.getByTestId("location-key")).not.toHaveTextContent(
-        String(keyBefore),
-      );
+  // v7's `<Link>` downgrades a click to a `replace` when the target equals the
+  // current URL, which leaves the location key untouched. v3 always pushed, and
+  // the documents page shows its unsaved-changes prompt when the key changes.
+  it("pushes a new entry when linking to the current url", async () => {
+    renderWithProviders(tree, {
+      withRouter: true,
+      initialRoute: "/other",
     });
 
-    it("applies activeClassName to the link that matches the route", async () => {
-      renderWithProviders(tree, {
-        withRouter: true,
-        routerEngine,
-        initialRoute: "/other",
-      });
+    await screen.findByTestId("other");
+    const keyBefore = screen.getByTestId("location-key").textContent;
 
-      await screen.findByTestId("other");
+    await userEvent.click(screen.getByRole("link", { name: "go" }));
 
-      // The exact-match home link is not active on /other; the section link is.
-      expect(screen.getByText("home")).not.toHaveClass("is-active");
-      expect(screen.getByText("section")).toHaveClass("is-active");
+    expect(screen.getByTestId("location-key")).not.toHaveTextContent(
+      String(keyBefore),
+    );
+  });
+
+  it("applies activeClassName to the link that matches the route", async () => {
+    renderWithProviders(tree, {
+      withRouter: true,
+      initialRoute: "/other",
     });
 
-    it("does not navigate on its own when used as a button (no `to`)", async () => {
-      renderWithProviders(tree, {
-        withRouter: true,
-        routerEngine,
-        initialRoute: "/",
-      });
+    await screen.findByTestId("other");
 
-      // The click handler dispatches the navigation; the link itself must not
-      // navigate, or on v7 it would clobber the push and never reach /other.
-      await userEvent.click(screen.getByText("act"));
+    // The exact-match home link is not active on /other; the section link is.
+    expect(screen.getByText("home")).not.toHaveClass("is-active");
+    expect(screen.getByText("section")).toHaveClass("is-active");
+  });
 
-      expect(await screen.findByTestId("other")).toBeInTheDocument();
-      expect(screen.getByTestId("location")).toHaveTextContent("/other");
+  it("does not navigate on its own when used as a button (no `to`)", async () => {
+    renderWithProviders(tree, {
+      withRouter: true,
+      initialRoute: "/",
     });
 
-    it("does not navigate when a button-like `to=''` link is clicked", async () => {
-      renderWithProviders(tree, {
-        withRouter: true,
-        routerEngine,
-        initialRoute: "/other",
-      });
+    // The click handler dispatches the navigation; the link itself must not
+    // navigate, or on v7 it would clobber the push and never reach /other.
+    await userEvent.click(screen.getByText("act"));
 
-      await screen.findByTestId("other");
+    expect(await screen.findByTestId("other")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/other");
+  });
 
-      // On v7 an empty `to` resolved to "/" and navigated home, unmounting the
-      // current view. It must stay put so only the onClick handler runs.
-      await userEvent.click(screen.getByText("noop"));
-
-      expect(screen.getByTestId("other")).toBeInTheDocument();
-      expect(screen.getByTestId("location")).toHaveTextContent("/other");
+  it("does not navigate when a button-like `to=''` link is clicked", async () => {
+    renderWithProviders(tree, {
+      withRouter: true,
+      initialRoute: "/other",
     });
-  },
-);
+
+    await screen.findByTestId("other");
+
+    // On v7 an empty `to` resolved to "/" and navigated home, unmounting the
+    // current view. It must stay put so only the onClick handler runs.
+    await userEvent.click(screen.getByText("noop"));
+
+    expect(screen.getByTestId("other")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/other");
+  });
+});

@@ -1,5 +1,5 @@
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 
 import { DataStudioMetricAboutPage } from "./pages/DataStudioMetricAboutPage";
 import { DataStudioMetricDependenciesPage } from "./pages/DataStudioMetricDependenciesPage";
@@ -9,55 +9,29 @@ import { DataStudioMetricOverviewPage } from "./pages/DataStudioMetricOverviewPa
 import { DataStudioMetricQueryPage } from "./pages/DataStudioMetricQueryPage";
 import { DataStudioNewMetricPage } from "./pages/NewMetricPage";
 
-const RoutedDataStudioNewMetricPage = withRouteProps(DataStudioNewMetricPage);
-const RoutedDataStudioMetricAboutPage = withRouteProps(
-  DataStudioMetricAboutPage,
-);
-const RoutedDataStudioMetricOverviewPage = withRouteProps(
-  DataStudioMetricOverviewPage,
-);
-const RoutedDataStudioMetricQueryPage = withRouteProps(
-  DataStudioMetricQueryPage,
-);
-const RoutedDataStudioMetricDimensionsPage = withRouteProps(
-  DataStudioMetricDimensionsPage,
-);
-const RoutedDataStudioMetricDependenciesPage = withRouteProps(
-  DataStudioMetricDependenciesPage,
-);
-const RoutedDataStudioMetricHistoryPage = withRouteProps(
-  DataStudioMetricHistoryPage,
-);
-
 export function getDataStudioMetricRoutes() {
   return (
     <Route path="metrics">
-      <Route path="new" element={<RoutedDataStudioNewMetricPage />} />
-      <Route path=":cardId" element={<RoutedDataStudioMetricAboutPage />} />
+      <Route path="new" element={<DataStudioNewMetricPage />} />
+      <Route path=":cardId" element={<DataStudioMetricAboutPage />} />
       <Route
         path=":cardId/overview"
-        element={<RoutedDataStudioMetricOverviewPage />}
-      />
-      <Route
-        path=":cardId/query"
-        element={<RoutedDataStudioMetricQueryPage />}
+        element={<DataStudioMetricOverviewPage />}
       />
       <Route
         path=":cardId/dimensions"
-        element={<RoutedDataStudioMetricDimensionsPage />}
+        element={<DataStudioMetricDimensionsPage />}
       />
+      <Route path=":cardId/query" element={<DataStudioMetricQueryPage />} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           path=":cardId/dependencies"
-          element={<RoutedDataStudioMetricDependenciesPage />}
+          element={<DataStudioMetricDependenciesPage />}
         >
           <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
-      <Route
-        path=":cardId/history"
-        element={<RoutedDataStudioMetricHistoryPage />}
-      />
+      <Route path=":cardId/history" element={<DataStudioMetricHistoryPage />} />
     </Route>
   );
 }

@@ -1,4 +1,4 @@
-import { UNSAFE_createMemoryHistory as createMemoryHistory } from "react-router-v7";
+import { UNSAFE_createMemoryHistory as createMemoryHistory } from "react-router";
 
 import type { Location as HistoryLocation } from "../types";
 
