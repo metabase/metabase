@@ -405,4 +405,4 @@
   "Call the Gemini Enterprise Agent Platform, return AISDK stream."
   [& args]
   (let [raw (apply google-raw args)]
-    (eduction (stream-generate-content/->aisdk-chunks-xf) raw)))
+    (core/completion-safe-eduction (stream-generate-content/->aisdk-chunks-xf) raw)))
