@@ -23,6 +23,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.embeddings.provider :as embeddings.provider]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -31,9 +32,18 @@
 
 (def ^:private test-entity-ids (atom 0))
 
-(defmethod semantic-search/get-embeddings-batch ::dimension-translation-test
-  [embedding-model _texts & _opts]
-  [embedding-model])
+(def ^:private captured-translation-model
+  "Descriptor the provider layer receives, captured by the dimension-translation test." (atom nil))
+
+;; A capturing provider so the dimension-translation test can inspect the descriptor the client hands down.
+(embeddings.provider/register-provider!
+ "dimension-translation-test"
+ {:embedding-spi-version embeddings.provider/embedding-spi-version
+  :readiness             (constantly {:ready? true})
+  :resolve-model         embeddings.provider/legacy-resolved-model
+  :embed-texts           (fn [model texts _opts]
+                           (reset! captured-translation-model model)
+                           (mapv (fn [_] (vec (repeat (:vector-dimensions model) 0.0))) texts))})
 
 (defn- entity
   "Build a fake entity map for scoring tests. Uses a monotonically-increasing counter for `:id`
@@ -749,11 +759,10 @@
         (is (false? (:record-tokens? @captured)))))))
 
 (deftest ^:parallel embeddings-client-translates-neutral-dimension-key-test
-  (let [[translated]
-        (embeddings/get-embeddings-batch
-         {:provider ::dimension-translation-test, :model-name "fake", :model-dimensions 384}
-         ["orders"])]
-    (is (= 384 (:vector-dimensions translated)))))
+  (embeddings/get-embeddings-batch
+   {:provider "dimension-translation-test", :model-name "fake", :model-dimensions 384}
+   ["orders"])
+  (is (= 384 (:vector-dimensions @captured-translation-model))))
 
 (deftest ^:sequential provider-embedder-splits-names-before-calling-provider-test
   (testing "provider-embedder splits names on _, -, ., and camelCase before sending to get-embeddings-batch"
