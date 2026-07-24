@@ -145,12 +145,6 @@ $ bun run build-watch
 
 Some systems may have trouble detecting changes to frontend files. You can enable filesystem polling by uncommenting the `watchOptions` clause in `rspack.main.config.js`. If you do this it may be worth making git ignore changes to webpack config, using `git update-index --assume-unchanged rspack.main.config.js`
 
-We exclude ESLint loader in dev mode for seven times quicker initial builds by default. You can enable it by exporting an environment variable:
-
-```sh
-$ USE_ESLINT=true bun run build-hot
-```
-
 ### Frontend testing
 
 Run all unit and Cypress end-to-end tests with

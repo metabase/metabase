@@ -463,6 +463,13 @@ const baseRules = [
     allow: ["basic/mlv1", "basic/value-formatting", "basic/ui"],
   },
   {
+    // mlv1 describes custom-viz column shapes, so it needs the custom-viz types.
+    // Previously invisible: the webpack resolver could not resolve the `custom-viz`
+    // alias, so this import was never classified.
+    from: ["basic/mlv1"],
+    allow: ["shared/custom-viz"],
+  },
+  {
     from: ["shared/*"],
     allow: ["lib/*", "basic/*", "shared/*"],
     message: "Shared modules cannot import from feature modules",

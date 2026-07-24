@@ -4,7 +4,7 @@ These docs are for building the sdk locally, if you just want to use the sdk, pl
 
 ### Important
 
-Code in this directory should carefully reference external code, including code of the main app and 3rd party dependencies. The reason is that we want keep the Embedding SDK Package bundle as small as possible. To control it, a special eslint rule `no-external-references-for-sdk-package-code` is defined in `enterprise/frontend/src/.eslintrc.js`
+Code in this directory should carefully reference external code, including code of the main app and 3rd party dependencies. The reason is that we want keep the Embedding SDK Package bundle as small as possible. To control it, a custom lint rule `metabase/no-external-references-for-sdk-package-code` is defined in `frontend/lint/eslint-plugin-metabase/rules/` and enforced by oxlint
 
 ## Build
 
