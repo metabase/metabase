@@ -58,86 +58,97 @@
   "Gets a message whenever old entries are purged from the test backend."
   nil)
 
-(defn- test-backend
-  "In in-memory cache backend implementation."
-  [save-chan purge-chan]
-  (let [store  (atom nil)
-        leases (atom {})]
-    (reify
-      pretty/PrettyPrintable
-      (pretty [_]
-        (str "\n"
-             (u/pprint-to-str 'blue
-                              (for [[hash {:keys [created]}] @store]
-                                [hash (u/format-nanoseconds (.getNano (t/duration created (t/instant))))]))))
+(defn- do-with-test-backend!
+  "Runs `thunk` with an in-memory cache backend bound, along with its own poller context, so its polling loops and
+  waiters can't cross-talk with those of another test's backend (or of the real cache). Shuts the context down
+  afterwards."
+  [save-chan purge-chan thunk]
+  (let [store        (atom nil)
+        leases       (atom {})
+        poll-context (cache.poll/poller-context)
+        backend      (reify
+                       pretty/PrettyPrintable
+                       (pretty [_]
+                         (str "\n"
+                              (u/pprint-to-str 'blue
+                                               (for [[hash {:keys [created]}] @store]
+                                                 [hash (u/format-nanoseconds (.getNano (t/duration created (t/instant))))]))))
 
-      i/CacheBackend
+                       i/CacheBackend
 
-      (cached-results [this query-hash respond]
-        (let [hex-hash (codecs/bytes->hex query-hash)]
-          (log/tracef "Fetch results for %s store: %s" hex-hash (pretty/pretty this))
-          (if-let [{:keys [^bytes results created]} (get @store hex-hash)]
-            (with-open [is (java.io.ByteArrayInputStream. results)]
-              (respond is created))
-            (respond nil nil))))
+                       (cached-results [this query-hash respond]
+                         (let [hex-hash (codecs/bytes->hex query-hash)]
+                           (log/tracef "Fetch results for %s store: %s" hex-hash (pretty/pretty this))
+                           (if-let [{:keys [^bytes results created]} (get @store hex-hash)]
+                             (with-open [is (java.io.ByteArrayInputStream. results)]
+                               (respond is created))
+                             (respond nil nil))))
 
-      (save-results! [this query-hash results]
-        (let [hex-hash (codecs/bytes->hex query-hash)]
-          (swap! store assoc hex-hash {:results results
-                                       :created (t/instant)})
-          (swap! leases dissoc hex-hash) ; release the refresh lease now that fresh results are stored
-          (log/tracef "Save results for %s --> store: %s" hex-hash (pretty/pretty this)))
-        (a/>!! save-chan results))
+                       (save-results! [this query-hash results]
+                         (let [hex-hash (codecs/bytes->hex query-hash)]
+                           (swap! store assoc hex-hash {:results results
+                                                        :created (t/instant)})
+                           (swap! leases dissoc hex-hash) ; release the refresh lease now that fresh results are stored
+                           (log/tracef "Save results for %s --> store: %s" hex-hash (pretty/pretty this)))
+                         (a/>!! save-chan results))
 
-      (purge-old-entries! [this max-age-seconds]
-        (swap! store (fn [store]
-                       (into {} (filter (fn [[_ {:keys [created]}]]
-                                          (t/after? created (t/minus (t/instant) (t/seconds max-age-seconds))))
-                                        store))))
-        (log/tracef "Purge old entries --> store: %s" (pretty/pretty this))
-        (a/>!! purge-chan ::purge))
+                       (purge-old-entries! [this max-age-seconds]
+                         (swap! store (fn [store]
+                                        (into {} (filter (fn [[_ {:keys [created]}]]
+                                                           (t/after? created (t/minus (t/instant) (t/seconds max-age-seconds))))
+                                                         store))))
+                         (log/tracef "Purge old entries --> store: %s" (pretty/pretty this))
+                         (a/>!! purge-chan ::purge))
 
-      (delete-entry! [this query-hash]
-        (let [hex-hash (codecs/bytes->hex query-hash)]
-          (swap! store dissoc hex-hash)
-          (swap! leases dissoc hex-hash)
-          (log/tracef "Delete entry for %s --> store: %s" hex-hash (pretty/pretty this))))
+                       (delete-entry! [this query-hash]
+                         (let [hex-hash (codecs/bytes->hex query-hash)]
+                           (swap! store dissoc hex-hash)
+                           (swap! leases dissoc hex-hash)
+                           (log/tracef "Delete entry for %s --> store: %s" hex-hash (pretty/pretty this))))
 
-      (try-acquire-refresh-lease! [_this query-hash lease-ms]
-        (let [hex-hash (codecs/bytes->hex query-hash)
-              now      (t/instant)
-              won      (volatile! false)]
-          (swap! leases (fn [ls]
-                          (let [held (get ls hex-hash)]
-                            (if (or (nil? held) (t/before? held now))
-                              (do (vreset! won true)
-                                  (assoc ls hex-hash (t/plus now (t/millis lease-ms))))
-                              (do (vreset! won false)
-                                  ls)))))
-          @won))
+                       (try-acquire-refresh-lease! [_this query-hash lease-ms]
+                         (let [hex-hash (codecs/bytes->hex query-hash)
+                               now      (t/instant)
+                               won      (volatile! false)]
+                           (swap! leases (fn [ls]
+                                           (let [held (get ls hex-hash)]
+                                             (if (or (nil? held) (t/before? held now))
+                                               (do (vreset! won true)
+                                                   (assoc ls hex-hash (t/plus now (t/millis lease-ms))))
+                                               (do (vreset! won false)
+                                                   ls)))))
+                           @won))
 
-      (release-refresh-lease! [_this query-hash]
-        (swap! leases dissoc (codecs/bytes->hex query-hash))))))
+                       (release-refresh-lease! [_this query-hash]
+                         (swap! leases dissoc (codecs/bytes->hex query-hash))))]
+    (binding [cache/*backend*      backend
+              cache.poll/*context* poll-context]
+      (try
+        (thunk)
+        (finally
+          (cache.poll/shutdown-context! poll-context))))))
 
 (defn do-with-mock-cache! [f]
   (mt/with-open-channels [save-chan  (a/chan 10)
                           purge-chan (a/chan 10)]
     (mt/with-temporary-setting-values [query-caching-max-ttl     60
                                        synchronous-batch-updates true]
-      (binding [cache/*backend* (test-backend save-chan purge-chan)
-                *save-chan*     save-chan
-                *purge-chan*    purge-chan]
-        (let [orig (mt/original-fn #'cache/serialized-bytes)]
-          (mt/with-dynamic-fn-redefs [cache/serialized-bytes (fn []
-                                                               ;; if `save-results!` isn't going to get called because `*result-fn*`
-                                                               ;; throws an Exception, catch it and send it to `save-chan` so it still
-                                                               ;; gets a result and tests can finish
-                                                               (try
-                                                                 (orig)
-                                                                 (catch Throwable e
-                                                                   (a/>!! save-chan e)
-                                                                   (throw e))))]
-            (f {:save-chan save-chan, :purge-chan purge-chan})))))))
+      (do-with-test-backend!
+       save-chan purge-chan
+       (fn []
+         (binding [*save-chan* save-chan
+                   *purge-chan* purge-chan]
+           (let [orig (mt/original-fn #'cache/serialized-bytes)]
+             (mt/with-dynamic-fn-redefs [cache/serialized-bytes (fn []
+                                                                  ;; if `save-results!` isn't going to get called because `*result-fn*`
+                                                                  ;; throws an Exception, catch it and send it to `save-chan` so it still
+                                                                  ;; gets a result and tests can finish
+                                                                  (try
+                                                                    (orig)
+                                                                    (catch Throwable e
+                                                                      (a/>!! save-chan e)
+                                                                      (throw e))))]
+               (f {:save-chan save-chan, :purge-chan purge-chan})))))))))
 
 (defmacro with-mock-cache! [[& bindings] & body]
   `(do-with-mock-cache! (fn [{:keys [~@bindings]}] ~@body)))
@@ -495,7 +506,7 @@
         (u/deref-with-timeout first-entered 10000)
         (let [request-2 (future (run-query-with-execute* execute))
               request-3 (future (run-query-with-execute* execute))
-              pollers   @#'cache.poll/pollers]
+              pollers   (:pollers cache.poll/*context*)]
           ;; wait for at least one waiter to register the poller; by construction the map can never hold more than
           ;; one entry per query hash, so once it's nonempty there is exactly one polling loop
           (loop [attempts-remaining 100]
