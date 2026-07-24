@@ -80,6 +80,19 @@
     (catch Throwable e
       (log/errorf e "Error delivering DML capture event for %s %s" model (:op event)))))
 
+(defn- delete-query->select-query
+  "Restate an explicit HoneySQL DELETE map as something a SELECT can be built from.
+  Toucan 2 lets a caller pass one to `delete!`, and building a SELECT from it would keep the `:delete` and
+  `:delete-from` keys and compile to nonsense. `before-delete` gets this same workaround from
+  [[metabase.app-db.setup]], but only under its own dispatch value, so capture has to do it for itself
+  (https://github.com/camsaul/toucan2/issues/203)."
+  [query]
+  (if-not (map? query)
+    query
+    (cond-> (dissoc query :delete)
+      (contains? query :delete-from) (-> (dissoc :delete-from)
+                                         (assoc :from [(:delete-from query)])))))
+
 (defn- pre-image-rows
   "Select the rows a delete statement is about to affect, narrowed to `fields`, as plain raw-value maps.
   The select is built and compiled through the model's pipeline so conditions keep the statement's exact
@@ -93,7 +106,7 @@
   (when-let [sql-args (try
                         (let [built (t2.pipeline/build query-type model
                                                        (assoc parsed-args :columns (vec fields))
-                                                       resolved-query)]
+                                                       (delete-query->select-query resolved-query))]
                           (t2.pipeline/compile query-type model built))
                         (catch Exception e
                           (log/errorf e "Skipping DML capture for %s: could not build pre-image query" model)
