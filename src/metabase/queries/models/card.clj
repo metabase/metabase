@@ -1623,7 +1623,7 @@
   [_model id]
   (let [source (t2/select-one :model/Card :id id)]
     (:id (create-card! (select-keys source
-                                    [:name :description :display :dataset_query :visualization_settings
+                                    [:entity_id :name :description :display :dataset_query :visualization_settings
                                      :type :parameters :parameter_mappings :collection_id :database_id
                                      :table_id :query_type :result_metadata :cache_ttl])
                        @api/*current-user*))))

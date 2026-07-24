@@ -255,5 +255,5 @@
 (defmethod workspaces/clone-entity! :model/Segment
   [_model id]
   (workspaces/clone-row! :model/Segment id
-                         [:name :description :table_id :definition :archived
+                         [:entity_id :name :description :table_id :definition :archived
                           :caveats :points_of_interest]))

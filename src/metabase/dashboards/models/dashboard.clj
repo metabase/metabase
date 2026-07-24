@@ -590,7 +590,7 @@
     (let [dash        (t2/select-one :model/Dashboard :id id)
           new-dash-id (t2/insert-returning-pk!
                        :model/Dashboard
-                       (-> (select-keys dash [:name :description :parameters :collection_id
+                       (-> (select-keys dash [:entity_id :name :description :parameters :collection_id
                                               :cache_ttl :width :auto_apply_filters :archived])
                            (assoc :creator_id api/*current-user-id*)))
           tab-id->new (into {}
@@ -598,12 +598,12 @@
                                                  {:order-by [[:position :asc]]})]
                               [(:id tab) (t2/insert-returning-pk!
                                           :model/DashboardTab
-                                          (-> (select-keys tab [:name :position])
+                                          (-> (select-keys tab [:entity_id :name :position])
                                               (assoc :dashboard_id new-dash-id)))]))]
       (doseq [dashcard (t2/select :model/DashboardCard :dashboard_id id)]
         (let [new-dashcard-id (t2/insert-returning-pk!
                                :model/DashboardCard
-                               (-> (select-keys dashcard [:card_id :action_id :row :col :size_x :size_y
+                               (-> (select-keys dashcard [:entity_id :card_id :action_id :row :col :size_x :size_y
                                                           :parameter_mappings :visualization_settings
                                                           :inline_parameters])
                                    (assoc :dashboard_id new-dash-id

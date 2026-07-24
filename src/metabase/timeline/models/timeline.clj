@@ -77,7 +77,7 @@
     (let [timeline  (t2/select-one :model/Timeline :id id)
           new-tl-id (t2/insert-returning-pk!
                      :model/Timeline
-                     (-> (select-keys timeline [:name :description :icon :collection_id :archived :default])
+                     (-> (select-keys timeline [:entity_id :name :description :icon :collection_id :archived :default])
                          (assoc :creator_id api/*current-user-id*)))]
       (doseq [event (t2/select :model/TimelineEvent :timeline_id id)]
         (t2/insert! :model/TimelineEvent

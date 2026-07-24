@@ -30,5 +30,5 @@
 (mr/def ::workspace
   [:map
    [:id         pos-int?]
-   [:name       :string]
+   [:branch     :string]
    [:creator_id [:maybe pos-int?]]])
