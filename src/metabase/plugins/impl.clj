@@ -195,17 +195,20 @@
   ;; The order here matters, and step 3 is a provenance boundary. `false` (no manifest) sorts before `true`,
   ;; so the destructuring splits plugins-directory JARs into bare dependencies and manifest plugins.
   (log/infof "Loading plugins in %s..." (str (plugins-dir)))
-  (let [{dep-jars false, user-manifests true} (group-by has-manifest? (plugins-paths))]
+  ;; Reserved names come from the root-owned classpath, so they are not race-able. Pass them to *both*
+  ;; batches: classification (has-manifest?) and registration read the writable JAR separately, so a JAR that
+  ;; is a bare dependency when classified but a bundled-name manifest when registered must still be refused.
+  (let [reserved (bundled-plugin-names)
+        {dep-jars false, user-manifests true} (group-by has-manifest? (plugins-paths))]
     ;; 1. Bare dependency JARs (e.g. the Oracle JDBC driver `ojdbc8.jar`) go on the classpath first, so a
     ;;    bundled manifest's `class:` dependency is satisfiable by the time it is registered.
-    (register-plugins! #{} dep-jars)
+    (register-plugins! reserved dep-jars)
     ;; 2. Bundled manifests next: root-owned code compiled into the uberjar.
     (load-bundled-plugin-manifests!)
-    ;; 3. User-supplied manifest plugins last, and never under a bundled plugin's name. A bundled plugin whose
-    ;;    dependencies are unmet does not register, so we reserve all bundled names explicitly rather than
-    ;;    rely on registration order alone -- otherwise a JAR in the writable plugins directory could run
-    ;;    under a bundled identity.
-    (register-plugins! (bundled-plugin-names) user-manifests)))
+    ;; 3. User-supplied manifest plugins last, never under a bundled plugin's name. A bundled plugin whose
+    ;;    dependencies are unmet does not register, so reserving all bundled names explicitly -- rather than
+    ;;    relying on registration order -- is what keeps a plugins-directory JAR off a bundled identity.
+    (register-plugins! reserved user-manifests)))
 
 (defonce ^:private loaded? (atom false))
 
