@@ -21,10 +21,10 @@
                          :driver                     driver-value
                          :init                       [{:step "load-namespace" :namespace "example.plugin"}]
                          :add-to-classpath!          #(swap! calls conj :classpath)}]
-        (with-redefs [deps/all-dependencies-satisfied?                (constantly true)
-                      deps/update-unsatisfied-deps!                   (constantly [])
-                      init-steps/do-init-steps!                        #(swap! calls conj [:init %])
-                      lazy-loaded-driver/register-lazy-loaded-driver! #(swap! calls conj [:driver %])]
+        (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied?                (constantly true)
+                                    deps/update-unsatisfied-deps!                   (constantly [])
+                                    init-steps/do-init-steps!                       #(swap! calls conj [:init %])
+                                    lazy-loaded-driver/register-lazy-loaded-driver! #(swap! calls conj [:driver %])]
           (is (= :ok (initialize/register-plugin-with-info! plugin)))
           (is (empty? @calls) "registration does not load plugin code")
           (is (= :ok (plugins/load-plugin! plugin-name)))
@@ -65,7 +65,7 @@
                                              :version "1.0.0"}
                 :init                       [{:step "load-namespace" :namespace "example.plugin"}]
                 :add-to-classpath!          #(swap! calls conj :classpath)}]
-    (with-redefs [init-steps/do-init-steps! #(swap! calls conj [:init %])]
+    (mt/with-dynamic-fn-redefs [init-steps/do-init-steps! #(swap! calls conj [:init %])]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"unsupported Metabase plugin API version"
                             (initialize/register-plugin-with-info! plugin))))
@@ -79,9 +79,9 @@
                      :driver            {:name driver-name :abstract true :lazy-load true}
                      :init              [{:step "load-namespace" :namespace "example.driver"}]
                      :add-to-classpath! #(swap! calls conj :classpath)}]
-    (with-redefs [deps/all-dependencies-satisfied?                (constantly true)
-                  deps/update-unsatisfied-deps!                   (constantly [])
-                  init-steps/do-init-steps!                        #(swap! calls conj [:init %])]
+    (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied? (constantly true)
+                                deps/update-unsatisfied-deps!    (constantly [])
+                                init-steps/do-init-steps!        #(swap! calls conj [:init %])]
       (is (= :ok (initialize/register-plugin-with-info! plugin)))
       (is (empty? @calls) "driver registration does not load plugin code")
       (driver/initialize! (keyword driver-name))
@@ -95,10 +95,10 @@
                 :driver            {:name "example" :lazy-load false}
                 :init              [{:step "load-namespace" :namespace "example.driver"}]
                 :add-to-classpath! #(swap! calls conj :classpath)}]
-    (with-redefs [deps/all-dependencies-satisfied?                (constantly true)
-                  deps/update-unsatisfied-deps!                   (constantly [])
-                  init-steps/do-init-steps!                        #(swap! calls conj [:init %])
-                  lazy-loaded-driver/register-lazy-loaded-driver! #(swap! calls conj [:driver %])]
+    (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied?                (constantly true)
+                                deps/update-unsatisfied-deps!                   (constantly [])
+                                init-steps/do-init-steps!                       #(swap! calls conj [:init %])
+                                lazy-loaded-driver/register-lazy-loaded-driver! #(swap! calls conj [:driver %])]
       (is (= :ok (initialize/register-plugin-with-info! plugin))))
     (is (= [:classpath [:init (:init plugin)]] @calls))))
 
@@ -111,13 +111,13 @@
                      :driver            {:name driver-name :abstract true :lazy-load true}
                      :init              [{:step "load-namespace" :namespace "example.driver"}]
                      :add-to-classpath! #(swap! calls conj :classpath)}]
-    (with-redefs [deps/all-dependencies-satisfied? (constantly true)
-                  deps/update-unsatisfied-deps!    (constantly [])
-                  ;; throw on the first activation, succeed on the retry
-                  init-steps/do-init-steps!        (fn [steps]
-                                                     (swap! calls conj [:init steps])
-                                                     (when (= 1 (swap! attempts inc))
-                                                       (throw (ex-info "transient load failure" {}))))]
+    (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied? (constantly true)
+                                deps/update-unsatisfied-deps!    (constantly [])
+                                ;; throw on the first activation, succeed on the retry
+                                init-steps/do-init-steps!        (fn [steps]
+                                                                   (swap! calls conj [:init steps])
+                                                                   (when (= 1 (swap! attempts inc))
+                                                                     (throw (ex-info "transient load failure" {}))))]
       (is (= :ok (initialize/register-plugin-with-info! plugin)))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"transient load failure"
                             (driver/initialize! (keyword driver-name))))
