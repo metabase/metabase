@@ -1,5 +1,18 @@
 import "fast-text-encoding";
 
+// Spec-compliant Intl for engines without native i18n support (e.g. QuickJS).
+// Each polyfill detects native support at runtime and is a no-op when the
+// engine provides its own Intl (e.g. GraalJS with `js.intl-402`).
+import "@formatjs/intl-getcanonicallocales/polyfill.js";
+import "@formatjs/intl-locale/polyfill.js";
+import "@formatjs/intl-pluralrules/polyfill.js";
+import "@formatjs/intl-pluralrules/locale-data/en.js";
+import "@formatjs/intl-numberformat/polyfill.js";
+import "@formatjs/intl-numberformat/locale-data/en.js";
+import "@formatjs/intl-datetimeformat/polyfill.js";
+import "@formatjs/intl-datetimeformat/locale-data/en.js";
+import "@formatjs/intl-datetimeformat/add-all-tz.js";
+
 import ResizeObserver from "resize-observer-polyfill";
 
 const defineGlobal = (name: PropertyKey, value: unknown): void => {

@@ -104,6 +104,7 @@
                                              :git/sha "b4a2d78647a049870b316753d7aae7fb4ade3ae5"} ; patched to resolve an issue causing OOM
   net.carcdr/oidc-provider                  {:mvn/version "0.6.2"}              ; OAuth/OIDC server abstract implementation
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
+  net.java.dev.jna/jna                      {:mvn/version "5.19.1"}             ; native library loading, for the QuickJS static-viz renderer
   net.redhogs.cronparser/cron-parser-core   {:mvn/version "3.5"                 ; describe Cron schedule in human-readable language
                                              :exclusions  [org.slf4j/slf4j-api]}
   net.sf.cssbox/cssbox                      {:mvn/version "5.0.2"               ; HTML / CSS rendering

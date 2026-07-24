@@ -83,6 +83,8 @@ cypress.env.json
 /resources/frontend_client/app/**/*.hot-update.js
 /resources/frontend_client/app/**/*.hot-update.json
 /resources/frontend_client/app/dist/
+/resources/static-viz-quickjs/
+/native/static-viz-quickjs/build/
 /resources/frontend_client/app/locales
 /resources/frontend_client/app/embed.js
 /resources/frontend_client/app/embedding-sdk.js
