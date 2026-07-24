@@ -433,6 +433,16 @@ describe("scenarios > metabot > usage auditing", () => {
 
     const metric = "conversations";
 
+    // Let the initial charts finish loading before driving the date filter.
+    // The page mounts six charts, each firing its own /api/dataset request, but
+    // visitUsageStatsPage only waits for the metadata request. Clicking the date
+    // select while those initial requests are still in flight lets a late
+    // response re-render the filter bar and close the just-opened dropdown, so
+    // H.selectDropdown() times out ("popover never found"). Asserting the
+    // default-range charts rendered settles the page first (as the sibling
+    // "shows conversation usage stats charts" test does).
+    assertMetricChartsRendered(metric);
+
     DATE_FILTER_CASES.forEach((label) => {
       cy.log(`${METRIC_TAB_NAMES[metric]} date filter: ${label}`);
       selectDateFilter(label);
