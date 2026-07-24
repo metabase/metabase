@@ -10,7 +10,7 @@
 ;; All columns encrypted via `mi/transform-encrypted-json`. The on-disk format of such a column is
 ;; `encrypt(json-string)`, so rotating the key only requires decrypting the raw value with the current key and
 ;; re-encrypting the resulting string. We list raw table names (not models) so this also works for enterprise models
-;; (e.g. WorkspaceDatabase) that aren't loaded in every edition.
+;; that aren't loaded in every edition.
 (def ^:private encrypted-json-columns
   [[:metabase_database :details]
    [:metabase_database :settings]
@@ -18,7 +18,6 @@
    [:metabase_database :admin_details]
    [:core_user :settings]
    [:channel :details]
-   [:workspace_database :database_details]
    [:auth_identity :credentials]])
 
 (defn- reencrypt-encrypted-json-column!

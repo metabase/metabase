@@ -10,7 +10,6 @@ export type InitialSyncStatus = LongTaskStatus;
 export type DatabaseSettings = {
   [key: string]: any;
   "database-enable-actions"?: boolean;
-  "database-enable-workspaces"?: boolean;
 };
 
 export type DatabaseFeature =
@@ -58,8 +57,7 @@ export type DatabaseFeature =
   | "split-part"
   | "collate"
   | "transforms/python"
-  | "transforms/table"
-  | "workspace";
+  | "transforms/table";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;

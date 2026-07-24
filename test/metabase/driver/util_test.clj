@@ -14,7 +14,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u])
   (:import
-   (java.sql SQLException)
    (javax.net.ssl SSLSocketFactory)))
 
 (comment h2/keep-me)
@@ -607,80 +606,3 @@
           (is (some? group-info))
           (is (= "Group info message" (:placeholder group-info)))
           (is (nil? (:getter group-info)) "Getter should be removed"))))))
-
-;;; ---------------------------------------- scrub-exceptions -------------------------------------------------
-
-(deftest ^:parallel scrub-exceptions-test
-  (testing "plain Exception: secret is redacted from message"
-    (let [e (driver.u/scrub-exceptions (Exception. "PASSWORD='s3cret'") ["s3cret"])]
-      (is (= "PASSWORD='****'" (ex-message e)))))
-  (testing "secret not present: message unchanged"
-    (let [e (driver.u/scrub-exceptions (Exception. "no secret here") ["s3cret"])]
-      (is (= "no secret here" (ex-message e)))))
-  (testing "cause chain is scrubbed"
-    (let [e (driver.u/scrub-exceptions
-             (Exception. "outer pw=s3cret" (Exception. "inner pw=s3cret"))
-             ["s3cret"])]
-      (is (= "outer pw=****" (ex-message e)))
-      (is (= "inner pw=****" (ex-message (.getCause ^Exception e))))))
-  (testing "ExceptionInfo: ex-data is preserved, message is scrubbed"
-    (let [e (driver.u/scrub-exceptions (ex-info "pw=s3cret" {:code 42}) ["s3cret"])]
-      (is (= "pw=****" (ex-message e)))
-      (is (= {:code 42} (ex-data e)))))
-  (testing "SQLException: SQLState and errorCode are preserved"
-    (let [e (driver.u/scrub-exceptions (SQLException. "pw=s3cret" "42501" 7) ["s3cret"])]
-      (is (= "pw=****" (ex-message e)))
-      (is (= "42501" (.getSQLState ^SQLException e)))
-      (is (= 7 (.getErrorCode ^SQLException e)))))
-  (testing "SQLException next-exception chain is scrubbed"
-    (let [next-ex (SQLException. "next pw=s3cret" "42501" 7)
-          main    (doto (SQLException. "main pw=s3cret" "42000" 1)
-                    (.setNextException next-ex))
-          e       (driver.u/scrub-exceptions main ["s3cret"])]
-      (is (= "main pw=****" (ex-message e)))
-      (is (= "next pw=****" (ex-message (.getNextException ^SQLException e))))
-      (is (= "42501" (.getSQLState (.getNextException ^SQLException e))))))
-  (testing "multiple secrets are all redacted"
-    (let [e (driver.u/scrub-exceptions
-             (Exception. "user=admin password=s3cret escaped=s3cr\\et")
-             ["s3cret" "s3cr\\et"])]
-      (is (= "user=admin password=**** escaped=****" (ex-message e)))))
-  (testing "password with backslash sequences is treated literally, not as regex"
-    (let [pw "p\\nass\\r\\twor$d"
-          e  (driver.u/scrub-exceptions (Exception. (str "CREATE USER x PASSWORD='" pw "'")) [pw])]
-      (is (= "CREATE USER x PASSWORD='****'" (ex-message e)))))
-  (testing "stack trace is preserved"
-    (let [original (Exception. "pw=s3cret")
-          trace    (.getStackTrace original)
-          e        (driver.u/scrub-exceptions original ["s3cret"])]
-      (is (= (seq trace) (seq (.getStackTrace ^Exception e)))))))
-
-(deftest batch-exception-scrub-test
-  (testing "unwrapping the batch envelope composes with password scrubbing (the init-workspace-isolation! shape)"
-    (let [inner    (java.sql.SQLException. "ERROR: syntax error in CREATE USER \"u\" PASSWORD 's3cret'")
-          batch    (doto (java.sql.BatchUpdateException. "Batch entry 0 CREATE USER ... PASSWORD 's3cret' was aborted" (int-array 0))
-                     (.setNextException inner))
-          scrubbed (driver.u/scrub-exceptions (driver.u/batch-exception batch) ["s3cret"])]
-      (is (not (instance? java.sql.BatchUpdateException scrubbed))
-          "the batch envelope is gone")
-      (is (not (str/includes? (ex-message scrubbed) "s3cret"))
-          "the password is gone from the message")
-      (is (str/includes? (ex-message scrubbed) "****")
-          "the password is redacted, not silently dropped"))))
-
-(deftest batch-exception-test
-  (testing "unwraps the underlying per-statement exception of a BatchUpdateException"
-    (let [inner (java.sql.SQLException. "user cannot be dropped")
-          batch (doto (java.sql.BatchUpdateException. "Batch entry 18 ..." (int-array 0))
-                  (.setNextException inner))]
-      (is (identical? inner (driver.u/batch-exception batch)))))
-  (testing "the MariaDB-connector shape chains the real exception via the cause"
-    (let [inner (java.sql.SQLException. "You are not allowed to create a user with GRANT")
-          batch (java.sql.BatchUpdateException. "envelope" nil 0 (int-array 0) inner)]
-      (is (identical? inner (driver.u/batch-exception batch)))))
-  (testing "the mssql-jdbc shape (no next exception, no cause) passes through — its message is already the plain server error"
-    (let [batch (java.sql.BatchUpdateException. "Cannot find the schema 'x'" "S0001" 208 (int-array 0))]
-      (is (identical? batch (driver.u/batch-exception batch)))))
-  (testing "non-batch throwables pass through"
-    (let [e (ex-info "boom" {})]
-      (is (identical? e (driver.u/batch-exception e))))))

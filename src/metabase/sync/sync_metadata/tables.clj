@@ -21,7 +21,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -427,8 +426,7 @@
 
   Captures any `_metabase_metadata` table(s) from the raw batch (for the downstream metabase-metadata
   step), then narrows the batch -- dropping tables we never sync, collapsing duplicate `(name, schema)`,
-  dropping names too long for the app DB, and dropping workspace-isolated tables (they back canonical
-  Tables via remap, so they get no `:model/Table` of their own) -- and creates/reactivates new tables
+  and dropping names too long for the app DB -- and creates/reactivates new tables
   and updates metadata on existing ones. The reconcile is error-handled per batch: on failure we log,
   skip the batch, and mark the sync incomplete so retirement is skipped."
   [database :- i/DatabaseInstance
@@ -438,8 +436,7 @@
   (letfn [(reconcile! []
             (let [tables         (as-> batch <>
                                    (into #{} (comp (remove ignore-table?) (m/distinct-by table-name+schema)) <>)
-                                   (remove-tables-with-too-long-names database <>)
-                                   (ws.table-remapping/filter-workspace-side-tables <> (u/the-id database)))
+                                   (remove-tables-with-too-long-names database <>))
                   existing       (existing-tables-by-name+schema database tables)
                   existing-row   #(get existing (table-name+schema %))
                   already-active (into #{} (filter #(:active (existing-row %))) tables)
@@ -479,10 +476,9 @@
 
 (mu/defn- retire-unseen-tables! :- :int
   "Retire active app-DB tables the warehouse no longer reports. `seen` holds the `:model/Table` id of
-  every table reconciled this sync (accumulated by [[sync-table-batch!]], including the injected
-  workspace-canonical tuples). Streams the active app-DB table ids and retires, a batch at a time, the
-  ones not in `seen` -- so we never hold either the full active set or the full retire set in memory.
-  Returns the number retired."
+  every table reconciled this sync (accumulated by [[sync-table-batch!]]). Streams the active app-DB
+  table ids and retires, a batch at a time, the ones not in `seen` -- so we never hold either the full
+  active set or the full retire set in memory. Returns the number retired."
   [database :- i/DatabaseInstance
    seen     :- [:set ::lib.schema.id/table]]
   (transduce
@@ -523,7 +519,6 @@
                                {:created 0, :updated 0, :complete? true
                                 :seen (transient #{}), :metabase-metadata []}
                                (:tables db-metadata))
-           context  (reconcile-batch context (ws.table-remapping/inject-workspace-canonical-tuples [] (u/the-id database)))
            {:keys [created updated complete?]} context]
        (when-let [holder (:metabase-metadata-tables db-metadata)]
          (vreset! holder (:metabase-metadata context)))

@@ -49,7 +49,6 @@ import type {
   Table,
   TableIndexEntry,
   TableIndexRequest,
-  TableRemapping,
   Task,
   TaskRun,
   Timeline,
@@ -709,21 +708,6 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
     ...(table.measures ? provideMeasureListTags(table.measures) : []),
     ...(table.metrics ? provideCardListTags(table.metrics) : []),
-  ];
-}
-
-export function provideTableRemappingTags(
-  remapping: TableRemapping,
-): TagDescription<TagType>[] {
-  return [idTag("table-remapping", remapping.id)];
-}
-
-export function provideTableRemappingListTags(
-  remappings: TableRemapping[],
-): TagDescription<TagType>[] {
-  return [
-    listTag("table-remapping"),
-    ...remappings.flatMap(provideTableRemappingTags),
   ];
 }
 
