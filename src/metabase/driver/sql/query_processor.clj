@@ -127,14 +127,6 @@
 ;;; |                                            Interface (Multimethods)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
-(defmulti honey-sql-version
-  "DEPRECATED: Prior to between 0.46.0 and 0.49.0, drivers could use either Honey SQL 1 or Honey SQL 2. In 0.49.0+, all
-  drivers must use Honey SQL 2."
-  {:arglists '(^Long [driver]), :added "0.46.0", :deprecated "0.49.0"}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
 (defn inline-num
   "Wrap number `n` in `:inline` when targeting Honey SQL 2."
   {:added "0.46.0"}
@@ -1677,6 +1669,7 @@
 
 (defmethod aggregation-name :sql
   [_driver inner-query ag-clause]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (driver-api/aggregation-name inner-query ag-clause))
 
 (defmethod apply-top-level-clause [:sql :aggregation]
@@ -1734,7 +1727,9 @@
      [:lower field])
    pattern])
 
-(def ^:private StringValueOrFieldOrExpression
+(def ^:private ^{:deprecated "0.64.0"} LegacyStringValueOrFieldOrExpression
+  "Deprecated: use MBQL 5 going forward."
+  #_{:clj-kondo/ignore [:deprecated-var]}
   [:or
    [:and driver-api/mbql.schema.value
     [:fn {:error/message "string value"} #(string? (second %))]]
@@ -1790,7 +1785,7 @@
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
   [driver
    pre
-   [type _ :as arg] :- StringValueOrFieldOrExpression
+   [type _ :as arg] :- #_{:clj-kondo/ignore [:deprecated-var]} LegacyStringValueOrFieldOrExpression
    post
    {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   (if (= :value type)
@@ -2023,7 +2018,7 @@
    [:sequential :any]])
 
 (mu/defmethod join->honeysql :sql :- HoneySQLJoin
-  [driver {:keys [condition], :as join} :- driver-api/Join]
+  [driver {:keys [condition], :as join} :- #_{:clj-kondo/ignore [:deprecated-var]} driver-api/Join]
   (let [join-alias ((some-fn driver-api/qp.add.alias :alias) join)]
     (assert (string? join-alias))
     [[(join-source driver join)

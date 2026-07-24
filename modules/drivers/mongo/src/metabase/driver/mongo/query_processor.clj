@@ -249,8 +249,9 @@
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (when (vector? x)
-      (assert (lib/clause? x)
-              "Attempted to call ->rvalue on a vector that is not an MBQL clause!"))
+      (when-not (lib/clause? x)
+        (throw (ex-info "Attempted to call ->rvalue on a vector that is not an MBQL clause!"
+                        {:x x}))))
     (driver-api/dispatch-by-clause-name-or-class x)))
 
 (defmulti ^:private ->lvalue
@@ -946,7 +947,7 @@ function(bin) {
 
 (mu/defmethod ->rvalue :today
   [query stage-number _ :- :mbql.clause/today]
-  (->rvalue query stage-number [:date [:now]]))
+  (->rvalue query stage-number (lib/date (lib/now))))
 
 (mu/defmethod ->rvalue :datetime
   [query stage-number [_ {:keys [mode], :as _opts} expr] :- :mbql.clause/datetime]
@@ -1063,11 +1064,17 @@ function(bin) {
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
 ;; represents a regex pattern that should be compiled to `{$not <regex}`
+(mr/def ::not-regex.pattern
+  [:or
+   :string
+   (lib.schema.common/instance-of-class java.util.regex.Pattern)
+   [:ref :mbql.clause/value]])
+
 (lib.schema.mbql-clause/define-mbql-clause ::not-regex :- :type/Text
   [:tuple
    [:= ::not-regex]
    [:ref ::lib.schema.common/options]
-   (lib.schema.common/instance-of-class java.util.regex.Pattern)])
+   [:ref ::not-regex.pattern]])
 
 ;; TODO (Cam 2026-07-23) this actually gets compiled by [[str-match-pattern]], consider whether that behavior should
 ;; get rolled into this method or we should just remove this method altogether since it's not meant to actually be
@@ -1223,7 +1230,8 @@ function(bin) {
   [[_ opts & subclauses] :- :mbql.clause/or]
   (into [:and opts] (map negate) subclauses))
 
-(mu/defn- not-regex [pattern :- (lib.schema.common/instance-of-class java.util.regex.Pattern)]
+(mu/defn- not-regex :- ::not-regex
+  [pattern :- ::not-regex.pattern]
   [::not-regex {:lib/uuid (str (random-uuid))} pattern])
 
 (mu/defmethod negate :contains :- ::lib.schema.mbql-clause/clause
@@ -1238,7 +1246,7 @@ function(bin) {
   [[_ opts field v] :- :mbql.clause/ends-with]
   [:ends-with opts field (not-regex v)])
 
-(mu/defmethod compile-filter :not :- ::lib.schema.mbql-clause/clause
+(mu/defmethod compile-filter :not
   [query stage-number [_ _opts subclause] :- :mbql.clause/not]
   (compile-filter query stage-number (negate subclause)))
 
