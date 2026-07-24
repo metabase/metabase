@@ -52,7 +52,7 @@ type RequestResult = {
   body: any;
 };
 
-const DEV_CSP = "connect-src 'self'; form-action 'none'; frame-src 'self'";
+const DEV_CSP = "connect-src 'self'; form-action 'none'; frame-src 'none'";
 
 const APP_SLUG = "test-app";
 
