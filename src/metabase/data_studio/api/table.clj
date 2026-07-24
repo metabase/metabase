@@ -197,7 +197,7 @@
     (when (seq set-map)
       (t2/with-transaction [_conn]
         (schema.table-user-settings/upsert-user-settings! table-ids set-map)
-        (t2/update! :model/Table [:in table-ids] set-map))
+        (t2/update! :model/Table :id [:in table-ids] set-map))
       (maybe-sync-unhidden-tables! existing-tables set-map)
       ;; Publish update events for remote sync tracking
       (let [updated-tables (t2/select :model/Table :id [:in table-ids])]
