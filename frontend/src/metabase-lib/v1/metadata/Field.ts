@@ -35,15 +35,17 @@ import type Metadata from "./Metadata";
 import type Table from "./Table";
 import { getIconForField, getUniqueFieldId } from "./utils/fields";
 
+type InheritedFieldProps = Omit<
+  ApiField,
+  "table" | "target" | "name_field" | "fingerprint"
+>;
+
 // This interface is intentionally empty: a class cannot `extends` a type alias,
 // so merging an interface with the class is how instances inherit the API
 // field's properties without re-declaring them. The class declares the rest.
 //
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface Field extends Omit<
-  ApiField,
-  "table" | "target" | "name_field" | "fingerprint"
-> {}
+interface Field extends InheritedFieldProps {}
 
 /**
  * Wrapper class for field metadata objects. Belongs to a Table.

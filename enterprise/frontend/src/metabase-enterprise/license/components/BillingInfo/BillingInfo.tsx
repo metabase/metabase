@@ -54,10 +54,11 @@ const BillingInfoError = () => {
             <strong>{t`Need help?`}</strong>{" "}
             {t`You can ask for billing help at `}
             <strong>
-              {/* eslint-disable-next-line i18next/no-literal-string */}
+              {/* eslint-disable i18next/no-literal-string -- an email address */}
               <Anchor href="mailto:billing@metabase.com">
                 billing@metabase.com
               </Anchor>
+              {/* eslint-enable i18next/no-literal-string */}
             </strong>
           </Text>
         </Alert>
@@ -94,10 +95,11 @@ const BillingInfoNotStoreManaged = () => {
       description={
         <>
           {t`To manage your billing preferences, please email `}
-          {/* eslint-disable-next-line i18next/no-literal-string */}
+          {/* eslint-disable i18next/no-literal-string -- an email address */}
           <Anchor href="mailto:billing@metabase.com">
             billing@metabase.com
           </Anchor>
+          {/* eslint-enable i18next/no-literal-string */}
         </>
       }
     />

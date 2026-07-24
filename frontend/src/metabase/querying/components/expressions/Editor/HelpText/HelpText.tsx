@@ -12,7 +12,6 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
 import { useDocsUrl } from "metabase/common/hooks";
 import {
-  type HelpText,
   expressionModeSupportsClause,
   getClauseDefinition,
   getHelpText,

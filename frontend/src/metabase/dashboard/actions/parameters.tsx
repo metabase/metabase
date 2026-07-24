@@ -169,6 +169,9 @@ type MoveParameterOpts = {
   canUndo?: boolean;
 };
 
+// This is a redux thunk, not a component. oxlint reads any curried function in
+// a .tsx file as a component definition.
+// oxlint-disable-next-line react/display-name
 export const moveParameter =
   ({ parameterId, destination, canUndo = true }: MoveParameterOpts) =>
   (dispatch: Dispatch, getState: GetState) => {

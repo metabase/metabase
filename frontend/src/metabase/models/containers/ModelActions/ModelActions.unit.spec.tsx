@@ -58,7 +58,6 @@ import ModelActions from "./ModelActions";
 
 const RoutedModelActions = withRouteProps(ModelActions);
 
-// eslint-disable-next-line react/display-name
 jest.mock("metabase/actions/containers/ActionCreator", () => () => (
   <div data-testid="mock-action-editor" />
 ));
