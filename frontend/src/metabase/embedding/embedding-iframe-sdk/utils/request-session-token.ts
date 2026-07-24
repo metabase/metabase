@@ -1,13 +1,11 @@
 import { AUTH_TIMEOUT } from "embedding-sdk-shared/errors";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
-import { isWithinIframe } from "metabase/utils/iframe";
 
 import { WAIT_FOR_SESSION_TOKEN_TIMEOUT } from "../constants";
-import type {
-  SdkIframeEmbedMessage,
-  SdkIframeEmbedTagMessage,
-} from "../types/embed";
+import type { SdkIframeEmbedTagMessage } from "../types/embed";
+
+import { listenForEajsMessages } from "./post-message";
 
 /**
  * Requests a refresh token from the embed.js script which lives in the parent window.
@@ -22,53 +20,49 @@ export function requestSessionTokenFromEmbedJs(options?: {
 }): Promise<MetabaseEmbeddingSessionToken | string> {
   return new Promise<MetabaseEmbeddingSessionToken | string>(
     (resolve, reject) => {
+      let removeMessageListener = () => {};
       const timeout = setTimeout(() => {
-        window.removeEventListener("message", handler);
+        removeMessageListener();
         reject(AUTH_TIMEOUT());
       }, WAIT_FOR_SESSION_TOKEN_TIMEOUT);
 
-      const handler = (event: MessageEvent<SdkIframeEmbedMessage>) => {
-        if (!isWithinIframe() || !event.data) {
-          return;
-        }
+      removeMessageListener = listenForEajsMessages({
+        messageSource: "embed.js",
+        handler: (message) => {
+          // Handle SSO session token response
+          if (message.type === "metabase.embed.submitSessionToken") {
+            const { authMethod, sessionToken } = message.data;
 
-        const action = event.data;
+            // Persist the session token to the iframe's local storage,
+            // so we don't show the popup again.
+            if (authMethod === "saml") {
+              samlTokenStorage.set(sessionToken);
+            }
 
-        // Handle SSO session token response
-        if (action.type === "metabase.embed.submitSessionToken") {
-          const { authMethod, sessionToken } = action.data;
-
-          // Persist the session token to the iframe's local storage,
-          // so we don't show the popup again.
-          if (authMethod === "saml") {
-            samlTokenStorage.set(sessionToken);
+            removeMessageListener();
+            clearTimeout(timeout);
+            resolve(sessionToken);
           }
 
-          window.removeEventListener("message", handler);
-          clearTimeout(timeout);
-          resolve(sessionToken);
-        }
+          // Handle guest token refresh response
+          if (message.type === "metabase.embed.submitRefreshedGuestToken") {
+            const { guestToken } = message.data;
 
-        // Handle guest token refresh response
-        if (action.type === "metabase.embed.submitRefreshedGuestToken") {
-          const { guestToken } = action.data;
+            removeMessageListener();
+            clearTimeout(timeout);
+            resolve(guestToken);
+          }
 
-          window.removeEventListener("message", handler);
-          clearTimeout(timeout);
-          resolve(guestToken);
-        }
+          // Handle errors from both flows
+          if (message.type === "metabase.embed.reportAuthenticationError") {
+            const { error } = message.data;
 
-        // Handle errors from both flows
-        if (action.type === "metabase.embed.reportAuthenticationError") {
-          const { error } = action.data;
-
-          window.removeEventListener("message", handler);
-          clearTimeout(timeout);
-          reject(error);
-        }
-      };
-
-      window.addEventListener("message", handler);
+            removeMessageListener();
+            clearTimeout(timeout);
+            reject(error);
+          }
+        },
+      });
 
       // Send appropriate request message based on flow
       if (options?.expiredToken) {
