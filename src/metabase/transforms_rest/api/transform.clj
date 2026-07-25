@@ -45,6 +45,7 @@
    [:is_superuser {:optional true} :boolean]
    [:is_data_analyst {:optional true} :boolean]
    [:tenant_id {:optional true} [:maybe :any]]
+   [:workspace_id {:optional true} [:maybe pos-int?]]
    [:date_joined {:optional true} :any]])
 
 (def ^:private OwnerResponse

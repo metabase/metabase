@@ -280,6 +280,7 @@
                        :date_joined true
                        :common_name "example@slack.com"
                        :tenant_id false
+                       :workspace_id false
                        :is_data_analyst false}
                       (-> (mt/boolean-ids-and-timestamps [new-user])
                           first

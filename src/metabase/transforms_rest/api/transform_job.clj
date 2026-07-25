@@ -67,6 +67,7 @@
    [:is_qbnewb {:optional true} :boolean]
    [:is_data_analyst {:optional true} :boolean]
    [:tenant_id {:optional true} [:maybe :string]]
+    [:workspace_id {:optional true} [:maybe pos-int?]]
    [:common_name {:optional true} [:maybe :string]]])
 
 (def ^:private TransformResponse
