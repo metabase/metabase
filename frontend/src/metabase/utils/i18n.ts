@@ -68,7 +68,9 @@ export function applyLocaleDirection(language = ""): void {
   const html = document.documentElement;
   html.setAttribute("dir", isRTLLocale(language) ? "rtl" : "ltr");
   if (language) {
-    html.setAttribute("lang", getLocale(language));
+    // `language` is a gettext header like `en`, `pt_BR` or `ar_SA`. Emit a valid
+    // BCP-47 `lang` (hyphen-separated) rather than the Day.js normalization form.
+    html.setAttribute("lang", language.replace(/_/g, "-"));
   }
 }
 

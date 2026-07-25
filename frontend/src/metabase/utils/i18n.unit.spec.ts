@@ -86,6 +86,7 @@ describe("isRTLLocale", () => {
 describe("applyLocaleDirection", () => {
   afterEach(() => {
     document.documentElement.removeAttribute("dir");
+    document.documentElement.removeAttribute("lang");
   });
 
   it("sets dir=rtl on <html> for Arabic", () => {
@@ -96,5 +97,12 @@ describe("applyLocaleDirection", () => {
   it("sets dir=ltr on <html> for English", () => {
     applyLocaleDirection("en");
     expect(document.documentElement).toHaveAttribute("dir", "ltr");
+  });
+
+  it("writes a valid BCP-47 lang tag (hyphenated, region case preserved)", () => {
+    applyLocaleDirection("pt_BR");
+    expect(document.documentElement).toHaveAttribute("lang", "pt-BR");
+    applyLocaleDirection("ar_SA");
+    expect(document.documentElement).toHaveAttribute("lang", "ar-SA");
   });
 });

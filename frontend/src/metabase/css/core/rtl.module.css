@@ -6,15 +6,20 @@
  * horizontal axis. Only unambiguously horizontal, direction-of-travel icons are
  * listed here — vertical ones (chevronup/down) and icons whose shape carries a
  * fixed meaning (e.g. join_left_outer/join_right_outer) are intentionally left
- * untouched. Components that rotate one of these icons inline keep their inline
- * transform (inline styles win over this rule).
+ * untouched.
+ *
+ * The `[dir="rtl"]` part is wrapped in `:where()` so the whole selector keeps the
+ * specificity of a single class. That way a component that statefully transforms
+ * one of these icons — e.g. an expand caret rotated 90deg — still wins and keeps
+ * its own transform, while plain directional icons (no competing transform) are
+ * mirrored.
  */
-:global([dir="rtl"] .Icon-chevronleft),
-:global([dir="rtl"] .Icon-chevronright),
-:global([dir="rtl"] .Icon-arrow_left),
-:global([dir="rtl"] .Icon-arrow_right),
-:global([dir="rtl"] .Icon-arrow_left_to_line),
-:global([dir="rtl"] .Icon-triangle_left),
-:global([dir="rtl"] .Icon-triangle_right) {
+:global(:where([dir="rtl"]) .Icon-chevronleft),
+:global(:where([dir="rtl"]) .Icon-chevronright),
+:global(:where([dir="rtl"]) .Icon-arrow_left),
+:global(:where([dir="rtl"]) .Icon-arrow_right),
+:global(:where([dir="rtl"]) .Icon-arrow_left_to_line),
+:global(:where([dir="rtl"]) .Icon-triangle_left),
+:global(:where([dir="rtl"]) .Icon-triangle_right) {
   transform: scaleX(-1);
 }
