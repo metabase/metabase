@@ -1,5 +1,7 @@
 # Metabase
 
+[![MCP Toplist](https://mcptoplist.com/badge/io.github.metabase%2Fmcp.svg)](https://mcptoplist.com/server/io.github.metabase%2Fmcp)
+
 [Metabase](https://www.metabase.com) is the easy, open-source way for everyone in your company to ask questions and learn from data.
 
 ![Metabase Product Screenshot](https://www.metabase.com/images/metabase-product-screenshot-updated.png)
