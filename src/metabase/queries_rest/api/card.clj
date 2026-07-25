@@ -36,6 +36,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -258,14 +259,16 @@
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql
     :keys        []} :- [:map [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)
-        card (get-card resolved-id)]
-    (cond-> card
-      legacy-mbql?
-      (update :dataset_query (fn [query]
-                               #_{:clj-kondo/ignore [:discouraged-var]}
-                               (cond-> query
-                                 (seq query) lib/->legacy-MBQL))))))
+  (let [source-id    (eid-translation/->id-or-404 :card id)
+        effective-id (workspaces/remapped-entity-id :model/Card source-id)
+        card         (get-card effective-id)]
+    (-> (cond-> card
+          legacy-mbql?
+          (update :dataset_query (fn [query]
+                                   #_{:clj-kondo/ignore [:discouraged-var]}
+                                   (cond-> query
+                                     (seq query) lib/->legacy-MBQL))))
+        (workspaces/with-source-entity-id source-id))))
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
   (let [dashboards (or (:in_dashboards card)
@@ -577,6 +580,7 @@
       (catch clojure.lang.ExceptionInfo e
         (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))
     (let [created-card (queries/create-card! card @api/*current-user*)]
+      (workspaces/add-remapping! :model/Card (:id created-card) (:id created-card))
       (when (and (some? (:result_metadata card))
                  (= (name (:type created-card)) "question"))
         (events/publish-event! :event/card-create-with-result-metadata
@@ -763,7 +767,9 @@
    {delete-old-dashcards? :delete_old_dashcards} :- [:map
                                                      [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
    body :- CardUpdateSchema]
-  (update-card! id body (boolean delete-old-dashcards?)))
+  (let [effective-id (workspaces/ensure-workspace-copy! :model/Card id)]
+    (-> (update-card! effective-id body (boolean delete-old-dashcards?))
+        (workspaces/with-source-entity-id id))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -776,7 +782,7 @@
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)]
+  (let [resolved-id (workspaces/remapped-entity-id :model/Card (eid-translation/->id-or-404 :card id))]
     (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
@@ -789,8 +795,10 @@
   "Hard delete a Card. To soft delete, use `PUT /api/queries/:id`"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [card (api/write-check :model/Card id)]
-    (t2/delete! :model/Card :id id)
+  (let [effective-id (workspaces/remapped-entity-id :model/Card id)
+        card         (api/write-check :model/Card effective-id)]
+    (t2/delete! :model/Card :id effective-id)
+    (workspaces/delete-remapping! :model/Card id)
     (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
@@ -902,7 +910,7 @@
   ;;    POST /api/dashboard/:dashboard-id/queries/:card-id/query
   ;;
   ;; endpoint instead. Or error in that situation? We're not even validating that you have access to this Dashboard.
-  (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
+  (let [resolved-card-id (workspaces/remapped-entity-id :model/Card (eid-translation/->id-or-404 :card card-id))]
     (qp.card/process-query-for-card
      (api/check-404 (t2/select-one :model/Card resolved-card-id)) :api
      :parameters parameters
@@ -946,7 +954,7 @@
        [:pivot_results {:default false} ms/BooleanValue]
        [:csv_include_bom {:default false} ms/BooleanValue]]]
   (qp.card/process-query-for-card
-   (api/check-404 (t2/select-one :model/Card card-id)) export-format
+   (api/check-404 (t2/select-one :model/Card (workspaces/remapped-entity-id :model/Card card-id))) export-format
    :parameters  parameters
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
@@ -1021,7 +1029,7 @@
    {:keys [parameters ignore_cache]
     :or   {ignore_cache false}} :- [:map
                                     [:ignore_cache {:optional true} [:maybe :boolean]]]]
-  (qp.card/process-query-for-card (api/check-404 (t2/select-one :model/Card card-id)) :api
+  (qp.card/process-query-for-card (api/check-404 (t2/select-one :model/Card (workspaces/remapped-entity-id :model/Card card-id))) :api
                                   :parameters   parameters
                                   :qp           qp.pivot/run-pivot-query
                                   :ignore-cache ignore_cache))
@@ -1039,7 +1047,7 @@
                                    [:card-id   ms/PositiveInt]
                                    [:param-key ::lib.schema.parameter/id]]]
   (binding [qp.perms/*param-values-query* true]
-    (queries/card-param-values (api/read-check :model/Card card-id) param-key)))
+    (queries/card-param-values (api/read-check :model/Card (workspaces/remapped-entity-id :model/Card card-id)) param-key)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1057,7 +1065,7 @@
                                          [:param-key ::lib.schema.parameter/id]
                                          [:query     ms/NonBlankString]]]
   (binding [qp.perms/*param-values-query* true]
-    (queries/card-param-values (api/read-check :model/Card card-id) param-key query)))
+    (queries/card-param-values (api/read-check :model/Card (workspaces/remapped-entity-id :model/Card card-id)) param-key query)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1073,5 +1081,5 @@
                               [:param-key ::lib.schema.parameter/id]]
    {:keys [value]}        :- [:map [:value :string]]]
   (binding [qp.perms/*param-values-query* true]
-    (-> (api/read-check :model/Card id)
+    (-> (api/read-check :model/Card (workspaces/remapped-entity-id :model/Card id))
         (queries/card-param-remapped-value param-key (codec/url-decode value)))))

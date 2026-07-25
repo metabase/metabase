@@ -41,6 +41,7 @@
        :login_attributes nil
        :updated_at true
        :locale nil
+       :workspace_id false
        :tenant_id false})
      :type)))
 

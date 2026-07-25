@@ -53,6 +53,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [metabase.xrays.core :as xrays]
    [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
@@ -167,6 +168,7 @@
                          (api/maybe-reconcile-collection-position! dashboard-data)
                          ;; Ok, now save the Dashboard
                          (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
+    (workspaces/add-remapping! :model/Dashboard (u/the-id dash) (u/the-id dash))
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
@@ -640,9 +642,11 @@
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id}]
   (with-dashboard-load-id dashboard-load-id
-    (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
-          dashboard (get-dashboard resolved-id)]
-      (u/prog1 (first (revisions/with-last-edit-info [dashboard] :dashboard))
+    (let [source-id    (eid-translation/->id-or-404 :dashboard id)
+          effective-id (workspaces/remapped-entity-id :model/Dashboard source-id)
+          dashboard    (get-dashboard effective-id)]
+      (u/prog1 (-> (first (revisions/with-last-edit-info [dashboard] :dashboard))
+                   (workspaces/with-source-entity-id source-id))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 
 (api.macros/defendpoint :post "/:id/pdf" :- :any
@@ -755,8 +759,10 @@
   This will remove also any questions/models/segments/metrics that use this database."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [dashboard (api/write-check :model/Dashboard id)]
-    (t2/delete! :model/Dashboard :id id)
+  (let [effective-id (workspaces/remapped-entity-id :model/Dashboard id)
+        dashboard    (api/write-check :model/Dashboard effective-id)]
+    (t2/delete! :model/Dashboard :id effective-id)
+    (workspaces/delete-remapping! :model/Dashboard id)
     (events/publish-event! :event/dashboard-delete {:object dashboard :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
@@ -1153,7 +1159,9 @@
                     [:id ms/PositiveInt]]
    _query-params
    dash-updates :- DashUpdates]
-  (update-dashboard! id dash-updates))
+  (let [effective-id (workspaces/ensure-workspace-copy! :model/Dashboard id)]
+    (-> (update-dashboard! effective-id dash-updates)
+        (workspaces/with-source-entity-id id))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1316,7 +1324,7 @@
                                    [:id ms/PositiveInt]
                                    [:param-key ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
-  (let [dashboard (api/read-check :model/Dashboard id)]
+  (let [dashboard (api/read-check :model/Dashboard (workspaces/remapped-entity-id :model/Dashboard id))]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
       (parameters.dashboard/param-values dashboard param-key constraint-param-key->value))))
@@ -1339,7 +1347,7 @@
                                     [:param-key ms/NonBlankString]
                                     [:query ms/NonBlankString]]
    constraint-param-key->value  :- [:map-of string? any?]]
-  (let [dashboard (api/read-check :model/Dashboard id)]
+  (let [dashboard (api/read-check :model/Dashboard (workspaces/remapped-entity-id :model/Dashboard id))]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true
               chain-filter/*allow-implicit-uuid-field-remapping* false]
@@ -1358,7 +1366,7 @@
                               [:id ms/PositiveInt]
                               [:param-key ms/NonBlankString]]
    {:keys [value]}        :- [:map [:value :string]]]
-  (let [dashboard (api/read-check :model/Dashboard id)]
+  (let [dashboard (api/read-check :model/Dashboard (workspaces/remapped-entity-id :model/Dashboard id))]
     (binding [qp.perms/*param-values-query* true]
       (parameters.dashboard/dashboard-param-remapped-value dashboard param-key (codec/url-decode value)))))
 
@@ -1454,8 +1462,9 @@
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
                body
-               {:dashboard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
-                :card      (api/check-404 (t2/select-one :model/Card card-id))
+               {:dashboard (api/check-404 (t2/select-one :model/Dashboard (workspaces/remapped-entity-id :model/Dashboard dashboard-id)))
+                :card      (-> (api/check-404 (t2/select-one :model/Card (workspaces/remapped-entity-id :model/Card card-id)))
+                               (workspaces/with-source-entity-id card-id))
                 :dashcard  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1486,8 +1495,9 @@
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
-            {:dashboard     (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
-             :card          (api/check-404 (t2/select-one :model/Card card-id))
+            {:dashboard     (api/check-404 (t2/select-one :model/Dashboard (workspaces/remapped-entity-id :model/Dashboard dashboard-id)))
+             :card          (-> (api/check-404 (t2/select-one :model/Card (workspaces/remapped-entity-id :model/Card card-id)))
+                                (workspaces/with-source-entity-id card-id))
              :dashcard      (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
              :export-format export-format
              :parameters    (cond-> parameters
@@ -1520,7 +1530,8 @@
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              body
-             {:dashboard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
-              :card      (api/check-404 (t2/select-one :model/Card card-id))
+             {:dashboard (api/check-404 (t2/select-one :model/Dashboard (workspaces/remapped-entity-id :model/Dashboard dashboard-id)))
+              :card      (-> (api/check-404 (t2/select-one :model/Card (workspaces/remapped-entity-id :model/Card card-id)))
+                             (workspaces/with-source-entity-id card-id))
               :dashcard  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
               :qp        qp.pivot/run-pivot-query})))

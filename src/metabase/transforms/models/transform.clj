@@ -21,6 +21,7 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]))
@@ -556,3 +557,14 @@
    :search-terms [:name :description]
    :render-terms {:transform-name :name
                   :transform-id   :id}})
+
+;;; ------------------------------------------- Workspace copy-on-write -------------------------------------------
+
+(defmethod workspaces/clone-entity! :model/Transform
+  [_model id]
+  ;; Copy the definition but none of the run-state columns (target_table_id,
+  ;; last_checkpoint_value, table_dependencies) — before-insert recomputes source_type,
+  ;; source_database_id and target_db_id from the copied source/target.
+  (workspaces/clone-row! :model/Transform id
+                         [:name :description :source :target :collection_id :run_trigger
+                          :owner_user_id :owner_email]))

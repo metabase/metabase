@@ -38,6 +38,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -1411,7 +1412,8 @@
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
             [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
-  (collections/create-collection! body))
+  (u/prog1 (collections/create-collection! body)
+    (workspaces/add-remapping! :model/Collection (:id <>) (:id <>))))
 
 (defn- maybe-send-archived-notifications!
   "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer
@@ -1566,8 +1568,10 @@
   "Fetch a specific Collection with standard details added"
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :collection id)]
-    (collection-detail (api/read-check :model/Collection resolved-id))))
+  (let [resolved-id  (eid-translation/->id-or-404 :collection id)
+        effective-id (workspaces/remapped-entity-id :model/Collection resolved-id)]
+    (-> (collection-detail (api/read-check :model/Collection effective-id))
+        (workspaces/with-source-entity-id resolved-id))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1586,7 +1590,8 @@
                                                                   [:type             {:optional true} [:maybe CollectionType]]
                                                                   [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
   ;; do we have perms to edit this Collection?
-  (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
+  (let [effective-id             (workspaces/ensure-workspace-copy! :model/Collection id)
+        collection-before-update (t2/hydrate (api/write-check :model/Collection effective-id) :parent_id)]
     ;; tenant-specific-root-collection collections cannot be updated
     (api/check-400
      (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))
@@ -1599,14 +1604,15 @@
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level :type])]
       (when (seq updates)
-        (t2/update! :model/Collection id updates)))
+        (t2/update! :model/Collection effective-id updates)))
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
-    (let [updated-collection (t2/select-one :model/Collection :id id)]
+    (let [updated-collection (t2/select-one :model/Collection :id effective-id)]
       (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*})
-      (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*})))
-  ;; finally, return the updated object
-  (collection-detail (t2/select-one :model/Collection :id id)))
+      (events/publish-event! :event/collection-touch {:collection-id effective-id :user-id api/*current-user-id*}))
+    ;; finally, return the updated object
+    (-> (collection-detail (t2/select-one :model/Collection :id effective-id))
+        (workspaces/with-source-entity-id id))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1617,7 +1623,8 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-403 api/*is-superuser?*)
-  (let [collection (t2/select-one :model/Collection id)
+  (let [effective-id (workspaces/remapped-entity-id :model/Collection id)
+        collection (t2/select-one :model/Collection effective-id)
         old-children-location (collection/children-location collection)
         new-children-location (:location collection)]
     (api/check-400 (:archived collection)
@@ -1627,14 +1634,16 @@
     ;; Shouldn't happen, because they can't be archived either... but juuuuust in case.
     (api/check-400 (nil? (:personal_owner_id collection))
                    "Personal collections cannot be deleted.")
-    (t2/with-transaction [_tx]
-      ;; First, move all children (along with their children) that were archived directly OUT of this collection
-      (doseq [child (t2/select :model/Collection
-                               :location [:like (str old-children-location "%")]
-                               :archived_directly true)]
-        (collection/move-collection! child new-children-location))
-      ;; Now we can safely delete this collection and anything left under it.
-      (t2/delete! :model/Collection :id id))))
+    (u/prog1
+      (t2/with-transaction [_tx]
+        ;; First, move all children (along with their children) that were archived directly OUT of this collection
+        (doseq [child (t2/select :model/Collection
+                                 :location [:like (str old-children-location "%")]
+                                 :archived_directly true)]
+          (collection/move-collection! child new-children-location))
+        ;; Now we can safely delete this collection and anything left under it.
+        (t2/delete! :model/Collection :id effective-id))
+      (workspaces/delete-remapping! :model/Collection id))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API

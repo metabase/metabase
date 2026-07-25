@@ -19,6 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -240,3 +241,10 @@
     (t2/update! :model/Measure measure-id
                 {:dimensions         dimensions
                  :dimension_mappings dimension-mappings})))
+
+;;; ------------------------------------------- Workspace copy-on-write -------------------------------------------
+
+(defmethod workspaces/clone-entity! :model/Measure
+  [_model id]
+  (workspaces/clone-row! :model/Measure id
+                         [:name :description :table_id :definition :archived]))

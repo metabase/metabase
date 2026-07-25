@@ -20,6 +20,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (def ^:private CardCreateSchema
@@ -205,6 +206,7 @@
                              (u/prog1 (get-document document-id)
                                (when (collections/remote-synced-collection? (:collection_id <>))
                                  (collections/check-non-remote-synced-dependencies <>)))))]
+    (workspaces/add-remapping! :model/Document (:id created-document) (:id created-document))
     ;; Publish event after successful creation
     (events/publish-event! :event/document-create
                            {:object created-document
@@ -218,7 +220,8 @@
 (api.macros/defendpoint :get "/:document-id"
   "Returns an existing Document by ID."
   [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
-  (api/read-check (get-document document-id)))
+  (-> (api/read-check (get-document (workspaces/remapped-entity-id :model/Document document-id)))
+      (workspaces/with-source-entity-id document-id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -230,7 +233,9 @@
                              [:document-id ms/PositiveInt]]
    _query-params
    {:keys [name document collection_id collection_position cards] :as body} :- DocumentUpdateOptions]
-  (let [existing-document (api/check-404 (get-document document-id))]
+  (let [source-id         document-id
+        document-id       (workspaces/ensure-workspace-copy! :model/Document document-id)
+        existing-document (api/check-404 (get-document document-id))]
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
     (api/write-check existing-document)
@@ -264,7 +269,7 @@
           (events/publish-event! :event/document-update
                                  {:object updated-document
                                   :user-id api/*current-user-id*}))
-        updated-document))))
+        (workspaces/with-source-entity-id updated-document source-id)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -273,12 +278,14 @@
 (api.macros/defendpoint :delete "/:document-id"
   "Permanently deletes an archived Document."
   [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
-  (let [document (api/check-404 (t2/select-one :model/Document :id document-id))]
+  (let [effective-id (workspaces/remapped-entity-id :model/Document document-id)
+        document     (api/check-404 (t2/select-one :model/Document :id effective-id))]
     (api/write-check document)
     (when-not (:archived document)
       (let [msg (tru "Document must be archived before it can be deleted.")]
         (throw (ex-info msg {:status-code 400, :errors {:archived msg}}))))
-    (t2/delete! :model/Document :id document-id)
+    (t2/delete! :model/Document :id effective-id)
+    (workspaces/delete-remapping! :model/Document document-id)
     (events/publish-event! :event/document-delete
                            {:object document
                             :user-id api/*current-user-id*})

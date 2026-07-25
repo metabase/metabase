@@ -16,6 +16,7 @@
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -185,14 +186,17 @@
   (api/check (not (transforms-base.u/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
-  (-> (transforms.core/create-transform! body)
-      transforms.u/add-source-readable))
+  (let [transform (-> (transforms.core/create-transform! body)
+                      transforms.u/add-source-readable)]
+    (workspaces/add-remapping! :model/Transform (:id transform) (:id transform))
+    transform))
 
 (api.macros/defendpoint :get "/:id" :- TransformResponse
   "Get a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (transforms.core/get-transform id))
+  (-> (transforms.core/get-transform (workspaces/remapped-entity-id :model/Transform id))
+      (workspaces/with-source-entity-id id)))
 
 (api.macros/defendpoint :get "/:id/dependencies" :- [:sequential TransformResponse]
   "Get the dependencies of a specific transform."
@@ -304,14 +308,18 @@
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
-  (api/write-check :model/Transform id)
-  (transforms.core/update-transform! id body))
+  (let [effective-id (workspaces/ensure-workspace-copy! :model/Transform id)]
+    (api/write-check :model/Transform effective-id)
+    (-> (transforms.core/update-transform! effective-id body)
+        (workspaces/with-source-entity-id id))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (transforms.core/delete-transform! (api/write-check :model/Transform id)))
+  (let [effective-id (workspaces/remapped-entity-id :model/Transform id)]
+    (transforms.core/delete-transform! (api/write-check :model/Transform effective-id))
+    (workspaces/delete-remapping! :model/Transform id)))
 
 (api.macros/defendpoint :delete "/:id/table" :- :nil
   "Delete a transform's output table."

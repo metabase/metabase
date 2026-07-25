@@ -11,6 +11,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -55,6 +56,7 @@
                                 (boolean source)      (assoc :source source)
                                 (boolean question_id) (assoc :question_id question_id)))
       (u/prog1 (first (t2/insert-returning-instances! :model/TimelineEvent tl-event))
+        (workspaces/add-remapping! :model/TimelineEvent (:id <>) (:id <>))
         (events/publish-event! :event/timeline-create {:object (t2/select-one :model/Timeline :id (:timeline_id <>)) :user-id api/*current-user-id*})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -65,7 +67,8 @@
   "Fetch the [[TimelineEvent]] with `id`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/read-check :model/TimelineEvent id))
+  (-> (api/read-check :model/TimelineEvent (workspaces/remapped-entity-id :model/TimelineEvent id))
+      (workspaces/with-source-entity-id id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -86,17 +89,19 @@
                                       [:icon         {:optional true} [:maybe timeline-event/Icon]]
                                       [:timeline_id  {:optional true} [:maybe ms/PositiveInt]]
                                       [:archived     {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/write-check :model/TimelineEvent id)
+  (let [effective-id (workspaces/ensure-workspace-copy! :model/TimelineEvent id)
+        existing (api/write-check :model/TimelineEvent effective-id)
         timeline-event-updates (cond-> timeline-event-updates
                                  (boolean timestamp) (update :timestamp u.date/parse))]
     (collection/check-allowed-to-change-collection existing timeline-event-updates)
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
-    (t2/update! :model/TimelineEvent id
+    (t2/update! :model/TimelineEvent effective-id
                 (u/select-keys-when timeline-event-updates
                                     :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
                                     :non-nil #{:name}))
-    (u/prog1 (t2/select-one :model/TimelineEvent :id id)
-      (events/publish-event! :event/timeline-update {:object (t2/select-one :model/Timeline :id (:timeline_id <>)) :user-id api/*current-user-id*}))))
+    (-> (u/prog1 (t2/select-one :model/TimelineEvent :id effective-id)
+          (events/publish-event! :event/timeline-update {:object (t2/select-one :model/Timeline :id (:timeline_id <>)) :user-id api/*current-user-id*}))
+        (workspaces/with-source-entity-id id))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -106,8 +111,9 @@
   "Delete a [[TimelineEvent]]."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/write-check :model/TimelineEvent id)
-  (let [timeline-event (api/write-check :model/TimelineEvent id)]
-    (t2/delete! :model/TimelineEvent :id id)
+  (let [effective-id   (workspaces/remapped-entity-id :model/TimelineEvent id)
+        timeline-event (api/write-check :model/TimelineEvent effective-id)]
+    (t2/delete! :model/TimelineEvent :id effective-id)
+    (workspaces/delete-remapping! :model/TimelineEvent id)
     (events/publish-event! :event/timeline-delete {:object (t2/select-one :model/Timeline :id (:timeline_id timeline-event)) :user-id api/*current-user-id*}))
   api/generic-204-no-content)

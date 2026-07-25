@@ -27,6 +27,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -486,7 +487,8 @@
        [:is_group_manager       {:optional true} [:maybe :boolean]]
        [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
        [:locale                 {:optional true} [:maybe ms/ValidLocale]]
-       [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
+       [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]
+       [:workspace_id           {:optional true} [:maybe ms/PositiveInt]]]]
   (try
     (users/check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
@@ -508,6 +510,9 @@
     (when email
       (api/checkp (not (t2/exists? :model/User, :%lower.email (u/lower-case-en email), :id [:not= id]))
                   "email" (tru "Email address already associated to another user.")))
+    ;; setting an active workspace requires the :workspaces premium feature and an existing workspace
+    (when (contains? body :workspace_id)
+      (workspaces/check-valid-workspace-id (:workspace_id body)))
     (t2/with-transaction [_conn]
       ;; only superuser or self can update user info
       ;; implicitly prevent group manager from updating users' info
@@ -515,7 +520,7 @@
                 api/*is-superuser?*)
         (when-let [changes (not-empty
                             (u/select-keys-when body
-                                                :present (cond-> #{:first_name :last_name :locale}
+                                                :present (cond-> #{:first_name :last_name :locale :workspace_id}
                                                            api/*is-superuser?* (conj :login_attributes :tenant_id))
                                                 :non-nil (cond-> #{:email}
                                                            api/*is-superuser?* (conj :is_superuser))))]

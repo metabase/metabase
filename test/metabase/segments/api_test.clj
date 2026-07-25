@@ -11,6 +11,7 @@
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
+   [metabase.workspaces.test-util :as workspaces.tu]
    [toucan2.core :as t2]))
 
 ;; ## Helper Fns
@@ -18,7 +19,7 @@
 (defn- user-details [user]
   (select-keys
    user
-   [:email :first_name :last_login :is_qbnewb :is_superuser :is_data_analyst :id :last_name :date_joined :common_name :locale :tenant_id]))
+   [:email :first_name :last_login :is_qbnewb :is_superuser :is_data_analyst :id :last_name :date_joined :common_name :locale :tenant_id :workspace_id]))
 
 (defn- segment-response [segment]
   (-> (into {} segment)
@@ -379,3 +380,23 @@
                (-> (mt/user-http-request :crowberto :get 200 (format "segment/%s/related" segment-id))
                    keys
                    set)))))))
+
+;;; ------------------------------------------- Workspace copy-on-write -------------------------------------------
+
+(deftest workspace-segment-copy-on-write-test
+  (mt/with-temp [:model/Workspace ws {:name "cow"}]
+    (mt/with-model-cleanup [:model/Segment]
+      (mt/with-temp [:model/Segment segment {:name       "S"
+                                             :table_id   (mt/id :venues)
+                                             :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
+        (let [segment-url (str "segment/" (:id segment))]
+          (workspaces.tu/in-workspace (:id ws)
+                                      (testing "segment PUT clones in the workspace"
+                                        (let [updated (mt/user-http-request :crowberto :put 200 segment-url
+                                                                            {:name "S (ws)" :revision_message "ws edit"})]
+                                          (is (= (:id segment) (:id updated)))
+                                          (is (= "S (ws)" (:name updated)))))
+                                      (is (= "S" (t2/select-one-fn :name :model/Segment :id (:id segment)))
+                                          "main segment untouched"))
+          (testing "with the workspace deactivated"
+            (is (= "S" (:name (mt/user-http-request :crowberto :get 200 segment-url))))))))))

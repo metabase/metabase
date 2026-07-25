@@ -3,6 +3,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -131,3 +132,12 @@
                :timeline_id (serdes/parent-ref)
                :timestamp   (serdes/date)}
    :defaults {:archived false}})
+
+;;; ------------------------------------------- Workspace copy-on-write -------------------------------------------
+
+(defmethod workspaces/clone-entity! :model/TimelineEvent
+  [_model id]
+  ;; The copy keeps pointing at the same timeline as its source event.
+  (workspaces/clone-row! :model/TimelineEvent id
+                         [:name :description :timestamp :time_matters :timezone :icon
+                          :timeline_id :archived]))

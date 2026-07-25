@@ -12,6 +12,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -212,3 +213,16 @@
     (recur (update ingested :name str " (copy)")
            maybe-local)
     (serdes/default-load-one! ingested maybe-local)))
+
+;;; ------------------------------------------- Workspace copy-on-write -------------------------------------------
+
+(defmethod workspaces/clone-entity! :model/NativeQuerySnippet
+  [_model id]
+  ;; Snippet names have a DB-level unique constraint, so the copy can't reuse the source's
+  ;; name verbatim — suffix it per workspace (the same way serdes suffixes conflicting imports).
+  (let [source (t2/select-one :model/NativeQuerySnippet :id id)]
+    (t2/insert-returning-pk! :model/NativeQuerySnippet
+                             (-> (select-keys source [:description :content :collection_id :archived])
+                                 (assoc :name       (str (:name source)
+                                                         " (workspace " (workspaces/current-workspace-id) ")")
+                                        :creator_id api/*current-user-id*)))))

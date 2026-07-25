@@ -12,6 +12,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -41,6 +42,7 @@
             (when-not icon
               {:icon timeline-event/default-icon}))]
     (u/prog1 (first (t2/insert-returning-instances! :model/Timeline tl))
+      (workspaces/add-remapping! :model/Timeline (:id <>) (:id <>))
       (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*}))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
@@ -69,18 +71,20 @@
                                             [:archived {:default :false} ms/BooleanValue]
                                             [:start    {:optional true}  ms/TemporalString]
                                             [:end      {:optional true}  ms/TemporalString]]]
-  (let [archived? archived
-        timeline  (api/read-check (t2/select-one :model/Timeline :id id))]
-    (cond-> (t2/hydrate timeline :creator [:collection :can_write] :is_remote_synced)
-      ;; `collection_id` `nil` means we need to assoc 'root' collection
-      ;; because hydrate `:collection` needs a proper `:id` to work.
-      (nil? (:collection_id timeline))
-      collection.root/hydrate-root-collection
+  (let [archived?    archived
+        effective-id (workspaces/remapped-entity-id :model/Timeline id)
+        timeline     (api/read-check (t2/select-one :model/Timeline :id effective-id))]
+    (-> (cond-> (t2/hydrate timeline :creator [:collection :can_write] :is_remote_synced)
+          ;; `collection_id` `nil` means we need to assoc 'root' collection
+          ;; because hydrate `:collection` needs a proper `:id` to work.
+          (nil? (:collection_id timeline))
+          collection.root/hydrate-root-collection
 
-      (= include :events)
-      (timeline-event/include-events-singular {:events/all?  archived?
-                                               :events/start (when start (u.date/parse start))
-                                               :events/end   (when end (u.date/parse end))}))))
+          (= include :events)
+          (timeline-event/include-events-singular {:events/all?  archived?
+                                                   :events/start (when start (u.date/parse start))
+                                                   :events/end   (when end (u.date/parse end))}))
+        (workspaces/with-source-entity-id id))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -99,17 +103,19 @@
                                                [:icon          {:optional true} [:maybe timeline-event/Icon]]
                                                [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                                [:archived      {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/write-check :model/Timeline id)
-        current-archived (:archived (t2/select-one :model/Timeline :id id))]
+  (let [effective-id (workspaces/ensure-workspace-copy! :model/Timeline id)
+        existing (api/write-check :model/Timeline effective-id)
+        current-archived (:archived (t2/select-one :model/Timeline :id effective-id))]
     (collection/check-allowed-to-change-collection existing timeline-updates)
-    (t2/update! :model/Timeline id
+    (t2/update! :model/Timeline effective-id
                 (u/select-keys-when timeline-updates
                                     :present #{:description :icon :collection_id :default :archived}
                                     :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
-      (t2/update! :model/TimelineEvent {:timeline_id id} {:archived archived}))
-    (u/prog1 (t2/hydrate (t2/select-one :model/Timeline :id id) :creator [:collection :can_write] :is_remote_synced)
-      (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*}))))
+      (t2/update! :model/TimelineEvent {:timeline_id effective-id} {:archived archived}))
+    (-> (u/prog1 (t2/hydrate (t2/select-one :model/Timeline :id effective-id) :creator [:collection :can_write] :is_remote_synced)
+          (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*}))
+        (workspaces/with-source-entity-id id))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -119,8 +125,10 @@
   "Delete a [[Timeline]]. Will cascade delete its events as well."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [timeline (api/write-check :model/Timeline id)]
-    (t2/delete! :model/Timeline :id id)
+  (let [effective-id (workspaces/remapped-entity-id :model/Timeline id)
+        timeline     (api/write-check :model/Timeline effective-id)]
+    (t2/delete! :model/Timeline :id effective-id)
+    (workspaces/delete-remapping! :model/Timeline id)
     (events/publish-event! :event/timeline-delete {:object timeline :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
