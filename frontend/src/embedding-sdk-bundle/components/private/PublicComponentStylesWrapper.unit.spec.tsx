@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 
+import { FrontendLocaleContext } from "metabase/embedding/FrontendLocaleContext";
 import { ThemeProvider } from "metabase/ui";
 
 import { PublicComponentStylesWrapper } from "./PublicComponentStylesWrapper";
@@ -10,6 +11,19 @@ const setup = (resolvedColorScheme: "light" | "dark") =>
       <PublicComponentStylesWrapper data-testid="wrapper">
         <span>content</span>
       </PublicComponentStylesWrapper>
+    </ThemeProvider>,
+  );
+
+const setupWithLocale = (locale: string | null) =>
+  render(
+    <ThemeProvider resolvedColorScheme="light">
+      <FrontendLocaleContext.Provider
+        value={{ locale, isLocaleLoading: false }}
+      >
+        <PublicComponentStylesWrapper data-testid="wrapper">
+          <span>content</span>
+        </PublicComponentStylesWrapper>
+      </FrontendLocaleContext.Provider>
     </ThemeProvider>,
   );
 
@@ -28,5 +42,20 @@ describe("PublicComponentStylesWrapper", () => {
       "data-mantine-color-scheme",
       "dark",
     );
+  });
+
+  it("defaults to dir=ltr when there is no locale provider", () => {
+    setup("light");
+    expect(screen.getByTestId("wrapper")).toHaveAttribute("dir", "ltr");
+  });
+
+  it("scopes dir=rtl to the SDK content for an RTL locale", () => {
+    setupWithLocale("ar");
+    expect(screen.getByTestId("wrapper")).toHaveAttribute("dir", "rtl");
+  });
+
+  it("uses dir=ltr for an LTR locale", () => {
+    setupWithLocale("en");
+    expect(screen.getByTestId("wrapper")).toHaveAttribute("dir", "ltr");
   });
 });

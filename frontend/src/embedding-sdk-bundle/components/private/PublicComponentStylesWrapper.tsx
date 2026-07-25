@@ -4,9 +4,11 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import cx from "classnames";
 import type React from "react";
-import { forwardRef } from "react";
+import { forwardRef, useContext } from "react";
 
+import { FrontendLocaleContext } from "metabase/embedding/FrontendLocaleContext";
 import { useComputedColorScheme } from "metabase/ui";
+import { isRTLLocale } from "metabase/utils/i18n";
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
 
 import S from "./PublicComponentStylesWrapper.style.css";
@@ -35,11 +37,17 @@ export const PublicComponentStylesWrapper = forwardRef<
     getInitialValueInEffect: false,
   });
 
+  // Scope the writing direction to the SDK content (and its portals, which reuse
+  // this wrapper) based on the SDK locale, instead of mutating the host `<html>`.
+  // Falls back to "ltr" when there is no LocaleProvider above us.
+  const { locale } = useContext(FrontendLocaleContext) ?? {};
+  const dir = isRTLLocale(locale ?? "") ? "rtl" : "ltr";
+
   return (
     <PublicComponentStylesWrapperInner
       {...props}
       ref={ref}
-      dir="ltr"
+      dir={dir}
       className={cx("mb-wrapper", S.publicComponentWrapper, props.className)}
       data-mantine-color-scheme={colorScheme}
     />
