@@ -45,7 +45,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-404 (t2/exists? :model/Workspace :id id))
   (t2/delete! :model/Workspace :id id)
-  api/generic-204-no-content)
+  nil)
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace` routes."

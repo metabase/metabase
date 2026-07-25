@@ -1634,15 +1634,16 @@
     ;; Shouldn't happen, because they can't be archived either... but juuuuust in case.
     (api/check-400 (nil? (:personal_owner_id collection))
                    "Personal collections cannot be deleted.")
-    (t2/with-transaction [_tx]
-      ;; First, move all children (along with their children) that were archived directly OUT of this collection
-      (doseq [child (t2/select :model/Collection
-                               :location [:like (str old-children-location "%")]
-                               :archived_directly true)]
-        (collection/move-collection! child new-children-location))
-      ;; Now we can safely delete this collection and anything left under it.
-      (t2/delete! :model/Collection :id effective-id))
-    (workspaces/delete-remapping! :model/Collection id)))
+    (u/prog1
+      (t2/with-transaction [_tx]
+        ;; First, move all children (along with their children) that were archived directly OUT of this collection
+        (doseq [child (t2/select :model/Collection
+                                 :location [:like (str old-children-location "%")]
+                                 :archived_directly true)]
+          (collection/move-collection! child new-children-location))
+        ;; Now we can safely delete this collection and anything left under it.
+        (t2/delete! :model/Collection :id effective-id))
+      (workspaces/delete-remapping! :model/Collection id))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
