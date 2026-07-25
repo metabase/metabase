@@ -1,0 +1,20 @@
+/*
+ * RTL icon mirroring.
+ *
+ * Directional navigation icons (left/right chevrons, arrows and triangles) point
+ * the wrong way once the layout is mirrored with `dir="rtl"`, so flip them on the
+ * horizontal axis. Only unambiguously horizontal, direction-of-travel icons are
+ * listed here — vertical ones (chevronup/down) and icons whose shape carries a
+ * fixed meaning (e.g. join_left_outer/join_right_outer) are intentionally left
+ * untouched. Components that rotate one of these icons inline keep their inline
+ * transform (inline styles win over this rule).
+ */
+:global([dir="rtl"] .Icon-chevronleft),
+:global([dir="rtl"] .Icon-chevronright),
+:global([dir="rtl"] .Icon-arrow_left),
+:global([dir="rtl"] .Icon-arrow_right),
+:global([dir="rtl"] .Icon-arrow_left_to_line),
+:global([dir="rtl"] .Icon-triangle_left),
+:global([dir="rtl"] .Icon-triangle_right) {
+  transform: scaleX(-1);
+}

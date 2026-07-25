@@ -17,6 +17,7 @@
 @import "./link.module.css";
 @import "./overflow.module.css";
 @import "./rounded.module.css";
+@import "./rtl.module.css";
 @import "./scroll.module.css";
 @import "./shadow.module.css";
 @import "./spacing.module.css";
