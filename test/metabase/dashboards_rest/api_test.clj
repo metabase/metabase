@@ -6473,25 +6473,27 @@
 ;;; ------------------------------------------- Workspace copy-on-write -------------------------------------------
 
 (deftest workspace-dashboard-copy-on-write-test
-  (mt/with-temp [:model/Workspace ws {:name "cow"}]
-    (mt/with-model-cleanup [:model/Dashboard]
-      (mt/with-temp [:model/Card card        {:name "C"}
-                     :model/Dashboard dash   {:name "D"}
-                     :model/DashboardTab tab {:dashboard_id (:id dash) :name "Tab 1" :position 0}
-                     :model/DashboardCard _  {:dashboard_id (:id dash) :card_id (:id card)
-                                              :dashboard_tab_id (:id tab)}]
-        (let [dash-url (str "dashboard/" (:id dash))]
-          (workspaces.tu/in-workspace (:id ws)
-                                      (testing "PUT clones the dashboard with tabs + dashcards, presented under the main id"
-                                        (let [updated (mt/user-http-request :crowberto :put 200 dash-url {:name "D (ws)"})]
-                                          (is (= (:id dash) (:id updated)))
-                                          (is (= "D (ws)" (:name updated)))))
-                                      (testing "the workspace copy has its own dashcards, still pointing at the main card"
-                                        (let [fetched (mt/user-http-request :crowberto :get 200 dash-url)]
-                                          (is (= "D (ws)" (:name fetched)))
-                                          (is (= [(:id card)] (map :card_id (:dashcards fetched))))
-                                          (is (= ["Tab 1"] (map :name (:tabs fetched))))))
-                                      (testing "main dashboard is untouched"
-                                        (is (= "D" (t2/select-one-fn :name :model/Dashboard :id (:id dash))))))
-          (testing "with the workspace deactivated"
-            (is (= "D" (:name (mt/user-http-request :crowberto :get 200 dash-url))))))))))
+  ;; :model/Workspace lives in EE; on OSS the CoW hooks are identity stubs
+  (when config/ee-available?
+    (mt/with-temp [:model/Workspace ws {:name "cow"}]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (mt/with-temp [:model/Card card        {:name "C"}
+                       :model/Dashboard dash   {:name "D"}
+                       :model/DashboardTab tab {:dashboard_id (:id dash) :name "Tab 1" :position 0}
+                       :model/DashboardCard _  {:dashboard_id (:id dash) :card_id (:id card)
+                                                :dashboard_tab_id (:id tab)}]
+          (let [dash-url (str "dashboard/" (:id dash))]
+            (workspaces.tu/in-workspace (:id ws)
+                                        (testing "PUT clones the dashboard with tabs + dashcards, presented under the main id"
+                                          (let [updated (mt/user-http-request :crowberto :put 200 dash-url {:name "D (ws)"})]
+                                            (is (= (:id dash) (:id updated)))
+                                            (is (= "D (ws)" (:name updated)))))
+                                        (testing "the workspace copy has its own dashcards, still pointing at the main card"
+                                          (let [fetched (mt/user-http-request :crowberto :get 200 dash-url)]
+                                            (is (= "D (ws)" (:name fetched)))
+                                            (is (= [(:id card)] (map :card_id (:dashcards fetched))))
+                                            (is (= ["Tab 1"] (map :name (:tabs fetched))))))
+                                        (testing "main dashboard is untouched"
+                                          (is (= "D" (t2/select-one-fn :name :model/Dashboard :id (:id dash))))))
+            (testing "with the workspace deactivated"
+              (is (= "D" (:name (mt/user-http-request :crowberto :get 200 dash-url)))))))))))
