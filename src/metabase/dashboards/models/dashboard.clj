@@ -524,7 +524,8 @@
                   :updated-at     true
                   :collection-type :collection.type
                   :collection-location :collection.location
-                  :root-collection-type {:fn collection/root-collection-type}}
+                  :root-collection-type {:fn collection/root-collection-type}
+                  :workspace-id   true}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level

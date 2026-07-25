@@ -495,7 +495,8 @@
                   ;; workaround for actions not having revisions (yet)
                   :last-edited-at :updated_at
                   :created-at     true
-                  :updated-at     true}
+                  :updated-at     true
+                  :workspace-id   true}
    :search-terms [:name :description]
    :render-terms {:model-id   :model.id
                   :model-name :model.name}

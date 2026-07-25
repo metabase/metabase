@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -527,7 +528,12 @@
   [tables]
   (with-objects :segments
     (fn [table-ids]
-      (t2/select :model/Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select :model/Segment
+                 {:where    [:and
+                             [:in :table_id table-ids]
+                             [:= :archived false]
+                             (workspaces/workspace-visibility-clause :model/Segment :segment.id :segment.workspace_id)]
+                  :order-by [[:name :asc]]}))
     tables))
 
 (mi/define-batched-hydration-method with-measures
@@ -536,7 +542,12 @@
   [tables]
   (with-objects :measures
     (fn [table-ids]
-      (t2/select :model/Measure :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select :model/Measure
+                 {:where    [:and
+                             [:in :table_id table-ids]
+                             [:= :archived false]
+                             (workspaces/workspace-visibility-clause :model/Measure :measure.id :measure.workspace_id)]
+                  :order-by [[:name :asc]]}))
     tables))
 
 (mi/define-batched-hydration-method with-metrics
@@ -546,10 +557,12 @@
   (with-objects :metrics
     (fn [table-ids]
       (->> (t2/select :model/Card
-                      :table_id [:in table-ids],
-                      :archived false,
-                      :type :metric,
-                      {:order-by [[:name :asc]]})
+                      {:where    [:and
+                                  [:in :table_id table-ids]
+                                  [:= :archived false]
+                                  [:= :type "metric"]
+                                  (workspaces/workspace-visibility-clause :model/Card :report_card.id :report_card.workspace_id)]
+                       :order-by [[:name :asc]]})
            (filter mi/can-read?)))
     tables))
 

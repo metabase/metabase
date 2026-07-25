@@ -121,7 +121,8 @@
                                                       :exclude)
                          :include-trash-collection? true
                          :permission-level          :read
-                         :archive-operation-id      nil})]
+                         :archive-operation-id      nil})
+                       (workspaces/workspace-visibility-clause :model/Collection :id :workspace_id)]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                           [[[:case
@@ -448,7 +449,8 @@
                  [:and
                   [:= :document.collection_id (:id collection)]
                   [:= :document.archived_directly false]])
-               [:= :document.archived (boolean archived?)]]}
+               [:= :document.archived (boolean archived?)]
+               (workspaces/workspace-visibility-clause :model/Document :document.id :document.workspace_id)]}
       (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
 
 (defmethod collection-children-query :pulse
@@ -484,7 +486,9 @@
   [_collection {:keys [archived?]}]
   {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
    :from   [[:native_query_snippet :nqs]]
-   :where  [:= :archived (boolean archived?)]})
+   :where  [:and
+            [:= :archived (boolean archived?)]
+            (workspaces/workspace-visibility-clause :model/NativeQuerySnippet :nqs.id :nqs.workspace_id)]})
 
 (defmethod collection-children-query :snippet
   [_model collection options]
@@ -497,7 +501,8 @@
    :where  [:and
             (poison-when-pinned-clause pinned-state)
             [:= :collection_id (:id collection)]
-            [:= :archived (boolean archived?)]]})
+            [:= :archived (boolean archived?)]
+            (workspaces/workspace-visibility-clause :model/Timeline :timeline.id :timeline.workspace_id)]})
 
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
@@ -572,6 +577,7 @@
                      [:= :c.dashboard_id nil])
                    [:= :c.document_id nil]
                    [:= :c.archived (boolean archived?)]
+                   (workspaces/workspace-visibility-clause :model/Card :c.id :c.workspace_id)
                    (case card-type
                      :model
                      [:= :c.type (h2x/literal "model")]
@@ -677,7 +683,8 @@
                      [:and
                       [:= :d.collection_id (:id collection)]
                       [:not= :d.archived_directly true]])
-                   [:= :d.archived (boolean archived?)]]}
+                   [:= :d.archived (boolean archived?)]
+                   (workspaces/workspace-visibility-clause :model/Dashboard :d.id :d.workspace_id)]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dashboard
@@ -737,7 +744,8 @@
         [:or
          [:= :type nil]
          [:not= :type collection/tenant-specific-root-collection-type]]
-        (snippets-collection-filter-clause))
+        (snippets-collection-filter-clause)
+        (workspaces/workspace-visibility-clause :model/Collection :id :workspace_id))
        ;; We get from the effective-children-query a normal set of columns selected:
        ;; want to make it fit the others to make UNION ALL work
        :select [:id

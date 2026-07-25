@@ -10,6 +10,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (defn- models-query
@@ -32,7 +33,16 @@
                   [:metabase_database.name :database-name]])
    (let [model-symb (symbol (str/capitalize model))
          self-qualify #(app-db/qualify model-symb %)]
-     {:where [:in (self-qualify :id) ids]
+     {:where (case model
+               ;; Tables are not workspace-scoped; hide cards/dashboards belonging to other users' workspaces
+               ;; (and main entities shadowed by the current workspace's copies).
+               "table" [:in (self-qualify :id) ids]
+               [:and
+                [:in (self-qualify :id) ids]
+                (workspaces/workspace-visibility-clause
+                 (case model "card" :model/Card "dashboard" :model/Dashboard)
+                 (self-qualify :id)
+                 (self-qualify :workspace_id))])
       :left-join (case model
                    "table" [:metabase_database [:= :metabase_database.id (self-qualify :db_id)]]
                    "card" [:collection [:= :collection.id (self-qualify :collection_id)]

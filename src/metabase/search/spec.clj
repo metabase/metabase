@@ -88,7 +88,9 @@
   ;; `:document` is the document model's prose-mirror body: it's indexed as searchable text (via
   ;; ast->text) but the raw JSON should never be echoed back in the search response or bloat the index row.
   ;; `:data_layer` also stays IN: Metabot surfaces it on table results so the LLM sees a table's data layer.
-  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document})
+  ;; `:workspace_id` is a query-time filtering signal (see `metabase.search.filter`/`metabase.search.in-
+  ;; place.filter`), not something the search response should surface to clients.
+  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document :workspace_id})
 
 (def attr-types
   "The abstract types of each attribute."
@@ -120,7 +122,11 @@
    :data-authority          :text
    ;; Precomputed at ingestion (see metabase.search.ingestion) from the curation signals above, so the
    ;; "verified or curated content" filter is a single indexed boolean rather than a composite OR.
-   :curated                 :boolean})
+   :curated                 :boolean
+   ;; `workspace.id` a workspace-scoped row belongs to, nil for main rows and for models without a
+   ;; `workspace_id` column at all. See `metabase.search.filter/filter-clauses` /
+   ;; `metabase.search.in-place.filter/build-filters` for how this restricts visibility.
+   :workspace-id            :pk})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -148,7 +154,8 @@
          :collection-location                               ;;  surfaced for downstream consumers (add-dataset-collection-hierarchy)
          :root-collection-type                              ;;  indexed for :library scorer — type of the top-level ancestor collection
          :data-layer                                        ;;  indexed for the :data-layer scorer (table.data_layer; per-tier weights under :data-layer/*)
-         :data-authority])                                  ;;  input to the precomputed :curated flag (authoritative tables)
+         :data-authority                                    ;;  input to the precomputed :curated flag (authoritative tables)
+         :workspace-id])                                    ;;  workspace copy-on-write visibility filter
        distinct
        vec))
 

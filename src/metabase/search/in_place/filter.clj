@@ -23,7 +23,8 @@
    [metabase.search.permissions :as search.permissions]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.workspaces.core :as workspaces])
   (:import
    (java.time LocalDate)))
 
@@ -65,6 +66,24 @@
     [:and
      [:= (search.config/column-with-model-alias model :active) true]
      [:= (search.config/column-with-model-alias model :visibility_type) nil]]))
+
+(def ^:private workspace-scoped-models
+  "Search models whose backing table carries a `workspace_id` column (mirrors the search specs that declare
+  a `:workspace-id` attr — see `metabase.search.spec`). `dataset`/`metric` share `card`'s `report_card`
+  table/alias."
+  #{"card" "dataset" "metric" "collection" "dashboard" "document" "segment" "measure" "action"})
+
+(defn- workspace-visibility-clause
+  "Always-applied clause restricting `model` rows to what the current user's active workspace should see.
+  Simplified vs. the collection-items rule in `metabase.workspaces.core/workspace-visibility-clause`: a main
+  row shadowed by one of the active workspace's copies is not excluded here, so an in-workspace user can see
+  both as separate search results (acceptable duplication)."
+  [model]
+  (when (contains? workspace-scoped-models model)
+    (let [workspace-col (search.config/column-with-model-alias model :workspace_id)]
+      (if-let [workspace-id (workspaces/current-workspace-id)]
+        [:or [:= workspace-col nil] [:= workspace-col workspace-id]]
+        [:= workspace-col nil]))))
 
 (mu/defn- search-string-clause-for-model
   [model                :- SearchableModel
@@ -438,6 +457,9 @@
 
       (some? archived?)
       (sql.helpers/where (archived-clause model archived?))
+
+      (contains? workspace-scoped-models model)
+      (sql.helpers/where (workspace-visibility-clause model))
 
       ;; build optional filters
       (some? created-at)

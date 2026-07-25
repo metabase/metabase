@@ -6,6 +6,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -65,7 +66,8 @@
                           {:include-archived-items    :exclude
                            :include-trash-collection? false
                            :permission-level          :read
-                           :archive-operation-id      nil})]
+                           :archive-operation-id      nil})
+                         (workspaces/workspace-visibility-clause :model/Collection :collection.id :collection.workspace_id)]
               :order-by [[:%lower.name :asc]]}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -88,7 +90,10 @@
                                           :card    #{}}
                                          (t2/reducible-query {:select-distinct [:collection_id :type]
                                                               :from            [:report_card]
-                                                              :where           [:= :archived false]}))]
+                                                              :where           [:and
+                                                                                [:= :archived false]
+                                                                                (workspaces/workspace-visibility-clause
+                                                                                 :model/Card :report_card.id :report_card.workspace_id)]}))]
     (collection/collections->tree collection-type-ids collections)))
 
 (def ^{:arglists '([request respond raise])} routes

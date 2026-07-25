@@ -22,8 +22,10 @@
    (list-native-query-snippets false))
   ([archived :- ms/BooleanValue]
    (let [snippets (t2/select :model/NativeQuerySnippet
-                             :archived archived
-                             {:order-by [[:%lower.name :asc]]})]
+                             {:where    [:and
+                                         [:= :archived archived]
+                                         (workspaces/workspace-visibility-clause :model/NativeQuerySnippet :native_query_snippet.id :native_query_snippet.workspace_id)]
+                              :order-by [[:%lower.name :asc]]})]
      (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

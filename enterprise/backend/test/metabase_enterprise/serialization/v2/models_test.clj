@@ -50,7 +50,9 @@
               fields (u.conn/app-db-column-types (mdb/app-db) t)
               spec'  (-> (merge (zipmap (:copy spec) (repeat :copy))
                                 (zipmap (:skip spec) (repeat :skip))
-                                (zipmap [:id :updated_at] (repeat :skip)) ; always skipped
+                                ;; :id and :updated_at are always skipped; :workspace_id_helper is a
+                                ;; database-generated column serdes can never read or write
+                                (zipmap [:id :updated_at :workspace_id_helper] (repeat :skip))
                                 (:transform spec))
                          ;; `nil`s are mostly fields which differ on `opts`
                          (dissoc nil))]

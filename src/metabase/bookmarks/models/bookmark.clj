@@ -7,6 +7,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -137,9 +138,20 @@
                                                              [:= :bookmark_ordering.item_id :bookmark.item_id]]
                     [:document :document] [:= :bookmark.document_id :document.id]]
         where-conditions (into [:and]
-                               (for [table [:card :dashboard :collection :document]
-                                     :let  [field (keyword (str (name table) "." "archived"))]]
-                                 [:or [:= field false] [:= field nil]]))]
+                               (concat
+                                (for [table [:card :dashboard :collection :document]
+                                      :let  [field (keyword (str (name table) "." "archived"))]]
+                                  [:or [:= field false] [:= field nil]])
+                                (for [[bookmark-type model alias-kw] [["card"       :model/Card       :card]
+                                                                      ["dashboard"  :model/Dashboard  :dashboard]
+                                                                      ["collection" :model/Collection :collection]
+                                                                      ["document"   :model/Document   :document]]]
+                                  [:or
+                                   [:not= :bookmark.type (h2x/literal bookmark-type)]
+                                   (workspaces/workspace-visibility-clause
+                                    model
+                                    (keyword (str (name alias-kw) ".id"))
+                                    (keyword (str (name alias-kw) ".workspace_id")))])))]
     (->> (mdb/query
           {:select select-fields
            :from [[(bookmarks-union-query user-id) :bookmark]]

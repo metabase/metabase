@@ -16,6 +16,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -51,7 +52,8 @@
   [:and
    [:= :type "metric"]
    [:= :archived false]
-   (collection/visible-collection-filter-clause :collection_id visibility-config)])
+   (collection/visible-collection-filter-clause :collection_id visibility-config)
+   (workspaces/workspace-visibility-clause :model/Card :report_card.id :report_card.workspace_id)])
 
 (defn- count-metrics []
   (t2/count :model/Card {:where (metrics-where-clause)}))

@@ -1,7 +1,8 @@
 (ns metabase-enterprise.snippet-collections.api.native-query-snippet
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.workspaces.core :as workspaces]))
 
 (defenterprise snippets-collection-filter-clause
   "Clause to filter out snippet collections from the collection query on OSS instances, and instances without the
@@ -17,4 +18,5 @@
    :from   [[:native_query_snippet :nqs]]
    :where  [:and
             [:= :collection_id (:id collection)]
-            [:= :archived (boolean archived?)]]})
+            [:= :archived (boolean archived?)]
+            (workspaces/workspace-visibility-clause :model/NativeQuerySnippet :nqs.id :nqs.workspace_id)]})

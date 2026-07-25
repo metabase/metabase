@@ -25,6 +25,7 @@
   remapped-entity-ids
   source-entity-id
   stamp-workspace-id
-  with-source-entity-id]
+  with-source-entity-id
+  workspace-visibility-clause]
  [metabase.workspaces.schema
   entity-types])

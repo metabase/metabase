@@ -168,7 +168,8 @@
    _query-params]
   {:items (t2/hydrate (t2/select :model/Document {:where [:and
                                                           (collection/visible-collection-filter-clause)
-                                                          [:= :archived false]]})
+                                                          [:= :archived false]
+                                                          (workspaces/workspace-visibility-clause :model/Document :document.id :document.workspace_id)]})
                       :creator :can_write :is_remote_synced)})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

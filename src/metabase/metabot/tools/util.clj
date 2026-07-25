@@ -10,6 +10,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (defn handle-agent-error
@@ -235,6 +236,7 @@
                             collection-filter
                             [:in :report_card.type [:inline ["metric" "model"]]]
                             [:= :report_card.archived false]
+                            (workspaces/workspace-visibility-clause :model/Card :report_card.id :report_card.workspace_id)
                             (when api/*current-user-id*
                               (collection/visible-collection-filter-clause :report_card.collection_id))]}]
     (cond-> base-query

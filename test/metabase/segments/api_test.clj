@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
+   [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -384,19 +385,21 @@
 ;;; ------------------------------------------- Workspace copy-on-write -------------------------------------------
 
 (deftest workspace-segment-copy-on-write-test
-  (mt/with-temp [:model/Workspace ws {:branch "cow"}]
-    (mt/with-model-cleanup [:model/Segment]
-      (mt/with-temp [:model/Segment segment {:name       "S"
-                                             :table_id   (mt/id :venues)
-                                             :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
-        (let [segment-url (str "segment/" (:id segment))]
-          (workspaces.tu/in-workspace (:id ws)
-                                      (testing "segment PUT clones in the workspace"
-                                        (let [updated (mt/user-http-request :crowberto :put 200 segment-url
-                                                                            {:name "S (ws)" :revision_message "ws edit"})]
-                                          (is (= (:id segment) (:id updated)))
-                                          (is (= "S (ws)" (:name updated)))))
-                                      (is (= "S" (t2/select-one-fn :name :model/Segment :id (:id segment)))
-                                          "main segment untouched"))
-          (testing "with the workspace deactivated"
-            (is (= "S" (:name (mt/user-http-request :crowberto :get 200 segment-url))))))))))
+  ;; :model/Workspace lives in EE, so this can only run when EE code is on the classpath
+  (when config/ee-available?
+    (mt/with-temp [:model/Workspace ws {:branch "cow"}]
+      (mt/with-model-cleanup [:model/Segment]
+        (mt/with-temp [:model/Segment segment {:name       "S"
+                                               :table_id   (mt/id :venues)
+                                               :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
+          (let [segment-url (str "segment/" (:id segment))]
+            (workspaces.tu/in-workspace (:id ws)
+                                        (testing "segment PUT clones in the workspace"
+                                          (let [updated (mt/user-http-request :crowberto :put 200 segment-url
+                                                                              {:name "S (ws)" :revision_message "ws edit"})]
+                                            (is (= (:id segment) (:id updated)))
+                                            (is (= "S (ws)" (:name updated)))))
+                                        (is (= "S" (t2/select-one-fn :name :model/Segment :id (:id segment)))
+                                            "main segment untouched"))
+            (testing "with the workspace deactivated"
+              (is (= "S" (:name (mt/user-http-request :crowberto :get 200 segment-url)))))))))))

@@ -22,7 +22,8 @@
                              (.endsWith (name k) "_id")
                              (= :created_at k)
                              (= :updated_at k)
-                             (= :card_schema k))
+                             (= :card_schema k)
+                             (= :workspace_id_helper k))
                  [k (f v)])))))
 
 (deftest ^:parallel retrieve-dashboard-card-test

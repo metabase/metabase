@@ -334,10 +334,12 @@
    cards k
    #(group-by :source_card_id
               (->> (t2/select :model/Card
-                              :source_card_id [:in (map :id cards)],
-                              :archived false,
-                              :type :metric,
-                              {:order-by [[:name :asc]]})
+                              {:where    [:and
+                                          [:in :source_card_id (map :id cards)]
+                                          [:= :archived false]
+                                          [:= :type "metric"]
+                                          (workspaces/workspace-visibility-clause :model/Card :report_card.id :report_card.workspace_id)]
+                               :order-by [[:name :asc]]})
                    (filter mi/can-read?)))
    :id))
 
@@ -1541,7 +1543,8 @@
                   :display-type         :this.display
                   :collection-type      :collection.type
                   :collection-location  :collection.location
-                  :root-collection-type {:fn collection/root-collection-type}}
+                  :root-collection-type {:fn collection/root-collection-type}
+                  :workspace-id         true}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
@@ -1608,6 +1611,7 @@
            [:= :pulse.id nil]
            [:= :moderation_review.id nil]
            [:= :report_card.archived false]
+           (workspaces/workspace-visibility-clause :model/Card :report_card.id :report_card.workspace_id)
            [:<= :report_card.last_used_at (-> args :cutoff-date)]
            ;; find things only in regular collections, not the `instance-analytics` collection.
            [:= :collection.type nil]

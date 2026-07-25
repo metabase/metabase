@@ -19,6 +19,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -200,8 +201,10 @@
   (let [document-ids (->> results (filter #(= "document" (:type %))) (map :id) set)
         id->document (when (seq document-ids)
                        (->> (t2/select :model/Document
-                                       :id [:in document-ids]
-                                       :archived false)
+                                       {:where [:and
+                                                [:in :id document-ids]
+                                                [:= :archived false]
+                                                (workspaces/workspace-visibility-clause :model/Document :document.id :document.workspace_id)]})
                             (filter mi/can-read?)
                             (map (juxt :id identity))
                             (into {})))]

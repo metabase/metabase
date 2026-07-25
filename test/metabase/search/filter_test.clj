@@ -108,14 +108,16 @@
               :where
               [:and
                [:= 1 2]
-               [:or [:= nil :search_index.dashboard_id] nil]]}
+               [:or [:= nil :search_index.dashboard_id] nil]
+               [:= :search_index.workspace_id nil]]}
              (search.filter/with-filters {:models []} {:select [:some :stuff], :from :somewhere})))
       (is (= {:select [:some :stuff],
               :from :somewhere,
               :where
               [:and
                [:in :search_index.model ["a"]]
-               [:or [:= nil :search_index.dashboard_id] nil]]}
+               [:or [:= nil :search_index.dashboard_id] nil]
+               [:= :search_index.workspace_id nil]]}
              (search.filter/with-filters {:models ["a"]} {:select [:some :stuff], :from :somewhere}))))
     (testing "We can insert appropriate constraints for all the filters"
       (is (= {:select [:some :stuff],
@@ -152,7 +154,8 @@
                 :and
                 [:= :search_index.database_id 231]
                 [:in :search_index.display_type ["line"]]
-                [:>= [:cast :search_index.last_edited_at :date] #t "2024-10-02"]}}
+                [:>= [:cast :search_index.last_edited_at :date] #t "2024-10-02"]
+                [:= :search_index.workspace_id nil]}}
              (-> (search.filter/with-filters kitchen-sink-filter-context {:select [:some :stuff], :from :somewhere})
                  (update :where set)))))))
 

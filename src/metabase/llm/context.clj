@@ -14,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2])
   (:import
    (java.io StringWriter Writer)))
@@ -121,8 +122,10 @@
   [card-ids]
   (when (seq card-ids)
     (->> (t2/select :model/Card
-                    :id [:in card-ids]
-                    :archived false)
+                    {:where [:and
+                             [:in :id card-ids]
+                             [:= :archived false]
+                             (workspaces/workspace-visibility-clause :model/Card :report_card.id :report_card.workspace_id)]})
          (filter mi/can-read?)
          (map :id)
          set)))

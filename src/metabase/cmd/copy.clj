@@ -154,6 +154,14 @@
       :model/Workspace
       :model/WorkspaceEntityRemapping])))
 
+(def ^:private generated-columns
+  "Database-generated columns that can never be INSERTed. Matched case-insensitively since H2 returns
+  uppercase column names."
+  #{"workspace_id_helper"})
+
+(defn- generated-column? [k]
+  (contains? generated-columns (u/lower-case-en (name k))))
+
 (defn- objects->columns+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
   statement, and a sequence of rows (as sequences)."
@@ -161,7 +169,7 @@
   ;; Need to wrap the column names in quotes because Postgres automatically lowercases unquoted identifiers. (This
   ;; should be ok now that #16344 is resolved -- we might be able to remove this code entirely now. Quoting identifiers
   ;; is still a good idea tho.)
-  (let [source-keys (keys (first objs))
+  (let [source-keys (remove generated-column? (keys (first objs)))
         quote-fn    (partial mdb/quote-for-application-db (mdb/quoting-style target-db-type))
         dest-keys   (for [k source-keys]
                       (quote-fn (name k)))]

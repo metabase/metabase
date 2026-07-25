@@ -46,6 +46,7 @@
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.models.database :as database]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -237,7 +238,8 @@
                                            ;; always return metrics for now
                                            [:in :type [(u/qualified-name card-type) "metric"]]
                                            [:in :database_id ids-of-dbs-that-support-source-queries]
-                                           (collection/visible-collection-filter-clause)]
+                                           (collection/visible-collection-filter-clause)
+                                           (workspaces/workspace-visibility-clause :model/Card :report_card.id :report_card.workspace_id)]
                                           additional-constraints)
                           :order-by [[:%lower.name :asc]]}))))
 

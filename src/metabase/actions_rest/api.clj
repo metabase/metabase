@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -40,7 +41,8 @@
                                             [:= :type "model"]
                                             [:= :archived false]
                                             ;; action permission keyed off of model permission
-                                            (collection/visible-collection-filter-clause)]}))]
+                                            (collection/visible-collection-filter-clause)
+                                            (workspaces/workspace-visibility-clause :model/Card :report_card.id :report_card.workspace_id)]}))]
       (actions-for models))))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
@@ -48,7 +50,11 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
+  (t2/select [:model/Action :name :id :public_uuid :model_id]
+             {:where [:and
+                      [:not= :public_uuid nil]
+                      [:= :archived false]
+                      (workspaces/workspace-visibility-clause :model/Action :action.id :action.workspace_id)]}))
 
 (api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
   "Fetch an Action."

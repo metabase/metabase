@@ -543,7 +543,9 @@
    "metabase_table"    #{"action" "measure" "model_index_value" "report_card" "segment"}
    "document"          #{"action" "model_index_value" "report_card"}
    "report_card"       #{"action" "model_index_value"}
-   "report_dashboard"  #{"action" "model_index_value" "report_card"}})
+   "report_dashboard"  #{"action" "model_index_value" "report_card"}
+   ;; deleting a workspace cascades to its copy-on-write content rows
+   "workspace"         #{"action" "collection" "document" "measure" "model_index_value" "report_card" "report_dashboard" "segment"}})
 
 (deftest search-model-cascade-test
   (is (= model->deleted-descendants

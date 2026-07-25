@@ -30,7 +30,7 @@
                      "query" {"expressions" "extremely invalid"
                               "source-table" 2}
                      "type" "query"}
-          bad-card (assoc (dissoc (t2/select-one :report_card :id (:id template)) :id)
+          bad-card (assoc (dissoc (t2/select-one :report_card :id (:id template)) :id :workspace_id_helper)
                           :entity_id (u/generate-nano-id)
                           :dataset_query (json/encode bad-query)
                           :description "bad query")

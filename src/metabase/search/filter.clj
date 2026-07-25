@@ -11,6 +11,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2])
   (:import
    (java.time LocalDate)))
@@ -206,6 +207,15 @@
                             [:= nil :search_index.dashboard_id]
                             (when (:include-dashboard-questions? search-context)
                               [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])]]]
+    ;; Workspace copy-on-write visibility. `:workspace_id` is nil for main rows and for models without the
+    ;; column at all (both cases: always visible). Simplified vs. the collection-items rule: this does not
+    ;; exclude a main row shadowed by one of the active workspace's copies, so an in-workspace user can see
+    ;; both the main row and its workspace copy as separate results (acceptable duplication, see
+    ;; `metabase.workspaces.core/workspace-visibility-clause` for the stricter rule used elsewhere).
+    [[:workspace-visibility
+      (if-let [workspace-id (workspaces/current-workspace-id)]
+        [:or [:= :search_index.workspace_id nil] [:= :search_index.workspace_id workspace-id]]
+        [:= :search_index.workspace_id nil])]]
     (for [{t :type :keys [context-key required-feature supported-value? field]}
           (vals (dissoc search.config/filters :id :native-query))
           :let [v (get search-context context-key)]]

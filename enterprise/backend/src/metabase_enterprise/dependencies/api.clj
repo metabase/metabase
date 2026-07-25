@@ -25,6 +25,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]
    [toucan2.util :as t2.util]))
 
@@ -244,7 +245,8 @@
 
                      ;; Collection-based entities with archived field
                      (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
-                     (let [archived-column (keyword (name table-name) "archived")]
+                     (let [archived-column     (keyword (name table-name) "archived")
+                           workspace-id-column (keyword (name table-name) "workspace_id")]
                        (when-not (and (= model :model/NativeQuerySnippet)
                                       (or (perms/sandboxed-user?)
                                           (not (perms/user-has-any-perms-of-type?
@@ -260,6 +262,9 @@
                                                           {:include-archived-items include-archived-items}
                                                           {:current-user-id api/*current-user-id*
                                                            :is-superuser?   api/*is-superuser?*})
+                                                         ;; Filter by workspace visibility
+                                                         (workspaces/workspace-visibility-clause
+                                                          model id-column workspace-id-column)
                                                          ;; Filter by entity archived status
                                                          (case include-archived-items
                                                            :exclude [:= archived-column false]
@@ -283,13 +288,17 @@
 
                      ;; Segment/Measure with table permissions and archived filtering
                      (:model/Segment :model/Measure)
-                     (let [archived-column (keyword (name table-name) "archived")
-                           table-id-column (keyword (name table-name) "table_id")]
+                     (let [archived-column     (keyword (name table-name) "archived")
+                           table-id-column     (keyword (name table-name) "table_id")
+                           workspace-id-column (keyword (name table-name) "workspace_id")]
                        [:and
                         [:= entity-type-field (name entity-type)]
                         [:in entity-id-field {:select [:id]
                                               :from   [table-name]
                                               :where  [:and
+                                                       ;; Check workspace visibility
+                                                       (workspaces/workspace-visibility-clause
+                                                        model id-column workspace-id-column)
                                                        ;; Check that user can see the table this entity belongs to
                                                        [:in table-id-column
                                                         {:select [:metabase_table.id]

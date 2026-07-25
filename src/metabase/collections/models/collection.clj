@@ -2465,7 +2465,8 @@
                   :archived             true
                   :created-at           true
                   ;; intentionally not tracked
-                  :updated-at           false}
+                  :updated-at           false
+                  :workspace-id         true}
    :search-terms [:name]
    :render-terms {:archived-directly          true
                   ;; Why not make this a search term? I suspect it was just overlooked before.

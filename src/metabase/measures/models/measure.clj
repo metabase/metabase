@@ -227,7 +227,8 @@
            :creator-id true
            :database-id :table.db_id
            :created-at true
-           :updated-at true}
+           :updated-at true
+           :workspace-id true}
    :search-terms [:name :description]
    :render-terms {:table-id :table_id
                   :table_description :table.description

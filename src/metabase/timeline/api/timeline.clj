@@ -54,7 +54,8 @@
   (let [timelines (->> (t2/select :model/Timeline
                                   {:where    [:and
                                               [:= :archived archived?]
-                                              (collection/visible-collection-filter-clause)]
+                                              (collection/visible-collection-filter-clause)
+                                              (workspaces/workspace-visibility-clause :model/Timeline :timeline.id :timeline.workspace_id)]
                                    :order-by [[:%lower.name :asc]]})
                        (map collection.root/hydrate-root-collection))]
     (cond->> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)

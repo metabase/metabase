@@ -15,6 +15,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
@@ -53,6 +54,38 @@
   (cond-> entity
     (and (map? entity) (:id entity))
     (assoc :id source-id)))
+
+(defn workspace-visibility-clause
+  "HoneySQL `:where` clause restricting rows of `model` to what the current user's active workspace
+  should see. `id-column` and `workspace-id-column` are the (possibly table-qualified, e.g. `:c.id`,
+  `:c.workspace_id`) columns of the query being filtered.
+
+  - No active workspace: only main rows are visible (`workspace-id-column IS NULL`).
+  - Active workspace `ws`: rows belonging to `ws` are visible, plus main rows *not* shadowed by one of
+    `ws`'s copies -- i.e. there is no `workspace_entity_remapping` row for (`ws`, `model`, this row's id)
+    whose `target_entity_id` differs from its `source_entity_id` (a workspace-created row, where source =
+    target, does not shadow anything and is handled by the first branch instead).
+
+  This is pure OSS logic (it only reads [[current-workspace-id]], which is nil on OSS / without an active
+  workspace, and the `workspace_entity_remapping` table directly -- the EE model is intentionally not
+  resolved here so this can run from any module)."
+  [model id-column workspace-id-column]
+  (if-let [workspace-id (current-workspace-id)]
+    [:or
+     [:= workspace-id-column workspace-id]
+     [:and
+      [:= workspace-id-column nil]
+      [:not
+       [:exists
+        {:select [1]
+         :from   [:workspace_entity_remapping]
+         :where  [:and
+                  [:= :workspace_entity_remapping.workspace_id workspace-id]
+                  [:= :workspace_entity_remapping.entity_type (u/qualified-name model)]
+                  [:= :workspace_entity_remapping.source_entity_id id-column]
+                  [:not= :workspace_entity_remapping.target_entity_id
+                   :workspace_entity_remapping.source_entity_id]]}]]]]
+    [:= workspace-id-column nil]))
 
 (defenterprise remapped-entity-id
   "Forward ID remapping: the ID to use in place of source entity `id` for the current user.

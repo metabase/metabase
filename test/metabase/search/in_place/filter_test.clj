@@ -148,7 +148,7 @@
 
 (deftest ^:parallel build-archived-filter-test
   (testing "archived filters"
-    (is (= [:= :card.archived false]
+    (is (= [:and [:= :card.archived false] [:= :card.workspace_id nil]]
            (:where (search.filter/build-filters
                     base-search-query "card" default-search-ctx))))
     (is (= [:and
@@ -172,7 +172,8 @@
              [:like [:lower :card.name] "%string%"]
              [:like [:lower :card.description] "%a%"]
              [:like [:lower :card.description] "%string%"]]
-            [:= :card.archived false]]
+            [:= :card.archived false]
+            [:= :card.workspace_id nil]]
            (:where (search.filter/build-filters
                     base-search-query "card"
                     (merge default-search-ctx {:search-string "a string"})))))))
@@ -225,6 +226,7 @@
             :from   [:table]
             :where  [:and
                      [:= :card.archived false]
+                     [:= :card.workspace_id nil]
                      [:>= [:cast :card.created_at :date] #t "2016-04-18"]
                      [:< [:cast :card.created_at :date]  #t "2016-04-24"]]}
            (search.filter/build-filters
@@ -238,6 +240,7 @@
             :join   [:revision [:= :revision.model_id :card.id]]
             :where  [:and
                      [:= :card.archived false]
+                     [:= :card.workspace_id nil]
                      [:= :revision.most_recent true]
                      [:= :revision.model "Card"]
                      [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
@@ -251,6 +254,7 @@
               :join   [:revision [:= :revision.model_id :card.id]]
               :where  [:and
                        [:= :card.archived false]
+                       [:= :card.workspace_id nil]
                        [:= :revision.most_recent true]
                        [:= :revision.model "Card"]
                        [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
@@ -264,6 +268,7 @@
       (is (= {:select [:*]
               :from   [:table]
               :where  [:and [:= :action.archived false]
+                       [:= :action.workspace_id nil]
                        [:>= [:cast :action.updated_at :date] #t "2016-04-18"]
                        [:< [:cast :action.updated_at :date] #t "2016-04-24"]]}
              (search.filter/build-filters
@@ -272,12 +277,12 @@
 
 (deftest ^:parallel build-created-by-filter-test
   (testing "created-by filter"
-    (is (= [:and [:= :card.archived false] [:= :card.creator_id 1]]
+    (is (= [:and [:= :card.archived false] [:= :card.workspace_id nil] [:= :card.creator_id 1]]
            (:where (search.filter/build-filters
                     base-search-query "card"
                     (merge default-search-ctx
                            {:created-by #{1}})))))
-    (is (= [:and [:= :card.archived false] [:in :card.creator_id #{1 2}]]
+    (is (= [:and [:= :card.archived false] [:= :card.workspace_id nil] [:in :card.creator_id #{1 2}]]
            (:where (search.filter/build-filters
                     base-search-query "card"
                     (merge default-search-ctx
@@ -289,6 +294,7 @@
             :from   [:table]
             :where  [:and
                      [:= :card.archived false]
+                     [:= :card.workspace_id nil]
                      [:= :revision.most_recent true]
                      [:= :revision.model "Card"]
                      [:= :revision.user_id 1]]
@@ -304,6 +310,7 @@
             :from   [:table]
             :where  [:and
                      [:= :card.archived false]
+                     [:= :card.workspace_id nil]
                      [:= :revision.most_recent true]
                      [:= :revision.model "Card"]
                      [:in :revision.user_id #{1 2}]]
@@ -321,6 +328,7 @@
                 base-search-query
                 {:where  [:and
                           [:= :card.archived false]
+                          [:= :card.workspace_id nil]
                           [:= :moderation_review.status "verified"]
                           [:= :moderation_review.moderated_item_type "card"]
                           [:= :moderation_review.most_recent true]]
@@ -337,6 +345,7 @@
                 base-search-query
                 {:where  [:and
                           [:= :card.archived false]
+                          [:= :card.workspace_id nil]
                           [:= :moderation_review.status "verified"]
                           [:= :moderation_review.moderated_item_type "card"]
                           [:= :moderation_review.most_recent true]]
@@ -353,6 +362,7 @@
                 base-search-query
                 {:where  [:and
                           [:= :card.archived false]
+                          [:= :card.workspace_id nil]
                           [:inline [:= 0 1]]]})
                (search.filter/build-filters
                 base-search-query "card"
@@ -366,6 +376,7 @@
                 base-search-query
                 {:where  [:and
                           [:= :card.archived false]
+                          [:= :card.workspace_id nil]
                           [:inline [:= 0 1]]]})
                (search.filter/build-filters
                 base-search-query "dataset"
@@ -410,7 +421,8 @@
       (testing "do not search for native query by default"
         (is (= [:and
                 [:or [:like [:lower :card.name] "%foo%"] [:like [:lower :card.description] "%foo%"]]
-                [:= :card.archived false]]
+                [:= :card.archived false]
+                [:= :card.workspace_id nil]]
                (:where (search.filter/build-filters
                         base-search-query
                         model
@@ -426,7 +438,8 @@
                       [:and
                        [:= :card.query_type "native"]
                        [:like [:lower :card.dataset_query] "%foo%"]]]
-                [:= :card.archived false]]
+                [:= :card.archived false]
+                [:= :card.workspace_id nil]]
                (:where (search.filter/build-filters
                         base-search-query
                         model
@@ -437,7 +450,8 @@
     (testing "do not search for native query by default"
       (is (= [:and
               [:or [:like [:lower :action.name] "%foo%"] [:like [:lower :action.description] "%foo%"]]
-              [:= :action.archived false]]
+              [:= :action.archived false]
+              [:= :action.workspace_id nil]]
              (:where (search.filter/build-filters
                       base-search-query
                       "action"
@@ -451,7 +465,8 @@
                [:like [:lower :action.name] "%foo%"]
                [:like [:lower :action.description] "%foo%"]
                [:like [:lower :query_action.dataset_query] "%foo%"]]
-              [:= :action.archived false]]
+              [:= :action.archived false]
+              [:= :action.workspace_id nil]]
              (:where (search.filter/build-filters
                       base-search-query
                       "action"

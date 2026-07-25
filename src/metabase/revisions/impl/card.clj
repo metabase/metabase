@@ -24,7 +24,11 @@
     :metabot_conversation_id
     :public_uuid
     :updated_at
-    :view_count})
+    :view_count
+    ;; workspace membership is instance-local context, not revisioned content; the helper is a
+    ;; database-generated column that can never be written back on revert
+    :workspace_id
+    :workspace_id_helper})
 
 (defmethod revision/revert-to-revision! :model/Card
   [model id user-id serialized-card]

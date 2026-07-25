@@ -23,6 +23,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.workspaces.test-util :as workspaces.tu]
    [toucan2.core :as t2])
   (:import
    (java.time ZonedDateTime ZoneId)))
@@ -3590,3 +3591,43 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id archived-collection))
                                        {:archived false :parent_id (u/the-id dest-collection)}))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                  Workspace copy-on-write item visibility                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest workspace-collection-items-visibility-test
+  (testing "GET /api/collection/:id/items respects workspace copy-on-write visibility (#workspace-git-sync)"
+    (mt/with-temp [:model/Workspace  ws         {:branch "cow"}
+                   :model/Collection collection {}
+                   :model/Card       card       {:name          "A"
+                                                 :collection_id (u/the-id collection)
+                                                 :dataset_query (mt/mbql-query venues)}]
+      (mt/with-model-cleanup [:model/Card]
+        (let [items-url (str "collection/" (u/the-id collection) "/items")
+              card-ids  (fn [user] (->> (mt/user-http-request user :get 200 items-url :models ["card"])
+                                        :data
+                                        (map :id)
+                                        set))]
+          (testing "baseline: the main card is visible to everyone"
+            (is (= #{(:id card)} (card-ids :crowberto)))
+            (is (= #{(:id card)} (card-ids :rasta))))
+          (workspaces.tu/in-workspace
+           (:id ws)
+           (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:name "A (ws)"})
+           (let [copy-id (t2/select-one-fn :target_entity_id :model/WorkspaceEntityRemapping
+                                           :workspace_id (:id ws)
+                                           :entity_type :model/Card
+                                           :source_entity_id (:id card))
+                 created (mt/user-http-request :crowberto :post 200 "card"
+                                               {:name                   "born in workspace"
+                                                :collection_id          (u/the-id collection)
+                                                :dataset_query          (mt/mbql-query venues)
+                                                :display                "table"
+                                                :visualization_settings {}})]
+             (testing "the workspace user sees the copy (not the shadowed source) plus the workspace-created card"
+               (is (= #{copy-id (:id created)} (card-ids :crowberto))))
+             (testing "a user without the workspace active still only sees main -- unaffected by the copy"
+               (is (= #{(:id card)} (card-ids :rasta))))))
+          (testing "with the workspace deactivated, everything is main again"
+            (is (= #{(:id card)} (card-ids :crowberto)))))))))

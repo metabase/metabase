@@ -44,6 +44,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -273,7 +274,9 @@
                          [:collection.name :collection_name]
                          [:collection.authority_level :collection_authority_level]]
                 :from [[:report_card :card]]
-                :where [:in :card.id card-ids]
+                :where [:and
+                        [:in :card.id card-ids]
+                        (workspaces/workspace-visibility-clause :model/Card :card.id :card.workspace_id)]
                 :left-join [[:moderation_review :mr]
                             [:and
                              [:= :mr.moderated_item_id :card.id]
@@ -377,7 +380,9 @@
                          [:c.authority_level :collection_authority_level]
                          [:mr.status :moderated-status]]
                 :from [[:report_dashboard :dash]]
-                :where [:in :dash.id dashboard-ids]
+                :where [:and
+                        [:in :dash.id dashboard-ids]
+                        (workspaces/workspace-visibility-clause :model/Dashboard :dash.id :dash.workspace_id)]
                 :left-join [[:moderation_review :mr]
                             [:and
                              [:= :mr.moderated_item_id :dash.id]
@@ -414,7 +419,8 @@
                                            :archived :location :type]
                                   :where [:and
                                           [:in :id collection-ids]
-                                          [:= :archived false]]})]
+                                          [:= :archived false]
+                                          (workspaces/workspace-visibility-clause :model/Collection :collection.id :collection.workspace_id)]})]
       (->> (t2/hydrate collections :effective_parent)
            (map #(m/dissoc-in % [:effective_parent :type]))))))
 
@@ -562,7 +568,9 @@
                                          [:c.name :collection_name]
                                          [:c.authority_level :collection_authority_level]]
                                 :from [[:document :d]]
-                                :where [:in :d.id document-ids]
+                                :where [:and
+                                        [:in :d.id document-ids]
+                                        (workspaces/workspace-visibility-clause :model/Document :d.id :d.workspace_id)]
                                 :left-join [[:collection :c]
                                             [:and
                                              [:= :c.id :d.collection_id]

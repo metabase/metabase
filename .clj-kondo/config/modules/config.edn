@@ -133,7 +133,8 @@
            permissions
            public-sharing
            queries
-           util}
+           util
+           workspaces}
    :model-imports #{:model/Action :model/Card :model/Database}}
 
   activity-feed
@@ -147,7 +148,8 @@
            config
            events
            models
-           util}
+           util
+           workspaces}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -439,7 +441,8 @@
            app-db
            collections
            queries
-           util}
+           util
+           workspaces}
    :model-exports #{:model/CardBookmark :model/CollectionBookmark :model/DashboardBookmark}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1224,7 +1227,8 @@
            sql-tools
            sync
            util
-           warehouse-schema}
+           warehouse-schema
+           workspaces}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -1355,7 +1359,8 @@
               transforms
               transforms-base
               util
-              warehouses}
+              warehouses
+              workspaces}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot
                     :model/MetabotConversation
@@ -1394,7 +1399,8 @@
            query-processor
            request
            server
-           util}
+           util
+           workspaces}
    :model-imports #{:model/Card
                     :model/Field
                     :model/Measure
@@ -2049,7 +2055,8 @@
            task
            tracing
            transforms
-           util}
+           util
+           workspaces}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -2721,7 +2728,8 @@
            remote-sync
            search
            util
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/Dimension
                     :model/Field
                     :model/FieldUserSettings
@@ -2815,6 +2823,7 @@
            util
            warehouse-schema
            warehouses
+           workspaces
            enterprise/advanced-permissions}
    :model-imports #{:model/Card
                     :model/Collection
@@ -3222,7 +3231,8 @@
            task
            transforms
            transforms-base
-           util}
+           util
+           workspaces}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -3349,7 +3359,8 @@
    :api  #{metabase-enterprise.library.api}
    :uses #{api
            collections
-           premium-features}
+           premium-features
+           workspaces}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
   enterprise/mcp
@@ -3666,7 +3677,8 @@
            permissions
            premium-features
            remote-sync
-           util}
+           util
+           workspaces}
    :model-imports #{:model/NativeQuerySnippet}}
 
   enterprise/sso

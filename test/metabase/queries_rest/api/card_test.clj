@@ -5367,3 +5367,31 @@
                                                                  :entity_type :model/Card
                                                                  :source_entity_id (:id card)))
                                             "remapping row is cleaned up"))))))))
+
+(deftest workspace-card-listing-visibility-test
+  (mt/with-temp [:model/Workspace ws {:branch "cow"}]
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Card card {:name "A" :dataset_query (ws-count-query :venues)}]
+        (workspaces.tu/in-workspace (:id ws)
+                                    (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:name "A (ws)"})
+                                    (let [copy-id (t2/select-one-fn :target_entity_id :model/WorkspaceEntityRemapping
+                                                                    :workspace_id (:id ws)
+                                                                    :entity_type :model/Card
+                                                                    :source_entity_id (:id card))
+                                          ids-for (fn [user] (into #{} (map :id) (mt/user-http-request user :get 200 "card")))]
+                                      (testing "in the workspace, GET /api/card lists the copy and hides the shadowed main card"
+                                        (let [ids (ids-for :crowberto)]
+                                          (is (contains? ids copy-id))
+                                          (is (not (contains? ids (:id card))))))
+                                      (testing "outside the workspace, GET /api/card lists main and hides the workspace copy"
+                                        (let [ids (ids-for :rasta)]
+                                          (is (contains? ids (:id card)))
+                                          (is (not (contains? ids copy-id)))))))
+        (testing "with the workspace deactivated, main is back and the copy stays hidden"
+          (let [copy-id (t2/select-one-fn :target_entity_id :model/WorkspaceEntityRemapping
+                                          :workspace_id (:id ws)
+                                          :entity_type :model/Card
+                                          :source_entity_id (:id card))
+                ids     (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "card"))]
+            (is (contains? ids (:id card)))
+            (is (not (contains? ids copy-id)))))))))

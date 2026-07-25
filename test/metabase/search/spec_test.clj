@@ -70,7 +70,8 @@
                                                       :type
                                                       :view_count
                                                       :created_at
-                                                      :updated_at},
+                                                      :updated_at
+                                                      :workspace_id},
                                       :where        [:= :updated.id :this.id]}},
                  :Collection       #{{:search-model "card",
                                       :fields       #{:authority_level :name :namespace :type :location},
@@ -108,11 +109,11 @@
                                 :fields #{:name :router_database_id}
                                 :where [:= :updated.id :this.db_id]}}
                  :Segment    #{{:search-model "segment"
-                                :fields       #{:description :archived :table_id :name :id :updated_at}
+                                :fields       #{:description :archived :table_id :name :id :updated_at :workspace_id}
                                 :where        [:= :updated.id :this.id]}}
                  :Collection #{{:search-model "collection"
                                 :fields       #{:authority_level :archived :description :name :type :id
-                                                :archived_directly :location :namespace :created_at}
+                                                :archived_directly :location :namespace :created_at :workspace_id}
                                 :where        [:= :updated.id :this.id]}
                                {:search-model "table"
                                 :fields       #{:authority_level :name :type :location}

@@ -143,7 +143,8 @@
            :created-at :created_at
            :updated-at :updated_at
            :last-viewed-at :last_viewed_at
-           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
+           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+           :workspace-id true}
    :search-terms {:name true
                   :document document->search-text}
    ;; Document bodies are full-text searchable (via `document->search-text` above) but are

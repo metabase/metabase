@@ -29,6 +29,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.warehouses.models.database :as database]
+   [metabase.workspaces.test-util :as workspaces.tu]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
@@ -2272,3 +2273,54 @@
                     (search-request-data :crowberto :q measure-name
                                          :search_engine "appdb"
                                          :models "measure")))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                     Workspace copy-on-write visibility                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest workspace-card-search-visibility-test
+  (testing "a workspace-created card is only visible in search to a user with that workspace active"
+    (mt/with-temp [:model/Workspace ws {:branch "cow"}]
+      (mt/with-model-cleanup [:model/Card]
+        (let [card-name (str "workspace search card " (random-uuid))]
+          (workspaces.tu/in-workspace
+           (:id ws)
+           (mt/user-http-request :crowberto :post 200 "card"
+                                 {:name                   card-name
+                                  :collection_id          nil
+                                  :dataset_query          (mt/mbql-query venues)
+                                  :display                "table"
+                                  :visualization_settings {}}))
+          (testing "not returned for a user without the workspace active"
+            (is (= [] (search-request-data :crowberto :q card-name :models "card"))))
+          (testing "returned for the workspace user"
+            (workspaces.tu/in-workspace
+             (:id ws)
+             (is (=? [{:name card-name :model "card"}]
+                     (search-request-data :crowberto :q card-name :models "card"))))))))))
+
+(deftest ^:synchronized workspace-card-search-visibility-appdb-engine-test
+  (when (search/supports-index?)
+    (testing "the appdb search engine also respects workspace copy-on-write visibility"
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Workspace ws {:branch "cow"}]
+          (mt/with-model-cleanup [:model/Card]
+            (let [card-name (str "workspace appdb search card " (random-uuid))]
+              (workspaces.tu/in-workspace
+               (:id ws)
+               (mt/user-http-request :crowberto :post 200 "card"
+                                     {:name                   card-name
+                                      :collection_id          nil
+                                      :dataset_query          (mt/mbql-query venues)
+                                      :display                "table"
+                                      :visualization_settings {}}))
+              (search/reindex! {:async? false :in-place? true})
+              (testing "not returned for a user without the workspace active"
+                (is (= [] (search-request-data :crowberto :q card-name
+                                               :search_engine "appdb" :models "card"))))
+              (testing "returned for the workspace user"
+                (workspaces.tu/in-workspace
+                 (:id ws)
+                 (is (=? [{:name card-name :model "card"}]
+                         (search-request-data :crowberto :q card-name
+                                              :search_engine "appdb" :models "card"))))))))))))

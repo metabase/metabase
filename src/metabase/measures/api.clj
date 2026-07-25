@@ -103,7 +103,11 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
   []
-  (as-> (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}) measures
+  (as-> (t2/select :model/Measure
+                   {:where    [:and
+                               [:= :archived false]
+                               (workspaces/workspace-visibility-clause :model/Measure :measure.id :measure.workspace_id)]
+                    :order-by [[:%lower.name :asc]]}) measures
     (filter mi/can-read? measures)
     (t2/hydrate measures :creator :definition_description)))
 
