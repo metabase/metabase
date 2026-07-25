@@ -55,6 +55,15 @@
     (and (map? entity) (:id entity))
     (assoc :id source-id)))
 
+(defn model->entity-type
+  "Convert a Toucan model keyword such as `:model/Card` to the plain kebab-case keyword the
+  workspaces module stores in `workspace_entity_remapping.entity_type` (e.g. `:card`,
+  `:dashboard-card`, `:native-query-snippet`). This conversion is internal to the workspaces
+  module -- code outside `metabase.workspaces.*` / `metabase-enterprise.workspaces.*` only ever
+  sees Toucan model keywords through the module's public API."
+  [model]
+  (keyword (u/->kebab-case-en (name model))))
+
 (defn workspace-visibility-clause
   "HoneySQL `:where` clause restricting rows of `model` to what the current user's active workspace
   should see. `id-column` and `workspace-id-column` are the (possibly table-qualified, e.g. `:c.id`,
@@ -81,7 +90,7 @@
          :from   [:workspace_entity_remapping]
          :where  [:and
                   [:= :workspace_entity_remapping.workspace_id workspace-id]
-                  [:= :workspace_entity_remapping.entity_type (u/qualified-name model)]
+                  [:= :workspace_entity_remapping.entity_type (name (model->entity-type model))]
                   [:= :workspace_entity_remapping.source_entity_id id-column]
                   [:not= :workspace_entity_remapping.target_entity_id
                    :workspace_entity_remapping.source_entity_id]]}]]]]
@@ -91,7 +100,7 @@
   "Forward ID remapping: the ID to use in place of source entity `id` for the current user.
   Returns the workspace copy's ID when the active workspace has a remapping for
   (`model`, `id`); otherwise returns `id` unchanged. OSS: identity."
-  metabase-enterprise.workspaces.impl
+  metabase-enterprise.workspaces.remapping
   [_model id]
   id)
 
@@ -99,7 +108,7 @@
   "Reverse ID remapping: given `id` of an entity that may be a workspace copy, return the
   source (production) entity ID it was copied from, or `id` unchanged when it is not a copy
   in the current user's active workspace. OSS: identity."
-  metabase-enterprise.workspaces.impl
+  metabase-enterprise.workspaces.remapping
   [_model id]
   id)
 
@@ -107,7 +116,7 @@
   "Batch forward remapping: map of source ID -> workspace copy ID for the subset of `ids`
   that have a remapping in the current user's active workspace. OSS / no active workspace:
   empty map."
-  metabase-enterprise.workspaces.impl
+  metabase-enterprise.workspaces.remapping
   [_model _ids]
   {})
 
@@ -115,7 +124,7 @@
   "Record that (`model`, `source-id`) maps to `target-id` in the current user's active
   workspace. POST endpoints call this with `source-id = target-id` after creating an entity,
   marking it workspace-owned. No-op on OSS or without an active workspace."
-  metabase-enterprise.workspaces.impl
+  metabase-enterprise.workspaces.remapping
   [_model _source-id _target-id]
   nil)
 
@@ -123,7 +132,7 @@
   "DELETE hook: remove the active workspace's remapping row for (`model`, `source-id`) —
   call it after deleting the (remapped) entity row so no dangling mapping is left behind.
   No-op on OSS or without an active workspace."
-  metabase-enterprise.workspaces.impl
+  metabase-enterprise.workspaces.remapping
   [_model _source-id]
   nil)
 
@@ -133,14 +142,14 @@
   per-model [[metabase.workspaces.clone/clone-entity!]]) and recording the remapping.
   Otherwise returns `id` unchanged, so callers can use this unconditionally at the top of
   every PUT. OSS: identity."
-  metabase-enterprise.workspaces.impl
+  metabase-enterprise.workspaces.remapping
   [_model id]
   id)
 
 (defenterprise check-valid-workspace-id
   "Check that `workspace-id` may be set as a user's active workspace. On OSS any non-nil
   workspace-id is rejected, since workspaces are an enterprise feature."
-  metabase-enterprise.workspaces.impl
+  metabase-enterprise.workspaces.remapping
   [workspace-id]
   (api/check-400 (nil? workspace-id)
                  (tru "Workspaces are a paid feature not currently available to your instance.")))

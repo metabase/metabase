@@ -3596,6 +3596,9 @@
 ;;; |                                  Workspace copy-on-write item visibility                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; `:entity_type :card` below is the workspaces module's internal storage format (a plain kebab-case
+;; keyword -- see metabase.workspaces.remapping/model->entity-type), used directly since this
+;; assertion needs an explicit `:workspace_id` outside any HTTP request context.
 (deftest workspace-collection-items-visibility-test
   (testing "GET /api/collection/:id/items respects workspace copy-on-write visibility (#workspace-git-sync)"
     (mt/with-temp [:model/Workspace  ws         {:branch "cow"}
@@ -3617,7 +3620,7 @@
            (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:name "A (ws)"})
            (let [copy-id (t2/select-one-fn :target_entity_id :model/WorkspaceEntityRemapping
                                            :workspace_id (:id ws)
-                                           :entity_type :model/Card
+                                           :entity_type :card
                                            :source_entity_id (:id card))
                  created (mt/user-http-request :crowberto :post 200 "card"
                                                {:name                   "born in workspace"

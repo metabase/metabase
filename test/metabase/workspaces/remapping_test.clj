@@ -14,9 +14,12 @@
   (when config/ee-available?
     (mt/with-temp [:model/Workspace ws   {:branch "CoW overlay"}
                    :model/User      user {:workspace_id (:id ws)}]
+      ;; :card is the module's internal storage format for :model/Card -- see
+      ;; metabase.workspaces.remapping/model->entity-type. Inserting directly (rather than through
+      ;; the public API) is simpler for setting up this fixture row.
       (t2/insert! :model/WorkspaceEntityRemapping
                   {:workspace_id     (:id ws)
-                   :entity_type      :model/Card
+                   :entity_type      :card
                    :source_entity_id 111
                    :target_entity_id 222})
       (mt/with-premium-features #{:workspaces}
@@ -59,9 +62,10 @@
 (deftest with-current-workspace-id-test
   (when config/ee-available?
     (mt/with-temp [:model/Workspace ws {:branch "CoW overlay"}]
+      ;; :card is the internal storage format -- see comment above.
       (t2/insert! :model/WorkspaceEntityRemapping
                   {:workspace_id     (:id ws)
-                   :entity_type      :model/Card
+                   :entity_type      :card
                    :source_entity_id 444
                    :target_entity_id 555})
       (testing "forces a workspace context without a current user"

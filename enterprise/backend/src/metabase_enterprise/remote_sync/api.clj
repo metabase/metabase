@@ -11,6 +11,7 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.git :as source.git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.workspaces.core :as ee.workspaces]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -103,7 +104,7 @@
                ;; a push-first workspace has an empty RSO ledger, so also treat any copy-on-write
                ;; remapping as a local change
                (boolean (or (remote-sync.object/dirty? ws-id)
-                            (t2/exists? :model/WorkspaceEntityRemapping :workspace_id ws-id)))
+                            (ee.workspaces/exists-any-remapping? ws-id)))
                (remote-sync.object/dirty?))})
 
 (api.macros/defendpoint :get "/has-remote-changes" :- remote-sync.schema/HasRemoteChangesResponse

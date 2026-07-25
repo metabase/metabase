@@ -1,13 +1,18 @@
-(ns metabase-enterprise.workspaces.impl
+(ns metabase-enterprise.workspaces.remapping
   "EE implementations of the workspace `defenterprise` hooks declared in
   [[metabase.workspaces.remapping]]. Everything is gated on the `:workspaces` premium
   feature: if the token loses the feature, the OSS identity/no-op stubs take over and the
-  overlay is disabled, even for users who still have a `workspace_id` set."
+  overlay is disabled, even for users who still have a `workspace_id` set.
+
+  `workspace_entity_remapping.entity_type` is stored as the plain kebab-case keyword produced
+  by [[metabase.workspaces.remapping/model->entity-type]] (e.g. `:card`, not `:model/Card`) --
+  every query here converts the Toucan model keyword it's given before touching the table."
   (:require
    [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.workspaces.core :as workspaces]
+   [metabase.workspaces.remapping :as ws.remapping]
    [toucan2.core :as t2]))
 
 (defenterprise remapped-entity-id
@@ -18,7 +23,7 @@
   (or (when-let [workspace-id (workspaces/current-workspace-id)]
         (t2/select-one-fn :target_entity_id :model/WorkspaceEntityRemapping
                           :workspace_id workspace-id
-                          :entity_type model
+                          :entity_type (ws.remapping/model->entity-type model)
                           :source_entity_id id))
       id))
 
@@ -30,7 +35,7 @@
   (or (when-let [workspace-id (workspaces/current-workspace-id)]
         (t2/select-one-fn :source_entity_id :model/WorkspaceEntityRemapping
                           :workspace_id workspace-id
-                          :entity_type model
+                          :entity_type (ws.remapping/model->entity-type model)
                           :target_entity_id id))
       id))
 
@@ -45,7 +50,7 @@
                 (map (juxt :source_entity_id :target_entity_id))
                 (t2/select [:model/WorkspaceEntityRemapping :source_entity_id :target_entity_id]
                            :workspace_id workspace-id
-                           :entity_type model
+                           :entity_type (ws.remapping/model->entity-type model)
                            :source_entity_id [:in (set ids)]))))
       {}))
 
@@ -57,7 +62,7 @@
   (when-let [workspace-id (workspaces/current-workspace-id)]
     (t2/insert! :model/WorkspaceEntityRemapping
                 {:workspace_id     workspace-id
-                 :entity_type      model
+                 :entity_type      (ws.remapping/model->entity-type model)
                  :source_entity_id source-id
                  :target_entity_id target-id}))
   nil)
@@ -70,7 +75,7 @@
   (when-let [workspace-id (workspaces/current-workspace-id)]
     (t2/delete! :model/WorkspaceEntityRemapping
                 :workspace_id workspace-id
-                :entity_type model
+                :entity_type (ws.remapping/model->entity-type model)
                 :source_entity_id source-id))
   nil)
 
@@ -81,18 +86,19 @@
   :feature :workspaces
   [model id]
   (if-let [workspace-id (workspaces/current-workspace-id)]
-    (or (t2/select-one-fn :target_entity_id :model/WorkspaceEntityRemapping
-                          :workspace_id workspace-id
-                          :entity_type model
-                          :source_entity_id id)
-        (t2/with-transaction [_conn]
-          (let [clone-id (workspaces/clone-entity! model id)]
-            (t2/insert! :model/WorkspaceEntityRemapping
-                        {:workspace_id     workspace-id
-                         :entity_type      model
-                         :source_entity_id id
-                         :target_entity_id clone-id})
-            clone-id)))
+    (let [entity-type (ws.remapping/model->entity-type model)]
+      (or (t2/select-one-fn :target_entity_id :model/WorkspaceEntityRemapping
+                            :workspace_id workspace-id
+                            :entity_type entity-type
+                            :source_entity_id id)
+          (t2/with-transaction [_conn]
+            (let [clone-id (workspaces/clone-entity! model id)]
+              (t2/insert! :model/WorkspaceEntityRemapping
+                          {:workspace_id     workspace-id
+                           :entity_type      entity-type
+                           :source_entity_id id
+                           :target_entity_id clone-id})
+              clone-id))))
     id))
 
 (defenterprise check-valid-workspace-id

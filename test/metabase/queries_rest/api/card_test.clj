@@ -5288,6 +5288,12 @@
     (-> (lib/query mp (lib.metadata/card mp card-id))
         lib/->legacy-MBQL)))
 
+;; The `:entity_type :card` filters below query `:model/WorkspaceEntityRemapping` directly using the
+;; workspaces module's internal storage format (a plain kebab-case keyword derived from the Toucan
+;; model name -- see metabase.workspaces.remapping/model->entity-type), since these assertions need an
+;; explicit `:workspace_id` outside any HTTP request context, where the module's public API (scoped to
+;; the current user's active workspace) doesn't apply.
+
 (deftest workspace-card-copy-on-write-test
   (mt/with-temp [:model/Workspace ws {:branch "cow"}]
     (mt/with-model-cleanup [:model/Card]
@@ -5343,13 +5349,13 @@
                                                :source_entity_id (:id created)
                                                :target_entity_id (:id created)}
                                               (t2/select-one :model/WorkspaceEntityRemapping
-                                                             :entity_type :model/Card
+                                                             :entity_type :card
                                                              :source_entity_id (:id created))))
                                       (testing "DELETE in the workspace removes the row and its remapping"
                                         (mt/user-http-request :crowberto :delete 204 (str "card/" (:id created)))
                                         (is (nil? (t2/select-one :model/Card :id (:id created))))
                                         (is (nil? (t2/select-one :model/WorkspaceEntityRemapping
-                                                                 :entity_type :model/Card
+                                                                 :entity_type :card
                                                                  :source_entity_id (:id created))))))))
       (testing "DELETE of a shadowed card in a workspace deletes the copy, not main"
         (mt/with-temp [:model/Card card {:name "A" :dataset_query (ws-count-query :venues)}]
@@ -5357,14 +5363,14 @@
                                       (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:name "A (ws)"})
                                       (let [copy-id (t2/select-one-fn :target_entity_id :model/WorkspaceEntityRemapping
                                                                       :workspace_id (:id ws)
-                                                                      :entity_type :model/Card
+                                                                      :entity_type :card
                                                                       :source_entity_id (:id card))]
                                         (mt/user-http-request :crowberto :delete 204 (str "card/" (:id card)))
                                         (is (nil? (t2/select-one :model/Card :id copy-id)) "workspace copy is gone")
                                         (is (some? (t2/select-one :model/Card :id (:id card))) "main row survives")
                                         (is (nil? (t2/select-one :model/WorkspaceEntityRemapping
                                                                  :workspace_id (:id ws)
-                                                                 :entity_type :model/Card
+                                                                 :entity_type :card
                                                                  :source_entity_id (:id card)))
                                             "remapping row is cleaned up"))))))))
 
@@ -5376,7 +5382,7 @@
                                     (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:name "A (ws)"})
                                     (let [copy-id (t2/select-one-fn :target_entity_id :model/WorkspaceEntityRemapping
                                                                     :workspace_id (:id ws)
-                                                                    :entity_type :model/Card
+                                                                    :entity_type :card
                                                                     :source_entity_id (:id card))
                                           ids-for (fn [user] (into #{} (map :id) (mt/user-http-request user :get 200 "card")))]
                                       (testing "in the workspace, GET /api/card lists the copy and hides the shadowed main card"
@@ -5390,7 +5396,7 @@
         (testing "with the workspace deactivated, main is back and the copy stays hidden"
           (let [copy-id (t2/select-one-fn :target_entity_id :model/WorkspaceEntityRemapping
                                           :workspace_id (:id ws)
-                                          :entity_type :model/Card
+                                          :entity_type :card
                                           :source_entity_id (:id card))
                 ids     (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "card"))]
             (is (contains? ids (:id card)))

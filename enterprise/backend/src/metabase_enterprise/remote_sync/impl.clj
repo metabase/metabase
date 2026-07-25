@@ -437,23 +437,18 @@
   [workspace-id]
   (doseq [model-name serdes/workspace-scoped-models
           :let       [model-kw (t2.model/resolve-model (symbol model-name))]]
-    (t2/delete! :model/WorkspaceEntityRemapping
-                :workspace_id workspace-id
-                :entity_type  model-kw)
-    (let [ws-rows (t2/select [model-kw :id :entity_id] :workspace_id workspace-id)]
-      (when (seq ws-rows)
-        (let [entity-ids   (into #{} (map :entity_id) ws-rows)
-              main-id-by   (into {}
-                                 (map (juxt :entity_id :id))
-                                 (t2/select [model-kw :id :entity_id]
-                                            :entity_id [:in entity-ids]
-                                            :workspace_id nil))
-              rows         (for [{:keys [id entity_id]} ws-rows]
-                             {:workspace_id     workspace-id
-                              :entity_type      model-kw
-                              :source_entity_id (or (get main-id-by entity_id) id)
-                              :target_entity_id id})]
-          (t2/insert! :model/WorkspaceEntityRemapping rows))))))
+    (let [ws-rows    (t2/select [model-kw :id :entity_id] :workspace_id workspace-id)
+          entity-ids (into #{} (map :entity_id) ws-rows)
+          main-id-by (when (seq entity-ids)
+                       (into {}
+                             (map (juxt :entity_id :id))
+                             (t2/select [model-kw :id :entity_id]
+                                        :entity_id [:in entity-ids]
+                                        :workspace_id nil)))
+          rows       (for [{:keys [id entity_id]} ws-rows]
+                       {:source-entity-id (or (get main-id-by entity_id) id)
+                        :target-entity-id id})]
+      (workspaces/reconcile-remappings-for-model! workspace-id model-kw rows))))
 
 (defn workspace-pull!
   "Pull `workspace`'s branch into its copy-on-write overlay: load the snapshot with serdes matching and
@@ -1753,21 +1748,14 @@
                      (if (contains? serdes/workspace-scoped-models model-type)
                        (let [model-kw (:model-key (spec/spec-for-model-type model-type))
                              ids      (mapv :model_id rows)
-                             remap    (into {}
-                                            (map (juxt :source_entity_id :target_entity_id))
-                                            (t2/select [:model/WorkspaceEntityRemapping :source_entity_id :target_entity_id]
-                                                       :workspace_id     workspace-id
-                                                       :entity_type      model-kw
-                                                       :source_entity_id [:in ids]))]
+                             remap    (workspaces/remappings-for-model workspace-id model-kw ids)]
                          (map (fn [row] (update row :model_id #(get remap % %))) rows))
                        rows))
                    (group-by :model_type main-rows))
-        created   (keep (fn [{:keys [entity_type target_entity_id]}]
-                          (when-let [spec (spec/spec-for-model-key entity_type)]
-                            {:model_type (:model-type spec) :model_id target_entity_id}))
-                        (t2/select [:model/WorkspaceEntityRemapping :entity_type :source_entity_id :target_entity_id]
-                                   :workspace_id workspace-id
-                                   {:where [:= :source_entity_id :target_entity_id]}))
+        created   (keep (fn [{:keys [model target-entity-id]}]
+                          (when-let [spec (spec/spec-for-model-key model)]
+                            {:model_type (:model-type spec) :model_id target-entity-id}))
+                        (workspaces/workspace-created-entities workspace-id))
         ws-rso-id (u/index-by (juxt :model_type :model_id) :id
                               (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
                                          :workspace_id workspace-id))]
