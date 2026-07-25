@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
-// Deep import (not the `metabase/urls` barrel) to keep the SDK bundle lean —
-// `data-apps.ts` is a leaf with no transitive deps.
+import { getRawBrowserHistory } from "metabase/router";
 import { DATA_APP_EMBED_PREFIX } from "metabase/urls/data-apps";
 
 /**
@@ -35,6 +34,37 @@ const DATA_APP_BASENAME_RE = new RegExp(
  */
 export const getBasename = (): string =>
   window.location.pathname.match(DATA_APP_BASENAME_RE)?.[1] ?? "";
+
+// The v7 browser history the data app drives its URL with accepts only ONE
+// active listener (it throws on a second). But more than one data-app subscriber
+// can be live at once — the dev preview's `MetabaseProvider` renders the app tree
+// once as its `ClientSideOnlyWrapper` SSR fallback and again in the client tree,
+// so the two briefly overlap. So every data-app history subscriber is multiplexed
+// through a single `history.listen`, fanned out to each callback, and they never
+// collide on that single slot.
+const historyListeners = new Set<() => void>();
+let unlistenHistory: (() => void) | null = null;
+
+export function subscribeToDataAppHistory(callback: () => void): () => void {
+  historyListeners.add(callback);
+
+  unlistenHistory ??= getRawBrowserHistory().listen(() => {
+    // Snapshot so a callback that unsubscribes mid-notify can't mutate the set
+    // being iterated.
+    for (const listener of Array.from(historyListeners)) {
+      listener();
+    }
+  });
+
+  return () => {
+    historyListeners.delete(callback);
+
+    if (historyListeners.size === 0) {
+      unlistenHistory?.();
+      unlistenHistory = null;
+    }
+  };
+}
 
 interface DataAppRouterProps {
   children?: ReactNode;

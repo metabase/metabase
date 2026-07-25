@@ -2,39 +2,22 @@ import createVirtualEnvironment from "@locker/near-membrane-dom";
 
 import { makeDistortionCallback } from "./distortions";
 import { DATA_APP_GLOBAL_NAMES } from "./globals";
+import { installHostRealmElementGuard } from "./host-element-guard";
 import type { DataAppFactory, SandboxBlockedListener } from "./types";
 
 /**
  * The realm objects the sandbox exposes to the bundle as globals.
  *
- * These are injected by the caller rather than imported here so the sandbox
- * stays decoupled from any single SDK instance: the host passes its own realm's
- * React/SDK, and the data-app template's dev entry passes the React/SDK from
- * its installed `@metabase/embedding-sdk-react` — in both cases the bundle runs
- * against exactly one SDK instance. (Importing them here would bundle a second
- * SDK copy into the published `data-app-dev` entry.)
+ * Injected by the caller rather than imported here so the sandbox stays
+ * decoupled from any single SDK instance (importing them would bundle a second
+ * copy into the published `data-app-dev` entry). The SDK bundle itself is not
+ * passed in: the sandbox reads it live off `targetWindow` (see below), so the
+ * dev entry works even though its bundle loads from the instance only after the
+ * sandbox is created.
  */
 export interface DataAppSandboxEndowments {
-  /** Endowed as the `React` global the bundle externalizes `react` to. */
-  React: unknown;
-  /** Endowed as `__react_dom__` (the `react-dom` external). */
-  reactDom: unknown;
-  /** Endowed as `__react_dom_client__` (the `react-dom/client` external). */
-  reactDomClient: unknown;
-  /** Endowed as `__react_dom_server__` (the `react-dom/server` external). */
-  reactDomServer: unknown;
-  /** Endowed as `__react_jsx_runtime__` (the `react/jsx-runtime` external). */
-  reactJsxRuntime: unknown;
-  /**
-   * Endowed as `__react_jsx_dev_runtime__` (the `react/jsx-dev-runtime`
-   * external). Only a development-mode bundle references it (jsxDEV), so the
-   * production host can omit it.
-   */
-  reactJsxDevRuntime?: unknown;
-  /** Endowed as `__metabase_sdk__` (the `@metabase/embedding-sdk-react` external). */
-  sdkExports: object;
-  /** Endowed as `__metabase_data_app__` (the `.../data-app` external). */
-  dataAppExports: object;
+  providerPropsStore: unknown;
+  sdkMount: unknown;
 }
 
 export interface CreateDataAppSandboxOptions {
@@ -44,7 +27,7 @@ export interface CreateDataAppSandboxOptions {
   targetWindow?: Window & typeof globalThis;
   /** Origins the bundle may fetch/XHR; empty keeps the default hard block. */
   allowedHosts?: string[];
-  /** The realm's React/SDK exposed to the bundle. See [[DataAppSandboxEndowments]]. */
+  /** Host objects exposed to the bundle as globals. See [[DataAppSandboxEndowments]]. */
   endowments: DataAppSandboxEndowments;
   /**
    * Structured listener for sandbox blocks (dev toolbar). When absent the
@@ -78,26 +61,12 @@ export function createDataAppSandbox({
       onBlocked,
     ),
     liveTargetCallback: isLiveTarget,
-    // Global names come from the shared `DATA_APP_GLOBAL_NAMES`, so the bundle's
-    // externals (defined by the SDK build) and these endowments can't drift.
     endowments: Object.getOwnPropertyDescriptors({
-      [DATA_APP_GLOBAL_NAMES.react]: endowments.React,
-      [DATA_APP_GLOBAL_NAMES.reactDom]: endowments.reactDom,
-      [DATA_APP_GLOBAL_NAMES.reactDomClient]: endowments.reactDomClient,
-      [DATA_APP_GLOBAL_NAMES.reactDomServer]: endowments.reactDomServer,
-      [DATA_APP_GLOBAL_NAMES.reactJsxRuntime]: endowments.reactJsxRuntime,
-      ...(!!endowments.reactJsxDevRuntime && {
-        [DATA_APP_GLOBAL_NAMES.reactJsxDevRuntime]:
-          endowments.reactJsxDevRuntime,
-      }),
-      [DATA_APP_GLOBAL_NAMES.sdk]: {
-        ...endowments.sdkExports,
-        // Below we can set fallbacks to `sdkExports` exports that were renamed/removed to prevent breaking changes
+      get METABASE_EMBEDDING_SDK_BUNDLE() {
+        return targetWindow.METABASE_EMBEDDING_SDK_BUNDLE;
       },
-      [DATA_APP_GLOBAL_NAMES.dataApp]: {
-        ...endowments.dataAppExports,
-        // Below we can set fallbacks to `dataAppExports` exports that were renamed/removed to prevent breaking changes
-      },
+      METABASE_PROVIDER_PROPS_STORE: endowments.providerPropsStore,
+      __MB_DATA_APP_SDK_MOUNT__: endowments.sdkMount,
       get [DATA_APP_GLOBAL_NAMES.factory]() {
         return captured;
       },
@@ -106,6 +75,10 @@ export function createDataAppSandbox({
       },
     }),
   });
+
+  // After the membrane built its own realm iframe — from here on, nothing in this
+  // document may create another realm, whichever React renders it.
+  installHostRealmElementGuard(targetWindow);
 
   return {
     evaluate(code: string): DataAppFactory {

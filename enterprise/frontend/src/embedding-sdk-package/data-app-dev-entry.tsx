@@ -1,19 +1,13 @@
-import * as React from "react";
-import * as ReactDOM from "react-dom";
-import * as ReactDOMClient from "react-dom/client";
-import * as ReactDOMServer from "react-dom/server";
-import * as ReactJsxDevRuntime from "react/jsx-dev-runtime";
-import * as ReactJsxRuntime from "react/jsx-runtime";
-import * as sdkExports from "@metabase/embedding-sdk-react";
-import * as dataAppExports from "@metabase/embedding-sdk-react/data-app";
 import {
   DataAppDevProvider,
   DevToolbar,
   createDataAppSandbox,
-  installDiagnosticsReporter,
-  sdkCallCapture,
   devDiagnostics,
+  ensureMetabaseProviderPropsStore,
+  installDiagnosticsReporter,
   instanceConnectionCheck,
+  mountDataAppSdkComponent,
+  sdkCallCapture,
 } from "@metabase/embedding-sdk-react/data-app-dev";
 import {
   allowedHosts,
@@ -24,14 +18,12 @@ import {
 } from "virtual:metabase-data-app-dev-config";
 import { createRoot } from "react-dom/client";
 
+// Imported purely for its side effects
+import "@metabase/embedding-sdk-react/data-app";
+
 // The same baseline reset the production iframe loads (`iframe-vendors.ts`), so the
 // dev preview matches production. style-loader injects it at runtime.
 import "metabase-enterprise/data_apps/sandbox/iframe-baseline.css";
-
-// Built by rspack into the SDK dist (`rspack.embedding-sdk-package.config.js`).
-// React, the SDK subpaths and the virtual config stay EXTERNAL so the consumer's
-// Vite resolves them: the preview has to run against the same React and SDK
-// instances the app bundle is endowed with, not copies of them.
 
 // Either may be missing from `.env.local`. Rendering anyway is deliberate: the
 // requests then fail, and the diagnostics feed names the env var to fill — which
@@ -71,14 +63,8 @@ const sandbox = createDataAppSandbox({
   allowedHosts,
   onBlocked: devDiagnostics.recordSandboxBlocked,
   endowments: {
-    React,
-    reactDom: ReactDOM,
-    reactDomClient: ReactDOMClient,
-    reactDomServer: ReactDOMServer,
-    reactJsxRuntime: ReactJsxRuntime,
-    reactJsxDevRuntime: ReactJsxDevRuntime,
-    sdkExports,
-    dataAppExports,
+    providerPropsStore: ensureMetabaseProviderPropsStore(),
+    sdkMount: mountDataAppSdkComponent,
   },
 });
 

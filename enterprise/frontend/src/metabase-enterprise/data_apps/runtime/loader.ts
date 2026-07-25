@@ -1,13 +1,9 @@
-import * as React from "react";
-import * as ReactJsxRuntime from "react/jsx-runtime";
-import * as ReactDOM from "react-dom";
-import * as ReactDOMClient from "react-dom/client";
-import * as ReactDOMServer from "react-dom/server";
+import type { ComponentType } from "react";
 import { pick } from "underscore";
 
-import * as sdkExports from "embedding-sdk-package";
-import * as dataAppExports from "embedding-sdk-package/data-app";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getSubpathSafeUrl } from "metabase/urls";
+import { mountDataAppSdkComponent } from "metabase-enterprise/data_apps/runtime/lib/mount-sdk-component";
 import { createDataAppSandbox } from "metabase-enterprise/data_apps/sandbox/sandbox";
 import {
   DATA_APP_PROVIDER_PROP_KEYS,
@@ -15,7 +11,7 @@ import {
 } from "metabase-enterprise/data_apps/sandbox/types";
 
 export interface LoadedDataApp {
-  component: React.ComponentType<Record<string, unknown>>;
+  component: ComponentType<Record<string, unknown>>;
   providerProps: DataAppMetabaseProviderProps;
 }
 
@@ -118,13 +114,8 @@ export const instantiateDataAppBundle = (
     targetWindow,
     allowedHosts,
     endowments: {
-      React,
-      reactDom: ReactDOM,
-      reactDomClient: ReactDOMClient,
-      reactDomServer: ReactDOMServer,
-      reactJsxRuntime: ReactJsxRuntime,
-      sdkExports,
-      dataAppExports,
+      providerPropsStore: ensureMetabaseProviderPropsStore(),
+      sdkMount: mountDataAppSdkComponent,
     },
   });
   const factory = sandbox.evaluate(code);
