@@ -67,7 +67,7 @@
   top: calc(50% - 2rem);
   width: 0.25rem;
   height: 4rem;
-  margin-inline-start: -0.125rem;
+  margin-left: -0.125rem;
   cursor: col-resize;
   background-color: transparent;
   border-radius: 100px;
