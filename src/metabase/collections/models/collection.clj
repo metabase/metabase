@@ -1031,7 +1031,7 @@
 
 (defn- effective-parent-root []
   (select-keys
-   (collection.root/root-collection-with-ui-details {})
+   (collection.root/root-collection-with-ui-details nil)
    effective-parent-fields))
 
 (mi/define-batched-hydration-method effective-parent

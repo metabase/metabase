@@ -244,7 +244,7 @@
 
 (defn- root-coll []
   (select-keys
-   (root/root-collection-with-ui-details {})
+   (root/root-collection-with-ui-details nil)
    [:id :name :authority_level]))
 
 ;; ================== Recent Cards ==================
