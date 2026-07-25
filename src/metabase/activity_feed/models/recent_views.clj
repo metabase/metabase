@@ -254,6 +254,9 @@
   [card-ids]
   (if-not (seq card-ids)
     []
+    ;; Recent-views surfaces skip full `mi/can-read?` permission checks by design (the view log itself is the
+    ;; access proxy, same as bookmarks below), and this custom `:select` doesn't project `:workspace_id`
+    ;; anyway, so `mi/can-read?` isn't usable here -- entity-level clause stays bespoke.
     (t2/select :model/Card
                {:select [:card.name
                          :card.description
@@ -380,6 +383,8 @@
                          [:c.authority_level :collection_authority_level]
                          [:mr.status :moderated-status]]
                 :from [[:report_dashboard :dash]]
+                ;; See `card-recents` above: skips `mi/can-read?` by design and doesn't project
+                ;; `:workspace_id`, so the entity-level clause stays bespoke.
                 :where [:and
                         [:in :dash.id dashboard-ids]
                         (workspaces/workspace-visibility-clause :model/Dashboard :dash.id :dash.workspace_id)]
@@ -414,6 +419,8 @@
   (if-not (seq collection-ids)
     []
     (let [;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
+          ;; See `card-recents` above: skips `mi/can-read?` by design and doesn't project `:workspace_id`, so
+          ;; the entity-level clause stays bespoke.
           collections (t2/select :model/Collection
                                  {:select [:id :name :description :authority_level
                                            :archived :location :type]
@@ -559,6 +566,8 @@
   [document-ids]
   (if-not (seq document-ids)
     []
+    ;; See `card-recents` above: skips `mi/can-read?` by design and doesn't project `:workspace_id`, so the
+    ;; entity-level clause stays bespoke.
     (let [documents (t2/select :model/Document
                                {:select [:d.id
                                          :d.name

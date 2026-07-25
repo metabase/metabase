@@ -55,9 +55,10 @@
 
 (defmethod mi/can-read? :model/Measure
   ([instance]
-   (let [table (or (:table instance)
-                   (t2/select-one :model/Table :id (:table_id instance)))]
-     (mi/can-read? table)))
+   (and (workspaces/readable-workspace-row? instance)
+        (let [table (or (:table instance)
+                        (t2/select-one :model/Table :id (:table_id instance)))]
+          (mi/can-read? table))))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 

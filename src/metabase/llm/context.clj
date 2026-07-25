@@ -14,7 +14,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2])
   (:import
    (java.io StringWriter Writer)))
@@ -121,11 +120,12 @@
   "Return readable, non-archived Card IDs from `card-ids`."
   [card-ids]
   (when (seq card-ids)
+    ;; `mi/can-read?` (below) fully implements workspace visibility for `:model/Card` (see
+    ;; `readable-workspace-row?`), so no bespoke workspace clause is needed here.
     (->> (t2/select :model/Card
                     {:where [:and
                              [:in :id card-ids]
-                             [:= :archived false]
-                             (workspaces/workspace-visibility-clause :model/Card :report_card.id :report_card.workspace_id)]})
+                             [:= :archived false]]})
          (filter mi/can-read?)
          (map :id)
          set)))

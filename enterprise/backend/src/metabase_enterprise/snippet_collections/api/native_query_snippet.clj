@@ -14,6 +14,9 @@
   "Collection children query for snippets on EE."
   :feature :snippet-collections
   [collection {:keys [archived?]}]
+  ;; Direct children of an already-read-checked `collection` (part of a larger UNION ALL across item types in
+  ;; `collections-rest.api/collection-children*`, with no per-row `mi/can-read?` pass), so the entity-level
+  ;; clause stays bespoke here -- irreducible without reworking that shared, hot, heavily-tested pipeline.
   {:select [:id :collection_id :name :entity_id [(h2x/literal "snippet") :model]]
    :from   [[:native_query_snippet :nqs]]
    :where  [:and

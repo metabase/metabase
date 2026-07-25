@@ -21,6 +21,13 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
+(defmethod mi/can-read? :model/DashboardTab
+  ([instance]
+   (and (workspaces/readable-workspace-row? instance)
+        (mi/current-user-has-full-permissions? :read instance)))
+  ([model pk]
+   (mi/can-read? (t2/select-one model pk))))
+
 (t2/define-before-insert :model/DashboardTab
   [tab]
   (workspaces/stamp-workspace-id tab))

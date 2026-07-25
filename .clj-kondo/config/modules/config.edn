@@ -1227,8 +1227,7 @@
            sql-tools
            sync
            util
-           warehouse-schema
-           workspaces}
+           warehouse-schema}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -1399,8 +1398,7 @@
            query-processor
            request
            server
-           util
-           workspaces}
+           util}
    :model-imports #{:model/Card
                     :model/Field
                     :model/Measure
@@ -1613,6 +1611,7 @@
            settings
            tracing
            util
+           workspaces
            enterprise/advanced-permissions}
    :model-exports #{:model/ApplicationPermissionsRevision
                     :model/CollectionPermissionGraphRevision
@@ -1870,7 +1869,8 @@
            permissions
            query-processor
            request
-           util}
+           util
+           workspaces}
    :model-imports #{:model/Card :model/Field}}
 
   query-processor
@@ -1939,7 +1939,8 @@
            system
            tracing
            users
-           util}
+           util
+           workspaces}
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
@@ -2823,7 +2824,6 @@
            util
            warehouse-schema
            warehouses
-           workspaces
            enterprise/advanced-permissions}
    :model-imports #{:model/Card
                     :model/Collection

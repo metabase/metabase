@@ -137,6 +137,10 @@
                                                              [:= :bookmark_ordering.type :bookmark.type]
                                                              [:= :bookmark_ordering.item_id :bookmark.item_id]]
                     [:document :document] [:= :bookmark.document_id :document.id]]
+        ;; Bookmarks are shown regardless of full collection permissions (the view log / bookmark itself is
+        ;; the access proxy, not a fresh `mi/can-read?` check), and this is a single UNION ALL across four
+        ;; models with a flat, aliased row shape -- not real per-model instances `mi/can-read?` could dispatch
+        ;; on. So the entity-level clauses below stay bespoke, one per bookmarked model.
         where-conditions (into [:and]
                                (concat
                                 (for [table [:card :dashboard :collection :document]

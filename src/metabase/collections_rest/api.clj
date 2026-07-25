@@ -121,8 +121,10 @@
                                                       :exclude)
                          :include-trash-collection? true
                          :permission-level          :read
-                         :archive-operation-id      nil})
-                       (workspaces/workspace-visibility-clause :model/Collection :id :workspace_id)]
+                         :archive-operation-id      nil
+                         :workspace-entity          {:model :model/Collection
+                                                     :id-field :id
+                                                     :workspace-id-field :workspace_id}})]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                           [[[:case
@@ -443,14 +445,17 @@
                                    [:= :r.model (h2x/literal "Document")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where [:and
-               (collection/visible-collection-filter-clause :document.collection_id {:cte-name :visible_collection_ids})
+               (collection/visible-collection-filter-clause :document.collection_id
+                                                            {:cte-name :visible_collection_ids
+                                                             :workspace-entity {:model :model/Document
+                                                                                :id-field :document.id
+                                                                                :workspace-id-field :document.workspace_id}})
                (if (collection/is-trash? collection)
                  [:= :document.archived_directly true]
                  [:and
                   [:= :document.collection_id (:id collection)]
                   [:= :document.archived_directly false]])
-               [:= :document.archived (boolean archived?)]
-               (workspaces/workspace-visibility-clause :model/Document :document.id :document.workspace_id)]}
+               [:= :document.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
 
 (defmethod collection-children-query :pulse
@@ -486,6 +491,8 @@
   [_collection {:keys [archived?]}]
   {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
    :from   [[:native_query_snippet :nqs]]
+   ;; Not collection-scoped (see docstring above), so there's no `visible-collection-filter-clause` call to fold
+   ;; this into; keep the entity-level clause bespoke.
    :where  [:and
             [:= :archived (boolean archived?)]
             (workspaces/workspace-visibility-clause :model/NativeQuerySnippet :nqs.id :nqs.workspace_id)]})
@@ -498,6 +505,8 @@
   [_ collection {:keys [archived? pinned-state]}]
   {:select [:id :collection_id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
    :from   [[:timeline :timeline]]
+   ;; Direct children of an already-read-checked `collection`, so there's no per-row collection visibility to
+   ;; check here (unlike :card/:document above) -- only the entity-level workspace clause is needed, bespoke.
    :where  [:and
             (poison-when-pinned-clause pinned-state)
             [:= :collection_id (:id collection)]
@@ -567,7 +576,11 @@
                                              [:= :mr.moderated_item_type (h2x/literal "card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :c.collection_id {:cte-name :visible_collection_ids})
+                   (collection/visible-collection-filter-clause :c.collection_id
+                                                                {:cte-name :visible_collection_ids
+                                                                 :workspace-entity {:model :model/Card
+                                                                                    :id-field :c.id
+                                                                                    :workspace-id-field :c.workspace_id}})
                    (if (collection/is-trash? collection)
                      [:= :c.archived_directly true]
                      [:and
@@ -577,7 +590,6 @@
                      [:= :c.dashboard_id nil])
                    [:= :c.document_id nil]
                    [:= :c.archived (boolean archived?)]
-                   (workspaces/workspace-visibility-clause :model/Card :c.id :c.workspace_id)
                    (case card-type
                      :model
                      [:= :c.type (h2x/literal "model")]
@@ -677,14 +689,17 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :d.collection_id {:cte-name :visible_collection_ids})
+                   (collection/visible-collection-filter-clause :d.collection_id
+                                                                {:cte-name :visible_collection_ids
+                                                                 :workspace-entity {:model :model/Dashboard
+                                                                                    :id-field :d.id
+                                                                                    :workspace-id-field :d.workspace_id}})
                    (if (collection/is-trash? collection)
                      [:= :d.archived_directly true]
                      [:and
                       [:= :d.collection_id (:id collection)]
                       [:not= :d.archived_directly true]])
-                   [:= :d.archived (boolean archived?)]
-                   (workspaces/workspace-visibility-clause :model/Dashboard :d.id :d.workspace_id)]}
+                   [:= :d.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dashboard
@@ -745,6 +760,10 @@
          [:= :type nil]
          [:not= :type collection/tenant-specific-root-collection-type]]
         (snippets-collection-filter-clause)
+        ;; Passed as an extra top-level clause (not via `visible-collection-filter-clause`'s `:workspace-entity`)
+        ;; because `effective-children-query` calls `visible-collection-filter-clause` internally *twice* per row
+        ;; (once for the row itself, once for the "any other visible ancestor" NOT EXISTS check) -- baking the
+        ;; workspace clause into the config would wrongly apply it to that second, unrelated check too.
         (workspaces/workspace-visibility-clause :model/Collection :id :workspace_id))
        ;; We get from the effective-children-query a normal set of columns selected:
        ;; want to make it fit the others to make UNION ALL work

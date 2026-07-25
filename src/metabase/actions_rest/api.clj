@@ -41,8 +41,11 @@
                                             [:= :type "model"]
                                             [:= :archived false]
                                             ;; action permission keyed off of model permission
-                                            (collection/visible-collection-filter-clause)
-                                            (workspaces/workspace-visibility-clause :model/Card :report_card.id :report_card.workspace_id)]}))]
+                                            (collection/visible-collection-filter-clause
+                                             :collection_id
+                                             {:workspace-entity {:model :model/Card
+                                                                 :id-field :report_card.id
+                                                                 :workspace-id-field :report_card.workspace_id}})]}))]
       (actions-for models))))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
@@ -50,6 +53,8 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
+  ;; Raw Action select, no collection to hang a `visible-collection-filter-clause` call off of and no
+  ;; `mi/can-read?` post-filter here, so the entity-level clause stays bespoke.
   (t2/select [:model/Action :name :id :public_uuid :model_id]
              {:where [:and
                       [:not= :public_uuid nil]

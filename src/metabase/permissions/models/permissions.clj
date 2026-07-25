@@ -178,6 +178,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.performance :as perf]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -496,13 +497,19 @@
   Alternate form — `target` is a search-model string whose index-row `:collection_id` is denormalized
   from a parent model at index time (e.g. `\"indexed-entity\"` from its parent Card).
   No `mi/can-read?` is installed; the registration only flags the search-model for the semantic-search
-  fast path. `:denormalized-from` is required and names the parent t2-model for documentation."
+  fast path. `:denormalized-from` is required and names the parent t2-model for documentation.
+
+  The keyword form's installed `mi/can-read?` also excludes rows belonging to a workspace other than the
+  current user's active one (see [[metabase.workspaces.core/readable-workspace-row?]]); the semantic-search
+  fast path bypasses `mi/can-read?` entirely and applies workspace visibility at the index-filter level
+  instead (see `metabase.search.filter`), so it is unaffected by this."
   [target & {:keys [denormalized-from]}]
   (cond
     (keyword? target)
     `(do
        (defmethod mi/can-read? ~target
-         ([instance#] (can-read-via-parent-collection? (:collection_id instance#)))
+         ([instance#] (and (workspaces/readable-workspace-row? instance#)
+                           (can-read-via-parent-collection? (:collection_id instance#))))
          ([_# pk#]    (mi/can-read? (t2/select-one ~target :id pk#))))
        (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target)))
 

@@ -526,6 +526,8 @@
   :segments
   "Efficiently hydrate the Segments for a collection of `tables`."
   [tables]
+  ;; No `mi/can-read?` filtering here -- Segment perms mirror the parent table's, already checked by the
+  ;; caller reading `tables` -- so this raw select is the only place workspace visibility can be applied.
   (with-objects :segments
     (fn [table-ids]
       (t2/select :model/Segment
@@ -540,6 +542,8 @@
   :measures
   "Efficiently hydrate the Measures for a collection of `tables`."
   [tables]
+  ;; No `mi/can-read?` filtering here -- Measure perms mirror the parent table's, already checked by the
+  ;; caller reading `tables` -- so this raw select is the only place workspace visibility can be applied.
   (with-objects :measures
     (fn [table-ids]
       (t2/select :model/Measure
@@ -554,14 +558,15 @@
   :metrics
   "Efficiently hydrate the Metrics for a collection of `tables`."
   [tables]
+  ;; `mi/can-read?` (below) fully implements workspace visibility for `:model/Card` (see
+  ;; `readable-workspace-row?`), so no bespoke workspace clause is needed here.
   (with-objects :metrics
     (fn [table-ids]
       (->> (t2/select :model/Card
                       {:where    [:and
                                   [:in :table_id table-ids]
                                   [:= :archived false]
-                                  [:= :type "metric"]
-                                  (workspaces/workspace-visibility-clause :model/Card :report_card.id :report_card.workspace_id)]
+                                  [:= :type "metric"]]
                        :order-by [[:name :asc]]})
            (filter mi/can-read?)))
     tables))

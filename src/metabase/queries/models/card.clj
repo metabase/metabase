@@ -332,13 +332,14 @@
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
+   ;; `mi/can-read?` (below) fully implements workspace visibility for `:model/Card` (see
+   ;; `readable-workspace-row?`), so no bespoke workspace clause is needed here.
    #(group-by :source_card_id
               (->> (t2/select :model/Card
                               {:where    [:and
                                           [:in :source_card_id (map :id cards)]
                                           [:= :archived false]
-                                          [:= :type "metric"]
-                                          (workspaces/workspace-visibility-clause :model/Card :report_card.id :report_card.workspace_id)]
+                                          [:= :type "metric"]]
                                :order-by [[:name :asc]]})
                    (filter mi/can-read?)))
    :id))
@@ -1606,6 +1607,8 @@
                        [:= :pulse.archived false]]
                :sandboxes [:= :sandboxes.card_id :report_card.id]
                :collection [:= :collection.id :report_card.collection_id]]
+   ;; Raw admin stale-content query with no `mi/can-read?` post-filter and no `visible-collection-filter-clause`
+   ;; call to fold into, so the entity-level clause stays bespoke here.
    :where [:and
            [:= :sandboxes.id nil]
            [:= :pulse.id nil]

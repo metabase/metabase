@@ -331,8 +331,9 @@
 
 (mu/defmethod mi/can-read? :model/Collection
   ([instance]
-   (or (is-trash? instance)
-       (perms/can-read-audit-helper :model/Collection instance)))
+   (and (workspaces/readable-workspace-row? instance)
+        (or (is-trash? instance)
+            (perms/can-read-audit-helper :model/Collection instance))))
   ([_model pk :- pos-int?]
    (or (is-trash? pk)
        (mi/can-read? (t2/select-one :model/Collection :id pk)))))
@@ -769,6 +770,15 @@
   [:set
    [:or [:= "root"] ms/PositiveInt]])
 
+(def ^:private WorkspaceEntityScope
+  "Identifies the entity-level columns [[visible-collection-filter-clause]] should additionally restrict by
+  workspace visibility -- distinct from `collection-id-field`, which is the *parent collection's* id column.
+  See [[metabase.workspaces.core/workspace-visibility-clause]]."
+  [:map
+   [:model :keyword]
+   [:id-field :keyword]
+   [:workspace-id-field :keyword]])
+
 (def ^:private CollectionVisibilityConfig
   [:map
    [:cte-name {:optional true} [:maybe :keyword]]
@@ -776,7 +786,8 @@
    [:include-archived-items {:optional true} [:enum :only :exclude :all]]
    [:archive-operation-id {:optional true} [:maybe :string]]
    [:permission-level {:optional true} [:enum :read :write]]
-   [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]])
+   [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]
+   [:workspace-entity {:optional true} [:maybe WorkspaceEntityScope]]])
 
 (def ^:private UserScope
   [:map
@@ -928,7 +939,14 @@
 (mu/defn visible-collection-filter-clause
   "Given a `CollectionVisibilityConfig`, return a HoneySQL filter clause ready for use in queries. Takes an optional
   `cte-name` in the visibility config which is used as the source for collection IDs if provided; otherwise, we filter
-  based on the results of `visible-collection-query` above."
+  based on the results of `visible-collection-query` above.
+
+  When `visibility-config` includes `:workspace-entity` (a [[WorkspaceEntityScope]] naming the *entity's own*
+  id/workspace-id columns, as opposed to `collection-id-field`, its *parent collection's* id column), the
+  returned clause is additionally ANDed with [[metabase.workspaces.core/workspace-visibility-clause]] for that
+  entity. This is the central hook for entity-level workspace visibility in collection-scoped listings -- a
+  collection-only clause can't hide entity copies, since a workspace copy lives in the same (main) collection
+  as its source."
   ([]
    (visible-collection-filter-clause :collection_id))
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]]
@@ -942,16 +960,23 @@
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
     visibility-config :- CollectionVisibilityConfig
     user-scope :- UserScope]
-   (let [{:keys [cte-name] :as visibility-config} (merge default-visibility-config visibility-config)]
-     [:or
-      (when (should-display-root-collection? user-scope visibility-config)
-        [:= collection-id-field nil])
-      ;; the non-root collections are here. We're saying "let this row through if..."
-      [:in
-       collection-id-field
-       (if cte-name
-         {:select :id :from cte-name}
-         (visible-collection-query visibility-config user-scope))]])))
+   (let [{:keys [cte-name workspace-entity] :as visibility-config} (merge default-visibility-config visibility-config)
+         collection-clause [:or
+                            (when (should-display-root-collection? user-scope visibility-config)
+                              [:= collection-id-field nil])
+                            ;; the non-root collections are here. We're saying "let this row through if..."
+                            [:in
+                             collection-id-field
+                             (if cte-name
+                               {:select :id :from cte-name}
+                               (visible-collection-query visibility-config user-scope))]]]
+     (if workspace-entity
+       [:and
+        collection-clause
+        (workspaces/workspace-visibility-clause (:model workspace-entity)
+                                                (:id-field workspace-entity)
+                                                (:workspace-id-field workspace-entity))]
+       collection-clause))))
 
 (defn- effective-child-of-filter-clause
   [parent-coll collection-table-alias visibility-config]

@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.workspaces.core :as workspaces]
@@ -16,6 +17,13 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defmethod mi/can-read? :model/Timeline
+  ([instance]
+   (and (workspaces/readable-workspace-row? instance)
+        (mi/current-user-has-full-permissions? :read instance)))
+  ([model pk]
+   (mi/can-read? (t2/select-one model pk))))
 
 ;;;; transforms
 
@@ -40,6 +48,8 @@
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
   timeline at `:events` on the timeline."
   [collection-id {:keys [timeline/events? timeline/archived?] :as options}]
+  ;; Callers `api/read-check` the parent collection before calling this, so there's no per-row collection
+  ;; permission left to check here -- only the entity-level workspace clause, which stays bespoke.
   (cond-> (t2/hydrate (t2/select :model/Timeline
                                  {:where [:and
                                           [:= :collection_id collection-id]

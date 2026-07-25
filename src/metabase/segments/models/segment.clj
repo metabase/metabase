@@ -76,8 +76,9 @@
 
 (defmethod mi/can-read? :model/Segment
   ([instance]
-   (let [table (:table (t2/hydrate instance :table))]
-     (mi/can-read? table)))
+   (and (workspaces/readable-workspace-row? instance)
+        (let [table (:table (t2/hydrate instance :table))]
+          (mi/can-read? table))))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 

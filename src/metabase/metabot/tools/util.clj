@@ -231,6 +231,9 @@
                             [:and true])
         base-query {:select [:report_card.*]
                     :from   [[:report_card]]
+                    ;; Not folded into `visible-collection-filter-clause`'s `:workspace-entity`: the collection
+                    ;; clause here is conditional on `*current-user-id*` (metabot can run without one), but
+                    ;; workspace visibility must still apply unconditionally in that case.
                     :where [:and
                             [:!= :report_card.database_id audit-app/audit-db-id]
                             collection-filter

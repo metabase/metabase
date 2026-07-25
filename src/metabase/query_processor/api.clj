@@ -34,6 +34,7 @@
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [not-empty get-in]]
+   [metabase.workspaces.core :as workspaces]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
 
@@ -48,7 +49,10 @@
   (when-let [source-card-id (and ((complement #{:internal "internal"}) (:type query))
                                  (some-> query not-empty lib-be/normalize-query lib/primary-source-card-id))]
     (log/infof "Source query for this query is Card %s" (pr-str source-card-id))
-    (api/read-check :model/Card source-card-id)
+    ;; Read-check the workspace copy (if any), presented under `source-card-id` like every other
+    ;; workspace-wired read-check, so a workspace user querying their own (possibly shadowed-source) copy
+    ;; isn't blocked by `mi/can-read?`'s workspace check -- see `readable-workspace-row?`.
+    (api/read-check :model/Card (workspaces/remapped-entity-id :model/Card source-card-id))
     source-card-id))
 
 (mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.server.streaming_response.StreamingResponse)

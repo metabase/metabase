@@ -17,7 +17,8 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (mu/defn current-workspace-id :- [:maybe pos-int?]
   "ID of the current user's active workspace (`core_user.workspace_id`, carried on
@@ -63,6 +64,48 @@
   sees Toucan model keywords through the module's public API."
   [model]
   (keyword (u/->kebab-case-en (name model))))
+
+(defn- shadowed-by-workspace-copy?
+  "True if `id` (belonging to `model`, a main/nil-workspace row) has been copied into `workspace-id` -- i.e.
+  there's a `workspace_entity_remapping` row for (`workspace-id`, `model`, `id`) whose `target_entity_id`
+  differs from its `source_entity_id`. See [[workspace-visibility-clause]]'s docstring for the full rule this
+  implements; kept in sync with it by construction (same table, same predicate).
+
+  `model` and `id` come from [[t2/model]] / `:id` on a `can-read?` `instance`, which isn't always a genuine
+  Toucan instance (e.g. rows shaped by a metadata provider for the QP) -- `model` or `id` missing means we
+  can't answer the question, so default to *not* shadowed rather than throwing."
+  [model id workspace-id]
+  (boolean
+   (and model id
+        (t2/exists? :workspace_entity_remapping
+                    {:where [:and
+                             [:= :workspace_id workspace-id]
+                             [:= :entity_type (name (model->entity-type model))]
+                             [:= :source_entity_id id]
+                             [:not= :target_entity_id :source_entity_id]]}))))
+
+(defn readable-workspace-row?
+  "Row-level counterpart to [[workspace-visibility-clause]], for `mi/can-read?` implementations -- readable
+  exactly when a listing filtered by that clause would include this row:
+
+  - `instance`'s `:workspace_id` matches the current user's active workspace, OR
+  - `instance`'s `:workspace_id` is nil (a main row) AND it isn't shadowed by a copy in the current workspace
+    (vacuously true when there's no active workspace).
+
+  This is safe for direct/already-resolved reads too, not just listings: every workspace-wired endpoint
+  remaps *before* read-checking, so a workspace user reads their own copy (presented under the source id),
+  never the shadowed source row itself -- see `workspace-query-remapping-test` for the QP path in particular.
+
+  Runs one query per call (via [[shadowed-by-workspace-copy?]]) when `instance` is a main row and a workspace
+  is active; fine for `can-read?` and small `filter mi/can-read?` post-filters, but listings should prefer
+  [[workspace-visibility-clause]] (or a builder that ANDs it in) instead of relying on this in a loop."
+  [instance]
+  (let [row-workspace-id (:workspace_id instance)
+        active-workspace-id (current-workspace-id)]
+    (if (some? row-workspace-id)
+      (= row-workspace-id active-workspace-id)
+      (or (nil? active-workspace-id)
+          (not (shadowed-by-workspace-copy? (t2/model instance) (:id instance) active-workspace-id))))))
 
 (defn workspace-visibility-clause
   "HoneySQL `:where` clause restricting rows of `model` to what the current user's active workspace

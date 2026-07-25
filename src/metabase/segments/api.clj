@@ -78,10 +78,11 @@
 (api.macros/defendpoint :get "/"
   "Fetch *all* `Segments`."
   []
+  ;; `mi/can-read?` (below) fully implements workspace visibility for `:model/Segment` (see
+  ;; `readable-workspace-row?`), so no bespoke workspace clause is needed here.
   (as-> (t2/select :model/Segment
                    {:where    [:and
-                               [:= :archived false]
-                               (workspaces/workspace-visibility-clause :model/Segment :segment.id :segment.workspace_id)]
+                               [:= :archived false]]
                     :order-by [[:%lower.name :asc]]}) segments
     (filter mi/can-read? segments)
     (t2/hydrate segments :creator :definition_description)))

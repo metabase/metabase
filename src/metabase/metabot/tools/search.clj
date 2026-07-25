@@ -19,7 +19,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -199,12 +198,13 @@
   agent attempts to save into them."
   [results]
   (let [document-ids (->> results (filter #(= "document" (:type %))) (map :id) set)
+        ;; `mi/can-read?` (below) fully implements workspace visibility for `:model/Document` (see
+        ;; `readable-workspace-row?`), so no bespoke workspace clause is needed here.
         id->document (when (seq document-ids)
                        (->> (t2/select :model/Document
                                        {:where [:and
                                                 [:in :id document-ids]
-                                                [:= :archived false]
-                                                (workspaces/workspace-visibility-clause :model/Document :document.id :document.workspace_id)]})
+                                                [:= :archived false]]})
                             (filter mi/can-read?)
                             (map (juxt :id identity))
                             (into {})))]

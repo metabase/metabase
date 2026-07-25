@@ -53,16 +53,24 @@
     (keyword filter-option)))
 
 (defn- card-visibility-clause
-  "Workspace-visibility clause for unaliased `report_card` queries. The columns must be table-qualified
-  because the clause contains a correlated subquery."
+  "Workspace-visibility clause for unaliased `report_card` queries. Only used by the `/public` and
+  `/embeddable` endpoints below -- admin-only listings that intentionally skip collection-permission checks
+  (so can't lean on `mi/can-read?`, which the `cards-for-filter-option*` methods below use instead)."
   []
   (workspaces/workspace-visibility-clause :model/Card :report_card.id :report_card.workspace_id))
+
+;; None of the `cards-for-filter-option*` methods below apply a workspace-visibility clause: their results
+;; always flow through `cards-for-filter-option` into `(filter mi/can-read? ...)` (see the `GET /` handler),
+;; and `mi/can-read?` for `:model/Card` fully implements workspace visibility (including shadowed-source
+;; exclusion) -- see `readable-workspace-row?`. `/public` and `/embeddable` below are different: they're
+;; admin-only listings that intentionally skip collection-permission checks, so they keep an explicit,
+;; workspace-only clause instead of `mi/can-read?`.
 
 ;; return all Cards. This is the default filter option.
 (defmethod cards-for-filter-option* :all
   [_]
   (t2/select :model/Card (merge order-by-name
-                                {:where [:and [:= :archived false] (card-visibility-clause)]})))
+                                {:where [:= :archived false]})))
 
 ;; return Cards created by the current user
 (defmethod cards-for-filter-option* :mine
@@ -70,8 +78,7 @@
   (t2/select :model/Card (merge order-by-name
                                 {:where [:and
                                          [:= :creator_id api/*current-user-id*]
-                                         [:= :archived false]
-                                         (card-visibility-clause)]})))
+                                         [:= :archived false]]})))
 
 ;; return all Cards bookmarked by the current user.
 (defmethod cards-for-filter-option* :bookmarked
@@ -88,8 +95,7 @@
   (t2/select :model/Card (merge order-by-name
                                 {:where [:and
                                          [:= :database_id database-id]
-                                         [:= :archived false]
-                                         (card-visibility-clause)]})))
+                                         [:= :archived false]]})))
 
 ;; Return all Cards belonging to `Table` with `table-id`.
 (defmethod cards-for-filter-option* :table
@@ -97,14 +103,13 @@
   (t2/select :model/Card (merge order-by-name
                                 {:where [:and
                                          [:= :table_id table-id]
-                                         [:= :archived false]
-                                         (card-visibility-clause)]})))
+                                         [:= :archived false]]})))
 
 ;; Cards that have been archived.
 (defmethod cards-for-filter-option* :archived
   [_]
   (t2/select :model/Card (merge order-by-name
-                                {:where [:and [:= :archived true] (card-visibility-clause)]})))
+                                {:where [:= :archived true]})))
 
 ;; Cards that are using a given model.
 (defmethod cards-for-filter-option* :using_model
@@ -118,8 +123,7 @@
                                                           [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
                                :where [:and
                                        [:= :m.id model-id]
-                                       [:not :c.archived]
-                                       (workspaces/workspace-visibility-clause :model/Card :c.id :c.workspace_id)]
+                                       [:not :c.archived]]
                                :order-by [[[:lower :c.name] :asc]]})
        ;; now check if model-id really occurs as a card ID
        (filter (fn [card]
@@ -129,9 +133,7 @@
   [model-type :- [:enum :segment :metric]
    model-id   :- pos-int?]
   (->> (t2/select :model/Card (merge order-by-name
-                                     {:where [:and
-                                              [:like :dataset_query (str "%" (name model-type) "%" model-id "%")]
-                                              (card-visibility-clause)]}))
+                                     {:where [:like :dataset_query (str "%" (name model-type) "%" model-id "%")]}))
        ;; now check if the segment/metric with model-id really occurs in a filter/aggregation expression
        (filter (fn [{query :dataset_query, :as _card}]
                  (when (seq query)
@@ -423,7 +425,7 @@
                                    :display [:in supported-series-display-type]
                                    :id [:not= (:id card)]
                                    (cond-> {:order-by [[:id :desc]]
-                                            :where    [:and (card-visibility-clause)]}
+                                            :where    [:and]}
                                      last-cursor
                                      (update :where conj [:< :id last-cursor])
 

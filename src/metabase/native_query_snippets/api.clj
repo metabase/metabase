@@ -21,10 +21,11 @@
   ([]
    (list-native-query-snippets false))
   ([archived :- ms/BooleanValue]
+   ;; `mi/can-read?` (below) fully implements workspace visibility for `:model/NativeQuerySnippet` (see
+   ;; `readable-workspace-row?`), so no bespoke workspace clause is needed here.
    (let [snippets (t2/select :model/NativeQuerySnippet
                              {:where    [:and
-                                         [:= :archived archived]
-                                         (workspaces/workspace-visibility-clause :model/NativeQuerySnippet :native_query_snippet.id :native_query_snippet.workspace_id)]
+                                         [:= :archived archived]]
                               :order-by [[:%lower.name :asc]]})]
      (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced))))
 

@@ -75,11 +75,12 @@
    (deferred-tru "value must be a parameter map with an ''id'' key")))
 
 (defn- dashboards-list [filter-option]
+  ;; `mi/can-read?` (below) fully implements workspace visibility for `:model/Dashboard` (see
+  ;; `readable-workspace-row?`), so no bespoke workspace clause is needed here.
   (as-> (t2/select :model/Dashboard {:where    [:and (case (or (keyword filter-option) :all)
                                                        (:all :archived)  true
                                                        :mine [:= :creator_id api/*current-user-id*])
-                                                [:= :archived (= (keyword filter-option) :archived)]
-                                                (workspaces/workspace-visibility-clause :model/Dashboard :report_dashboard.id :report_dashboard.workspace_id)]
+                                                [:= :archived (= (keyword filter-option) :archived)]]
                                      :order-by [:%lower.name]}) <>
     (t2/hydrate <> :creator)
     (filter mi/can-read? <>)))

@@ -33,6 +33,8 @@
                   [:metabase_database.name :database-name]])
    (let [model-symb (symbol (str/capitalize model))
          self-qualify #(app-db/qualify model-symb %)]
+     ;; Raw select of already-known ids (from the view log), with no `mi/can-read?` post-filter and no
+     ;; collection to hang `visible-collection-filter-clause` off of, so the entity-level clause stays bespoke.
      {:where (case model
                ;; Tables are not workspace-scoped; hide cards/dashboards belonging to other users' workspaces
                ;; (and main entities shadowed by the current workspace's copies).

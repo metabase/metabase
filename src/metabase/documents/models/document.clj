@@ -34,6 +34,13 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
+(defmethod mi/can-read? :model/Document
+  ([instance]
+   (and (workspaces/readable-workspace-row? instance)
+        (mi/current-user-has-full-permissions? :read instance)))
+  ([model pk]
+   (mi/can-read? (t2/select-one model pk))))
+
 (def DocumentName
   "Validations for the name of a document"
   (mu/with-api-error-message

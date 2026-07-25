@@ -114,8 +114,11 @@
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 
 (defmethod mi/can-read? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-read? args))
+  ([instance]
+   (and (workspaces/readable-workspace-row? instance)
+        (snippet.perms/can-read? instance)))
+  ([model pk]
+   (mi/can-read? (t2/select-one model pk))))
 
 (defmethod mi/can-write? :model/NativeQuerySnippet
   [& args]

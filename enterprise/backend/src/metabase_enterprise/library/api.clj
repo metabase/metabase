@@ -66,8 +66,10 @@
                           {:include-archived-items    :exclude
                            :include-trash-collection? false
                            :permission-level          :read
-                           :archive-operation-id      nil})
-                         (workspaces/workspace-visibility-clause :model/Collection :collection.id :collection.workspace_id)]
+                           :archive-operation-id      nil
+                           :workspace-entity          {:model :model/Collection
+                                                       :id-field :collection.id
+                                                       :workspace-id-field :collection.workspace_id}})]
               :order-by [[:%lower.name :asc]]}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -88,6 +90,9 @@
                                          {:dataset #{}
                                           :metric  #{}
                                           :card    #{}}
+                                         ;; Raw distinct-columns aggregate over `report_card` (no Card instances,
+                                         ;; so no `mi/can-read?` to lean on; not collection-scoped by itself
+                                         ;; either), so the entity-level clause stays bespoke here.
                                          (t2/reducible-query {:select-distinct [:collection_id :type]
                                                               :from            [:report_card]
                                                               :where           [:and

@@ -25,6 +25,13 @@
   ;; Disabled for performance reasons, see update-dashboard-card!-call-count-test
   #_(derive :hook/search-index))
 
+(defmethod mi/can-read? :model/DashboardCard
+  ([instance]
+   (and (workspaces/readable-workspace-row? instance)
+        (mi/current-user-has-full-permissions? :read instance)))
+  ([model pk]
+   (mi/can-read? (t2/select-one model pk))))
+
 (t2/deftransforms :model/DashboardCard
   {:parameter_mappings     parameters/transform-parameter-mappings
    :visualization_settings mi/transform-visualization-settings

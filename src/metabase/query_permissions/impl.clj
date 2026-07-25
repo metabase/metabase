@@ -26,6 +26,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -306,6 +307,14 @@
   [database-id card-id]
   (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
               (update-keys u/->snake_case_en)
+              ;; The metadata provider already resolves `card-id` to its workspace copy (if any) and presents
+              ;; it back under the source id -- see `metabase.lib-be.metadata.jvm/metadatas` -- but the lib
+              ;; metadata schema doesn't carry `:workspace_id` through, so `mi/can-read?`'s workspace check
+              ;; (see `readable-workspace-row?`) would otherwise see a bare `nil` and treat this as an
+              ;; unshadowed main row, which is wrong when it's actually a shadowed row we're reading via its
+              ;; copy. Recover it here: `card-id` is remapped iff we're really looking at the copy.
+              (assoc :workspace_id (when (not= card-id (workspaces/remapped-entity-id :model/Card card-id))
+                                     (workspaces/current-workspace-id)))
               (vary-meta assoc :type :model/Card))
       ;; In the case of SQL actions, the query being executed might not act on the same database as that
       ;; used by the model upon which the action is defined. In this case, the underlying model whose

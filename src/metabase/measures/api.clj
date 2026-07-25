@@ -103,10 +103,11 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
   []
+  ;; `mi/can-read?` (below) fully implements workspace visibility for `:model/Measure` (see
+  ;; `readable-workspace-row?`), so no bespoke workspace clause is needed here.
   (as-> (t2/select :model/Measure
                    {:where    [:and
-                               [:= :archived false]
-                               (workspaces/workspace-visibility-clause :model/Measure :measure.id :measure.workspace_id)]
+                               [:= :archived false]]
                     :order-by [[:%lower.name :asc]]}) measures
     (filter mi/can-read? measures)
     (t2/hydrate measures :creator :definition_description)))

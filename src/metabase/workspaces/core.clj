@@ -21,6 +21,7 @@
   current-workspace-id
   delete-remapping!
   ensure-workspace-copy!
+  readable-workspace-row?
   remapped-entity-id
   remapped-entity-ids
   source-entity-id
