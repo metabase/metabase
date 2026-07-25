@@ -18,8 +18,8 @@ export const InputContainer = styled.div<InputContainerProps>`
   justify-content: space-between;
   align-items: center;
   overflow: hidden;
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
+  padding-inline-start: 0.75rem;
+  padding-inline-end: 0.75rem;
   pointer-events: auto;
   border-radius: 8px;
   border: 1px solid transparent;
@@ -40,7 +40,7 @@ export const InputContainer = styled.div<InputContainerProps>`
   ${({ isPreviewing, isEmpty }) =>
     (!isPreviewing || isEmpty) &&
     css`
-      padding-left: calc(0.75rem - 1px);
+      padding-inline-start: calc(0.75rem - 1px);
     `} /* adjust for border on preview/no entered content */
   ${({ isEmpty }) =>
     isEmpty &&

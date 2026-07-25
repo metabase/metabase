@@ -4,7 +4,7 @@
   padding: 0;
 
   @container query-builder (min-width: 70em) {
-    padding-left: 2rem;
-    padding-right: 1rem;
+    padding-inline-start: 2rem;
+    padding-inline-end: 1rem;
   }
 }

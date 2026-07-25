@@ -39,16 +39,16 @@ export const PinDropTargetIndicator = styled.div<PinDropTargetRenderArgs>`
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 0;
-  right: 0;
-  border-left: ${(props) =>
+  inset-inline-start: 0;
+  inset-inline-end: 0;
+  border-inline-start: ${(props) =>
     props.isFrontTarget &&
     `4px solid ${
       props.hovered
         ? color("core-brand")
         : "var(--mb-color-background_page-tertiary)"
     }`};
-  border-right: ${(props) =>
+  border-inline-end: ${(props) =>
     props.isBackTarget &&
     `4px solid ${
       props.hovered

@@ -13,12 +13,12 @@
 
 .revisionsWrapper {
   padding-top: 20px;
-  padding-left: var(--icon-width);
+  padding-inline-start: var(--icon-width);
 }
 
 .schemaSeparator {
   composes: textLight my2 from "style";
-  margin-left: 0;
+  margin-inline-start: 0;
   font-size: 18px;
 }
 

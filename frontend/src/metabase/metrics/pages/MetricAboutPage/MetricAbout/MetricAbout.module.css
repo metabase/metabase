@@ -11,7 +11,7 @@
 .exploreButtonOverlay {
   position: absolute;
   top: var(--mantine-spacing-xl);
-  right: var(--mantine-spacing-xl);
+  inset-inline-end: var(--mantine-spacing-xl);
   z-index: 1;
 }
 

@@ -44,7 +44,7 @@ interface AppBarLogoContainerProps {
 export const AppBarLogoContainer = styled.div<AppBarLogoContainerProps>`
   position: absolute;
   top: 50%;
-  left: 50%;
+  inset-inline-start: 50%;
   transform: translate(-50%, -50%);
   opacity: ${(props) => (props.isVisible ? 1 : 0)};
   visibility: ${(props) => (props.isVisible ? "visible" : "hidden")};

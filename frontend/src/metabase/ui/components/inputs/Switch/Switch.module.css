@@ -1,10 +1,10 @@
 .root {
   &[data-label-position="left"] .labelWrapper:not(:empty) {
-    padding-right: var(--switch-padding);
+    padding-inline-end: var(--switch-padding);
   }
 
   &[data-label-position="right"] .labelWrapper:not(:empty) {
-    padding-left: var(--switch-padding);
+    padding-inline-start: var(--switch-padding);
   }
 
   &[data-disabled] {

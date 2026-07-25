@@ -84,10 +84,10 @@
 
 .NavLinkSection {
   &[data-position="left"] {
-    margin-right: var(--mantine-spacing-sm);
+    margin-inline-end: var(--mantine-spacing-sm);
   }
 
   &[data-position="right"] {
-    margin-left: var(--mantine-spacing-sm);
+    margin-inline-start: var(--mantine-spacing-sm);
   }
 }

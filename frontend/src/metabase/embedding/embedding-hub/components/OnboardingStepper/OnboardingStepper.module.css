@@ -65,7 +65,7 @@
 /* Step number (circle) */
 .StepNumber {
   position: absolute;
-  left: 0;
+  inset-inline-start: 0;
   transform: translateX(-50%);
   display: flex;
   justify-content: center;

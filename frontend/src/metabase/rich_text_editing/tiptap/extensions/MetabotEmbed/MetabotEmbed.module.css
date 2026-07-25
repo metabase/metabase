@@ -1,7 +1,7 @@
 .codeBlockTextArea {
   color: var(--mb-color-text-primary);
   padding: var(--mantine-spacing-md);
-  padding-right: var(--mantine-spacing-lg);
+  padding-inline-end: var(--mantine-spacing-lg);
   height: 110px;
 
   &[contenteditable="false"] {

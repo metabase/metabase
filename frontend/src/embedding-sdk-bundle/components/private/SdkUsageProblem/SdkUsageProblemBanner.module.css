@@ -26,7 +26,7 @@
 
 .Indicator .Content .PillTitle {
   color: #509ee3;
-  margin-left: 0.37rem;
+  margin-inline-start: 0.37rem;
 }
 
 .Indicator .Logo {

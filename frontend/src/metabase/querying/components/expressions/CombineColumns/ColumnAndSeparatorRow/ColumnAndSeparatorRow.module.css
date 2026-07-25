@@ -13,7 +13,7 @@
 .placeholder {
   position: absolute;
   bottom: 0.5rem;
-  left: 0.75rem;
+  inset-inline-start: 0.75rem;
   pointer-events: none;
   user-select: none;
 }

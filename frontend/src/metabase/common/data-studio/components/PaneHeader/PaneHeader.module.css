@@ -5,6 +5,6 @@
      this can be removed. */
   @media screen and (max-width: calc(50rem + 300px)) {
     position: fixed;
-    right: 3.5rem;
+    inset-inline-end: 3.5rem;
   }
 }

@@ -65,7 +65,7 @@
   }
 
   &.leftBorder {
-    border-left: 1px solid
+    border-inline-start: 1px solid
       color-mix(
         in srgb,
         var(--mb-color-background_page-primary),
@@ -74,12 +74,12 @@
   }
 
   &.leftRoundedCorners {
-    border-top-left-radius: 6px;
-    border-bottom-left-radius: 6px;
+    border-start-start-radius: 6px;
+    border-end-start-radius: 6px;
   }
 
   &.rightRoundedCorners {
-    border-top-right-radius: 6px;
-    border-bottom-right-radius: 6px;
+    border-start-end-radius: 6px;
+    border-end-end-radius: 6px;
   }
 }

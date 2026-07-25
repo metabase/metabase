@@ -16,7 +16,7 @@
 .codeSnippetCopyButton {
   position: absolute;
   top: var(--mantine-spacing-md);
-  right: var(--mantine-spacing-md);
+  inset-inline-end: var(--mantine-spacing-md);
   z-index: 1;
   cursor: pointer;
 }

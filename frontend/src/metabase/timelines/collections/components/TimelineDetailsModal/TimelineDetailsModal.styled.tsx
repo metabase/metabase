@@ -20,7 +20,7 @@ export const ModalToolbarLink = styled(Link)`
   flex: 0 0 auto;
   align-items: center;
   height: 2.5rem;
-  margin-left: 1rem;
+  margin-inline-start: 1rem;
 `;
 
 interface ModalBodyProps {

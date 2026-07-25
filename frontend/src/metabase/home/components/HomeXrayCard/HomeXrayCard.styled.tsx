@@ -15,8 +15,8 @@ export const CardIcon = styled(Icon)`
 export const CardTitle = styled(Ellipsified)`
   font-size: 1rem;
   font-weight: bold;
-  margin-left: 0.5rem;
-  padding-right: 0.2rem;
+  margin-inline-start: 0.5rem;
+  padding-inline-end: 0.2rem;
 `;
 
 export const CardTitlePrimary = styled.span`

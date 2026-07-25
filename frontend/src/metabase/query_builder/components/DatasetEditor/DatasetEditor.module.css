@@ -28,7 +28,7 @@
   color: var(--mb-color-text-primary-inverse);
   border-radius: 0.3em;
   padding: 0.2em;
-  margin-right: 8px;
+  margin-inline-end: 8px;
   transition: all 0.25s;
   flex-shrink: 0;
 

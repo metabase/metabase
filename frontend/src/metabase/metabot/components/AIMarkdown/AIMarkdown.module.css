@@ -61,7 +61,7 @@
 .aiMarkdown th,
 .aiMarkdown td {
   padding: 0.5rem 0.75rem;
-  text-align: left;
+  text-align: start;
   vertical-align: top;
   border-top: 1px solid var(--mb-color-border-neutral);
 }
@@ -149,7 +149,7 @@
 
 .aiMarkdown ul,
 .aiMarkdown ol {
-  padding-left: 1.5rem;
+  padding-inline-start: 1.5rem;
   margin-bottom: 1rem;
 }
 
@@ -194,5 +194,5 @@
 
 .icon {
   margin-bottom: -0.125rem;
-  margin-right: 0.25rem;
+  margin-inline-end: 0.25rem;
 }

@@ -93,7 +93,7 @@
 }
 
 .flexAlignRight {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .layoutCentered {

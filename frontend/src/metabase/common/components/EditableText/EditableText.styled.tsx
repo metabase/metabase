@@ -50,7 +50,7 @@ export const EditableTextRoot = styled.div<EditableTextRootProps>`
 export const EditableTextArea = styled.textarea`
   position: absolute;
   top: 0;
-  left: 0;
+  inset-inline-start: 0;
   width: 100%;
   height: 100%;
   min-height: 0;

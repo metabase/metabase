@@ -12,7 +12,7 @@
 .WarningIcon {
   position: absolute;
   top: 13px;
-  left: 19px;
+  inset-inline-start: 19px;
 }
 
 .RemoveButton {
@@ -49,7 +49,7 @@
   display: flex;
   align-items: center;
   gap: var(--mantine-spacing-xs);
-  padding-left: var(--mantine-spacing-xs);
+  padding-inline-start: var(--mantine-spacing-xs);
 }
 
 .AddButton[data-variant="inverse"] {

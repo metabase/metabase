@@ -21,7 +21,7 @@
 
   &:has([data-position]) {
     .SelectInput {
-      padding-right: var(--input-right-section-width);
+      padding-inline-end: var(--input-right-section-width);
     }
   }
 }

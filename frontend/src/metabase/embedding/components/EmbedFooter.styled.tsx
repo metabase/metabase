@@ -10,7 +10,7 @@ import {
 
 export const ActionButtonsContainer = styled.div`
   color: var(--mb-color-text-secondary);
-  margin-left: auto;
+  margin-inline-start: auto;
 `;
 
 export type FooterVariant = "default" | "large";

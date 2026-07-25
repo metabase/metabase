@@ -40,7 +40,7 @@ export const ButtonsContainer = styled("div", {
     background-color: ${() => alpha("background_page-primary", 0.1)};
     border: none;
     font-size: 1em;
-    margin-left: 0.75em;
+    margin-inline-start: 0.75em;
   }
 
   button[data-variant="filled"] {

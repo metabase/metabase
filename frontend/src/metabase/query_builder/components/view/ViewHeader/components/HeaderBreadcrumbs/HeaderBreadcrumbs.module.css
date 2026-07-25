@@ -12,7 +12,7 @@
   color: var(--mb-color-text-disabled);
   font-size: 0.8em;
   font-weight: bold;
-  padding-left: 0.5em;
-  padding-right: 0.5em;
+  padding-inline-start: 0.5em;
+  padding-inline-end: 0.5em;
   user-select: none;
 }

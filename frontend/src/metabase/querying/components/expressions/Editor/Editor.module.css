@@ -18,7 +18,7 @@
 .toolbar {
   position: absolute;
   top: 0;
-  right: 0;
+  inset-inline-end: 0;
 }
 
 .toolbarButton {
@@ -30,11 +30,11 @@
   height: 100%;
   box-sizing: border-box;
   color: var(--mb-color-text-primary);
-  margin-right: calc(28px + var(--mantine-spacing-sm));
+  margin-inline-end: calc(28px + var(--mantine-spacing-sm));
 
   :global {
     .cm-gutters {
-      border-top-left-radius: var(--mantine-radius-sm);
+      border-start-start-radius: var(--mantine-radius-sm);
     }
   }
 }
@@ -55,7 +55,7 @@
 .shortcuts {
   position: absolute;
   bottom: var(--mantine-spacing-sm);
-  left: calc(1.6rem + var(--mantine-spacing-sm));
-  right: 0;
+  inset-inline-start: calc(1.6rem + var(--mantine-spacing-sm));
+  inset-inline-end: 0;
   transition: opacity 300ms;
 }
