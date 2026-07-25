@@ -55,7 +55,7 @@
   position: relative;
 
   .toggle {
-    inset-inline-start: 50%;
+    left: 50%;
     opacity: 0;
     position: absolute;
     top: 50%;

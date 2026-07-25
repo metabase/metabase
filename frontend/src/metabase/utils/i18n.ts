@@ -79,7 +79,6 @@ export function setLocalization(
   setLanguage(translationsObject);
   updateDayjsLocale(language);
   updateStartOfWeek(MetabaseSettings.get("start-of-week"));
-  applyLocaleDirection(language);
 
   if (ARABIC_LOCALES.includes(language)) {
     preserveLatinNumbersInDayjsLocale(language);
@@ -196,7 +195,10 @@ if (window.MetabaseSiteLocalization) {
   addLocale(locale, translationsObject);
 }
 
-// set the initial localization to user locale
+// set the initial localization to user locale. This branch only runs in the main
+// app (the embedding SDK never sets window.MetabaseUserLocalization), so it is safe
+// to reflect the direction on the host <html> here.
 if (window.MetabaseUserLocalization) {
   setLocalization(window.MetabaseUserLocalization);
+  applyLocaleDirection(window.MetabaseUserLocalization.headers.language);
 }

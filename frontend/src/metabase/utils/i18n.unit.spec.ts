@@ -97,11 +97,4 @@ describe("applyLocaleDirection", () => {
     applyLocaleDirection("en");
     expect(document.documentElement).toHaveAttribute("dir", "ltr");
   });
-
-  it("is applied automatically via setLocalization", () => {
-    setup("he");
-    expect(document.documentElement).toHaveAttribute("dir", "rtl");
-    setup("en");
-    expect(document.documentElement).toHaveAttribute("dir", "ltr");
-  });
 });
