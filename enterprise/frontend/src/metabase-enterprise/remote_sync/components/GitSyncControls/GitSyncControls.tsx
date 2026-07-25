@@ -57,6 +57,10 @@ export const GitSyncControls = () => {
   const workspaceId = useSelector(getUser)?.workspace_id;
   const { data: workspace } = useGetWorkspaceQuery(workspaceId ?? skipToken);
   const workspaceBranch = workspaceId != null ? workspace?.branch : undefined;
+  // A workspace's pull isn't wired into this UI -- it's a separate, workspace-scoped operation
+  // (its own branch, its own ledger, no conflict-resolution flow here) -- so hide "Pull changes"
+  // entirely with an active workspace and offer only Push.
+  const isWorkspaceMode = workspaceId != null;
 
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
@@ -299,6 +303,7 @@ export const GitSyncControls = () => {
         <GitSyncOptionsDropdown
           isPullDisabled={!hasRemoteChanges}
           isPullError={hasRemoteChangesError}
+          isPullHidden={isWorkspaceMode}
           isLoadingPull={isFetchingRemoteChanges}
           isPushDisabled={!isDirty || isLoading}
           onPullClick={handlePullClick}

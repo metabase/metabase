@@ -5313,6 +5313,41 @@
           (testing "with the workspace deactivated, everything is main again"
             (is (= "A" (:name (mt/user-http-request :crowberto :get 200 card-url))))))))))
 
+(deftest workspace-put-via-copy-id-does-not-clone-the-clone-test
+  (testing "PUT with the workspace copy's own real id (as listings/search hand it out) is idempotent, not a second clone (metabase#78578-style copy-of-copy bug)"
+    (mt/with-temp [:model/Workspace ws {:branch "cow"}]
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Card card {:name "A" :dataset_query (ws-count-query :venues)}]
+          (let [source-url (str "card/" (:id card))]
+            (workspaces.tu/in-workspace
+             (:id ws)
+             (testing "first PUT (via the source id) clones the card"
+               (let [updated (mt/user-http-request :crowberto :put 200 source-url {:name "A (ws)"})]
+                 (is (= (:id card) (:id updated)))))
+             (let [copy-id  (t2/select-one-fn :target_entity_id :model/WorkspaceEntityRemapping
+                                              :workspace_id (:id ws)
+                                              :entity_type :card
+                                              :source_entity_id (:id card))
+                   copy-url (str "card/" copy-id)]
+               (is (some? copy-id))
+               (is (not= copy-id (:id card)))
+               (testing "second PUT via the copy's own real id succeeds and does not clone again"
+                 (let [updated (mt/user-http-request :crowberto :put 200 copy-url {:name "A (ws again)"})]
+                   (is (= copy-id (:id updated)))
+                   (is (= "A (ws again)" (:name updated)))))
+               (testing "still exactly one remapping row for this source"
+                 (is (= 1 (t2/count :model/WorkspaceEntityRemapping
+                                    :workspace_id (:id ws)
+                                    :entity_type :card
+                                    :source_entity_id (:id card)))))
+               (testing "no remapping row was created with the copy id as a source"
+                 (is (nil? (t2/select-one :model/WorkspaceEntityRemapping
+                                          :workspace_id (:id ws)
+                                          :entity_type :card
+                                          :source_entity_id copy-id))))
+               (testing "GET via the source id shows the latest edit"
+                 (is (= "A (ws again)" (:name (mt/user-http-request :crowberto :get 200 source-url)))))))))))))
+
 (deftest workspace-query-remapping-test
   (mt/with-temp [:model/Workspace ws {:branch "cow"}]
     (mt/with-model-cleanup [:model/Card]

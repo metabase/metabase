@@ -29,6 +29,8 @@
             (testing "mapped IDs are remapped in both directions"
               (is (= 222 (workspaces/remapped-entity-id :model/Card 111)))
               (is (= 111 (workspaces/source-entity-id :model/Card 222))))
+            (testing "a copy's own (target) id is already resolved -- forward remapping is a no-op on it"
+              (is (= 222 (workspaces/remapped-entity-id :model/Card 222))))
             (testing "unmapped IDs pass through"
               (is (= 333 (workspaces/remapped-entity-id :model/Card 333)))
               (is (= 333 (workspaces/source-entity-id :model/Card 333))))

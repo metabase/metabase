@@ -8,6 +8,7 @@
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.events :as remote-sync.events]
+   [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [with-library-synced]]
@@ -120,6 +121,54 @@
               (is (= (:id initial-entry) (:id update-entry)))
               (is (= "create" (:status update-entry)))
               (is (= (:status_changed_at initial-entry) (:status_changed_at update-entry))))))))))
+
+(deftest card-event-workspace-id-derived-from-entity-not-collection-test
+  (testing "the RemoteSyncObject's ledger (workspace_id) comes from the changed entity's own
+           workspace_id, not its collection's -- a workspace copy-on-write clone lives in the
+           same (main) collection as its source, so deriving from the collection would always
+           land the row on the main ledger (metabase#78578-style regression)"
+    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
+                   :model/Workspace ws {:branch "cow"}
+                   :model/Card main-card {:name "Main Card"
+                                          :dataset_query (mt/mbql-query venues)
+                                          :collection_id (:id remote-sync-collection)}
+                   :model/Card ws-card {:name "WS Copy"
+                                        :dataset_query (mt/mbql-query venues)
+                                        :collection_id (:id remote-sync-collection)
+                                        ;; A workspace-owned row: same (main) collection as its
+                                        ;; source, but stamped with its own workspace.
+                                        :workspace_id (:id ws)}]
+      (t2/delete! :model/RemoteSyncObject)
+      (testing "an edit in the main app (no workspace_id on the entity) lands on the main ledger"
+        (events/publish-event! :event/card-create
+                               {:object main-card :user-id (mt/user->id :rasta)})
+        (is (=? {:model_type "Card" :model_id (:id main-card) :workspace_id nil}
+                (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id main-card)))))
+      (testing "an edit inside a workspace (entity carries workspace_id) lands on that workspace's ledger"
+        (events/publish-event! :event/card-create
+                               {:object ws-card :user-id (mt/user->id :rasta)})
+        (is (=? {:model_type "Card" :model_id (:id ws-card) :workspace_id (:id ws)}
+                (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id ws-card)))))
+      (testing "main-ledger dirty listing does not include the workspace edit"
+        (is (= #{(:id main-card)}
+               (set (map :id (remote-sync.object/dirty-objects))))))
+      (testing "the workspace's own ledger only includes its edit"
+        (is (= #{(:id ws-card)}
+               (set (map :id (remote-sync.object/dirty-objects (:id ws))))))))))
+
+(deftest collection-event-workspace-id-derived-from-own-column-test
+  (testing "a Collection's RemoteSyncObject ledger comes from the collection's own workspace_id"
+    (mt/with-temp [:model/Workspace ws {:branch "cow"}
+                   :model/Collection main-collection {:is_remote_synced true :name "Main" :location "/"}
+                   :model/Collection ws-collection {:is_remote_synced true :name "WS"
+                                                    :location "/" :workspace_id (:id ws)}]
+      (t2/delete! :model/RemoteSyncObject)
+      (events/publish-event! :event/collection-create {:object main-collection :user-id (mt/user->id :rasta)})
+      (events/publish-event! :event/collection-create {:object ws-collection :user-id (mt/user->id :rasta)})
+      (is (=? {:workspace_id nil}
+              (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id main-collection))))
+      (is (=? {:workspace_id (:id ws)}
+              (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id ws-collection)))))))
 
 (deftest card-event-in-normal-collection-no-entry-test
   (testing "card events in non-remote-sync collections don't create entries"
@@ -454,7 +503,7 @@
       (mt/with-current-user (mt/user->id :rasta)
         (t2/delete! :model/RemoteSyncObject)
         (let [hydrate-fn (fn [id] (t2/select-one [:model/Card :name :collection_id :display] :id id))]
-          (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Card" (:id card) "create" hydrate-fn)
+          (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Card" (:id card) "create" hydrate-fn nil)
           (let [entries (t2/select :model/RemoteSyncObject)]
             (is (= 1 (count entries)))
             (is (=? {:model_type "Card"
@@ -470,12 +519,12 @@
         (let [clock-t1 (t/mock-clock (t/instant "2024-01-01T10:00:00Z") (t/zone-id "UTC"))
               hydrate-fn (fn [id] (t2/select-one [:model/Dashboard :name :collection_id] :id id))]
           (t/with-clock clock-t1
-            (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Dashboard" (:id dashboard) "update" hydrate-fn))
+            (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Dashboard" (:id dashboard) "update" hydrate-fn nil))
           (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id dashboard))
                 initial-time (:status_changed_at initial-entry)
                 clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
             (t/with-clock clock-t2
-              (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Dashboard" (:id dashboard) "synced" hydrate-fn))
+              (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Dashboard" (:id dashboard) "synced" hydrate-fn nil))
             (let [entries (t2/select :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id dashboard))]
               (is (= 1 (count entries)))
               (let [update-entry (first entries)]
@@ -491,11 +540,11 @@
         (let [clock-t1 (t/mock-clock (t/instant "2024-01-01T10:00:00Z") (t/zone-id "UTC"))
               hydrate-fn (fn [id] (t2/select-one [:model/Dashboard :name :collection_id] :id id))]
           (t/with-clock clock-t1
-            (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Dashboard" (:id dashboard) "create" hydrate-fn))
+            (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Dashboard" (:id dashboard) "create" hydrate-fn nil))
           (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id dashboard))
                 clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
             (t/with-clock clock-t2
-              (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Dashboard" (:id dashboard) "synced" hydrate-fn))
+              (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Dashboard" (:id dashboard) "synced" hydrate-fn nil))
             (let [entries (t2/select :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id dashboard))]
               (is (= 1 (count entries)))
               (let [update-entry (first entries)]
@@ -509,7 +558,7 @@
       (t2/delete! :model/RemoteSyncObject)
       (let [existing-collection-id (t2/select-one-fn :id [:model/Collection :id])
             hydrate-fn (fn [id] (t2/select-one [:model/Collection :name [:id :collection_id]] :id id))]
-        (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Collection" existing-collection-id "create" hydrate-fn)
+        (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Collection" existing-collection-id "create" hydrate-fn nil)
         (let [entries (t2/select :model/RemoteSyncObject)]
           (is (= 1 (count entries)))
           (is (=? {:model_type "Collection"

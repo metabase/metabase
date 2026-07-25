@@ -5,6 +5,12 @@ import { Box, Combobox, Group, Icon, Loader, Text, Tooltip } from "metabase/ui";
 export interface GitSyncOptionsDropdownProps {
   isPullDisabled: boolean;
   isPullError: boolean;
+  /**
+   * Hides the "Pull changes" option entirely. A workspace's pull isn't wired into this UI (it's
+   * a separate, workspace-scoped operation with no conflict-resolution flow here yet), so with an
+   * active workspace this control only offers Push.
+   */
+  isPullHidden?: boolean;
   isLoadingPull: boolean;
   isPushDisabled: boolean;
   onPullClick: VoidFunction;
@@ -14,12 +20,14 @@ export interface GitSyncOptionsDropdownProps {
 export const GitSyncOptionsDropdown = ({
   isPullDisabled,
   isPullError,
+  isPullHidden,
   isLoadingPull,
   isPushDisabled,
   onPullClick,
   onPushClick,
 }: GitSyncOptionsDropdownProps) => {
-  if (isPullError) {
+  // The pull-changes check failing shouldn't hide Push too when pull isn't even offered.
+  if (isPullError && !isPullHidden) {
     return (
       <Combobox.Dropdown p={0}>
         <Box p="md">
@@ -50,25 +58,27 @@ export const GitSyncOptionsDropdown = ({
           </Combobox.Option>
         </Tooltip>
 
-        <Tooltip
-          label={isPullDisabled ? t`No changes to pull` : t`Pull from remote`}
-        >
-          <Combobox.Option
-            disabled={isPullDisabled || isLoadingPull}
-            onClick={onPullClick}
-            py="sm"
-            value="pull"
+        {!isPullHidden && (
+          <Tooltip
+            label={isPullDisabled ? t`No changes to pull` : t`Pull from remote`}
           >
-            <Group gap="md" wrap="nowrap">
-              {isLoadingPull ? (
-                <Loader size={12} data-testid="pull-changes-loader" />
-              ) : (
-                <Icon name="arrow_down" size={12} />
-              )}
-              <Text>{t`Pull changes`}</Text>
-            </Group>
-          </Combobox.Option>
-        </Tooltip>
+            <Combobox.Option
+              disabled={isPullDisabled || isLoadingPull}
+              onClick={onPullClick}
+              py="sm"
+              value="pull"
+            >
+              <Group gap="md" wrap="nowrap">
+                {isLoadingPull ? (
+                  <Loader size={12} data-testid="pull-changes-loader" />
+                ) : (
+                  <Icon name="arrow_down" size={12} />
+                )}
+                <Text>{t`Pull changes`}</Text>
+              </Group>
+            </Combobox.Option>
+          </Tooltip>
+        )}
       </Combobox.Options>
     </Combobox.Dropdown>
   );

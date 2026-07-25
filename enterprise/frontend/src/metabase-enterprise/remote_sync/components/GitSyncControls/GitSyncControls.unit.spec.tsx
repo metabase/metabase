@@ -438,6 +438,22 @@ describe("GitSyncControls", () => {
       expect(screen.getByLabelText("git_branch icon")).toBeInTheDocument();
       expect(screen.queryByLabelText("workspace icon")).not.toBeInTheDocument();
     });
+
+    it("hides Pull and offers only Push when the user has an active workspace", async () => {
+      setup({
+        workspaceId: 5,
+        workspace: createMockWorkspace({ id: 5, branch: "my-workspace" }),
+        hasRemoteChanges: true,
+      });
+
+      await waitFor(() => {
+        expect(getBranchButton(/my-workspace/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/my-workspace/));
+
+      expect(await findOption(/Push changes/)).toBeInTheDocument();
+      expect(screen.queryByText(/Pull changes/)).not.toBeInTheDocument();
+    });
   });
 
   // Kept last: setupEnterprisePlugins() registers the remote-sync redux reducer globally, which the other

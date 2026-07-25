@@ -59,14 +59,21 @@
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
-(defn- ledger-workspace-id
-  "Workspace whose ledger tracks a changed entity: its collection's workspace (for a Collection, its
-   own). Nil — the main-app ledger — for main-app content and collection-less trackables (e.g. the
-   transforms sentinel). Content created inside a workspace overlay must land in that workspace's ledger."
-  [model-type model-id collection-id]
-  (when-let [coll-id (if (= model-type "Collection") model-id collection-id)]
-    (when (pos-int? coll-id)
-      (t2/select-one-fn :workspace_id :model/Collection :id coll-id))))
+(defn- entity-workspace-id
+  "Workspace whose ledger tracks a changed entity: the entity's own `:workspace_id` column.
+
+   Every workspace-copy-on-write-eligible synced model (Card, Dashboard, Document,
+   NativeQuerySnippet, Timeline, Segment, Measure, Collection, ...) carries a `:workspace_id`
+   column, and every event handler here is invoked with the full DB row as `instance` (the
+   event's `:object`, or -- for cascaded children -- a freshly `t2/select`ed row), so the
+   column is simply read off it: nil on main, the workspace's id when the row is a workspace
+   copy or was created inside a workspace overlay.
+
+   Models that are never workspace-copyable (e.g. Field, which has no `:workspace_id` column
+   at all) correctly fall back to nil here too -- their changes only ever belong to the
+   main-app ledger."
+  [instance]
+  (:workspace_id instance))
 
 (defn- resolve-status
   "Suppresses a no-op 'update' based on status and content_hash, otherwise keep status unchanged."
@@ -93,8 +100,10 @@
    - model-id: ID of the affected model
    - status: Sync status ('create', 'update', 'removed', 'delete', 'error', 'synced')
    - hydrate-details-fn: Function that takes model-id and returns a map with :name, :collection_id,
-                         and optionally :display, :table_id, :table_name"
-  [model-type model-id status hydrate-details-fn]
+                         and optionally :display, :table_id, :table_name
+   - workspace-id: The ledger this entry belongs to -- see [[entity-workspace-id]]. Nil for the
+                   main-app ledger."
+  [model-type model-id status hydrate-details-fn workspace-id]
   (let [existing (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)]
     (cond
       (not existing)
@@ -109,7 +118,7 @@
                      :model_table_name (:table_name model-details)
                      :status status
                      :status_changed_at (t/offset-date-time)
-                     :workspace_id (ledger-workspace-id model-type model-id (:collection_id model-details))}))
+                     :workspace_id workspace-id}))
       (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
       (t2/delete! :model/RemoteSyncObject (:id existing))
       (= "delete" (:status existing))
@@ -143,8 +152,11 @@
    Row-locks the entry for the transaction, so this and a concurrent un-sync of the entity's collection
    settle in a fixed order rather than losing one of the two writes: whichever locks first commits, and
    the other then observes that result — the un-sync re-marking the row, or the eligibility re-check below
-   seeing the entity is gone from the synced set."
-  [model-spec model-id status]
+   seeing the entity is gone from the synced set.
+
+   `workspace-id` is the ledger this entry belongs to (see [[entity-workspace-id]]); only used when
+   inserting a brand-new entry -- an existing entry's ledger never changes."
+  [model-spec model-id status workspace-id]
   (t2/with-transaction [_conn]
     (let [model-type (:model-type model-spec)
           existing   (t2/select-one :model/RemoteSyncObject
@@ -167,8 +179,7 @@
                               :model_id          model-id
                               :status            status
                               :status_changed_at (t/offset-date-time)
-                              :workspace_id      (ledger-workspace-id model-type model-id
-                                                                      (:model_collection_id fields))}
+                              :workspace_id      workspace-id}
                              fields)))
 
         (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
@@ -214,13 +225,14 @@
         ;; Eligible branch: query actual entities and create RSOs for eligible children
         (doseq [child (apply t2/select (:model-key child-spec) (into [fk model-id] cat filter))]
           (when (spec/check-eligibility child-spec child)
-            (create-or-update-sync-object-from-spec! child-spec (:id child) status)))
+            (create-or-update-sync-object-from-spec! child-spec (:id child) status (entity-workspace-id child))))
         ;; Ineligible branch: mark existing child RSOs as removed
         (doseq [child-rso (t2/select :model/RemoteSyncObject
                                      :model_type (:model-type child-spec)
                                      :model_table_id model-id
                                      :status [:not-in ["removed" "delete"]])]
-          (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed"))))))
+          (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed"
+                                                   (:workspace_id child-rso)))))))
 
 (defn- handle-model-event-from-spec
   "Generic event handler that uses a spec for all configuration.
@@ -236,13 +248,13 @@
       (do
         (log/infof "Creating remote sync object entry for %s %s (status: %s)"
                    model-type model-id status)
-        (create-or-update-sync-object-from-spec! model-spec model-id status)
+        (create-or-update-sync-object-from-spec! model-spec model-id status (entity-workspace-id object))
         (when (seq (spec/children-specs (:model-key model-spec)))
           (cascade-to-children! model-spec model-id status true)))
       (and existing-entry (not eligible?))
       (do
         (log/infof "%s %s moved out of sync scope, marking as removed" model-type model-id)
-        (create-or-update-sync-object-from-spec! model-spec model-id "removed")
+        (create-or-update-sync-object-from-spec! model-spec model-id "removed" (entity-workspace-id object))
         (when (seq (spec/children-specs (:model-key model-spec)))
           (cascade-to-children! model-spec model-id "removed" false))))))
 
@@ -313,11 +325,13 @@
       should-sync?
       (do
         (log/infof "Creating remote sync object entry for collection %s (status: %s)" (:id object) status)
-        (create-or-update-remote-sync-object-entry! "Collection" (:id object) status hydrate-collection-details))
+        (create-or-update-remote-sync-object-entry! "Collection" (:id object) status hydrate-collection-details
+                                                    (entity-workspace-id object)))
       (and existing-entry (not should-sync?))
       (do
         (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))
-        (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" hydrate-collection-details)))))
+        (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" hydrate-collection-details
+                                                    (entity-workspace-id object))))))
 
 ;;; ----------------------------------------- FieldUserSettings Tracking -----------------------------------------------
 ;; When a field is updated in a published table, also track any FieldUserSettings row for that field.
@@ -336,10 +350,14 @@
       (and eligible? (t2/exists? :model/FieldUserSettings :field_id field-id))
       (create-or-update-remote-sync-object-entry!
        "FieldUserSettings" field-id "update"
-       (fn [id] (spec/hydrate-model-details field-spec id)))
+       (fn [id] (spec/hydrate-model-details field-spec id))
+       ;; Field/FieldUserSettings are never workspace-copy-on-write-eligible (no :workspace_id
+       ;; column, no clone-entity! method) -- always the main ledger.
+       nil)
 
       (and (not eligible?)
            (t2/exists? :model/RemoteSyncObject :model_type "FieldUserSettings" :model_id field-id))
       (create-or-update-remote-sync-object-entry!
        "FieldUserSettings" field-id "removed"
-       (fn [id] (spec/hydrate-model-details field-spec id))))))
+       (fn [id] (spec/hydrate-model-details field-spec id))
+       nil))))

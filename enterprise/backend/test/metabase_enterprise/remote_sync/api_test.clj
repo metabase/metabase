@@ -265,6 +265,107 @@
               (is (=? {:status "success" :task_id int?} resp))
               (wait-for-task-completion task_id))))))))
 
+;;; ------------------------------------------------- Workspace Pull -------------------------------------------------
+
+(defn- do-as-workspace-user
+  "Like [[metabase.workspaces.test-util/do-in-workspace]], but keeps the `:remote-sync` feature
+  (required to route into `/ee/remote-sync/*` at all -- see the `premium-handler` wrapping in
+  `api-routes/routes.clj`) alongside `:workspaces`, since `with-premium-features` replaces rather
+  than adds to the active feature set."
+  [workspace-id thunk]
+  (t2/update! :model/User (mt/user->id :crowberto) {:workspace_id workspace-id})
+  (try
+    (mt/with-premium-features #{:remote-sync :workspaces}
+      (thunk))
+    (finally
+      (t2/update! :model/User (mt/user->id :crowberto) {:workspace_id nil}))))
+
+(deftest workspace-pull-force-discards-workspace-changes-test
+  (testing "POST /api/ee/remote-sync/import with force:true, while a workspace is active and dirty, discards
+           the workspace's own local changes and pulls its own branch (metabase#78578-style regression: the
+           FE previously always sent the main app's remote-sync-branch here, which the workspace-mode import
+           path rejects outright regardless of force, so a dirty workspace could never be pulled/discarded)"
+    (test-helpers/with-clean-object
+      (mt/with-temp [:model/Collection remote-col {:name "Remote Collection" :is_remote_synced true :location "/"}
+                     :model/Workspace ws {:branch "cow"}]
+        ;; the mock source has no "cow" branch, i.e. an empty remote tree -- pulling it should wipe out
+        ;; whatever the workspace created locally, proving the discard actually happened
+        (let [mock-cow (test-helpers/create-mock-source :branch "cow")]
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-token "test-token"
+                                             remote-sync-branch "main"
+                                             remote-sync-type :read-write]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-cow)]
+              (do-as-workspace-user
+               (:id ws)
+               (fn []
+                 (let [created (mt/user-http-request :crowberto :post 200 "card"
+                                                     {:name "born in workspace"
+                                                      :dataset_query (mt/mbql-query venues)
+                                                      :display "table"
+                                                      :collection_id (:id remote-col)
+                                                      :visualization_settings {}})]
+                   (is (true? (remote-sync.object/dirty? (:id ws)))
+                       "sanity: the workspace ledger is dirty before the pull")
+                   (testing "without force, the pull is refused (dirty guard, not a branch-mismatch)"
+                     (let [resp (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import"
+                                                      {:branch "cow" :expected_branch "cow" :force false})]
+                       (is (true? (:conflicts resp)))))
+                   (testing "force:true with the workspace's own branch succeeds"
+                     (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
+                                                                            {:branch "cow" :expected_branch "cow" :force true})
+                           task (wait-for-task-completion task_id)]
+                       (is (=? {:status "success" :task_id int?} resp))
+                       (is (remote-sync.task/successful? task))))
+                   (testing "the workspace's local change was discarded: ledger clean, workspace-created card gone"
+                     (is (false? (remote-sync.object/dirty? (:id ws))))
+                     (is (nil? (t2/select-one :model/Card :id (:id created)))))))))))))))
+
+(deftest workspace-pull-ignores-main-branch-param-test
+  (testing "POST /api/ee/remote-sync/import from inside a workspace IGNORES a `branch`/`expected_branch`
+           that disagrees with the workspace's own branch, rather than rejecting the request
+           (metabase#78578/Bug 4: the FE always sends the main app's ambient remote-sync-branch here --
+           it isn't workspace-aware -- so rejecting a mismatch meant an export/import from inside a
+           workspace could never succeed via the normal UI flow)"
+    (mt/with-temp [:model/Workspace ws {:branch "cow"}]
+      (let [mock-cow (test-helpers/create-mock-source :branch "cow")]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "test-token"
+                                           remote-sync-branch "main"]
+          (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-cow)]
+            (do-as-workspace-user
+             (:id ws)
+             (fn []
+               (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
+                                                                      {:branch "main" :expected_branch "main" :force true})]
+                 (is (=? {:status "success" :task_id int?} resp))
+                 (is (remote-sync.task/successful? (wait-for-task-completion task_id))))))))))))
+
+(deftest workspace-push-ignores-main-branch-param-test
+  (testing "POST /api/ee/remote-sync/export from inside a workspace IGNORES a `branch` that disagrees
+           with the workspace's own branch (Bug 4: PushChangesModal always sends the main app's branch,
+           which previously 400'd unconditionally for a workspace push)"
+    (test-helpers/with-clean-object
+      (mt/with-temp [:model/Collection remote-col {:name "Remote Collection" :is_remote_synced true :location "/"}
+                     :model/Card card {:name "Shared Card" :collection_id (:id remote-col)
+                                       :dataset_query (mt/mbql-query venues)}
+                     :model/Workspace ws {:branch "cow"}]
+        (let [mock-cow (test-helpers/create-mock-source :branch "cow")]
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-token "test-token"
+                                             remote-sync-branch "main"
+                                             remote-sync-type :read-write]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-cow)]
+              (do-as-workspace-user
+               (:id ws)
+               (fn []
+                 ;; give the push something to export: a copy-on-write edit inside the workspace
+                 (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:name "Shared Card (ws)"})
+                 (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
+                                                                        {:branch "main" :message "test push" :force true})]
+                   (is (=? {:task_id int?} resp))
+                   (is (remote-sync.task/successful? (wait-for-task-completion task_id)))))))))))))
+
 (deftest import-creates-audit-log-entry-test
   (testing "POST /api/ee/remote-sync/import records a remote-sync-import audit log entry (#73335)"
     ;; :audit-app is needed for events to actually be recorded to the audit log
@@ -801,6 +902,53 @@
               (mt/user-http-request :crowberto :post 200 "ee/remote-sync/current-task/cancel")))
       (is (remote-sync.task/cancelled? (t2/select-one :model/RemoteSyncTask :id id))))))
 
+(deftest current-task-scoped-to-active-workspace-test
+  (testing "GET /api/ee/remote-sync/current-task observes the active workspace's own task, not the
+           main app's (Bug 4 follow-up: the endpoint previously always looked up the main-app task
+           (workspace_id nil), so a workspace's push/pull never satisfied the FE's polling -- the
+           task it started was invisible, `isRunning` never cleared, and the progress modal polled
+           forever)"
+    ;; a running main task blocks a new workspace task from being *created* (by design -- they share
+    ;; the same git remote, see create-task-with-lock!), so the main task here must already be
+    ;; complete before the workspace task starts -- the point of this test is which row the endpoint
+    ;; *finds*, not concurrent-task admission.
+    (mt/with-temp [:model/Workspace ws {:branch "cow"}
+                   :model/RemoteSyncTask main-task {:sync_task_type "export"
+                                                    :last_progress_report_at :%now
+                                                    :started_at :%now}]
+      (remote-sync.task/complete-sync-task! (:id main-task))
+      (mt/with-temp [:model/RemoteSyncTask ws-task {:sync_task_type "export"
+                                                    :workspace_id (:id ws)
+                                                    :last_progress_report_at :%now
+                                                    :started_at :%now}]
+        (do-as-workspace-user
+         (:id ws)
+         (fn []
+           (is (=? {:id (:id ws-task) :ended_at nil?}
+                   (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))
+               "the workspace's own task, not the main app's")))))))
+
+(deftest cancel-task-scoped-to-active-workspace-test
+  (testing "POST /api/ee/remote-sync/current-task/cancel cancels the active workspace's own task
+           without touching a concurrently-running main-app task"
+    (mt/with-temp [:model/Workspace ws {:branch "cow"}
+                   :model/RemoteSyncTask main-task {:sync_task_type "export"
+                                                    :last_progress_report_at :%now
+                                                    :started_at :%now}]
+      (remote-sync.task/complete-sync-task! (:id main-task))
+      (mt/with-temp [:model/RemoteSyncTask ws-task {:sync_task_type "export"
+                                                    :workspace_id (:id ws)
+                                                    :last_progress_report_at :%now
+                                                    :started_at :%now}]
+        (do-as-workspace-user
+         (:id ws)
+         (fn []
+           (is (=? {:id (:id ws-task) :cancelled true}
+                   (mt/user-http-request :crowberto :post 200 "ee/remote-sync/current-task/cancel")))))
+        (is (remote-sync.task/cancelled? (t2/select-one :model/RemoteSyncTask :id (:id ws-task))))
+        (is (not (remote-sync.task/cancelled? (t2/select-one :model/RemoteSyncTask :id (:id main-task))))
+            "the main app's task is untouched")))))
+
 ;;; ------------------------------------------------- Is Dirty Endpoint -------------------------------------------------
 
 (deftest is-dirty-returns-false-when-no-changes-test
@@ -938,6 +1086,38 @@
   (testing "GET /api/ee/remote-sync/dirty requires superuser permissions"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 "ee/remote-sync/dirty")))))
+
+(deftest workspace-edit-scoped-to-workspace-ledger-test
+  (testing "editing a card inside a workspace dirties that workspace's ledger, not the main one
+           (metabase#78578-style regression: workspace copies live in the same main
+           collection as their source, so a collection-derived ledger would always resolve to
+           the main app instead of the workspace)"
+    (test-helpers/with-clean-object
+      (mt/with-temp [:model/Collection remote-col {:name "Remote Collection" :is_remote_synced true
+                                                   :entity_id "test-collection-1" :location "/"}
+                     :model/Workspace ws {:branch "cow"}
+                     :model/Card card {:name "Shared Card" :collection_id (:id remote-col)
+                                       :dataset_query (mt/mbql-query venues)}]
+        (let [card-url (str "card/" (:id card))]
+          (mt/with-temporary-setting-values [remote-sync-type :read-write]
+            (do-as-workspace-user
+             (:id ws)
+             (fn []
+               (mt/user-http-request :crowberto :put 200 card-url {:name "Shared Card (ws)"}))))
+          (testing "main admin (no active workspace) sees no dirty items from the workspace edit"
+            (is (= {:dirty []} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")))
+            (is (= {:is_dirty false} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty"))))
+          (testing "the workspace user sees the dirty item on their own ledger"
+            (do-as-workspace-user
+             (:id ws)
+             (fn []
+               (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")]
+                 (is (= 1 (count (:dirty response))))
+                 ;; the clone's ledger entry is created (not yet synced) at clone time, so its cached
+                 ;; :name is a create-time snapshot -- unaffected by the later rename, same as any
+                 ;; other "create"-status row (see card-multiple-events-update-same-object-test)
+                 (is (= "card" (:model (first (:dirty response))))))
+               (is (= {:is_dirty true} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty")))))))))))
 
 ;;; ------------------------------------------------- Settings Endpoint -------------------------------------------------
 

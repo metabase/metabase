@@ -62,16 +62,22 @@
        ;; the branch the client believes is currently active; rejected if it disagrees with the
        ;; remote-sync-branch setting (a pull/switch from a stale tab). `branch` is the operational
        ;; target (it differs from this on a branch switch); `expected_branch` is only the assertion.
-       ;; Not required (and ignored) in workspace mode: a workspace has no ambient branch state.
+       ;; Both are ignored in workspace mode -- see the comment below.
        [:expected_branch {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (if-let [ws-id (workspaces/current-workspace-id)]
     (let [workspace (api/check-404 (t2/select-one :model/Workspace :id ws-id))
           user-id   api/*current-user-id*]
-      (when branch
-        (api/check-400 (= branch (:branch workspace))
-                       "branch cannot be combined with an active workspace."))
+      ;; A workspace pulls its own branch, always -- `branch`/`expected_branch` describe the
+      ;; *main app's* ambient git-sync state (the FE sends them unconditionally, since most
+      ;; callers of this endpoint aren't workspace-aware), which is meaningless here. Ignore
+      ;; them rather than rejecting the request: previously this 400'd whenever the client's
+      ;; ambient branch differed from the workspace's own -- which is the common case -- so a
+      ;; dirty workspace could never be pulled/discarded via this endpoint at all.
+      (when (and branch (not= branch (:branch workspace)))
+        (log/debugf "Ignoring branch param %s for workspace %s pull (using workspace branch %s)"
+                    branch ws-id (:branch workspace)))
       (let [{task-id :id}
             (impl/async-workspace-pull!
              workspace (boolean force)
@@ -167,9 +173,12 @@
   (if-let [ws-id (workspaces/current-workspace-id)]
     (let [workspace (api/check-404 (t2/select-one :model/Workspace :id ws-id))
           user-id   api/*current-user-id*]
-      (when branch
-        (api/check-400 (= branch (:branch workspace))
-                       "branch cannot be combined with an active workspace."))
+      ;; See the matching comment on /import: `branch` is the main app's ambient git-sync branch,
+      ;; sent unconditionally by the (not workspace-aware) FE push flow -- a workspace always
+      ;; pushes to its own branch, so ignore rather than reject a disagreeing value.
+      (when (and branch (not= branch (:branch workspace)))
+        (log/debugf "Ignoring branch param %s for workspace %s push (using workspace branch %s)"
+                    branch ws-id (:branch workspace)))
       (let [{task-id :id}
             (impl/async-workspace-push!
              workspace (or force false) (or message "Exported from Metabase")
@@ -223,20 +232,24 @@
      :reason                 (some-> reason name)}))
 
 (api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
-  "Get the current sync task"
+  "Get the current sync task. With an active workspace, the workspace's own most recent task --
+  not the main app's -- so the push/pull progress modal (which polls this) actually observes the
+  task it started instead of hanging indefinitely on an unrelated (or absent) main-app task."
   []
   (api/check-superuser)
-  (when-let [task (remote-sync.task/most-recent-task)]
+  (when-let [task (remote-sync.task/most-recent-task (workspaces/current-workspace-id))]
     (t2/hydrate task :status)))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
-  "Cancels the current task if one is running"
+  "Cancels the current task if one is running. Scoped to the active workspace's task, if any --
+  see /current-task."
   []
   (api/check-superuser)
-  (let [task (remote-sync.task/most-recent-task)]
+  (let [ws-id (workspaces/current-workspace-id)
+        task  (remote-sync.task/most-recent-task ws-id)]
     (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")
     (remote-sync.task/cancel-sync-task! (:id task))
-    (t2/hydrate (remote-sync.task/most-recent-task) :status)))
+    (t2/hydrate (remote-sync.task/most-recent-task ws-id) :status)))
 
 (api.macros/defendpoint :post "/test-connection" :- remote-sync.schema/TestConnectionResponse
   "Test whether the Remote Sync credentials can reach the git repository.
