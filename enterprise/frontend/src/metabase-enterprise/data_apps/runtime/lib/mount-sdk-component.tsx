@@ -1,4 +1,4 @@
-import { type ComponentType, createElement } from "react";
+import { Component, type ComponentType, type ReactNode } from "react";
 import { type Root, createRoot } from "react-dom/client";
 
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
@@ -9,6 +9,30 @@ export type DataAppSdkMountHandle = {
 };
 
 type HostComponent = ComponentType<Record<string, unknown>>;
+
+/**
+ * Each mount is a separate host root inside the data app's DOM, so an uncaught
+ * render error would otherwise escape to the iframe-level handler and take the
+ * whole app down with it.
+ */
+class MediatedMountBoundary extends Component<
+  { children?: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("[data-app] SDK component failed to render:", error);
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
 
 function assertTrustedSdkComponents(
   ComponentProvider: unknown,
@@ -27,47 +51,11 @@ function assertTrustedSdkComponents(
   }
 }
 
-const REACT_NODE_TYPES = new Set<unknown>([
-  Symbol.for("react.element"),
-  Symbol.for("react.portal"),
-]);
-
-const MAX_PROP_SCAN_DEPTH = 4;
-
-/**
- * `Symbol.for("react.element")` is realm-shared, so the app can hand-craft an
- * element (e.g. `type: "iframe"`) and smuggle it through props for host React to
- * create ungated — reject any React node reachable in the props.
- */
-const assertNoSmuggledReactNodes = (value: unknown, depth = 0): void => {
-  if (value === null || typeof value !== "object") {
-    return;
-  }
-
-  // Read the React element brand off an arbitrary object to detect a smuggled
-  // node; the value is untyped caller input, hence the cast.
-  const brand = (value as { $$typeof?: unknown }).$$typeof;
-  if (REACT_NODE_TYPES.has(brand)) {
-    throw new Error(
-      "data-app SDK mount: React nodes are not allowed in mediated props",
-    );
-  }
-
-  if (depth >= MAX_PROP_SCAN_DEPTH) {
-    return;
-  }
-
-  let values: unknown[];
-  try {
-    values = Object.values(value);
-  } catch {
-    return;
-  }
-
-  for (const item of values) {
-    assertNoSmuggledReactNodes(item, depth + 1);
-  }
-};
+// Guest-crafted elements are NOT rejected here: `children` is a first-class SDK
+// feature (composable `<InteractiveQuestion>` layouts), so scanning props for
+// React nodes would break legitimate apps. What such an element could actually
+// abuse — having host React materialize a realm-creating tag — is blocked at the
+// point of materialization instead, by the host element guard.
 
 /**
  * Mediated-mount bridge for SDK components in a data app.
@@ -90,18 +78,16 @@ export const mountDataAppSdkComponent = (
   componentProps: Record<string, unknown>,
 ): DataAppSdkMountHandle => {
   assertTrustedSdkComponents(ComponentProvider, Component);
-  assertNoSmuggledReactNodes(providerProps);
 
   const root: Root = createRoot(container);
 
   const render = (nextComponentProps: Record<string, unknown>) => {
-    assertNoSmuggledReactNodes(nextComponentProps);
     root.render(
-      createElement(
-        ComponentProvider,
-        providerProps,
-        createElement(Component, nextComponentProps),
-      ),
+      <MediatedMountBoundary>
+        <ComponentProvider {...providerProps}>
+          <Component {...nextComponentProps} />
+        </ComponentProvider>
+      </MediatedMountBoundary>,
     );
   };
 

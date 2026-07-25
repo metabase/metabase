@@ -2,6 +2,7 @@ import createVirtualEnvironment from "@locker/near-membrane-dom";
 
 import { makeDistortionCallback } from "./distortions";
 import { DATA_APP_GLOBAL_NAMES } from "./globals";
+import { installHostRealmElementGuard } from "./host-element-guard";
 import type { DataAppFactory, SandboxBlockedListener } from "./types";
 
 /**
@@ -74,6 +75,10 @@ export function createDataAppSandbox({
       },
     }),
   });
+
+  // After the membrane built its own realm iframe — from here on, nothing in this
+  // document may create another realm, whichever React renders it.
+  installHostRealmElementGuard(targetWindow);
 
   return {
     evaluate(code: string): DataAppFactory {

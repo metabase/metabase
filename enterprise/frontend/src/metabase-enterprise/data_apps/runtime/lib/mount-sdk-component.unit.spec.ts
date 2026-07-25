@@ -78,41 +78,25 @@ describe("mountDataAppSdkComponent", () => {
     });
   });
 
-  describe("smuggled React nodes in props", () => {
-    it("rejects a React element in componentProps", () => {
-      expect(() =>
-        callBridge(container, ComponentProvider, {}, InteractiveQuestion, {
-          children: reactElement(),
-        }),
-      ).toThrow(/React nodes are not allowed/);
-    });
-
-    it("rejects a React element nested in a componentProps array", () => {
-      expect(() =>
-        callBridge(container, ComponentProvider, {}, InteractiveQuestion, {
-          children: [reactElement()],
-        }),
-      ).toThrow(/React nodes are not allowed/);
-    });
-
-    it("rejects a React element in providerProps", () => {
-      expect(() =>
-        callBridge(
-          container,
-          ComponentProvider,
-          { children: reactElement() },
-          StaticQuestion,
-          {},
-        ),
-      ).toThrow(/React nodes are not allowed/);
-    });
-
-    it("allows plain data props without false positives", () => {
+  describe("props", () => {
+    it("allows plain data props", () => {
       expect(() =>
         callBridge(container, ComponentProvider, {}, StaticQuestion, {
           card: { query: { type: "query", "source-table": 1 } },
           height: "320px",
           onChange: () => {},
+        }),
+      ).not.toThrow();
+    });
+
+    // `children` is a first-class SDK feature (composable question layouts), so
+    // the bridge must pass elements through. A guest-crafted element can't do
+    // damage on its own — materializing a realm-creating tag is blocked by the
+    // host element guard.
+    it("allows React elements in props", () => {
+      expect(() =>
+        callBridge(container, ComponentProvider, {}, InteractiveQuestion, {
+          children: reactElement(),
         }),
       ).not.toThrow();
     });

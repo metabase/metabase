@@ -144,6 +144,17 @@ export default function App() {
       .catch((err) => setResult(`blocked:${describeError(err)}`));
   };
 
+  // Some vectors are blocked host-side, where the guest can't observe the throw —
+  // the attempt simply never reaches `escapeVia`. Report that instead of leaving
+  // the result at "pending", which would look like the probe never ran.
+  const reportIfNothingHappened = () => {
+    window.setTimeout(() => {
+      setResult((current) =>
+        current === "pending" ? "blocked:no-escape-observed" : current,
+      );
+    }, 5000);
+  };
+
   const runCreateElement = () => {
     try {
       const iframe = document.createElement("iframe");
@@ -179,6 +190,7 @@ export default function App() {
   // Vector 1: swap the whole endowed bundle for an evil one whose component
   // renders an escape iframe host-side.
   const runReplaceBundle = () => {
+    reportIfNothingHappened();
     const evilBundle = {
       ComponentProvider: (props: { children?: ReactNode }) =>
         props.children ?? null,
@@ -201,6 +213,7 @@ export default function App() {
 
   // Vector 2: add an evil component to the bundle object, then mount it by name.
   const runMutateBundle = () => {
+    reportIfNothingHappened();
     try {
       const bundle = getSdkBundle();
       if (!bundle) {
@@ -218,6 +231,7 @@ export default function App() {
   // Vector 3: mount a real, trusted SDK component (passes the bridge's identity
   // check) but smuggle the escape iframe through props as a hand-crafted element.
   const runPropsSmuggle = () => {
+    reportIfNothingHappened();
     try {
       const bundle = getSdkBundle();
 
@@ -228,6 +242,112 @@ export default function App() {
 
       mountViaBridge(bundle.InteractiveQuestion, {
         children: makeEscapeIframeElement(escapeVia),
+      });
+    } catch (err) {
+      setResult(`blocked:${describeError(err)}`);
+    }
+  };
+
+  // Vector 6: bypass the mount bridge entirely — dispatch a guest component
+  // straight into the host redux store (reachable via the endowed bundle), so the
+  // SDK renders it host-side from its own state on the next error.
+  const runStoreDispatchPlant = () => {
+    reportIfNothingHappened();
+    try {
+      const bundle = getSdkBundle();
+      // The LIVE store the mediated ComponentProvider renders against.
+      // `bundle.getSdkStore()` builds a fresh throwaway store, so dispatching
+      // there would affect nothing.
+      const store = getProviderProps().reduxStore as
+        | undefined
+        | { dispatch?: (action: unknown) => void };
+
+      if (!store?.dispatch) {
+        setResult("blocked:no-store");
+        return;
+      }
+
+      // A plain action object — the reducer matches on `type`, so the guest does
+      // not need the (un-endowed) action creator.
+      store.dispatch({
+        type: "sdk/SET_ERROR_COMPONENT",
+        payload: () => makeEscapeIframeElement(escapeVia),
+      });
+
+      const bridge = getMountBridge();
+      if (!bridge || !bundle) {
+        setResult("blocked:no-bridge");
+        return;
+      }
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      bridge(
+        container,
+        bundle.ComponentProvider,
+        getProviderProps(),
+        bundle.StaticQuestion,
+        { questionId: 999999999 },
+      );
+    } catch (err) {
+      setResult(`blocked:${describeError(err)}`);
+    }
+  };
+
+  // Vector 5: a guest `errorComponent` that performs the privileged request
+  // directly in its body when the SDK invokes it host-side — no iframe involved.
+  const runErrorComponentFetch = () => {
+    reportIfNothingHappened();
+    try {
+      const bridge = getMountBridge();
+      const bundle = getSdkBundle();
+      if (!bridge || !bundle) {
+        setResult("blocked:no-bridge");
+        return;
+      }
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const providerProps = {
+        ...getProviderProps(),
+        errorComponent: () => {
+          attemptPrivilegedCall(window, env.target, env.payload)
+            .then(setResult)
+            .catch((err) => setResult(`blocked:${describeError(err)}`));
+          return null;
+        },
+      };
+      bridge(
+        container,
+        bundle.ComponentProvider,
+        providerProps,
+        bundle.StaticQuestion,
+        { questionId: 999999999 },
+      );
+    } catch (err) {
+      setResult(`blocked:${describeError(err)}`);
+    }
+  };
+
+  // Vector 4: pass a guest `errorComponent` (a function, so the element scan
+  // skips it). When the SDK renders it host-side on error, it returns a raw
+  // iframe element that host React creates ungated.
+  const runErrorComponentSmuggle = () => {
+    reportIfNothingHappened();
+    try {
+      const bridge = getMountBridge();
+      const bundle = getSdkBundle();
+      if (!bridge || !bundle) {
+        setResult("blocked:no-bridge");
+        return;
+      }
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const providerProps = {
+        ...getProviderProps(),
+        errorComponent: () => makeEscapeIframeElement(escapeVia),
+      };
+      // A missing question id drives the SDK into its error state.
+      bridge(container, bundle.ComponentProvider, providerProps, bundle.StaticQuestion, {
+        questionId: 999999999,
       });
     } catch (err) {
       setResult(`blocked:${describeError(err)}`);
@@ -269,6 +389,24 @@ export default function App() {
         </button>
         <button data-testid="escape-props-smuggle" onClick={runPropsSmuggle}>
           Smuggle element via props
+        </button>
+        <button
+          data-testid="escape-error-component"
+          onClick={runErrorComponentSmuggle}
+        >
+          Smuggle element via errorComponent
+        </button>
+        <button
+          data-testid="escape-error-component-fetch"
+          onClick={runErrorComponentFetch}
+        >
+          Fetch from errorComponent
+        </button>
+        <button
+          data-testid="escape-store-dispatch"
+          onClick={runStoreDispatchPlant}
+        >
+          Plant component via store dispatch
         </button>
       </div>
 

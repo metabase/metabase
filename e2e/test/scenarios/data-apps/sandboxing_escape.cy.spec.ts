@@ -118,4 +118,22 @@ describe("scenarios > data apps > sandbox escape (security)", () => {
     runEscape("escape-props-smuggle");
     assertVictimNotCreated();
   });
+
+  it("does not escape by smuggling an element via a guest errorComponent", () => {
+    setUpEscape();
+    runEscape("escape-error-component");
+    assertVictimNotCreated();
+  });
+
+  it("does not escape by fetching from a guest errorComponent rendered host-side", () => {
+    setUpEscape();
+    runEscape("escape-error-component-fetch");
+    assertVictimNotCreated();
+  });
+
+  it("does not escape by planting a component in the host store via dispatch", () => {
+    setUpEscape();
+    runEscape("escape-store-dispatch");
+    assertVictimNotCreated();
+  });
 });
