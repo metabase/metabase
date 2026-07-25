@@ -48,6 +48,8 @@
       (if (identical? m m')
         this
         (->SnakeHatingMap m'))))
+  (containsKey [this k]
+    (contains? m (normalize-key k)))
   (keys [_this]
     (keys m))
   (meta [_this]
