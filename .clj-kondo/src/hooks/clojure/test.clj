@@ -2,7 +2,7 @@
   (:require
    [clj-kondo.hooks-api :as hooks]
    [clojure.string :as str]
-   [hooks.common]
+   [hooks.common :refer [safe-meta]]
    [hooks.common.modules :as modules]))
 
 (defn- warn-about-disallowed-parallel-forms [form config]
@@ -73,12 +73,12 @@
 
 (defn- deftest-check-not-horrifically-long
   [node {:keys [max-length], :as _config}]
-  (let [{:keys [row end-row]} (meta node)]
+  (let [{:keys [row end-row]} (safe-meta node)]
     (when (and row end-row)
       (let [num-lines (- end-row row)]
         (when (and max-length
                    (>= num-lines max-length))
-          (hooks/reg-finding! (assoc (meta node)
+          (hooks/reg-finding! (assoc (safe-meta node)
                                      :message (str (format "This test is horrifically long, it's %d lines! 😱 " num-lines)
                                                    "Do you really want to try to debug it if it fails? 💀 "
                                                    "Split it up into smaller tests! 🥰")
@@ -102,14 +102,14 @@
       (testing ...)
       (testing ...))"
   [node {:keys [min-length], :as _config}]
-  (let [{:keys [row end-row]} (meta node)
+  (let [{:keys [row end-row]} (safe-meta node)
         test-length           (- end-row row)]
     (when (and min-length
                (> test-length min-length)
                (every-top-level-form-in-deftest-is-testing? node)
                (> (num-top-level-forms-in-deftest node) 1))
       (hooks/reg-finding!
-       (assoc (meta node)
+       (assoc (safe-meta node)
               :message (str "This test looks like it contains several logically separate testing forms... break it"
                             " out into separate deftests to make it easier to test and debug")
               :type    :metabase/validate-deftest-logically-separate-tests)))))
@@ -124,7 +124,7 @@
             (when (and (hooks/keyword-node? node)
                        (set? drivers)
                        (contains? drivers (hooks/sexpr node)))
-              (hooks/reg-finding! (assoc (meta node)
+              (hooks/reg-finding! (assoc (safe-meta node)
                                          :message (format "Do not hardcode driver name %s in driver tests! [:metabase/disallow-hardcoded-driver-names-in-tests]"
                                                           (hooks/sexpr node))
                                          :type    :metabase/disallow-hardcoded-driver-names-in-tests))
@@ -175,7 +175,7 @@
             current-module (modules/module ns-symb)]
         (when (or (not current-module)
                   (not (contains? known-modules current-module)))
-          (hooks/reg-finding! (assoc (meta node)
+          (hooks/reg-finding! (assoc (safe-meta node)
                                      :message (format "All tests must live in a known module; %s is not a known module" (pr-str current-module))
                                      :type    :metabase/tests-must-live-in-known-modules)))))))
 
@@ -256,7 +256,7 @@
   [{{[_testing _message & body] :children, :as node} :node, :as input}]
   (when (empty? body)
     (hooks/reg-finding!
-     (assoc (meta node)
+     (assoc (safe-meta node)
             :message "A `testing` form that doesn't wrap anything doesn't do anything"
             :type    :metabase/check-testing-not-empty)))
   input)

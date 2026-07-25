@@ -4,6 +4,12 @@
    [clojure.pprint]
    [clojure.set :as set]))
 
+(defn safe-meta
+  "Extract metadata from `node` and remove keys that are potentially unsafe for later serialization."
+  [node]
+  ;; In the future, this may become an allowlist, but for now, it removes a specific key that caused problems.
+  (dissoc (meta node) :clj-kondo/ignore))
+
 (defn with-macro-meta
   "When introducing internal nodes (let, defn, etc) it is important to provide a meta of an existing token
    as the current version of kondo will use the whole form by default."
