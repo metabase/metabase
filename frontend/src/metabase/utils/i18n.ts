@@ -36,6 +36,42 @@ function setLanguage(translationsObject: LocaleDataWithLanguage): void {
 
 const ARABIC_LOCALES = ["ar", "ar-sa"];
 
+// BCP-47 base language codes written in a right-to-left script. Used to set the
+// document `dir` attribute so CSS logical properties resolve to their RTL
+// mapping (e.g. `margin-inline-start` -> `margin-right`).
+const RTL_LANGUAGES = new Set([
+  "ar", // Arabic
+  "he", // Hebrew
+  "fa", // Persian / Farsi
+  "ur", // Urdu
+  "ps", // Pashto
+  "sd", // Sindhi
+  "ug", // Uyghur
+  "yi", // Yiddish
+  "dv", // Divehi
+]);
+
+export function isRTLLocale(language = ""): boolean {
+  const base = language.toLowerCase().split(/[-_]/)[0];
+  return RTL_LANGUAGES.has(base);
+}
+
+/**
+ * Reflect the active locale's writing direction on the root `<html>` element.
+ * This is what actually activates the CSS logical properties migration: with
+ * `dir="rtl"` the whole layout mirrors, while `dir="ltr"` is unchanged.
+ */
+export function applyLocaleDirection(language = ""): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+  const html = document.documentElement;
+  html.setAttribute("dir", isRTLLocale(language) ? "rtl" : "ltr");
+  if (language) {
+    html.setAttribute("lang", getLocale(language));
+  }
+}
+
 export function setLocalization(
   translationsObject: LocaleDataWithLanguage,
 ): void {
@@ -43,6 +79,7 @@ export function setLocalization(
   setLanguage(translationsObject);
   updateDayjsLocale(language);
   updateStartOfWeek(MetabaseSettings.get("start-of-week"));
+  applyLocaleDirection(language);
 
   if (ARABIC_LOCALES.includes(language)) {
     preserveLatinNumbersInDayjsLocale(language);

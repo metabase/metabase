@@ -1,6 +1,11 @@
 import dayjs from "dayjs";
 
-import { type LocaleDataWithLanguage, setLocalization } from "./i18n";
+import {
+  type LocaleDataWithLanguage,
+  applyLocaleDirection,
+  isRTLLocale,
+  setLocalization,
+} from "./i18n";
 
 function setup(language: string) {
   setLocalization({
@@ -59,5 +64,44 @@ describe("setLocalization", () => {
     expect(() => setLocalization(localeData)).not.toThrow();
     expect(translations[""].Year.msgid).toBe("Year");
     expect(translations[context].Year.msgid).toBe("Year");
+  });
+});
+
+describe("isRTLLocale", () => {
+  it.each(["ar", "ar-SA", "he", "fa", "ur", "AR"])(
+    "should treat %s as right-to-left",
+    (locale) => {
+      expect(isRTLLocale(locale)).toBe(true);
+    },
+  );
+
+  it.each(["en", "de", "zh-CN", "fr", "", "es"])(
+    "should treat %s as left-to-right",
+    (locale) => {
+      expect(isRTLLocale(locale)).toBe(false);
+    },
+  );
+});
+
+describe("applyLocaleDirection", () => {
+  afterEach(() => {
+    document.documentElement.removeAttribute("dir");
+  });
+
+  it("sets dir=rtl on <html> for Arabic", () => {
+    applyLocaleDirection("ar");
+    expect(document.documentElement).toHaveAttribute("dir", "rtl");
+  });
+
+  it("sets dir=ltr on <html> for English", () => {
+    applyLocaleDirection("en");
+    expect(document.documentElement).toHaveAttribute("dir", "ltr");
+  });
+
+  it("is applied automatically via setLocalization", () => {
+    setup("he");
+    expect(document.documentElement).toHaveAttribute("dir", "rtl");
+    setup("en");
+    expect(document.documentElement).toHaveAttribute("dir", "ltr");
   });
 });
