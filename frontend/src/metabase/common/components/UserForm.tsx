@@ -32,8 +32,9 @@ const externalUserSchema = localUserSchema.shape({
   tenant_id: Yup.number().required(Errors.required),
 });
 
-// Groups granting access to the invite target; drives the sectioned dropdown and the no-access warning.
-interface GroupAccessInfo {
+// Groups that can view the item the person is being invited to (Administrators is
+// implied); drives the sectioned dropdown and the no-access warning.
+interface InviteTargetAccess {
   groupIds: GroupId[];
   sectionLabel: string;
   warningMessage: string;
@@ -43,7 +44,7 @@ interface FormGroupsWidgetProps extends HTMLAttributes<HTMLDivElement> {
   name: string;
   external?: boolean;
   groups?: GroupInfo[];
-  groupAccess?: GroupAccessInfo;
+  inviteTargetAccess?: InviteTargetAccess;
 }
 
 const FormGroupsWidget = ({
@@ -53,7 +54,7 @@ const FormGroupsWidget = ({
   title = t`Groups`,
   external,
   groups,
-  groupAccess,
+  inviteTargetAccess,
 }: FormGroupsWidgetProps) => {
   const [{ value: formValue }, , { setValue }] =
     useField<{ id: GroupId; is_group_manager?: boolean }[]>(name);
@@ -101,11 +102,13 @@ const FormGroupsWidget = ({
   };
 
   const adminGroupId = groups.find(isAdminGroup)?.id;
+  const accessGroupIds = inviteTargetAccess && [
+    ...(adminGroupId != null ? [adminGroupId] : []),
+    ...inviteTargetAccess.groupIds,
+  ];
   const showNoAccessWarning =
-    groupAccess != null &&
-    !memberships.some(
-      ({ id }) => id === adminGroupId || groupAccess.groupIds.includes(id),
-    );
+    accessGroupIds != null &&
+    !memberships.some(({ id }) => accessGroupIds.includes(id));
 
   return (
     <FormField className={className} style={style} title={title}>
@@ -115,16 +118,19 @@ const FormGroupsWidget = ({
         onChange={handleChange}
         managerGroupIds={managerGroupIds}
         onToggleManager={handleToggleManager}
-        itemAccessGroups={
-          groupAccess && {
-            groupIds: groupAccess.groupIds,
-            label: groupAccess.sectionLabel,
-          }
+        sections={
+          inviteTargetAccess &&
+          accessGroupIds && [
+            {
+              label: inviteTargetAccess.sectionLabel,
+              groupIds: accessGroupIds,
+            },
+          ]
         }
       />
       {showNoAccessWarning && (
         <Alert color="warning" mt="sm">
-          {groupAccess?.warningMessage}
+          {inviteTargetAccess?.warningMessage}
         </Alert>
       )}
     </FormField>
@@ -142,7 +148,7 @@ interface UserFormProps {
   hideNameFields?: boolean;
   hideAttributes?: boolean;
   groups?: GroupInfo[];
-  groupAccess?: GroupAccessInfo;
+  inviteTargetAccess?: InviteTargetAccess;
 }
 
 export const UserForm = ({
@@ -156,7 +162,7 @@ export const UserForm = ({
   hideNameFields = false,
   hideAttributes = false,
   groups,
-  groupAccess,
+  inviteTargetAccess,
 }: UserFormProps) => {
   return (
     <FormProvider
@@ -201,7 +207,7 @@ export const UserForm = ({
             external={external}
             title={PLUGIN_TENANTS.getFormGroupsTitle(external) ?? t`Groups`}
             groups={groups}
-            groupAccess={groupAccess}
+            inviteTargetAccess={inviteTargetAccess}
           />
           {external && (
             <PLUGIN_TENANTS.FormTenantWidget

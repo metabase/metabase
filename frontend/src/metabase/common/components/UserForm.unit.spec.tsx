@@ -43,7 +43,7 @@ interface SetupOpts {
   hideAttributes?: boolean;
   tokenFeatures?: Parameters<typeof createMockTokenFeatures>[0];
   groups?: GroupInfo[];
-  groupAccess?: {
+  inviteTargetAccess?: {
     groupIds: GroupId[];
     sectionLabel: string;
     warningMessage: string;
@@ -60,7 +60,7 @@ const setup = ({
   hideAttributes = false,
   tokenFeatures = { sandboxes: true, tenants: true },
   groups = GROUPS,
-  groupAccess,
+  inviteTargetAccess,
 }: SetupOpts = {}) => {
   const onSubmit = jest.fn();
   const onCancel = jest.fn();
@@ -88,7 +88,7 @@ const setup = ({
       hideNameFields={hideNameFields}
       hideAttributes={hideAttributes}
       groups={groups}
-      groupAccess={groupAccess}
+      inviteTargetAccess={inviteTargetAccess}
     />,
     {
       storeInitialState: state,
@@ -434,7 +434,7 @@ describe("UserForm", () => {
   });
 
   describe("item access marking (UXW-4533)", () => {
-    const GROUP_ACCESS = {
+    const INVITE_TARGET_ACCESS = {
       groupIds: [4], // bar
       sectionLabel: "Can view this dashboard",
       warningMessage: "None of the selected groups can view this dashboard.",
@@ -442,10 +442,10 @@ describe("UserForm", () => {
 
     it("warns while no selected group grants access, and clears once one is added", async () => {
       // USER belongs to All Users (1) and foo (3); neither grants access.
-      setup({ groupAccess: GROUP_ACCESS });
+      setup({ inviteTargetAccess: INVITE_TARGET_ACCESS });
 
       expect(
-        await screen.findByText(GROUP_ACCESS.warningMessage),
+        await screen.findByText(INVITE_TARGET_ACCESS.warningMessage),
       ).toBeInTheDocument();
 
       await userEvent.click(
@@ -454,13 +454,13 @@ describe("UserForm", () => {
       await userEvent.click(await screen.findByRole("option", { name: "bar" }));
 
       expect(
-        screen.queryByText(GROUP_ACCESS.warningMessage),
+        screen.queryByText(INVITE_TARGET_ACCESS.warningMessage),
       ).not.toBeInTheDocument();
     });
 
     it("counts the Administrators group's implicit access", async () => {
       setup({
-        groupAccess: { ...GROUP_ACCESS, groupIds: [] },
+        inviteTargetAccess: { ...INVITE_TARGET_ACCESS, groupIds: [] },
         initialValues: {
           ...USER,
           user_group_memberships: [
@@ -472,8 +472,33 @@ describe("UserForm", () => {
 
       expect(await screen.findByRole("list")).toBeInTheDocument();
       expect(
-        screen.queryByText(GROUP_ACCESS.warningMessage),
+        screen.queryByText(INVITE_TARGET_ACCESS.warningMessage),
       ).not.toBeInTheDocument();
+    });
+
+    it("places Administrators in the access section implicitly", async () => {
+      setup({ inviteTargetAccess: INVITE_TARGET_ACCESS });
+
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+      const accessSection = await screen.findByRole("group", {
+        name: INVITE_TARGET_ACCESS.sectionLabel,
+      });
+
+      // Administrators joins bar (the granted group) in the access section.
+      expect(
+        within(accessSection).getByRole("option", { name: "Administrators" }),
+      ).toBeInTheDocument();
+      expect(
+        within(accessSection).getByRole("option", { name: "bar" }),
+      ).toBeInTheDocument();
+      expect(
+        within(screen.getByRole("group", { name: "Other groups" })).getByRole(
+          "option",
+          { name: "foo" },
+        ),
+      ).toBeInTheDocument();
     });
   });
 

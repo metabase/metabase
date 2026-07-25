@@ -186,7 +186,7 @@ export const InviteToViewModal = ({
       <UserForm
         initialValues={{}}
         groups={groups}
-        groupAccess={
+        inviteTargetAccess={
           inviteTarget &&
           accessGroupIds && {
             groupIds: accessGroupIds,
