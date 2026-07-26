@@ -14,6 +14,7 @@ export const FormMessageStyled = styled.span<{
     hasSucceeded
       ? "var(--mb-color-feedback-positive)"
       : color("feedback-negative")};
+  float: left; /* fallback for browsers without logical float (< Chrome 118) */
   float: inline-start;
   opacity: 0;
   padding-bottom: ${({ noPadding }) =>

@@ -139,6 +139,7 @@
 
 .ButtonGroup .Button {
   margin: 0;
+  float: left; /* fallback for browsers without logical float (< Chrome 118) */
   float: inline-start;
   border-top: none;
   border-bottom: none;

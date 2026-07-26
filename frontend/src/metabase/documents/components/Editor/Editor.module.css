@@ -201,6 +201,7 @@
 .editorContent :global(.node-paragraph.is-empty:first-child:before) {
   color: var(--mb-color-text-disabled);
   content: attr(data-placeholder);
+  float: left; /* fallback for browsers without logical float (< Chrome 118) */
   float: inline-start;
   height: 0;
   pointer-events: none;
