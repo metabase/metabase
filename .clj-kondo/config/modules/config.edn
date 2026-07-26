@@ -3464,9 +3464,8 @@
            enterprise/data-apps
            enterprise/serialization
            enterprise/transforms-python}
-   :model-exports #{:model/RemoteSyncTask}
-   :model-imports #{:model/Action
-                    :model/Card
+   :model-exports #{:model/RemoteSyncObject :model/RemoteSyncTask}
+   :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Document
@@ -3480,7 +3479,8 @@
                     :model/Timeline
                     :model/Transform
                     :model/TransformTag
-                    :model/User}}
+                    :model/User
+                    :model/Workspace}}
 
   enterprise/replacement
   {:team "Graphy"
@@ -3789,6 +3789,29 @@
            upload
            util}
    :model-imports #{:model/Database :model/Table}}
+
+  enterprise/workspaces
+  {:team "UX West"
+   :api  #{metabase-enterprise.workspaces.api}
+   :uses #{api
+           models
+           util}
+   :model-exports #{:model/Workspace}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/PythonLibrary
+                    :model/RemoteSyncObject
+                    :model/RemoteSyncTask
+                    :model/Segment
+                    :model/Timeline
+                    :model/Transform
+                    :model/TransformTag
+                    :model/User}}
 
   enterprise/workspaces-deprecated
   {:team "Graphy"

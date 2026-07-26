@@ -6,7 +6,6 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
-   [metabase-enterprise.remote-sync.models.workspace :as workspace]
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
@@ -44,7 +43,7 @@
   "The branch a remote-sync operation actually targets: `workspace-id`'s own branch when set, else the
   `remote-sync-branch` setting (the main app)."
   [workspace-id]
-  (or (some-> workspace-id workspace/workspace-branch)
+  (or (some-> workspace-id (->> (t2/select-one-fn :branch :model/Workspace :id)))
       (settings/remote-sync-branch)))
 
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
@@ -374,43 +373,6 @@
     (catch Exception e
       (throw (ex-info (format "Failed to stash changes to branch: %s" (ex-message e))
                       {:status-code 400})))))
-
-;;; ------------------------------------------------- Workspaces -------------------------------------------------
-
-(api.macros/defendpoint :get "/workspace" :- remote-sync.schema/WorkspaceList
-  "List all remote-sync workspaces. Requires superuser permissions."
-  []
-  (api/check-superuser)
-  (workspace/list-workspaces))
-
-(api.macros/defendpoint :get "/workspace/:id" :- remote-sync.schema/Workspace
-  "Get a single remote-sync workspace by id. Requires superuser permissions."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (api/check-404 (workspace/get-workspace id)))
-
-(api.macros/defendpoint :post "/workspace" :- remote-sync.schema/Workspace
-  "Create a remote-sync workspace for `branch`. The branch is not created or switched to here — it is expected to
-  already exist on the source, and its content is materialized into the workspace by a subsequent pull. Requires
-  superuser permissions."
-  [_route
-   _query
-   {:keys [branch]} :- [:map [:branch ms/NonBlankString]]]
-  (api/check-superuser)
-  (api/check-400 (not (t2/exists? :model/Workspace :branch branch))
-                 (format "A workspace for branch '%s' already exists." branch))
-  (let [id (t2/insert-returning-pk! :model/Workspace
-                                    {:branch branch :creator_id api/*current-user-id*})]
-    (workspace/get-workspace id)))
-
-(api.macros/defendpoint :delete "/workspace/:id" :- :nil
-  "Delete a remote-sync workspace: removes all of its materialized content and clears it from any users pointing
-  at it. Requires superuser permissions."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (api/check-404 (t2/exists? :model/Workspace :id id))
-  (impl/delete-workspace! id)
-  nil)
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/remote-sync` routes."

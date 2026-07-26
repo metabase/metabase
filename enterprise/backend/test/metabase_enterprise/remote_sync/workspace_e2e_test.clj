@@ -109,7 +109,7 @@
 
 (defn- create-workspace!
   [branch]
-  (:id (mt/user-http-request :crowberto :post 200 "ee/remote-sync/workspace" {:branch branch})))
+  (:id (mt/user-http-request :crowberto :post 200 "ee/workspace" {:branch branch})))
 
 (defn- assign-workspace!
   [user-id workspace-id]
@@ -121,7 +121,7 @@
 
 (defn- delete-workspace!
   [workspace-id]
-  (mt/user-http-request :crowberto :delete 204 (str "ee/remote-sync/workspace/" workspace-id)))
+  (mt/user-http-request :crowberto :delete 204 (str "ee/workspace/" workspace-id)))
 
 (defn- create-main-collection!
   [name]
@@ -203,7 +203,7 @@
                         "creating a branch must not switch the active branch")
                     (let [wt-branch-base-sha (git-rev-parse! origin-dir "wt-branch")]
                       (testing "3. create a workspace for wt-branch and assign the admin to it"
-                        (let [{workspace-id :id} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/workspace"
+                        (let [{workspace-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                                        {:branch "wt-branch"})]
                           (mt/user-http-request :crowberto :put 200 (str "user/" admin-id) {:workspace_id workspace-id})
                           (try
@@ -259,7 +259,7 @@
                                         "main branch must be byte-identical (same commit) after the workspace push")))))
                             (finally
                               (mt/user-http-request :crowberto :put 200 (str "user/" admin-id) {:workspace_id nil})
-                              (mt/user-http-request :crowberto :delete 204 (str "ee/remote-sync/workspace/" workspace-id))))))))))
+                              (mt/user-http-request :crowberto :delete 204 (str "ee/workspace/" workspace-id))))))))))
               (finally
                 (mt/user-http-request :crowberto :put 200 (str "user/" admin-id) {:workspace_id nil})))))))))
 
@@ -516,7 +516,7 @@
                   (delete-workspace! wt-id))))))))))
 
 (deftest delete-workspace-endpoint-test
-  (testing "DELETE /api/ee/remote-sync/workspace/:id removes all materialized content and clears the assigned user; main is untouched"
+  (testing "DELETE /api/ee/workspace/:id removes all materialized content and clears the assigned user; main is untouched"
     (let [{:keys [url]} (init-origin-repo!)]
       (mt/with-premium-features #{:remote-sync}
         (mt/with-temporary-setting-values [settings/remote-sync-url    url

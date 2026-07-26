@@ -1,6 +1,5 @@
 import type {
   CreateBranchRequest,
-  CreateWorkspaceRequest,
   ExportChangesRequest,
   ExportChangesResponse,
   ExportPreflightResponse,
@@ -15,16 +14,10 @@ import type {
   TestRemoteSyncConnectionRequest,
   TestRemoteSyncConnectionResponse,
   UpdateRemoteSyncConfigurationResponse,
-  Workspace,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import {
-  listTag,
-  provideWorkspaceListTags,
-  provideWorkspaceTags,
-  tag,
-} from "./tags";
+import { listTag, tag } from "./tags";
 
 export const remoteSyncApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -174,36 +167,6 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         body,
       }),
     }),
-    getWorkspace: builder.query<Workspace, number>({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/ee/remote-sync/workspace/${id}`,
-      }),
-      providesTags: (result) => (result ? provideWorkspaceTags(result) : []),
-    }),
-    listWorkspaces: builder.query<Workspace[], void>({
-      query: () => ({
-        method: "GET",
-        url: `/api/ee/remote-sync/workspace`,
-      }),
-      providesTags: (result) =>
-        result ? provideWorkspaceListTags(result) : [listTag("workspace")],
-    }),
-    createWorkspace: builder.mutation<Workspace, CreateWorkspaceRequest>({
-      query: (body) => ({
-        method: "POST",
-        url: `/api/ee/remote-sync/workspace`,
-        body,
-      }),
-      invalidatesTags: () => [listTag("workspace")],
-    }),
-    deleteWorkspace: builder.mutation<void, number>({
-      query: (id) => ({
-        method: "DELETE",
-        url: `/api/ee/remote-sync/workspace/${id}`,
-      }),
-      invalidatesTags: () => [listTag("workspace")],
-    }),
   }),
 });
 
@@ -221,8 +184,4 @@ export const {
   useGetRemoteSyncCurrentTaskQuery,
   useCancelRemoteSyncCurrentTaskMutation,
   useTestRemoteSyncConnectionMutation,
-  useGetWorkspaceQuery,
-  useListWorkspacesQuery,
-  useCreateWorkspaceMutation,
-  useDeleteWorkspaceMutation,
 } = remoteSyncApi;

@@ -96,10 +96,9 @@ describe("CreateWorkspaceModal", () => {
     await clickCreate();
 
     await waitFor(async () => {
-      const call = fetchMock.callHistory.lastCall(
-        "path:/api/ee/remote-sync/workspace",
-        { method: "POST" },
-      );
+      const call = fetchMock.callHistory.lastCall("path:/api/ee/workspace", {
+        method: "POST",
+      });
       expect(await call?.request?.json()).toEqual({
         branch: "feature/available",
       });

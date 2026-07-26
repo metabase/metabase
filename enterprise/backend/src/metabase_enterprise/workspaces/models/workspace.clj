@@ -1,5 +1,5 @@
-(ns metabase-enterprise.remote-sync.models.workspace
-  "Model for remote-sync workspaces. A workspace is a self-contained checkout of a git branch: its content lives
+(ns metabase-enterprise.workspaces.models.workspace
+  "Model for workspaces. A workspace is a self-contained checkout of a git branch: its content lives
   in the same tables as the main app, tagged with a `workspace_id`, and is synced with the workspace's `branch`.
 
   Workspaces are superuser-only: read, write, and create all require admin."
@@ -58,21 +58,3 @@
                             :workspace_id [:in ids] :is_active true))))
    :id
    {:default []}))
-
-;;; ---------------------------------------------------- Queries ----------------------------------------------------
-
-(defn list-workspaces
-  "Return every workspace with its `:creator` and assigned `:users` hydrated, ordered by id."
-  []
-  (t2/hydrate (t2/select :model/Workspace {:order-by [[:id :asc]]}) :creator :users))
-
-(defn get-workspace
-  "Return the workspace with `id` and its `:creator` and assigned `:users` hydrated, or nil."
-  [id]
-  (when-let [workspace (t2/select-one :model/Workspace :id id)]
-    (t2/hydrate workspace :creator :users)))
-
-(defn workspace-branch
-  "Return the `branch` of the workspace with `id`, or nil."
-  [id]
-  (some-> id (->> (t2/select-one-fn :branch :model/Workspace :id))))

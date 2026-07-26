@@ -184,7 +184,7 @@ export const setupRemoteSyncTestConnectionEndpoint = ({
 };
 
 /**
- * Setup the remote-sync workspace GET endpoint
+ * Setup the workspace GET endpoint
  */
 export const setupWorkspaceEndpoint = (
   workspaceId: number,
@@ -192,28 +192,24 @@ export const setupWorkspaceEndpoint = (
   { delay = 0 }: { delay?: number } = {},
 ) => {
   fetchMock.removeRoute("workspace");
-  fetchMock.get(
-    `path:/api/ee/remote-sync/workspace/${workspaceId}`,
-    workspace,
-    {
-      name: "workspace",
-      delay,
-    },
-  );
+  fetchMock.get(`path:/api/ee/workspace/${workspaceId}`, workspace, {
+    name: "workspace",
+    delay,
+  });
 };
 
 /**
- * Setup the remote-sync workspace list GET endpoint
+ * Setup the workspace list GET endpoint
  */
 export const setupListWorkspacesEndpoint = (workspaces: Workspace[]) => {
   fetchMock.removeRoute("workspace-list");
-  fetchMock.get("path:/api/ee/remote-sync/workspace", workspaces, {
+  fetchMock.get("path:/api/ee/workspace", workspaces, {
     name: "workspace-list",
   });
 };
 
 /**
- * Setup the remote-sync workspace creation POST endpoint
+ * Setup the workspace creation POST endpoint
  */
 export const setupCreateWorkspaceEndpoint = (
   workspace: Workspace,
@@ -222,19 +218,19 @@ export const setupCreateWorkspaceEndpoint = (
   fetchMock.removeRoute("workspace-create");
   if (error) {
     fetchMock.post(
-      "path:/api/ee/remote-sync/workspace",
+      "path:/api/ee/workspace",
       { status: error.status, body: { message: error.message } },
       { name: "workspace-create" },
     );
   } else {
-    fetchMock.post("path:/api/ee/remote-sync/workspace", workspace, {
+    fetchMock.post("path:/api/ee/workspace", workspace, {
       name: "workspace-create",
     });
   }
 };
 
 /**
- * Setup the remote-sync workspace deletion DELETE endpoint
+ * Setup the workspace deletion DELETE endpoint
  */
 export const setupDeleteWorkspaceEndpoint = (
   workspaceId: number,
@@ -243,12 +239,12 @@ export const setupDeleteWorkspaceEndpoint = (
   fetchMock.removeRoute("workspace-delete");
   if (error) {
     fetchMock.delete(
-      `path:/api/ee/remote-sync/workspace/${workspaceId}`,
+      `path:/api/ee/workspace/${workspaceId}`,
       { status: error.status, body: { message: error.message } },
       { name: "workspace-delete" },
     );
   } else {
-    fetchMock.delete(`path:/api/ee/remote-sync/workspace/${workspaceId}`, 204, {
+    fetchMock.delete(`path:/api/ee/workspace/${workspaceId}`, 204, {
       name: "workspace-delete",
     });
   }

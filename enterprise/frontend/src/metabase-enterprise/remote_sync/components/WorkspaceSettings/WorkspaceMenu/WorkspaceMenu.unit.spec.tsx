@@ -55,7 +55,7 @@ describe("WorkspaceMenu", () => {
       await screen.findByRole("dialog", { name: /delete this workspace/i }),
     ).toBeInTheDocument();
     expect(
-      fetchMock.callHistory.calls("path:/api/ee/remote-sync/workspace/10", {
+      fetchMock.callHistory.calls("path:/api/ee/workspace/10", {
         method: "DELETE",
       }),
     ).toHaveLength(0);
@@ -64,7 +64,7 @@ describe("WorkspaceMenu", () => {
 
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.calls("path:/api/ee/remote-sync/workspace/10", {
+        fetchMock.callHistory.calls("path:/api/ee/workspace/10", {
           method: "DELETE",
         }),
       ).toHaveLength(1);

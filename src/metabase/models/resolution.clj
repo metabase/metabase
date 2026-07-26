@@ -111,7 +111,6 @@
     :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/RemoteSyncObject                  metabase-enterprise.remote-sync.models.remote-sync-object
     :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
-    :model/Workspace                metabase-enterprise.remote-sync.models.workspace
     :model/ReplacementRun                    metabase-enterprise.replacement.models.replacement-run
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
@@ -149,6 +148,7 @@
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.users.models.user-parameter-value
     :model/ViewLog                           metabase.view-log.models.view-log
+    :model/Workspace                         metabase-enterprise.workspaces.models.workspace
     :model/WorkspaceDeprecated                         metabase-enterprise.workspaces-deprecated.models.workspace
     :model/WorkspaceDatabaseDeprecated                 metabase-enterprise.workspaces-deprecated.models.workspace-database})
 

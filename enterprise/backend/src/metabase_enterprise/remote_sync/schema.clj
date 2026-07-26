@@ -144,23 +144,6 @@
    [:status :string]
    [:message :string]])
 
-;;; ------------------------------------------- Workspace Schemas -------------------------------------------
-
-(def Workspace
-  "Schema for a remote-sync workspace object."
-  [:map
-   [:id pos-int?]
-   [:branch :string]
-   [:creator_id {:optional true} [:maybe pos-int?]]
-   [:created_at {:optional true} :any]
-   [:updated_at {:optional true} :any]
-   [:creator {:optional true} [:maybe :map]]
-   [:users {:optional true} [:sequential :map]]])
-
-(def WorkspaceList
-  "Schema for GET /workspace response."
-  [:sequential Workspace])
-
 (def StashResponse
   "Schema for POST /stash response."
   [:map
