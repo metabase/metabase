@@ -9,6 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { createMockState } from "metabase/redux/store/mocks/state";
 import type {
   RunTransformDagResponse,
   Transform,
@@ -18,6 +19,7 @@ import {
   createMockTransform,
   createMockTransformRun,
   createMockTransformRunForJobRun,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { RunSection } from "./RunSection";
@@ -37,10 +39,12 @@ function setup({
   transform,
   runDagResponse,
   dagMembers = DEFAULT_DAG_MEMBERS,
+  workspaceId = null,
 }: {
   transform?: Transform;
   runDagResponse?: RunTransformDagResponse;
   dagMembers?: TransformRunForJobRun[];
+  workspaceId?: number | null;
 } = {}) {
   const testTransform =
     transform ?? createMockTransform({ id: TRANSFORM_ID, last_run: null });
@@ -59,6 +63,11 @@ function setup({
       <RunSection transform={testTransform} />
       <UndoListing />
     </>,
+    {
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ workspace_id: workspaceId }),
+      }),
+    },
   );
 }
 
@@ -169,5 +178,21 @@ describe("RunSection DAG run flow", () => {
     expect(
       screen.queryByText("Scheduled to run as part of a reprocess run."),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("RunSection inside a workspace", () => {
+  it("disables the run button and hides the run options in a workspace", async () => {
+    setup({ workspaceId: 42 });
+
+    expect(await screen.findByTestId("run-button")).toBeDisabled();
+    expect(screen.queryByTestId("run-options-button")).not.toBeInTheDocument();
+  });
+
+  it("enables the run button when not in a workspace", async () => {
+    setup({ workspaceId: null });
+
+    expect(await screen.findByTestId("run-button")).toBeEnabled();
+    expect(screen.getByTestId("run-options-button")).toBeInTheDocument();
   });
 });

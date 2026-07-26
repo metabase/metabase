@@ -28,6 +28,7 @@ import {
   Icon,
   Menu,
   Stack,
+  Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
@@ -46,6 +47,7 @@ import {
 import { RunButton } from "../../../components/RunButton";
 import { RunStatus } from "../../../components/RunStatus";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
+import { getIsInWorkspace } from "../../../selectors";
 
 import { LogOutput } from "./LogOutput";
 import { RunDagConfirmModal } from "./RunDagConfirmModal";
@@ -209,6 +211,8 @@ function RunButtonSection({
   readOnly,
   onScheduled,
 }: RunButtonSectionProps) {
+  const isInWorkspace = useSelector(getIsInWorkspace);
+  const isRunDisabled = readOnly || isInWorkspace;
   const [runTransform] = useRunTransformMutation();
   const [runTransformDag, { isLoading: isSubmittingDag }] =
     useRunTransformDagMutation();
@@ -262,26 +266,31 @@ function RunButtonSection({
 
   return (
     <>
-      <RunButton
-        id={transform.id}
-        run={transform.last_run}
-        allowCancellation
-        onRun={handleRun}
-        onCancel={openConfirmModal}
-        isDisabled={readOnly}
-        menuItems={
-          readOnly ? undefined : (
-            <>
-              <Menu.Item onClick={() => setDagDirection("upstream")}>
-                {t`Run this and all upstream transforms`}
-              </Menu.Item>
-              <Menu.Item onClick={() => setDagDirection("downstream")}>
-                {t`Run this and all downstream transforms`}
-              </Menu.Item>
-            </>
-          )
-        }
-      />
+      <Tooltip
+        label={t`Transforms can't be run in a workspace.`}
+        disabled={!isInWorkspace}
+      >
+        <RunButton
+          id={transform.id}
+          run={transform.last_run}
+          allowCancellation
+          onRun={handleRun}
+          onCancel={openConfirmModal}
+          isDisabled={isRunDisabled}
+          menuItems={
+            isRunDisabled ? undefined : (
+              <>
+                <Menu.Item onClick={() => setDagDirection("upstream")}>
+                  {t`Run this and all upstream transforms`}
+                </Menu.Item>
+                <Menu.Item onClick={() => setDagDirection("downstream")}>
+                  {t`Run this and all downstream transforms`}
+                </Menu.Item>
+              </>
+            )
+          }
+        />
+      </Tooltip>
       <RunDagConfirmModal
         transformId={transform.id}
         direction={dagDirection}

@@ -211,6 +211,14 @@
   []
   (check-403 (is-data-analyst?)))
 
+(defn check-not-workspace
+  "Throw a 400 if the current operation is scoped to a remote-sync workspace (`*current-workspace-id*` is non-nil);
+  no-op otherwise. Certain actions (e.g. running transforms, creating transform jobs) are not allowed from inside a
+  workspace."
+  []
+  (check (nil? *current-workspace-id*)
+         [400 (tru "Transforms cannot be run in a workspace.")]))
+
 ;; checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions
 ;; w/ relevant error messages.
 

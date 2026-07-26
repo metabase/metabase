@@ -375,6 +375,7 @@
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
+  (api/check-not-workspace)
   (run-transform! (api/read-check :model/Transform id)))
 
 (api.macros/defendpoint :post "/:id/run-dag" :- [:map
@@ -394,6 +395,7 @@
    _query-params
    {:keys [direction]} :- [:map
                            [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]]]
+  (api/check-not-workspace)
   (check-feature-and-lock! (api/write-check :model/Transform id))
   (transforms-rest.api.u/async-run-response
    (deferred-tru "DAG run started")

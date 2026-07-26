@@ -10,6 +10,7 @@ import { Schedule } from "metabase/common/components/Schedule";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useSetting } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useSelector } from "metabase/redux";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { isResourceNotFoundError } from "metabase/utils/errors";
@@ -20,6 +21,7 @@ import type {
 } from "metabase-types/api";
 
 import { trackTransformJobTriggerManualRun } from "../../../analytics";
+import { getIsInWorkspace } from "../../../selectors";
 import { RunButton } from "../../RunButton";
 import { RunStatus } from "../../RunStatus";
 import type { TransformJobInfo } from "../types";
@@ -135,6 +137,7 @@ function RunButtonSection({
   readOnly,
   isCheckingPermissions,
 }: RunButtonSectionProps) {
+  const isInWorkspace = useSelector(getIsInWorkspace);
   const [runJob] = useRunTransformJobMutation();
   const [cancelJobRun] = useCancelJobRunMutation();
   const { sendErrorToast } = useMetadataToasts();
@@ -146,6 +149,9 @@ function RunButtonSection({
   const hasTags = job.tag_ids?.length !== 0;
 
   const tooltipLabel = (() => {
+    if (isInWorkspace) {
+      return t`Jobs can't be run in a workspace.`;
+    }
     if (isCheckingPermissions) {
       return t`Checking permissions…`;
     }
@@ -190,7 +196,7 @@ function RunButtonSection({
         <RunButton
           id={job.id}
           run={job.last_run}
-          isDisabled={!isSaved || !hasTags || readOnly}
+          isDisabled={!isSaved || !hasTags || readOnly || isInWorkspace}
           isLoading={isCheckingPermissions}
           allowCancellation
           onRun={handleRun}

@@ -138,6 +138,20 @@
       (underive :event/update-permission-failure ::permission-failure-event)
       (underive :event/create-permission-failure ::permission-failure-event))))
 
+(deftest ^:parallel check-not-workspace-test
+  (testing "check-not-workspace is a no-op when not scoped to a workspace"
+    (binding [api/*current-workspace-id* nil]
+      (is (true? (api/check-not-workspace)))))
+  (testing "check-not-workspace throws a 400 when scoped to a workspace"
+    (binding [api/*current-workspace-id* 1]
+      (is (thrown-with-msg? ExceptionInfo #"Transforms cannot be run in a workspace"
+                            (api/check-not-workspace)))
+      (try
+        (api/check-not-workspace)
+        (is false "check-not-workspace should have thrown")
+        (catch ExceptionInfo e
+          (is (= 400 (:status-code (ex-data e)))))))))
+
 ;;; ---------------------------------------- query-check tests ----------------------------------------
 
 (deftest query-check-returns-object-when-user-has-query-permissions-test

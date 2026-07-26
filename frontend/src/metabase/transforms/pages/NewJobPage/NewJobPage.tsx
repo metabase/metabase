@@ -9,13 +9,14 @@ import {
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { push } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { trackTransformJobCreated } from "../../analytics";
 import { JobEditor, type TransformJobInfo } from "../../components/JobEditor";
+import { getIsInWorkspace } from "../../selectors";
 
 export function NewJobPage() {
   const initialJob = useMemo(() => getNewJobInfo(), []);
@@ -26,6 +27,7 @@ export function NewJobPage() {
   const [fetchJob, { isFetching }] = useLazyGetTransformJobQuery();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const dispatch = useDispatch();
+  const isInWorkspace = useSelector(getIsInWorkspace);
   const isSaving = isCreating || isFetching;
 
   const handleNameChange = (name: string) => {
@@ -70,6 +72,12 @@ export function NewJobPage() {
           <PaneHeaderActions
             isDirty
             isSaving={isSaving}
+            isValid={!isInWorkspace}
+            errorMessage={
+              isInWorkspace
+                ? t`Jobs can't be created in a workspace.`
+                : undefined
+            }
             onSave={handleSave}
             onCancel={handleCancel}
           />

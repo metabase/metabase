@@ -99,6 +99,7 @@
                                                                     {:default :cron/raw}
                                                                     (ms/enum-decode-keyword ui-display-types)]
                                                                    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+  (api/check-not-workspace)
   (log/info "Creating transform job:" name "with schedule:" schedule)
   ;; Validate cron expression
   (api/check-400 (transforms.core/validate-cron-expression schedule)
@@ -230,6 +231,7 @@
    _query-params
    {:keys [run_all]} :- [:map
                          [:run_all {:default false} :boolean]]]
+  (api/check-not-workspace)
   (log/info "Manual run of transform job" job-id)
   (api/write-check (t2/select-one :model/TransformJob :id job-id))
   (transforms-rest.api.u/async-run-response
