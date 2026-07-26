@@ -68,7 +68,8 @@
   ([instance]
    (let [table (or (:table instance)
                    (t2/select-one :model/Table :id (:table_id instance)))]
-     (and (or api/*is-superuser?*
+     (and (remote-sync/worktree-accessible? instance)
+          (or api/*is-superuser?*
               (and api/*is-data-analyst?*
                    (perms/user-has-permission-for-table?
                     api/*current-user-id*

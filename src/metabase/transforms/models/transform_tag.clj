@@ -59,14 +59,14 @@
                                  [:= :job.active true]]}))))
 
 (defn tag-name-exists?
-  "Check if a tag with the given name already exists"
+  "Check if a tag with the given name already exists in the current worktree."
   [tag-name]
-  (t2/exists? :model/TransformTag :name tag-name))
+  (t2/exists? :model/TransformTag :name tag-name :worktree_id api/*current-worktree-id*))
 
 (defn tag-name-exists-excluding?
-  "Check if a tag with the given name exists, excluding the specified ID"
+  "Check if a tag with the given name exists in the current worktree, excluding the specified ID"
   [tag-name tag-id]
-  (t2/exists? :model/TransformTag :name tag-name :id [:not= tag-id]))
+  (t2/exists? :model/TransformTag :name tag-name :id [:not= tag-id] :worktree_id api/*current-worktree-id*))
 
 (defn- translate-name [tag]
   (let [values {"hourly"  (i18n/deferred-trs "hourly")

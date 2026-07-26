@@ -20,29 +20,32 @@
   :feature :snippet-collections
   ([snippet]
    (and
+    (remote-sync/worktree-accessible? snippet)
     (not (perms/sandboxed-user?))
     (snippets/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :read)))
   ([model id]
-   (can-read? (t2/select-one [model :collection_id] :id id))))
+   (can-read? (t2/select-one [model :collection_id :worktree_id] :id id))))
 
 (defenterprise can-write?
   "Can the current User edit this `snippet`?"
   :feature :snippet-collections
   ([snippet]
    (and
+    (remote-sync/worktree-accessible? snippet)
     (not (perms/sandboxed-user?))
     (snippets/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :write)
     (remote-sync/model-editable? :model/NativeQuerySnippet snippet)))
   ([model id]
-   (can-write? (t2/select-one [model :collection_id] :id id))))
+   (can-write? (t2/select-one [model :collection_id :worktree_id] :id id))))
 
 (defenterprise can-create?
   "Can the current User save a new Snippet with the values in `m`?"
   :feature :snippet-collections
   [_model m]
   (and
+   (remote-sync/worktree-accessible? m)
    (not (perms/sandboxed-user?))
    (snippets/has-any-native-permissions?)
    (has-parent-collection-perms? m :write)
@@ -53,6 +56,7 @@
   :feature :snippet-collections
   [snippet changes]
   (and
+   (remote-sync/worktree-accessible? snippet)
    (not (perms/sandboxed-user?))
    (snippets/has-any-native-permissions?)
    (has-parent-collection-perms? snippet :write)

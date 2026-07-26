@@ -82,8 +82,20 @@
                                    (set-snippet-id))))
          (assoc snippet :template_tags))))
 
+(defn- check-parent-collection-worktree
+  "Reject creating a snippet in a collection that belongs to a different remote-sync worktree than the current
+  scope, so content cannot be parented across worktrees at insert time (the update path is guarded by
+  `remote-sync/check-parent-same-worktree`)."
+  [collection-id]
+  (when (some? collection-id)
+    (when-not (= (t2/select-one-fn :worktree_id :model/Collection :id collection-id)
+                 api/*current-worktree-id*)
+      (throw (ex-info (tru "Cannot move content into or out of a remote sync worktree.")
+                      {:status-code 400})))))
+
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
   (u/prog1 (add-template-tags snippet)
+    (check-parent-collection-worktree (:collection_id snippet))
     (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 

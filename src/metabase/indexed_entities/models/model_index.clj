@@ -195,7 +195,8 @@
                   :archived      false
                   :database-id   :model.database_id
                   :created-at    false
-                  :updated-at    false}
+                  :updated-at    false
+                  :worktree-id   :model.worktree_id}
    :search-terms [:name]
    :render-terms {:collection-name :collection.name
                   :collection-type :collection.type

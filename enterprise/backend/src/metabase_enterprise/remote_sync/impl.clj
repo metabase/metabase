@@ -430,7 +430,7 @@
         deleted      (into #{} (filter legal-yaml-path?) (:deleted changed))
         ;; N+1: one query per deleted path (bounded by deletions in a single pull; left un-batched because
         ;; file_path values are long, making an IN clause bulky for marginal gain).
-        deleted-rsos (mapv (fn [p] (t2/select-one :model/RemoteSyncObject :file_path p)) deleted)
+        deleted-rsos (mapv (fn [p] (t2/select-one :model/RemoteSyncObject :file_path p :worktree_id api/*current-worktree-id*)) deleted)
         ingestable (when (seq add-mod)
                      (source.p/->ingestable snapshot {:path-filters (mapv #(re-pattern (java.util.regex.Pattern/quote %)) add-mod)}))
         add-models (if ingestable
@@ -511,7 +511,9 @@
   "Returns the current non-synced RemoteSyncObject rows — the local changes that have not been pushed.
   Captured before a local-only merge so they can be restored afterwards (see [[import-merged!]])."
   []
-  (t2/select :model/RemoteSyncObject {:where [:not= :status "synced"]}))
+  (t2/select :model/RemoteSyncObject {:where [:and
+                                              [:not= :status "synced"]
+                                              [:= :worktree_id api/*current-worktree-id*]]}))
 
 (defn- restore-dirty-objects!
   "Re-applies captured dirty statuses after a merge load (which marks everything 'synced'). For each
@@ -519,7 +521,8 @@
   (e.g. a pending local deletion, whose entity is absent from the merged set)."
   [dirty-objects timestamp]
   (doseq [{:keys [model_type model_id status] :as row} dirty-objects]
-    (if-let [existing (t2/select-one :model/RemoteSyncObject :model_type model_type :model_id model_id)]
+    (if-let [existing (t2/select-one :model/RemoteSyncObject :model_type model_type :model_id model_id
+                                     :worktree_id api/*current-worktree-id*)]
       (t2/update! :model/RemoteSyncObject (:id existing)
                   {:status status :status_changed_at timestamp})
       (t2/insert! :model/RemoteSyncObject
@@ -779,7 +782,9 @@
           (let [pulled (apply + (vals summary))]
             (load-snapshot! merged-snapshot task-id sync-timestamp
                             :finalize! (fn []
-                                         (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
+                                         (t2/update! :model/RemoteSyncObject
+                                                     {:worktree_id api/*current-worktree-id*}
+                                                     {:status "synced" :status_changed_at sync-timestamp})
                                          (remote-sync.task/set-version! task-id version)))
             (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d); pushed %d"
                        pulled (:added summary) (:updated summary) (:removed summary) (if empty? 0 pushed-count))

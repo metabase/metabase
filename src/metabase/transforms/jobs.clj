@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [flatland.ordered.set :as ordered-set]
+   [metabase.api.common :as api]
    [metabase.channel.urls :as urls]
    [metabase.events.core :as events]
    [metabase.revisions.core :as revisions]
@@ -121,42 +122,43 @@
   `:user-id`, and `:add-run-activity!` (a zero-arg fn called after successful execution to touch the
   coordinating run's updated_at)."
   [{:keys [parent-run run-method user-id add-run-activity!]} started-run-id {transform-id :id :as transform}]
-  (cond
-    (not (transforms.u/check-feature-enabled transform))
-    (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
+  (binding [api/*current-worktree-id* (:worktree_id transform)]
+    (cond
+      (not (transforms.u/check-feature-enabled transform))
+      (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
 
-    (transforms.usage/transform-locked? transform)
-    (log/warnf "Skip running transform %d due to locked meter (trial quota exhausted)" transform-id)
+      (transforms.usage/transform-locked? transform)
+      (log/warnf "Skip running transform %d due to locked meter (trial quota exhausted)" transform-id)
 
-    :else
-    (tracing/with-span :tasks "task.transform.execute" {:transform/id   transform-id
-                                                        :transform/name (:name transform)}
-      (let [timer      (u/start-timer)
-            timeout-ms (u/minutes->ms (transforms.settings/transform-timeout))]
-        (when (transform-run/running-run-for-transform-id transform-id)
-          (log/warn "Transform" (pr-str transform-id) "already running, waiting for slot"))
-        (loop []
-          (if-not (wait-for-transform-slot! transform-id timer timeout-ms)
-            (throw (ex-info (format "Transform %s skipped: another active run held the slot for over %d minute(s)"
-                                    (pr-str transform-id) (transforms.settings/transform-timeout))
-                            {:transform-id transform-id :error :already-running-timeout}))
-            (let [result (try
-                           (log/info "Executing transform" (pr-str transform-id))
-                           (transforms.execute/execute! transform {:run-method run-method
-                                                                   :user-id    user-id
-                                                                   :parent-run parent-run
-                                                                   ;; lets the coordinator cancel exactly the run
-                                                                   ;; this worker started (see [[cancel-worker!]])
-                                                                   :on-start   #(deliver started-run-id %)})
-                           :ok
-                           (catch Exception e
-                             ;; Raced with another starter that won the is_active slot; wait again.
-                             (if (= :already-running (:error (ex-data e)))
-                               :already-running
-                               (throw e))))]
-              (when (= :already-running result)
-                (recur))))))
-      (add-run-activity!))))
+      :else
+      (tracing/with-span :tasks "task.transform.execute" {:transform/id   transform-id
+                                                          :transform/name (:name transform)}
+        (let [timer      (u/start-timer)
+              timeout-ms (u/minutes->ms (transforms.settings/transform-timeout))]
+          (when (transform-run/running-run-for-transform-id transform-id)
+            (log/warn "Transform" (pr-str transform-id) "already running, waiting for slot"))
+          (loop []
+            (if-not (wait-for-transform-slot! transform-id timer timeout-ms)
+              (throw (ex-info (format "Transform %s skipped: another active run held the slot for over %d minute(s)"
+                                      (pr-str transform-id) (transforms.settings/transform-timeout))
+                              {:transform-id transform-id :error :already-running-timeout}))
+              (let [result (try
+                             (log/info "Executing transform" (pr-str transform-id))
+                             (transforms.execute/execute! transform {:run-method run-method
+                                                                     :user-id    user-id
+                                                                     :parent-run parent-run
+                                                                     ;; lets the coordinator cancel exactly the run
+                                                                     ;; this worker started (see [[cancel-worker!]])
+                                                                     :on-start   #(deliver started-run-id %)})
+                             :ok
+                             (catch Exception e
+                               ;; Raced with another starter that won the is_active slot; wait again.
+                               (if (= :already-running (:error (ex-data e)))
+                                 :already-running
+                                 (throw e))))]
+                (when (= :already-running result)
+                  (recur))))))
+        (add-run-activity!)))))
 
 (defn- lane-for
   "Lane a transform runs in: `:py` for python transforms (single-slot), `:sql` otherwise."

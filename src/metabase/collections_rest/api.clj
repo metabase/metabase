@@ -25,6 +25,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.queries.core :as queries]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.tracing.core :as tracing]
@@ -396,6 +397,15 @@
      :is_not_pinned [:= col nil]
      always-true-hsql-expr)))
 
+(defn- root-content-worktree-clause
+  "Restricts a collection-children row to the caller's worktree scope, but only at the root collection: a
+  non-root `collection` is already worktree-scoped transitively, via its own row in the visible-collection CTE.
+  `column` is the content table's own `worktree_id` column (qualified with its FROM alias), or `nil` for models
+  that carry no such column, in which case every row is treated as belonging to the main app."
+  [collection column]
+  (when (nil? (:id collection))
+    (remote-sync/worktree-visibility-clause column)))
+
 (defn- poison-when-pinned-clause
   "Poison a query to return no results when filtering to pinned items. Use for items that do not have a notion of
   pinning so that no results return when asking for pinned items."
@@ -452,6 +462,7 @@
                  [:and
                   [:= :document.collection_id (:id collection)]
                   [:= :document.archived_directly false]])
+               (root-content-worktree-clause collection :document.worktree_id)
                [:= :document.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
 
@@ -468,6 +479,7 @@
        :where           [:and
                          [:= :p.collection_id      (:id collection)]
                          [:= :p.archived           (boolean archived?)]
+                         (root-content-worktree-clause collection nil)
                          ;; exclude alerts
                          [:= :p.alert_condition    nil]
                          ;; exclude dashboard subscriptions
@@ -501,6 +513,7 @@
    :where  [:and
             (poison-when-pinned-clause pinned-state)
             [:= :collection_id (:id collection)]
+            (root-content-worktree-clause collection :worktree_id)
             [:= :archived (boolean archived?)]]})
 
 (defmethod collection-children-query :transform
@@ -511,6 +524,7 @@
      :where  [:and
               (poison-when-pinned-clause pinned-state)
               [:= :collection_id (:id collection)]
+              (root-content-worktree-clause collection :worktree_id)
               (if (seq enabled-types)
                 [:in :source_type enabled-types]
                 [:=
@@ -572,6 +586,7 @@
                      [:and
                       [:= :c.collection_id (:id collection)]
                       [:= :c.archived_directly false]])
+                   (root-content-worktree-clause collection :c.worktree_id)
                    (when-not show-dashboard-questions?
                      [:= :c.dashboard_id nil])
                    [:= :c.document_id nil]
@@ -681,6 +696,7 @@
                      [:and
                       [:= :d.collection_id (:id collection)]
                       [:not= :d.archived_directly true]])
+                   (root-content-worktree-clause collection :d.worktree_id)
                    [:= :d.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 

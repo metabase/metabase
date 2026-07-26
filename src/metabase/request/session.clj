@@ -80,7 +80,8 @@
     (with-current-user-fetch-user-for-id *current-user-id*)
     {:is-superuser? true
      :permissions-set #{"/"}
-     :user-locale i18n/*user-locale*})
+     :user-locale i18n/*user-locale*
+     :worktree-id nil})
    thunk))
 
 (defmacro as-admin

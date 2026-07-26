@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms.core :as transforms.core]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
    [metabase.util.log :as log]
@@ -64,7 +65,9 @@
    _query-params]
   (log/info "Getting all transform tags")
   (api/check-data-analyst)
-  (t2/hydrate (t2/select :model/TransformTag {:order-by [[:name :asc]]}) :can_run))
+  (t2/hydrate (t2/select :model/TransformTag {:where    (remote-sync/worktree-visibility-clause)
+                                              :order-by [[:name :asc]]})
+              :can_run))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform-tag` routes."

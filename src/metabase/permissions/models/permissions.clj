@@ -306,9 +306,10 @@
 
 (defmethod mi/can-create? :perms/use-parent-collection-perms
   [_model m]
-  (if-let [collection-id (:collection_id m)]
-    (mi/can-write? (t2/select-one :model/Collection :id collection-id))
-    (mi/can-write? (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))))
+  (and (remote-sync/worktree-accessible? m)
+       (if-let [collection-id (:collection_id m)]
+         (mi/can-write? (t2/select-one :model/Collection :id collection-id))
+         (mi/can-write? (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               ENTITY + LIFECYCLE                                               |
@@ -514,7 +515,8 @@
     (keyword? target)
     `(do
        (defmethod mi/can-read? ~target
-         ([instance#] (can-read-via-parent-collection? (:collection_id instance#)))
+         ([instance#] (and (remote-sync/worktree-accessible? instance#)
+                           (can-read-via-parent-collection? (:collection_id instance#))))
          ([_# pk#]    (mi/can-read? (t2/select-one ~target :id pk#))))
        (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target)))
 

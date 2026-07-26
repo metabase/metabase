@@ -366,8 +366,9 @@ databaseChangeLog:
               ALTER TABLE `collection` DROP INDEX `entity_id`;
         - sql:
             dbms: h2
+            splitStatements: false
             sql: |
-              ALTER TABLE collection DROP CONSTRAINT IF EXISTS CONSTRAINT_B;
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'COLLECTION' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
       rollback:
         - addUniqueConstraint:
             tableName: collection
@@ -464,8 +465,9 @@ databaseChangeLog:
               ALTER TABLE `report_card` DROP INDEX `entity_id`;
         - sql:
             dbms: h2
+            splitStatements: false
             sql: |
-              ALTER TABLE report_card DROP CONSTRAINT IF EXISTS CONSTRAINT_73;
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'REPORT_CARD' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
       rollback:
         - addUniqueConstraint:
             tableName: report_card
@@ -562,8 +564,9 @@ databaseChangeLog:
               ALTER TABLE `report_dashboard` DROP INDEX `entity_id`;
         - sql:
             dbms: h2
+            splitStatements: false
             sql: |
-              ALTER TABLE report_dashboard DROP CONSTRAINT IF EXISTS CONSTRAINT_97;
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'REPORT_DASHBOARD' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
       rollback:
         - addUniqueConstraint:
             tableName: report_dashboard
@@ -660,8 +663,9 @@ databaseChangeLog:
               ALTER TABLE `report_dashboardcard` DROP INDEX `entity_id`;
         - sql:
             dbms: h2
+            splitStatements: false
             sql: |
-              ALTER TABLE report_dashboardcard DROP CONSTRAINT IF EXISTS CONSTRAINT_1;
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'REPORT_DASHBOARDCARD' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
       rollback:
         - addUniqueConstraint:
             tableName: report_dashboardcard
@@ -758,8 +762,9 @@ databaseChangeLog:
               ALTER TABLE `dashboard_tab` DROP INDEX `entity_id`;
         - sql:
             dbms: h2
+            splitStatements: false
             sql: |
-              ALTER TABLE dashboard_tab DROP CONSTRAINT IF EXISTS CONSTRAINT_90;
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'DASHBOARD_TAB' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
       rollback:
         - addUniqueConstraint:
             tableName: dashboard_tab
@@ -856,8 +861,9 @@ databaseChangeLog:
               ALTER TABLE `document` DROP INDEX `entity_id`;
         - sql:
             dbms: h2
+            splitStatements: false
             sql: |
-              ALTER TABLE document DROP CONSTRAINT IF EXISTS CONSTRAINT_62;
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'DOCUMENT' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
       rollback:
         - addUniqueConstraint:
             tableName: document
@@ -954,8 +960,9 @@ databaseChangeLog:
               ALTER TABLE `native_query_snippet` DROP INDEX `entity_id`;
         - sql:
             dbms: h2
+            splitStatements: false
             sql: |
-              ALTER TABLE native_query_snippet DROP CONSTRAINT IF EXISTS CONSTRAINT_4B3;
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'NATIVE_QUERY_SNIPPET' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
       rollback:
         - addUniqueConstraint:
             tableName: native_query_snippet
@@ -1052,8 +1059,9 @@ databaseChangeLog:
               ALTER TABLE `timeline` DROP INDEX `entity_id`;
         - sql:
             dbms: h2
+            splitStatements: false
             sql: |
-              ALTER TABLE timeline DROP CONSTRAINT IF EXISTS CONSTRAINT_B2;
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'TIMELINE' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
       rollback:
         - addUniqueConstraint:
             tableName: timeline
@@ -1150,8 +1158,9 @@ databaseChangeLog:
               ALTER TABLE `segment` DROP INDEX `entity_id`;
         - sql:
             dbms: h2
+            splitStatements: false
             sql: |
-              ALTER TABLE segment DROP CONSTRAINT IF EXISTS CONSTRAINT_A;
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'SEGMENT' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
       rollback:
         - addUniqueConstraint:
             tableName: segment
@@ -1248,8 +1257,9 @@ databaseChangeLog:
               ALTER TABLE `measure` DROP INDEX `entity_id`;
         - sql:
             dbms: h2
+            splitStatements: false
             sql: |
-              ALTER TABLE measure DROP CONSTRAINT IF EXISTS CONSTRAINT_62B;
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'MEASURE' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
       rollback:
         - addUniqueConstraint:
             tableName: measure
@@ -1346,8 +1356,9 @@ databaseChangeLog:
               ALTER TABLE `transform` DROP INDEX `entity_id`;
         - sql:
             dbms: h2
+            splitStatements: false
             sql: |
-              ALTER TABLE transform DROP CONSTRAINT IF EXISTS CONSTRAINT_E4;
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'TRANSFORM' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
       rollback:
         - addUniqueConstraint:
             tableName: transform
@@ -1444,8 +1455,9 @@ databaseChangeLog:
               ALTER TABLE `transform_tag` DROP INDEX `entity_id`;
         - sql:
             dbms: h2
+            splitStatements: false
             sql: |
-              ALTER TABLE transform_tag DROP CONSTRAINT IF EXISTS CONSTRAINT_53;
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'TRANSFORM_TAG' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
       rollback:
         - addUniqueConstraint:
             tableName: transform_tag
@@ -1542,8 +1554,9 @@ databaseChangeLog:
               ALTER TABLE `transform_transform_tag` DROP INDEX `entity_id`;
         - sql:
             dbms: h2
+            splitStatements: false
             sql: |
-              ALTER TABLE transform_transform_tag DROP CONSTRAINT IF EXISTS CONSTRAINT_F4;
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'TRANSFORM_TRANSFORM_TAG' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
       rollback:
         - addUniqueConstraint:
             tableName: transform_transform_tag
@@ -1729,8 +1742,9 @@ databaseChangeLog:
               ALTER TABLE `action` DROP INDEX `entity_id`;
         - sql:
             dbms: h2
+            splitStatements: false
             sql: |
-              ALTER TABLE action DROP CONSTRAINT IF EXISTS CONSTRAINT_72C;
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'ACTION' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
       rollback:
         - addUniqueConstraint:
             tableName: action
