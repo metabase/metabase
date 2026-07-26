@@ -2,24 +2,24 @@
  * RTL icon mirroring.
  *
  * Directional navigation icons (left/right chevrons, arrows and triangles) point
- * the wrong way once the layout is mirrored with `dir="rtl"`, so flip them on the
- * horizontal axis. Only unambiguously horizontal, direction-of-travel icons are
- * listed here — vertical ones (chevronup/down) and icons whose shape carries a
- * fixed meaning (e.g. join_left_outer/join_right_outer) are intentionally left
- * untouched.
+ * the wrong way once the layout is mirrored, so flip them on the horizontal axis.
+ * Only unambiguously horizontal, direction-of-travel icons are listed here —
+ * vertical ones (chevronup/down) and icons whose shape carries a fixed meaning
+ * (e.g. join_left_outer/join_right_outer) are intentionally left untouched.
  *
- * The `[dir="rtl"]` part is wrapped in `:where()` so the whole selector keeps the
- * specificity of a single class. That way a component that statefully transforms
- * one of these icons — e.g. an expand caret rotated 90deg — still wins and keeps
- * its own transform, while plain directional icons (no competing transform) are
- * mirrored.
+ * `:dir(rtl)` matches the element's *computed* direction rather than any RTL
+ * ancestor, so an LTR-locale SDK embed inside an RTL host page (its wrapper sets
+ * `dir="ltr"`) is not mirrored. It is wrapped in `:where()` so the selector keeps
+ * single-class specificity: a component that statefully transforms one of these
+ * icons (e.g. an expand caret rotated 90deg) still wins and keeps its transform.
+ * Browsers without `:dir()` support simply leave the icons unmirrored.
  */
-:global(:where([dir="rtl"]) .Icon-chevronleft),
-:global(:where([dir="rtl"]) .Icon-chevronright),
-:global(:where([dir="rtl"]) .Icon-arrow_left),
-:global(:where([dir="rtl"]) .Icon-arrow_right),
-:global(:where([dir="rtl"]) .Icon-arrow_left_to_line),
-:global(:where([dir="rtl"]) .Icon-triangle_left),
-:global(:where([dir="rtl"]) .Icon-triangle_right) {
+:global(.Icon-chevronleft:where(:dir(rtl))),
+:global(.Icon-chevronright:where(:dir(rtl))),
+:global(.Icon-arrow_left:where(:dir(rtl))),
+:global(.Icon-arrow_right:where(:dir(rtl))),
+:global(.Icon-arrow_left_to_line:where(:dir(rtl))),
+:global(.Icon-triangle_left:where(:dir(rtl))),
+:global(.Icon-triangle_right:where(:dir(rtl))) {
   transform: scaleX(-1);
 }
