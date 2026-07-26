@@ -124,7 +124,7 @@ export const DataGrid = function DataGrid<TData>({
 
   const totalHeight = getTotalHeight();
 
-  const addColumnMarginRight =
+  const addColumnMarginInlineEnd =
     totalHeight >= (gridRef.current?.offsetHeight ?? Infinity)
       ? getScrollBarSize()
       : 0;
@@ -242,7 +242,7 @@ export const DataGrid = function DataGrid<TData>({
             style={{
               backgroundColor,
               color: theme?.cell?.textColor,
-              paddingRight:
+              paddingInlineEnd:
                 hasAddColumnButton && isAddColumnButtonSticky
                   ? `${ADD_COLUMN_BUTTON_WIDTH}px`
                   : 0,
@@ -318,7 +318,7 @@ export const DataGrid = function DataGrid<TData>({
           {isAddColumnButtonSticky && (
             <AddColumnButton
               isSticky
-              marginRight={addColumnMarginRight}
+              marginInlineEnd={addColumnMarginInlineEnd}
               onClick={onAddColumnClick}
             />
           )}
