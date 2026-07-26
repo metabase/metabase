@@ -1,4 +1,4 @@
-(ns metabase.remote-sync.content-read-isolation-test
+(ns metabase-enterprise.remote-sync.content-read-isolation-test
   "Read-isolation coverage for remote-sync WORKTREE scoping: `can-read?`/`can-write?` gating on content models that
   don't route through collection permissions (Segment, Measure, TransformTag, Action), and worktree-visibility
   filtering on the broad `GET` list endpoints for segments, measures, cards, and dashboards. A main-scope caller
@@ -7,6 +7,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -91,7 +93,7 @@
                  :model/User               wt-superuser   {:is_superuser true :worktree_id (:id wt)}
                  :model/User               main-superuser {:is_superuser true}]
     (mt/with-current-user (:id wt-superuser)
-      (mt/with-temp [:model/Card wt-card {:type :model :collection_id (:id wt-coll) :dataset_query (mt/mbql-query venues)}]
+      (mt/with-temp [:model/Card wt-card {:type :model :collection_id (:id wt-coll) :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
         (let [wt-action (action-instance (:id wt-card) (:id wt))]
           (testing "the worktree scope can read/write its own action"
             (is (true? (mi/can-read? wt-action)))
@@ -101,7 +103,7 @@
               (is (false? (mi/can-read? wt-action)))
               (is (false? (mi/can-write? wt-action))))))))
     (mt/with-current-user (:id main-superuser)
-      (mt/with-temp [:model/Card main-card {:type :model :collection_id (:id main-coll) :dataset_query (mt/mbql-query venues)}]
+      (mt/with-temp [:model/Card main-card {:type :model :collection_id (:id main-coll) :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
         (let [main-action (action-instance (:id main-card) nil)]
           (testing "the main scope can read/write its own action"
             (is (true? (mi/can-read? main-action)))

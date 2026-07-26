@@ -1,4 +1,4 @@
-(ns metabase.collections.models.collection-worktree-test
+(ns metabase-enterprise.remote-sync.collection-worktree-test
   "Coverage for remote-sync worktree read/write isolation in the Collection layer: `can-read?`/`can-write?`,
   `visible-collection-ids`, and the shared main-app system collections (trash, library, personal)."
   (:require

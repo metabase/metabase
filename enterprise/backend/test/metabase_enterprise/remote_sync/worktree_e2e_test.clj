@@ -18,6 +18,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -67,15 +68,15 @@
     {:origin-dir origin
      :url        (str "file://" (.getAbsolutePath origin))}))
 
-(defn- git-log
+(defn- git-log!
   [origin-dir branch]
   (sh! "git" "--git-dir" (str origin-dir) "log" "--oneline" branch))
 
-(defn- git-diff
+(defn- git-diff!
   [origin-dir sha1 sha2]
   (sh! "git" "--git-dir" (str origin-dir) "diff" sha1 sha2))
 
-(defn- git-rev-parse
+(defn- git-rev-parse!
   [origin-dir ref]
   (str/trim (sh! "git" "--git-dir" (str origin-dir) "rev-parse" ref)))
 
@@ -200,7 +201,7 @@
                     (mt/user-http-request :crowberto :post 200 "ee/remote-sync/branch" {:name "wt-branch"})
                     (is (= "main" (settings/remote-sync-branch))
                         "creating a branch must not switch the active branch")
-                    (let [wt-branch-base-sha (git-rev-parse origin-dir "wt-branch")]
+                    (let [wt-branch-base-sha (git-rev-parse! origin-dir "wt-branch")]
                       (testing "3. create a worktree for wt-branch and assign the admin to it"
                         (let [{worktree-id :id} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/worktree"
                                                                       {:branch "wt-branch"})]
@@ -236,14 +237,14 @@
                                                                                  {:branch "wt-branch" :message "Rename card"})
                                         task (wait-for-task-completion task_id)]
                                     (is (remote-sync.task/successful? task) (pr-str task)))
-                                  (let [wt-branch-head-sha (git-rev-parse origin-dir "wt-branch")
-                                        main-head-sha       (git-rev-parse origin-dir "main")
-                                        diff                (git-diff origin-dir wt-branch-base-sha wt-branch-head-sha)
-                                        wt-log              (git-log origin-dir "wt-branch")
-                                        main-log            (git-log origin-dir "main")]
-                                    (println "\n=== wt-branch log ===\n" wt-log)
-                                    (println "=== main log ===\n" main-log)
-                                    (println "=== git diff " wt-branch-base-sha ".." wt-branch-head-sha " (wt-branch push) ===\n" diff)
+                                  (let [wt-branch-head-sha (git-rev-parse! origin-dir "wt-branch")
+                                        main-head-sha       (git-rev-parse! origin-dir "main")
+                                        diff                (git-diff! origin-dir wt-branch-base-sha wt-branch-head-sha)
+                                        wt-log              (git-log! origin-dir "wt-branch")
+                                        main-log            (git-log! origin-dir "main")]
+                                    (log/info "\n=== wt-branch log ===\n" wt-log)
+                                    (log/info "=== main log ===\n" main-log)
+                                    (log/info "=== git diff " wt-branch-base-sha ".." wt-branch-head-sha " (wt-branch push) ===\n" diff)
                                     (is (not= wt-branch-base-sha wt-branch-head-sha)
                                         "wt-branch must have advanced")
                                     (is (= "main" (settings/remote-sync-branch))
@@ -254,7 +255,7 @@
                                         "the pushed diff must show the old name removed")
                                     (is (not (str/includes? diff "README"))
                                         "only the card's YAML should have changed, nothing else")
-                                    (is (= main-head-sha (git-rev-parse origin-dir "main"))
+                                    (is (= main-head-sha (git-rev-parse! origin-dir "main"))
                                         "main branch must be byte-identical (same commit) after the worktree push")))))
                             (finally
                               (mt/user-http-request :crowberto :put 200 (str "user/" admin-id) {:worktree_id nil})
@@ -304,18 +305,18 @@
                         (is (not (contains? ids (:id a-only))))
                         (is (not (contains? ids (:id b-only)))))))
                   (testing "pushing A only advances wt-matrix-a; wt-matrix-b and main are untouched"
-                    (let [a-base  (git-rev-parse origin-dir "wt-matrix-a")
-                          b-base  (git-rev-parse origin-dir "wt-matrix-b")
-                          m-base  (git-rev-parse origin-dir "main")]
+                    (let [a-base  (git-rev-parse! origin-dir "wt-matrix-a")
+                          b-base  (git-rev-parse! origin-dir "wt-matrix-b")
+                          m-base  (git-rev-parse! origin-dir "main")]
                       (export! :crowberto "wt-matrix-a" "push A only")
-                      (let [a-head (git-rev-parse origin-dir "wt-matrix-a")
-                            diff   (git-diff origin-dir a-base a-head)]
-                        (println "\n=== two-worktree isolation: wt-matrix-a push diff ===\n" diff)
+                      (let [a-head (git-rev-parse! origin-dir "wt-matrix-a")
+                            diff   (git-diff! origin-dir a-base a-head)]
+                        (log/info "\n=== two-worktree isolation: wt-matrix-a push diff ===\n" diff)
                         (is (not= a-base a-head) "wt-matrix-a must have advanced")
                         (is (str/includes? diff "A-only Card"))
-                        (is (= b-base (git-rev-parse origin-dir "wt-matrix-b"))
+                        (is (= b-base (git-rev-parse! origin-dir "wt-matrix-b"))
                             "wt-matrix-b must be untouched by A's push")
-                        (is (= m-base (git-rev-parse origin-dir "main"))
+                        (is (= m-base (git-rev-parse! origin-dir "main"))
                             "main must be untouched by A's push"))))
                   (finally
                     (unassign-worktree! (mt/user->id :crowberto))
@@ -346,18 +347,18 @@
                       (is (= wt-id (t2/select-one-fn :worktree_id :model/Collection :id (:id coll))))
                       (is (= wt-id (t2/select-one-fn :worktree_id :model/Card :id (:id card))))
                       (is (= wt-id (t2/select-one-fn :worktree_id :model/NativeQuerySnippet :id (:id snippet))))
-                      (let [main-base (git-rev-parse origin-dir "main")]
+                      (let [main-base (git-rev-parse! origin-dir "main")]
                         (export! :crowberto "wt-fresh" "push brand-new content")
                         (let [wt-tree   (sh! "git" "--git-dir" (str origin-dir) "ls-tree" "-r" "--name-only" "wt-fresh")
                               main-tree (sh! "git" "--git-dir" (str origin-dir) "ls-tree" "-r" "--name-only" "main")]
-                          (println "\n=== new-content push: wt-fresh tree ===\n" wt-tree)
-                          (println "=== new-content push: main tree (unchanged) ===\n" main-tree)
+                          (log/info "\n=== new-content push: wt-fresh tree ===\n" wt-tree)
+                          (log/info "=== new-content push: main tree (unchanged) ===\n" main-tree)
                           (is (str/includes? wt-tree "fresh_wt_collection"))
                           (is (str/includes? wt-tree "fresh_wt_card"))
                           (is (str/includes? wt-tree "fresh_wt_snippet"))
                           (is (= "README.md" (str/trim main-tree))
                               "main must still contain only the seed README")
-                          (is (= main-base (git-rev-parse origin-dir "main"))
+                          (is (= main-base (git-rev-parse! origin-dir "main"))
                               "main must be byte-identical (same commit) after the worktree push"))))
                     (finally
                       (unassign-worktree! admin-id)
@@ -383,14 +384,14 @@
                 (assign-worktree! admin-id wt-id)
                 (import! :crowberto "wt-delete")
                 (let [wt-card (t2/select-one :model/Card :entity_id (:entity_id card) :worktree_id wt-id)
-                      pre-sha (git-rev-parse origin-dir "wt-delete")]
+                      pre-sha (git-rev-parse! origin-dir "wt-delete")]
                   (mt/user-http-request :crowberto :delete 204 (str "card/" (:id wt-card)))
                   (is (not (t2/exists? :model/Card :id (:id wt-card))))
                   (export! :crowberto "wt-delete" "delete card")
-                  (let [post-sha  (git-rev-parse origin-dir "wt-delete")
-                        diff      (git-diff origin-dir pre-sha post-sha)
+                  (let [post-sha  (git-rev-parse! origin-dir "wt-delete")
+                        diff      (git-diff! origin-dir pre-sha post-sha)
                         main-tree (sh! "git" "--git-dir" (str origin-dir) "ls-tree" "-r" "--name-only" "main")]
-                    (println "\n=== delete push: wt-delete diff ===\n" diff)
+                    (log/info "\n=== delete push: wt-delete diff ===\n" diff)
                     (is (str/includes? diff "deleted file"))
                     (is (str/includes? diff "doomed_card.yaml"))
                     (is (str/includes? main-tree "doomed_card.yaml")
@@ -452,7 +453,7 @@
                 (try
                   (assign-worktree! admin-id wt-id)
                   (import! :crowberto "wt-along")
-                  (let [wt-along-base (git-rev-parse origin-dir "wt-along")]
+                  (let [wt-along-base (git-rev-parse! origin-dir "wt-along")]
                     (testing "main user creates + pushes new content while the worktree is active"
                       (let [m2-coll (create-collection! user-main "Alongside M2 Root")
                             _       (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {(:id m2-coll) true}})
@@ -460,7 +461,7 @@
                         (export! user-main "main" "push M2")
                         (let [main-tree (sh! "git" "--git-dir" (str origin-dir) "ls-tree" "-r" "--name-only" "main")]
                           (is (str/includes? main-tree "m2_card"))
-                          (is (= wt-along-base (git-rev-parse origin-dir "wt-along"))
+                          (is (= wt-along-base (git-rev-parse! origin-dir "wt-along"))
                               "the worktree branch must be untouched by main's push"))
                         (testing "main import still works normally with a worktree active"
                           (import! user-main "main"))

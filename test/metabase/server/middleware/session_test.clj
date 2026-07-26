@@ -121,6 +121,7 @@
                                :is-superuser?           false
                                :is-data-analyst?        false
                                :user-locale             nil
+                               :worktree-id             nil
                                :embedding/auth-method   "api-key"})
                    (#'mw.session/merge-current-user-info req)))))
         (testing "Include :is-group-manager? if we have EE + :advanced-permissions "
@@ -131,6 +132,7 @@
                                  :is-data-analyst?        false
                                  :is-group-manager?       false
                                  :user-locale             nil
+                                 :worktree-id             nil
                                  :embedding/auth-method   "api-key"})
                      (#'mw.session/merge-current-user-info req))))))))))
 
@@ -240,6 +242,7 @@
               :is-superuser? false,
               :is-group-manager? false,
               :user-locale nil
+              :worktree-id nil
               :is-data-analyst? false
               :auth-provider nil}
              (#'mw.session/current-user-info-for-session test-session-key nil)))
@@ -256,6 +259,7 @@
               :is-superuser? true,
               :is-group-manager? false,
               :user-locale nil
+              :worktree-id nil
               :is-data-analyst? false
               :auth-provider nil}
              (#'mw.session/current-user-info-for-session test-session-key nil)))
@@ -307,6 +311,7 @@
                 :is-superuser? false,
                 :is-group-manager? false,
                 :user-locale nil
+                :worktree-id nil
                 :is-data-analyst? false
                 :auth-provider nil}
                (#'mw.session/current-user-info-for-session test-session-key test-anti-csrf-token)))

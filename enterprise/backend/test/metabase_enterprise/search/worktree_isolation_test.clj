@@ -1,4 +1,4 @@
-(ns metabase.search.worktree-isolation-test
+(ns metabase-enterprise.search.worktree-isolation-test
   "Remote-sync WORKTREE isolation coverage for the appdb-indexed search engine: `GET /api/search` must return
   only content matching the caller's worktree, enforced in SQL via
   `metabase.search.permissions/worktree-visibility-clause` rather than relying on the per-row `can-read?`

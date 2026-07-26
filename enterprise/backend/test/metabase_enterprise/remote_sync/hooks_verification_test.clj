@@ -1,4 +1,4 @@
-(ns metabase.remote-sync.hooks-verification-test
+(ns metabase-enterprise.remote-sync.hooks-verification-test
   "Cross-model regression coverage for the worktree_id stamp/immutable/parent-worktree hooks wired into
   content models' before-insert/before-update (see metabase.remote-sync.core)."
   (:require

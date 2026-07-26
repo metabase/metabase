@@ -17,6 +17,8 @@
     :legacy_query
     :made_public_by_id
     :metabase_version
+    :worktree_id
+    :worktree_id_helper
     ;; internal Metabot bookkeeping (which conversation/chart the card was saved from);
     ;; excluding them also keeps a revert from writing back a stale conversation id
     ;; after the conversation is deleted (the FK would reject it)

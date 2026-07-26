@@ -2815,4 +2815,9 @@
                   (is (contains? wt-dependents (:id wt-card)))
                   (is (not (contains? wt-dependents (:id main-card)))))))
             (finally
+              ;; Content created inside a worktree is unconditionally sync-eligible, so the wt-card and the
+              ;; worktree's Trash collection each spawn a worktree-scoped RemoteSyncObject. Clear those (and any
+              ;; other worktree-scoped RSO rows) before with-temp deletes the worktree, or the FK from
+              ;; remote_sync_object.worktree_id -> remote_sync_worktree.id blocks the delete.
+              (t2/delete! :model/RemoteSyncObject :worktree_id (:id wt))
               (t2/delete! :model/Collection :id wt-trash-id))))))))

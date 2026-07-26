@@ -202,35 +202,34 @@
            (model-select-fragment model))
     {:quoted false})))
 
+(def ^:private generated-columns
+  "Computed/generated columns present on some tables that can never be included in an `INSERT` when copying rows
+  between databases. `worktree_id_helper` appears on every remote-sync-scoped content table."
+  [:unique_table_helper :unique_field_helper :worktree_id_helper])
+
 (defn- model-results-xform [model]
-  (case model
-    :model/Database
-    ;; For security purposes, do NOT copy connection details for H2 Databases by default; replace them with an empty map.
-    ;; Why? Because this is a potential pathway to injecting sneaky H2 connection parameters that cause RCEs. For the
-    ;; Sample Database, the correct details are reset automatically on every
-    ;; launch (see [[metabase.sample-data.impl/update-sample-database-if-needed!]]), and we don't support connecting other H2
-    ;; Databases in prod anyway, so this ultimately shouldn't cause anyone any problems.
-    (map (fn [database]
-           (cond-> database
-             (or (:is_attached_dwh database)
-                 (and (not *copy-h2-database-details*)
-                      (= (:engine database) "h2"))) (assoc :details "{}"))))
+  (comp
+   (map #(apply dissoc % generated-columns))
+   (case model
+     :model/Database
+     ;; For security purposes, do NOT copy connection details for H2 Databases by default; replace them with an empty map.
+     ;; Why? Because this is a potential pathway to injecting sneaky H2 connection parameters that cause RCEs. For the
+     ;; Sample Database, the correct details are reset automatically on every
+     ;; launch (see [[metabase.sample-data.impl/update-sample-database-if-needed!]]), and we don't support connecting other H2
+     ;; Databases in prod anyway, so this ultimately shouldn't cause anyone any problems.
+     (map (fn [database]
+            (cond-> database
+              (or (:is_attached_dwh database)
+                  (and (not *copy-h2-database-details*)
+                       (= (:engine database) "h2"))) (assoc :details "{}"))))
 
-    :model/Setting
-    ;; Never create dumps with read-only-mode turned on.
-    ;; It will be confusing to restore from and prevent key rotation.
-    (remove (fn [{k :key}] (= k "read-only-mode")))
+     :model/Setting
+     ;; Never create dumps with read-only-mode turned on.
+     ;; It will be confusing to restore from and prevent key rotation.
+     (remove (fn [{k :key}] (= k "read-only-mode")))
 
-    :model/Table
-    ;; unique_table_helper is a computed/generated column
-    (map #(dissoc % :unique_table_helper))
-
-    :model/Field
-    ;; unique_field_helper is a computed/generated column
-    (map #(dissoc % :unique_field_helper))
-
-    ;; else
-    identity))
+     ;; else
+     identity)))
 
 (defn- copy-data! [^javax.sql.DataSource source-data-source target-db-type target-db-conn-spec]
   (with-open [source-conn (.getConnection source-data-source)]
