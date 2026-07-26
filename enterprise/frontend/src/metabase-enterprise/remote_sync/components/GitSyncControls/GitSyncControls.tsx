@@ -32,9 +32,9 @@ import { type SyncError, parseSyncError } from "../../utils";
 import { PushChangesModal } from "../PushChangesModal";
 import { SyncConflictModal } from "../SyncConflictModal";
 
+import { EnterWorkspaceModal } from "./EnterWorkspaceModal";
 import S from "./GitSyncControls.module.css";
 import { GitSyncOptionsDropdown } from "./GitSyncOptionsDropdown";
-import { SwitchWorkspaceModal } from "./SwitchWorkspaceModal";
 
 export const GitSyncControls = () => {
   const dispatch = useDispatch();
@@ -65,7 +65,7 @@ export const GitSyncControls = () => {
   // reads the remote trees, so it can take a few seconds — show the control as busy meanwhile.
   const [isCheckingPreflight, setIsCheckingPreflight] = useState(false);
   const [showPushModal, { toggle: togglePushModal }] = useDisclosure(false);
-  const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
+  const [isEnterModalOpen, setIsEnterModalOpen] = useState(false);
   const [menuOpened, setMenuOpened] = useState(false);
   const [sendToast] = useToast();
 
@@ -315,9 +315,9 @@ export const GitSyncControls = () => {
 
           <Menu.Item
             leftSection={<Icon name="workspace" size={12} />}
-            onClick={() => setIsSwitchModalOpen(true)}
+            onClick={() => setIsEnterModalOpen(true)}
           >
-            {t`Switch workspace`}
+            {isWorkspace ? t`Switch workspace` : t`Enter workspace`}
           </Menu.Item>
 
           {isWorkspace && (
@@ -331,13 +331,11 @@ export const GitSyncControls = () => {
         </Menu.Dropdown>
       </Menu>
 
-      {isSwitchModalOpen && (
-        <SwitchWorkspaceModal
-          opened
-          currentWorkspaceId={currentUser?.workspace_id}
-          onClose={() => setIsSwitchModalOpen(false)}
-        />
-      )}
+      <EnterWorkspaceModal
+        opened={isEnterModalOpen}
+        currentWorkspaceId={currentUser?.workspace_id}
+        onClose={() => setIsEnterModalOpen(false)}
+      />
 
       {showPushModal && (
         <PushChangesModal

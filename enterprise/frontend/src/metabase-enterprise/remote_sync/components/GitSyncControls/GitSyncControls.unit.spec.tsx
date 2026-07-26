@@ -451,8 +451,8 @@ describe("GitSyncControls", () => {
     });
   });
 
-  describe("switch workspace", () => {
-    it("opens the switch workspace modal listing existing workspaces", async () => {
+  describe("enter workspace", () => {
+    it("labels the menu item 'Enter workspace' and opens the modal when the user has no workspace", async () => {
       setup();
       setupListWorkspacesEndpoint([
         createMockWorkspace({ id: 1, branch: "feature/one" }),
@@ -462,11 +462,29 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
-      await userEvent.click(await findOption(/Switch workspace/));
+      await userEvent.click(await findOption(/Enter workspace/));
 
       expect(
-        await screen.findByRole("dialog", { name: /switch workspace/i }),
+        await screen.findByRole("dialog", { name: /enter workspace/i }),
       ).toBeInTheDocument();
+    });
+
+    it("labels the menu item 'Switch workspace' when the user is already in a workspace", async () => {
+      setup({
+        currentBranch: "main",
+        workspaceId: 42,
+        workspace: createMockWorkspace({ id: 42, branch: "feature/x" }),
+      });
+      setupListWorkspacesEndpoint([
+        createMockWorkspace({ id: 42, branch: "feature/x" }),
+      ]);
+
+      await waitFor(() => {
+        expect(getBranchButton(/feature\/x/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/feature\/x/));
+
+      expect(await findOption(/Switch workspace/)).toBeInTheDocument();
     });
   });
 
@@ -479,7 +497,7 @@ describe("GitSyncControls", () => {
       });
       await userEvent.click(getBranchButton(/main/));
 
-      expect(await findOption(/Switch workspace/)).toBeInTheDocument();
+      expect(await findOption(/Enter workspace/)).toBeInTheDocument();
       expect(
         screen.queryByRole("menuitem", { name: /leave workspace/i }),
       ).not.toBeInTheDocument();

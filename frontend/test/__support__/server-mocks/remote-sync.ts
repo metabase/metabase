@@ -37,6 +37,28 @@ export const setupRemoteSyncBranchesEndpoint = (
 };
 
 /**
+ * Setup the remote-sync branch creation POST endpoint
+ */
+export const setupCreateBranchEndpoint = ({
+  error,
+}: { error?: { status: number; message: string } } = {}) => {
+  fetchMock.removeRoute("remote-sync-create-branch");
+  if (error) {
+    fetchMock.post(
+      "path:/api/ee/remote-sync/branch",
+      { status: error.status, body: { message: error.message } },
+      { name: "remote-sync-create-branch" },
+    );
+  } else {
+    fetchMock.post(
+      "path:/api/ee/remote-sync/branch",
+      { status: "success", message: "" },
+      { name: "remote-sync-create-branch" },
+    );
+  }
+};
+
+/**
  * Setup the remote-sync current-task endpoint
  */
 const setupRemoteSyncCurrentTaskEndpoint = (

@@ -3,20 +3,19 @@ import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
+import { Modal } from "metabase/ui";
 import {
-  Form,
-  FormErrorMessage,
-  FormProvider,
-  FormSelect,
-  FormSubmitButton,
-} from "metabase/forms";
-import { Button, Group, Modal, Stack } from "metabase/ui";
-import {
+  useCreateBranchMutation,
   useCreateWorkspaceMutation,
   useGetBranchesQuery,
   useListWorkspacesQuery,
 } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
+
+import {
+  WorkspaceBranchForm,
+  type WorkspaceBranchFormValues,
+} from "../../WorkspaceBranchForm";
 
 import { getValidationSchema } from "./utils";
 
@@ -76,12 +75,6 @@ function WorkspaceFormLoader({ onClose }: WorkspaceFormLoaderProps) {
   );
 }
 
-type CreateWorkspaceFormValues = {
-  branch: string | null;
-};
-
-const INITIAL_VALUES: CreateWorkspaceFormValues = { branch: null };
-
 type WorkspaceFormProps = {
   branches: string[];
   workspaces: Workspace[];
@@ -95,6 +88,7 @@ function WorkspaceForm({
   mainBranch,
   onClose,
 }: WorkspaceFormProps) {
+  const [createBranch, createBranchResult] = useCreateBranchMutation();
   const [createWorkspace] = useCreateWorkspaceMutation();
 
   const validationSchema = useMemo(
@@ -102,9 +96,27 @@ function WorkspaceForm({
     [workspaces, mainBranch],
   );
 
-  const handleSubmit = async ({ branch }: CreateWorkspaceFormValues) => {
+  const isNewBranch = (branch: string) => !branches.includes(branch);
+
+  const getSubmitLabel = (branch: string | null) =>
+    branch && isNewBranch(branch)
+      ? t`Create branch and workspace`
+      : t`Create workspace`;
+
+  const handleSubmit = async ({ branch }: WorkspaceBranchFormValues) => {
     if (!branch) {
       return;
+    }
+
+    if (isNewBranch(branch)) {
+      // Guard against re-creating the branch if a previous attempt created it but the workspace
+      // creation failed: the branch mutation still holds the last successful args.
+      const alreadyCreated =
+        createBranchResult.isSuccess &&
+        createBranchResult.originalArgs?.name === branch;
+      if (!alreadyCreated) {
+        await createBranch({ name: branch }).unwrap();
+      }
     }
 
     await createWorkspace({ branch }).unwrap();
@@ -112,28 +124,12 @@ function WorkspaceForm({
   };
 
   return (
-    <FormProvider
-      initialValues={INITIAL_VALUES}
+    <WorkspaceBranchForm
+      branches={branches}
       validationSchema={validationSchema}
+      getSubmitLabel={getSubmitLabel}
       onSubmit={handleSubmit}
-    >
-      <Form>
-        <Stack gap="xl">
-          <FormSelect
-            name="branch"
-            label={t`Branch`}
-            placeholder={t`Select a branch`}
-            data={branches}
-            searchable
-            required
-          />
-          <FormErrorMessage />
-          <Group justify="flex-end">
-            <Button onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton variant="filled" label={t`Create`} />
-          </Group>
-        </Stack>
-      </Form>
-    </FormProvider>
+      onCancel={onClose}
+    />
   );
 }
