@@ -74,18 +74,6 @@ export function applyLocaleDirection(language = ""): void {
   }
 }
 
-/**
- * The document's active writing direction, as reflected on `<html>` by
- * `applyLocaleDirection`. Useful for JS that must match the layout direction
- * (e.g. configuring a data grid's resize direction).
- */
-export function getDocumentDirection(): "ltr" | "rtl" {
-  if (typeof document === "undefined") {
-    return "ltr";
-  }
-  return document.documentElement.dir === "rtl" ? "rtl" : "ltr";
-}
-
 export function setLocalization(
   translationsObject: LocaleDataWithLanguage,
 ): void {

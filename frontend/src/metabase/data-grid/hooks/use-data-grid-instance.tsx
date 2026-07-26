@@ -43,7 +43,6 @@ import type {
 import { getDataColumn } from "metabase/data-grid/utils/columns/data-column";
 import { getRowIdColumn } from "metabase/data-grid/utils/columns/row-id-column";
 import { getScrollBarSize } from "metabase/utils/dom";
-import { getDocumentDirection } from "metabase/utils/i18n";
 import { isNotNull } from "metabase/utils/types";
 
 import { getTruncatedColumnSizing } from "../utils/column-sizing";
@@ -267,6 +266,39 @@ export const useDataGridInstance = <TData, TValue>({
     getRowHeight,
   });
 
+  // Resize direction must follow the grid's *scoped* direction: an RTL SDK embed
+  // sets dir="rtl" on its wrapper without touching the host <html>, so we read the
+  // grid element's computed direction rather than document.documentElement, and
+  // re-read if the nearest dir ancestor flips (e.g. a live locale switch).
+  const [columnResizeDirection, setColumnResizeDirection] = useState<
+    "ltr" | "rtl"
+  >("ltr");
+  useLayoutEffect(() => {
+    const element = gridRef.current;
+    if (!element) {
+      return;
+    }
+    const readDirection = () => {
+      const direction =
+        getComputedStyle(element).direction === "rtl" ? "rtl" : "ltr";
+      setColumnResizeDirection((prev) =>
+        prev === direction ? prev : direction,
+      );
+    };
+    readDirection();
+
+    const dirAncestor = element.closest("[dir]");
+    if (!dirAncestor) {
+      return;
+    }
+    const observer = new MutationObserver(readDirection);
+    observer.observe(dirAncestor, {
+      attributes: true,
+      attributeFilter: ["dir"],
+    });
+    return () => observer.disconnect();
+  }, []);
+
   const table = useReactTable({
     data,
     columns,
@@ -285,8 +317,8 @@ export const useDataGridInstance = <TData, TValue>({
       ? getPaginationRowModel()
       : undefined,
     columnResizeMode: "onChange",
-    // Match the document direction so resize deltas use the correct sign in RTL
-    columnResizeDirection: getDocumentDirection(),
+    // Match the grid direction so resize deltas use the correct sign in RTL
+    columnResizeDirection,
     onColumnOrderChange: setColumnOrder,
     onColumnSizingChange: setColumnSizingMap,
     onPaginationChange: setPagination,

@@ -3,7 +3,6 @@ import dayjs from "dayjs";
 import {
   type LocaleDataWithLanguage,
   applyLocaleDirection,
-  getDocumentDirection,
   isRTLLocale,
   setLocalization,
 } from "./i18n";
@@ -105,22 +104,5 @@ describe("applyLocaleDirection", () => {
     expect(document.documentElement).toHaveAttribute("lang", "pt-BR");
     applyLocaleDirection("ar_SA");
     expect(document.documentElement).toHaveAttribute("lang", "ar-SA");
-  });
-});
-
-describe("getDocumentDirection", () => {
-  afterEach(() => {
-    document.documentElement.removeAttribute("dir");
-  });
-
-  it("reflects the active <html> direction", () => {
-    applyLocaleDirection("ar");
-    expect(getDocumentDirection()).toBe("rtl");
-    applyLocaleDirection("en");
-    expect(getDocumentDirection()).toBe("ltr");
-  });
-
-  it("defaults to ltr when no dir is set", () => {
-    expect(getDocumentDirection()).toBe("ltr");
   });
 });
