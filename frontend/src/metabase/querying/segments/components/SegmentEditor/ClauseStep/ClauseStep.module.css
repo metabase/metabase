@@ -18,6 +18,11 @@
       background-color: var(--mb-color-background_page-primary);
       transform: rotate(-45deg);
     }
+
+    /* Mirror the connector arrowhead so it points toward the next segment in RTL */
+    &:dir(rtl)::after {
+      transform: scaleX(-1) rotate(-45deg);
+    }
   }
 
   &:last-child {

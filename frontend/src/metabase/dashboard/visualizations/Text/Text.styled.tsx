@@ -302,8 +302,12 @@ export const ReactMarkdownStyleWrapper = styled.div`
   .text-card-markdown blockquote {
     color: var(--mb-color-text-secondary);
     border-inline-start: 5px solid var(--mb-color-border-neutral);
-    padding: 0 1.5em 0 17px;
-    margin: 0.5em 0 0.5em 1em;
+    padding-block: 0;
+    padding-inline-start: 17px;
+    padding-inline-end: 1.5em;
+    margin-block: 0.5em;
+    margin-inline-start: 1em;
+    margin-inline-end: 0;
   }
 
   .text-card-markdown blockquote p {
