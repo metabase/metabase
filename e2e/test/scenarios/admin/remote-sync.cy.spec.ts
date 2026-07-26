@@ -223,7 +223,10 @@ describe("Remote Sync", () => {
           branchCount,
         );
 
-        H.getSettingsBranchSwitcher().should("contain.text", newBranchName);
+        // Creating a branch forks the current one but does not switch to it, so the switcher
+        // keeps showing the current branch. Tests that need to work on the new branch switch
+        // to it explicitly (via switchToExistingBranch) afterwards.
+        H.getSettingsBranchSwitcher().should("not.contain.text", newBranchName);
       };
 
       // Only for a clean instance — with unsaved changes the switcher opens the choice modal instead.
@@ -263,6 +266,11 @@ describe("Remote Sync", () => {
 
         createNewBranch(NEW_BRANCH_1);
 
+        // Creating no longer switches, so switch onto the new branch (clean, so it switches
+        // directly) before adding its content.
+        switchToExistingBranch(NEW_BRANCH_1);
+        H.waitForTask({ taskName: "import" });
+
         // Move something into synced collection for the new branch
         cy.visit("/collection/root");
         H.moveCollectionItemToSyncedCollection(
@@ -274,6 +282,8 @@ describe("Remote Sync", () => {
 
         // Create a second branch (off the first) and add different content
         createNewBranch(NEW_BRANCH_2);
+        switchToExistingBranch(NEW_BRANCH_2);
+        H.waitForTask({ taskName: "import" });
 
         cy.visit("/collection/root");
         H.moveCollectionItemToSyncedCollection(
@@ -289,10 +299,14 @@ describe("Remote Sync", () => {
         switchToExistingBranch(NEW_BRANCH_1);
         H.waitForTask({ taskName: "import" });
 
-        H.expectUnstructuredSnowplowEvent({
-          event: "remote_sync_branch_switched",
-          triggered_from: "admin-settings",
-        });
+        // Three switches have fired by now (onto branch 1, onto branch 2, back to branch 1).
+        H.expectUnstructuredSnowplowEvent(
+          {
+            event: "remote_sync_branch_switched",
+            triggered_from: "admin-settings",
+          },
+          3,
+        );
 
         cy.visit("/collection/root");
         H.goToSyncedCollection("Test Synced Collection");
@@ -319,6 +333,12 @@ describe("Remote Sync", () => {
         cy.findByTestId("collection-empty-state").should("exist");
 
         createNewBranch(NEW_BRANCH);
+
+        // Creating no longer switches, so switch onto the new branch (clean, so it switches
+        // directly) before making changes there — the change must live on NEW_BRANCH so the
+        // choose-what-to-do modal below reports it as the current branch's unsynced work.
+        switchToExistingBranch(NEW_BRANCH);
+        H.waitForTask({ taskName: "import" });
 
         // Move something into synced collection for the new branch
         cy.visit("/collection/root");

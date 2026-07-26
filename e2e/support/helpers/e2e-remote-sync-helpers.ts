@@ -292,7 +292,8 @@ const openSettingsBranchPicker = () => {
   getSettingsBranchSwitcher().scrollIntoView().should("be.visible").click();
 };
 
-// Create a new branch (forks the current branch and switches to it) via the Settings branch switcher.
+// Create a new branch via the Settings branch switcher. This forks the current branch but does NOT
+// switch to it — the user stays on their current branch (switching is a separate explicit action).
 export const createBranchViaSettings = (name: string) => {
   openSettingsBranchPicker();
   popover().findByPlaceholderText("Find or create a branch...").type(name);
