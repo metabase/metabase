@@ -51,7 +51,6 @@ export const TAG_TYPES = [
   "subscription",
   "subscription-channel",
   "table",
-  "table-remapping",
   "task",
   "task-run",
   "timeline",

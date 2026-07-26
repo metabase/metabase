@@ -113,10 +113,6 @@
     :model/Revision
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata
-    ;; Workspace remappings are runtime-only; they redirect QP queries against canonical
-    ;; tables to workspace-isolated copies. They aren't portable across instances and
-    ;; aren't included in serdes export/import.
-    :model/TableRemapping
     :model/Secret
     :model/Session
     :model/SourceDimensionDaily
@@ -148,12 +144,7 @@
     :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment
-    :model/CommentReaction
-    ;; Workspace and WorkspaceDatabase are runtime-only -- per-instance workspace
-    ;; provisioning state, not portable content. Same rationale as TableRemapping above.
-    :model/WorkspaceDeprecated
-    :model/WorkspaceDatabaseDeprecated
-    :model/WorkspaceInstanceDeprecated})
+    :model/CommentReaction})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (keys models.resolution/model->namespace)

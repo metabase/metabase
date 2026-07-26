@@ -36,12 +36,6 @@ databaseChangeLog:
                   autoIncrement: true
                   constraints:
                     primaryKey: true
-                    # Explicit PK name distinct from BOTH dialects' defaults for the deprecated `workspace` table
-                    # (H2: PK_WORKSPACE, Postgres: workspace_pkey). The Phase A `renameTable` to
-                    # `workspace_deprecated` leaves that table's PK constraint name untouched, so a default-named PK
-                    # here would collide on H2 and Postgres. MySQL names every PK `PRIMARY` per-table, so it is
-                    # unaffected either way. See 20260724_rename_workspace_deprecated.yaml.
-                    primaryKeyName: workspace_pk
                     nullable: false
               - column:
                   name: branch
@@ -93,11 +87,7 @@ databaseChangeLog:
             baseColumnNames: creator_id
             referencedTableName: core_user
             referencedColumnNames: id
-            # Distinct from the deprecated `workspace` table's identically-purposed FK, which is named
-            # `fk_workspace_creator_id` (see 062/20260421_workspaces.yaml) and survives the Phase A rename to
-            # `workspace_deprecated` with its name intact. FK constraint names are schema-global on H2/Postgres AND
-            # MySQL, so reusing `fk_workspace_creator_id` here would collide on every dialect.
-            constraintName: fk_workspace_creator
+            constraintName: fk_workspace_creator_id
             onDelete: SET NULL
 
   - changeSet:
