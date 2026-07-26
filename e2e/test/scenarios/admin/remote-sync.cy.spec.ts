@@ -242,8 +242,9 @@ describe("Remote Sync", () => {
           .click();
 
         H.waitForTask({ taskName: "export" });
-        // Push button should be disabled when local changes are synced
-        H.getPushOption().should("have.attr", "data-combobox-disabled", "true");
+        // Push menu item should be disabled when local changes are synced. A disabled Mantine
+        // Menu.Item marks itself with data-disabled rather than the real `disabled` attribute.
+        H.getPushOption().should("have.attr", "data-disabled", "true");
       };
 
       it("should allow you to create new branches and switch between them", () => {
@@ -501,33 +502,27 @@ describe("Remote Sync", () => {
           .click();
         H.waitForTask({ taskName: "export" });
 
-        cy.visit("/admin/settings/remote-sync/workspaces");
-        cy.button(/Create a workspace/).click();
-        H.modal()
-          .findByLabelText(/Branch/)
-          .click()
-          .type(WORKSPACE_BRANCH);
-        H.popover()
-          .findByRole("option", {
-            name: new RegExp(`Create new branch.*${WORKSPACE_BRANCH}`),
-          })
-          .click();
-        H.modal().button("Create").click();
-        H.modal().should("not.exist");
+        // Create the workspace (and its brand-new branch) from the admin Workspaces page. Creating does
+        // not assign the current user to it — entering is a separate step below.
+        cy.intercept("POST", "/api/ee/remote-sync/branch").as("createBranch");
+        cy.intercept("POST", "/api/ee/workspace").as("createWorkspace");
+        H.visitWorkspacesSettings();
+        H.createWorkspace(WORKSPACE_BRANCH, { newBranch: true });
+        cy.wait("@createBranch");
+        cy.wait("@createWorkspace");
+        cy.findByTestId("workspace-table")
+          .findByText(WORKSPACE_BRANCH)
+          .should("exist");
 
-        cy.intercept("PUT", "/api/user/*").as("updateUser");
-        cy.findByRole("row", { name: WORKSPACE_BRANCH }).within(() => {
-          cy.findByRole("button", { name: "Workspace actions" }).click();
-        });
-        H.popover()
-          .findByRole("menuitem", { name: /Enter workspace/ })
-          .click();
-        cy.wait("@updateUser");
-
+        // Enter the workspace from the top-nav git-sync Menu. The workspace branch already exists, so the
+        // modal just assigns the user and then auto-pulls (its body swaps to the sync-progress view).
         cy.visit("/");
-        H.getGitSyncControls().should("contain.text", WORKSPACE_BRANCH);
-        H.clickPullOption();
+        cy.intercept("PUT", "/api/user/*").as("updateUser");
+        H.enterWorkspaceViaControls(WORKSPACE_BRANCH);
+        cy.wait("@updateUser");
         H.waitForTask({ taskName: "import" });
+
+        H.getGitSyncControls().should("contain.text", WORKSPACE_BRANCH);
 
         cy.visit("/collection/root");
         H.goToSyncedCollection("Test Synced Collection");
@@ -553,14 +548,9 @@ describe("Remote Sync", () => {
 
         H.mergeBranchIntoMain(WORKSPACE_BRANCH);
 
-        cy.visit("/admin/settings/remote-sync/workspaces");
+        // Leave the workspace from the top-nav git-sync Menu (no follow-up modal, no auto-pull).
         cy.intercept("PUT", "/api/user/*").as("updateUserLeave");
-        cy.findByRole("row", { name: WORKSPACE_BRANCH }).within(() => {
-          cy.findByRole("button", { name: "Workspace actions" }).click();
-        });
-        H.popover()
-          .findByRole("menuitem", { name: /Leave workspace/ })
-          .click();
+        H.leaveWorkspaceViaControls();
         cy.wait("@updateUserLeave");
 
         cy.visit("/");

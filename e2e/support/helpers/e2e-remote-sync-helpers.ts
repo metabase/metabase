@@ -7,6 +7,7 @@ import {
   collectionTable,
   entityPickerModal,
   entityPickerModalItem,
+  modal,
   navigationSidebar,
   popover,
 } from "./e2e-ui-elements-helpers";
@@ -227,7 +228,9 @@ export const goToSyncedCollection = (
 // Git sync controls are now in the app bar, not the sidebar
 export const getGitSyncControls = () => cy.findByTestId("git-sync-controls");
 
-const ensureGitSyncMenuOpen = () => {
+// The push/pull/workspace controls are a Mantine Menu; its target button carries `data-expanded` when
+// open. Open it (idempotently) so the menu items can be queried from the dropdown popover.
+export const openGitSyncMenu = () => {
   getGitSyncControls().then(($btn) => {
     if ($btn.attr("data-expanded") !== "true") {
       cy.wrap($btn).click();
@@ -236,33 +239,35 @@ const ensureGitSyncMenuOpen = () => {
 };
 
 export const getPullOption = () => {
-  ensureGitSyncMenuOpen();
-  return popover().findByRole("option", { name: /Pull changes/ });
+  openGitSyncMenu();
+  return popover().findByRole("menuitem", { name: /Pull changes/ });
 };
 
 export const getPushOption = () => {
-  ensureGitSyncMenuOpen();
-  return popover().findByRole("option", { name: /Push changes/ });
+  openGitSyncMenu();
+  return popover().findByRole("menuitem", { name: /Push changes/ });
 };
 
-// Mantine combobox options can drop a synthetic `.click()` if the dropdown's
+// Mantine menu items can drop a synthetic `.click()` if the dropdown's
 // state machine isn't fully wired yet (e.g. right after the menu opens — the
-// dropdown is visible but the option's handler isn't attached). `realClick`
+// dropdown is visible but the item's handler isn't attached). `realClick`
 // dispatches native mouse events that Mantine processes reliably, and we then
 // verify the menu closed; if not, re-click once with a synthetic click.
 //
-// We detect "menu still open" by looking for the main-menu options (Pull/Push) —
+// We detect "menu still open" by looking for the main-menu items (Pull/Push) —
 // neither "any popover visible" nor the controls' `data-expanded` attribute
-// distinguishes the main menu from follow-up popovers.
+// distinguishes the main menu from follow-up popovers. A disabled Mantine
+// Menu.Item keeps the real `disabled` attribute off and marks itself with
+// `data-disabled="true"` instead, so gate on that before clicking.
 const MAIN_MENU_OPTION_RE = /Pull changes|Push changes/;
 const clickGitSyncOption = (
   getOption: () => Cypress.Chainable<JQuery<HTMLElement>>,
 ) => {
-  getOption().should("not.be.disabled").realClick();
+  getOption().should("not.have.attr", "data-disabled", "true").realClick();
   cy.get("body").then(($body) => {
     const mainMenuStillOpen =
       $body
-        .find('[role="option"]:visible')
+        .find('[role="menuitem"]:visible')
         .filter((_, el) => MAIN_MENU_OPTION_RE.test(el.textContent || ""))
         .length > 0;
     if (mainMenuStillOpen) {
@@ -274,6 +279,72 @@ const clickGitSyncOption = (
 
 export const clickPullOption = () => clickGitSyncOption(getPullOption);
 export const clickPushOption = () => clickGitSyncOption(getPushOption);
+
+// --- Workspaces ---
+
+export const visitWorkspacesSettings = () =>
+  cy.visit("/admin/settings/remote-sync/workspaces");
+
+// Fill the creatable branch picker shared by the admin Create-workspace modal and the top-nav
+// Enter-workspace modal. Typing a name that doesn't match an existing branch surfaces a
+// `Create branch "<name>"` option; an existing branch is offered as a plain option.
+const selectWorkspaceBranch = (
+  branch: string,
+  { newBranch }: { newBranch: boolean },
+) => {
+  modal()
+    .findByLabelText(/Branch/)
+    .click()
+    .type(branch);
+  popover()
+    .findByRole("option", {
+      name: newBranch ? new RegExp(`Create branch "${branch}"`) : branch,
+    })
+    .click();
+};
+
+// Create a workspace from the admin Workspaces page. Creating does NOT enter the workspace or assign the
+// current user — that is a separate action via the top-nav controls.
+export const createWorkspace = (
+  branch: string,
+  { newBranch = false }: { newBranch?: boolean } = {},
+) => {
+  cy.button(/Create a workspace/).click();
+  selectWorkspaceBranch(branch, { newBranch });
+  modal()
+    .button(newBranch ? "Create branch and workspace" : "Create workspace")
+    .click();
+  modal().should("not.exist");
+};
+
+// Enter (or switch to) a workspace from the top-nav git-sync Menu. Opens the EnterWorkspaceModal, picks
+// the branch, and submits. Submitting an existing workspace's branch enters it; the modal then swaps its
+// body to the auto-pull progress view. Callers wait for the `PUT /api/user/*` and the import task.
+export const enterWorkspaceViaControls = (
+  branch: string,
+  {
+    newBranch = false,
+    submitLabel = "Enter workspace",
+  }: { newBranch?: boolean; submitLabel?: string } = {},
+) => {
+  openGitSyncMenu();
+  popover()
+    .findByRole("menuitem", { name: /Enter workspace|Switch workspace/ })
+    .should("be.visible")
+    .click();
+  selectWorkspaceBranch(branch, { newBranch });
+  modal().button(submitLabel).click();
+};
+
+// Leave the current workspace from the top-nav git-sync Menu. Fires `PUT /api/user/*` with a null
+// workspace_id; there is no follow-up modal or auto-pull.
+export const leaveWorkspaceViaControls = () => {
+  openGitSyncMenu();
+  popover()
+    .findByRole("menuitem", { name: /Leave workspace/ })
+    .should("be.visible")
+    .click();
+};
 
 // --- Branch switching (moved from the app bar to the instance Settings panel) ---
 
