@@ -5,7 +5,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
-   [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces-deprecated.core :as ws]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.yaml :as yaml])

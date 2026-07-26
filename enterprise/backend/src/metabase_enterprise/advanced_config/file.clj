@@ -103,7 +103,7 @@
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
-   [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces-deprecated.core :as ws]
    [metabase.lib.core :as lib]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -300,7 +300,7 @@
    with `{{env VAR}}` template expansion enabled. No-op when no file is present.
    When the config contains a `:workspace` section, locks the workspace against
    runtime mutation (see
-   [[metabase-enterprise.workspaces.core/workspace-locked-by-config?]])."
+   [[metabase-enterprise.workspaces-deprecated.core/workspace-locked-by-config?]])."
   []
   (let [parsed (config-from-disk)
         result (initialize! parsed {:expand-templates? true})]

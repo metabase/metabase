@@ -16,7 +16,7 @@
   engines that emit that AST position; `nil` for engines that don't. For MySQL,
   both `:db` and `:schema` are `nil` on a Table row (the connection's bound DB
   serves as the implicit catalog; MySQL has no schemas)."
-  metabase-enterprise.workspaces.table-remapping
+  metabase-enterprise.workspaces-deprecated.table-remapping
   [_db-id _from-spec]
   nil)
 
@@ -26,7 +26,7 @@
   isolation tables are surfaced by the warehouse driver but must not become
   `:model/Table` rows in app-db -- they back canonical Tables via remap, not
   their own identity. OSS fallback is identity (no filtering). See DEV-1898."
-  metabase-enterprise.workspaces.table-remapping
+  metabase-enterprise.workspaces-deprecated.table-remapping
   [tuples _db-id]
   tuples)
 
@@ -35,7 +35,7 @@
   (`to_schema` values) for any remap whose `from_schema` appears in the input.
   Lets sync's FK fetch reach the warehouse tables that physically back canonical
   Tables on a workspace child. OSS fallback is identity."
-  metabase-enterprise.workspaces.table-remapping
+  metabase-enterprise.workspaces-deprecated.table-remapping
   [schema-names _db-id]
   schema-names)
 
@@ -45,7 +45,7 @@
   canonical name doesn't physically exist on a workspace child (only the
   isolation-schema copy does), so without this it'd be diffed against app-db's
   Table rows and silently retired. OSS fallback is identity."
-  metabase-enterprise.workspaces.table-remapping
+  metabase-enterprise.workspaces-deprecated.table-remapping
   [tuples _db-id]
   tuples)
 
@@ -55,7 +55,7 @@
   returned rows reference workspace-side `(schema, name)` on both sides; app-db's
   view needs them in canonical terms so subsequent FK resolution finds the
   matching `:model/Table`. OSS fallback is identity (no rewriting)."
-  metabase-enterprise.workspaces.table-remapping
+  metabase-enterprise.workspaces-deprecated.table-remapping
   [rows _db-id]
   rows)
 
@@ -71,7 +71,7 @@
   Phase 1 (metadata override) and Phase 2 (SQLGlot rewrite).
 
   Use [[with-display-context]] for the macro form."
-  metabase-enterprise.workspaces.table-remapping
+  metabase-enterprise.workspaces-deprecated.table-remapping
   [thunk]
   (thunk))
 
@@ -94,7 +94,7 @@
 
   OSS fallback: just calls `f` once with no swap -- the warehouse FK probe runs
   against the canonical connection only."
-  metabase-enterprise.workspaces.table-remapping
+  metabase-enterprise.workspaces-deprecated.table-remapping
   [_db-id f]
   [(f)])
 
@@ -126,6 +126,6 @@
   - The H7 second half (cross-DB workspaces on BigQuery) needs
     callers to thread `:db` through the spec end-to-end. Both this hook and
     `add-transform-target-mapping!` now carry the slot."
-  metabase-enterprise.workspaces.table-remapping
+  metabase-enterprise.workspaces-deprecated.table-remapping
   [_db-id _to-spec]
   nil)

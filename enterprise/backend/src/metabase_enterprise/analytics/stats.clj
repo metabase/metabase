@@ -41,4 +41,4 @@
     :enabled   (semantic-search/supported?)}
    {:name      :workspaces
     :available (premium-features/enable-workspaces?)
-    :enabled   (t2/exists? :model/Workspace)}])
+    :enabled   (t2/exists? :model/WorkspaceDeprecated)}])

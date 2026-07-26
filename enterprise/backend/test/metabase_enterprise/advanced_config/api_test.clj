@@ -1,7 +1,7 @@
 (ns metabase-enterprise.advanced-config.api-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces-deprecated.core :as ws]
    [metabase.driver.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

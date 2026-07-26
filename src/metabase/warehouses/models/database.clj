@@ -167,7 +167,7 @@
    and explicitly removes any `:unprovisioned` rows so the FK RESTRICT is satisfied. OSS
    implementation is a no-op — fresh OSS installs have no workspace_database table, and
    feature-off EE instances have nothing to reconcile."
-  metabase-enterprise.workspaces.models.workspace-database
+  metabase-enterprise.workspaces-deprecated.models.workspace-database
   [_db-id]
   nil)
 

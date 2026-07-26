@@ -25,7 +25,7 @@
   workspace copy via the QP middleware.
 
   OSS / no-workspace fallback: returns the target unchanged."
-  metabase-enterprise.workspaces.transform-hooks
+  metabase-enterprise.workspaces-deprecated.transform-hooks
   [_db-id target]
   target)
 

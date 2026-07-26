@@ -3,7 +3,7 @@
 
    - `metabase.driver.bigquery-cloud-sdk.workspace-isolation-test` — the BQ-only
      contract test for `init`/`grant`/`destroy`/cross-workspace.
-   - `metabase-enterprise.workspaces.e2e-test` — the cross-driver full e2e that
+   - `metabase-enterprise.workspaces-deprecated.e2e-test` — the cross-driver full e2e that
      needs BQ branches in its JDBC-shaped helpers.
 
    The BQ driver source provides admin-client + project-id helpers as private

@@ -2910,7 +2910,7 @@
            sync
            users
            util
-           enterprise/workspaces}
+           enterprise/workspaces-deprecated}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
   enterprise/advanced-permissions
@@ -2947,7 +2947,7 @@
            enterprise/scim
            enterprise/semantic-search
            enterprise/sso}
-   :model-imports #{:model/Database :model/Sandbox :model/Workspace}}
+   :model-imports #{:model/Database :model/Sandbox :model/WorkspaceDeprecated}}
 
   enterprise/api
   {:team "UX West"
@@ -3793,11 +3793,11 @@
            util}
    :model-imports #{:model/Database :model/Table}}
 
-  enterprise/workspaces
+  enterprise/workspaces-deprecated
   {:team "Graphy"
-   :api  #{metabase-enterprise.workspaces.api
-           metabase-enterprise.workspaces.core
-           metabase-enterprise.workspaces.init}
+   :api  #{metabase-enterprise.workspaces-deprecated.api
+           metabase-enterprise.workspaces-deprecated.core
+           metabase-enterprise.workspaces-deprecated.init}
    :uses #{api
            app-db
            cache
@@ -3812,7 +3812,7 @@
            sql-tools
            util
            workspaces}
-   :model-exports #{:model/Workspace}
+   :model-exports #{:model/WorkspaceDeprecated}
    :model-imports #{:model/Database
                     :model/Table
                     :model/User}}}

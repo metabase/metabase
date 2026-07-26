@@ -150,8 +150,8 @@
       :model/Tenant
       :model/ConnectionImpersonation
       :model/CustomVizPlugin
-      :model/Workspace
-      :model/WorkspaceDatabase
+      :model/WorkspaceDeprecated
+      :model/WorkspaceDatabaseDeprecated
       :model/TableRemapping])))
 
 (defn- objects->columns+values

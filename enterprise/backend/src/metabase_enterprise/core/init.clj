@@ -29,4 +29,4 @@
    [metabase-enterprise.stale.init]
    [metabase-enterprise.support-access-grants.init]
    [metabase-enterprise.transforms-python.init]
-   [metabase-enterprise.workspaces.init]))
+   [metabase-enterprise.workspaces-deprecated.init]))

@@ -2,7 +2,7 @@
   "Loader for the `:workspace` section of `config.yml`.
 
   On boot, parses the section and stores it in the `instance-workspace` setting
-  (see [[metabase-enterprise.workspaces.settings]]). That setting is the
+  (see [[metabase-enterprise.workspaces-deprecated.settings]]). That setting is the
   instance-side source of truth for `db-workspace-namespace`.
 
   Every boot re-reads `config.yml` and overwrites the prior value. The setting
@@ -15,7 +15,7 @@
    [clojure.walk :as walk]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.workspace.output :as-alias wkspc-output]
-   [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces-deprecated.core :as ws]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 

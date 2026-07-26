@@ -415,12 +415,12 @@
             :date_joined (t/zoned-date-time)
             :updated_at (t/zoned-date-time)})
 
-   :model/Workspace
+   :model/WorkspaceDeprecated
    (fn [_] (default-timestamped
             {:name       (u.random/random-name)
              :creator_id (rasta-id)}))
 
-   :model/WorkspaceDatabase
+   :model/WorkspaceDatabaseDeprecated
    (fn [_] (default-timestamped
             {:database_id      (data/id)
              :database_details {}

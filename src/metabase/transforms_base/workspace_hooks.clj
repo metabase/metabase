@@ -1,6 +1,6 @@
 (ns metabase.transforms-base.workspace-hooks
   "Workspace-isolation hooks for transform execution paths that bypass the QP middleware
-   pipeline. EE implementations live in `metabase-enterprise.workspaces.transform-hooks`."
+   pipeline. EE implementations live in `metabase-enterprise.workspaces-deprecated.transform-hooks`."
   (:require
    [metabase.premium-features.core :refer [defenterprise]]))
 
@@ -13,6 +13,6 @@
    `driver/run-transform!` and bypass the QP's Phase 2 SQL rewriter.
 
    OSS / no-workspace fallback: returns the SQL unchanged."
-  metabase-enterprise.workspaces.transform-hooks
+  metabase-enterprise.workspaces-deprecated.transform-hooks
   [_driver _db-id sql]
   sql)

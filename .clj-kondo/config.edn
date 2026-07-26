@@ -203,12 +203,12 @@
      metabase-enterprise.mcp.usage-test/cleanup-calls!
      ;; Workspace isolation functions are safe in parallel tests because they operate on
      ;; isolated, test-specific workspaces and databases that don't affect other tests
-     metabase-enterprise.workspaces.isolation/destroy-workspace-isolation!
+     metabase-enterprise.workspaces-deprecated.isolation/destroy-workspace-isolation!
      metabase.lib-metric.ast.plan/validate-arithmetic-ast!
-     metabase-enterprise.workspaces.isolation/ensure-database-isolation!
-     metabase-enterprise.workspaces.test-util/create-ready-ws!
-     metabase-enterprise.workspaces.core/clear-instance-workspace!
-     metabase-enterprise.workspaces.core/set-instance-workspace!
+     metabase-enterprise.workspaces-deprecated.isolation/ensure-database-isolation!
+     metabase-enterprise.workspaces-deprecated.test-util/create-ready-ws!
+     metabase-enterprise.workspaces-deprecated.core/clear-instance-workspace!
+     metabase-enterprise.workspaces-deprecated.core/set-instance-workspace!
      metabase.workspaces.core/clear-instance-workspace!
      metabase.workspaces.core/set-instance-workspace!
      ;; Safe in tests, where we typically use a private, temporary index per thread.
@@ -462,8 +462,8 @@
   metabase-enterprise.serialization.metadata-file-import.wire-format-test/with-tiny-fixture! clojure.core/fn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
-  metabase-enterprise.workspaces.test-util/with-resources!                              clojure.core/let
-  metabase-enterprise.workspaces.test-util/with-workspaces!                             clojure.core/let
+  metabase-enterprise.workspaces-deprecated.test-util/with-resources!                              clojure.core/let
+  metabase-enterprise.workspaces-deprecated.test-util/with-workspaces!                             clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.transforms.test-util/with-transform-cleanup!                                 clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let

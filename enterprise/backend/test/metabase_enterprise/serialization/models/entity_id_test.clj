@@ -151,9 +151,9 @@
     :model/CommentReaction
     ;; Workspace and WorkspaceDatabase are runtime-only -- per-instance workspace
     ;; provisioning state, not portable content. Same rationale as TableRemapping above.
-    :model/Workspace
-    :model/WorkspaceDatabase
-    :model/WorkspaceInstance})
+    :model/WorkspaceDeprecated
+    :model/WorkspaceDatabaseDeprecated
+    :model/WorkspaceInstanceDeprecated})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (keys models.resolution/model->namespace)

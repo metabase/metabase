@@ -3,7 +3,7 @@
    driver — its workspace isolation goes through GCP IAM (a per-workspace service
    account that the admin SA impersonates) rather than SQL user/role grants. So
    this test mirrors the JDBC sibling's *shape* (see
-   `metabase-enterprise.workspaces.driver-isolation-test`) but drives BigQuery
+   `metabase-enterprise.workspaces-deprecated.driver-isolation-test`) but drives BigQuery
    through the GCP SDK directly: the admin BigQuery client seeds a per-run input
    dataset/table, then `init-workspace-isolation! :bigquery-cloud-sdk` creates the
    workspace SA and grants impersonation, after which an `ImpersonatedCredentials`
@@ -55,7 +55,7 @@
 ;; BQ helpers (admin client, IAM client, impersonated client, dataset CRUD,
 ;; assertion helpers) live in `metabase.driver.bigquery-cloud-sdk.workspace-test-util`
 ;; and are aliased as `bq.util` so the workspaces full-e2e test
-;; (`metabase-enterprise.workspaces.e2e-test`) can share them.
+;; (`metabase-enterprise.workspaces-deprecated.e2e-test`) can share them.
 
 (comment
   ;; "the "1500 account limit" message is because of the workspace bug - when

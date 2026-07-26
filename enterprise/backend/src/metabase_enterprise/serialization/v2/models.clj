@@ -165,5 +165,5 @@
    "UserKeyValue"
    "UserParameterValue"
    "ViewLog"
-   "Workspace"
-   "WorkspaceDatabase"])
+   "WorkspaceDatabaseDeprecated"
+   "WorkspaceDeprecated"])

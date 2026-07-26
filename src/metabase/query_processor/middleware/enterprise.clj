@@ -84,7 +84,7 @@
    Phase 1 is for pipeline coherence; Phase 2 ([[apply-workspace-sql-remapping]]) is the
    authoritative security boundary. Native SQL is intentionally untouched here. See the EE
    impl namespace docstring for the full design rationale."
-  metabase-enterprise.workspaces.query-processor.middleware
+  metabase-enterprise.workspaces-deprecated.query-processor.middleware
   [query]
   query)
 
@@ -101,7 +101,7 @@
    **Fails closed:** on parse failure throws `ex-info` with `:type qp.error-type/qp`. There
    is no fallback to the original SQL — a silent pass-through would breach workspace
    isolation."
-  metabase-enterprise.workspaces.query-processor.middleware
+  metabase-enterprise.workspaces-deprecated.query-processor.middleware
   [qp]
   qp)
 
