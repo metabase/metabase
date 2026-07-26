@@ -13,8 +13,8 @@ import { WorkspaceMenu } from "./WorkspaceMenu";
 
 const WORKSPACE = createMockWorkspace({ id: 10, branch: "feature/x" });
 
-function setup({ workspaceId = null }: { workspaceId?: number | null } = {}) {
-  const currentUser = createMockUser({ id: 1, workspace_id: workspaceId });
+function setup() {
+  const currentUser = createMockUser({ id: 1 });
   setupUserEndpoints(currentUser);
   setupDeleteWorkspaceEndpoint(WORKSPACE.id);
 
@@ -28,36 +28,19 @@ async function openMenu() {
 }
 
 describe("WorkspaceMenu", () => {
-  it("should show 'Enter workspace' and PUT workspace_id when the user is not a member", async () => {
-    setup({ workspaceId: null });
+  it("should only offer the Delete action", async () => {
+    setup();
     await openMenu();
 
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: /enter workspace/i }),
-    );
-
-    await waitFor(async () => {
-      const call = fetchMock.callHistory.lastCall("path:/api/user/1", {
-        method: "PUT",
-      });
-      expect(await call?.request?.json()).toEqual({ workspace_id: 10 });
-    });
-  });
-
-  it("should show 'Leave workspace' and PUT workspace_id: null when the user is a member", async () => {
-    setup({ workspaceId: 10 });
-    await openMenu();
-
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: /leave workspace/i }),
-    );
-
-    await waitFor(async () => {
-      const call = fetchMock.callHistory.lastCall("path:/api/user/1", {
-        method: "PUT",
-      });
-      expect(await call?.request?.json()).toEqual({ workspace_id: null });
-    });
+    expect(
+      await screen.findByRole("menuitem", { name: /delete/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /enter workspace/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /leave workspace/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("should show a confirmation dialog before deleting a workspace", async () => {

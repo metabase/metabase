@@ -26,7 +26,6 @@ async function setup() {
   setupCreateWorkspaceEndpoint(
     createMockWorkspace({ branch: "feature/available" }),
   );
-  fetchMock.post("path:/api/ee/remote-sync/branch", {});
 
   const onClose = jest.fn();
   renderWithProviders(<CreateWorkspaceModal opened onClose={onClose} />, {
@@ -41,24 +40,9 @@ async function setup() {
   return { onClose };
 }
 
-async function openBranchSelect() {
+async function selectBranch(branch: string) {
   await userEvent.click(screen.getByLabelText(/Branch/));
-}
-
-async function selectExistingBranch(branch: string) {
-  await openBranchSelect();
   await userEvent.click(await screen.findByRole("option", { name: branch }));
-}
-
-async function createNewBranch(branch: string) {
-  const input = screen.getByLabelText(/Branch/);
-  await userEvent.click(input);
-  await userEvent.type(input, branch);
-  await userEvent.click(
-    await screen.findByRole("option", {
-      name: new RegExp(`Create new branch.*${branch}`),
-    }),
-  );
 }
 
 async function clickCreate() {
@@ -71,9 +55,20 @@ describe("CreateWorkspaceModal", () => {
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
   });
 
+  it("should list all branches, including the main and already-used ones", async () => {
+    await setup();
+    await userEvent.click(screen.getByLabelText(/Branch/));
+
+    for (const branch of BRANCHES) {
+      expect(
+        await screen.findByRole("option", { name: branch }),
+      ).toBeInTheDocument();
+    }
+  });
+
   it("should reject the main branch with its own message", async () => {
     await setup();
-    await selectExistingBranch("main");
+    await selectBranch("main");
     await userEvent.tab();
 
     expect(
@@ -86,7 +81,7 @@ describe("CreateWorkspaceModal", () => {
 
   it("should reject an already-used branch with its own message", async () => {
     await setup();
-    await selectExistingBranch("feature/used");
+    await selectBranch("feature/used");
     await userEvent.tab();
 
     expect(
@@ -95,35 +90,9 @@ describe("CreateWorkspaceModal", () => {
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
   });
 
-  it("should create the branch and then the workspace for a brand new branch name", async () => {
+  it("should create the workspace for an existing, unused, non-main branch", async () => {
     const { onClose } = await setup();
-    await createNewBranch("feature/new-branch");
-    await clickCreate();
-
-    await waitFor(async () => {
-      const call = fetchMock.callHistory.lastCall(
-        "path:/api/ee/remote-sync/branch",
-        { method: "POST" },
-      );
-      expect(await call?.request?.json()).toEqual({
-        name: "feature/new-branch",
-      });
-    });
-    await waitFor(async () => {
-      const call = fetchMock.callHistory.lastCall(
-        "path:/api/ee/remote-sync/workspace",
-        { method: "POST" },
-      );
-      expect(await call?.request?.json()).toEqual({
-        branch: "feature/new-branch",
-      });
-    });
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
-  });
-
-  it("should only create the workspace for an existing, unused, non-main branch", async () => {
-    const { onClose } = await setup();
-    await selectExistingBranch("feature/available");
+    await selectBranch("feature/available");
     await clickCreate();
 
     await waitFor(async () => {
@@ -135,6 +104,7 @@ describe("CreateWorkspaceModal", () => {
         branch: "feature/available",
       });
     });
+    // Branch creation is no longer part of the flow.
     expect(
       fetchMock.callHistory.calls("path:/api/ee/remote-sync/branch", {
         method: "POST",

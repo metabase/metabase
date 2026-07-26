@@ -3,18 +3,12 @@ import cx from "classnames";
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { useUpdateUserMutation } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
-import {
-  Button,
-  Combobox,
-  Group,
-  Icon,
-  Loader,
-  Modal,
-  Text,
-  useCombobox,
-} from "metabase/ui";
+import { getUser } from "metabase/selectors/user";
+import { Button, Group, Icon, Loader, Menu, Modal, Text } from "metabase/ui";
 import {
   useGetHasRemoteChangesQuery,
   useImportChangesMutation,
@@ -40,6 +34,7 @@ import { SyncConflictModal } from "../SyncConflictModal";
 
 import S from "./GitSyncControls.module.css";
 import { GitSyncOptionsDropdown } from "./GitSyncOptionsDropdown";
+import { SwitchWorkspaceModal } from "./SwitchWorkspaceModal";
 
 export const GitSyncControls = () => {
   const dispatch = useDispatch();
@@ -49,6 +44,9 @@ export const GitSyncControls = () => {
   // a workspace, `currentBranch` is already the workspace's branch (not the instance's git branch), so
   // push/pull/preflight below operate on it without any extra plumbing here.
   const { isVisible, currentBranch, isWorkspace } = useGitSyncVisible();
+
+  const currentUser = useSelector(getUser);
+  const [updateUser] = useUpdateUserMutation();
 
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
@@ -67,8 +65,9 @@ export const GitSyncControls = () => {
   // reads the remote trees, so it can take a few seconds — show the control as busy meanwhile.
   const [isCheckingPreflight, setIsCheckingPreflight] = useState(false);
   const [showPushModal, { toggle: togglePushModal }] = useDisclosure(false);
+  const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
+  const [menuOpened, setMenuOpened] = useState(false);
   const [sendToast] = useToast();
-  const combobox = useCombobox();
 
   const { isDirty } = useRemoteSyncDirtyState();
 
@@ -95,7 +94,7 @@ export const GitSyncControls = () => {
     isError: hasRemoteChangesError,
   } = useGetHasRemoteChangesQuery(undefined, {
     refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
-    skip: !combobox.dropdownOpened,
+    skip: !menuOpened,
   });
   const { has_changes: hasRemoteChanges } = hasRemoteChangesData || {};
 
@@ -126,7 +125,7 @@ export const GitSyncControls = () => {
       return;
     }
 
-    combobox.closeDropdown();
+    setMenuOpened(false);
 
     // Find out up front whether the remote has advanced, so we open the right modal directly instead of
     // collecting a commit message and only then discovering the divergence.
@@ -152,7 +151,6 @@ export const GitSyncControls = () => {
     }
     togglePushModal();
   }, [
-    combobox,
     currentBranch,
     dispatch,
     runExportPreflight,
@@ -165,7 +163,7 @@ export const GitSyncControls = () => {
       return;
     }
 
-    combobox.closeDropdown();
+    setMenuOpened(false);
 
     // With un-pushed local changes, a straight pull would clobber them. Check whether a clean local
     // merge is possible and let the user choose (merge / force / new branch / discard).
@@ -223,7 +221,6 @@ export const GitSyncControls = () => {
       });
     }
   }, [
-    combobox,
     currentBranch,
     dispatch,
     importChanges,
@@ -232,6 +229,23 @@ export const GitSyncControls = () => {
     sendToast,
     showBranchMismatchIfPresent,
   ]);
+
+  const handleLeaveWorkspace = useCallback(async () => {
+    if (!currentUser) {
+      return;
+    }
+    try {
+      await updateUser({
+        id: currentUser.id,
+        workspace_id: null,
+      }).unwrap();
+    } catch (err) {
+      sendToast({
+        icon: "warning",
+        message: getErrorMessage(err, t`Failed to leave workspace`),
+      });
+    }
+  }, [currentUser, updateUser, sendToast]);
 
   const handleCloseSyncConflictModal = useCallback(() => {
     dispatch(syncConflictVariantUpdated(null));
@@ -244,23 +258,26 @@ export const GitSyncControls = () => {
 
   return (
     <>
-      <Combobox
-        disabled={isLoading}
+      <Menu
         position="bottom-start"
-        store={combobox}
         width={280}
+        opened={menuOpened}
+        onChange={setMenuOpened}
         withinPortal
       >
-        <Combobox.Target>
+        <Menu.Target>
           <Button
             p="sm"
             size="compact-sm"
             bd="none"
             mr="lg"
             disabled={isLoading}
-            onClick={() => combobox.toggleDropdown()}
             leftSection={
-              <Icon name="git_branch" c="text-secondary" size={14} />
+              <Icon
+                name={isWorkspace ? "workspace" : "git_branch"}
+                c="text-secondary"
+                size={14}
+              />
             }
             rightSection={
               isLoading ? (
@@ -271,35 +288,56 @@ export const GitSyncControls = () => {
                   c="text-secondary"
                   size={8}
                   className={cx(S.chevronIcon, {
-                    [S.opened]: combobox.dropdownOpened,
+                    [S.opened]: menuOpened,
                   })}
                 />
               )
             }
             data-testid="git-sync-controls"
           >
-            <Group gap={4} wrap="nowrap">
-              <Text fw="bold" c="text-secondary" size="sm" lh="md" truncate>
-                {currentBranch}
-              </Text>
-              {isWorkspace && (
-                <Text size="xs" c="text-tertiary" lh="md">
-                  {t`workspace`}
-                </Text>
-              )}
-            </Group>
+            <Text fw="bold" c="text-secondary" size="sm" lh="md" truncate>
+              {currentBranch}
+            </Text>
           </Button>
-        </Combobox.Target>
+        </Menu.Target>
 
-        <GitSyncOptionsDropdown
-          isPullDisabled={!hasRemoteChanges}
-          isPullError={hasRemoteChangesError}
-          isLoadingPull={isFetchingRemoteChanges}
-          isPushDisabled={!isDirty || isLoading}
-          onPullClick={handlePullClick}
-          onPushClick={handlePushClick}
+        <Menu.Dropdown>
+          <GitSyncOptionsDropdown
+            isPullDisabled={!hasRemoteChanges}
+            isPullError={hasRemoteChangesError}
+            isLoadingPull={isFetchingRemoteChanges}
+            isPushDisabled={!isDirty || isLoading}
+            onPullClick={handlePullClick}
+            onPushClick={handlePushClick}
+          />
+
+          <Menu.Divider />
+
+          <Menu.Item
+            leftSection={<Icon name="workspace" size={12} />}
+            onClick={() => setIsSwitchModalOpen(true)}
+          >
+            {t`Switch workspace`}
+          </Menu.Item>
+
+          {isWorkspace && (
+            <Menu.Item
+              leftSection={<Icon name="exit" size={12} />}
+              onClick={handleLeaveWorkspace}
+            >
+              {t`Leave workspace`}
+            </Menu.Item>
+          )}
+        </Menu.Dropdown>
+      </Menu>
+
+      {isSwitchModalOpen && (
+        <SwitchWorkspaceModal
+          opened
+          currentWorkspaceId={currentUser?.workspace_id}
+          onClose={() => setIsSwitchModalOpen(false)}
         />
-      </Combobox>
+      )}
 
       {showPushModal && (
         <PushChangesModal

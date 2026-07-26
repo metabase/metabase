@@ -9,8 +9,8 @@ import { CollectionsNavTree } from "./components/CollectionsNavTree";
 import { GitSettingsModal } from "./components/GitSettingsModal";
 import { GitSyncControls } from "./components/GitSyncControls";
 import { GitSyncSetupMenuItem } from "./components/GitSyncSetupMenuItem";
-import { LibraryNav } from "./components/LibraryNav";
 import { RemoteSyncAdminSettings } from "./components/RemoteSyncAdminSettings";
+import { RemoteSyncNav } from "./components/RemoteSyncNav";
 import {
   CollectionSyncStatusBadge,
   SyncedCollectionsSidebarSection,
@@ -34,7 +34,7 @@ export function initializePlugin() {
     PLUGIN_REMOTE_SYNC.isEnabled = true;
     PLUGIN_REMOTE_SYNC.RemoteSyncSettings = RemoteSyncAdminSettings;
     PLUGIN_REMOTE_SYNC.Workspaces = WorkspaceSettings;
-    PLUGIN_REMOTE_SYNC.LibraryNav = LibraryNav;
+    PLUGIN_REMOTE_SYNC.RemoteSyncNav = RemoteSyncNav;
     PLUGIN_REMOTE_SYNC.SyncedCollectionsSidebarSection =
       SyncedCollectionsSidebarSection;
     PLUGIN_REMOTE_SYNC.GitSyncAppBarControls = GitSyncControls;

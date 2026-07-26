@@ -54,7 +54,7 @@ export function SettingsNav() {
         {hasOidc && <SettingsNavItem path="authentication/oidc" label="OIDC" />}
       </SettingsNavItem>
       {PLUGIN_REMOTE_SYNC.isEnabled ? (
-        <PLUGIN_REMOTE_SYNC.LibraryNav />
+        <PLUGIN_REMOTE_SYNC.RemoteSyncNav />
       ) : !isPro ? (
         <SettingsNavItem
           path="remote-sync"

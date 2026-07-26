@@ -3,7 +3,9 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  setupListWorkspacesEndpoint,
   setupRemoteSyncEndpoints,
+  setupUserEndpoints,
   setupWorkspaceEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -81,7 +83,7 @@ const setup = ({
   });
 };
 
-const findOption = (name: RegExp) => screen.findByRole("option", { name });
+const findOption = (name: RegExp) => screen.findByRole("menuitem", { name });
 const getBranchButton = (name: RegExp) => screen.getByRole("button", { name });
 const queryBranchButton = (name: RegExp) =>
   screen.queryByRole("button", { name });
@@ -192,7 +194,7 @@ describe("GitSyncControls", () => {
       });
     });
 
-    it("shows the workspace branch and a 'workspace' label once loaded", async () => {
+    it("shows the workspace branch once loaded", async () => {
       setup({
         currentBranch: "main",
         workspaceId: 42,
@@ -205,7 +207,8 @@ describe("GitSyncControls", () => {
       await waitFor(() => {
         expect(getBranchButton(/feature\/my-workspace/)).toBeInTheDocument();
       });
-      expect(screen.getByText("workspace")).toBeInTheDocument();
+      // The redundant "workspace" text label was removed; the workspace icon signals the context.
+      expect(screen.queryByText("workspace")).not.toBeInTheDocument();
       expect(queryBranchButton(/^main$/)).not.toBeInTheDocument();
     });
   });
@@ -230,7 +233,7 @@ describe("GitSyncControls", () => {
       });
       await userEvent.click(getBranchButton(/main/));
       expect(await findOption(/Push changes/)).toHaveAttribute(
-        "data-combobox-disabled",
+        "data-disabled",
         "true",
       );
 
@@ -332,7 +335,7 @@ describe("GitSyncControls", () => {
       // the non-dirty direct-import path deterministically.
       await waitFor(async () => {
         expect(await findOption(/Push changes/)).toHaveAttribute(
-          "data-combobox-disabled",
+          "data-disabled",
           "true",
         );
       });
@@ -393,7 +396,7 @@ describe("GitSyncControls", () => {
       await userEvent.click(getBranchButton(/main/));
       await waitFor(async () => {
         expect(await findOption(/Pull changes/)).not.toHaveAttribute(
-          "data-combobox-disabled",
+          "data-disabled",
           "true",
         );
       });
@@ -407,7 +410,7 @@ describe("GitSyncControls", () => {
       });
       await userEvent.click(getBranchButton(/main/));
       expect(await findOption(/Pull changes/)).toHaveAttribute(
-        "data-combobox-disabled",
+        "data-disabled",
         "true",
       );
     });
@@ -421,7 +424,7 @@ describe("GitSyncControls", () => {
       });
       await userEvent.click(getBranchButton(/main/));
       expect(await findOption(/Pull changes/)).toHaveAttribute(
-        "data-combobox-disabled",
+        "data-disabled",
         "true",
       );
       expect(
@@ -445,6 +448,63 @@ describe("GitSyncControls", () => {
           "Failed to check for changes — check your authentication token",
         ),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("switch workspace", () => {
+    it("opens the switch workspace modal listing existing workspaces", async () => {
+      setup();
+      setupListWorkspacesEndpoint([
+        createMockWorkspace({ id: 1, branch: "feature/one" }),
+      ]);
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/main/));
+      await userEvent.click(await findOption(/Switch workspace/));
+
+      expect(
+        await screen.findByRole("dialog", { name: /switch workspace/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("leave workspace", () => {
+    it("does not offer Leave workspace when the user has no workspace", async () => {
+      setup();
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/main/));
+
+      expect(await findOption(/Switch workspace/)).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: /leave workspace/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("clears the user's workspace_id when leaving a workspace", async () => {
+      setup({
+        currentBranch: "main",
+        workspaceId: 42,
+        workspace: createMockWorkspace({ id: 42, branch: "feature/x" }),
+      });
+      setupUserEndpoints(createMockUser({ id: 1, workspace_id: 42 }));
+
+      await waitFor(() => {
+        expect(getBranchButton(/feature\/x/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/feature\/x/));
+      await userEvent.click(await findOption(/Leave workspace/));
+
+      await waitFor(async () => {
+        const call = fetchMock.callHistory.lastCall("path:/api/user/1", {
+          method: "PUT",
+        });
+        expect(await call?.request?.json()).toEqual({ workspace_id: null });
+      });
     });
   });
 

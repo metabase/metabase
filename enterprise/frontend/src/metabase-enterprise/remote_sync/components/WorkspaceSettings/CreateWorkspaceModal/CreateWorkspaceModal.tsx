@@ -1,6 +1,5 @@
-import { useField } from "formik";
-import { useMemo, useState } from "react";
-import { jt, t } from "ttag";
+import { useMemo } from "react";
+import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
@@ -9,12 +8,10 @@ import {
   FormErrorMessage,
   FormProvider,
   FormSelect,
-  type FormSelectProps,
   FormSubmitButton,
 } from "metabase/forms";
-import { Button, Group, Modal, SelectItem, Stack, Text } from "metabase/ui";
+import { Button, Group, Modal, Stack } from "metabase/ui";
 import {
-  useCreateBranchMutation,
   useCreateWorkspaceMutation,
   useGetBranchesQuery,
   useListWorkspacesQuery,
@@ -98,10 +95,6 @@ function WorkspaceForm({
   mainBranch,
   onClose,
 }: WorkspaceFormProps) {
-  const [
-    createBranch,
-    { isSuccess: isBranchCreated, originalArgs: createdBranchArgs },
-  ] = useCreateBranchMutation();
   const [createWorkspace] = useCreateWorkspaceMutation();
 
   const validationSchema = useMemo(
@@ -112,15 +105,6 @@ function WorkspaceForm({
   const handleSubmit = async ({ branch }: CreateWorkspaceFormValues) => {
     if (!branch) {
       return;
-    }
-
-    const isNewBranch = !branches.includes(branch);
-    if (isNewBranch) {
-      const isBranchAlreadyCreated =
-        isBranchCreated && createdBranchArgs?.name === branch;
-      if (!isBranchAlreadyCreated) {
-        await createBranch({ name: branch }).unwrap();
-      }
     }
 
     await createWorkspace({ branch }).unwrap();
@@ -135,11 +119,12 @@ function WorkspaceForm({
     >
       <Form>
         <Stack gap="xl">
-          <BranchFormSelect
+          <FormSelect
             name="branch"
             label={t`Branch`}
-            placeholder={t`Select or create a branch`}
+            placeholder={t`Select a branch`}
             data={branches}
+            searchable
             required
           />
           <FormErrorMessage />
@@ -150,49 +135,5 @@ function WorkspaceForm({
         </Stack>
       </Form>
     </FormProvider>
-  );
-}
-
-type BranchFormSelectProps = FormSelectProps & { data: string[] };
-
-function BranchFormSelect({ data, name, ...rest }: BranchFormSelectProps) {
-  const [{ value }] = useField<string | null>(name);
-
-  const [searchValue, setSearchValue] = useState(value ?? "");
-  const dataWithNewItem = [
-    ...new Set([...data, ...(searchValue !== "" ? [searchValue] : [])]),
-  ];
-
-  const isNewValue = value !== "" && value != null && !data.includes(value);
-
-  return (
-    <Stack gap="sm">
-      <FormSelect
-        {...rest}
-        name={name}
-        data={dataWithNewItem}
-        searchable
-        searchValue={searchValue}
-        onSearchChange={setSearchValue}
-        renderOption={({ option }) => {
-          const { value } = option;
-          if (data.includes(value)) {
-            return <SelectItem>{value}</SelectItem>;
-          }
-          return (
-            <SelectItem>
-              <Text c="inherit" lh="inherit">
-                {jt`Create new branch ${<strong key="value">{value}</strong>}`}
-              </Text>
-            </SelectItem>
-          );
-        }}
-      />
-      {isNewValue && (
-        <Text size="sm" c="text-secondary">
-          {t`This branch will be created.`}
-        </Text>
-      )}
-    </Stack>
   );
 }
