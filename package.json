@@ -576,7 +576,11 @@
     "cloud:dev": "bun install && clojure -A:dev:drivers:drivers-dev:ee:ee-dev:cljs -P && bun run concurrently -n 'FE,BE' -c 'blue,green' 'bun run build-hot' 'clojure -M:dev:socket:dev-start:drivers:drivers-dev:ee:ee-dev'"
   },
   "browserslist": [
-    "defaults"
+    "chrome >= 89",
+    "edge >= 89",
+    "firefox >= 66",
+    "safari >= 15",
+    "ios_saf >= 15"
   ],
   "packageManager": "bun@1.3.14"
 }
