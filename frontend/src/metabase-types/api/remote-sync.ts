@@ -190,7 +190,7 @@ export type CreateBranchResponse = {
   message: string;
 };
 
-export type CreateWorktreeRequest = {
+export type CreateWorkspaceRequest = {
   branch: string;
 };
 
@@ -203,8 +203,8 @@ export type TestRemoteSyncConnectionResponse = {
   status: "success";
 };
 
-/** A checkout of a git branch that a user can be assigned to via `User.worktree_id`. */
-export type RemoteSyncWorktree = {
+/** A checkout of a git branch that a user can be assigned to via `User.workspace_id`. */
+export type Workspace = {
   id: number;
   branch: string;
   creator_id: number | null;

@@ -20,7 +20,7 @@
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/worktree-id))
+  (derive :hook/workspace-id))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:metabase.dashboards.models.dashboard-card/DashboardCard :dashboard_tab]
   [_original-model _k]
@@ -51,7 +51,7 @@
 
 (t2/define-before-update :model/DashboardTab
   [tab]
-  (remote-sync/check-parent-same-worktree tab :model/Dashboard :dashboard_id)
+  (remote-sync/check-parent-same-workspace tab :model/Dashboard :dashboard_id)
   tab)
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------

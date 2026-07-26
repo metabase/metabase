@@ -48,7 +48,7 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/worktree-id))
+  (derive :hook/workspace-id))
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
@@ -94,7 +94,7 @@
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
-  (remote-sync/check-parent-same-worktree dashboard :model/Collection :collection_id)
+  (remote-sync/check-parent-same-workspace dashboard :model/Collection :collection_id)
   (let [changes   (t2/changes dashboard)
         dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
         changes   (lib/normalize ::dashboards.schema/dashboard changes)]
@@ -525,7 +525,7 @@
                   :collection-type :collection.type
                   :collection-location :collection.location
                   :root-collection-type {:fn collection/root-collection-type}
-                  :worktree-id    true}
+                  :workspace-id    true}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level

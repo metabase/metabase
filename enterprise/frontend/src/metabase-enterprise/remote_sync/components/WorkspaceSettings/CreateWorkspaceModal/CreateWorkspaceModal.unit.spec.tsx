@@ -2,34 +2,34 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
-  setupCreateWorktreeEndpoint,
-  setupListWorktreesEndpoint,
+  setupCreateWorkspaceEndpoint,
+  setupListWorkspacesEndpoint,
   setupRemoteSyncBranchesEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
-  createMockRemoteSyncWorktree,
   createMockSettings,
+  createMockWorkspace,
 } from "metabase-types/api/mocks";
 
-import { CreateWorktreeModal } from "./CreateWorktreeModal";
+import { CreateWorkspaceModal } from "./CreateWorkspaceModal";
 
 const BRANCHES = ["main", "feature/used", "feature/available"];
 
 async function setup() {
   setupRemoteSyncBranchesEndpoint(BRANCHES);
-  setupListWorktreesEndpoint([
-    createMockRemoteSyncWorktree({ id: 1, branch: "feature/used" }),
+  setupListWorkspacesEndpoint([
+    createMockWorkspace({ id: 1, branch: "feature/used" }),
   ]);
-  setupCreateWorktreeEndpoint(
-    createMockRemoteSyncWorktree({ branch: "feature/available" }),
+  setupCreateWorkspaceEndpoint(
+    createMockWorkspace({ branch: "feature/available" }),
   );
   fetchMock.post("path:/api/ee/remote-sync/branch", {});
 
   const onClose = jest.fn();
-  renderWithProviders(<CreateWorktreeModal opened onClose={onClose} />, {
+  renderWithProviders(<CreateWorkspaceModal opened onClose={onClose} />, {
     storeInitialState: createMockState({
       settings: mockSettings(
         createMockSettings({ "remote-sync-branch": "main" }),
@@ -65,7 +65,7 @@ async function clickCreate() {
   await userEvent.click(screen.getByRole("button", { name: "Create" }));
 }
 
-describe("CreateWorktreeModal", () => {
+describe("CreateWorkspaceModal", () => {
   it("should disable submit until a branch is selected", async () => {
     await setup();
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
@@ -78,7 +78,7 @@ describe("CreateWorktreeModal", () => {
 
     expect(
       await screen.findByText(
-        "You can't create a worktree for the main branch.",
+        "You can't create a workspace for the main branch.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
@@ -90,12 +90,12 @@ describe("CreateWorktreeModal", () => {
     await userEvent.tab();
 
     expect(
-      await screen.findByText("A worktree already exists for this branch."),
+      await screen.findByText("A workspace already exists for this branch."),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
   });
 
-  it("should create the branch and then the worktree for a brand new branch name", async () => {
+  it("should create the branch and then the workspace for a brand new branch name", async () => {
     const { onClose } = await setup();
     await createNewBranch("feature/new-branch");
     await clickCreate();
@@ -111,7 +111,7 @@ describe("CreateWorktreeModal", () => {
     });
     await waitFor(async () => {
       const call = fetchMock.callHistory.lastCall(
-        "path:/api/ee/remote-sync/worktree",
+        "path:/api/ee/remote-sync/workspace",
         { method: "POST" },
       );
       expect(await call?.request?.json()).toEqual({
@@ -121,14 +121,14 @@ describe("CreateWorktreeModal", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
-  it("should only create the worktree for an existing, unused, non-main branch", async () => {
+  it("should only create the workspace for an existing, unused, non-main branch", async () => {
     const { onClose } = await setup();
     await selectExistingBranch("feature/available");
     await clickCreate();
 
     await waitFor(async () => {
       const call = fetchMock.callHistory.lastCall(
-        "path:/api/ee/remote-sync/worktree",
+        "path:/api/ee/remote-sync/workspace",
         { method: "POST" },
       );
       expect(await call?.request?.json()).toEqual({

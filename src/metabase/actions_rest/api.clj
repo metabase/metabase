@@ -51,7 +51,7 @@
   (t2/select [:model/Action :name :id :public_uuid :model_id]
              :public_uuid [:not= nil]
              :archived false
-             :worktree_id api/*current-worktree-id*))
+             :workspace_id api/*current-workspace-id*))
 
 (api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
   "Fetch an Action."

@@ -87,7 +87,7 @@
    [:source_database_id {:optional true} [:maybe pos-int?]]
    [:source_readable {:optional true} [:maybe :boolean]]
    [:entity_id [:maybe :string]]
-   [:worktree_id {:optional true} [:maybe pos-int?]]
+   [:workspace_id {:optional true} [:maybe pos-int?]]
    [:created_at :any]
    [:updated_at :any]
    [:creator_id pos-int?]
@@ -202,7 +202,7 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Transform id)
   (let [id->transform (t2/select-pk->fn identity :model/Transform
-                                        {:where (remote-sync/worktree-visibility-clause)})
+                                        {:where (remote-sync/workspace-visibility-clause)})
         {graph :dependencies} (transforms.core/transform-ordering #{id} (vals id->transform))
         dep-ids         (get graph id)
         dependencies    (map id->transform dep-ids)]

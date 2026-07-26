@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  setupListWorktreesEndpoint,
+  setupListWorkspacesEndpoint,
   setupRemoteSyncBranchesEndpoint,
   setupUserEndpoints,
 } from "__support__/server-mocks";
@@ -12,25 +12,25 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { RemoteSyncWorktree } from "metabase-types/api";
+import type { Workspace } from "metabase-types/api";
 import {
-  createMockRemoteSyncWorktree,
   createMockUser,
   createMockUserInfo,
+  createMockWorkspace,
 } from "metabase-types/api/mocks";
 
-import { WorktreeSettings } from "./WorktreeSettings";
+import { WorkspaceSettings } from "./WorkspaceSettings";
 
-const CURRENT_USER = createMockUser({ id: 1, worktree_id: 10 });
+const CURRENT_USER = createMockUser({ id: 1, workspace_id: 10 });
 
-const WORKTREES: RemoteSyncWorktree[] = [
-  createMockRemoteSyncWorktree({
+const WORKSPACES: Workspace[] = [
+  createMockWorkspace({
     id: 10,
     branch: "feature/joined",
     creator: createMockUserInfo({ id: 1 }),
     users: [createMockUserInfo({ id: 1 })],
   }),
-  createMockRemoteSyncWorktree({
+  createMockWorkspace({
     id: 20,
     branch: "feature/not-joined",
     creator: createMockUserInfo({
@@ -44,26 +44,26 @@ const WORKTREES: RemoteSyncWorktree[] = [
 ];
 
 async function setup({
-  worktrees = WORKTREES,
+  workspaces = WORKSPACES,
   currentUser = CURRENT_USER,
 }: {
-  worktrees?: RemoteSyncWorktree[];
+  workspaces?: Workspace[];
   currentUser?: typeof CURRENT_USER;
 } = {}) {
   mockGetBoundingClientRect({ width: 800, height: 600 });
-  setupListWorktreesEndpoint(worktrees);
+  setupListWorkspacesEndpoint(workspaces);
   setupUserEndpoints(currentUser);
   setupRemoteSyncBranchesEndpoint([]);
 
-  renderWithProviders(<WorktreeSettings />, {
+  renderWithProviders(<WorkspaceSettings />, {
     storeInitialState: createMockState({ currentUser }),
   });
 
   await waitForLoaderToBeRemoved();
 }
 
-describe("WorktreeSettings", () => {
-  it("should render worktree rows with branch, creator, and users", async () => {
+describe("WorkspaceSettings", () => {
+  it("should render workspace rows with branch, creator, and users", async () => {
     await setup();
 
     expect(await screen.findByText("feature/joined")).toBeInTheDocument();
@@ -71,20 +71,20 @@ describe("WorktreeSettings", () => {
     expect(screen.getByText("Other User")).toBeInTheDocument();
   });
 
-  it("should render the empty state when there are no worktrees", async () => {
-    await setup({ worktrees: [] });
-    expect(screen.getByText("No worktrees yet")).toBeInTheDocument();
+  it("should render the empty state when there are no workspaces", async () => {
+    await setup({ workspaces: [] });
+    expect(screen.getByText("No workspaces yet")).toBeInTheDocument();
   });
 
-  it("should open the create worktree modal", async () => {
+  it("should open the create workspace modal", async () => {
     await setup();
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Create a worktree" }),
+      screen.getByRole("button", { name: "Create a workspace" }),
     );
 
     expect(
-      await screen.findByRole("dialog", { name: /create a worktree/i }),
+      await screen.findByRole("dialog", { name: /create a workspace/i }),
     ).toBeInTheDocument();
   });
 });

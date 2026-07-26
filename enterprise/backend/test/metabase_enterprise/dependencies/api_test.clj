@@ -2780,24 +2780,24 @@
             (is (map? (mt/user-http-request analyst-id :get 200
                                             (str "ee/dependencies/graph?type=transform&id=" transform-id))))))))))
 
-(deftest ^:sequential dependents-worktree-isolation-test
-  (testing "GET /api/ee/dependencies/graph/dependents only surfaces dependents in the caller's own remote-sync worktree"
+(deftest ^:sequential dependents-workspace-isolation-test
+  (testing "GET /api/ee/dependencies/graph/dependents only surfaces dependents in the caller's own remote-sync workspace"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/RemoteSyncWorktree wt {:branch (str (random-uuid))}
+      (mt/with-temp [:model/Workspace wt {:branch (str (random-uuid))}
                      :model/User main-user {:email "main-caller@wherever.com"}
-                     :model/User wt-user {:email "wt-caller@wherever.com" :worktree_id (:id wt)}]
-        ;; The worktree needs its own Trash collection, mirroring how a real worktree pull materializes one.
+                     :model/User wt-user {:email "wt-caller@wherever.com" :workspace_id (:id wt)}]
+        ;; The workspace needs its own Trash collection, mirroring how a real workspace pull materializes one.
         ;; It's cleaned up by hand (rather than via with-temp) because Collection's before-delete hook refuses
-        ;; to delete whatever the *current* worktree's trash resolves to; deleting it while still bound to the
-        ;; worktree would trip that guard against this very row.
-        (let [wt-trash-id (binding [api/*current-worktree-id* (:id wt)]
+        ;; to delete whatever the *current* workspace's trash resolves to; deleting it while still bound to the
+        ;; workspace would trip that guard against this very row.
+        (let [wt-trash-id (binding [api/*current-workspace-id* (:id wt)]
                             (t2/insert-returning-pk! :model/Collection
                                                      {:name "Trash" :type collection/trash-collection-type}))]
           (try
             (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
               (let [products-id (mt/id :products)
                     main-card (card/create-card! (basic-card "Main card" :products) main-user)
-                    wt-card (binding [api/*current-worktree-id* (:id wt)]
+                    wt-card (binding [api/*current-workspace-id* (:id wt)]
                               (card/create-card! (basic-card "WT card" :products) wt-user))
                     _ (deps.test/synchronously-run-backfill!)
                     main-dependents (->> (mt/user-http-request (:id main-user) :get 200
@@ -2811,13 +2811,13 @@
                 (testing "main-app caller sees only the main-app card"
                   (is (contains? main-dependents (:id main-card)))
                   (is (not (contains? main-dependents (:id wt-card)))))
-                (testing "worktree caller sees only their own worktree's card"
+                (testing "workspace caller sees only their own workspace's card"
                   (is (contains? wt-dependents (:id wt-card)))
                   (is (not (contains? wt-dependents (:id main-card)))))))
             (finally
-              ;; Content created inside a worktree is unconditionally sync-eligible, so the wt-card and the
-              ;; worktree's Trash collection each spawn a worktree-scoped RemoteSyncObject. Clear those (and any
-              ;; other worktree-scoped RSO rows) before with-temp deletes the worktree, or the FK from
-              ;; remote_sync_object.worktree_id -> remote_sync_worktree.id blocks the delete.
-              (t2/delete! :model/RemoteSyncObject :worktree_id (:id wt))
+              ;; Content created inside a workspace is unconditionally sync-eligible, so the wt-card and the
+              ;; workspace's Trash collection each spawn a workspace-scoped RemoteSyncObject. Clear those (and any
+              ;; other workspace-scoped RSO rows) before with-temp deletes the workspace, or the FK from
+              ;; remote_sync_object.workspace_id -> workspace.id blocks the delete.
+              (t2/delete! :model/RemoteSyncObject :workspace_id (:id wt))
               (t2/delete! :model/Collection :id wt-trash-id))))))))

@@ -109,7 +109,7 @@
     (let [collection-id (parse-long library-value)]
       (->> (if collection-id
              (t2/select :model/Collection :id collection-id)
-             (t2/select :model/Collection :name library-value :worktree_id api/*current-worktree-id*))
+             (t2/select :model/Collection :name library-value :workspace_id api/*current-workspace-id*))
            (filter #(contains? collection/library-collection-types (:type %)))
            (filter mi/can-read?)
            first))))
@@ -119,14 +119,14 @@
   (let [collection-id (parse-long collection-value)]
     (->> (if collection-id
            (t2/select :model/Collection :id collection-id)
-           (t2/select :model/Collection :entity_id collection-value :worktree_id api/*current-worktree-id*))
+           (t2/select :model/Collection :entity_id collection-value :workspace_id api/*current-workspace-id*))
          (filter #(contains? collection/library-collection-types (:type %)))
          (filter mi/can-read?)
          first)))
 
 (defn- library-collection-for-entity-id
   [entity-id]
-  (->> (t2/select :model/Collection :entity_id entity-id :worktree_id api/*current-worktree-id*)
+  (->> (t2/select :model/Collection :entity_id entity-id :workspace_id api/*current-workspace-id*)
        (filter #(contains? collection/library-collection-types (:type %)))
        (filter mi/can-read?)
        first))
@@ -136,7 +136,7 @@
   (let [collection-id (parse-long collection-value)]
     (->> (if collection-id
            (t2/select :model/Collection :id collection-id)
-           (t2/select :model/Collection :entity_id collection-value :worktree_id api/*current-worktree-id*))
+           (t2/select :model/Collection :entity_id collection-value :workspace_id api/*current-workspace-id*))
          (filter mi/can-read?)
          first)))
 

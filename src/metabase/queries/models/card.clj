@@ -130,7 +130,7 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/worktree-id))
+  (derive :hook/workspace-id))
 
 (defmethod mi/can-write? :model/Card
   ([instance]
@@ -869,7 +869,7 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-  (remote-sync/check-parent-same-worktree card :model/Collection :collection_id)
+  (remote-sync/check-parent-same-workspace card :model/Collection :collection_id)
   (let [changes (some-> card t2/changes queries.schema/normalize-card)
         card    (queries.schema/normalize-card card)]
     (collection/check-allowed-content (:type card) (:collection_id changes))
@@ -1541,7 +1541,7 @@
                   :collection-type      :collection.type
                   :collection-location  :collection.location
                   :root-collection-type {:fn collection/root-collection-type}
-                  :worktree-id          true}
+                  :workspace-id          true}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level

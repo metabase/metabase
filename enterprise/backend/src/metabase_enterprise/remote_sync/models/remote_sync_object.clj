@@ -22,30 +22,30 @@
 
 (defn dirty?
   "Checks if any collection has changes since the last sync, scoped to the current
-   [[api/*current-worktree-id*]] (nil for the main app).
+   [[api/*current-workspace-id*]] (nil for the main app).
    Returns true if any remote-synced object has a status other than 'synced', false otherwise.
    Excludes transform model types when transform sync is disabled."
   []
   (let [excluded (spec/excluded-model-types)]
     (if (empty? excluded)
-      (t2/exists? :model/RemoteSyncObject :status [:not= "synced"] :worktree_id api/*current-worktree-id*)
+      (t2/exists? :model/RemoteSyncObject :status [:not= "synced"] :workspace_id api/*current-workspace-id*)
       (t2/exists? :model/RemoteSyncObject
                   :status [:not= "synced"]
                   :model_type [:not-in excluded]
-                  :worktree_id api/*current-worktree-id*))))
+                  :workspace_id api/*current-workspace-id*))))
 
 (defn dirty-rows
   "Returns the raw RemoteSyncObject rows that are not yet synced (status != 'synced') within the current
-  [[api/*current-worktree-id*]] scope (nil for the main app), excluding disabled model types (e.g.
+  [[api/*current-workspace-id*]] scope (nil for the main app), excluding disabled model types (e.g.
   transforms when transform sync is off)."
   []
   (let [excluded (spec/excluded-model-types)]
     (if (empty? excluded)
-      (t2/select :model/RemoteSyncObject :status [:not= "synced"] :worktree_id api/*current-worktree-id*)
+      (t2/select :model/RemoteSyncObject :status [:not= "synced"] :workspace_id api/*current-workspace-id*)
       (t2/select :model/RemoteSyncObject
                  :status [:not= "synced"]
                  :model_type [:not-in excluded]
-                 :worktree_id api/*current-worktree-id*))))
+                 :workspace_id api/*current-workspace-id*))))
 
 (defn dirty-objects
   "Gets all models in any collection that are dirty with their sync status.

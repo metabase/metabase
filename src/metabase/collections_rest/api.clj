@@ -60,15 +60,15 @@
     [:not [:like :location "/%/%/"]]))
 
 (defn- remove-other-users-personal-subcollections
-  "Personal Collections are always main-app content (`worktree_id` `nil`), shared across every remote-sync
-  worktree, so this filters on ownership only -- not on the caller's worktree scope."
+  "Personal Collections are always main-app content (`workspace_id` `nil`), shared across every remote-sync
+  workspace, so this filters on ownership only -- not on the caller's workspace scope."
   [user-id collections]
   (let [personal-ids         (set (t2/select-fn-set :id :model/Collection
                                                     {:where
                                                      [:and
                                                       [:!= :personal_owner_id nil]
                                                       [:!= :personal_owner_id user-id]
-                                                      [:= :worktree_id nil]]}))
+                                                      [:= :workspace_id nil]]}))
         personal-descendant? (fn [collection]
                                (let [first-parent-collection-id (-> collection
                                                                     :location
@@ -397,14 +397,14 @@
      :is_not_pinned [:= col nil]
      always-true-hsql-expr)))
 
-(defn- root-content-worktree-clause
-  "Restricts a collection-children row to the caller's worktree scope, but only at the root collection: a
-  non-root `collection` is already worktree-scoped transitively, via its own row in the visible-collection CTE.
-  `column` is the content table's own `worktree_id` column (qualified with its FROM alias), or `nil` for models
+(defn- root-content-workspace-clause
+  "Restricts a collection-children row to the caller's workspace scope, but only at the root collection: a
+  non-root `collection` is already workspace-scoped transitively, via its own row in the visible-collection CTE.
+  `column` is the content table's own `workspace_id` column (qualified with its FROM alias), or `nil` for models
   that carry no such column, in which case every row is treated as belonging to the main app."
   [collection column]
   (when (nil? (:id collection))
-    (remote-sync/worktree-visibility-clause column)))
+    (remote-sync/workspace-visibility-clause column)))
 
 (defn- poison-when-pinned-clause
   "Poison a query to return no results when filtering to pinned items. Use for items that do not have a notion of
@@ -462,7 +462,7 @@
                  [:and
                   [:= :document.collection_id (:id collection)]
                   [:= :document.archived_directly false]])
-               (root-content-worktree-clause collection :document.worktree_id)
+               (root-content-workspace-clause collection :document.workspace_id)
                [:= :document.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
 
@@ -479,7 +479,7 @@
        :where           [:and
                          [:= :p.collection_id      (:id collection)]
                          [:= :p.archived           (boolean archived?)]
-                         (root-content-worktree-clause collection nil)
+                         (root-content-workspace-clause collection nil)
                          ;; exclude alerts
                          [:= :p.alert_condition    nil]
                          ;; exclude dashboard subscriptions
@@ -513,7 +513,7 @@
    :where  [:and
             (poison-when-pinned-clause pinned-state)
             [:= :collection_id (:id collection)]
-            (root-content-worktree-clause collection :worktree_id)
+            (root-content-workspace-clause collection :workspace_id)
             [:= :archived (boolean archived?)]]})
 
 (defmethod collection-children-query :transform
@@ -524,7 +524,7 @@
      :where  [:and
               (poison-when-pinned-clause pinned-state)
               [:= :collection_id (:id collection)]
-              (root-content-worktree-clause collection :worktree_id)
+              (root-content-workspace-clause collection :workspace_id)
               (if (seq enabled-types)
                 [:in :source_type enabled-types]
                 [:=
@@ -586,7 +586,7 @@
                      [:and
                       [:= :c.collection_id (:id collection)]
                       [:= :c.archived_directly false]])
-                   (root-content-worktree-clause collection :c.worktree_id)
+                   (root-content-workspace-clause collection :c.workspace_id)
                    (when-not show-dashboard-questions?
                      [:= :c.dashboard_id nil])
                    [:= :c.document_id nil]
@@ -696,7 +696,7 @@
                      [:and
                       [:= :d.collection_id (:id collection)]
                       [:not= :d.archived_directly true]])
-                   (root-content-worktree-clause collection :d.worktree_id)
+                   (root-content-workspace-clause collection :d.workspace_id)
                    [:= :d.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 

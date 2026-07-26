@@ -122,7 +122,7 @@
   `:user-id`, and `:add-run-activity!` (a zero-arg fn called after successful execution to touch the
   coordinating run's updated_at)."
   [{:keys [parent-run run-method user-id add-run-activity!]} started-run-id {transform-id :id :as transform}]
-  (binding [api/*current-worktree-id* (:worktree_id transform)]
+  (binding [api/*current-workspace-id* (:workspace_id transform)]
     (cond
       (not (transforms.u/check-feature-enabled transform))
       (log/warnf "Skip running transform %d due to lacking premium features" transform-id)

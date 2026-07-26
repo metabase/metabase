@@ -22,7 +22,7 @@
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/worktree-id)
+  (derive :hook/workspace-id)
   ;; Disabled for performance reasons, see update-dashboard-card!-call-count-test
   #_(derive :hook/search-index))
 
@@ -40,7 +40,7 @@
 
 (t2/define-before-update :model/DashboardCard
   [dashcard]
-  (remote-sync/check-parent-same-worktree dashcard :model/Dashboard :dashboard_id)
+  (remote-sync/check-parent-same-workspace dashcard :model/Dashboard :dashboard_id)
   dashcard)
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids

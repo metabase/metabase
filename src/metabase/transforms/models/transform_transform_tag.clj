@@ -12,11 +12,11 @@
 (doto :model/TransformTransformTag
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/worktree-id))
+  (derive :hook/workspace-id))
 
 (t2/define-before-update :model/TransformTransformTag
   [ttt]
-  (remote-sync/check-parent-same-worktree ttt :model/Transform :transform_id)
+  (remote-sync/check-parent-same-workspace ttt :model/Transform :transform_id)
   ttt)
 
 (defmethod serdes/make-spec "TransformTransformTag"

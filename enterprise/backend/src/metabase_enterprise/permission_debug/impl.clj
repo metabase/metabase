@@ -93,7 +93,7 @@
   "Reset the bound permissions to run a can read check for a specific user"
   [model pk user-id]
   (binding [api/*current-user-id* user-id
-            api/*current-worktree-id* (t2/select-one-fn :worktree_id [:model/User :worktree_id] :id user-id)
+            api/*current-workspace-id* (t2/select-one-fn :workspace_id [:model/User :workspace_id] :id user-id)
             api/*current-user-permissions-set* (delay (perms/user-permissions-set user-id))]
     (mi/can-read? model pk)))
 

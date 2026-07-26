@@ -286,15 +286,15 @@
              (update-model-rows-in-batches! execute! kw-tbl "dashboard" @dashboards
                                             {:curated true :official_collection true}))))))))
 
-(defn- add-worktree-id-column!
-  "Migration 6: add `worktree_id` column to index tables, scoping content to remote-sync worktrees.
-  Existing rows all predate worktrees and belong to the main app, so the NULL default is already correct
+(defn- add-workspace-id-column!
+  "Migration 6: add `workspace_id` column to index tables, scoping content to remote-sync workspaces.
+  Existing rows all predate workspaces and belong to the main app, so the NULL default is already correct
   and no backfill is required."
   [tx index-metadata]
   (alter-index-tables! tx index-metadata 6
                        (fn [execute! table-name]
                          (execute! {:alter-table [(keyword table-name)]
-                                    :add-column  [[:worktree_id :int :if-not-exists]]}))))
+                                    :add-column  [[:workspace_id :int :if-not-exists]]}))))
 
 (defn migrate-dynamic-schema!
   "Migrate runtime-managed schema, i.e. the schema of the `index_...` index tables. Migration author is responsible for
@@ -305,9 +305,9 @@
   ;; migration 3: add collection_type and data_layer columns to index tables
   ;; migration 4: add root_collection_type column to index tables
   ;; migration 5: add data_authority and precomputed curated columns to index tables
-  ;; migration 6: add worktree_id column to index tables
+  ;; migration 6: add workspace_id column to index tables
   (add-personal-owner-id-column! tx index-metadata)
   (add-collection-type-and-data-layer-columns! tx index-metadata)
   (add-root-collection-type-column! tx index-metadata)
   (add-data-authority-and-curated-columns! tx index-metadata)
-  (add-worktree-id-column! tx index-metadata))
+  (add-workspace-id-column! tx index-metadata))

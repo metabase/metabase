@@ -18,7 +18,6 @@ import {
   type DocumentDependencyNode,
   type MeasureDependencyNode,
   type PythonLibrary,
-  type RemoteSyncWorktree,
   type SandboxDependencyNode,
   type SegmentDependencyNode,
   type SnippetDependencyNode,
@@ -42,7 +41,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "remote-sync-branches",
   "remote-sync-current-task",
   "remote-sync-has-remote-changes",
-  "remote-sync-worktree",
+  "workspace",
   "source-replacement-run",
   "python-transform-library",
   "support-access-grant",
@@ -53,7 +52,6 @@ export const ENTERPRISE_TAG_TYPES = [
   "ai-controls-usage-group-limits",
   "ai-controls-usage-tenant-limits",
   "data-complexity-scores",
-  "workspace",
 ] as const;
 
 export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -261,29 +259,14 @@ export function provideSourceReplacementRunListTags(
   ];
 }
 
-export function provideWorktreeTags(
-  worktree: RemoteSyncWorktree,
-): TagDescription<EnterpriseTagType>[] {
-  return [
-    idTag("remote-sync-worktree", worktree.id),
-    ...(worktree.creator ? provideUserTags(worktree.creator) : []),
-    ...worktree.users.flatMap(provideUserTags),
-  ];
-}
-
-export function provideWorktreeListTags(
-  worktrees: RemoteSyncWorktree[],
-): TagDescription<EnterpriseTagType>[] {
-  return [
-    listTag("remote-sync-worktree"),
-    ...worktrees.flatMap(provideWorktreeTags),
-  ];
-}
-
 export function provideWorkspaceTags(
   workspace: Workspace,
 ): TagDescription<EnterpriseTagType>[] {
-  return [idTag("workspace", workspace.id)];
+  return [
+    idTag("workspace", workspace.id),
+    ...(workspace.creator ? provideUserTags(workspace.creator) : []),
+    ...workspace.users.flatMap(provideUserTags),
+  ];
 }
 
 export function provideWorkspaceListTags(

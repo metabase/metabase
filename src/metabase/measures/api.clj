@@ -101,7 +101,7 @@
   "Fetch *all* `Measures`."
   []
   (as-> (t2/select :model/Measure
-                   {:where    [:and [:= :archived false] (remote-sync/worktree-visibility-clause)]
+                   {:where    [:and [:= :archived false] (remote-sync/workspace-visibility-clause)]
                     :order-by [[:%lower.name :asc]]}) measures
     (filter mi/can-read? measures)
     (t2/hydrate measures :creator :definition_description)))

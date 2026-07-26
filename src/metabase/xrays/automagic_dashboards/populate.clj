@@ -41,7 +41,7 @@
                      :name "Automatically Generated Dashboards"
                      :archived false
                      :location location
-                     :worktree_id api/*current-worktree-id*)
+                     :workspace_id api/*current-workspace-id*)
       (t2/insert-returning-instance!
        :model/Collection
        {:name "Automatically Generated Dashboards"

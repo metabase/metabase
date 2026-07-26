@@ -91,21 +91,21 @@
   "Maximum number of ids per `:in` clause, to stay under database parameter limits."
   1000)
 
-;;; ------------------------------------------------ Remote-sync worktree scope --------------------------------------
+;;; ------------------------------------------------ Remote-sync workspace scope --------------------------------------
 
-(def worktree-scoped-models
-  "Serdes model names whose tables carry a `worktree_id` column and enforce entity_id uniqueness per worktree
-  (`UNIQUE (worktree_id_helper, entity_id)`). Entity-id matching for these is scoped by the current worktree
-  ([[api/*current-worktree-id*]]) so a worktree pull matches/creates rows within its own scope rather than
+(def workspace-scoped-models
+  "Serdes model names whose tables carry a `workspace_id` column and enforce entity_id uniqueness per workspace
+  (`UNIQUE (workspace_id_helper, entity_id)`). Entity-id matching for these is scoped by the current workspace
+  ([[api/*current-workspace-id*]]) so a workspace pull matches/creates rows within its own scope rather than
   colliding with the main app."
   #{"Card" "Dashboard" "DashboardCard" "DashboardTab" "Document" "NativeQuerySnippet"
     "Timeline" "Collection" "Segment" "Measure" "Transform" "TransformTag" "TransformTransformTag"
     "PythonLibrary" "Action"})
 
-(defn worktree-scoped?
-  "Whether `model` (a serdes model-name string, or a model keyword/symbol) is scoped by the current worktree."
+(defn workspace-scoped?
+  "Whether `model` (a serdes model-name string, or a model keyword/symbol) is scoped by the current workspace."
   [model]
-  (contains? worktree-scoped-models (if (string? model) model (name model))))
+  (contains? workspace-scoped-models (if (string? model) model (name model))))
 
 (mr/def ::model-keyword
   [:and
@@ -190,8 +190,8 @@
         pk    (first (t2/primary-keys model))
         eid   (cond-> eid
                 (str/starts-with? eid "eid:") (subs 4))]
-    (if (worktree-scoped? model-name)
-      (t2/select-one-fn pk [model pk] :entity_id eid :worktree_id api/*current-worktree-id*)
+    (if (workspace-scoped? model-name)
+      (t2/select-one-fn pk [model pk] :entity_id eid :workspace_id api/*current-workspace-id*)
       (t2/select-one-fn pk [model pk] :entity_id eid))))
 
 ;;; # Serdes paths and <tt>:serdes/meta</tt>
@@ -813,8 +813,8 @@
   "Given an entity ID string, finds the matching entity. This is useful when writing [[xform-one]] to
   turn a foreign key from a portable form to an appdb ID. Returns a Toucan entity or nil."
   [model :- ::model-keyword-or-symbol id-str]
-  (if (worktree-scoped? model)
-    (t2/select-one model :entity_id id-str :worktree_id api/*current-worktree-id*)
+  (if (workspace-scoped? model)
+    (t2/select-one model :entity_id id-str :workspace_id api/*current-workspace-id*)
     (t2/select-one model :entity_id id-str)))
 
 (defn storage-default-collection-path

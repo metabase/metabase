@@ -15,7 +15,7 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/worktree-id))
+  (derive :hook/workspace-id))
 
 ;;;; transforms
 
@@ -31,7 +31,7 @@
   model)
 
 (t2/define-before-update :model/Timeline [model]
-  (remote-sync/check-parent-same-worktree model :model/Collection :collection_id)
+  (remote-sync/check-parent-same-workspace model :model/Collection :collection_id)
   (collection/check-allowed-content :model/Timeline (:collection_id (t2/changes model)))
   model)
 
@@ -46,7 +46,7 @@
                                           [:= :collection_id collection-id]
                                           [:= :archived (boolean archived?)]
                                           (when (nil? collection-id)
-                                            (remote-sync/worktree-visibility-clause))]})
+                                            (remote-sync/workspace-visibility-clause))]})
                       :creator
                       [:collection :can_write])
     (nil? collection-id) (->> (map collection.root/hydrate-root-collection))

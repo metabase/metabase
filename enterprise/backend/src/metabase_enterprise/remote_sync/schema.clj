@@ -144,10 +144,10 @@
    [:status :string]
    [:message :string]])
 
-;;; ------------------------------------------- Worktree Schemas -------------------------------------------
+;;; ------------------------------------------- Workspace Schemas -------------------------------------------
 
-(def Worktree
-  "Schema for a remote-sync worktree object."
+(def Workspace
+  "Schema for a remote-sync workspace object."
   [:map
    [:id pos-int?]
    [:branch :string]
@@ -157,9 +157,9 @@
    [:creator {:optional true} [:maybe :map]]
    [:users {:optional true} [:sequential :map]]])
 
-(def WorktreeList
-  "Schema for GET /worktree response."
-  [:sequential Worktree])
+(def WorkspaceList
+  "Schema for GET /workspace response."
+  [:sequential Workspace])
 
 (def StashResponse
   "Schema for POST /stash response."

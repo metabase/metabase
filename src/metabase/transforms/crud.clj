@@ -99,7 +99,7 @@
     (api/check-403 (seq enabled-types))
     (let [transforms (t2/select :model/Transform {:where    (into [:and
                                                                    [:in :source_type enabled-types]
-                                                                   (remote-sync/worktree-visibility-clause)]
+                                                                   (remote-sync/workspace-visibility-clause)]
                                                                   (when database-id
                                                                     [[:= :source_database_id database-id]]))
                                                   :order-by [[:id :asc]]})]

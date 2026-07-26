@@ -80,38 +80,38 @@
                :path "common.py"}
               (python-library/get-python-library-by-path "common"))))))
 
-(deftest worktree-isolation-test
-  (testing "get-python-library-by-path is scoped to the current worktree"
-    ;; python_library.path still carries a single-column (non-worktree-scoped) unique index (uk_python_library_path,
-    ;; from migration v57.2025-09-11T10:00:00), so a worktree and the main app can't yet hold a same-path row at the
+(deftest workspace-isolation-test
+  (testing "get-python-library-by-path is scoped to the current workspace"
+    ;; python_library.path still carries a single-column (non-workspace-scoped) unique index (uk_python_library_path,
+    ;; from migration v57.2025-09-11T10:00:00), so a workspace and the main app can't yet hold a same-path row at the
     ;; same time -- these tests exercise one scope's row at a time rather than a coexistence scenario.
-    (mt/with-temp [:model/RemoteSyncWorktree wt {:branch (str (random-uuid))}]
+    (mt/with-temp [:model/Workspace wt {:branch (str (random-uuid))}]
       (try
-        (testing "a library created inside a worktree is invisible from the main app"
+        (testing "a library created inside a workspace is invisible from the main app"
           (t2/delete! :model/PythonLibrary)
-          (binding [api/*current-worktree-id* (:id wt)]
+          (binding [api/*current-workspace-id* (:id wt)]
             (python-library/update-python-library-source! "common" "def wt_version(): return 2"))
           (is (= 1 (t2/count :model/PythonLibrary)))
           (is (nil? (python-library/get-python-library-by-path "common")))
-          (binding [api/*current-worktree-id* (:id wt)]
+          (binding [api/*current-workspace-id* (:id wt)]
             (is (= "def wt_version(): return 2"
                    (:source (python-library/get-python-library-by-path "common"))))))
-        (testing "a library created in the main app is invisible from a worktree"
+        (testing "a library created in the main app is invisible from a workspace"
           (t2/delete! :model/PythonLibrary)
           (python-library/update-python-library-source! "common" "def main_version(): return 1")
           (is (= "def main_version(): return 1"
                  (:source (python-library/get-python-library-by-path "common"))))
-          (binding [api/*current-worktree-id* (:id wt)]
+          (binding [api/*current-workspace-id* (:id wt)]
             (is (nil? (python-library/get-python-library-by-path "common")))))
         (finally
-          ;; When :remote-sync-transforms is enabled (e.g. leaked from a concurrent test on CI) the worktree-scoped
-          ;; PythonLibrary gets a worktree-scoped RemoteSyncObject. Clear any such rows before with-temp deletes the
-          ;; worktree, or the FK remote_sync_object.worktree_id -> remote_sync_worktree.id blocks the delete.
-          (t2/delete! :model/RemoteSyncObject :worktree_id (:id wt)))))))
+          ;; When :remote-sync-transforms is enabled (e.g. leaked from a concurrent test on CI) the workspace-scoped
+          ;; PythonLibrary gets a workspace-scoped RemoteSyncObject. Clear any such rows before with-temp deletes the
+          ;; workspace, or the FK remote_sync_object.workspace_id -> workspace.id blocks the delete.
+          (t2/delete! :model/RemoteSyncObject :workspace_id (:id wt)))))))
 
-(deftest execute-python-code-http-call-worktree-isolation-test
-  (testing "execute-python-code-http-call! only sends the current worktree's PythonLibrary source to the runner"
-    (mt/with-temp [:model/RemoteSyncWorktree wt {:branch (str (random-uuid))}]
+(deftest execute-python-code-http-call-workspace-isolation-test
+  (testing "execute-python-code-http-call! only sends the current workspace's PythonLibrary source to the runner"
+    (mt/with-temp [:model/Workspace wt {:branch (str (random-uuid))}]
       (try
         (let [captured     (atom ::not-called)
               fake-request (fn [opts & _]
@@ -121,30 +121,30 @@
                              (python-runner/execute-python-code-http-call!
                               {:server-url "http://fake" :code "pass" :run-id run-id
                                :source-tables [] :shared-storage {:objects {}}}))]
-          (testing "a library created inside a worktree is only sent when running as that worktree"
+          (testing "a library created inside a workspace is only sent when running as that workspace"
             (t2/delete! :model/PythonLibrary)
-            (binding [api/*current-worktree-id* (:id wt)]
+            (binding [api/*current-workspace-id* (:id wt)]
               (python-library/update-python-library-source! "common" "def wt_only(): return 'wt'"))
             (with-redefs [http/request fake-request]
-              (binding [api/*current-worktree-id* (:id wt)]
+              (binding [api/*current-workspace-id* (:id wt)]
                 (call! 1)))
             (is (= {"common.py" "def wt_only(): return 'wt'"} @captured))
             (with-redefs [http/request fake-request]
-              (binding [api/*current-worktree-id* nil]
+              (binding [api/*current-workspace-id* nil]
                 (call! 2)))
-            (is (= {} @captured) "the main app run never sees the worktree's library"))
-          (testing "a library created in the main app is only sent when running outside any worktree"
+            (is (= {} @captured) "the main app run never sees the workspace's library"))
+          (testing "a library created in the main app is only sent when running outside any workspace"
             (t2/delete! :model/PythonLibrary)
             (python-library/update-python-library-source! "common" "def main_only(): return 'main'")
             (with-redefs [http/request fake-request]
-              (binding [api/*current-worktree-id* (:id wt)]
+              (binding [api/*current-workspace-id* (:id wt)]
                 (call! 3)))
-            (is (= {} @captured) "the worktree run never sees the main app's library")
+            (is (= {} @captured) "the workspace run never sees the main app's library")
             (with-redefs [http/request fake-request]
-              (binding [api/*current-worktree-id* nil]
+              (binding [api/*current-workspace-id* nil]
                 (call! 4)))
             (is (= {"common.py" "def main_only(): return 'main'"} @captured))))
         (finally
-          ;; See worktree-isolation-test: clear any worktree-scoped RemoteSyncObject rows before with-temp deletes
-          ;; the worktree, or the FK remote_sync_object.worktree_id -> remote_sync_worktree.id blocks the delete.
-          (t2/delete! :model/RemoteSyncObject :worktree_id (:id wt)))))))
+          ;; See workspace-isolation-test: clear any workspace-scoped RemoteSyncObject rows before with-temp deletes
+          ;; the workspace, or the FK remote_sync_object.workspace_id -> workspace.id blocks the delete.
+          (t2/delete! :model/RemoteSyncObject :workspace_id (:id wt)))))))

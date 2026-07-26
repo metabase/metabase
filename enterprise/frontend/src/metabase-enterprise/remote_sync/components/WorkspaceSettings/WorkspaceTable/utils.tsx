@@ -5,24 +5,24 @@ import { DateTime } from "metabase/common/components/DateTime";
 import type { TreeTableColumnDef } from "metabase/ui";
 import { Ellipsified, Flex, Group, Icon } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
-import type { RemoteSyncWorktree } from "metabase-types/api";
+import type { Workspace } from "metabase-types/api";
 
-import { WorktreeMenu } from "../WorktreeMenu";
+import { WorkspaceMenu } from "../WorkspaceMenu";
 
 const ACTIONS_COLUMN_WIDTH = 56;
 
-export function getNodeId(worktree: RemoteSyncWorktree) {
-  return String(worktree.id);
+export function getNodeId(workspace: Workspace) {
+  return String(workspace.id);
 }
 
-export function getRowProps(row: Row<RemoteSyncWorktree>) {
+export function getRowProps(row: Row<Workspace>) {
   return {
-    "data-testid": `worktree-row-${row.original.id}`,
+    "data-testid": `workspace-row-${row.original.id}`,
     "aria-label": row.original.branch,
   };
 }
 
-export function getColumns(): TreeTableColumnDef<RemoteSyncWorktree>[] {
+export function getColumns(): TreeTableColumnDef<Workspace>[] {
   return [
     {
       id: "branch",
@@ -30,7 +30,7 @@ export function getColumns(): TreeTableColumnDef<RemoteSyncWorktree>[] {
       minWidth: "auto",
       maxAutoWidth: 240,
       enableSorting: true,
-      accessorFn: (worktree) => worktree.branch,
+      accessorFn: (workspace) => workspace.branch,
       cell: ({ row }) => (
         <Group gap="sm" wrap="nowrap">
           <Icon name="git_branch" c="brand" />
@@ -43,7 +43,7 @@ export function getColumns(): TreeTableColumnDef<RemoteSyncWorktree>[] {
       header: t`Created by`,
       width: "auto",
       enableSorting: true,
-      accessorFn: (worktree) => getUserName(worktree.creator ?? undefined),
+      accessorFn: (workspace) => getUserName(workspace.creator ?? undefined),
       cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
     },
     {
@@ -52,7 +52,7 @@ export function getColumns(): TreeTableColumnDef<RemoteSyncWorktree>[] {
       width: 200,
       enableSorting: true,
       sortDescFirst: true,
-      accessorFn: (worktree) => worktree.created_at,
+      accessorFn: (workspace) => workspace.created_at,
       cell: ({ row }) => <DateTime value={row.original.created_at} />,
     },
     {
@@ -61,7 +61,7 @@ export function getColumns(): TreeTableColumnDef<RemoteSyncWorktree>[] {
       width: "auto",
       maxAutoWidth: 280,
       enableSorting: false,
-      accessorFn: (worktree) => worktree.users.map(getUserName).join(", "),
+      accessorFn: (workspace) => workspace.users.map(getUserName).join(", "),
       cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
     },
     {
@@ -71,7 +71,7 @@ export function getColumns(): TreeTableColumnDef<RemoteSyncWorktree>[] {
       enableSorting: false,
       cell: ({ row }) => (
         <Flex justify="center">
-          <WorktreeMenu worktree={row.original} />
+          <WorkspaceMenu workspace={row.original} />
         </Flex>
       ),
     },

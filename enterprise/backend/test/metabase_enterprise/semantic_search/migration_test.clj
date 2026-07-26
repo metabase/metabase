@@ -273,7 +273,7 @@
                       "text_search_with_native_query_vector"
                       "verified"
                       "view_count"
-                      "worktree_id"}
+                      "workspace_id"}
                     (->>  (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                                          (sql/format {:select [:column_name]
                                                       :from [:information_schema.columns]

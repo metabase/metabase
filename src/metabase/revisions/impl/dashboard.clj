@@ -20,13 +20,13 @@
     ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
     :public_uuid :made_public_by_id
     :position :initially_published_at :view_count
-    :last_viewed_at :worktree_id :worktree_id_helper})
+    :last_viewed_at :workspace_id :workspace_id_helper})
 
 (def ^:private excluded-columns-for-dashcard-revision
-  [:entity_id :created_at :updated_at :collection_authority_level :worktree_id :worktree_id_helper])
+  [:entity_id :created_at :updated_at :collection_authority_level :workspace_id :workspace_id_helper])
 
 (def ^:private excluded-columns-for-dashboard-tab-revision
-  [:created_at :updated_at :entity_id :worktree_id :worktree_id_helper])
+  [:created_at :updated_at :entity_id :workspace_id :workspace_id_helper])
 
 (defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]

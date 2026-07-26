@@ -579,24 +579,40 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
 
-(t2/define-before-insert :hook/worktree-id
+;;; IMPORTANT ordering requirement for models that derive `:hook/workspace-id`:
+;;; this hook defines `before-insert`/`before-update`/`after-select`, which makes `:hook/workspace-id` a member of
+;;; toucan2's `::before-insert`/`::before-update`/`::after-select` hierarchies. A model that ALSO defines its own
+;;; `t2/define-before-insert`/`-before-update`/`-after-select` must `(derive :hook/workspace-id)` (or otherwise
+;;; already be a member of that hierarchy via another hook) BEFORE its own `t2/define-*`. Otherwise the model's own
+;;; `define-*` adds a *direct* edge to the hierarchy keyword while it is not yet a member, and the later
+;;; `(derive :hook/workspace-id)` adds a second, transitive path -- a redundant direct+transitive edge. That
+;;; redundancy is exactly what makes `clojure.core/underive` (called by every `t2/define-*` via
+;;; `unparent-descendants`) throw "already has X as ancestor": `underive` rebuilds the whole hierarchy by replaying
+;;; edges in hash-map-seq order, and hits the redundant edge for some orderings. Deriving the hook first means
+;;; `maybe-derive` sees the model is already a member and skips the direct edge, so no redundant edge ever exists and
+;;; loading is deterministic regardless of keyword hashes. (This is why simply renaming `:hook/worktree-id` ->
+;;; `:hook/workspace-id` -- same structure, different hash -- surfaced a latent diamond that had been present, but
+;;; hash-lucky, for a long time.)
+(t2/define-before-insert :hook/workspace-id
   [instance]
-  (assoc instance :worktree_id @(requiring-resolve 'metabase.api.common/*current-worktree-id*)))
+  (assoc instance :workspace_id @(requiring-resolve 'metabase.api.common/*current-workspace-id*)))
 
-(t2/define-before-update :hook/worktree-id
+(t2/define-before-update :hook/workspace-id
   [instance]
-  (when (contains? (t2/changes instance) :worktree_id)
-    (throw (ex-info (tru "A worktree_id cannot be changed.") {:status-code 400})))
+  (when (contains? (t2/changes instance) :workspace_id)
+    (throw (ex-info (tru "A workspace_id cannot be changed.") {:status-code 400})))
   instance)
 
-(t2/define-after-select :hook/worktree-id
+;; `:workspace_id_helper` is a DB-generated column (`COALESCE(workspace_id, 0)`); strip it on read so it never gets
+;; carried back into a subsequent INSERT/UPDATE (the DB rejects writes to generated columns).
+(t2/define-after-select :hook/workspace-id
   [instance]
-  (dissoc instance :worktree_id_helper))
+  (dissoc instance :workspace_id_helper))
 
 (doseq [hook [:hook/timestamped? :hook/updated-at-timestamped? :hook/created-at-timestamped? :hook/entity-id]]
-  (methodical/prefer-method! #'t2.before-insert/before-insert :hook/worktree-id hook))
+  (methodical/prefer-method! #'t2.before-insert/before-insert :hook/workspace-id hook))
 (doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
-  (methodical/prefer-method! #'t2.before-update/before-update :hook/worktree-id hook))
+  (methodical/prefer-method! #'t2.before-update/before-update :hook/workspace-id hook))
 
 ;; --- helper fns
 (defn changes-with-pk

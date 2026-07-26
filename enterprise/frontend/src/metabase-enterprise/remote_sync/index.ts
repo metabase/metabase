@@ -15,7 +15,7 @@ import {
   CollectionSyncStatusBadge,
   SyncedCollectionsSidebarSection,
 } from "./components/SyncedCollectionsSidebarSection";
-import { WorktreeSettings } from "./components/WorktreeSettings";
+import { WorkspaceSettings } from "./components/WorkspaceSettings";
 import { REMOTE_SYNC_INVALIDATION_TAGS } from "./constants";
 import { useGitSyncVisible } from "./hooks/use-git-sync-visible";
 import { useHasLibraryDirtyChanges } from "./hooks/use-has-library-dirty-changes";
@@ -33,7 +33,7 @@ export function initializePlugin() {
   if (hasPremiumFeature("remote_sync")) {
     PLUGIN_REMOTE_SYNC.isEnabled = true;
     PLUGIN_REMOTE_SYNC.RemoteSyncSettings = RemoteSyncAdminSettings;
-    PLUGIN_REMOTE_SYNC.RemoteSyncWorktrees = WorktreeSettings;
+    PLUGIN_REMOTE_SYNC.Workspaces = WorkspaceSettings;
     PLUGIN_REMOTE_SYNC.LibraryNav = LibraryNav;
     PLUGIN_REMOTE_SYNC.SyncedCollectionsSidebarSection =
       SyncedCollectionsSidebarSection;

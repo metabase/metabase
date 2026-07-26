@@ -17,7 +17,7 @@
   "Can the current User read this `snippet`?"
   metabase-enterprise.snippet-collections.models.native-query-snippet.permissions
   ([snippet]
-   (and (remote-sync/worktree-accessible? snippet)
+   (and (remote-sync/workspace-accessible? snippet)
         (has-any-native-permissions?)))
   ([model id]
    (can-read? (t2/select-one model :id id))))
@@ -26,7 +26,7 @@
   "Can the current User edit this `snippet`?"
   metabase-enterprise.snippet-collections.models.native-query-snippet.permissions
   ([snippet]
-   (and (remote-sync/worktree-accessible? snippet)
+   (and (remote-sync/workspace-accessible? snippet)
         (has-any-native-permissions?)))
   ([model id]
    (can-write? (t2/select-one model :id id))))
@@ -35,12 +35,12 @@
   "Can the current User save a new Snippet with the values in `m`?"
   metabase-enterprise.snippet-collections.models.native-query-snippet.permissions
   [_model m]
-  (and (remote-sync/worktree-accessible? m)
+  (and (remote-sync/workspace-accessible? m)
        (has-any-native-permissions?)))
 
 (defenterprise can-update?
   "Can the current User apply a map of `changes` to a `snippet`?"
   metabase-enterprise.snippet-collections.models.native-query-snippet.permissions
   [snippet _changes]
-  (and (remote-sync/worktree-accessible? snippet)
+  (and (remote-sync/workspace-accessible? snippet)
        (has-any-native-permissions?)))

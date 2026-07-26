@@ -280,10 +280,10 @@
 (defmethod mi/perms-objects-set :perms/use-parent-collection-perms
   [instance read-or-write]
   (cond
-    ;; Worktree isolation: content in a different worktree than the current user's is inaccessible. Returns a
+    ;; Workspace isolation: content in a different workspace than the current user's is inaccessible. Returns a
     ;; dummy permissions string that cannot belong to any user.
-    (not (remote-sync/worktree-accessible? instance))
-    #{"___no-worktree-access"}
+    (not (remote-sync/workspace-accessible? instance))
+    #{"___no-workspace-access"}
 
     (or (= read-or-write :read)
         (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance))))
@@ -306,7 +306,7 @@
 
 (defmethod mi/can-create? :perms/use-parent-collection-perms
   [_model m]
-  (and (remote-sync/worktree-accessible? m)
+  (and (remote-sync/workspace-accessible? m)
        (if-let [collection-id (:collection_id m)]
          (mi/can-write? (t2/select-one :model/Collection :id collection-id))
          (mi/can-write? (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection))))))
@@ -434,11 +434,11 @@
   Used by models that opt into the collection-id-only contract via [[define-collection-based-visibility!]],
   and by semantic search's fast path; sharing this helper keeps the two paths structurally in sync.
   Takes `coll-id` (not an instance) so the logic cannot grow a dependency on other instance fields --
-  worktree isolation is checked via the parent collection's own `:worktree_id` (a row is always in the
-  same worktree scope as its collection), not the row's own field, so this still holds."
+  workspace isolation is checked via the parent collection's own `:workspace_id` (a row is always in the
+  same workspace scope as its collection), not the row's own field, so this still holds."
   [coll-id]
   (and (or (nil? coll-id)
-           (= (t2/select-one-fn :worktree_id :model/Collection :id coll-id) api/*current-worktree-id*))
+           (= (t2/select-one-fn :workspace_id :model/Collection :id coll-id) api/*current-workspace-id*))
        (or (premium-features/enable-audit-app?)
            (not (and (some? coll-id) (audit/is-collection-id-audit? coll-id))))
        (mi/current-user-has-full-permissions?
@@ -515,7 +515,7 @@
     (keyword? target)
     `(do
        (defmethod mi/can-read? ~target
-         ([instance#] (and (remote-sync/worktree-accessible? instance#)
+         ([instance#] (and (remote-sync/workspace-accessible? instance#)
                            (can-read-via-parent-collection? (:collection_id instance#))))
          ([_# pk#]    (mi/can-read? (t2/select-one ~target :id pk#))))
        (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target)))

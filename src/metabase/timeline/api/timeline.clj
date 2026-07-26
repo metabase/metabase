@@ -54,7 +54,7 @@
                                   {:where    [:and
                                               [:= :archived archived?]
                                               (collection/visible-collection-filter-clause)
-                                              (remote-sync/worktree-visibility-clause)]
+                                              (remote-sync/workspace-visibility-clause)]
                                    :order-by [[:%lower.name :asc]]})
                        (map collection.root/hydrate-root-collection))]
     (cond->> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)

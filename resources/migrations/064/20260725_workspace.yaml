@@ -1,33 +1,33 @@
-## Remote sync worktrees: a checked-out branch materialized as its own copy of the git-synced
+## Remote sync workspaces: a checked-out branch materialized as its own copy of the git-synced
 ## content tree (collections, cards, dashboards, ...), so multiple branches' content can coexist
-## side-by-side in the same app DB. remote_sync_worktree holds one row per checkout; main-app content
-## (including default-branch remote sync) simply has a NULL worktree_id.
+## side-by-side in the same app DB. workspace holds one row per checkout; main-app content
+## (including default-branch remote sync) simply has a NULL workspace_id.
 ##
 ## Every git-synced content table (see metabase-enterprise.remote-sync.spec/remote-sync-specs, plus
-## its serdes children) gains a nullable worktree_id FK + index. core_user also gets one, scoped
-## SET NULL on delete so a deleted worktree doesn't dangle a user's worktree reference; content-table
-## FKs are left at the default (NO ACTION) since deleting a worktree's content is handled by app code,
-## not the DB -- SET NULL there would silently reparent worktree rows into the main app.
+## its serdes children) gains a nullable workspace_id FK + index. core_user also gets one, scoped
+## SET NULL on delete so a deleted workspace doesn't dangle a user's workspace reference; content-table
+## FKs are left at the default (NO ACTION) since deleting a workspace's content is handled by app code,
+## not the DB -- SET NULL there would silently reparent workspace rows into the main app.
 ##
-## Tables that previously had a single-column unique on entity_id need per-worktree uniqueness instead:
-## the same entity_id is checked out into every worktree, so global uniqueness would collide. Each such
-## table gets a generated worktree_id_helper column (COALESCE(worktree_id, 0), so NULL/main-app rows
-## all collapse into the same bucket) and a composite (entity_id, worktree_id_helper) unique index,
+## Tables that previously had a single-column unique on entity_id need per-workspace uniqueness instead:
+## the same entity_id is checked out into every workspace, so global uniqueness would collide. Each such
+## table gets a generated workspace_id_helper column (COALESCE(workspace_id, 0), so NULL/main-app rows
+## all collapse into the same bucket) and a composite (entity_id, workspace_id_helper) unique index,
 ## replacing the old single-column one. The generated-column syntax is dialect-specific: MySQL uses
 ## VIRTUAL here (STORED generated columns have historically been unreliable alongside other foreign
 ## keys on the same table in MySQL); MariaDB and Postgres use STORED; H2 takes neither keyword. Tables
 ## without an existing entity_id unique (dashboardcard_series, parameter_card) just get the plain
-## worktree_id column.
+## workspace_id column.
 
 databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:00
       author: ranquild
-      comment: Create remote_sync_worktree table
+      comment: Create workspace table
       changes:
         - createTable:
-            tableName: remote_sync_worktree
-            remarks: One row per checked-out remote-sync branch (a git-worktree-style checkout of the synced content tree)
+            tableName: workspace
+            remarks: One row per checked-out remote-sync branch (a git-workspace-style checkout of the synced content tree)
             columns:
               - column:
                   name: id
@@ -36,30 +36,36 @@ databaseChangeLog:
                   autoIncrement: true
                   constraints:
                     primaryKey: true
+                    # Explicit PK name distinct from BOTH dialects' defaults for the deprecated `workspace` table
+                    # (H2: PK_WORKSPACE, Postgres: workspace_pkey). The Phase A `renameTable` to
+                    # `workspace_deprecated` leaves that table's PK constraint name untouched, so a default-named PK
+                    # here would collide on H2 and Postgres. MySQL names every PK `PRIMARY` per-table, so it is
+                    # unaffected either way. See 20260724_rename_workspace_deprecated.yaml.
+                    primaryKeyName: workspace_pk
                     nullable: false
               - column:
                   name: branch
                   type: varchar(254)
-                  remarks: Git branch this worktree is checked out to
+                  remarks: Git branch this workspace is checked out to
                   constraints:
                     nullable: false
               - column:
                   name: creator_id
                   type: int
-                  remarks: User who created this worktree; null if that user was later deleted
+                  remarks: User who created this workspace; null if that user was later deleted
                   constraints:
                     nullable: true
               - column:
                   name: created_at
                   type: ${timestamp_type}
-                  remarks: When this worktree was created
+                  remarks: When this workspace was created
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
                   type: ${timestamp_type}
-                  remarks: When this worktree was last updated
+                  remarks: When this workspace was last updated
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -67,11 +73,11 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:01
       author: ranquild
-      comment: Unique index on remote_sync_worktree.branch
+      comment: Unique index on workspace.branch
       changes:
         - createIndex:
-            tableName: remote_sync_worktree
-            indexName: idx_remote_sync_worktree_branch
+            tableName: workspace
+            indexName: idx_workspace_branch
             unique: true
             columns:
               - column:
@@ -80,281 +86,285 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:02
       author: ranquild
-      comment: FK remote_sync_worktree.creator_id -> core_user; SET NULL so the worktree survives its creator's deletion
+      comment: FK workspace.creator_id -> core_user; SET NULL so the workspace survives its creator's deletion
       changes:
         - addForeignKeyConstraint:
-            baseTableName: remote_sync_worktree
+            baseTableName: workspace
             baseColumnNames: creator_id
             referencedTableName: core_user
             referencedColumnNames: id
-            constraintName: fk_remote_sync_worktree_creator_id
+            # Distinct from the deprecated `workspace` table's identically-purposed FK, which is named
+            # `fk_workspace_creator_id` (see 062/20260421_workspaces.yaml) and survives the Phase A rename to
+            # `workspace_deprecated` with its name intact. FK constraint names are schema-global on H2/Postgres AND
+            # MySQL, so reusing `fk_workspace_creator_id` here would collide on every dialect.
+            constraintName: fk_workspace_creator
             onDelete: SET NULL
 
   - changeSet:
       id: v64.2026-07-25T10:00:03
       author: ranquild
-      comment: Add core_user.worktree_id
+      comment: Add core_user.workspace_id
       changes:
         - addColumn:
             tableName: core_user
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this user belongs to; null for main-app users. SET NULL on worktree delete so the user account survives
+                  remarks: Workspace this user belongs to; null for main-app users. SET NULL on workspace delete so the user account survives
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:00:04
       author: ranquild
-      comment: Index on core_user.worktree_id (backs the FK below)
+      comment: Index on core_user.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: core_user
-            indexName: idx_core_user_worktree_id
+            indexName: idx_core_user_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:05
       author: ranquild
-      comment: FK core_user.worktree_id -> remote_sync_worktree; SET NULL on delete
+      comment: FK core_user.workspace_id -> workspace; SET NULL on delete
       changes:
         - addForeignKeyConstraint:
             baseTableName: core_user
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_core_user_worktree_id
+            constraintName: fk_core_user_workspace_id
             onDelete: SET NULL
 
   - changeSet:
       id: v64.2026-07-25T10:00:06
       author: ranquild
-      comment: Add remote_sync_object.worktree_id
+      comment: Add remote_sync_object.workspace_id
       changes:
         - addColumn:
             tableName: remote_sync_object
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree whose dirty ledger this row belongs to; null for main-app remote sync
+                  remarks: Workspace whose dirty ledger this row belongs to; null for main-app remote sync
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:00:07
       author: ranquild
-      comment: Index on remote_sync_object.worktree_id (backs the FK below)
+      comment: Index on remote_sync_object.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: remote_sync_object
-            indexName: idx_remote_sync_object_worktree_id
+            indexName: idx_remote_sync_object_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:08
       author: ranquild
-      comment: FK remote_sync_object.worktree_id -> remote_sync_worktree
+      comment: FK remote_sync_object.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: remote_sync_object
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_remote_sync_object_worktree_id
+            constraintName: fk_remote_sync_object_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:09
       author: ranquild
-      comment: Add remote_sync_task.worktree_id
+      comment: Add remote_sync_task.workspace_id
       changes:
         - addColumn:
             tableName: remote_sync_task
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this task operated on; null for main-app remote sync
+                  remarks: Workspace this task operated on; null for main-app remote sync
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:00:10
       author: ranquild
-      comment: Index on remote_sync_task.worktree_id (backs the FK below)
+      comment: Index on remote_sync_task.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: remote_sync_task
-            indexName: idx_remote_sync_task_worktree_id
+            indexName: idx_remote_sync_task_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:11
       author: ranquild
-      comment: FK remote_sync_task.worktree_id -> remote_sync_worktree
+      comment: FK remote_sync_task.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: remote_sync_task
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_remote_sync_task_worktree_id
+            constraintName: fk_remote_sync_task_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:12
       author: ranquild
-      comment: Add dashboardcard_series.worktree_id
+      comment: Add dashboardcard_series.workspace_id
       changes:
         - addColumn:
             tableName: dashboardcard_series
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row is a checkout copy of; null for canonical (non-checkout) rows
+                  remarks: Workspace this row is a checkout copy of; null for canonical (non-checkout) rows
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:00:13
       author: ranquild
-      comment: Index on dashboardcard_series.worktree_id (backs the FK below)
+      comment: Index on dashboardcard_series.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: dashboardcard_series
-            indexName: idx_dashboardcard_series_worktree_id
+            indexName: idx_dashboardcard_series_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:14
       author: ranquild
-      comment: FK dashboardcard_series.worktree_id -> remote_sync_worktree
+      comment: FK dashboardcard_series.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: dashboardcard_series
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_dashboardcard_series_worktree_id
+            constraintName: fk_dashboardcard_series_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:15
       author: ranquild
-      comment: Add parameter_card.worktree_id
+      comment: Add parameter_card.workspace_id
       changes:
         - addColumn:
             tableName: parameter_card
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row is a checkout copy of; null for canonical (non-checkout) rows
+                  remarks: Workspace this row is a checkout copy of; null for canonical (non-checkout) rows
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:00:16
       author: ranquild
-      comment: Index on parameter_card.worktree_id (backs the FK below)
+      comment: Index on parameter_card.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: parameter_card
-            indexName: idx_parameter_card_worktree_id
+            indexName: idx_parameter_card_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:17
       author: ranquild
-      comment: FK parameter_card.worktree_id -> remote_sync_worktree
+      comment: FK parameter_card.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: parameter_card
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_parameter_card_worktree_id
+            constraintName: fk_parameter_card_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:18
       author: ranquild
-      comment: Add collection.worktree_id
+      comment: Add collection.workspace_id
       changes:
         - addColumn:
             tableName: collection
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row belongs to; null for main-app content (outside any worktree checkout)
+                  remarks: Workspace this row belongs to; null for main-app content (outside any workspace checkout)
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:00:19
       author: ranquild
-      comment: Index on collection.worktree_id (backs the FK below)
+      comment: Index on collection.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: collection
-            indexName: idx_collection_worktree_id
+            indexName: idx_collection_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:20
       author: ranquild
-      comment: FK collection.worktree_id -> remote_sync_worktree
+      comment: FK collection.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: collection
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_collection_worktree_id
+            constraintName: fk_collection_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:21
       author: ranquild
-      comment: Add collection.worktree_id_helper generated column - COALESCE(worktree_id, 0) so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing to one bucket
+      comment: Add collection.workspace_id_helper generated column - COALESCE(workspace_id, 0) so entity_id uniqueness can be scoped per workspace with NULLs (main-app rows) collapsing to one bucket
       changes:
         - sql:
             dbms: postgresql
             sql: |
-              ALTER TABLE "collection" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+              ALTER TABLE "collection" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
             dbms: mysql
             sql: |
-              ALTER TABLE `collection` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+              ALTER TABLE `collection` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
         - sql:
             dbms: mariadb
             sql: |
-              ALTER TABLE `collection` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+              ALTER TABLE `collection` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
         - sql:
             dbms: h2
             sql: |
-              ALTER TABLE collection ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+              ALTER TABLE collection ADD COLUMN workspace_id_helper int GENERATED ALWAYS AS (COALESCE(workspace_id, 0));
       rollback:
         - dropColumn:
             tableName: collection
-            columnName: worktree_id_helper
+            columnName: workspace_id_helper
 
   - changeSet:
       id: v64.2026-07-25T10:00:22
       author: ranquild
-      comment: Drop the single-column entity_id unique on collection; superseded by the composite (entity_id, worktree_id_helper) unique below
+      comment: Drop the single-column entity_id unique on collection; superseded by the composite (entity_id, workspace_id_helper) unique below
       changes:
         - sql:
             dbms: postgresql
@@ -378,82 +388,82 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:23
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for collection (worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them)
+      comment: Per-workspace entity_id uniqueness for collection (workspace_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside workspaces and per-workspace inside them)
       changes:
         - addUniqueConstraint:
             tableName: collection
-            columnNames: entity_id, worktree_id_helper
-            constraintName: unique_collection_entity_id_worktree
+            columnNames: entity_id, workspace_id_helper
+            constraintName: unique_collection_entity_id_workspace
 
   - changeSet:
       id: v64.2026-07-25T10:00:24
       author: ranquild
-      comment: Add report_card.worktree_id
+      comment: Add report_card.workspace_id
       changes:
         - addColumn:
             tableName: report_card
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row belongs to; null for main-app content (outside any worktree checkout)
+                  remarks: Workspace this row belongs to; null for main-app content (outside any workspace checkout)
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:00:25
       author: ranquild
-      comment: Index on report_card.worktree_id (backs the FK below)
+      comment: Index on report_card.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: report_card
-            indexName: idx_report_card_worktree_id
+            indexName: idx_report_card_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:26
       author: ranquild
-      comment: FK report_card.worktree_id -> remote_sync_worktree
+      comment: FK report_card.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_card
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_report_card_worktree_id
+            constraintName: fk_report_card_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:27
       author: ranquild
-      comment: Add report_card.worktree_id_helper generated column - COALESCE(worktree_id, 0) so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing to one bucket
+      comment: Add report_card.workspace_id_helper generated column - COALESCE(workspace_id, 0) so entity_id uniqueness can be scoped per workspace with NULLs (main-app rows) collapsing to one bucket
       changes:
         - sql:
             dbms: postgresql
             sql: |
-              ALTER TABLE "report_card" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+              ALTER TABLE "report_card" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
             dbms: mysql
             sql: |
-              ALTER TABLE `report_card` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+              ALTER TABLE `report_card` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
         - sql:
             dbms: mariadb
             sql: |
-              ALTER TABLE `report_card` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+              ALTER TABLE `report_card` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
         - sql:
             dbms: h2
             sql: |
-              ALTER TABLE report_card ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+              ALTER TABLE report_card ADD COLUMN workspace_id_helper int GENERATED ALWAYS AS (COALESCE(workspace_id, 0));
       rollback:
         - dropColumn:
             tableName: report_card
-            columnName: worktree_id_helper
+            columnName: workspace_id_helper
 
   - changeSet:
       id: v64.2026-07-25T10:00:28
       author: ranquild
-      comment: Drop the single-column entity_id unique on report_card; superseded by the composite (entity_id, worktree_id_helper) unique below
+      comment: Drop the single-column entity_id unique on report_card; superseded by the composite (entity_id, workspace_id_helper) unique below
       changes:
         - sql:
             dbms: postgresql
@@ -477,82 +487,82 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:29
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for report_card (worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them)
+      comment: Per-workspace entity_id uniqueness for report_card (workspace_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside workspaces and per-workspace inside them)
       changes:
         - addUniqueConstraint:
             tableName: report_card
-            columnNames: entity_id, worktree_id_helper
-            constraintName: unique_report_card_entity_id_worktree
+            columnNames: entity_id, workspace_id_helper
+            constraintName: unique_report_card_entity_id_workspace
 
   - changeSet:
       id: v64.2026-07-25T10:00:30
       author: ranquild
-      comment: Add report_dashboard.worktree_id
+      comment: Add report_dashboard.workspace_id
       changes:
         - addColumn:
             tableName: report_dashboard
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row belongs to; null for main-app content (outside any worktree checkout)
+                  remarks: Workspace this row belongs to; null for main-app content (outside any workspace checkout)
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:00:31
       author: ranquild
-      comment: Index on report_dashboard.worktree_id (backs the FK below)
+      comment: Index on report_dashboard.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: report_dashboard
-            indexName: idx_report_dashboard_worktree_id
+            indexName: idx_report_dashboard_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:32
       author: ranquild
-      comment: FK report_dashboard.worktree_id -> remote_sync_worktree
+      comment: FK report_dashboard.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_dashboard
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_report_dashboard_worktree_id
+            constraintName: fk_report_dashboard_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:33
       author: ranquild
-      comment: Add report_dashboard.worktree_id_helper generated column - COALESCE(worktree_id, 0) so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing to one bucket
+      comment: Add report_dashboard.workspace_id_helper generated column - COALESCE(workspace_id, 0) so entity_id uniqueness can be scoped per workspace with NULLs (main-app rows) collapsing to one bucket
       changes:
         - sql:
             dbms: postgresql
             sql: |
-              ALTER TABLE "report_dashboard" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+              ALTER TABLE "report_dashboard" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
             dbms: mysql
             sql: |
-              ALTER TABLE `report_dashboard` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+              ALTER TABLE `report_dashboard` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
         - sql:
             dbms: mariadb
             sql: |
-              ALTER TABLE `report_dashboard` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+              ALTER TABLE `report_dashboard` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
         - sql:
             dbms: h2
             sql: |
-              ALTER TABLE report_dashboard ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+              ALTER TABLE report_dashboard ADD COLUMN workspace_id_helper int GENERATED ALWAYS AS (COALESCE(workspace_id, 0));
       rollback:
         - dropColumn:
             tableName: report_dashboard
-            columnName: worktree_id_helper
+            columnName: workspace_id_helper
 
   - changeSet:
       id: v64.2026-07-25T10:00:34
       author: ranquild
-      comment: Drop the single-column entity_id unique on report_dashboard; superseded by the composite (entity_id, worktree_id_helper) unique below
+      comment: Drop the single-column entity_id unique on report_dashboard; superseded by the composite (entity_id, workspace_id_helper) unique below
       changes:
         - sql:
             dbms: postgresql
@@ -576,82 +586,82 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:35
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for report_dashboard (worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them)
+      comment: Per-workspace entity_id uniqueness for report_dashboard (workspace_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside workspaces and per-workspace inside them)
       changes:
         - addUniqueConstraint:
             tableName: report_dashboard
-            columnNames: entity_id, worktree_id_helper
-            constraintName: unique_report_dashboard_entity_id_worktree
+            columnNames: entity_id, workspace_id_helper
+            constraintName: unique_report_dashboard_entity_id_workspace
 
   - changeSet:
       id: v64.2026-07-25T10:00:36
       author: ranquild
-      comment: Add report_dashboardcard.worktree_id
+      comment: Add report_dashboardcard.workspace_id
       changes:
         - addColumn:
             tableName: report_dashboardcard
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row belongs to; null for main-app content (outside any worktree checkout)
+                  remarks: Workspace this row belongs to; null for main-app content (outside any workspace checkout)
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:00:37
       author: ranquild
-      comment: Index on report_dashboardcard.worktree_id (backs the FK below)
+      comment: Index on report_dashboardcard.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: report_dashboardcard
-            indexName: idx_report_dashboardcard_worktree_id
+            indexName: idx_report_dashboardcard_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:38
       author: ranquild
-      comment: FK report_dashboardcard.worktree_id -> remote_sync_worktree
+      comment: FK report_dashboardcard.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_dashboardcard
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_report_dashboardcard_worktree_id
+            constraintName: fk_report_dashboardcard_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:39
       author: ranquild
-      comment: Add report_dashboardcard.worktree_id_helper generated column - COALESCE(worktree_id, 0) so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing to one bucket
+      comment: Add report_dashboardcard.workspace_id_helper generated column - COALESCE(workspace_id, 0) so entity_id uniqueness can be scoped per workspace with NULLs (main-app rows) collapsing to one bucket
       changes:
         - sql:
             dbms: postgresql
             sql: |
-              ALTER TABLE "report_dashboardcard" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+              ALTER TABLE "report_dashboardcard" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
             dbms: mysql
             sql: |
-              ALTER TABLE `report_dashboardcard` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+              ALTER TABLE `report_dashboardcard` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
         - sql:
             dbms: mariadb
             sql: |
-              ALTER TABLE `report_dashboardcard` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+              ALTER TABLE `report_dashboardcard` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
         - sql:
             dbms: h2
             sql: |
-              ALTER TABLE report_dashboardcard ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+              ALTER TABLE report_dashboardcard ADD COLUMN workspace_id_helper int GENERATED ALWAYS AS (COALESCE(workspace_id, 0));
       rollback:
         - dropColumn:
             tableName: report_dashboardcard
-            columnName: worktree_id_helper
+            columnName: workspace_id_helper
 
   - changeSet:
       id: v64.2026-07-25T10:00:40
       author: ranquild
-      comment: Drop the single-column entity_id unique on report_dashboardcard; superseded by the composite (entity_id, worktree_id_helper) unique below
+      comment: Drop the single-column entity_id unique on report_dashboardcard; superseded by the composite (entity_id, workspace_id_helper) unique below
       changes:
         - sql:
             dbms: postgresql
@@ -675,82 +685,82 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:41
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for report_dashboardcard (worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them)
+      comment: Per-workspace entity_id uniqueness for report_dashboardcard (workspace_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside workspaces and per-workspace inside them)
       changes:
         - addUniqueConstraint:
             tableName: report_dashboardcard
-            columnNames: entity_id, worktree_id_helper
-            constraintName: unique_report_dashboardcard_entity_id_worktree
+            columnNames: entity_id, workspace_id_helper
+            constraintName: unique_report_dashboardcard_entity_id_workspace
 
   - changeSet:
       id: v64.2026-07-25T10:00:42
       author: ranquild
-      comment: Add dashboard_tab.worktree_id
+      comment: Add dashboard_tab.workspace_id
       changes:
         - addColumn:
             tableName: dashboard_tab
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row belongs to; null for main-app content (outside any worktree checkout)
+                  remarks: Workspace this row belongs to; null for main-app content (outside any workspace checkout)
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:00:43
       author: ranquild
-      comment: Index on dashboard_tab.worktree_id (backs the FK below)
+      comment: Index on dashboard_tab.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: dashboard_tab
-            indexName: idx_dashboard_tab_worktree_id
+            indexName: idx_dashboard_tab_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:44
       author: ranquild
-      comment: FK dashboard_tab.worktree_id -> remote_sync_worktree
+      comment: FK dashboard_tab.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: dashboard_tab
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_dashboard_tab_worktree_id
+            constraintName: fk_dashboard_tab_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:45
       author: ranquild
-      comment: Add dashboard_tab.worktree_id_helper generated column - COALESCE(worktree_id, 0) so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing to one bucket
+      comment: Add dashboard_tab.workspace_id_helper generated column - COALESCE(workspace_id, 0) so entity_id uniqueness can be scoped per workspace with NULLs (main-app rows) collapsing to one bucket
       changes:
         - sql:
             dbms: postgresql
             sql: |
-              ALTER TABLE "dashboard_tab" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+              ALTER TABLE "dashboard_tab" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
             dbms: mysql
             sql: |
-              ALTER TABLE `dashboard_tab` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+              ALTER TABLE `dashboard_tab` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
         - sql:
             dbms: mariadb
             sql: |
-              ALTER TABLE `dashboard_tab` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+              ALTER TABLE `dashboard_tab` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
         - sql:
             dbms: h2
             sql: |
-              ALTER TABLE dashboard_tab ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+              ALTER TABLE dashboard_tab ADD COLUMN workspace_id_helper int GENERATED ALWAYS AS (COALESCE(workspace_id, 0));
       rollback:
         - dropColumn:
             tableName: dashboard_tab
-            columnName: worktree_id_helper
+            columnName: workspace_id_helper
 
   - changeSet:
       id: v64.2026-07-25T10:00:46
       author: ranquild
-      comment: Drop the single-column entity_id unique on dashboard_tab; superseded by the composite (entity_id, worktree_id_helper) unique below
+      comment: Drop the single-column entity_id unique on dashboard_tab; superseded by the composite (entity_id, workspace_id_helper) unique below
       changes:
         - sql:
             dbms: postgresql
@@ -774,82 +784,82 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:47
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for dashboard_tab (worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them)
+      comment: Per-workspace entity_id uniqueness for dashboard_tab (workspace_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside workspaces and per-workspace inside them)
       changes:
         - addUniqueConstraint:
             tableName: dashboard_tab
-            columnNames: entity_id, worktree_id_helper
-            constraintName: unique_dashboard_tab_entity_id_worktree
+            columnNames: entity_id, workspace_id_helper
+            constraintName: unique_dashboard_tab_entity_id_workspace
 
   - changeSet:
       id: v64.2026-07-25T10:00:48
       author: ranquild
-      comment: Add document.worktree_id
+      comment: Add document.workspace_id
       changes:
         - addColumn:
             tableName: document
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row belongs to; null for main-app content (outside any worktree checkout)
+                  remarks: Workspace this row belongs to; null for main-app content (outside any workspace checkout)
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:00:49
       author: ranquild
-      comment: Index on document.worktree_id (backs the FK below)
+      comment: Index on document.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: document
-            indexName: idx_document_worktree_id
+            indexName: idx_document_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:50
       author: ranquild
-      comment: FK document.worktree_id -> remote_sync_worktree
+      comment: FK document.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: document
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_document_worktree_id
+            constraintName: fk_document_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:51
       author: ranquild
-      comment: Add document.worktree_id_helper generated column - COALESCE(worktree_id, 0) so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing to one bucket
+      comment: Add document.workspace_id_helper generated column - COALESCE(workspace_id, 0) so entity_id uniqueness can be scoped per workspace with NULLs (main-app rows) collapsing to one bucket
       changes:
         - sql:
             dbms: postgresql
             sql: |
-              ALTER TABLE "document" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+              ALTER TABLE "document" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
             dbms: mysql
             sql: |
-              ALTER TABLE `document` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+              ALTER TABLE `document` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
         - sql:
             dbms: mariadb
             sql: |
-              ALTER TABLE `document` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+              ALTER TABLE `document` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
         - sql:
             dbms: h2
             sql: |
-              ALTER TABLE document ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+              ALTER TABLE document ADD COLUMN workspace_id_helper int GENERATED ALWAYS AS (COALESCE(workspace_id, 0));
       rollback:
         - dropColumn:
             tableName: document
-            columnName: worktree_id_helper
+            columnName: workspace_id_helper
 
   - changeSet:
       id: v64.2026-07-25T10:00:52
       author: ranquild
-      comment: Drop the single-column entity_id unique on document; superseded by the composite (entity_id, worktree_id_helper) unique below
+      comment: Drop the single-column entity_id unique on document; superseded by the composite (entity_id, workspace_id_helper) unique below
       changes:
         - sql:
             dbms: postgresql
@@ -873,82 +883,82 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:53
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for document (worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them)
+      comment: Per-workspace entity_id uniqueness for document (workspace_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside workspaces and per-workspace inside them)
       changes:
         - addUniqueConstraint:
             tableName: document
-            columnNames: entity_id, worktree_id_helper
-            constraintName: unique_document_entity_id_worktree
+            columnNames: entity_id, workspace_id_helper
+            constraintName: unique_document_entity_id_workspace
 
   - changeSet:
       id: v64.2026-07-25T10:00:54
       author: ranquild
-      comment: Add native_query_snippet.worktree_id
+      comment: Add native_query_snippet.workspace_id
       changes:
         - addColumn:
             tableName: native_query_snippet
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row belongs to; null for main-app content (outside any worktree checkout)
+                  remarks: Workspace this row belongs to; null for main-app content (outside any workspace checkout)
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:00:55
       author: ranquild
-      comment: Index on native_query_snippet.worktree_id (backs the FK below)
+      comment: Index on native_query_snippet.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: native_query_snippet
-            indexName: idx_native_query_snippet_worktree_id
+            indexName: idx_native_query_snippet_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:56
       author: ranquild
-      comment: FK native_query_snippet.worktree_id -> remote_sync_worktree
+      comment: FK native_query_snippet.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: native_query_snippet
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_native_query_snippet_worktree_id
+            constraintName: fk_native_query_snippet_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:00:57
       author: ranquild
-      comment: Add native_query_snippet.worktree_id_helper generated column - COALESCE(worktree_id, 0) so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing to one bucket
+      comment: Add native_query_snippet.workspace_id_helper generated column - COALESCE(workspace_id, 0) so entity_id uniqueness can be scoped per workspace with NULLs (main-app rows) collapsing to one bucket
       changes:
         - sql:
             dbms: postgresql
             sql: |
-              ALTER TABLE "native_query_snippet" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+              ALTER TABLE "native_query_snippet" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
             dbms: mysql
             sql: |
-              ALTER TABLE `native_query_snippet` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+              ALTER TABLE `native_query_snippet` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
         - sql:
             dbms: mariadb
             sql: |
-              ALTER TABLE `native_query_snippet` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+              ALTER TABLE `native_query_snippet` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
         - sql:
             dbms: h2
             sql: |
-              ALTER TABLE native_query_snippet ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+              ALTER TABLE native_query_snippet ADD COLUMN workspace_id_helper int GENERATED ALWAYS AS (COALESCE(workspace_id, 0));
       rollback:
         - dropColumn:
             tableName: native_query_snippet
-            columnName: worktree_id_helper
+            columnName: workspace_id_helper
 
   - changeSet:
       id: v64.2026-07-25T10:00:58
       author: ranquild
-      comment: Drop the single-column entity_id unique on native_query_snippet; superseded by the composite (entity_id, worktree_id_helper) unique below
+      comment: Drop the single-column entity_id unique on native_query_snippet; superseded by the composite (entity_id, workspace_id_helper) unique below
       changes:
         - sql:
             dbms: postgresql
@@ -972,82 +982,82 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:00:59
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for native_query_snippet (worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them)
+      comment: Per-workspace entity_id uniqueness for native_query_snippet (workspace_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside workspaces and per-workspace inside them)
       changes:
         - addUniqueConstraint:
             tableName: native_query_snippet
-            columnNames: entity_id, worktree_id_helper
-            constraintName: unique_native_query_snippet_entity_id_worktree
+            columnNames: entity_id, workspace_id_helper
+            constraintName: unique_native_query_snippet_entity_id_workspace
 
   - changeSet:
       id: v64.2026-07-25T10:01:00
       author: ranquild
-      comment: Add timeline.worktree_id
+      comment: Add timeline.workspace_id
       changes:
         - addColumn:
             tableName: timeline
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row belongs to; null for main-app content (outside any worktree checkout)
+                  remarks: Workspace this row belongs to; null for main-app content (outside any workspace checkout)
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:01:01
       author: ranquild
-      comment: Index on timeline.worktree_id (backs the FK below)
+      comment: Index on timeline.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: timeline
-            indexName: idx_timeline_worktree_id
+            indexName: idx_timeline_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:01:02
       author: ranquild
-      comment: FK timeline.worktree_id -> remote_sync_worktree
+      comment: FK timeline.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: timeline
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_timeline_worktree_id
+            constraintName: fk_timeline_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:01:03
       author: ranquild
-      comment: Add timeline.worktree_id_helper generated column - COALESCE(worktree_id, 0) so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing to one bucket
+      comment: Add timeline.workspace_id_helper generated column - COALESCE(workspace_id, 0) so entity_id uniqueness can be scoped per workspace with NULLs (main-app rows) collapsing to one bucket
       changes:
         - sql:
             dbms: postgresql
             sql: |
-              ALTER TABLE "timeline" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+              ALTER TABLE "timeline" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
             dbms: mysql
             sql: |
-              ALTER TABLE `timeline` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+              ALTER TABLE `timeline` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
         - sql:
             dbms: mariadb
             sql: |
-              ALTER TABLE `timeline` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+              ALTER TABLE `timeline` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
         - sql:
             dbms: h2
             sql: |
-              ALTER TABLE timeline ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+              ALTER TABLE timeline ADD COLUMN workspace_id_helper int GENERATED ALWAYS AS (COALESCE(workspace_id, 0));
       rollback:
         - dropColumn:
             tableName: timeline
-            columnName: worktree_id_helper
+            columnName: workspace_id_helper
 
   - changeSet:
       id: v64.2026-07-25T10:01:04
       author: ranquild
-      comment: Drop the single-column entity_id unique on timeline; superseded by the composite (entity_id, worktree_id_helper) unique below
+      comment: Drop the single-column entity_id unique on timeline; superseded by the composite (entity_id, workspace_id_helper) unique below
       changes:
         - sql:
             dbms: postgresql
@@ -1071,82 +1081,82 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:01:05
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for timeline (worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them)
+      comment: Per-workspace entity_id uniqueness for timeline (workspace_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside workspaces and per-workspace inside them)
       changes:
         - addUniqueConstraint:
             tableName: timeline
-            columnNames: entity_id, worktree_id_helper
-            constraintName: unique_timeline_entity_id_worktree
+            columnNames: entity_id, workspace_id_helper
+            constraintName: unique_timeline_entity_id_workspace
 
   - changeSet:
       id: v64.2026-07-25T10:01:06
       author: ranquild
-      comment: Add segment.worktree_id
+      comment: Add segment.workspace_id
       changes:
         - addColumn:
             tableName: segment
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row belongs to; null for main-app content (outside any worktree checkout)
+                  remarks: Workspace this row belongs to; null for main-app content (outside any workspace checkout)
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:01:07
       author: ranquild
-      comment: Index on segment.worktree_id (backs the FK below)
+      comment: Index on segment.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: segment
-            indexName: idx_segment_worktree_id
+            indexName: idx_segment_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:01:08
       author: ranquild
-      comment: FK segment.worktree_id -> remote_sync_worktree
+      comment: FK segment.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: segment
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_segment_worktree_id
+            constraintName: fk_segment_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:01:09
       author: ranquild
-      comment: Add segment.worktree_id_helper generated column - COALESCE(worktree_id, 0) so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing to one bucket
+      comment: Add segment.workspace_id_helper generated column - COALESCE(workspace_id, 0) so entity_id uniqueness can be scoped per workspace with NULLs (main-app rows) collapsing to one bucket
       changes:
         - sql:
             dbms: postgresql
             sql: |
-              ALTER TABLE "segment" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+              ALTER TABLE "segment" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
             dbms: mysql
             sql: |
-              ALTER TABLE `segment` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+              ALTER TABLE `segment` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
         - sql:
             dbms: mariadb
             sql: |
-              ALTER TABLE `segment` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+              ALTER TABLE `segment` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
         - sql:
             dbms: h2
             sql: |
-              ALTER TABLE segment ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+              ALTER TABLE segment ADD COLUMN workspace_id_helper int GENERATED ALWAYS AS (COALESCE(workspace_id, 0));
       rollback:
         - dropColumn:
             tableName: segment
-            columnName: worktree_id_helper
+            columnName: workspace_id_helper
 
   - changeSet:
       id: v64.2026-07-25T10:01:10
       author: ranquild
-      comment: Drop the single-column entity_id unique on segment; superseded by the composite (entity_id, worktree_id_helper) unique below
+      comment: Drop the single-column entity_id unique on segment; superseded by the composite (entity_id, workspace_id_helper) unique below
       changes:
         - sql:
             dbms: postgresql
@@ -1170,82 +1180,82 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:01:11
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for segment (worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them)
+      comment: Per-workspace entity_id uniqueness for segment (workspace_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside workspaces and per-workspace inside them)
       changes:
         - addUniqueConstraint:
             tableName: segment
-            columnNames: entity_id, worktree_id_helper
-            constraintName: unique_segment_entity_id_worktree
+            columnNames: entity_id, workspace_id_helper
+            constraintName: unique_segment_entity_id_workspace
 
   - changeSet:
       id: v64.2026-07-25T10:01:12
       author: ranquild
-      comment: Add measure.worktree_id
+      comment: Add measure.workspace_id
       changes:
         - addColumn:
             tableName: measure
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row belongs to; null for main-app content (outside any worktree checkout)
+                  remarks: Workspace this row belongs to; null for main-app content (outside any workspace checkout)
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:01:13
       author: ranquild
-      comment: Index on measure.worktree_id (backs the FK below)
+      comment: Index on measure.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: measure
-            indexName: idx_measure_worktree_id
+            indexName: idx_measure_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:01:14
       author: ranquild
-      comment: FK measure.worktree_id -> remote_sync_worktree
+      comment: FK measure.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: measure
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_measure_worktree_id
+            constraintName: fk_measure_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:01:15
       author: ranquild
-      comment: Add measure.worktree_id_helper generated column - COALESCE(worktree_id, 0) so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing to one bucket
+      comment: Add measure.workspace_id_helper generated column - COALESCE(workspace_id, 0) so entity_id uniqueness can be scoped per workspace with NULLs (main-app rows) collapsing to one bucket
       changes:
         - sql:
             dbms: postgresql
             sql: |
-              ALTER TABLE "measure" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+              ALTER TABLE "measure" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
             dbms: mysql
             sql: |
-              ALTER TABLE `measure` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+              ALTER TABLE `measure` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
         - sql:
             dbms: mariadb
             sql: |
-              ALTER TABLE `measure` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+              ALTER TABLE `measure` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
         - sql:
             dbms: h2
             sql: |
-              ALTER TABLE measure ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+              ALTER TABLE measure ADD COLUMN workspace_id_helper int GENERATED ALWAYS AS (COALESCE(workspace_id, 0));
       rollback:
         - dropColumn:
             tableName: measure
-            columnName: worktree_id_helper
+            columnName: workspace_id_helper
 
   - changeSet:
       id: v64.2026-07-25T10:01:16
       author: ranquild
-      comment: Drop the single-column entity_id unique on measure; superseded by the composite (entity_id, worktree_id_helper) unique below
+      comment: Drop the single-column entity_id unique on measure; superseded by the composite (entity_id, workspace_id_helper) unique below
       changes:
         - sql:
             dbms: postgresql
@@ -1269,82 +1279,82 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:01:17
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for measure (worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them)
+      comment: Per-workspace entity_id uniqueness for measure (workspace_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside workspaces and per-workspace inside them)
       changes:
         - addUniqueConstraint:
             tableName: measure
-            columnNames: entity_id, worktree_id_helper
-            constraintName: unique_measure_entity_id_worktree
+            columnNames: entity_id, workspace_id_helper
+            constraintName: unique_measure_entity_id_workspace
 
   - changeSet:
       id: v64.2026-07-25T10:01:18
       author: ranquild
-      comment: Add transform.worktree_id
+      comment: Add transform.workspace_id
       changes:
         - addColumn:
             tableName: transform
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row belongs to; null for main-app content (outside any worktree checkout)
+                  remarks: Workspace this row belongs to; null for main-app content (outside any workspace checkout)
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:01:19
       author: ranquild
-      comment: Index on transform.worktree_id (backs the FK below)
+      comment: Index on transform.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: transform
-            indexName: idx_transform_worktree_id
+            indexName: idx_transform_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:01:20
       author: ranquild
-      comment: FK transform.worktree_id -> remote_sync_worktree
+      comment: FK transform.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_transform_worktree_id
+            constraintName: fk_transform_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:01:21
       author: ranquild
-      comment: Add transform.worktree_id_helper generated column - COALESCE(worktree_id, 0) so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing to one bucket
+      comment: Add transform.workspace_id_helper generated column - COALESCE(workspace_id, 0) so entity_id uniqueness can be scoped per workspace with NULLs (main-app rows) collapsing to one bucket
       changes:
         - sql:
             dbms: postgresql
             sql: |
-              ALTER TABLE "transform" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+              ALTER TABLE "transform" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
             dbms: mysql
             sql: |
-              ALTER TABLE `transform` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+              ALTER TABLE `transform` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
         - sql:
             dbms: mariadb
             sql: |
-              ALTER TABLE `transform` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+              ALTER TABLE `transform` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
         - sql:
             dbms: h2
             sql: |
-              ALTER TABLE transform ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+              ALTER TABLE transform ADD COLUMN workspace_id_helper int GENERATED ALWAYS AS (COALESCE(workspace_id, 0));
       rollback:
         - dropColumn:
             tableName: transform
-            columnName: worktree_id_helper
+            columnName: workspace_id_helper
 
   - changeSet:
       id: v64.2026-07-25T10:01:22
       author: ranquild
-      comment: Drop the single-column entity_id unique on transform; superseded by the composite (entity_id, worktree_id_helper) unique below
+      comment: Drop the single-column entity_id unique on transform; superseded by the composite (entity_id, workspace_id_helper) unique below
       changes:
         - sql:
             dbms: postgresql
@@ -1368,82 +1378,82 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:01:23
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for transform (worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them)
+      comment: Per-workspace entity_id uniqueness for transform (workspace_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside workspaces and per-workspace inside them)
       changes:
         - addUniqueConstraint:
             tableName: transform
-            columnNames: entity_id, worktree_id_helper
-            constraintName: unique_transform_entity_id_worktree
+            columnNames: entity_id, workspace_id_helper
+            constraintName: unique_transform_entity_id_workspace
 
   - changeSet:
       id: v64.2026-07-25T10:01:24
       author: ranquild
-      comment: Add transform_tag.worktree_id
+      comment: Add transform_tag.workspace_id
       changes:
         - addColumn:
             tableName: transform_tag
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row belongs to; null for main-app content (outside any worktree checkout)
+                  remarks: Workspace this row belongs to; null for main-app content (outside any workspace checkout)
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:01:25
       author: ranquild
-      comment: Index on transform_tag.worktree_id (backs the FK below)
+      comment: Index on transform_tag.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: transform_tag
-            indexName: idx_transform_tag_worktree_id
+            indexName: idx_transform_tag_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:01:26
       author: ranquild
-      comment: FK transform_tag.worktree_id -> remote_sync_worktree
+      comment: FK transform_tag.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform_tag
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_transform_tag_worktree_id
+            constraintName: fk_transform_tag_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:01:27
       author: ranquild
-      comment: Add transform_tag.worktree_id_helper generated column - COALESCE(worktree_id, 0) so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing to one bucket
+      comment: Add transform_tag.workspace_id_helper generated column - COALESCE(workspace_id, 0) so entity_id uniqueness can be scoped per workspace with NULLs (main-app rows) collapsing to one bucket
       changes:
         - sql:
             dbms: postgresql
             sql: |
-              ALTER TABLE "transform_tag" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+              ALTER TABLE "transform_tag" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
             dbms: mysql
             sql: |
-              ALTER TABLE `transform_tag` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+              ALTER TABLE `transform_tag` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
         - sql:
             dbms: mariadb
             sql: |
-              ALTER TABLE `transform_tag` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+              ALTER TABLE `transform_tag` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
         - sql:
             dbms: h2
             sql: |
-              ALTER TABLE transform_tag ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+              ALTER TABLE transform_tag ADD COLUMN workspace_id_helper int GENERATED ALWAYS AS (COALESCE(workspace_id, 0));
       rollback:
         - dropColumn:
             tableName: transform_tag
-            columnName: worktree_id_helper
+            columnName: workspace_id_helper
 
   - changeSet:
       id: v64.2026-07-25T10:01:28
       author: ranquild
-      comment: Drop the single-column entity_id unique on transform_tag; superseded by the composite (entity_id, worktree_id_helper) unique below
+      comment: Drop the single-column entity_id unique on transform_tag; superseded by the composite (entity_id, workspace_id_helper) unique below
       changes:
         - sql:
             dbms: postgresql
@@ -1467,82 +1477,82 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:01:29
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for transform_tag (worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them)
+      comment: Per-workspace entity_id uniqueness for transform_tag (workspace_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside workspaces and per-workspace inside them)
       changes:
         - addUniqueConstraint:
             tableName: transform_tag
-            columnNames: entity_id, worktree_id_helper
-            constraintName: unique_transform_tag_entity_id_worktree
+            columnNames: entity_id, workspace_id_helper
+            constraintName: unique_transform_tag_entity_id_workspace
 
   - changeSet:
       id: v64.2026-07-25T10:01:30
       author: ranquild
-      comment: Add transform_transform_tag.worktree_id
+      comment: Add transform_transform_tag.workspace_id
       changes:
         - addColumn:
             tableName: transform_transform_tag
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row belongs to; null for main-app content (outside any worktree checkout)
+                  remarks: Workspace this row belongs to; null for main-app content (outside any workspace checkout)
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:01:31
       author: ranquild
-      comment: Index on transform_transform_tag.worktree_id (backs the FK below)
+      comment: Index on transform_transform_tag.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: transform_transform_tag
-            indexName: idx_transform_transform_tag_worktree_id
+            indexName: idx_transform_transform_tag_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:01:32
       author: ranquild
-      comment: FK transform_transform_tag.worktree_id -> remote_sync_worktree
+      comment: FK transform_transform_tag.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform_transform_tag
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_transform_transform_tag_worktree_id
+            constraintName: fk_transform_transform_tag_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:01:33
       author: ranquild
-      comment: Add transform_transform_tag.worktree_id_helper generated column - COALESCE(worktree_id, 0) so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing to one bucket
+      comment: Add transform_transform_tag.workspace_id_helper generated column - COALESCE(workspace_id, 0) so entity_id uniqueness can be scoped per workspace with NULLs (main-app rows) collapsing to one bucket
       changes:
         - sql:
             dbms: postgresql
             sql: |
-              ALTER TABLE "transform_transform_tag" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+              ALTER TABLE "transform_transform_tag" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
             dbms: mysql
             sql: |
-              ALTER TABLE `transform_transform_tag` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+              ALTER TABLE `transform_transform_tag` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
         - sql:
             dbms: mariadb
             sql: |
-              ALTER TABLE `transform_transform_tag` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+              ALTER TABLE `transform_transform_tag` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
         - sql:
             dbms: h2
             sql: |
-              ALTER TABLE transform_transform_tag ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+              ALTER TABLE transform_transform_tag ADD COLUMN workspace_id_helper int GENERATED ALWAYS AS (COALESCE(workspace_id, 0));
       rollback:
         - dropColumn:
             tableName: transform_transform_tag
-            columnName: worktree_id_helper
+            columnName: workspace_id_helper
 
   - changeSet:
       id: v64.2026-07-25T10:01:34
       author: ranquild
-      comment: Drop the single-column entity_id unique on transform_transform_tag; superseded by the composite (entity_id, worktree_id_helper) unique below
+      comment: Drop the single-column entity_id unique on transform_transform_tag; superseded by the composite (entity_id, workspace_id_helper) unique below
       changes:
         - sql:
             dbms: postgresql
@@ -1566,82 +1576,82 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:01:35
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for transform_transform_tag (worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them)
+      comment: Per-workspace entity_id uniqueness for transform_transform_tag (workspace_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside workspaces and per-workspace inside them)
       changes:
         - addUniqueConstraint:
             tableName: transform_transform_tag
-            columnNames: entity_id, worktree_id_helper
-            constraintName: unique_transform_transform_tag_entity_id_worktree
+            columnNames: entity_id, workspace_id_helper
+            constraintName: unique_transform_transform_tag_entity_id_workspace
 
   - changeSet:
       id: v64.2026-07-25T10:01:36
       author: ranquild
-      comment: Add python_library.worktree_id
+      comment: Add python_library.workspace_id
       changes:
         - addColumn:
             tableName: python_library
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row belongs to; null for main-app content (outside any worktree checkout)
+                  remarks: Workspace this row belongs to; null for main-app content (outside any workspace checkout)
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:01:37
       author: ranquild
-      comment: Index on python_library.worktree_id (backs the FK below)
+      comment: Index on python_library.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: python_library
-            indexName: idx_python_library_worktree_id
+            indexName: idx_python_library_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:01:38
       author: ranquild
-      comment: FK python_library.worktree_id -> remote_sync_worktree
+      comment: FK python_library.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: python_library
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_python_library_worktree_id
+            constraintName: fk_python_library_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:01:39
       author: ranquild
-      comment: Add python_library.worktree_id_helper generated column - COALESCE(worktree_id, 0) so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing to one bucket
+      comment: Add python_library.workspace_id_helper generated column - COALESCE(workspace_id, 0) so entity_id uniqueness can be scoped per workspace with NULLs (main-app rows) collapsing to one bucket
       changes:
         - sql:
             dbms: postgresql
             sql: |
-              ALTER TABLE "python_library" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+              ALTER TABLE "python_library" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
             dbms: mysql
             sql: |
-              ALTER TABLE `python_library` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+              ALTER TABLE `python_library` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
         - sql:
             dbms: mariadb
             sql: |
-              ALTER TABLE `python_library` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+              ALTER TABLE `python_library` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
         - sql:
             dbms: h2
             sql: |
-              ALTER TABLE python_library ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+              ALTER TABLE python_library ADD COLUMN workspace_id_helper int GENERATED ALWAYS AS (COALESCE(workspace_id, 0));
       rollback:
         - dropColumn:
             tableName: python_library
-            columnName: worktree_id_helper
+            columnName: workspace_id_helper
 
   - changeSet:
       id: v64.2026-07-25T10:01:40
       author: ranquild
-      comment: Drop the single-column entity_id unique on python_library; superseded by the composite (entity_id, worktree_id_helper) unique below
+      comment: Drop the single-column entity_id unique on python_library; superseded by the composite (entity_id, workspace_id_helper) unique below
       changes:
         - dropUniqueConstraint:
             tableName: python_library
@@ -1655,82 +1665,82 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:01:41
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for python_library (worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them)
+      comment: Per-workspace entity_id uniqueness for python_library (workspace_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside workspaces and per-workspace inside them)
       changes:
         - addUniqueConstraint:
             tableName: python_library
-            columnNames: entity_id, worktree_id_helper
-            constraintName: unique_python_library_entity_id_worktree
+            columnNames: entity_id, workspace_id_helper
+            constraintName: unique_python_library_entity_id_workspace
 
   - changeSet:
       id: v64.2026-07-25T10:01:42
       author: ranquild
-      comment: Add action.worktree_id
+      comment: Add action.workspace_id
       changes:
         - addColumn:
             tableName: action
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
                   type: int
-                  remarks: Worktree this row belongs to; null for main-app content (outside any worktree checkout)
+                  remarks: Workspace this row belongs to; null for main-app content (outside any workspace checkout)
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v64.2026-07-25T10:01:43
       author: ranquild
-      comment: Index on action.worktree_id (backs the FK below)
+      comment: Index on action.workspace_id (backs the FK below)
       changes:
         - createIndex:
             tableName: action
-            indexName: idx_action_worktree_id
+            indexName: idx_action_workspace_id
             columns:
               - column:
-                  name: worktree_id
+                  name: workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:01:44
       author: ranquild
-      comment: FK action.worktree_id -> remote_sync_worktree
+      comment: FK action.workspace_id -> workspace
       changes:
         - addForeignKeyConstraint:
             baseTableName: action
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
             referencedColumnNames: id
-            constraintName: fk_action_worktree_id
+            constraintName: fk_action_workspace_id
 
   - changeSet:
       id: v64.2026-07-25T10:01:45
       author: ranquild
-      comment: Add action.worktree_id_helper generated column - COALESCE(worktree_id, 0) so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing to one bucket
+      comment: Add action.workspace_id_helper generated column - COALESCE(workspace_id, 0) so entity_id uniqueness can be scoped per workspace with NULLs (main-app rows) collapsing to one bucket
       changes:
         - sql:
             dbms: postgresql
             sql: |
-              ALTER TABLE "action" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+              ALTER TABLE "action" ADD COLUMN "workspace_id_helper" integer GENERATED ALWAYS AS (COALESCE("workspace_id", 0)) STORED;
         - sql:
             dbms: mysql
             sql: |
-              ALTER TABLE `action` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+              ALTER TABLE `action` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) VIRTUAL;
         - sql:
             dbms: mariadb
             sql: |
-              ALTER TABLE `action` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+              ALTER TABLE `action` ADD COLUMN `workspace_id_helper` INT GENERATED ALWAYS AS (COALESCE(`workspace_id`, 0)) STORED;
         - sql:
             dbms: h2
             sql: |
-              ALTER TABLE action ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+              ALTER TABLE action ADD COLUMN workspace_id_helper int GENERATED ALWAYS AS (COALESCE(workspace_id, 0));
       rollback:
         - dropColumn:
             tableName: action
-            columnName: worktree_id_helper
+            columnName: workspace_id_helper
 
   - changeSet:
       id: v64.2026-07-25T10:01:46
       author: ranquild
-      comment: Drop the single-column entity_id unique on action; superseded by the composite (entity_id, worktree_id_helper) unique below
+      comment: Drop the single-column entity_id unique on action; superseded by the composite (entity_id, workspace_id_helper) unique below
       changes:
         - sql:
             dbms: postgresql
@@ -1754,23 +1764,23 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:01:47
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for action (worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them)
+      comment: Per-workspace entity_id uniqueness for action (workspace_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside workspaces and per-workspace inside them)
       changes:
         - addUniqueConstraint:
             tableName: action
-            columnNames: entity_id, worktree_id_helper
-            constraintName: unique_action_entity_id_worktree
+            columnNames: entity_id, workspace_id_helper
+            constraintName: unique_action_entity_id_workspace
 
   ## python_library also has a single-column unique on `path` (independent of the entity_id one
-  ## above), so a worktree checkout can never create its own path="common" common.py while the
-  ## main app's exists. Give path the same worktree_id_helper composite-unique treatment. The
+  ## above), so a workspace checkout can never create its own path="common" common.py while the
+  ## main app's exists. Give path the same workspace_id_helper composite-unique treatment. The
   ## constraint is already named identically on every dialect (uk_python_library_path, from
   ## v57.2025-09-11T10:00:00), so -- like the entity_id case on this same table -- this uses a
   ## plain dropUniqueConstraint instead of a dbms-split raw sql block.
   - changeSet:
       id: v64.2026-07-25T10:01:48
       author: ranquild
-      comment: Drop the single-column path unique on python_library; superseded by the composite (path, worktree_id_helper) unique below
+      comment: Drop the single-column path unique on python_library; superseded by the composite (path, workspace_id_helper) unique below
       changes:
         - dropUniqueConstraint:
             tableName: python_library
@@ -1784,9 +1794,9 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-25T10:01:49
       author: ranquild
-      comment: Per-worktree path uniqueness for python_library (worktree_id_helper collapses NULL/main-app rows to 0, so path stays globally unique outside worktrees and per-worktree inside them)
+      comment: Per-workspace path uniqueness for python_library (workspace_id_helper collapses NULL/main-app rows to 0, so path stays globally unique outside workspaces and per-workspace inside them)
       changes:
         - addUniqueConstraint:
             tableName: python_library
-            columnNames: path, worktree_id_helper
-            constraintName: unique_python_library_path_worktree
+            columnNames: path, workspace_id_helper
+            constraintName: unique_python_library_path_workspace

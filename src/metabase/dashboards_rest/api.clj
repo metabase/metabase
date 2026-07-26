@@ -79,7 +79,7 @@
                                                        (:all :archived)  true
                                                        :mine [:= :creator_id api/*current-user-id*])
                                                 [:= :archived (= (keyword filter-option) :archived)]
-                                                (remote-sync/worktree-visibility-clause)]
+                                                (remote-sync/workspace-visibility-clause)]
                                      :order-by [:%lower.name]}) <>
     (t2/hydrate <> :creator)
     (filter mi/can-read? <>)))
@@ -619,7 +619,7 @@
   (t2/select [:model/Dashboard :name :id :public_uuid]
              :public_uuid [:not= nil]
              :archived false
-             :worktree_id api/*current-worktree-id*))
+             :workspace_id api/*current-workspace-id*))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -634,7 +634,7 @@
   (t2/select [:model/Dashboard :name :id]
              :enable_embedding true
              :archived false
-             :worktree_id api/*current-worktree-id*))
+             :workspace_id api/*current-workspace-id*))
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 

@@ -225,7 +225,7 @@
         ns-coll-conflicts (spec/check-namespace-collection-conflicts
                            import-namespace-collections
                            (:entity-ids import-ns-info))
-        library-conflict (when-let [local-library (t2/select-one :model/Collection :type collection/library-collection-type :worktree_id nil)]
+        library-conflict (when-let [local-library (t2/select-one :model/Collection :type collection/library-collection-type :workspace_id nil)]
                            (when (and first-import?
                                       (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
                                                  collection/library-entity-id)
@@ -297,12 +297,12 @@
 (defn- insert-with-metadata!
   "Inserts RemoteSyncObject `rows` after an import, one `content-hash-batch-size` chunk at a time, folding
   each chunk's file_path + content_hash (`repo-paths` gives entity-id models their real path) into its
-  insert. Rows are stamped with the current [[api/*current-worktree-id*]] scope (nil for the main app)."
+  insert. Rows are stamped with the current [[api/*current-workspace-id*]] scope (nil for the main app)."
   [rows repo-paths]
   (serdes/with-cache
     (doseq [chunk (partition-all app-db-batch-size rows)]
       (t2/insert! :model/RemoteSyncObject
-                  (mapv #(assoc % :worktree_id api/*current-worktree-id*)
+                  (mapv #(assoc % :workspace_id api/*current-workspace-id*)
                         (merge-content-metadata chunk (import-content-metadata chunk repo-paths)))))))
 
 (defn- branch-changed-since-scheduling?
@@ -341,13 +341,13 @@
   they all commit or all roll back, so a crash can never leave the version advanced past stale local
   state or drop captured dirty markers (see [[import-merged!]]).
 
-  Scoped to the current [[api/*current-worktree-id*]] (nil for the main app): the RemoteSyncObject rewrite and
+  Scoped to the current [[api/*current-workspace-id*]] (nil for the main app): the RemoteSyncObject rewrite and
   `remove-unsynced!` only ever touch that scope's rows, and the `remote-sync-transforms` setting toggle
-  (a main-app-only setting) is skipped entirely for a worktree pull."
+  (a main-app-only setting) is skipped entirely for a workspace pull."
   [snapshot task-id sync-timestamp & {:keys [finalize!]}]
   (let [path-filters        (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
         base-ingestable     (source.p/->ingestable snapshot {:path-filters path-filters})
-        has-transforms?     (and (not api/*current-worktree-id*) (snapshot-has-transforms? base-ingestable))
+        has-transforms?     (and (not api/*current-workspace-id*) (snapshot-has-transforms? base-ingestable))
         ingestable-snapshot (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)
         load-result         (serdes/with-cache
                               (serialization/load-metabase! ingestable-snapshot))
@@ -362,14 +362,14 @@
       (remove-unsynced! (spec/all-syncable-collection-ids) imported-data)
       ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
       ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
-      ;; insert. Chunked so insert/IN params and memory stay bounded. Scoped so a worktree pull only ever
-      ;; wipes its own ledger, never main's or another worktree's.
-      (t2/delete! :model/RemoteSyncObject :worktree_id api/*current-worktree-id*)
+      ;; insert. Chunked so insert/IN params and memory stay bounded. Scoped so a workspace pull only ever
+      ;; wipes its own ledger, never main's or another workspace's.
+      (t2/delete! :model/RemoteSyncObject :workspace_id api/*current-workspace-id*)
       (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
                              (source.ingestable/cached-file-paths base-ingestable))
       (when finalize! (finalize!)))
     (when (and (not has-transforms?)
-               (not api/*current-worktree-id*)
+               (not api/*current-workspace-id*)
                (settings/remote-sync-transforms))
       (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
       (settings/remote-sync-transforms! false))
@@ -430,7 +430,7 @@
         deleted      (into #{} (filter legal-yaml-path?) (:deleted changed))
         ;; N+1: one query per deleted path (bounded by deletions in a single pull; left un-batched because
         ;; file_path values are long, making an IN clause bulky for marginal gain).
-        deleted-rsos (mapv (fn [p] (t2/select-one :model/RemoteSyncObject :file_path p :worktree_id api/*current-worktree-id*)) deleted)
+        deleted-rsos (mapv (fn [p] (t2/select-one :model/RemoteSyncObject :file_path p :workspace_id api/*current-workspace-id*)) deleted)
         ingestable (when (seq add-mod)
                      (source.p/->ingestable snapshot {:path-filters (mapv #(re-pattern (java.util.regex.Pattern/quote %)) add-mod)}))
         add-models (if ingestable
@@ -513,7 +513,7 @@
   []
   (t2/select :model/RemoteSyncObject {:where [:and
                                               [:not= :status "synced"]
-                                              [:= :worktree_id api/*current-worktree-id*]]}))
+                                              [:= :workspace_id api/*current-workspace-id*]]}))
 
 (defn- restore-dirty-objects!
   "Re-applies captured dirty statuses after a merge load (which marks everything 'synced'). For each
@@ -522,7 +522,7 @@
   [dirty-objects timestamp]
   (doseq [{:keys [model_type model_id status] :as row} dirty-objects]
     (if-let [existing (t2/select-one :model/RemoteSyncObject :model_type model_type :model_id model_id
-                                     :worktree_id api/*current-worktree-id*)]
+                                     :workspace_id api/*current-workspace-id*)]
       (t2/update! :model/RemoteSyncObject (:id existing)
                   {:status status :status_changed_at timestamp})
       (t2/insert! :model/RemoteSyncObject
@@ -783,7 +783,7 @@
             (load-snapshot! merged-snapshot task-id sync-timestamp
                             :finalize! (fn []
                                          (t2/update! :model/RemoteSyncObject
-                                                     {:worktree_id api/*current-worktree-id*}
+                                                     {:workspace_id api/*current-workspace-id*}
                                                      {:status "synced" :status_changed_at sync-timestamp})
                                          (remote-sync.task/set-version! task-id version)))
             (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d); pushed %d"
@@ -1086,14 +1086,14 @@
       {:model_type model :model_id id :id (rso-id [model id])})))
 
 (defn- find-departed-entities
-  "Find RSO rows, scoped to the current [[api/*current-worktree-id*]], for entity-id entities that left the
+  "Find RSO rows, scoped to the current [[api/*current-workspace-id*]], for entity-id entities that left the
   synced set (removed/delete status and not in `targets`), matching the incremental path; path/hybrid
   rows, still-exported rows, and other scopes' ledgers are kept."
   [exported-rows]
   (let [exported (into #{} (map #(select-keys % [:model_type :model_id])) exported-rows)]
     (->> (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
                     :status [:in ["removed" "delete"]]
-                    :worktree_id api/*current-worktree-id*)
+                    :workspace_id api/*current-workspace-id*)
          (filter #(= :entity-id (:identity (spec/spec-for-model-type (:model_type %)))))
          (remove #(exported (select-keys % [:model_type :model_id])))
          (map :id))))
@@ -1156,7 +1156,7 @@
             (remote-sync.task/set-version! task-id version))
           (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
             (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
-          (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject :worktree_id api/*current-worktree-id*)
+          (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject :workspace_id api/*current-workspace-id*)
                              synced sync-timestamp))
         (if (= version :remote-sync/empty-commit)
           (do
@@ -1458,20 +1458,20 @@
   "Executes a remote sync task asynchronously in a virtual thread.
 
   Takes a task-type string ('import' or 'export'), a branch name to update in settings upon completion (nil
-  to leave the setting alone — used for worktree operations, which never touch it), a sync-fn function
+  to leave the setting alone — used for workspace operations, which never touch it), a sync-fn function
   that takes a task-id and performs the sync operation, and an optional :on-success callback that receives
   [task-id result] after a successful sync. Creates a new task (or errors if one is already running), then
   executes the sync function in a virtual thread with a timeout.
 
-  `:worktree-id`, when given, is bound as [[api/*current-worktree-id*]] around task creation so the new
+  `:workspace-id`, when given, is bound as [[api/*current-workspace-id*]] around task creation so the new
   RemoteSyncTask row is stamped with it (see [[remote-sync.task/create-sync-task!]]). A virtual thread does
   not inherit the caller's dynamic bindings, so `sync-fn` is responsible for re-establishing that binding
   for its own work.
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 if a sync task is already in progress."
-  [task-type branch sync-fn & {:keys [on-success worktree-id]}]
+  [task-type branch sync-fn & {:keys [on-success workspace-id]}]
   (let [{task-id :id existing? :existing? :as task}
-        (binding [api/*current-worktree-id* worktree-id]
+        (binding [api/*current-workspace-id* workspace-id]
           (create-task-with-lock! task-type))]
     (api/check-400 (not existing?) "Remote sync in progress")
     (u.jvm/in-virtual-thread*
@@ -1502,18 +1502,18 @@
   When `:merge?` is set, a local-only 3-way merge keeps un-pushed local changes instead of overwriting
   them, so the dirty-changes guard is skipped.
 
-  `:worktree-id` (default: the calling user's worktree, see [[api/*current-worktree-id*]]) scopes the whole
-  operation to a remote-sync worktree instead of the main app: the dirty check, merge-base lookup, and task
+  `:workspace-id` (default: the calling user's workspace, see [[api/*current-workspace-id*]]) scopes the whole
+  operation to a remote-sync workspace instead of the main app: the dirty check, merge-base lookup, and task
   creation are all read/written under that scope, and the operation never touches the global
   `remote-sync-branch` setting on completion — `branch` is still the operational git branch to import from
-  (the worktree's own branch, resolved by the caller), it just stops driving the setting.
+  (the workspace's own branch, resolved by the caller), it just stops driving the setting.
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
   are unsaved changes and neither force? nor merge? is set."
-  [branch force? import-args & {:keys [on-success merge? force-deletion? worktree-id]
-                                :or   {worktree-id api/*current-worktree-id*}}]
+  [branch force? import-args & {:keys [on-success merge? force-deletion? workspace-id]
+                                :or   {workspace-id api/*current-workspace-id*}}]
   (guards/ensure-no-active-task!)
-  (binding [api/*current-worktree-id* worktree-id]
+  (binding [api/*current-workspace-id* workspace-id]
     (let [pre-task-branch        (settings/remote-sync-branch)
           source                 (source/source-from-settings branch)
           has-dirty?             (remote-sync.object/dirty?)
@@ -1534,10 +1534,10 @@
                          ;; The un-pushed local changes a switch would discard, so the client can name exactly
                          ;; what would be lost without a second round-trip to /dirty.
                          :dirty_objects (remote-sync.object/dirty-objects)})))
-      (run-async! "import" (when-not worktree-id branch)
+      (run-async! "import" (when-not workspace-id branch)
                   (fn [task-id]
-                    (binding [api/*current-worktree-id* worktree-id]
-                      (when (and (nil? worktree-id) (branch-changed-since-scheduling? pre-task-branch))
+                    (binding [api/*current-workspace-id* workspace-id]
+                      (when (and (nil? workspace-id) (branch-changed-since-scheduling? pre-task-branch))
                         (log/warnf "Aborting import: remote-sync-branch changed from %s to %s since task was scheduled"
                                    pre-task-branch (settings/remote-sync-branch))
                         (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
@@ -1550,7 +1550,7 @@
                                       :merge?           merge?
                                       :base-snapshot    base-snapshot))))
                   :on-success   on-success
-                  :worktree-id  worktree-id))))
+                  :workspace-id  workspace-id))))
 
 (defn async-export!
   "Exports the remote-synced collections to the remote source repository asynchronously.
@@ -1567,20 +1567,20 @@
   - neither (default) -> `:conflict` task result; the caller (typically the UI, via the export preflight)
                          decides whether to force, branch, or merge.
 
-  `:worktree-id` (default: the calling user's worktree, see [[api/*current-worktree-id*]]) scopes the whole
-  operation to a remote-sync worktree instead of the main app, the same way [[async-import!]]'s does: the
+  `:workspace-id` (default: the calling user's workspace, see [[api/*current-workspace-id*]]) scopes the whole
+  operation to a remote-sync workspace instead of the main app, the same way [[async-import!]]'s does: the
   merge-base lookup and task creation happen under that scope, and the operation never touches the global
   `remote-sync-branch` setting on completion — `branch` is still the operational git branch to export to
-  (the worktree's own branch, resolved by the caller).
+  (the workspace's own branch, resolved by the caller).
 
   Returns a RemoteSyncTask."
-  [branch force? message & {:keys [on-success merge? worktree-id]
-                            :or   {worktree-id api/*current-worktree-id*}}]
+  [branch force? message & {:keys [on-success merge? workspace-id]
+                            :or   {workspace-id api/*current-workspace-id*}}]
   (guards/ensure-no-active-task!)
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
                     {:status-code 400})))
-  (binding [api/*current-worktree-id* worktree-id]
+  (binding [api/*current-workspace-id* workspace-id]
     (let [pre-task-branch        (settings/remote-sync-branch)
           source                 (source/source-from-settings branch)
           last-task-version      (remote-sync.task/last-version)
@@ -1591,10 +1591,10 @@
           base-snapshot          (when (and (some? last-task-version)
                                             (not= last-task-version current-source-version))
                                    (source.p/snapshot-at source last-task-version))]
-      (run-async! "export" (when-not worktree-id branch)
+      (run-async! "export" (when-not workspace-id branch)
                   (fn [task-id]
-                    (binding [api/*current-worktree-id* worktree-id]
-                      (when (and (nil? worktree-id) (branch-changed-since-scheduling? pre-task-branch))
+                    (binding [api/*current-workspace-id* workspace-id]
+                      (when (and (nil? workspace-id) (branch-changed-since-scheduling? pre-task-branch))
                         (log/warnf "Aborting export: remote-sync-branch changed from %s to %s since task was scheduled"
                                    pre-task-branch (settings/remote-sync-branch))
                         (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
@@ -1606,7 +1606,7 @@
                                :source          source
                                :base-snapshot   base-snapshot)))
                   :on-success   on-success
-                  :worktree-id  worktree-id))))
+                  :workspace-id  workspace-id))))
 
 (defn preview-export-merge
   "Dry-run preview of what exporting the current state would do given the live remote, without writing
@@ -1652,26 +1652,26 @@
   (let [source (source/source-from-settings)]
     (source.p/create-branch source name base-branch)))
 
-(def ^:private worktree-content-models
-  "Entity-id content models a worktree can materialize, ordered leaf → root so per-model deletes don't trip FK
+(def ^:private workspace-content-models
+  "Entity-id content models a workspace can materialize, ordered leaf → root so per-model deletes don't trip FK
   constraints (contents before their collections). Collection is deleted separately, last. Must stay in sync with
-  the tables carrying a `worktree_id` column."
+  the tables carrying a `workspace_id` column."
   [:model/Card :model/Dashboard :model/Document :model/Timeline :model/NativeQuerySnippet
    :model/Segment :model/Measure :model/Action :model/Transform :model/TransformTag :model/PythonLibrary])
 
-(defn delete-worktree!
-  "Delete a worktree and everything it materialized. Removes all worktree-tagged content — its collections and
-  their contents, plus global synced content (transforms, snippets) — then the worktree row itself. Users pointing
-  at the worktree are cleared automatically by the `ON DELETE SET NULL` FK on `core_user.worktree_id`. Runs in a
+(defn delete-workspace!
+  "Delete a workspace and everything it materialized. Removes all workspace-tagged content — its collections and
+  their contents, plus global synced content (transforms, snippets) — then the workspace row itself. Users pointing
+  at the workspace are cleared automatically by the `ON DELETE SET NULL` FK on `core_user.workspace_id`. Runs in a
   single transaction."
-  [worktree-id]
+  [workspace-id]
   (t2/with-transaction [_conn]
-    (doseq [model worktree-content-models]
-      (t2/delete! model :worktree_id worktree-id))
-    (t2/delete! :model/Collection :worktree_id worktree-id)
-    (t2/delete! :model/RemoteSyncObject :worktree_id worktree-id)
-    (t2/delete! :model/RemoteSyncTask :worktree_id worktree-id)
-    (t2/delete! :model/RemoteSyncWorktree :id worktree-id)))
+    (doseq [model workspace-content-models]
+      (t2/delete! model :workspace_id workspace-id))
+    (t2/delete! :model/Collection :workspace_id workspace-id)
+    (t2/delete! :model/RemoteSyncObject :workspace_id workspace-id)
+    (t2/delete! :model/RemoteSyncTask :workspace_id workspace-id)
+    (t2/delete! :model/Workspace :id workspace-id)))
 
 (defn stash!
   "Creates a new remote branch from the current `remote-sync-branch` and starts an

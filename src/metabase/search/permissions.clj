@@ -48,16 +48,16 @@
    ;; to different namespaces via parameters.
    (perms/namespace-clause :collection.namespace nil true)])
 
-(defn worktree-visibility-clause
-  "HoneySQL predicate restricting `column` (the index's `worktree_id` column, `:search_index.worktree_id` by
-  default) to rows visible under remote-sync worktree isolation: rows of a search model that isn't
-  worktree-scoped are always visible, and rows of a worktree-scoped model are visible only when their
-  worktree matches the caller's active worktree (nil for the main app)."
-  ([] (worktree-visibility-clause :search_index.worktree_id))
+(defn workspace-visibility-clause
+  "HoneySQL predicate restricting `column` (the index's `workspace_id` column, `:search_index.workspace_id` by
+  default) to rows visible under remote-sync workspace isolation: rows of a search model that isn't
+  workspace-scoped are always visible, and rows of a workspace-scoped model are visible only when their
+  workspace matches the caller's active workspace (nil for the main app)."
+  ([] (workspace-visibility-clause :search_index.workspace_id))
   ([column]
    [:or
-    [:not-in :search_index.model (vec (search.spec/worktree-scoped-search-models))]
-    (remote-sync/worktree-visibility-clause column)]))
+    [:not-in :search_index.model (vec (search.spec/workspace-scoped-search-models))]
+    (remote-sync/workspace-visibility-clause column)]))
 
 (mu/defn permitted-tables-clause
   "Build the WHERE clause and optional CTEs for table permission filtering.

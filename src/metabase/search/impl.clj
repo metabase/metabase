@@ -208,7 +208,7 @@
          :archived_directly
          :display_name
          :effective_parent
-         :worktree_id)
+         :workspace_id)
         (cond-> (= model "transform")
           (dissoc :source :target)))))
 

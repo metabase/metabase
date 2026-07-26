@@ -107,7 +107,7 @@
   [api-name eids]
   (let [model      (->model api-name) ;; This lookup is safe because we've already validated the api-names
         conditions (cond-> [:entity_id [:in eids]]
-                     (serdes/worktree-scoped? model) (conj :worktree_id api/*current-worktree-id*))
+                     (serdes/workspace-scoped? model) (conj :workspace_id api/*current-workspace-id*))
         eid->id    (into {} (apply t2/select-fn->fn :entity_id :id [model :id :entity_id] conditions))]
     (mapv (fn entity-id-info [entity-id]
             [entity-id (if-let [id (get eid->id entity-id)]

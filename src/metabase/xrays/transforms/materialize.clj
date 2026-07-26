@@ -29,7 +29,7 @@
    (t2/select-one-pk :model/Collection
                      :name        collection-name
                      :location    location
-                     :worktree_id api/*current-worktree-id*)))
+                     :workspace_id api/*current-workspace-id*)))
 
 (defn- create-collection!
   ([collection-name description]

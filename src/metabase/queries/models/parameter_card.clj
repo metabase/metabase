@@ -17,7 +17,7 @@
 (doto :model/ParameterCard
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/worktree-id))
+  (derive :hook/workspace-id))
 
 (t2/deftransforms :model/ParameterCard
   {:parameterized_object_type mi/transform-keyword})
@@ -39,7 +39,7 @@
 
 (t2/define-before-update :model/ParameterCard
   [pc]
-  (remote-sync/check-parent-same-worktree pc :model/Card :card_id)
+  (remote-sync/check-parent-same-workspace pc :model/Card :card_id)
   (u/prog1 pc
     (when (:parameterized_object_type (t2/changes <>))
       (validate-parameterized-object-type <>))))

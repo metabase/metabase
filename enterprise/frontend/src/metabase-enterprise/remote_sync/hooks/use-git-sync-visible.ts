@@ -2,7 +2,7 @@ import { skipToken } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
 import { useSelector } from "metabase/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { useGetWorktreeQuery } from "metabase-enterprise/api";
+import { useGetWorkspaceQuery } from "metabase-enterprise/api";
 
 import { BRANCH_KEY, REMOTE_SYNC_KEY, TYPE_KEY } from "../constants";
 
@@ -10,16 +10,16 @@ export interface GitSyncVisibleState {
   isVisible: boolean;
   currentBranch: string | null | undefined;
   isBranchSetByEnv: boolean;
-  isWorktree: boolean;
+  isWorkspace: boolean;
 }
 
 /**
  * Hook to check if the GitSyncControls would be visible and get the current branch.
  * This centralizes the visibility logic used by GitSyncControls and other components.
  *
- * When the current user has a `worktree_id`, `currentBranch` reflects that worktree's branch (not the
+ * When the current user has a `workspace_id`, `currentBranch` reflects that workspace's branch (not the
  * instance's git branch) so every consumer — the branch indicator and the push/pull/preflight calls
- * that key off `currentBranch` — operates on the worktree. Visibility is suppressed while the worktree
+ * that key off `currentBranch` — operates on the workspace. Visibility is suppressed while the workspace
  * is being fetched, so nothing renders and no call fires against the wrong (git) branch in the meantime.
  */
 export const useGitSyncVisible = (): GitSyncVisibleState => {
@@ -30,13 +30,12 @@ export const useGitSyncVisible = (): GitSyncVisibleState => {
     useAdminSetting(BRANCH_KEY);
   const { value: syncType } = useAdminSetting(TYPE_KEY);
 
-  const worktreeId = user?.worktree_id;
-  const isWorktree = typeof worktreeId === "number";
-  const { data: worktree, isLoading: isWorktreeLoading } = useGetWorktreeQuery(
-    isWorktree ? worktreeId : skipToken,
-  );
+  const workspaceId = user?.workspace_id;
+  const isWorkspace = typeof workspaceId === "number";
+  const { data: workspace, isLoading: isWorkspaceLoading } =
+    useGetWorkspaceQuery(isWorkspace ? workspaceId : skipToken);
 
-  const currentBranch = isWorktree ? worktree?.branch : gitBranch;
+  const currentBranch = isWorkspace ? workspace?.branch : gitBranch;
 
   const isVisible = !!(
     user &&
@@ -44,13 +43,13 @@ export const useGitSyncVisible = (): GitSyncVisibleState => {
     isAdmin &&
     currentBranch &&
     syncType === "read-write" &&
-    !isWorktreeLoading
+    !isWorkspaceLoading
   );
 
   return {
     isVisible,
     currentBranch,
     isBranchSetByEnv: !!branchDetails?.is_env_setting,
-    isWorktree,
+    isWorkspace,
   };
 };

@@ -9,11 +9,11 @@
 
 (doto :model/DashboardCardSeries
   (derive :metabase/model)
-  (derive :hook/worktree-id))
+  (derive :hook/workspace-id))
 
 (t2/define-before-update :model/DashboardCardSeries
   [series]
-  (remote-sync/check-parent-same-worktree series :model/DashboardCard :dashboardcard_id)
+  (remote-sync/check-parent-same-workspace series :model/DashboardCard :dashboardcard_id)
   series)
 
 ;; Serialization

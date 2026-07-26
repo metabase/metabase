@@ -214,7 +214,7 @@
                            (let [roots (t2/select :model/Collection
                                                   :type [:in (mapv name collection/library-collection-types)]
                                                   :location "/"
-                                                  :worktree_id api/*current-worktree-id*)]
+                                                  :workspace_id api/*current-workspace-id*)]
                              (into (set (map :id roots)) (mapcat collection/descendant-ids roots))))
         ;; Mirror collections.curation/curated? for card scope: verified, official-collection, or
         ;; library-published (under a Library root). Each disjunct is gated on its feature.

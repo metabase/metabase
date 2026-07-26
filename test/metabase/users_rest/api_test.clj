@@ -768,7 +768,7 @@
                                :last_name user-name
                                :common_name (str user-name " " user-name)
                                :jwt_attributes nil
-                               :worktree_id false
+                               :workspace_id false
                                :login_attributes {:test "value"}})
                        (-> resp
                            mt/boolean-ids-and-timestamps
@@ -996,7 +996,7 @@
                          :first_name "Cam"
                          :last_name "Eron"
                          :jwt_attributes nil
-                         :worktree_id false
+                         :workspace_id false
                          :is_superuser true})
                        (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
                                                  {:last_name "Eron"
@@ -1025,7 +1025,7 @@
                  :first_name "Test"
                  :login_attributes {:test "value"}
                  :jwt_attributes nil
-                 :worktree_id false
+                 :workspace_id false
                  :common_name "Test User"
                  :last_name "User"})
                (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
@@ -1156,7 +1156,7 @@
         (letfn [(change-user-via-api! [m]
                   (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id) m)
                       (t2/hydrate :personal_collection_id ::personal-collection-name)
-                      (dissoc :user_group_memberships :personal_collection_id :email :is_superuser :jwt_attributes :is_data_analyst :worktree_id)
+                      (dissoc :user_group_memberships :personal_collection_id :email :is_superuser :jwt_attributes :is_data_analyst :workspace_id)
                       (#(apply (partial dissoc %) (keys @user-defaults)))
                       mt/boolean-ids-and-timestamps))]
           (testing "Name keys ommitted does not update the user"

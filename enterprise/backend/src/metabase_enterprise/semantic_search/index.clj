@@ -78,9 +78,9 @@
      [:curated :boolean]
      [:dashboardcard_count :int]
      [:view_count :int]
-     ;; Remote-sync worktree a row belongs to; nil for main-app content and for search-models that aren't
-     ;; worktree-scoped. See metabase.search.permissions/worktree-visibility-clause.
-     [:worktree_id :int]
+     ;; Remote-sync workspace a row belongs to; nil for main-app content and for search-models that aren't
+     ;; workspace-scoped. See metabase.search.permissions/workspace-visibility-clause.
+     [:workspace_id :int]
      [:created_at :timestamp-with-time-zone [:default [:raw "CURRENT_TIMESTAMP"]] :not-null]
      [:model_created_at :timestamp-with-time-zone]
      [:model_updated_at :timestamp-with-time-zone]
@@ -164,7 +164,7 @@
   [owner-ids {:keys [model id embedding searchable_text embeddable_text native_query created_at creator_id updated_at
                      last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
                      pinned dashboardcard_count view_count last_viewed_at collection_type root_collection_type
-                     data_layer data_authority curated worktree_id] :as doc}]
+                     data_layer data_authority curated workspace_id] :as doc}]
   {:model               model
    :model_id            id
    :collection_id       collection_id
@@ -172,7 +172,7 @@
    :creator_id          creator_id
    :database_id         database_id
    :last_editor_id      last_editor_id
-   :worktree_id         worktree_id
+   :workspace_id         workspace_id
    :name                (or (:name doc) "")
    :content             embeddable_text
    :display_type        display_type
@@ -696,7 +696,7 @@
    [:model_updated_at :model_updated_at]
    [:last_viewed_at :last_viewed_at]
    [:legacy_input :legacy_input]
-   [:worktree_id :worktree_id]])
+   [:workspace_id :workspace_id]])
 
 (defn- keyword-search-query [index search-context]
   (let [filters (search-filters search-context)
@@ -984,23 +984,23 @@
   Wrapped in `delay` so the registry can populate before first read."
   (delay (compute-collection-id-only-search-models)))
 
-(defn- worktree-visible?
-  "Whether `doc` (an index row or decoded `legacy_input`) belongs to the caller's remote-sync worktree.
-  Rows of search-models that aren't worktree-scoped are always visible; rows of a worktree-scoped model
-  are visible only when their `:worktree_id` matches the caller's active worktree (nil for the main app).
-  Applied ahead of the collection-id fast path below, which otherwise has no worktree awareness of its own."
+(defn- workspace-visible?
+  "Whether `doc` (an index row or decoded `legacy_input`) belongs to the caller's remote-sync workspace.
+  Rows of search-models that aren't workspace-scoped are always visible; rows of a workspace-scoped model
+  are visible only when their `:workspace_id` matches the caller's active workspace (nil for the main app).
+  Applied ahead of the collection-id fast path below, which otherwise has no workspace awareness of its own."
   [doc]
-  (remote-sync/worktree-accessible?
-   (if (-> (search/spec (:model doc)) :attrs :worktree-id)
-     (select-keys doc [:worktree_id])
+  (remote-sync/workspace-accessible?
+   (if (-> (search/spec (:model doc)) :attrs :workspace-id)
+     (select-keys doc [:workspace_id])
      {})))
 
 (defn- filter-read-permitted
   "Returns the subset of `docs` whose t2 instances pass `mi/can-read?` for the current user, and whose
-  `:worktree_id` matches the caller's active remote-sync worktree."
+  `:workspace_id` matches the caller's active remote-sync workspace."
   [docs]
   (let [timer (u/start-timer)
-        docs (filterv worktree-visible? docs)
+        docs (filterv workspace-visible? docs)
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
         fast-set @collection-id-only-search-models
         {fast-docs true slow-docs false} (group-by #(contains? fast-set (:model %)) docs)

@@ -1,16 +1,16 @@
 import {
   setupPropertiesEndpoints,
-  setupRemoteSyncWorktreeEndpoint,
   setupSettingsEndpoints,
+  setupWorkspaceEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
-  createMockRemoteSyncWorktree,
   createMockSettingDefinition,
   createMockSettings,
   createMockUser,
+  createMockWorkspace,
 } from "metabase-types/api/mocks";
 
 import { useGitSyncVisible } from "./use-git-sync-visible";
@@ -21,18 +21,18 @@ const setup = ({
   currentBranch = "main",
   syncType = "read-write",
   isBranchEnvSetting = false,
-  worktreeId = null,
-  worktree,
-  worktreeDelay = 0,
+  workspaceId = null,
+  workspace,
+  workspaceDelay = 0,
 }: {
   isAdmin?: boolean;
   remoteSyncEnabled?: boolean;
   currentBranch?: string | null;
   syncType?: "read-only" | "read-write";
   isBranchEnvSetting?: boolean;
-  worktreeId?: number | null;
-  worktree?: ReturnType<typeof createMockRemoteSyncWorktree>;
-  worktreeDelay?: number;
+  workspaceId?: number | null;
+  workspace?: ReturnType<typeof createMockWorkspace>;
+  workspaceDelay?: number;
 } = {}) => {
   setupPropertiesEndpoints(
     createMockSettings({
@@ -50,18 +50,18 @@ const setup = ({
     }),
   ]);
 
-  if (typeof worktreeId === "number") {
-    setupRemoteSyncWorktreeEndpoint(
-      worktreeId,
-      worktree ?? createMockRemoteSyncWorktree({ id: worktreeId }),
-      { delay: worktreeDelay },
+  if (typeof workspaceId === "number") {
+    setupWorkspaceEndpoint(
+      workspaceId,
+      workspace ?? createMockWorkspace({ id: workspaceId }),
+      { delay: workspaceDelay },
     );
   }
 
   const storeInitialState = createMockState({
     currentUser: createMockUser({
       is_superuser: isAdmin,
-      worktree_id: worktreeId,
+      workspace_id: workspaceId,
     }),
     settings: mockSettings({
       "remote-sync-enabled": remoteSyncEnabled,
@@ -162,42 +162,42 @@ describe("useGitSyncVisible", () => {
     });
   });
 
-  describe("worktree", () => {
-    it("should return isWorktree: false and the git branch when the user has no worktree", async () => {
+  describe("workspace", () => {
+    it("should return isWorkspace: false and the git branch when the user has no workspace", async () => {
       const { result } = setup({ currentBranch: "main" });
 
       await waitFor(() => {
         expect(result.current.isVisible).toBe(true);
       });
-      expect(result.current.isWorktree).toBe(false);
+      expect(result.current.isWorkspace).toBe(false);
       expect(result.current.currentBranch).toBe("main");
     });
 
-    it("should return isVisible: false while the worktree branch is loading", async () => {
+    it("should return isVisible: false while the workspace branch is loading", async () => {
       const { result } = setup({
         currentBranch: "main",
-        worktreeId: 42,
-        worktreeDelay: 50,
+        workspaceId: 42,
+        workspaceDelay: 50,
       });
 
       expect(result.current.isVisible).toBe(false);
       expect(result.current.currentBranch).toBeFalsy();
     });
 
-    it("should return isWorktree: true and the worktree's branch once loaded", async () => {
+    it("should return isWorkspace: true and the workspace's branch once loaded", async () => {
       const { result } = setup({
         currentBranch: "main",
-        worktreeId: 42,
-        worktree: createMockRemoteSyncWorktree({
+        workspaceId: 42,
+        workspace: createMockWorkspace({
           id: 42,
-          branch: "feature/my-worktree",
+          branch: "feature/my-workspace",
         }),
       });
 
       await waitFor(() => {
-        expect(result.current.currentBranch).toBe("feature/my-worktree");
+        expect(result.current.currentBranch).toBe("feature/my-workspace");
       });
-      expect(result.current.isWorktree).toBe(true);
+      expect(result.current.isWorkspace).toBe(true);
       expect(result.current.isVisible).toBe(true);
     });
   });

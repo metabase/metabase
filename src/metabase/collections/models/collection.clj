@@ -83,8 +83,8 @@
     library-metrics-collection-type})
 
 (defn- shared-main-app-collection?
-  "Whether a Collection is one of the system collections shared across every remote-sync worktree instead of being
-  duplicated per worktree: Personal Collections, the Trash, and the Library (and its Data/Metrics subcollections)."
+  "Whether a Collection is one of the system collections shared across every remote-sync workspace instead of being
+  duplicated per workspace: Personal Collections, the Trash, and the Library (and its Data/Metrics subcollections)."
   [{:keys [type personal_owner_id]}]
   (boolean (or personal_owner_id
                (= type trash-collection-type)
@@ -103,7 +103,7 @@
   :snippets)
 
 (defn- trash-collection* []
-  (t2/select-one :model/Collection :type trash-collection-type :worktree_id nil))
+  (t2/select-one :model/Collection :type trash-collection-type :workspace_id nil))
 
 (let [get-trash (mdb/memoize-for-application-db
                  (fn []
@@ -111,8 +111,8 @@
                      (when-not <>
                        (throw (ex-info "Fatal error: Trash collection is missing" {}))))))]
   (defn trash-collection
-    "Get the (memoized) trash collection. Trash is a single shared main-app system collection (`worktree_id`
-    `nil`), not duplicated per remote-sync worktree; archived worktree content is trashed into this same
+    "Get the (memoized) trash collection. Trash is a single shared main-app system collection (`workspace_id`
+    `nil`), not duplicated per remote-sync workspace; archived workspace content is trashed into this same
     collection via the normal archive/restore location mechanism, same as main-app content."
     []
     (assoc (get-trash) :name (deferred-tru "Trash"))))
@@ -198,9 +198,9 @@
 
 (defn library-collection
   "Get the 'library' collection, if it exists. Library is a single shared main-app system collection
-  (`worktree_id` `nil`), not duplicated per remote-sync worktree."
+  (`workspace_id` `nil`), not duplicated per remote-sync workspace."
   []
-  (t2/select-one :model/Collection :type library-collection-type :worktree_id nil))
+  (t2/select-one :model/Collection :type library-collection-type :workspace_id nil))
 
 (def ^{:arglists '([id])} root-collection-type-by-id
   "Return the `:type` of the top-level (root) collection with the given `id`, or `nil` if no
@@ -318,15 +318,19 @@
     (and (is-library-metrics-collection? collection) (library-root-collection? collection))
     (assoc :name (tru "Metrics"))))
 
-(t2/define-after-select :model/Collection [collection]
-  (maybe-localize-system-collection-name collection))
-
+;; NOTE: derive the model traits (incl. `:hook/workspace-id`, which defines `after-select`) BEFORE this model's own
+;; `t2/define-after-select`. Doing the derive first means `maybe-derive` sees Collection is already an
+;; `::after-select` member via the hook and skips adding a redundant *direct* edge -- avoiding the
+;; hash-order-dependent `underive` "already has ::after-select as ancestor" throw. See `metabase.models.interface`.
 (doto :model/Collection
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/worktree-id)
+  (derive :hook/workspace-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
+
+(t2/define-after-select :model/Collection [collection]
+  (maybe-localize-system-collection-name collection))
 
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]
@@ -335,7 +339,7 @@
 
 (defmethod mi/can-write? :model/Collection
   ([instance]
-   (and (or (remote-sync/worktree-accessible? instance) (shared-main-app-collection? instance))
+   (and (or (remote-sync/workspace-accessible? instance) (shared-main-app-collection? instance))
         (not (default-audit-collection? instance))
         (not (is-trash-or-descendant? instance))
         (mi/current-user-has-full-permissions? :write instance)
@@ -345,7 +349,7 @@
 
 (mu/defmethod mi/can-read? :model/Collection
   ([instance]
-   (and (or (remote-sync/worktree-accessible? instance) (shared-main-app-collection? instance))
+   (and (or (remote-sync/workspace-accessible? instance) (shared-main-app-collection? instance))
         (or (is-trash? instance)
             (perms/can-read-audit-helper :model/Collection instance))))
   ([_model pk :- pos-int?]
@@ -506,18 +510,18 @@
   [_model-type _collection-id]
   true)
 
-(defn- assert-location-parent-same-worktree
-  "If `:location` is changing, verify the new parent Collection belongs to the same worktree as this row."
+(defn- assert-location-parent-same-workspace
+  "If `:location` is changing, verify the new parent Collection belongs to the same workspace as this row."
   [collection-before-updates {:keys [location] :as _collection-updates}]
   (when location
-    (let [current (:worktree_id collection-before-updates)
+    (let [current (:workspace_id collection-before-updates)
           target  (when-let [parent-id (location-path->parent-id location)]
-                    (t2/select-one-fn :worktree_id :model/Collection :id parent-id))]
+                    (t2/select-one-fn :workspace_id :model/Collection :id parent-id))]
       (when (not= current target)
-        (throw (ex-info (tru "Cannot move content into or out of a remote sync worktree.")
+        (throw (ex-info (tru "Cannot move content into or out of a remote sync workspace.")
                         {:status-code        400
-                         :worktree-id        current
-                         :target-worktree-id target}))))))
+                         :workspace-id        current
+                         :target-workspace-id target}))))))
 
 (defenterprise check-library-update
   "Checks that a collection of type `:library` only contains allowed changes."
@@ -680,12 +684,12 @@
 
 (mu/defn user->existing-personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "For a `user-or-id`, return their personal Collection, if it already exists. Personal Collections are always
-  main-app content (`worktree_id` `nil`) -- `personal_owner_id` is globally unique, so a user has one personal
-  Collection shared across every remote-sync worktree, not a per-worktree copy.
+  main-app content (`workspace_id` `nil`) -- `personal_owner_id` is globally unique, so a user has one personal
+  Collection shared across every remote-sync workspace, not a per-workspace copy.
   Use [[metabase.collections.models.collection/user->personal-collection]] to fetch their personal Collection *and*
   create it if needed."
   [user-or-id]
-  (t2/select-one :model/Collection :personal_owner_id (u/the-id user-or-id) :worktree_id nil))
+  (t2/select-one :model/Collection :personal_owner_id (u/the-id user-or-id) :workspace_id nil))
 
 (mu/defn user->personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
@@ -735,7 +739,7 @@
 (mi/define-batched-hydration-method include-personal-collection-ids
   :personal_collection_id
   "Efficiently hydrate the `:personal_collection_id` property of a sequence of Users. (This is, predictably, the ID of
-  their Personal Collection.) Personal Collections are always main-app content (`worktree_id` `nil`)."
+  their Personal Collection.) Personal Collections are always main-app content (`workspace_id` `nil`)."
   [users]
   (when (seq users)
     ;; efficiently create a map of user ID -> personal collection ID
@@ -745,7 +749,7 @@
           user-id->collection-id (when (seq non-api-user-ids)
                                    (t2/select-fn->pk :personal_owner_id :model/Collection
                                                      :personal_owner_id [:in non-api-user-ids]
-                                                     :worktree_id nil))]
+                                                     :workspace_id nil))]
       ;; now for each User, try to find the corresponding ID out of that map. If it's not present (the personal
       ;; Collection hasn't been created yet), then instead call `user->personal-collection-id`, which will create it
       ;; as a side-effect. This will ensure this property never comes back as `nil`
@@ -764,7 +768,7 @@
   :is_personal
   "Efficiently hydrate the `:is_personal` property of a sequence of Collections.
   `true` means the collection is or nested in a personal collection. Personal Collections are always main-app
-  content (`worktree_id` `nil`)."
+  content (`workspace_id` `nil`)."
   [collections]
   (if (= 1 (count collections))
     (let [collection (first collections)]
@@ -773,7 +777,7 @@
         ;; root collection is nil
         [collection]))
     (let [personal-collection-ids (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil]
-                                                     :worktree_id nil)
+                                                     :workspace_id nil)
           location-is-personal    (fn [location]
                                     (boolean
                                      (and (string? location)
@@ -873,17 +877,17 @@
    :c.archived_directly
    :c.type
    :c.namespace
-   :c.worktree_id
+   :c.workspace_id
    :c.personal_owner_id])
 
 (defn- shared-main-app-collection-clause
-  "HoneySQL predicate matching rows for Collections that are shared across every remote-sync worktree instead of
-  being duplicated per worktree: Personal Collections, the Trash, and the Library (and its Data/Metrics
+  "HoneySQL predicate matching rows for Collections that are shared across every remote-sync workspace instead of
+  being duplicated per workspace: Personal Collections, the Trash, and the Library (and its Data/Metrics
   subcollections). Mirrors [[shared-main-app-collection?]]."
   [column-prefix]
   (let [->col (fn [col] (keyword (str (name column-prefix) "." (name col))))]
     [:and
-     [:= (->col :worktree_id) nil]
+     [:= (->col :workspace_id) nil]
      [:or
       [:not= (->col :personal_owner_id) nil]
       [:= (->col :type) (h2x/literal trash-collection-type)]
@@ -891,9 +895,9 @@
 
 (mu/defn visible-collection-query
   "Given a `CollectionVisibilityConfig`, return a HoneySQL query that selects all visible Collection IDs. Scoped to
-  the current remote-sync worktree (`nil` is the main app): collections outside that worktree are never visible,
+  the current remote-sync workspace (`nil` is the main app): collections outside that workspace are never visible,
   superusers included -- except the shared main-app system collections (see [[shared-main-app-collection?]]),
-  which are visible from any worktree."
+  which are visible from any workspace."
   ([visibility-config :- CollectionVisibilityConfig]
    (visible-collection-query visibility-config
                              {:current-user-id api/*current-user-id*
@@ -953,7 +957,7 @@
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
             [:or
-             (remote-sync/worktree-visibility-clause :c.worktree_id)
+             (remote-sync/workspace-visibility-clause :c.workspace_id)
              (shared-main-app-collection-clause :c)]
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
@@ -1034,8 +1038,8 @@
   (memoize/ttl
    ^{::memoize/args-fn (fn [[visibility-config]]
                          (if-let [req-id *request-id*]
-                           [req-id api/*current-user-id* api/*current-worktree-id* visibility-config]
-                           [(random-uuid) api/*current-user-id* api/*current-worktree-id* visibility-config]))}
+                           [req-id api/*current-user-id* api/*current-workspace-id* visibility-config]
+                           [(random-uuid) api/*current-user-id* api/*current-workspace-id* visibility-config]))}
    (fn
      [visibility-config]
      (cond-> (or (t2/select-pks-set :model/Collection {:where (visible-collection-filter-clause :id visibility-config)})
@@ -1828,10 +1832,10 @@
 (t2.util/maybe-derive :model/Collection ::t2.before-insert/before-insert)
 
 (methodical/defmethod t2.before-insert/before-insert :model/Collection
-  "Personal Collections, the Trash, and the Library are always main-app content (`worktree_id` `nil`), regardless
-  of the worktree active at creation time -- they're single shared system collections, not duplicated per
-  worktree. This forces `worktree_id` back to `nil` for them *after* `:hook/worktree-id`'s before-insert (a
-  `next-method` further down this chain) has stamped it from the ambient worktree scope."
+  "Personal Collections, the Trash, and the Library are always main-app content (`workspace_id` `nil`), regardless
+  of the workspace active at creation time -- they're single shared system collections, not duplicated per
+  workspace. This forces `workspace_id` back to `nil` for them *after* `:hook/workspace-id`'s before-insert (a
+  `next-method` further down this chain) has stamped it from the ambient workspace scope."
   [model {collection-name :name :keys [type] :as collection}]
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
@@ -1846,7 +1850,7 @@
                      (next-method model collection)
                      collection)]
     (cond-> collection
-      (shared-main-app-collection? collection) (assoc :worktree_id nil))))
+      (shared-main-app-collection? collection) (assoc :workspace_id nil))))
 
 (defn- copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
@@ -2037,7 +2041,7 @@
       (check-changes-allowed-for-protected-collection collection-before-updates collection-updates))
     ;; (2) make sure the location is valid if we're changing it
     (assert-valid-location collection-updates)
-    (assert-location-parent-same-worktree collection-before-updates collection-updates)
+    (assert-location-parent-same-workspace collection-before-updates collection-updates)
     ;; (3) make sure Collection namespace is valid
     (when (contains? collection-updates :namespace)
       (when-not (namespace-equals? (:namespace collection-before-updates) (:namespace collection-updates))
@@ -2529,7 +2533,7 @@
                   :created-at           true
                   ;; intentionally not tracked
                   :updated-at           false
-                  :worktree-id          true}
+                  :workspace-id          true}
    :search-terms [:name]
    :render-terms {:archived-directly          true
                   ;; Why not make this a search term? I suspect it was just overlooked before.
@@ -2560,6 +2564,6 @@
                                                                         library-metrics-collection-type]]))))
 
 (defn collections-in-namespace
-  "Return all collections in the given namespace, within the current remote-sync worktree scope."
+  "Return all collections in the given namespace, within the current remote-sync workspace scope."
   [namespace]
-  (t2/select :model/Collection :namespace (name namespace) :worktree_id api/*current-worktree-id*))
+  (t2/select :model/Collection :namespace (name namespace) :workspace_id api/*current-workspace-id*))

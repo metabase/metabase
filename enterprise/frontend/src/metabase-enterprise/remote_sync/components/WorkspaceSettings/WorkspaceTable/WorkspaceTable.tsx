@@ -4,36 +4,36 @@ import { t } from "ttag";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import type { TreeTableColumnDef } from "metabase/ui";
 import { Box, TreeTable, useTreeTableInstance } from "metabase/ui";
-import type { RemoteSyncWorktree } from "metabase-types/api";
+import type { Workspace } from "metabase-types/api";
 
 import { getColumns, getNodeId, getRowProps } from "./utils";
 
-type WorktreeTableProps = {
-  worktrees: RemoteSyncWorktree[];
+type WorkspaceTableProps = {
+  workspaces: Workspace[];
 };
 
-export function WorktreeTable({ worktrees }: WorktreeTableProps) {
-  const columns: TreeTableColumnDef<RemoteSyncWorktree>[] = useMemo(
+export function WorkspaceTable({ workspaces }: WorkspaceTableProps) {
+  const columns: TreeTableColumnDef<Workspace>[] = useMemo(
     () => getColumns(),
     [],
   );
 
-  const instance = useTreeTableInstance<RemoteSyncWorktree>({
-    data: worktrees,
+  const instance = useTreeTableInstance<Workspace>({
+    data: workspaces,
     columns,
     getNodeId,
     defaultRowHeight: 48,
   });
 
   return (
-    <Box data-testid="worktree-table">
+    <Box data-testid="workspace-table">
       <TreeTable
         instance={instance}
         hierarchical={false}
         headerVariant="pill"
-        ariaLabel={t`Worktrees`}
+        ariaLabel={t`Workspaces`}
         getRowProps={getRowProps}
-        emptyState={<ListEmptyState label={t`No worktrees yet`} />}
+        emptyState={<ListEmptyState label={t`No workspaces yet`} />}
       />
     </Box>
   );

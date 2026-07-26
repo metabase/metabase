@@ -471,9 +471,9 @@ describe("Remote Sync", () => {
       });
     });
 
-    describe("Worktrees", () => {
-      it("can edit and push a change from a worktree, then pull it into main after merging outside the app", () => {
-        const WORKTREE_BRANCH = `worktree-branch-${Date.now()}`;
+    describe("Workspaces", () => {
+      it("can edit and push a change from a workspace, then pull it into main after merging outside the app", () => {
+        const WORKSPACE_BRANCH = `workspace-branch-${Date.now()}`;
         const RENAMED_QUESTION_NAME = `${REMOTE_QUESTION_NAME}1`;
 
         H.configureGitWithNewSyncedCollection("read-write").as(
@@ -501,31 +501,31 @@ describe("Remote Sync", () => {
           .click();
         H.waitForTask({ taskName: "export" });
 
-        cy.visit("/admin/settings/remote-sync/worktrees");
-        cy.button(/Create a worktree/).click();
+        cy.visit("/admin/settings/remote-sync/workspaces");
+        cy.button(/Create a workspace/).click();
         H.modal()
           .findByLabelText(/Branch/)
           .click()
-          .type(WORKTREE_BRANCH);
+          .type(WORKSPACE_BRANCH);
         H.popover()
           .findByRole("option", {
-            name: new RegExp(`Create new branch.*${WORKTREE_BRANCH}`),
+            name: new RegExp(`Create new branch.*${WORKSPACE_BRANCH}`),
           })
           .click();
         H.modal().button("Create").click();
         H.modal().should("not.exist");
 
         cy.intercept("PUT", "/api/user/*").as("updateUser");
-        cy.findByRole("row", { name: WORKTREE_BRANCH }).within(() => {
-          cy.findByRole("button", { name: "Worktree actions" }).click();
+        cy.findByRole("row", { name: WORKSPACE_BRANCH }).within(() => {
+          cy.findByRole("button", { name: "Workspace actions" }).click();
         });
         H.popover()
-          .findByRole("menuitem", { name: /Enter worktree/ })
+          .findByRole("menuitem", { name: /Enter workspace/ })
           .click();
         cy.wait("@updateUser");
 
         cy.visit("/");
-        H.getGitSyncControls().should("contain.text", WORKTREE_BRANCH);
+        H.getGitSyncControls().should("contain.text", WORKSPACE_BRANCH);
         H.clickPullOption();
         H.waitForTask({ taskName: "import" });
 
@@ -551,15 +551,15 @@ describe("Remote Sync", () => {
           .click();
         H.waitForTask({ taskName: "export" });
 
-        H.mergeBranchIntoMain(WORKTREE_BRANCH);
+        H.mergeBranchIntoMain(WORKSPACE_BRANCH);
 
-        cy.visit("/admin/settings/remote-sync/worktrees");
+        cy.visit("/admin/settings/remote-sync/workspaces");
         cy.intercept("PUT", "/api/user/*").as("updateUserLeave");
-        cy.findByRole("row", { name: WORKTREE_BRANCH }).within(() => {
-          cy.findByRole("button", { name: "Worktree actions" }).click();
+        cy.findByRole("row", { name: WORKSPACE_BRANCH }).within(() => {
+          cy.findByRole("button", { name: "Workspace actions" }).click();
         });
         H.popover()
-          .findByRole("menuitem", { name: /Leave worktree/ })
+          .findByRole("menuitem", { name: /Leave workspace/ })
           .click();
         cy.wait("@updateUserLeave");
 

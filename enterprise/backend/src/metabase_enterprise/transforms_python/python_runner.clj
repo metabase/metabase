@@ -213,7 +213,7 @@
                                        source-tables)
         payload                  {:code                code
                                   :library             (t2/select-fn->fn :path :source :model/PythonLibrary
-                                                                         :worktree_id api/*current-worktree-id*)
+                                                                         :workspace_id api/*current-workspace-id*)
                                   :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
                                   :request_id          (or request-id run-id)
                                   :output_url          (:url output)

@@ -46,9 +46,9 @@ export const GitSyncControls = () => {
   const conflictVariant = useSelector(getSyncConflictVariant);
   // Branch switching now lives in the instance Settings panel (behind destructive-action guard rails),
   // so these controls show the current branch read-only and expose only Push/Pull. When the user is in
-  // a worktree, `currentBranch` is already the worktree's branch (not the instance's git branch), so
+  // a workspace, `currentBranch` is already the workspace's branch (not the instance's git branch), so
   // push/pull/preflight below operate on it without any extra plumbing here.
-  const { isVisible, currentBranch, isWorktree } = useGitSyncVisible();
+  const { isVisible, currentBranch, isWorkspace } = useGitSyncVisible();
 
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
@@ -282,9 +282,9 @@ export const GitSyncControls = () => {
               <Text fw="bold" c="text-secondary" size="sm" lh="md" truncate>
                 {currentBranch}
               </Text>
-              {isWorktree && (
+              {isWorkspace && (
                 <Text size="xs" c="text-tertiary" lh="md">
-                  {t`worktree`}
+                  {t`workspace`}
                 </Text>
               )}
             </Group>

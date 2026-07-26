@@ -33,7 +33,7 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/worktree-id))
+  (derive :hook/workspace-id))
 
 (def DocumentName
   "Validations for the name of a document"
@@ -145,7 +145,7 @@
            :updated-at :updated_at
            :last-viewed-at :last_viewed_at
            :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
-           :worktree-id true}
+           :workspace-id true}
    :search-terms {:name true
                   :document document->search-text}
    ;; Document bodies are full-text searchable (via `document->search-text` above) but are
@@ -288,6 +288,6 @@
   model)
 
 (t2/define-before-update :model/Document [model]
-  (remote-sync/check-parent-same-worktree model :model/Collection :collection_id)
+  (remote-sync/check-parent-same-workspace model :model/Collection :collection_id)
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
   model)

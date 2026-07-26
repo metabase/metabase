@@ -27,18 +27,18 @@
 
 (defn enable-snippet-tracking!
   "Mark all existing main-app snippets and snippets-namespace collections as 'create' for initial sync.
-  Library-synced snippets are a main-app-only setting, so worktree-tagged rows are left alone."
+  Library-synced snippets are a main-app-only setting, so workspace-tagged rows are left alone."
   []
   (let [timestamp (t/offset-date-time)
         rows      (concat
-                   (for [coll (t2/select [:model/Collection :id :name] :namespace "snippets" :worktree_id nil)]
+                   (for [coll (t2/select [:model/Collection :id :name] :namespace "snippets" :workspace_id nil)]
                      {:model_type        "Collection"
                       :model_id          (:id coll)
                       :model_name        (:name coll)
                       :status            "create"
                       :status_changed_at timestamp})
                    (for [snippet (t2/select [:model/NativeQuerySnippet :id :name :collection_id]
-                                            :worktree_id nil)]
+                                            :workspace_id nil)]
                      {:model_type          "NativeQuerySnippet"
                       :model_id            (:id snippet)
                       :model_name          (:name snippet)
@@ -50,17 +50,17 @@
 
 (defn disable-snippet-tracking!
   "Remove all main-app snippet-related tracking entries. Library-synced snippets are a main-app-only
-  setting, so worktree-tagged rows are left alone."
+  setting, so workspace-tagged rows are left alone."
   []
-  (let [snippet-coll-ids (t2/select-pks-set :model/Collection :namespace "snippets" :worktree_id nil)]
+  (let [snippet-coll-ids (t2/select-pks-set :model/Collection :namespace "snippets" :workspace_id nil)]
     (t2/delete! :model/RemoteSyncObject
                 :model_type "NativeQuerySnippet"
-                :worktree_id nil)
+                :workspace_id nil)
     (when (seq snippet-coll-ids)
       (t2/delete! :model/RemoteSyncObject
                   :model_type "Collection"
                   :model_id [:in snippet-coll-ids]
-                  :worktree_id nil))))
+                  :workspace_id nil))))
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
@@ -90,9 +90,9 @@
    - status: Sync status ('create', 'update', 'removed', 'delete', 'error', 'synced')
    - hydrate-details-fn: Function that takes model-id and returns a map with :name, :collection_id,
                          and optionally :display, :table_id, :table_name
-   - worktree-id: the changed entity's own `:worktree_id` (nil for main-app entities); stamped onto a
-                  freshly-inserted row so a worktree's dirt is tagged to its worktree"
-  [model-type model-id status hydrate-details-fn & {:keys [worktree-id]}]
+   - workspace-id: the changed entity's own `:workspace_id` (nil for main-app entities); stamped onto a
+                  freshly-inserted row so a workspace's dirt is tagged to its workspace"
+  [model-type model-id status hydrate-details-fn & {:keys [workspace-id]}]
   (let [existing (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)]
     (cond
       (not existing)
@@ -107,7 +107,7 @@
                      :model_table_name (:table_name model-details)
                      :status status
                      :status_changed_at (t/offset-date-time)
-                     :worktree_id worktree-id}))
+                     :workspace_id workspace-id}))
       (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
       (t2/delete! :model/RemoteSyncObject (:id existing))
       (= "delete" (:status existing))
@@ -143,9 +143,9 @@
    the other then observes that result — the un-sync re-marking the row, or the eligibility re-check below
    seeing the entity is gone from the synced set.
 
-   `worktree-id` is the changed entity's own `:worktree_id` (nil for main-app entities); stamped onto a
-   freshly-inserted row so a worktree's dirt is tagged to its worktree."
-  [model-spec model-id status & {:keys [worktree-id]}]
+   `workspace-id` is the changed entity's own `:workspace_id` (nil for main-app entities); stamped onto a
+   freshly-inserted row so a workspace's dirt is tagged to its workspace."
+  [model-spec model-id status & {:keys [workspace-id]}]
   (t2/with-transaction [_conn]
     (let [model-type (:model-type model-spec)
           existing   (t2/select-one :model/RemoteSyncObject
@@ -168,7 +168,7 @@
                               :model_id          model-id
                               :status            status
                               :status_changed_at (t/offset-date-time)
-                              :worktree_id       worktree-id}
+                              :workspace_id       workspace-id}
                              fields)))
 
         (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
@@ -215,7 +215,7 @@
         (doseq [child (apply t2/select (:model-key child-spec) (into [fk model-id] cat filter))]
           (when (spec/check-eligibility child-spec child)
             (create-or-update-sync-object-from-spec! child-spec (:id child) status
-                                                     :worktree-id (:worktree_id child))))
+                                                     :workspace-id (:workspace_id child))))
         ;; Ineligible branch: mark existing child RSOs as removed
         (doseq [child-rso (t2/select :model/RemoteSyncObject
                                      :model_type (:model-type child-spec)
@@ -238,7 +238,7 @@
         (log/infof "Creating remote sync object entry for %s %s (status: %s)"
                    model-type model-id status)
         (create-or-update-sync-object-from-spec! model-spec model-id status
-                                                 :worktree-id (:worktree_id object))
+                                                 :workspace-id (:workspace_id object))
         (when (seq (spec/children-specs (:model-key model-spec)))
           (cascade-to-children! model-spec model-id status true)))
       (and existing-entry (not eligible?))
@@ -316,12 +316,12 @@
       (do
         (log/infof "Creating remote sync object entry for collection %s (status: %s)" (:id object) status)
         (create-or-update-remote-sync-object-entry! "Collection" (:id object) status hydrate-collection-details
-                                                    :worktree-id (:worktree_id object)))
+                                                    :workspace-id (:workspace_id object)))
       (and existing-entry (not should-sync?))
       (do
         (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))
         (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" hydrate-collection-details
-                                                    :worktree-id (:worktree_id object))))))
+                                                    :workspace-id (:workspace_id object))))))
 
 ;;; ----------------------------------------- FieldUserSettings Tracking -----------------------------------------------
 ;; When a field is updated in a published table, also track any FieldUserSettings row for that field.

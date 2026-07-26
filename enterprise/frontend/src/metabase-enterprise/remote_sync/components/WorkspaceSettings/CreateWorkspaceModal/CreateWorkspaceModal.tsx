@@ -15,41 +15,41 @@ import {
 import { Button, Group, Modal, SelectItem, Stack, Text } from "metabase/ui";
 import {
   useCreateBranchMutation,
-  useCreateWorktreeMutation,
+  useCreateWorkspaceMutation,
   useGetBranchesQuery,
-  useListWorktreesQuery,
+  useListWorkspacesQuery,
 } from "metabase-enterprise/api";
-import type { RemoteSyncWorktree } from "metabase-types/api";
+import type { Workspace } from "metabase-types/api";
 
 import { getValidationSchema } from "./utils";
 
-type CreateWorktreeModalProps = {
+type CreateWorkspaceModalProps = {
   opened: boolean;
   onClose: () => void;
 };
 
-export function CreateWorktreeModal({
+export function CreateWorkspaceModal({
   opened,
   onClose,
-}: CreateWorktreeModalProps) {
+}: CreateWorkspaceModalProps) {
   return (
     <Modal
       size="30rem"
       padding="xl"
       opened={opened}
       onClose={onClose}
-      title={t`Create a worktree`}
+      title={t`Create a workspace`}
     >
-      <WorktreeFormLoader onClose={onClose} />
+      <WorkspaceFormLoader onClose={onClose} />
     </Modal>
   );
 }
 
-type WorktreeFormLoaderProps = {
+type WorkspaceFormLoaderProps = {
   onClose: () => void;
 };
 
-function WorktreeFormLoader({ onClose }: WorktreeFormLoaderProps) {
+function WorkspaceFormLoader({ onClose }: WorkspaceFormLoaderProps) {
   const mainBranch = useSetting("remote-sync-branch");
   const {
     data: branches = { items: [] },
@@ -57,59 +57,59 @@ function WorktreeFormLoader({ onClose }: WorktreeFormLoaderProps) {
     error: branchesError,
   } = useGetBranchesQuery();
   const {
-    data: worktrees = [],
-    isLoading: isLoadingWorktrees,
-    error: worktreesError,
-  } = useListWorktreesQuery();
+    data: workspaces = [],
+    isLoading: isLoadingWorkspaces,
+    error: workspacesError,
+  } = useListWorkspacesQuery();
 
-  const isLoading = isLoadingBranches || isLoadingWorktrees;
-  const error = branchesError ?? worktreesError;
+  const isLoading = isLoadingBranches || isLoadingWorkspaces;
+  const error = branchesError ?? workspacesError;
 
   if (isLoading || error) {
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
-    <WorktreeForm
+    <WorkspaceForm
       branches={branches.items}
-      worktrees={worktrees}
+      workspaces={workspaces}
       mainBranch={mainBranch}
       onClose={onClose}
     />
   );
 }
 
-type CreateWorktreeFormValues = {
+type CreateWorkspaceFormValues = {
   branch: string | null;
 };
 
-const INITIAL_VALUES: CreateWorktreeFormValues = { branch: null };
+const INITIAL_VALUES: CreateWorkspaceFormValues = { branch: null };
 
-type WorktreeFormProps = {
+type WorkspaceFormProps = {
   branches: string[];
-  worktrees: RemoteSyncWorktree[];
+  workspaces: Workspace[];
   mainBranch: string | null | undefined;
   onClose: () => void;
 };
 
-function WorktreeForm({
+function WorkspaceForm({
   branches,
-  worktrees,
+  workspaces,
   mainBranch,
   onClose,
-}: WorktreeFormProps) {
+}: WorkspaceFormProps) {
   const [
     createBranch,
     { isSuccess: isBranchCreated, originalArgs: createdBranchArgs },
   ] = useCreateBranchMutation();
-  const [createWorktree] = useCreateWorktreeMutation();
+  const [createWorkspace] = useCreateWorkspaceMutation();
 
   const validationSchema = useMemo(
-    () => getValidationSchema(worktrees, mainBranch),
-    [worktrees, mainBranch],
+    () => getValidationSchema(workspaces, mainBranch),
+    [workspaces, mainBranch],
   );
 
-  const handleSubmit = async ({ branch }: CreateWorktreeFormValues) => {
+  const handleSubmit = async ({ branch }: CreateWorkspaceFormValues) => {
     if (!branch) {
       return;
     }
@@ -123,7 +123,7 @@ function WorktreeForm({
       }
     }
 
-    await createWorktree({ branch }).unwrap();
+    await createWorkspace({ branch }).unwrap();
     onClose();
   };
 

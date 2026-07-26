@@ -192,18 +192,18 @@
                                      [:= :search_index.model [:inline "table"]]
                                      clause]])))))
 
-(def ^:private root-content-worktree-column
-  "The content table's own `worktree_id` column, qualified with its `search-query-for-model` FROM alias, for every
-  model whose `add-collection-join-and-where-clauses` call needs worktree isolation on top of collection
-  permissions. `permitted-collections-clause`'s root-collection branch admits root-level rows from every worktree,
+(def ^:private root-content-workspace-column
+  "The content table's own `workspace_id` column, qualified with its `search-query-for-model` FROM alias, for every
+  model whose `add-collection-join-and-where-clauses` call needs workspace isolation on top of collection
+  permissions. `permitted-collections-clause`'s root-collection branch admits root-level rows from every workspace,
   so root content additionally needs this per-row check; non-root content is already scoped transitively through
-  its (worktree-scoped) collection."
-  {"card"      :card.worktree_id
-   "dataset"   :card.worktree_id
-   "metric"    :card.worktree_id
-   "action"    :action.worktree_id
-   "document"  :document.worktree_id
-   "dashboard" :dashboard.worktree_id})
+  its (workspace-scoped) collection."
+  {"card"      :card.workspace_id
+   "dataset"   :card.workspace_id
+   "metric"    :card.workspace_id
+   "action"    :action.workspace_id
+   "document"  :document.workspace_id
+   "dashboard" :dashboard.workspace_id})
 
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
@@ -222,14 +222,14 @@
                                  [:= [:inline 1] [:inline 1]]
                                  (search.permissions/permitted-collections-clause search-ctx collection-id-col))
         personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)
-        worktree-column        (root-content-worktree-column model)]
+        workspace-column        (root-content-workspace-column model)]
     (-> honeysql-query
         (sql.helpers/where permitted-clause)
         (cond->
          ;; add a JOIN against Collection *unless* the source table is already Collection
          (not= model "collection") (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
          personal-clause           (sql.helpers/where personal-clause)
-         worktree-column           (sql.helpers/where (remote-sync/worktree-visibility-clause worktree-column))))))
+         workspace-column           (sql.helpers/where (remote-sync/workspace-visibility-clause workspace-column))))))
 
 (mu/defn- replace-select :- :map
   "Replace a select from query that has alias is `target-alias` with [`with` `target-alias`] column, throw an error if
@@ -625,7 +625,7 @@
 (defmethod search-query-for-model "transform"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/where (remote-sync/worktree-visibility-clause :transform.worktree_id))))
+      (sql.helpers/where (remote-sync/workspace-visibility-clause :transform.workspace_id))))
 
 (defmethod search-query-for-model "dashboard"
   [model search-ctx]
@@ -647,7 +647,7 @@
     {}
     {:current-user-id current-user-id
      :is-superuser?   is-superuser?})
-   (remote-sync/worktree-visibility-clause :model.worktree_id)))
+   (remote-sync/workspace-visibility-clause :model.workspace_id)))
 
 (defmethod search-query-for-model "indexed-entity"
   [model search-ctx]

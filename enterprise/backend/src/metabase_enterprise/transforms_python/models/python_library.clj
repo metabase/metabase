@@ -22,6 +22,15 @@
     path
     (str path ".py")))
 
+;; Derive the model traits BEFORE defining any `before-*`/`after-*` methods. `:hook/timestamped?`/`:hook/entity-id`/
+;; `:hook/workspace-id` are already members of toucan2's `::before-insert`/`::before-update` hierarchies, so deriving
+;; them first means this model's own `define-before-insert`/`-before-update` below see it as an existing member and do
+;; not add a redundant *direct* hierarchy edge. A redundant direct+transitive edge is exactly what makes
+;; `clojure.core/underive`'s hash-ordered hierarchy replay throw "already has X as ancestor" (see the note in
+;; `metabase.models.interface`).
+(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id :hook/workspace-id]]
+  (derive :model/PythonLibrary trait))
+
 (t2/define-before-insert :model/PythonLibrary
   [library]
   (update library :path normalize-path))
@@ -32,12 +41,9 @@
     (update library :path normalize-path)
     library))
 
-(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id :hook/worktree-id]]
-  (derive :model/PythonLibrary trait))
-
 (defmethod mi/can-read? :model/PythonLibrary
   ([instance]
-   (and (remote-sync/worktree-accessible? instance)
+   (and (remote-sync/workspace-accessible? instance)
         (perms/has-any-transforms-permission? api/*current-user-id*)))
   ([model pk]
    (when-let [library (t2/select-one model pk)]
@@ -45,7 +51,7 @@
 
 (defmethod mi/can-write? :model/PythonLibrary
   ([instance]
-   (and (remote-sync/worktree-accessible? instance)
+   (and (remote-sync/workspace-accessible? instance)
         (perms/has-any-transforms-permission? api/*current-user-id*)))
   ([model pk]
    (when-let [library (t2/select-one model pk)]
@@ -75,7 +81,7 @@
   [path]
   (let [normalized-path (normalize-path path)]
     (validate-path! normalized-path)
-    (t2/select-one :model/PythonLibrary :path normalized-path :worktree_id api/*current-worktree-id*)))
+    (t2/select-one :model/PythonLibrary :path normalized-path :workspace_id api/*current-workspace-id*)))
 
 (defn update-python-library-source!
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
@@ -83,7 +89,7 @@
   (let [normalized-path (normalize-path path)]
     (validate-path! normalized-path)
     (let [id (app-db/update-or-insert! :model/PythonLibrary
-                                       {:path normalized-path :worktree_id api/*current-worktree-id*}
+                                       {:path normalized-path :workspace_id api/*current-workspace-id*}
                                        (constantly {:path normalized-path :source source}))]
       (t2/select-one :model/PythonLibrary id))))
 

@@ -8,22 +8,22 @@ import { useToast } from "metabase/common/hooks/use-toast";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
-import { useDeleteWorktreeMutation } from "metabase-enterprise/api";
-import type { RemoteSyncWorktree } from "metabase-types/api";
+import { useDeleteWorkspaceMutation } from "metabase-enterprise/api";
+import type { Workspace } from "metabase-types/api";
 
-type WorktreeMenuProps = {
-  worktree: RemoteSyncWorktree;
+type WorkspaceMenuProps = {
+  workspace: Workspace;
 };
 
-export function WorktreeMenu({ worktree }: WorktreeMenuProps) {
+export function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
   const [sendToast] = useToast();
   const currentUser = useSelector(getUser);
   const { modalContent: confirmationModal, show: showConfirmation } =
     useConfirmation();
   const [updateUser] = useUpdateUserMutation();
-  const [deleteWorktree] = useDeleteWorktreeMutation();
+  const [deleteWorkspace] = useDeleteWorkspaceMutation();
 
-  const isCurrentUserMember = currentUser?.worktree_id === worktree.id;
+  const isCurrentUserMember = currentUser?.workspace_id === workspace.id;
 
   function handleIconClick(event: MouseEvent) {
     event.preventDefault();
@@ -37,7 +37,7 @@ export function WorktreeMenu({ worktree }: WorktreeMenuProps) {
     try {
       await updateUser({
         id: currentUser.id,
-        worktree_id: isCurrentUserMember ? null : worktree.id,
+        workspace_id: isCurrentUserMember ? null : workspace.id,
       }).unwrap();
     } catch (err) {
       sendToast({
@@ -45,8 +45,8 @@ export function WorktreeMenu({ worktree }: WorktreeMenuProps) {
         message: getErrorMessage(
           err,
           isCurrentUserMember
-            ? t`Failed to leave worktree`
-            : t`Failed to enter worktree`,
+            ? t`Failed to leave workspace`
+            : t`Failed to enter workspace`,
         ),
       });
     }
@@ -54,17 +54,17 @@ export function WorktreeMenu({ worktree }: WorktreeMenuProps) {
 
   const handleDelete = () => {
     showConfirmation({
-      title: t`Delete this worktree?`,
+      title: t`Delete this workspace?`,
       message: t`Any users assigned to it will be unassigned.`,
       confirmButtonText: t`Delete`,
       confirmButtonProps: { color: "danger" },
       onConfirm: async () => {
         try {
-          await deleteWorktree(worktree.id).unwrap();
+          await deleteWorkspace(workspace.id).unwrap();
         } catch (err) {
           sendToast({
             icon: "warning",
-            message: getErrorMessage(err, t`Failed to delete worktree`),
+            message: getErrorMessage(err, t`Failed to delete workspace`),
           });
         }
       },
@@ -77,7 +77,7 @@ export function WorktreeMenu({ worktree }: WorktreeMenuProps) {
       <Menu position="bottom-end">
         <Menu.Target>
           <ActionIcon
-            aria-label={t`Worktree actions`}
+            aria-label={t`Workspace actions`}
             onClick={handleIconClick}
           >
             <Icon name="ellipsis" />
@@ -90,7 +90,7 @@ export function WorktreeMenu({ worktree }: WorktreeMenuProps) {
             }
             onClick={handleToggleMembership}
           >
-            {isCurrentUserMember ? t`Leave worktree` : t`Enter worktree`}
+            {isCurrentUserMember ? t`Leave workspace` : t`Enter workspace`}
           </Menu.Item>
           <Menu.Item
             c="danger"

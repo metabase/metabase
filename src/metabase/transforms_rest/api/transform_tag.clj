@@ -18,7 +18,7 @@
    [:id pos-int?]
    [:name [:or :string LocalizedString]]
    [:entity_id [:maybe :string]]
-   [:worktree_id {:optional true} [:maybe pos-int?]]
+   [:workspace_id {:optional true} [:maybe pos-int?]]
    [:created_at :any]
    [:updated_at :any]
    [:built_in_type {:optional true} [:maybe :string]]
@@ -65,7 +65,7 @@
    _query-params]
   (log/info "Getting all transform tags")
   (api/check-data-analyst)
-  (t2/hydrate (t2/select :model/TransformTag {:where    (remote-sync/worktree-visibility-clause)
+  (t2/hydrate (t2/select :model/TransformTag {:where    (remote-sync/workspace-visibility-clause)
                                               :order-by [[:name :asc]]})
               :can_run))
 

@@ -4,15 +4,15 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupRemoteSyncEndpoints,
-  setupRemoteSyncWorktreeEndpoint,
+  setupWorkspaceEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
-  createMockRemoteSyncWorktree,
   createMockTokenFeatures,
   createMockUser,
+  createMockWorkspace,
 } from "metabase-types/api/mocks";
 
 import { taskUpdated } from "../../sync-task-slice";
@@ -35,9 +35,9 @@ const setup = ({
   syncType = "read-write",
   dirty = [],
   branches = ["main", "develop"],
-  worktreeId = null,
-  worktree,
-  worktreeDelay = 0,
+  workspaceId = null,
+  workspace,
+  workspaceDelay = 0,
 }: {
   isAdmin?: boolean;
   remoteSyncEnabled?: boolean;
@@ -48,9 +48,9 @@ const setup = ({
   syncType?: "read-only" | "read-write";
   dirty?: ReturnType<typeof createMockDirtyEntity>[];
   branches?: string[];
-  worktreeId?: number | null;
-  worktree?: ReturnType<typeof createMockRemoteSyncWorktree>;
-  worktreeDelay?: number;
+  workspaceId?: number | null;
+  workspace?: ReturnType<typeof createMockWorkspace>;
+  workspaceDelay?: number;
 } = {}) => {
   setupRemoteSyncEndpoints({
     branches,
@@ -62,11 +62,11 @@ const setup = ({
   setupCollectionEndpoints();
   setupSessionEndpoints({ remoteSyncEnabled, currentBranch, syncType });
 
-  if (typeof worktreeId === "number") {
-    setupRemoteSyncWorktreeEndpoint(
-      worktreeId,
-      worktree ?? createMockRemoteSyncWorktree({ id: worktreeId }),
-      { delay: worktreeDelay },
+  if (typeof workspaceId === "number") {
+    setupWorkspaceEndpoint(
+      workspaceId,
+      workspace ?? createMockWorkspace({ id: workspaceId }),
+      { delay: workspaceDelay },
     );
   }
 
@@ -76,7 +76,7 @@ const setup = ({
       remoteSyncEnabled,
       currentBranch,
       syncType,
-      worktreeId,
+      workspaceId,
     }),
   });
 };
@@ -167,21 +167,21 @@ describe("GitSyncControls", () => {
     });
   });
 
-  describe("worktree branch", () => {
-    it("shows the git branch with no worktree label when the user has no worktree", async () => {
+  describe("workspace branch", () => {
+    it("shows the git branch with no workspace label when the user has no workspace", async () => {
       setup({ currentBranch: "main" });
 
       await waitFor(() => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
-      expect(screen.queryByText("worktree")).not.toBeInTheDocument();
+      expect(screen.queryByText("workspace")).not.toBeInTheDocument();
     });
 
-    it("renders nothing while the worktree branch is loading", async () => {
+    it("renders nothing while the workspace branch is loading", async () => {
       setup({
         currentBranch: "main",
-        worktreeId: 42,
-        worktreeDelay: 50,
+        workspaceId: 42,
+        workspaceDelay: 50,
       });
 
       expect(screen.queryByTestId("git-sync-controls")).not.toBeInTheDocument();
@@ -192,20 +192,20 @@ describe("GitSyncControls", () => {
       });
     });
 
-    it("shows the worktree branch and a 'worktree' label once loaded", async () => {
+    it("shows the workspace branch and a 'workspace' label once loaded", async () => {
       setup({
         currentBranch: "main",
-        worktreeId: 42,
-        worktree: createMockRemoteSyncWorktree({
+        workspaceId: 42,
+        workspace: createMockWorkspace({
           id: 42,
-          branch: "feature/my-worktree",
+          branch: "feature/my-workspace",
         }),
       });
 
       await waitFor(() => {
-        expect(getBranchButton(/feature\/my-worktree/)).toBeInTheDocument();
+        expect(getBranchButton(/feature\/my-workspace/)).toBeInTheDocument();
       });
-      expect(screen.getByText("worktree")).toBeInTheDocument();
+      expect(screen.getByText("workspace")).toBeInTheDocument();
       expect(queryBranchButton(/^main$/)).not.toBeInTheDocument();
     });
   });

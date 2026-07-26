@@ -22,7 +22,7 @@
    (list-native-query-snippets false))
   ([archived :- ms/BooleanValue]
    (let [snippets (t2/select :model/NativeQuerySnippet
-                             {:where    [:and [:= :archived archived] (remote-sync/worktree-visibility-clause)]
+                             {:where    [:and [:= :archived archived] (remote-sync/workspace-visibility-clause)]
                               :order-by [[:%lower.name :asc]]})]
      (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced))))
 
@@ -54,7 +54,7 @@
   (get-native-query-snippet id))
 
 (defn- check-snippet-name-is-unique [snippet-name]
-  (when (t2/exists? :model/NativeQuerySnippet :name snippet-name :worktree_id api/*current-worktree-id*)
+  (when (t2/exists? :model/NativeQuerySnippet :name snippet-name :workspace_id api/*current-workspace-id*)
     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
                     {:status-code 400}))))
 

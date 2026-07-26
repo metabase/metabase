@@ -210,9 +210,9 @@
     hidden tables stay visible.
   - Transform: Analysts can view any transform they have source view permission to.
 
-  Worktree-scoped models (see [[serdes/worktree-scoped-models]]) also get a
-  [[remote-sync/worktree-visibility-clause]] conjunct, so a caller only ever sees entities in their own
-  remote-sync worktree (nil for the main app)."
+  Workspace-scoped models (see [[serdes/workspace-scoped-models]]) also get a
+  [[remote-sync/workspace-visibility-clause]] conjunct, so a caller only ever sees entities in their own
+  remote-sync workspace (nil for the main app)."
   ([entity-type-field entity-id-field]
    (visible-entities-filter-clause entity-type-field entity-id-field nil))
   ([entity-type-field entity-id-field {:keys [include-archived-items] :or {include-archived-items :exclude}}]
@@ -220,9 +220,9 @@
          (keep (fn [[entity-type model]]
                  (let [table-name (t2/table-name model)
                        id-column (keyword (name table-name) "id")
-                       worktree-clause (when (serdes/worktree-scoped? model)
-                                         (remote-sync/worktree-visibility-clause
-                                          (keyword (name table-name) "worktree_id")))]
+                       workspace-clause (when (serdes/workspace-scoped? model)
+                                          (remote-sync/workspace-visibility-clause
+                                           (keyword (name table-name) "workspace_id")))]
                    (case model
                      ;; Sandbox is superuser-only
                      :model/Sandbox
@@ -238,7 +238,7 @@
                         [:= entity-type-field (name entity-type)]
                         [:in entity-id-field {:select [:id]
                                               :from   [table-name]
-                                              :where  [:and worktree-clause]}]]
+                                              :where  [:and workspace-clause]}]]
 
                        api/*is-data-analyst?*
                        [:and
@@ -247,7 +247,7 @@
                          {:select [:id]
                           :from   [table-name]
                           :where  [:and
-                                   worktree-clause
+                                   workspace-clause
                                    [:in :source_database_id
                                     (perms/visible-database-filter-select
                                      {:user-id          api/*current-user-id*
@@ -267,7 +267,7 @@
                           [:in entity-id-field {:select [:id]
                                                 :from   [table-name]
                                                 :where  [:and
-                                                         worktree-clause
+                                                         workspace-clause
                                                          ;; Filter by collection visibility
                                                          (collection/visible-collection-filter-clause
                                                           (keyword (name table-name) "collection_id")
@@ -304,7 +304,7 @@
                         [:in entity-id-field {:select [:id]
                                               :from   [table-name]
                                               :where  [:and
-                                                       worktree-clause
+                                                       workspace-clause
                                                        ;; Check that user can see the table this entity belongs to
                                                        [:in table-id-column
                                                         {:select [:metabase_table.id]

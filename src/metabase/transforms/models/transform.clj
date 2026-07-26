@@ -29,7 +29,7 @@
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
-(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/worktree-id]]
+(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/workspace-id]]
   (derive :model/Transform trait))
 
 (defn- transform-readable?
@@ -175,7 +175,7 @@
 
 (t2/define-before-update :model/Transform
   [{:keys [source source_database_id] :as transform}]
-  (remote-sync/check-parent-same-worktree transform :model/Collection :collection_id)
+  (remote-sync/check-parent-same-workspace transform :model/Collection :collection_id)
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
@@ -554,7 +554,7 @@
                                   :fields [:source :source_type]}
                   :database-id   :source_database_id
                   :source-type   true
-                  :worktree-id   true}
+                  :workspace-id   true}
    :search-terms [:name :description]
    :render-terms {:transform-name :name
                   :transform-id   :id}})

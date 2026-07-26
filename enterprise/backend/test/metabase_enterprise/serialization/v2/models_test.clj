@@ -50,8 +50,8 @@
               fields (u.conn/app-db-column-types (mdb/app-db) t)
               spec'  (-> (merge (zipmap (:copy spec) (repeat :copy))
                                 (zipmap (:skip spec) (repeat :skip))
-                                ;; worktree columns are derived membership, never serialized
-                                (zipmap [:id :updated_at :worktree_id :worktree_id_helper] (repeat :skip))
+                                ;; workspace columns are derived membership, never serialized
+                                (zipmap [:id :updated_at :workspace_id :workspace_id_helper] (repeat :skip))
                                 (:transform spec))
                          ;; `nil`s are mostly fields which differ on `opts`
                          (dissoc nil))]

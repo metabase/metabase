@@ -1633,7 +1633,7 @@
           :question
           :additional-constraints [(if (= schema (schema.table/root-collection-schema-name))
                                      [:= :collection_id nil]
-                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema :worktree_id api/*current-worktree-id*)))])])
+                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema :workspace_id api/*current-workspace-id*)))])])
          (map schema.table/card->virtual-table))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1668,7 +1668,7 @@
           :model
           :additional-constraints [(if (= schema (schema.table/root-collection-schema-name))
                                      [:= :collection_id nil]
-                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema :worktree_id api/*current-worktree-id*)))])])
+                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema :workspace_id api/*current-workspace-id*)))])])
          (map schema.table/card->virtual-table))))
 
 ;;; -------------------------------- GET /api/database/:id/settings-available ------------------------------------

@@ -6,7 +6,7 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
-   [metabase-enterprise.remote-sync.models.remote-sync-worktree :as worktree]
+   [metabase-enterprise.remote-sync.models.workspace :as workspace]
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
@@ -27,7 +27,7 @@
   "Compare-and-swap guard against the multi-tab staleness hole: the client sends the branch it believes it is
   operating on, and we reject the request when that disagrees with the authoritative branch — e.g. another
   session switched branches since this client last loaded its settings. `current` defaults to the
-  `remote-sync-branch` setting; callers inside a worktree pass its own branch instead, since a worktree never
+  `remote-sync-branch` setting; callers inside a workspace pass its own branch instead, since a workspace never
   touches that setting. Throws a 409 carrying `:branch_mismatch true` and the `:current_branch`. Returns the
   validated branch on success."
   ([requested-branch] (check-branch-matches-setting! requested-branch (settings/remote-sync-branch)))
@@ -41,10 +41,10 @@
    requested-branch))
 
 (defn- effective-branch
-  "The branch a remote-sync operation actually targets: `worktree-id`'s own branch when set, else the
+  "The branch a remote-sync operation actually targets: `workspace-id`'s own branch when set, else the
   `remote-sync-branch` setting (the main app)."
-  [worktree-id]
-  (or (some-> worktree-id worktree/worktree-branch)
+  [workspace-id]
+  (or (some-> workspace-id workspace/workspace-branch)
       (settings/remote-sync-branch)))
 
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
@@ -67,16 +67,16 @@
        [:expected_branch ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (let [worktree-id api/*current-worktree-id*
-        current     (effective-branch worktree-id)]
+  (let [workspace-id api/*current-workspace-id*
+        current     (effective-branch workspace-id)]
     (check-branch-matches-setting! expected_branch current)
-    (let [branch-name (if worktree-id current (or branch current))
+    (let [branch-name (if workspace-id current (or branch current))
           user-id     api/*current-user-id*
           {task-id :id}
           (impl/async-import!
            branch-name force {}
            :merge?      (or merge false)
-           :worktree-id worktree-id
+           :workspace-id workspace-id
            :on-success  (fn [task-id _result]
                           (impl/publish-sync-event! :event/remote-sync-import task-id {:branch branch-name} user-id)))]
       {:status :success
@@ -142,8 +142,8 @@
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")
-  (let [worktree-id api/*current-worktree-id*
-        branch-name (check-branch-matches-setting! branch (effective-branch worktree-id))
+  (let [workspace-id api/*current-workspace-id*
+        branch-name (check-branch-matches-setting! branch (effective-branch workspace-id))
         user-id     api/*current-user-id*
         {task-id :id}
         (impl/async-export!
@@ -151,7 +151,7 @@
          (or force false)
          (or message "Exported from Metabase")
          :merge?      (or merge false)
-         :worktree-id worktree-id
+         :workspace-id workspace-id
          :on-success  (fn [task-id _result]
                         (impl/publish-sync-event! :event/remote-sync-export task-id {:branch branch-name} user-id)))]
     {:message "Export task started"
@@ -175,7 +175,7 @@
    {:keys [branch]} :- [:map [:branch ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (let [branch-name (check-branch-matches-setting! branch (effective-branch api/*current-worktree-id*))
+  (let [branch-name (check-branch-matches-setting! branch (effective-branch api/*current-workspace-id*))
         {:keys [diverged? clean? conflicts summary force-push-casualties reason]}
         (impl/preview-export-merge branch-name)]
     {:has_changes            diverged?
@@ -375,41 +375,41 @@
       (throw (ex-info (format "Failed to stash changes to branch: %s" (ex-message e))
                       {:status-code 400})))))
 
-;;; ------------------------------------------------- Worktrees -------------------------------------------------
+;;; ------------------------------------------------- Workspaces -------------------------------------------------
 
-(api.macros/defendpoint :get "/worktree" :- remote-sync.schema/WorktreeList
-  "List all remote-sync worktrees. Requires superuser permissions."
+(api.macros/defendpoint :get "/workspace" :- remote-sync.schema/WorkspaceList
+  "List all remote-sync workspaces. Requires superuser permissions."
   []
   (api/check-superuser)
-  (worktree/list-worktrees))
+  (workspace/list-workspaces))
 
-(api.macros/defendpoint :get "/worktree/:id" :- remote-sync.schema/Worktree
-  "Get a single remote-sync worktree by id. Requires superuser permissions."
+(api.macros/defendpoint :get "/workspace/:id" :- remote-sync.schema/Workspace
+  "Get a single remote-sync workspace by id. Requires superuser permissions."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/check-404 (worktree/get-worktree id)))
+  (api/check-404 (workspace/get-workspace id)))
 
-(api.macros/defendpoint :post "/worktree" :- remote-sync.schema/Worktree
-  "Create a remote-sync worktree for `branch`. The branch is not created or switched to here — it is expected to
-  already exist on the source, and its content is materialized into the worktree by a subsequent pull. Requires
+(api.macros/defendpoint :post "/workspace" :- remote-sync.schema/Workspace
+  "Create a remote-sync workspace for `branch`. The branch is not created or switched to here — it is expected to
+  already exist on the source, and its content is materialized into the workspace by a subsequent pull. Requires
   superuser permissions."
   [_route
    _query
    {:keys [branch]} :- [:map [:branch ms/NonBlankString]]]
   (api/check-superuser)
-  (api/check-400 (not (t2/exists? :model/RemoteSyncWorktree :branch branch))
-                 (format "A worktree for branch '%s' already exists." branch))
-  (let [id (t2/insert-returning-pk! :model/RemoteSyncWorktree
+  (api/check-400 (not (t2/exists? :model/Workspace :branch branch))
+                 (format "A workspace for branch '%s' already exists." branch))
+  (let [id (t2/insert-returning-pk! :model/Workspace
                                     {:branch branch :creator_id api/*current-user-id*})]
-    (worktree/get-worktree id)))
+    (workspace/get-workspace id)))
 
-(api.macros/defendpoint :delete "/worktree/:id" :- :nil
-  "Delete a remote-sync worktree: removes all of its materialized content and clears it from any users pointing
+(api.macros/defendpoint :delete "/workspace/:id" :- :nil
+  "Delete a remote-sync workspace: removes all of its materialized content and clears it from any users pointing
   at it. Requires superuser permissions."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/check-404 (t2/exists? :model/RemoteSyncWorktree :id id))
-  (impl/delete-worktree! id)
+  (api/check-404 (t2/exists? :model/Workspace :id id))
+  (impl/delete-workspace! id)
   nil)
 
 (def ^{:arglists '([request respond raise])} routes

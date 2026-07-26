@@ -168,7 +168,7 @@
    _query-params]
   {:items (t2/hydrate (t2/select :model/Document {:where [:and
                                                           (collection/visible-collection-filter-clause)
-                                                          (remote-sync/worktree-visibility-clause)
+                                                          (remote-sync/workspace-visibility-clause)
                                                           [:= :archived false]]})
                       :creator :can_write :is_remote_synced)})
 
@@ -427,7 +427,7 @@
   (t2/select [:model/Document :name :id :public_uuid]
              :public_uuid [:not= nil]
              :archived false
-             :worktree_id api/*current-worktree-id*))
+             :workspace_id api/*current-workspace-id*))
 
 ;;; ------------------------------------------------ Card Downloads --------------------------------------------------
 

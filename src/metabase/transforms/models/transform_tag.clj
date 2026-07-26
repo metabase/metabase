@@ -16,11 +16,11 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
-  (derive :hook/worktree-id))
+  (derive :hook/workspace-id))
 
 (defmethod mi/can-read? :model/TransformTag
   ([instance]
-   (and (remote-sync/worktree-accessible? instance)
+   (and (remote-sync/workspace-accessible? instance)
         (api/is-data-analyst?)))
   ([_model pk]
    (when-let [tag (t2/select-one :model/TransformTag :id pk)]
@@ -28,7 +28,7 @@
 
 (defmethod mi/can-write? :model/TransformTag
   ([instance]
-   (and (remote-sync/worktree-accessible? instance)
+   (and (remote-sync/workspace-accessible? instance)
         (or api/*is-superuser?*
             (and api/*is-data-analyst?*
                  (let [transforms (transform/transforms-with-tags [(:id instance)])]
@@ -59,14 +59,14 @@
                                  [:= :job.active true]]}))))
 
 (defn tag-name-exists?
-  "Check if a tag with the given name already exists in the current worktree."
+  "Check if a tag with the given name already exists in the current workspace."
   [tag-name]
-  (t2/exists? :model/TransformTag :name tag-name :worktree_id api/*current-worktree-id*))
+  (t2/exists? :model/TransformTag :name tag-name :workspace_id api/*current-workspace-id*))
 
 (defn tag-name-exists-excluding?
-  "Check if a tag with the given name exists in the current worktree, excluding the specified ID"
+  "Check if a tag with the given name exists in the current workspace, excluding the specified ID"
   [tag-name tag-id]
-  (t2/exists? :model/TransformTag :name tag-name :id [:not= tag-id] :worktree_id api/*current-worktree-id*))
+  (t2/exists? :model/TransformTag :name tag-name :id [:not= tag-id] :workspace_id api/*current-workspace-id*))
 
 (defn- translate-name [tag]
   (let [values {"hourly"  (i18n/deferred-trs "hourly")

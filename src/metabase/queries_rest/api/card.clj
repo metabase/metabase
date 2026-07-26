@@ -55,7 +55,7 @@
 ;; return all Cards. This is the default filter option.
 (defmethod cards-for-filter-option* :all
   [_]
-  (t2/select :model/Card, :archived false, :worktree_id api/*current-worktree-id*, order-by-name))
+  (t2/select :model/Card, :archived false, :workspace_id api/*current-workspace-id*, order-by-name))
 
 ;; return Cards created by the current user
 (defmethod cards-for-filter-option* :mine
@@ -63,7 +63,7 @@
   (t2/select :model/Card
              :creator_id api/*current-user-id*
              :archived false
-             :worktree_id api/*current-worktree-id*
+             :workspace_id api/*current-workspace-id*
              order-by-name))
 
 ;; return all Cards bookmarked by the current user.
@@ -73,7 +73,7 @@
     (->> (t2/hydrate bookmarks :card)
          (map :card)
          (remove :archived)
-         (filter remote-sync/worktree-accessible?)
+         (filter remote-sync/workspace-accessible?)
          (sort-by :name))))
 
 ;; Return all Cards belonging to Database with `database-id`.
@@ -82,7 +82,7 @@
   (t2/select :model/Card
              :database_id database-id
              :archived false
-             :worktree_id api/*current-worktree-id*
+             :workspace_id api/*current-workspace-id*
              order-by-name))
 
 ;; Return all Cards belonging to `Table` with `table-id`.
@@ -91,13 +91,13 @@
   (t2/select :model/Card
              :table_id table-id
              :archived false
-             :worktree_id api/*current-worktree-id*
+             :workspace_id api/*current-workspace-id*
              order-by-name))
 
 ;; Cards that have been archived.
 (defmethod cards-for-filter-option* :archived
   [_]
-  (t2/select :model/Card, :archived true, :worktree_id api/*current-worktree-id*, order-by-name))
+  (t2/select :model/Card, :archived true, :workspace_id api/*current-workspace-id*, order-by-name))
 
 ;; Cards that are using a given model.
 (defmethod cards-for-filter-option* :using_model
@@ -112,7 +112,7 @@
                                :where [:and
                                        [:= :m.id model-id]
                                        [:not :c.archived]
-                                       (remote-sync/worktree-visibility-clause :c.worktree_id)]
+                                       (remote-sync/workspace-visibility-clause :c.workspace_id)]
                                :order-by [[[:lower :c.name] :asc]]})
        ;; now check if model-id really occurs as a card ID
        (filter (fn [card]
@@ -124,7 +124,7 @@
   (->> (t2/select :model/Card (merge order-by-name
                                      {:where [:and
                                               [:like :dataset_query (str "%" (name model-type) "%" model-id "%")]
-                                              (remote-sync/worktree-visibility-clause)]}))
+                                              (remote-sync/workspace-visibility-clause)]}))
        ;; now check if the segment/metric with model-id really occurs in a filter/aggregation expression
        (filter (fn [{query :dataset_query, :as _card}]
                  (when (seq query)
@@ -154,7 +154,7 @@
   (t2/select [:model/Card :name :id :public_uuid :card_schema]
              :public_uuid [:not= nil]
              :archived false
-             :worktree_id api/*current-worktree-id*))
+             :workspace_id api/*current-workspace-id*))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -169,7 +169,7 @@
   (t2/select [:model/Card :name :id :card_schema]
              :enable_embedding true
              :archived false
-             :worktree_id api/*current-worktree-id*))
+             :workspace_id api/*current-workspace-id*))
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
 (def ^:private card-filter-options

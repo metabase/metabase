@@ -72,12 +72,12 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/worktree-id))
+  (derive :hook/workspace-id))
 
 (defmethod mi/can-read? :model/Segment
   ([instance]
    (let [table (:table (t2/hydrate instance :table))]
-     (and (remote-sync/worktree-accessible? instance)
+     (and (remote-sync/workspace-accessible? instance)
           (mi/can-read? table))))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
@@ -90,7 +90,7 @@
   ([instance]
    (let [table (or (:table instance)
                    (t2/select-one :model/Table :id (:table_id instance)))]
-     (and (remote-sync/worktree-accessible? instance)
+     (and (remote-sync/workspace-accessible? instance)
           (or (mi/superuser?)
               (and api/*is-data-analyst?*
                    (perms/user-has-permission-for-table?
@@ -244,7 +244,7 @@
            ;; should probably change this, but will break legacy search tests
            :created-at false
            :updated-at true
-           :worktree-id true}
+           :workspace-id true}
    :search-terms [:name :description]
    :render-terms {:table-id :table_id
                   :table_description :table.description

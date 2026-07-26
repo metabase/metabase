@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import type { RemoteSyncEntity, RemoteSyncWorktree } from "metabase-types/api";
+import type { RemoteSyncEntity, Workspace } from "metabase-types/api";
 
 export interface RemoteSyncDirtyResponse {
   dirty: RemoteSyncEntity[];
@@ -184,68 +184,72 @@ export const setupRemoteSyncTestConnectionEndpoint = ({
 };
 
 /**
- * Setup the remote-sync worktree GET endpoint
+ * Setup the remote-sync workspace GET endpoint
  */
-export const setupRemoteSyncWorktreeEndpoint = (
-  worktreeId: number,
-  worktree: RemoteSyncWorktree,
+export const setupWorkspaceEndpoint = (
+  workspaceId: number,
+  workspace: Workspace,
   { delay = 0 }: { delay?: number } = {},
 ) => {
-  fetchMock.removeRoute("remote-sync-worktree");
-  fetchMock.get(`path:/api/ee/remote-sync/worktree/${worktreeId}`, worktree, {
-    name: "remote-sync-worktree",
-    delay,
+  fetchMock.removeRoute("workspace");
+  fetchMock.get(
+    `path:/api/ee/remote-sync/workspace/${workspaceId}`,
+    workspace,
+    {
+      name: "workspace",
+      delay,
+    },
+  );
+};
+
+/**
+ * Setup the remote-sync workspace list GET endpoint
+ */
+export const setupListWorkspacesEndpoint = (workspaces: Workspace[]) => {
+  fetchMock.removeRoute("workspace-list");
+  fetchMock.get("path:/api/ee/remote-sync/workspace", workspaces, {
+    name: "workspace-list",
   });
 };
 
 /**
- * Setup the remote-sync worktree list GET endpoint
+ * Setup the remote-sync workspace creation POST endpoint
  */
-export const setupListWorktreesEndpoint = (worktrees: RemoteSyncWorktree[]) => {
-  fetchMock.removeRoute("remote-sync-worktree-list");
-  fetchMock.get("path:/api/ee/remote-sync/worktree", worktrees, {
-    name: "remote-sync-worktree-list",
-  });
-};
-
-/**
- * Setup the remote-sync worktree creation POST endpoint
- */
-export const setupCreateWorktreeEndpoint = (
-  worktree: RemoteSyncWorktree,
+export const setupCreateWorkspaceEndpoint = (
+  workspace: Workspace,
   { error }: { error?: { status: number; message: string } } = {},
 ) => {
-  fetchMock.removeRoute("remote-sync-worktree-create");
+  fetchMock.removeRoute("workspace-create");
   if (error) {
     fetchMock.post(
-      "path:/api/ee/remote-sync/worktree",
+      "path:/api/ee/remote-sync/workspace",
       { status: error.status, body: { message: error.message } },
-      { name: "remote-sync-worktree-create" },
+      { name: "workspace-create" },
     );
   } else {
-    fetchMock.post("path:/api/ee/remote-sync/worktree", worktree, {
-      name: "remote-sync-worktree-create",
+    fetchMock.post("path:/api/ee/remote-sync/workspace", workspace, {
+      name: "workspace-create",
     });
   }
 };
 
 /**
- * Setup the remote-sync worktree deletion DELETE endpoint
+ * Setup the remote-sync workspace deletion DELETE endpoint
  */
-export const setupDeleteWorktreeEndpoint = (
-  worktreeId: number,
+export const setupDeleteWorkspaceEndpoint = (
+  workspaceId: number,
   { error }: { error?: { status: number; message: string } } = {},
 ) => {
-  fetchMock.removeRoute("remote-sync-worktree-delete");
+  fetchMock.removeRoute("workspace-delete");
   if (error) {
     fetchMock.delete(
-      `path:/api/ee/remote-sync/worktree/${worktreeId}`,
+      `path:/api/ee/remote-sync/workspace/${workspaceId}`,
       { status: error.status, body: { message: error.message } },
-      { name: "remote-sync-worktree-delete" },
+      { name: "workspace-delete" },
     );
   } else {
-    fetchMock.delete(`path:/api/ee/remote-sync/worktree/${worktreeId}`, 204, {
-      name: "remote-sync-worktree-delete",
+    fetchMock.delete(`path:/api/ee/remote-sync/workspace/${workspaceId}`, 204, {
+      name: "workspace-delete",
     });
   }
 };

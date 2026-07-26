@@ -88,7 +88,7 @@
   ;; `:document` is the document model's prose-mirror body: it's indexed as searchable text (via
   ;; ast->text) but the raw JSON should never be echoed back in the search response or bloat the index row.
   ;; `:data_layer` also stays IN: Metabot surfaces it on table results so the LLM sees a table's data layer.
-  ;; `:worktree_id` also stays IN, like `:collection_type`/`:collection_location` above: semantic search's
+  ;; `:workspace_id` also stays IN, like `:collection_type`/`:collection_location` above: semantic search's
   ;; `filter-read-permitted` reads it back off the decoded `legacy_input` for `diagnose-row` (which selects only
   ;; `legacy_input`, not the dedicated index column). `metabase.search.impl/serialize` strips it from the response.
   #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document})
@@ -124,7 +124,7 @@
    ;; Precomputed at ingestion (see metabase.search.ingestion) from the curation signals above, so the
    ;; "verified or curated content" filter is a single indexed boolean rather than a composite OR.
    :curated                 :boolean
-   :worktree-id             :int})
+   :workspace-id             :int})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -153,7 +153,7 @@
          :root-collection-type                              ;;  indexed for :library scorer — type of the top-level ancestor collection
          :data-layer                                        ;;  indexed for the :data-layer scorer (table.data_layer; per-tier weights under :data-layer/*)
          :data-authority                                    ;;  input to the precomputed :curated flag (authoritative tables)
-         :worktree-id])                                     ;;  remote-sync worktree isolation (only set by worktree-scoped models)
+         :workspace-id])                                     ;;  remote-sync workspace isolation (only set by workspace-scoped models)
        distinct
        vec))
 
@@ -385,13 +385,13 @@
                [search-model (spec search-model)]))
         search-model->toucan-model))
 
-(defn worktree-scoped-search-models
-  "The search models whose index rows carry a `:worktree_id` (i.e. whose spec selects `:worktree-id`).
-  Every other search model's index rows are global and visible regardless of the caller's worktree."
+(defn workspace-scoped-search-models
+  "The search models whose index rows carry a `:workspace_id` (i.e. whose spec selects `:workspace-id`).
+  Every other search model's index rows are global and visible regardless of the caller's workspace."
   []
   (->> (specifications)
        vals
-       (filter #(-> % :attrs :worktree-id))
+       (filter #(-> % :attrs :workspace-id))
        (map :name)))
 
 (defn validate-spec!

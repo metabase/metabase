@@ -112,11 +112,11 @@
   (atom nil)) ; default binding is just something that will return nil when dereferenced
 
 ;;; TODO -- move this to [[metabase.request.current]]
-(def ^:dynamic *current-worktree-id*
-  "Int ID or `nil` of the remote-sync worktree scoping the current operation; `nil` is the main app. Bound to the
-  current user's `worktree_id` wherever `*current-user*` is bound (see `metabase.request.session/do-with-current-user`),
-  and bound explicitly by remote-sync worktree pulls/exports, which run in async threads without a current user.
-  The single source of truth for the current worktree scope."
+(def ^:dynamic *current-workspace-id*
+  "Int ID or `nil` of the remote-sync workspace scoping the current operation; `nil` is the main app. Bound to the
+  current user's `workspace_id` wherever `*current-user*` is bound (see `metabase.request.session/do-with-current-user`),
+  and bound explicitly by remote-sync workspace pulls/exports, which run in async threads without a current user.
+  The single source of truth for the current workspace scope."
   nil)
 
 ;;; TODO -- move this to [[metabase.request.current]]

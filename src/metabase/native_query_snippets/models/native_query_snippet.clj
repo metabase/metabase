@@ -24,7 +24,7 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/worktree-id))
+  (derive :hook/workspace-id))
 
 ;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
 (t2/deftransforms :model/NativeQuerySnippet
@@ -69,7 +69,7 @@
                          ;; Check for exact match in database:
                          (if-let [snippet-id (t2/select-one-fn :id :model/NativeQuerySnippet
                                                                :name snippet-name
-                                                               :worktree_id api/*current-worktree-id*)]
+                                                               :workspace_id api/*current-workspace-id*)]
                            (assoc tag :snippet-id snippet-id)
                            ;; Use previous reference if possible:
                            (or (name->old-tag snippet-name) tag)))]
@@ -82,20 +82,20 @@
                                    (set-snippet-id))))
          (assoc snippet :template_tags))))
 
-(defn- check-parent-collection-worktree
-  "Reject creating a snippet in a collection that belongs to a different remote-sync worktree than the current
-  scope, so content cannot be parented across worktrees at insert time (the update path is guarded by
-  `remote-sync/check-parent-same-worktree`)."
+(defn- check-parent-collection-workspace
+  "Reject creating a snippet in a collection that belongs to a different remote-sync workspace than the current
+  scope, so content cannot be parented across workspaces at insert time (the update path is guarded by
+  `remote-sync/check-parent-same-workspace`)."
   [collection-id]
   (when (some? collection-id)
-    (when-not (= (t2/select-one-fn :worktree_id :model/Collection :id collection-id)
-                 api/*current-worktree-id*)
-      (throw (ex-info (tru "Cannot move content into or out of a remote sync worktree.")
+    (when-not (= (t2/select-one-fn :workspace_id :model/Collection :id collection-id)
+                 api/*current-workspace-id*)
+      (throw (ex-info (tru "Cannot move content into or out of a remote sync workspace.")
                       {:status-code 400})))))
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
   (u/prog1 (add-template-tags snippet)
-    (check-parent-collection-worktree (:collection_id snippet))
+    (check-parent-collection-workspace (:collection_id snippet))
     (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
@@ -106,7 +106,7 @@
 
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
-  (remote-sync/check-parent-same-worktree snippet :model/Collection :collection_id)
+  (remote-sync/check-parent-same-workspace snippet :model/Collection :collection_id)
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
   (u/prog1 (cond-> snippet
              (:content snippet) add-template-tags)

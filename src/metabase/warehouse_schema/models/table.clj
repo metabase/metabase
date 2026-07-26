@@ -530,7 +530,7 @@
       (t2/select :model/Segment {:where    [:and
                                             [:in :table_id table-ids]
                                             [:= :archived false]
-                                            (remote-sync/worktree-visibility-clause)]
+                                            (remote-sync/workspace-visibility-clause)]
                                  :order-by [[:name :asc]]}))
     tables))
 
@@ -543,7 +543,7 @@
       (t2/select :model/Measure {:where    [:and
                                             [:in :table_id table-ids]
                                             [:= :archived false]
-                                            (remote-sync/worktree-visibility-clause)]
+                                            (remote-sync/workspace-visibility-clause)]
                                  :order-by [[:name :asc]]}))
     tables))
 

@@ -1,6 +1,6 @@
 import type {
   CreateBranchRequest,
-  CreateWorktreeRequest,
+  CreateWorkspaceRequest,
   ExportChangesRequest,
   ExportChangesResponse,
   ExportPreflightResponse,
@@ -12,17 +12,17 @@ import type {
   RemoteSyncConfigurationSettings,
   RemoteSyncHasChangesResponse,
   RemoteSyncTask,
-  RemoteSyncWorktree,
   TestRemoteSyncConnectionRequest,
   TestRemoteSyncConnectionResponse,
   UpdateRemoteSyncConfigurationResponse,
+  Workspace,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 import {
   listTag,
-  provideWorktreeListTags,
-  provideWorktreeTags,
+  provideWorkspaceListTags,
+  provideWorkspaceTags,
   tag,
 } from "./tags";
 
@@ -174,39 +174,35 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         body,
       }),
     }),
-    getWorktree: builder.query<RemoteSyncWorktree, number>({
+    getWorkspace: builder.query<Workspace, number>({
       query: (id) => ({
         method: "GET",
-        url: `/api/ee/remote-sync/worktree/${id}`,
+        url: `/api/ee/remote-sync/workspace/${id}`,
       }),
-      providesTags: (result) => (result ? provideWorktreeTags(result) : []),
+      providesTags: (result) => (result ? provideWorkspaceTags(result) : []),
     }),
-    listWorktrees: builder.query<RemoteSyncWorktree[], void>({
+    listWorkspaces: builder.query<Workspace[], void>({
       query: () => ({
         method: "GET",
-        url: `/api/ee/remote-sync/worktree`,
+        url: `/api/ee/remote-sync/workspace`,
       }),
       providesTags: (result) =>
-        result
-          ? provideWorktreeListTags(result)
-          : [listTag("remote-sync-worktree")],
+        result ? provideWorkspaceListTags(result) : [listTag("workspace")],
     }),
-    createWorktree: builder.mutation<RemoteSyncWorktree, CreateWorktreeRequest>(
-      {
-        query: (body) => ({
-          method: "POST",
-          url: `/api/ee/remote-sync/worktree`,
-          body,
-        }),
-        invalidatesTags: () => [listTag("remote-sync-worktree")],
-      },
-    ),
-    deleteWorktree: builder.mutation<void, number>({
+    createWorkspace: builder.mutation<Workspace, CreateWorkspaceRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/ee/remote-sync/workspace`,
+        body,
+      }),
+      invalidatesTags: () => [listTag("workspace")],
+    }),
+    deleteWorkspace: builder.mutation<void, number>({
       query: (id) => ({
         method: "DELETE",
-        url: `/api/ee/remote-sync/worktree/${id}`,
+        url: `/api/ee/remote-sync/workspace/${id}`,
       }),
-      invalidatesTags: () => [listTag("remote-sync-worktree")],
+      invalidatesTags: () => [listTag("workspace")],
     }),
   }),
 });
@@ -225,8 +221,8 @@ export const {
   useGetRemoteSyncCurrentTaskQuery,
   useCancelRemoteSyncCurrentTaskMutation,
   useTestRemoteSyncConnectionMutation,
-  useGetWorktreeQuery,
-  useListWorktreesQuery,
-  useCreateWorktreeMutation,
-  useDeleteWorktreeMutation,
+  useGetWorkspaceQuery,
+  useListWorkspacesQuery,
+  useCreateWorkspaceMutation,
+  useDeleteWorkspaceMutation,
 } = remoteSyncApi;

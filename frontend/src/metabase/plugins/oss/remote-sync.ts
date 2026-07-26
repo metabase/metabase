@@ -60,7 +60,7 @@ const getDefaultPluginRemoteSync = () => ({
   isEnabled: false,
   LibraryNav: PluginPlaceholder,
   RemoteSyncSettings: PluginPlaceholder,
-  RemoteSyncWorktrees: PluginPlaceholder,
+  Workspaces: PluginPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
   // Unjustified type cast. FIXME
   GitSyncAppBarControls: PluginPlaceholder as ComponentType,
@@ -94,7 +94,7 @@ export const PLUGIN_REMOTE_SYNC: {
   isEnabled: boolean;
   LibraryNav: ComponentType;
   RemoteSyncSettings: ComponentType;
-  RemoteSyncWorktrees: ComponentType;
+  Workspaces: ComponentType;
   SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
   GitSyncAppBarControls: ComponentType;
   GitSettingsModal: ComponentType<GitSettingsModalProps>;

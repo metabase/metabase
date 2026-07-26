@@ -3,16 +3,16 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import type { RemoteSyncWorktree } from "metabase-types/api";
+import type { Workspace } from "metabase-types/api";
 import {
-  createMockRemoteSyncWorktree,
   createMockUserInfo,
+  createMockWorkspace,
 } from "metabase-types/api/mocks";
 
-import { WorktreeTable } from "./WorktreeTable";
+import { WorkspaceTable } from "./WorkspaceTable";
 
-const WORKTREES: RemoteSyncWorktree[] = [
-  createMockRemoteSyncWorktree({
+const WORKSPACES: Workspace[] = [
+  createMockWorkspace({
     id: 10,
     branch: "feature/joined",
     creator: createMockUserInfo({ id: 1 }),
@@ -20,13 +20,13 @@ const WORKTREES: RemoteSyncWorktree[] = [
   }),
 ];
 
-function setup(worktrees: RemoteSyncWorktree[] = WORKTREES) {
+function setup(workspaces: Workspace[] = WORKSPACES) {
   mockGetBoundingClientRect({ width: 800, height: 600 });
-  renderWithProviders(<WorktreeTable worktrees={worktrees} />);
+  renderWithProviders(<WorkspaceTable workspaces={workspaces} />);
 }
 
-describe("WorktreeTable", () => {
-  it("should render a row for each worktree with its branch, creator, and users", async () => {
+describe("WorkspaceTable", () => {
+  it("should render a row for each workspace with its branch, creator, and users", async () => {
     setup();
 
     const row = await screen.findByRole("row", { name: "feature/joined" });
