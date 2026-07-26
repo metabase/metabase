@@ -111,6 +111,7 @@
     :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/RemoteSyncObject                  metabase-enterprise.remote-sync.models.remote-sync-object
     :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
+    :model/RemoteSyncWorktree                metabase-enterprise.remote-sync.models.remote-sync-worktree
     :model/ReplacementRun                    metabase-enterprise.replacement.models.replacement-run
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata

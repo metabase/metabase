@@ -112,7 +112,8 @@
   diagnostic can attribute exclusion to the first layer (per-permission, then per-filter) that drops a row."
   [search-ctx]
   (concat
-   [[:collection-permissions (partial add-collection-join-and-where-clauses search-ctx)]
+   [[:worktree                #(sql.helpers/where % (search.permissions/worktree-visibility-clause))]
+    [:collection-permissions (partial add-collection-join-and-where-clauses search-ctx)]
     [:table-permissions      (partial add-table-where-clauses search-ctx)]
     [:transform-source-type  #(sql.helpers/where % (search.filter/transform-source-type-where-clause
                                                     search-ctx
@@ -189,6 +190,7 @@
         applicable-models  (search.filter/search-context->applicable-models unfiltered-context)
         search-ctx         (assoc search-ctx :models applicable-models)]
     (->> (search.index/search-query (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
+         (#(sql.helpers/where % (search.permissions/worktree-visibility-clause)))
          (add-collection-join-and-where-clauses search-ctx)
          (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
                                  search-ctx

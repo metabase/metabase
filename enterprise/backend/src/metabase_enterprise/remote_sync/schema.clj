@@ -134,15 +134,32 @@
    [:task_id {:optional true} pos-int?]])
 
 (def BranchesResponse
-  "Schema for GET /branches response."
+  "Schema for GET /branch response."
   [:map
    [:items [:sequential :string]]])
 
 (def CreateBranchResponse
-  "Schema for POST /create-branch response."
+  "Schema for POST /branch response."
   [:map
    [:status :string]
    [:message :string]])
+
+;;; ------------------------------------------- Worktree Schemas -------------------------------------------
+
+(def Worktree
+  "Schema for a remote-sync worktree object."
+  [:map
+   [:id pos-int?]
+   [:branch :string]
+   [:creator_id {:optional true} [:maybe pos-int?]]
+   [:created_at {:optional true} :any]
+   [:updated_at {:optional true} :any]
+   [:creator {:optional true} [:maybe :map]]
+   [:users {:optional true} [:sequential :map]]])
+
+(def WorktreeList
+  "Schema for GET /worktree response."
+  [:sequential Worktree])
 
 (def StashResponse
   "Schema for POST /stash response."

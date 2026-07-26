@@ -6,6 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -31,20 +32,24 @@
     (update library :path normalize-path)
     library))
 
-(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
+(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id :hook/worktree-id]]
   (derive :model/PythonLibrary trait))
 
 (defmethod mi/can-read? :model/PythonLibrary
-  ([_instance]
-   (perms/has-any-transforms-permission? api/*current-user-id*))
-  ([_model _pk]
-   (perms/has-any-transforms-permission? api/*current-user-id*)))
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (perms/has-any-transforms-permission? api/*current-user-id*)))
+  ([model pk]
+   (when-let [library (t2/select-one model pk)]
+     (mi/can-read? library))))
 
 (defmethod mi/can-write? :model/PythonLibrary
-  ([_instance]
-   (perms/has-any-transforms-permission? api/*current-user-id*))
-  ([_model _pk]
-   (perms/has-any-transforms-permission? api/*current-user-id*)))
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (perms/has-any-transforms-permission? api/*current-user-id*)))
+  ([model pk]
+   (when-let [library (t2/select-one model pk)]
+     (mi/can-write? library))))
 
 (def ^:private allowed-paths
   "Set of allowed library paths. Currently only 'common' is supported."
@@ -70,7 +75,7 @@
   [path]
   (let [normalized-path (normalize-path path)]
     (validate-path! normalized-path)
-    (t2/select-one :model/PythonLibrary :path normalized-path)))
+    (t2/select-one :model/PythonLibrary :path normalized-path :worktree_id api/*current-worktree-id*)))
 
 (defn update-python-library-source!
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
@@ -78,7 +83,7 @@
   (let [normalized-path (normalize-path path)]
     (validate-path! normalized-path)
     (let [id (app-db/update-or-insert! :model/PythonLibrary
-                                       {:path normalized-path}
+                                       {:path normalized-path :worktree_id api/*current-worktree-id*}
                                        (constantly {:path normalized-path :source source}))]
       (t2/select-one :model/PythonLibrary id))))
 

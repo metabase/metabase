@@ -61,6 +61,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
+   [metabase.api.common :as api]
    ;; legacy usages -- do not use in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
@@ -89,6 +90,22 @@
 (def query-batch-size
   "Maximum number of ids per `:in` clause, to stay under database parameter limits."
   1000)
+
+;;; ------------------------------------------------ Remote-sync worktree scope --------------------------------------
+
+(def worktree-scoped-models
+  "Serdes model names whose tables carry a `worktree_id` column and enforce entity_id uniqueness per worktree
+  (`UNIQUE (worktree_id_helper, entity_id)`). Entity-id matching for these is scoped by the current worktree
+  ([[api/*current-worktree-id*]]) so a worktree pull matches/creates rows within its own scope rather than
+  colliding with the main app."
+  #{"Card" "Dashboard" "DashboardCard" "DashboardTab" "Document" "NativeQuerySnippet"
+    "Timeline" "Collection" "Segment" "Measure" "Transform" "TransformTag" "TransformTransformTag"
+    "PythonLibrary" "Action"})
+
+(defn worktree-scoped?
+  "Whether `model` (a serdes model-name string, or a model keyword/symbol) is scoped by the current worktree."
+  [model]
+  (contains? worktree-scoped-models (if (string? model) model (name model))))
 
 (mr/def ::model-keyword
   [:and
@@ -173,7 +190,9 @@
         pk    (first (t2/primary-keys model))
         eid   (cond-> eid
                 (str/starts-with? eid "eid:") (subs 4))]
-    (t2/select-one-fn pk [model pk] :entity_id eid)))
+    (if (worktree-scoped? model-name)
+      (t2/select-one-fn pk [model pk] :entity_id eid :worktree_id api/*current-worktree-id*)
+      (t2/select-one-fn pk [model pk] :entity_id eid))))
 
 ;;; # Serdes paths and <tt>:serdes/meta</tt>
 ;;; The Clojure maps from extraction and ingestion always include a special key `:serdes/meta` giving some information
@@ -794,7 +813,9 @@
   "Given an entity ID string, finds the matching entity. This is useful when writing [[xform-one]] to
   turn a foreign key from a portable form to an appdb ID. Returns a Toucan entity or nil."
   [model :- ::model-keyword-or-symbol id-str]
-  (t2/select-one model :entity_id id-str))
+  (if (worktree-scoped? model)
+    (t2/select-one model :entity_id id-str :worktree_id api/*current-worktree-id*)
+    (t2/select-one model :entity_id id-str)))
 
 (defn storage-default-collection-path
   "Implements the most common structure for [[storage-path]].

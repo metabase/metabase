@@ -50,13 +50,15 @@
 (doto :model/Measure
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defmethod mi/can-read? :model/Measure
   ([instance]
    (let [table (or (:table instance)
                    (t2/select-one :model/Table :id (:table_id instance)))]
-     (mi/can-read? table)))
+     (and (remote-sync/worktree-accessible? instance)
+          (mi/can-read? table))))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
@@ -223,7 +225,8 @@
            :creator-id true
            :database-id :table.db_id
            :created-at true
-           :updated-at true}
+           :updated-at true
+           :worktree-id true}
    :search-terms [:name :description]
    :render-terms {:table-id :table_id
                   :table_description :table.description

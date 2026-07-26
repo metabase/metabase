@@ -3,7 +3,9 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config :refer [SearchContext]]
+   [metabase.search.spec :as search.spec]
    [metabase.util.malli :as mu]))
 
 (defn- assert-current-user! [missing-param]
@@ -45,6 +47,17 @@
    ;; TODO(edpaget 2025-12-04): this should be a default value of the search context and then search can be restricted
    ;; to different namespaces via parameters.
    (perms/namespace-clause :collection.namespace nil true)])
+
+(defn worktree-visibility-clause
+  "HoneySQL predicate restricting `column` (the index's `worktree_id` column, `:search_index.worktree_id` by
+  default) to rows visible under remote-sync worktree isolation: rows of a search model that isn't
+  worktree-scoped are always visible, and rows of a worktree-scoped model are visible only when their
+  worktree matches the caller's active worktree (nil for the main app)."
+  ([] (worktree-visibility-clause :search_index.worktree_id))
+  ([column]
+   [:or
+    [:not-in :search_index.model (vec (search.spec/worktree-scoped-search-models))]
+    (remote-sync/worktree-visibility-clause column)]))
 
 (mu/defn permitted-tables-clause
   "Build the WHERE clause and optional CTEs for table permission filtering.

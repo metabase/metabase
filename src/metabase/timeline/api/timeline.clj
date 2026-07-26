@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.timeline.models.timeline :as timeline]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
@@ -52,7 +53,8 @@
   (let [timelines (->> (t2/select :model/Timeline
                                   {:where    [:and
                                               [:= :archived archived?]
-                                              (collection/visible-collection-filter-clause)]
+                                              (collection/visible-collection-filter-clause)
+                                              (remote-sync/worktree-visibility-clause)]
                                    :order-by [[:%lower.name :asc]]})
                        (map collection.root/hydrate-root-collection))]
     (cond->> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)

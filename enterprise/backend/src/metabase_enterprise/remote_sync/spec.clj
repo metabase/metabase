@@ -16,6 +16,7 @@
    [clojure.walk :as walk]
    [metabase-enterprise.remote-sync.settings :as rs-settings]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
@@ -606,7 +607,10 @@
 (defn removal-where-clauses
   "The AND-clauses selecting the rows an import reconcile removes for one entity-id `spec`: rows scoped to
    `synced-collection-ids` (when the spec has a `:scope-key`), minus the imported `entity-ids`, honoring the
-   spec's removal conditions.
+   spec's removal conditions. Worktree-scoped model types (see [[serdes/worktree-scoped-models]]) also get a
+   `:worktree_id` clause pinned to the current [[api/*current-worktree-id*]] scope, so a worktree import
+   reconcile (or an all-or-nothing model's deletion conflict/removal check) never touches another
+   worktree's or the main app's rows.
 
    Returns nil for a scoped model with no synced collections (removes nothing); an empty vector means no
    predicate (a global, unconditioned delete)."
@@ -616,6 +620,7 @@
       (cond-> []
         scope-key        (conj [:in scope-key synced-collection-ids])
         (seq entity-ids) (conj [:not-in :entity_id entity-ids])
+        (serdes/worktree-scoped? (:model-type spec)) (conj [:= :worktree_id api/*current-worktree-id*])
         :always          (into (removal-condition-clauses (removal-conditions spec)))))))
 
 (defn- model-id-column
@@ -693,20 +698,27 @@
 
 (defn all-syncable-collection-ids
   "Returns a vector of all collection IDs that are eligible for remote sync.
-   This includes:
+
+   Inside a remote-sync worktree (non-nil [[api/*current-worktree-id*]]), a worktree is a full checkout:
+   every collection tagged with the worktree's id is syncable, regardless of is_remote_synced/namespace
+   settings.
+
+   For the main app (nil scope), this includes:
    - Collections with is_remote_synced=true
    - Transforms-namespace collections (when remote-sync-transforms setting is enabled)
    - Snippets-namespace collections (when Library is remote-synced)
 
    Used by import cleanup to determine which collections to scope deletions to."
   []
-  (into []
-        cat
-        [(t2/select-pks-vec :model/Collection :is_remote_synced true)
-         (when (rs-settings/remote-sync-transforms)
-           (t2/select-pks-vec :model/Collection :namespace (name collections/transforms-ns)))
-         (when (rs-settings/library-is-remote-synced?)
-           (t2/select-pks-vec :model/Collection :namespace "snippets"))]))
+  (if-let [worktree-id api/*current-worktree-id*]
+    (t2/select-pks-vec :model/Collection :worktree_id worktree-id)
+    (into []
+          cat
+          [(t2/select-pks-vec :model/Collection :is_remote_synced true :worktree_id nil)
+           (when (rs-settings/remote-sync-transforms)
+             (t2/select-pks-vec :model/Collection :namespace (name collections/transforms-ns) :worktree_id nil))
+           (when (rs-settings/library-is-remote-synced?)
+             (t2/select-pks-vec :model/Collection :namespace "snippets" :worktree_id nil))])))
 
 (def ^:private max-conflict-names
   "Cap on how many entity names a collection deletion conflict carries, so the payload stays bounded when
@@ -759,28 +771,33 @@
 
 (defmethod check-eligibility :collection
   [{:keys [eligibility]} object]
-  (let [collection-type (:collection eligibility)
-        collection-id   (:collection_id object)]
-    (case collection-type
-      :remote-synced
-      (boolean (collections/remote-synced-collection? collection-id))
+  ;; Inside a worktree, eligibility isn't gated by is_remote_synced/transforms/snippets settings the way
+  ;; the main app is: a worktree is a full checkout of its branch, so anything living in its (worktree-
+  ;; scoped) content tree is exportable. Mirrors the worktree short-circuit in `query-export-roots
+  ;; :collection` and `metabase-enterprise.remote-sync.core/collection-editable?`.
+  (or (some? api/*current-worktree-id*)
+      (let [collection-type (:collection eligibility)
+            collection-id   (:collection_id object)]
+        (case collection-type
+          :remote-synced
+          (boolean (collections/remote-synced-collection? collection-id))
 
-      :transforms-namespace
-      (and (rs-settings/remote-sync-transforms)
-           (transforms-namespace-collection? object))
-
-      :snippets-namespace
-      (and (rs-settings/library-is-remote-synced?)
-           (snippets-namespace-collection? object))
-
-      :any
-      (or (collections/remote-synced-collection? (or collection-id object))
+          :transforms-namespace
           (and (rs-settings/remote-sync-transforms)
                (transforms-namespace-collection? object))
-          (and (rs-settings/library-is-remote-synced?)
-               (snippets-namespace-collection? object)))
 
-      false)))
+          :snippets-namespace
+          (and (rs-settings/library-is-remote-synced?)
+               (snippets-namespace-collection? object))
+
+          :any
+          (or (collections/remote-synced-collection? (or collection-id object))
+              (and (rs-settings/remote-sync-transforms)
+                   (transforms-namespace-collection? object))
+              (and (rs-settings/library-is-remote-synced?)
+                   (snippets-namespace-collection? object)))
+
+          false))))
 
 (defmethod check-eligibility :published-table
   [_ {:keys [is_published collection_id]}]
@@ -1162,28 +1179,40 @@
   [{:keys [export-scope]}]
   (case (or export-scope :derived)
     :root-collections
-    ;; Excludes archived collections - their files are handled by the removal logic
-    (concat
-     (t2/select-fn-set (juxt (constantly "Collection") :id)
-                       :model/Collection
-                       {:where [:and
-                                [:= :is_remote_synced true]
-                                [:= :location "/"]
-                                [:not :archived]]})
-     (when (rs-settings/remote-sync-transforms)
+    ;; Excludes archived collections - their files are handled by the removal logic. Inside a worktree
+    ;; (non-nil api/*current-worktree-id*), a worktree is a full checkout: every root-level collection
+    ;; tagged with the worktree's id is exportable, regardless of is_remote_synced/namespace settings.
+    (if-let [worktree-id api/*current-worktree-id*]
+      (t2/select-fn-set (juxt (constantly "Collection") :id)
+                        :model/Collection
+                        {:where [:and
+                                 [:= :worktree_id worktree-id]
+                                 [:= :location "/"]
+                                 [:not :archived]]})
+      (concat
        (t2/select-fn-set (juxt (constantly "Collection") :id)
                          :model/Collection
                          {:where [:and
-                                  [:= :namespace (name collections/transforms-ns)]
+                                  [:= :is_remote_synced true]
                                   [:= :location "/"]
-                                  [:not :archived]]}))
-     (when (rs-settings/library-is-remote-synced?)
-       (t2/select-fn-set (juxt (constantly "Collection") :id)
-                         :model/Collection
-                         {:where [:and
-                                  [:= :namespace "snippets"]
-                                  [:= :location "/"]
-                                  [:not :archived]]})))
+                                  [:not :archived]
+                                  [:= :worktree_id nil]]})
+       (when (rs-settings/remote-sync-transforms)
+         (t2/select-fn-set (juxt (constantly "Collection") :id)
+                           :model/Collection
+                           {:where [:and
+                                    [:= :namespace (name collections/transforms-ns)]
+                                    [:= :location "/"]
+                                    [:not :archived]
+                                    [:= :worktree_id nil]]}))
+       (when (rs-settings/library-is-remote-synced?)
+         (t2/select-fn-set (juxt (constantly "Collection") :id)
+                           :model/Collection
+                           {:where [:and
+                                    [:= :namespace "snippets"]
+                                    [:= :location "/"]
+                                    [:not :archived]
+                                    [:= :worktree_id nil]]}))))
     :derived
     nil))
 
@@ -1195,9 +1224,11 @@
         :root-only
         (apply t2/select-fn-set (juxt (constantly model-type) :id) model-key
                :collection_id nil
+               :worktree_id api/*current-worktree-id*
                (into [] cat conditions))
         :all
         (apply t2/select-fn-set (juxt (constantly model-type) :id) model-key
+               :worktree_id api/*current-worktree-id*
                (into [] cat conditions))
         nil))))
 
@@ -1210,8 +1241,10 @@
     (case export-scope
       :all
       (if archived-key
-        (t2/select-fn-set (juxt (constantly model-type) :id) model-key archived-key false)
-        (t2/select-fn-set (juxt (constantly model-type) :id) model-key))
+        (t2/select-fn-set (juxt (constantly model-type) :id) model-key
+                          archived-key false :worktree_id api/*current-worktree-id*)
+        (t2/select-fn-set (juxt (constantly model-type) :id) model-key
+                          :worktree_id api/*current-worktree-id*))
       nil)))
 
 (defmethod query-export-roots :default [_] nil)

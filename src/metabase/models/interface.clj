@@ -25,6 +25,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -36,6 +37,7 @@
    [toucan2.model :as t2.model]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-insert :as t2.before-insert]
+   [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.tools.identity-query :as t2.identity-query]
    [toucan2.util :as t2.u])
@@ -576,6 +578,26 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
+
+(t2/define-before-insert :hook/worktree-id
+  [instance]
+  (assoc instance :worktree_id @(requiring-resolve 'metabase.api.common/*current-worktree-id*)))
+
+(t2/define-before-update :hook/worktree-id
+  [instance]
+  (when (contains? (t2/changes instance) :worktree_id)
+    (throw (ex-info (tru "A worktree_id cannot be changed.") {:status-code 400})))
+  instance)
+
+(t2/define-after-select :hook/worktree-id
+  [instance]
+  (dissoc instance :worktree_id_helper))
+
+(doseq [hook [:hook/timestamped? :hook/updated-at-timestamped? :hook/created-at-timestamped? :hook/entity-id]]
+  (methodical/prefer-method! #'t2.before-insert/before-insert :hook/worktree-id hook))
+(doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
+  (methodical/prefer-method! #'t2.before-update/before-update :hook/worktree-id hook))
+
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.

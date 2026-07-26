@@ -43,6 +43,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.util :as u]
@@ -77,7 +78,8 @@
   (as-> (t2/select :model/Dashboard {:where    [:and (case (or (keyword filter-option) :all)
                                                        (:all :archived)  true
                                                        :mine [:= :creator_id api/*current-user-id*])
-                                                [:= :archived (= (keyword filter-option) :archived)]]
+                                                [:= :archived (= (keyword filter-option) :archived)]
+                                                (remote-sync/worktree-visibility-clause)]
                                      :order-by [:%lower.name]}) <>
     (t2/hydrate <> :creator)
     (filter mi/can-read? <>)))
@@ -614,7 +616,10 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+  (t2/select [:model/Dashboard :name :id :public_uuid]
+             :public_uuid [:not= nil]
+             :archived false
+             :worktree_id api/*current-worktree-id*))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -626,7 +631,10 @@
   []
   (perms/check-has-application-permission :setting)
   (embedding.validation/check-embedding-enabled)
-  (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
+  (t2/select [:model/Dashboard :name :id]
+             :enable_embedding true
+             :archived false
+             :worktree_id api/*current-worktree-id*))
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 

@@ -1,11 +1,13 @@
 import {
   setupPropertiesEndpoints,
+  setupRemoteSyncWorktreeEndpoint,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
+  createMockRemoteSyncWorktree,
   createMockSettingDefinition,
   createMockSettings,
   createMockUser,
@@ -19,12 +21,18 @@ const setup = ({
   currentBranch = "main",
   syncType = "read-write",
   isBranchEnvSetting = false,
+  worktreeId = null,
+  worktree,
+  worktreeDelay = 0,
 }: {
   isAdmin?: boolean;
   remoteSyncEnabled?: boolean;
   currentBranch?: string | null;
   syncType?: "read-only" | "read-write";
   isBranchEnvSetting?: boolean;
+  worktreeId?: number | null;
+  worktree?: ReturnType<typeof createMockRemoteSyncWorktree>;
+  worktreeDelay?: number;
 } = {}) => {
   setupPropertiesEndpoints(
     createMockSettings({
@@ -42,8 +50,19 @@ const setup = ({
     }),
   ]);
 
+  if (typeof worktreeId === "number") {
+    setupRemoteSyncWorktreeEndpoint(
+      worktreeId,
+      worktree ?? createMockRemoteSyncWorktree({ id: worktreeId }),
+      { delay: worktreeDelay },
+    );
+  }
+
   const storeInitialState = createMockState({
-    currentUser: createMockUser({ is_superuser: isAdmin }),
+    currentUser: createMockUser({
+      is_superuser: isAdmin,
+      worktree_id: worktreeId,
+    }),
     settings: mockSettings({
       "remote-sync-enabled": remoteSyncEnabled,
       "remote-sync-branch": currentBranch,
@@ -140,6 +159,46 @@ describe("useGitSyncVisible", () => {
 
     await waitFor(() => {
       expect(result.current.isBranchSetByEnv).toBe(false);
+    });
+  });
+
+  describe("worktree", () => {
+    it("should return isWorktree: false and the git branch when the user has no worktree", async () => {
+      const { result } = setup({ currentBranch: "main" });
+
+      await waitFor(() => {
+        expect(result.current.isVisible).toBe(true);
+      });
+      expect(result.current.isWorktree).toBe(false);
+      expect(result.current.currentBranch).toBe("main");
+    });
+
+    it("should return isVisible: false while the worktree branch is loading", async () => {
+      const { result } = setup({
+        currentBranch: "main",
+        worktreeId: 42,
+        worktreeDelay: 50,
+      });
+
+      expect(result.current.isVisible).toBe(false);
+      expect(result.current.currentBranch).toBeFalsy();
+    });
+
+    it("should return isWorktree: true and the worktree's branch once loaded", async () => {
+      const { result } = setup({
+        currentBranch: "main",
+        worktreeId: 42,
+        worktree: createMockRemoteSyncWorktree({
+          id: 42,
+          branch: "feature/my-worktree",
+        }),
+      });
+
+      await waitFor(() => {
+        expect(result.current.currentBranch).toBe("feature/my-worktree");
+      });
+      expect(result.current.isWorktree).toBe(true);
+      expect(result.current.isVisible).toBe(true);
     });
   });
 });

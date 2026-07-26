@@ -1,4 +1,6 @@
-import type { RemoteSyncEntity } from "../remote-sync";
+import type { RemoteSyncEntity, RemoteSyncWorktree } from "../remote-sync";
+
+import { createMockUserInfo } from "./user";
 
 export const createMockRemoteSyncEntity = (
   opts?: Partial<RemoteSyncEntity>,
@@ -29,3 +31,16 @@ export const createMockDirtyTransformEntity = (
     name: "Test Transform",
     ...opts,
   });
+
+export const createMockRemoteSyncWorktree = (
+  opts?: Partial<RemoteSyncWorktree>,
+): RemoteSyncWorktree => ({
+  id: 1,
+  branch: "feature/my-worktree",
+  creator_id: 1,
+  created_at: "2026-01-01T00:00:00Z",
+  updated_at: "2026-01-01T00:00:00Z",
+  creator: createMockUserInfo(),
+  users: [],
+  ...opts,
+});

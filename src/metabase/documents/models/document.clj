@@ -8,6 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -31,7 +32,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (def DocumentName
   "Validations for the name of a document"
@@ -142,7 +144,8 @@
            :created-at :created_at
            :updated-at :updated_at
            :last-viewed-at :last_viewed_at
-           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
+           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+           :worktree-id true}
    :search-terms {:name true
                   :document document->search-text}
    ;; Document bodies are full-text searchable (via `document->search-text` above) but are
@@ -285,5 +288,6 @@
   model)
 
 (t2/define-before-update :model/Document [model]
+  (remote-sync/check-parent-same-worktree model :model/Collection :collection_id)
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
   model)

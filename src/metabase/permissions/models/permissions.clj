@@ -279,11 +279,19 @@
 
 (defmethod mi/perms-objects-set :perms/use-parent-collection-perms
   [instance read-or-write]
-  (if (or (= read-or-write :read)
-          (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance))))
+  (cond
+    ;; Worktree isolation: content in a different worktree than the current user's is inaccessible. Returns a
+    ;; dummy permissions string that cannot belong to any user.
+    (not (remote-sync/worktree-accessible? instance))
+    #{"___no-worktree-access"}
+
+    (or (= read-or-write :read)
+        (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance))))
     (perms-objects-set-for-parent-collection instance read-or-write)
-    ;; We need to return a dummy permissions string that cannot possibly belong to a user in
-    ;; the case where an instance is not syncable due to remote-sync being in ':production' mode
+
+    ;; A dummy permissions string that cannot belong to any user, for the case where an instance is not syncable
+    ;; due to remote-sync being in ':production' mode.
+    :else
     #{"___no-remote-sync-access"}))
 
 (methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
@@ -424,9 +432,13 @@
   "Read permission for rows whose read policy is a pure function of `:collection_id` and current user perms.
   Used by models that opt into the collection-id-only contract via [[define-collection-based-visibility!]],
   and by semantic search's fast path; sharing this helper keeps the two paths structurally in sync.
-  Takes `coll-id` (not an instance) so the logic cannot grow a dependency on other instance fields."
+  Takes `coll-id` (not an instance) so the logic cannot grow a dependency on other instance fields --
+  worktree isolation is checked via the parent collection's own `:worktree_id` (a row is always in the
+  same worktree scope as its collection), not the row's own field, so this still holds."
   [coll-id]
-  (and (or (premium-features/enable-audit-app?)
+  (and (or (nil? coll-id)
+           (= (t2/select-one-fn :worktree_id :model/Collection :id coll-id) api/*current-worktree-id*))
+       (or (premium-features/enable-audit-app?)
            (not (and (some? coll-id) (audit/is-collection-id-audit? coll-id))))
        (mi/current-user-has-full-permissions?
         #{(permissions.path/collection-read-path

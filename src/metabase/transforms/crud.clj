@@ -10,6 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -96,7 +97,9 @@
   [& {:keys [last-run-start-time last-run-statuses tag-ids database-id]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
-    (let [transforms (t2/select :model/Transform {:where    (into [:and [:in :source_type enabled-types]]
+    (let [transforms (t2/select :model/Transform {:where    (into [:and
+                                                                   [:in :source_type enabled-types]
+                                                                   (remote-sync/worktree-visibility-clause)]
                                                                   (when database-id
                                                                     [[:= :source_database_id database-id]]))
                                                   :order-by [[:id :asc]]})]

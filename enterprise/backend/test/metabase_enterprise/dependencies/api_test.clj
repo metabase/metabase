@@ -7,6 +7,7 @@
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
    [metabase-enterprise.dependencies.test-util :as deps.test]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
@@ -2778,3 +2779,40 @@
           (testing "graph with transform"
             (is (map? (mt/user-http-request analyst-id :get 200
                                             (str "ee/dependencies/graph?type=transform&id=" transform-id))))))))))
+
+(deftest ^:sequential dependents-worktree-isolation-test
+  (testing "GET /api/ee/dependencies/graph/dependents only surfaces dependents in the caller's own remote-sync worktree"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/RemoteSyncWorktree wt {:branch (str (random-uuid))}
+                     :model/User main-user {:email "main-caller@wherever.com"}
+                     :model/User wt-user {:email "wt-caller@wherever.com" :worktree_id (:id wt)}]
+        ;; The worktree needs its own Trash collection, mirroring how a real worktree pull materializes one.
+        ;; It's cleaned up by hand (rather than via with-temp) because Collection's before-delete hook refuses
+        ;; to delete whatever the *current* worktree's trash resolves to; deleting it while still bound to the
+        ;; worktree would trip that guard against this very row.
+        (let [wt-trash-id (binding [api/*current-worktree-id* (:id wt)]
+                            (t2/insert-returning-pk! :model/Collection
+                                                     {:name "Trash" :type collection/trash-collection-type}))]
+          (try
+            (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
+              (let [products-id (mt/id :products)
+                    main-card (card/create-card! (basic-card "Main card" :products) main-user)
+                    wt-card (binding [api/*current-worktree-id* (:id wt)]
+                              (card/create-card! (basic-card "WT card" :products) wt-user))
+                    _ (deps.test/synchronously-run-backfill!)
+                    main-dependents (->> (mt/user-http-request (:id main-user) :get 200
+                                                               "ee/dependencies/graph/dependents"
+                                                               :id products-id :type "table")
+                                         (map :id) set)
+                    wt-dependents (->> (mt/user-http-request (:id wt-user) :get 200
+                                                             "ee/dependencies/graph/dependents"
+                                                             :id products-id :type "table")
+                                       (map :id) set)]
+                (testing "main-app caller sees only the main-app card"
+                  (is (contains? main-dependents (:id main-card)))
+                  (is (not (contains? main-dependents (:id wt-card)))))
+                (testing "worktree caller sees only their own worktree's card"
+                  (is (contains? wt-dependents (:id wt-card)))
+                  (is (not (contains? wt-dependents (:id main-card)))))))
+            (finally
+              (t2/delete! :model/Collection :id wt-trash-id))))))))

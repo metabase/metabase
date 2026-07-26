@@ -106,6 +106,7 @@
            parameters
            queries
            query-processor
+           remote-sync
            search
            settings
            util
@@ -723,6 +724,7 @@
            public-sharing
            queries
            query-processor
+           remote-sync
            search
            settings
            staleness
@@ -766,6 +768,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            request
            revisions
            util
@@ -823,6 +826,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            revisions
            search
            util
@@ -918,6 +922,7 @@
            metabase.eid-translation.init}
    :uses #{api
            batch-processing
+           models
            settings
            util}
    :model-imports #{:model/Action
@@ -1792,6 +1797,7 @@
            pulse
            query-permissions
            query-processor
+           remote-sync
            request
            search
            settings
@@ -1837,6 +1843,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            request
            revisions
            search
@@ -1944,7 +1951,8 @@
            metabase.remote-sync.init}
    :uses #{api
            models
-           premium-features}
+           premium-features
+           util}
    :model-imports #{:model/Collection}}
 
   request
@@ -2040,6 +2048,7 @@
            premium-features
            queries
            query-processor
+           remote-sync
            request
            settings
            startup
@@ -2400,6 +2409,7 @@
            collections
            events
            models
+           remote-sync
            util}
    :model-exports #{:model/Timeline}
    :model-imports #{:model/Collection :model/User}}
@@ -2503,6 +2513,7 @@
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
            models
+           remote-sync
            request
            transforms
            transforms-base
@@ -3198,6 +3209,7 @@
            premium-features
            queries
            query-processor
+           remote-sync
            request
            revisions
            settings
@@ -3455,7 +3467,8 @@
            enterprise/serialization
            enterprise/transforms-python}
    :model-exports #{:model/RemoteSyncTask}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Document
@@ -3604,6 +3617,7 @@
            models
            permissions
            premium-features
+           remote-sync
            search
            settings
            task
@@ -3756,6 +3770,7 @@
            models
            permissions
            query-processor
+           remote-sync
            settings
            tracing
            transforms

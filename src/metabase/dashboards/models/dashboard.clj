@@ -23,6 +23,7 @@
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as queries]
    [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
@@ -46,7 +47,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
@@ -92,6 +94,7 @@
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
+  (remote-sync/check-parent-same-worktree dashboard :model/Collection :collection_id)
   (let [changes   (t2/changes dashboard)
         dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
         changes   (lib/normalize ::dashboards.schema/dashboard changes)]
@@ -521,7 +524,8 @@
                   :updated-at     true
                   :collection-type :collection.type
                   :collection-location :collection.location
-                  :root-collection-type {:fn collection/root-collection-type}}
+                  :root-collection-type {:fn collection/root-collection-type}
+                  :worktree-id    true}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level

@@ -8,6 +8,7 @@
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -211,7 +212,8 @@
                                                  [alias (url-for-path [:table table_id :manifest])]))
                                        source-tables)
         payload                  {:code                code
-                                  :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
+                                  :library             (t2/select-fn->fn :path :source :model/PythonLibrary
+                                                                         :worktree_id api/*current-worktree-id*)
                                   :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
                                   :request_id          (or request-id run-id)
                                   :output_url          (:url output)

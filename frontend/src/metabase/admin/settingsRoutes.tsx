@@ -36,6 +36,7 @@ import { LocalizationSettingsPage } from "./settings/components/SettingsPages/Lo
 import { MapsSettingsPage } from "./settings/components/SettingsPages/MapsSettingsPage";
 import { PublicSharingSettingsPage } from "./settings/components/SettingsPages/PublicSharingSettingsPage";
 import { RemoteSyncSettingsPage } from "./settings/components/SettingsPages/RemoteSyncSettingsPage";
+import { RemoteSyncWorktreesPage } from "./settings/components/SettingsPages/RemoteSyncWorktreesPage";
 import { SlackSettingsPage } from "./settings/components/SettingsPages/SlackSettingsPage";
 import { UpdatesSettingsPage } from "./settings/components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
@@ -95,6 +96,10 @@ export const getSettingsRoutes = (
         element={<PLUGIN_AUTH_PROVIDERS.SettingsOIDCForm />}
       />
       <Route path="remote-sync" element={<RemoteSyncSettingsPage />} />
+      <Route
+        path="remote-sync/worktrees"
+        element={<RemoteSyncWorktreesPage />}
+      />
       <Route path="maps" element={<MapsSettingsPage />} />
       <Route path="localization" element={<LocalizationSettingsPage />} />
       <Route

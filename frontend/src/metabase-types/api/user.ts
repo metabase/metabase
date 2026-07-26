@@ -79,6 +79,7 @@ export interface User extends BaseUser {
     dashboard_id: DashboardId;
   } | null;
   permissions?: UserPermissions;
+  worktree_id?: number | null;
 }
 
 export interface UserListResult {
@@ -171,6 +172,7 @@ export type UpdateUserRequest = {
   is_superuser?: boolean;
   login_attributes?: UserAttributeMap | null;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
+  worktree_id?: number | null;
 };
 
 export type UserKeyValue =

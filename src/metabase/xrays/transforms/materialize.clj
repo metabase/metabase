@@ -27,8 +27,9 @@
   ([collection-name :- :string
     location        :- :string]
    (t2/select-one-pk :model/Collection
-                     :name     collection-name
-                     :location location)))
+                     :name        collection-name
+                     :location    location
+                     :worktree_id api/*current-worktree-id*)))
 
 (defn- create-collection!
   ([collection-name description]

@@ -18,6 +18,7 @@ import {
   type DocumentDependencyNode,
   type MeasureDependencyNode,
   type PythonLibrary,
+  type RemoteSyncWorktree,
   type SandboxDependencyNode,
   type SegmentDependencyNode,
   type SnippetDependencyNode,
@@ -41,6 +42,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "remote-sync-branches",
   "remote-sync-current-task",
   "remote-sync-has-remote-changes",
+  "remote-sync-worktree",
   "source-replacement-run",
   "python-transform-library",
   "support-access-grant",
@@ -256,6 +258,25 @@ export function provideSourceReplacementRunListTags(
   return [
     listTag("source-replacement-run"),
     ...runs.flatMap(provideSourceReplacementRunTags),
+  ];
+}
+
+export function provideWorktreeTags(
+  worktree: RemoteSyncWorktree,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("remote-sync-worktree", worktree.id),
+    ...(worktree.creator ? provideUserTags(worktree.creator) : []),
+    ...worktree.users.flatMap(provideUserTags),
+  ];
+}
+
+export function provideWorktreeListTags(
+  worktrees: RemoteSyncWorktree[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("remote-sync-worktree"),
+    ...worktrees.flatMap(provideWorktreeTags),
   ];
 }
 

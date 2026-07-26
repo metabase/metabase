@@ -37,14 +37,19 @@ export const createRemoteSyncStoreState = ({
   remoteSyncEnabled = true,
   currentBranch = "main",
   syncType = "read-write",
+  worktreeId = null,
 }: {
   isAdmin?: boolean;
   remoteSyncEnabled?: boolean;
   currentBranch?: string | null;
   syncType?: "read-only" | "read-write";
+  worktreeId?: number | null;
 } = {}) => {
   return createMockState({
-    currentUser: createMockUser({ is_superuser: isAdmin }),
+    currentUser: createMockUser({
+      is_superuser: isAdmin,
+      worktree_id: worktreeId,
+    }),
     settings: mockSettings({
       "remote-sync-enabled": remoteSyncEnabled,
       "remote-sync-branch": currentBranch,

@@ -2,9 +2,11 @@
   (:require
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.api.common :as api]
    [metabase.batch-processing.core :as grouper]
    [metabase.eid-translation.impl :as eid-translation]
    [metabase.eid-translation.settings :as eid-translation.settings]
+   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -103,8 +105,10 @@
                                                     [:map [:status eid-translation/Status]]]]
   "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
   [api-name eids]
-  (let [model (->model api-name) ;; This lookup is safe because we've already validated the api-names
-        eid->id (into {} (t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in eids]))]
+  (let [model      (->model api-name) ;; This lookup is safe because we've already validated the api-names
+        conditions (cond-> [:entity_id [:in eids]]
+                     (serdes/worktree-scoped? model) (conj :worktree_id api/*current-worktree-id*))
+        eid->id    (into {} (apply t2/select-fn->fn :entity_id :id [model :id :entity_id] conditions))]
     (mapv (fn entity-id-info [entity-id]
             [entity-id (if-let [id (get eid->id entity-id)]
                          {:id id :type api-name :status :ok}

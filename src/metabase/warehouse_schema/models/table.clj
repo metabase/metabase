@@ -527,7 +527,11 @@
   [tables]
   (with-objects :segments
     (fn [table-ids]
-      (t2/select :model/Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select :model/Segment {:where    [:and
+                                            [:in :table_id table-ids]
+                                            [:= :archived false]
+                                            (remote-sync/worktree-visibility-clause)]
+                                 :order-by [[:name :asc]]}))
     tables))
 
 (mi/define-batched-hydration-method with-measures
@@ -536,7 +540,11 @@
   [tables]
   (with-objects :measures
     (fn [table-ids]
-      (t2/select :model/Measure :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select :model/Measure {:where    [:and
+                                            [:in :table_id table-ids]
+                                            [:= :archived false]
+                                            (remote-sync/worktree-visibility-clause)]
+                                 :order-by [[:name :asc]]}))
     tables))
 
 (mi/define-batched-hydration-method with-metrics

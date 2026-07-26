@@ -1,7 +1,45 @@
 (ns metabase.remote-sync.core
   (:require
+   [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
+
+;;; ------------------------------------------------ Worktree membership ---------------------------------------------
+
+(defn check-parent-same-worktree
+  "`before-update` guard throwing a 400 when `parent-key` (e.g. `:collection_id`) changes to a parent in a
+  different worktree than this row's — content cannot move into, out of, or between worktrees except through a
+  pull. `parent-model` is the parent's model. Returns nil; call for side effect."
+  [instance parent-model parent-key]
+  (when (contains? (t2/changes instance) parent-key)
+    (let [current (:worktree_id (t2/original instance))
+          target  (when-let [parent-id (get instance parent-key)]
+                    (t2/select-one-fn :worktree_id parent-model :id parent-id))]
+      (when (not= current target)
+        (throw (ex-info (tru "Cannot move content into or out of a remote sync worktree.")
+                        {:status-code        400
+                         :worktree-id        current
+                         :target-worktree-id target})))))
+  nil)
+
+(defn worktree-accessible?
+  "Whether `instance` is accessible to the current user under worktree isolation: its `:worktree_id` matches the
+  user's active worktree, where nil is the main app. Instances that carry no `:worktree_id` key — rows of models
+  that aren't worktree-scoped — are always accessible. AND this into a worktree-scoped model's `can-read?`/
+  `can-write?` so main users never see worktree content and worktree users never see main (or other worktrees')
+  content."
+  [instance]
+  (or (not (contains? instance :worktree_id))
+      (= (:worktree_id instance) api/*current-worktree-id*)))
+
+(defn worktree-visibility-clause
+  "HoneySQL predicate selecting rows visible to the current user: rows whose worktree matches the user's active
+  worktree, where nil (no worktree) is the main app. `column` defaults to `:worktree_id`; pass a qualified column
+  when the query joins other tables."
+  ([] (worktree-visibility-clause :worktree_id))
+  ([column]
+   [:= column api/*current-worktree-id*]))
 
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.

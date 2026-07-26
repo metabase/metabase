@@ -48,7 +48,10 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
+  (t2/select [:model/Action :name :id :public_uuid :model_id]
+             :public_uuid [:not= nil]
+             :archived false
+             :worktree_id api/*current-worktree-id*))
 
 (api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
   "Fetch an Action."

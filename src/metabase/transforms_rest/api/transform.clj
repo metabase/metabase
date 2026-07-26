@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-dag-run :as transforms.dag-run]
@@ -86,6 +87,7 @@
    [:source_database_id {:optional true} [:maybe pos-int?]]
    [:source_readable {:optional true} [:maybe :boolean]]
    [:entity_id [:maybe :string]]
+   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:created_at :any]
    [:updated_at :any]
    [:creator_id pos-int?]
@@ -199,7 +201,8 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Transform id)
-  (let [id->transform (t2/select-pk->fn identity :model/Transform)
+  (let [id->transform (t2/select-pk->fn identity :model/Transform
+                                        {:where (remote-sync/worktree-visibility-clause)})
         {graph :dependencies} (transforms.core/transform-ordering #{id} (vals id->transform))
         dep-ids         (get graph id)
         dependencies    (map id->transform dep-ids)]

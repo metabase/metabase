@@ -23,7 +23,8 @@
 (doto :model/NativeQuerySnippet
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 ;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
 (t2/deftransforms :model/NativeQuerySnippet
@@ -67,7 +68,8 @@
         set-snippet-id (fn [{:keys [snippet-name] :as tag}]
                          ;; Check for exact match in database:
                          (if-let [snippet-id (t2/select-one-fn :id :model/NativeQuerySnippet
-                                                               :name snippet-name)]
+                                                               :name snippet-name
+                                                               :worktree_id api/*current-worktree-id*)]
                            (assoc tag :snippet-id snippet-id)
                            ;; Use previous reference if possible:
                            (or (name->old-tag snippet-name) tag)))]
@@ -92,6 +94,7 @@
 
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
+  (remote-sync/check-parent-same-worktree snippet :model/Collection :collection_id)
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
   (u/prog1 (cond-> snippet
              (:content snippet) add-template-tags)

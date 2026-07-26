@@ -1,5 +1,5 @@
 import type { EnterpriseSettings } from "./settings";
-import type { UserId } from "./user";
+import type { UserId, UserInfo } from "./user";
 import type { CardDisplayType } from "./visualization";
 
 export type RemoteSyncEntityModel =
@@ -190,6 +190,10 @@ export type CreateBranchResponse = {
   message: string;
 };
 
+export type CreateWorktreeRequest = {
+  branch: string;
+};
+
 export type TestRemoteSyncConnectionRequest = {
   "remote-sync-url"?: string | null;
   "remote-sync-token"?: string | null;
@@ -197,4 +201,15 @@ export type TestRemoteSyncConnectionRequest = {
 
 export type TestRemoteSyncConnectionResponse = {
   status: "success";
+};
+
+/** A checkout of a git branch that a user can be assigned to via `User.worktree_id`. */
+export type RemoteSyncWorktree = {
+  id: number;
+  branch: string;
+  creator_id: number | null;
+  created_at: string;
+  updated_at: string;
+  creator: UserInfo | null;
+  users: UserInfo[];
 };

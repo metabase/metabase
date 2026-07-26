@@ -6,6 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -21,6 +22,7 @@
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
+  (derive :hook/worktree-id)
   ;; Disabled for performance reasons, see update-dashboard-card!-call-count-test
   #_(derive :hook/search-index))
 
@@ -35,6 +37,11 @@
           :visualization_settings {}
           :inline_parameters      []}
          dashcard))
+
+(t2/define-before-update :model/DashboardCard
+  [dashcard]
+  (remote-sync/check-parent-same-worktree dashcard :model/Dashboard :dashboard_id)
+  dashcard)
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard

@@ -4,6 +4,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms.models.transform :as transform]
    [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
@@ -14,20 +15,24 @@
 (doto :model/TransformTag
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (defmethod mi/can-read? :model/TransformTag
-  ([_instance]
-   (api/is-data-analyst?))
-  ([_model _pk]
-   (api/is-data-analyst?)))
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (api/is-data-analyst?)))
+  ([_model pk]
+   (when-let [tag (t2/select-one :model/TransformTag :id pk)]
+     (mi/can-read? tag))))
 
 (defmethod mi/can-write? :model/TransformTag
   ([instance]
-   (or api/*is-superuser?*
-       (and api/*is-data-analyst?*
-            (let [transforms (transform/transforms-with-tags [(:id instance)])]
-              (every? mi/can-write? transforms)))))
+   (and (remote-sync/worktree-accessible? instance)
+        (or api/*is-superuser?*
+            (and api/*is-data-analyst?*
+                 (let [transforms (transform/transforms-with-tags [(:id instance)])]
+                   (every? mi/can-write? transforms))))))
   ([_model pk]
    (when-let [tag (t2/select-one :model/TransformTag :id pk)]
      (mi/can-write? tag))))

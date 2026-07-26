@@ -486,7 +486,8 @@
        [:is_group_manager       {:optional true} [:maybe :boolean]]
        [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
        [:locale                 {:optional true} [:maybe ms/ValidLocale]]
-       [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
+       [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]
+       [:worktree_id            {:optional true} [:maybe ms/PositiveInt]]]]
   (try
     (users/check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
@@ -516,7 +517,7 @@
         (when-let [changes (not-empty
                             (u/select-keys-when body
                                                 :present (cond-> #{:first_name :last_name :locale}
-                                                           api/*is-superuser?* (conj :login_attributes :tenant_id))
+                                                           api/*is-superuser?* (conj :login_attributes :tenant_id :worktree_id))
                                                 :non-nil (cond-> #{:email}
                                                            api/*is-superuser?* (conj :is_superuser))))]
           (t2/update! :model/User id changes)

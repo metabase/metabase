@@ -1,6 +1,7 @@
 (ns metabase.transforms.models.transform-transform-tag
   (:require
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -10,7 +11,13 @@
 
 (doto :model/TransformTransformTag
   (derive :metabase/model)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
+
+(t2/define-before-update :model/TransformTransformTag
+  [ttt]
+  (remote-sync/check-parent-same-worktree ttt :model/Transform :transform_id)
+  ttt)
 
 (defmethod serdes/make-spec "TransformTransformTag"
   [_model-name _opts]

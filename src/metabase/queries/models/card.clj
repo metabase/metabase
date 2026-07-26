@@ -40,6 +40,7 @@
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
@@ -128,7 +129,8 @@
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defmethod mi/can-write? :model/Card
   ([instance]
@@ -867,6 +869,7 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
+  (remote-sync/check-parent-same-worktree card :model/Collection :collection_id)
   (let [changes (some-> card t2/changes queries.schema/normalize-card)
         card    (queries.schema/normalize-card card)]
     (collection/check-allowed-content (:type card) (:collection_id changes))
@@ -1537,7 +1540,8 @@
                   :display-type         :this.display
                   :collection-type      :collection.type
                   :collection-location  :collection.location
-                  :root-collection-type {:fn collection/root-collection-type}}
+                  :root-collection-type {:fn collection/root-collection-type}
+                  :worktree-id          true}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level

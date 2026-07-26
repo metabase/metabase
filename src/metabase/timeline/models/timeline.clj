@@ -3,6 +3,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -13,7 +14,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 ;;;; transforms
 
@@ -29,6 +31,7 @@
   model)
 
 (t2/define-before-update :model/Timeline [model]
+  (remote-sync/check-parent-same-worktree model :model/Collection :collection_id)
   (collection/check-allowed-content :model/Timeline (:collection_id (t2/changes model)))
   model)
 

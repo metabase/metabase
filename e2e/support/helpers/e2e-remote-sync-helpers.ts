@@ -122,6 +122,12 @@ export const stashChanges = () => {
   cy.exec("git -C " + LOCAL_GIT_PATH + " stash");
 };
 
+// Merge a branch into main directly in the repo, simulating a merge that happens outside the app (e.g. on GitHub)
+export const mergeBranchIntoMain = (branch: string) => {
+  stashChanges();
+  cy.exec(`git -C ${LOCAL_GIT_PATH} merge '${branch}' --no-edit`);
+};
+
 // function to examine the working directory and return an array of the files present
 export const wrapSyncedCollectionFiles = (alias = "syncedCollectionFiles") => {
   stashChanges();

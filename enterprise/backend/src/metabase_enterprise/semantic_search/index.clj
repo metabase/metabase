@@ -16,6 +16,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.tracing.core :as tracing]
@@ -77,6 +78,9 @@
      [:curated :boolean]
      [:dashboardcard_count :int]
      [:view_count :int]
+     ;; Remote-sync worktree a row belongs to; nil for main-app content and for search-models that aren't
+     ;; worktree-scoped. See metabase.search.permissions/worktree-visibility-clause.
+     [:worktree_id :int]
      [:created_at :timestamp-with-time-zone [:default [:raw "CURRENT_TIMESTAMP"]] :not-null]
      [:model_created_at :timestamp-with-time-zone]
      [:model_updated_at :timestamp-with-time-zone]
@@ -160,7 +164,7 @@
   [owner-ids {:keys [model id embedding searchable_text embeddable_text native_query created_at creator_id updated_at
                      last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
                      pinned dashboardcard_count view_count last_viewed_at collection_type root_collection_type
-                     data_layer data_authority curated] :as doc}]
+                     data_layer data_authority curated worktree_id] :as doc}]
   {:model               model
    :model_id            id
    :collection_id       collection_id
@@ -168,6 +172,7 @@
    :creator_id          creator_id
    :database_id         database_id
    :last_editor_id      last_editor_id
+   :worktree_id         worktree_id
    :name                (or (:name doc) "")
    :content             embeddable_text
    :display_type        display_type
@@ -326,7 +331,7 @@
      ;; Must equal db.migration.impl/dynamic-schema-version — a freshly created index already has the
      ;; latest schema, so recording an older version would mark it stale on creation. Kept as a literal
      ;; (not a require) to avoid an index → impl → index-metadata → index cycle; bump both together.
-     :version 5}))
+     :version 6}))
 
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]
@@ -690,7 +695,8 @@
    [:model_created_at :model_created_at]
    [:model_updated_at :model_updated_at]
    [:last_viewed_at :last_viewed_at]
-   [:legacy_input :legacy_input]])
+   [:legacy_input :legacy_input]
+   [:worktree_id :worktree_id]])
 
 (defn- keyword-search-query [index search-context]
   (let [filters (search-filters search-context)
@@ -978,10 +984,23 @@
   Wrapped in `delay` so the registry can populate before first read."
   (delay (compute-collection-id-only-search-models)))
 
+(defn- worktree-visible?
+  "Whether `doc` (an index row or decoded `legacy_input`) belongs to the caller's remote-sync worktree.
+  Rows of search-models that aren't worktree-scoped are always visible; rows of a worktree-scoped model
+  are visible only when their `:worktree_id` matches the caller's active worktree (nil for the main app).
+  Applied ahead of the collection-id fast path below, which otherwise has no worktree awareness of its own."
+  [doc]
+  (remote-sync/worktree-accessible?
+   (if (-> (search/spec (:model doc)) :attrs :worktree-id)
+     (select-keys doc [:worktree_id])
+     {})))
+
 (defn- filter-read-permitted
-  "Returns the subset of `docs` whose t2 instances pass `mi/can-read?` for the current user."
+  "Returns the subset of `docs` whose t2 instances pass `mi/can-read?` for the current user, and whose
+  `:worktree_id` matches the caller's active remote-sync worktree."
   [docs]
   (let [timer (u/start-timer)
+        docs (filterv worktree-visible? docs)
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
         fast-set @collection-id-only-search-models
         {fast-docs true slow-docs false} (group-by #(contains? fast-set (:model %)) docs)

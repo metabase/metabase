@@ -18,7 +18,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.util :as u]
@@ -206,14 +208,21 @@
   - Table: Uses perms/visible-table-filter-select with appropriate permissions. Tables are NOT filtered by
     active/visibility_type regardless of `include-archived-items`, so dependencies broken by dropped or
     hidden tables stay visible.
-  - Transform: Analysts can view any transform they have source view permission to."
+  - Transform: Analysts can view any transform they have source view permission to.
+
+  Worktree-scoped models (see [[serdes/worktree-scoped-models]]) also get a
+  [[remote-sync/worktree-visibility-clause]] conjunct, so a caller only ever sees entities in their own
+  remote-sync worktree (nil for the main app)."
   ([entity-type-field entity-id-field]
    (visible-entities-filter-clause entity-type-field entity-id-field nil))
   ([entity-type-field entity-id-field {:keys [include-archived-items] :or {include-archived-items :exclude}}]
    (into [:or]
          (keep (fn [[entity-type model]]
                  (let [table-name (t2/table-name model)
-                       id-column (keyword (name table-name) "id")]
+                       id-column (keyword (name table-name) "id")
+                       worktree-clause (when (serdes/worktree-scoped? model)
+                                         (remote-sync/worktree-visibility-clause
+                                          (keyword (name table-name) "worktree_id")))]
                    (case model
                      ;; Sandbox is superuser-only
                      :model/Sandbox
@@ -227,7 +236,9 @@
                        api/*is-superuser?*
                        [:and
                         [:= entity-type-field (name entity-type)]
-                        [:in entity-id-field {:select [:id] :from [table-name]}]]
+                        [:in entity-id-field {:select [:id]
+                                              :from   [table-name]
+                                              :where  [:and worktree-clause]}]]
 
                        api/*is-data-analyst?*
                        [:and
@@ -235,12 +246,14 @@
                         [:in entity-id-field
                          {:select [:id]
                           :from   [table-name]
-                          :where  [:in :source_database_id
-                                   (perms/visible-database-filter-select
-                                    {:user-id          api/*current-user-id*
-                                     :is-superuser?    api/*is-superuser?*
-                                     :is-data-analyst? api/*is-data-analyst?*}
-                                    {:perms/create-queries :query-builder})]}]])
+                          :where  [:and
+                                   worktree-clause
+                                   [:in :source_database_id
+                                    (perms/visible-database-filter-select
+                                     {:user-id          api/*current-user-id*
+                                      :is-superuser?    api/*is-superuser?*
+                                      :is-data-analyst? api/*is-data-analyst?*}
+                                     {:perms/create-queries :query-builder})]]}]])
 
                      ;; Collection-based entities with archived field
                      (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
@@ -254,6 +267,7 @@
                           [:in entity-id-field {:select [:id]
                                                 :from   [table-name]
                                                 :where  [:and
+                                                         worktree-clause
                                                          ;; Filter by collection visibility
                                                          (collection/visible-collection-filter-clause
                                                           (keyword (name table-name) "collection_id")
@@ -290,6 +304,7 @@
                         [:in entity-id-field {:select [:id]
                                               :from   [table-name]
                                               :where  [:and
+                                                       worktree-clause
                                                        ;; Check that user can see the table this entity belongs to
                                                        [:in table-id-column
                                                         {:select [:metabase_table.id]

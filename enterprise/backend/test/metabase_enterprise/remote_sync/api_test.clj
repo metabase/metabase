@@ -169,28 +169,28 @@
 ;;; ------------------------------------------------- Branches Endpoint -------------------------------------------------
 
 (deftest branches-endpoint-returns-branches-test
-  (testing "GET /api/ee/remote-sync/branches returns list of branches"
+  (testing "GET /api/ee/remote-sync/branch returns list of branches"
     (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly (mock-git-source :branches ["main" "develop" "feature-branch"]))]
       (is (= {:items ["main" "develop" "feature-branch"]}
-             (mt/user-http-request :crowberto :get 200 "ee/remote-sync/branches"))))))
+             (mt/user-http-request :crowberto :get 200 "ee/remote-sync/branch"))))))
 
 (deftest branches-endpoint-requires-superuser-test
-  (testing "GET /api/ee/remote-sync/branches requires superuser permissions"
+  (testing "GET /api/ee/remote-sync/branch requires superuser permissions"
     (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly (mock-git-source))]
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "ee/remote-sync/branches"))))))
+             (mt/user-http-request :rasta :get 403 "ee/remote-sync/branch"))))))
 
 (deftest branches-endpoint-errors-when-git-not-configured-test
-  (testing "GET /api/ee/remote-sync/branches errors when git source not configured"
+  (testing "GET /api/ee/remote-sync/branch errors when git source not configured"
     (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly nil)]
       (is (= "Source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
-             (mt/user-http-request :crowberto :get 400 "ee/remote-sync/branches"))))))
+             (mt/user-http-request :crowberto :get 400 "ee/remote-sync/branch"))))))
 
 (deftest branches-endpoint-handles-repository-errors-test
-  (testing "GET /api/ee/remote-sync/branches handles git repository errors"
+  (testing "GET /api/ee/remote-sync/branch handles git repository errors"
     (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly (mock-git-source :error-on-branches? true))]
       (is (= "Repository not found: Please check the repository URL"
-             (mt/user-http-request :crowberto :get 400 "ee/remote-sync/branches"))))))
+             (mt/user-http-request :crowberto :get 400 "ee/remote-sync/branch"))))))
 
 ;;; ------------------------------------------------- Import Endpoint -------------------------------------------------
 
@@ -1308,7 +1308,7 @@
               (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))))))
 
 (deftest create-branch
-  (testing "POST /api/ee/remote-sync/create-branch creates a new branch"
+  (testing "POST /api/ee/remote-sync/branch creates a new branch"
     (let [mock-source (test-helpers/create-mock-source)]
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
@@ -1317,11 +1317,11 @@
         (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
           (is (= {:status  "success"
                   :message "Branch 'feature-branch' created from 'main'"}
-                 (mt/user-http-request :crowberto :post 200 "ee/remote-sync/create-branch"
+                 (mt/user-http-request :crowberto :post 200 "ee/remote-sync/branch"
                                        {:name "feature-branch"})))
           (is (= #{["main" "main-ref"] ["develop" "develop-ref"] ["feature-branch" "feature-branch-ref"]}
                  (set (source.p/branches mock-source))))
-          (is (= "feature-branch" (settings/remote-sync-branch))))))))
+          (is (= "main" (settings/remote-sync-branch))))))))
 
 (deftest stash
   (testing "POST /api/ee/remote-sync/stash"
@@ -1775,7 +1775,7 @@
                 "no NEW RemoteSyncTask row should be created when the guard fires")))))))
 
 (deftest create-branch-refuses-while-task-running-test
-  (testing "POST /api/ee/remote-sync/create-branch returns 400 when a RemoteSyncTask is active"
+  (testing "POST /api/ee/remote-sync/branch returns 400 when a RemoteSyncTask is active"
     (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
                                             :initiated_by   (mt/user->id :rasta)
                                             :started_at     (t/offset-date-time)
@@ -1789,7 +1789,7 @@
                                              remote-sync-type   :read-write]
             ;; The endpoint wraps the guard's exception with "Failed to create branch: ..." in its catch.
             (is (re-find #"Remote sync task in progress"
-                         (str (mt/user-http-request :crowberto :post 400 "ee/remote-sync/create-branch"
+                         (str (mt/user-http-request :crowberto :post 400 "ee/remote-sync/branch"
                                                     {:name "feature-x"}))))
             (is (= "main" (settings/remote-sync-branch))
                 "remote-sync-branch must remain unchanged when the guard fires")

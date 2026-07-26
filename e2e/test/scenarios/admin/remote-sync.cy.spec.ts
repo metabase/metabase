@@ -450,6 +450,112 @@ describe("Remote Sync", () => {
         });
       });
     });
+
+    describe("Worktrees", () => {
+      it("can edit and push a change from a worktree, then pull it into main after merging outside the app", () => {
+        const WORKTREE_BRANCH = `worktree-branch-${Date.now()}`;
+        const RENAMED_QUESTION_NAME = `${REMOTE_QUESTION_NAME}1`;
+
+        H.configureGitWithNewSyncedCollection("read-write").as(
+          "syncedCollection",
+        );
+
+        cy.get("@syncedCollection").then((syncedCollection) => {
+          H.createQuestion({
+            name: REMOTE_QUESTION_NAME,
+            query: {
+              "source-table": PRODUCTS_ID,
+            },
+            // Unjustified type cast. FIXME
+            collection_id: (syncedCollection as unknown as Collection).id,
+          });
+        });
+
+        cy.visit("/collection/root");
+        H.goToSyncedCollection("Test Synced Collection");
+        H.collectionTable().findByText(REMOTE_QUESTION_NAME).should("exist");
+
+        H.clickPushOption();
+        H.modal()
+          .button(/Push changes/)
+          .click();
+        H.waitForTask({ taskName: "export" });
+
+        cy.visit("/admin/settings/remote-sync/worktrees");
+        cy.button(/Create a worktree/).click();
+        H.modal()
+          .findByLabelText(/Branch/)
+          .click()
+          .type(WORKTREE_BRANCH);
+        H.popover()
+          .findByRole("option", {
+            name: new RegExp(`Create new branch.*${WORKTREE_BRANCH}`),
+          })
+          .click();
+        H.modal().button("Create").click();
+        H.modal().should("not.exist");
+
+        cy.intercept("PUT", "/api/user/*").as("updateUser");
+        cy.findByRole("row", { name: WORKTREE_BRANCH }).within(() => {
+          cy.findByRole("button", { name: "Worktree actions" }).click();
+        });
+        H.popover()
+          .findByRole("menuitem", { name: /Enter worktree/ })
+          .click();
+        cy.wait("@updateUser");
+
+        cy.visit("/");
+        H.getGitSyncControls().should("contain.text", WORKTREE_BRANCH);
+        H.clickPullOption();
+        H.waitForTask({ taskName: "import" });
+
+        cy.visit("/collection/root");
+        H.goToSyncedCollection("Test Synced Collection");
+        H.collectionTable()
+          .findByText(REMOTE_QUESTION_NAME)
+          .should("exist")
+          .click();
+
+        cy.findByTestId("saved-question-header-title")
+          .click()
+          .type("{end}1")
+          .blur();
+        cy.findByTestId("saved-question-header-title").should(
+          "have.value",
+          RENAMED_QUESTION_NAME,
+        );
+
+        H.clickPushOption();
+        H.modal()
+          .button(/Push changes/)
+          .click();
+        H.waitForTask({ taskName: "export" });
+
+        H.mergeBranchIntoMain(WORKTREE_BRANCH);
+
+        cy.visit("/admin/settings/remote-sync/worktrees");
+        cy.intercept("PUT", "/api/user/*").as("updateUserLeave");
+        cy.findByRole("row", { name: WORKTREE_BRANCH }).within(() => {
+          cy.findByRole("button", { name: "Worktree actions" }).click();
+        });
+        H.popover()
+          .findByRole("menuitem", { name: /Leave worktree/ })
+          .click();
+        cy.wait("@updateUserLeave");
+
+        cy.visit("/");
+        H.getGitSyncControls().should("contain.text", "main");
+        H.clickPullOption();
+        H.waitForTask({ taskName: "import" });
+
+        cy.visit("/collection/root");
+        H.goToSyncedCollection("Test Synced Collection");
+        H.collectionTable().findByText(RENAMED_QUESTION_NAME).should("exist");
+        H.collectionTable()
+          .findByText(REMOTE_QUESTION_NAME)
+          .should("not.exist");
+      });
+    });
   });
 
   describe("remote sync admin settings page", () => {

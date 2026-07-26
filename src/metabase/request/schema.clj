@@ -11,4 +11,5 @@
    [:is-data-analyst?   {:optional true} :boolean]
    [:user-locale        {:optional true} [:maybe string?]]
    [:is-group-manager?  {:optional true} :boolean]
+   [:worktree-id        {:optional true} [:maybe pos-int?]]
    [:permissions-set    {:optional true} [:set :string]]])

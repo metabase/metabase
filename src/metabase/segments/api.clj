@@ -7,6 +7,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -76,8 +77,8 @@
   "Fetch *all* `Segments`."
   []
   (as-> (t2/select :model/Segment
-                   :archived false
-                   {:order-by [[:%lower.name :asc]]}) segments
+                   {:where    [:and [:= :archived false] (remote-sync/worktree-visibility-clause)]
+                    :order-by [[:%lower.name :asc]]}) segments
     (filter mi/can-read? segments)
     (t2/hydrate segments :creator :definition_description)))
 

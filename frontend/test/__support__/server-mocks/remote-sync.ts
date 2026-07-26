@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import type { RemoteSyncEntity } from "metabase-types/api";
+import type { RemoteSyncEntity, RemoteSyncWorktree } from "metabase-types/api";
 
 export interface RemoteSyncDirtyResponse {
   dirty: RemoteSyncEntity[];
@@ -30,7 +30,7 @@ export const setupRemoteSyncBranchesEndpoint = (
 ) => {
   fetchMock.removeRoute("remote-sync-branches");
   fetchMock.get(
-    "path:/api/ee/remote-sync/branches",
+    "path:/api/ee/remote-sync/branch",
     { items: branches },
     { name: "remote-sync-branches" },
   );
@@ -184,6 +184,73 @@ export const setupRemoteSyncTestConnectionEndpoint = ({
 };
 
 /**
+ * Setup the remote-sync worktree GET endpoint
+ */
+export const setupRemoteSyncWorktreeEndpoint = (
+  worktreeId: number,
+  worktree: RemoteSyncWorktree,
+  { delay = 0 }: { delay?: number } = {},
+) => {
+  fetchMock.removeRoute("remote-sync-worktree");
+  fetchMock.get(`path:/api/ee/remote-sync/worktree/${worktreeId}`, worktree, {
+    name: "remote-sync-worktree",
+    delay,
+  });
+};
+
+/**
+ * Setup the remote-sync worktree list GET endpoint
+ */
+export const setupListWorktreesEndpoint = (worktrees: RemoteSyncWorktree[]) => {
+  fetchMock.removeRoute("remote-sync-worktree-list");
+  fetchMock.get("path:/api/ee/remote-sync/worktree", worktrees, {
+    name: "remote-sync-worktree-list",
+  });
+};
+
+/**
+ * Setup the remote-sync worktree creation POST endpoint
+ */
+export const setupCreateWorktreeEndpoint = (
+  worktree: RemoteSyncWorktree,
+  { error }: { error?: { status: number; message: string } } = {},
+) => {
+  fetchMock.removeRoute("remote-sync-worktree-create");
+  if (error) {
+    fetchMock.post(
+      "path:/api/ee/remote-sync/worktree",
+      { status: error.status, body: { message: error.message } },
+      { name: "remote-sync-worktree-create" },
+    );
+  } else {
+    fetchMock.post("path:/api/ee/remote-sync/worktree", worktree, {
+      name: "remote-sync-worktree-create",
+    });
+  }
+};
+
+/**
+ * Setup the remote-sync worktree deletion DELETE endpoint
+ */
+export const setupDeleteWorktreeEndpoint = (
+  worktreeId: number,
+  { error }: { error?: { status: number; message: string } } = {},
+) => {
+  fetchMock.removeRoute("remote-sync-worktree-delete");
+  if (error) {
+    fetchMock.delete(
+      `path:/api/ee/remote-sync/worktree/${worktreeId}`,
+      { status: error.status, body: { message: error.message } },
+      { name: "remote-sync-worktree-delete" },
+    );
+  } else {
+    fetchMock.delete(`path:/api/ee/remote-sync/worktree/${worktreeId}`, 204, {
+      name: "remote-sync-worktree-delete",
+    });
+  }
+};
+
+/**
  * Setup all remote-sync endpoints at once
  */
 export const setupRemoteSyncEndpoints = ({
@@ -217,7 +284,7 @@ export const setupRemoteSyncEndpoints = ({
   setupRemoteSyncExportPreflightEndpoint(exportPreflight);
   setupRemoteSyncSettingsEndpoint(settingsResponse);
   setupRemoteSyncTestConnectionEndpoint({ error: testConnectionError });
-  fetchMock.post("path:/api/ee/remote-sync/create-branch", {});
+  fetchMock.post("path:/api/ee/remote-sync/branch", {});
   fetchMock.get(
     "path:/api/ee/remote-sync/has-remote-changes",
     hasRemoteChangesError

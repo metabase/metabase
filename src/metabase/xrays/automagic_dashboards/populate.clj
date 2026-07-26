@@ -40,7 +40,8 @@
   (or (t2/select-one :model/Collection
                      :name "Automatically Generated Dashboards"
                      :archived false
-                     :location location)
+                     :location location
+                     :worktree_id api/*current-worktree-id*)
       (t2/insert-returning-instance!
        :model/Collection
        {:name "Automatically Generated Dashboards"

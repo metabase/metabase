@@ -351,7 +351,7 @@
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
   fetching themselves. Needed to power the admin page."
-  (into default-user-columns [:sso_source :is_active :updated_at :login_attributes :jwt_attributes :locale]))
+  (into default-user-columns [:sso_source :is_active :updated_at :login_attributes :jwt_attributes :locale :worktree_id]))
 
 (def non-admin-or-self-visible-columns
   "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see

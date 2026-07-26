@@ -15,6 +15,7 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -167,6 +168,7 @@
    _query-params]
   {:items (t2/hydrate (t2/select :model/Document {:where [:and
                                                           (collection/visible-collection-filter-clause)
+                                                          (remote-sync/worktree-visibility-clause)
                                                           [:= :archived false]]})
                       :creator :can_write :is_remote_synced)})
 
@@ -422,7 +424,10 @@
   []
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Document :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+  (t2/select [:model/Document :name :id :public_uuid]
+             :public_uuid [:not= nil]
+             :archived false
+             :worktree_id api/*current-worktree-id*))
 
 ;;; ------------------------------------------------ Card Downloads --------------------------------------------------
 

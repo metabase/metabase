@@ -2,6 +2,7 @@
   "Model for tracking remote sync tasks and their progress."
   (:require
    [java-time.api :as t]
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
@@ -35,7 +36,8 @@
 ;;; ------------------------------------------- Helper Functions -------------------------------------------
 
 (mu/defn create-sync-task!
-  "Creates a new remote sync task.
+  "Creates a new remote sync task, stamped with the current [[api/*current-worktree-id*]] scope (nil for
+  the main app; ignores any `:worktree_id` in `additional-fields`).
 
   Takes a sync-task-type (either 'import' or 'export'), an optional user-id (ID of the user who initiated the task),
   and optional additional-fields (map of additional fields to include in the task record).
@@ -51,7 +53,8 @@
                                          :initiated_by user-id
                                          :progress 0
                                          :started_at (mi/now)}
-                                        additional-fields)))
+                                        additional-fields
+                                        {:worktree_id api/*current-worktree-id*})))
 
 (defn cancel-sync-task!
   "Marks a sync task as cancelled.
@@ -197,19 +200,22 @@
                         [:< :last_progress_report_at cutoff]]})))
 
 (defn most-recent-task
-  "Gets the most recently run task, including currently running tasks.
+  "Gets the most recently run task, including currently running tasks, scoped to the current
+  [[api/*current-worktree-id*]] (nil for the main app).
 
   Returns the most recent RemoteSyncTask (running or completed), or nil if no tasks exist."
   []
   (t2/select-one :model/RemoteSyncTask
                  {:where [:and
-                          [:<> :started_at nil]]
+                          [:<> :started_at nil]
+                          [:= :worktree_id api/*current-worktree-id*]]
                   :limit 1
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
 
 (defn last-version
-  "Gets the version that any changes are built off of.
+  "Gets the version that any changes are built off of, scoped to the current [[api/*current-worktree-id*]]
+  (nil for the main app).
 
   Returns the version string from the most recent successful task (either export or import), or nil if no successful
   tasks exist."
@@ -219,7 +225,8 @@
                                     [:<> nil :ended_at]
                                     [:= false :cancelled]
                                     [:= nil :error_message]
-                                    [:<> nil :version]]
+                                    [:<> nil :version]
+                                    [:= :worktree_id api/*current-worktree-id*]]
                             :limit 1
                             :order-by [[:started_at :desc]
                                        [:id :desc]]})))

@@ -8,6 +8,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
    [metabase.queries.models.query :as query]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -33,7 +34,8 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (doseq [model action-sub-models]
   (derive model :metabase/model))
@@ -103,12 +105,14 @@
   [instance      :- [:map
                      [:model_id pos-int?]]
    read-or-write :- [:enum :read :write]]
-  (mi/perms-objects-set (t2/select-one :model/Card :id (:model_id instance)) read-or-write))
+  (if (remote-sync/worktree-accessible? instance)
+    (mi/perms-objects-set (t2/select-one :model/Card :id (:model_id instance)) read-or-write)
+    #{"___no-worktree-access"}))
 
 (def ^:private action-columns
   "The columns that are common to all Action types."
   [:archived :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name :parameter_mappings
-   :parameters :public_uuid :type :updated_at :visualization_settings])
+   :parameters :public_uuid :type :updated_at :visualization_settings :worktree_id])
 
 (mu/defn- type->model
   "Returns the model from an action type.
@@ -493,7 +497,8 @@
                   ;; workaround for actions not having revisions (yet)
                   :last-edited-at :updated_at
                   :created-at     true
-                  :updated-at     true}
+                  :updated-at     true
+                  :worktree-id    true}
    :search-terms [:name :description]
    :render-terms {:model-id   :model.id
                   :model-name :model.name}

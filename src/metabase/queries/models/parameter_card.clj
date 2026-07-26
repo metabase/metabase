@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -15,7 +16,8 @@
 
 (doto :model/ParameterCard
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/ParameterCard
   {:parameterized_object_type mi/transform-keyword})
@@ -33,10 +35,11 @@
 (t2/define-before-insert :model/ParameterCard
   [pc]
   (u/prog1 pc
-    (validate-parameterized-object-type pc)))
+    (validate-parameterized-object-type <>)))
 
 (t2/define-before-update :model/ParameterCard
   [pc]
+  (remote-sync/check-parent-same-worktree pc :model/Card :card_id)
   (u/prog1 pc
     (when (:parameterized_object_type (t2/changes <>))
       (validate-parameterized-object-type <>))))

@@ -1,6 +1,6 @@
 (ns metabase.request.session
   (:require
-   [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
+   [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *current-worktree-id* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
    [metabase.permissions.core :as perms]
    [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
@@ -35,7 +35,7 @@
 
 (mu/defn do-with-current-user
   "Impl for [[with-current-user]] and [[metabase.server.middleware.session/with-current-user-for-request]]"
-  [{:keys [metabase-user-id is-superuser? is-data-analyst? user-locale settings is-group-manager?], :as current-user-info} :- [:maybe ::request.schema/current-user-info]
+  [{:keys [metabase-user-id is-superuser? is-data-analyst? user-locale settings is-group-manager? worktree-id], :as current-user-info} :- [:maybe ::request.schema/current-user-info]
    thunk]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
@@ -43,7 +43,8 @@
             *is-superuser?*                (boolean is-superuser?)
             *is-data-analyst?*             (boolean is-data-analyst?)
             *current-user*                 (delay (find-user metabase-user-id))
-            *current-user-permissions-set* (delay (current-user-info->permissions-set current-user-info))]
+            *current-user-permissions-set* (delay (current-user-info->permissions-set current-user-info))
+            *current-worktree-id*          worktree-id]
     ;; As mentioned above, do not rebind user-local values to something new, because changes to its value will not be
     ;; propagated to frames further up the stack.
     (letfn [(do-with-user-local-values [thunk]
@@ -67,6 +68,7 @@
                     [:is_superuser :is-superuser?]
                     [:is_data_analyst :is-data-analyst?]
                     [:locale :user-locale]
+                    [:worktree_id :worktree-id]
                     :settings]
                    :id current-user-id)))
 

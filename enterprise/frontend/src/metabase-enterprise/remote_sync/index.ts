@@ -5,16 +5,17 @@ import {
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { LibraryNav } from "./LibraryNav";
 import { CollectionsNavTree } from "./components/CollectionsNavTree";
 import { GitSettingsModal } from "./components/GitSettingsModal";
 import { GitSyncControls } from "./components/GitSyncControls";
 import { GitSyncSetupMenuItem } from "./components/GitSyncSetupMenuItem";
+import { LibraryNav } from "./components/LibraryNav";
 import { RemoteSyncAdminSettings } from "./components/RemoteSyncAdminSettings";
 import {
   CollectionSyncStatusBadge,
   SyncedCollectionsSidebarSection,
 } from "./components/SyncedCollectionsSidebarSection";
+import { WorktreeSettings } from "./components/WorktreeSettings";
 import { REMOTE_SYNC_INVALIDATION_TAGS } from "./constants";
 import { useGitSyncVisible } from "./hooks/use-git-sync-visible";
 import { useHasLibraryDirtyChanges } from "./hooks/use-has-library-dirty-changes";
@@ -32,6 +33,7 @@ export function initializePlugin() {
   if (hasPremiumFeature("remote_sync")) {
     PLUGIN_REMOTE_SYNC.isEnabled = true;
     PLUGIN_REMOTE_SYNC.RemoteSyncSettings = RemoteSyncAdminSettings;
+    PLUGIN_REMOTE_SYNC.RemoteSyncWorktrees = WorktreeSettings;
     PLUGIN_REMOTE_SYNC.LibraryNav = LibraryNav;
     PLUGIN_REMOTE_SYNC.SyncedCollectionsSidebarSection =
       SyncedCollectionsSidebarSection;

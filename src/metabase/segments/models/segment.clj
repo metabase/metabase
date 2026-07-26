@@ -71,12 +71,14 @@
 (doto :model/Segment
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defmethod mi/can-read? :model/Segment
   ([instance]
    (let [table (:table (t2/hydrate instance :table))]
-     (mi/can-read? table)))
+     (and (remote-sync/worktree-accessible? instance)
+          (mi/can-read? table))))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
@@ -240,7 +242,8 @@
            :database-id :table.db_id
            ;; should probably change this, but will break legacy search tests
            :created-at false
-           :updated-at true}
+           :updated-at true
+           :worktree-id true}
    :search-terms [:name :description]
    :render-terms {:table-id :table_id
                   :table_description :table.description

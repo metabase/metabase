@@ -20,6 +20,7 @@
     (into {} (for [[k v] m]
                (when-not (or (= :id k)
                              (.endsWith (name k) "_id")
+                             (.endsWith (name k) "_id_helper")
                              (= :created_at k)
                              (= :updated_at k)
                              (= :card_schema k))

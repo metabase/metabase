@@ -59,10 +59,15 @@
     [:not [:like :location "/%/%/"]]))
 
 (defn- remove-other-users-personal-subcollections
+  "Personal Collections are always main-app content (`worktree_id` `nil`), shared across every remote-sync
+  worktree, so this filters on ownership only -- not on the caller's worktree scope."
   [user-id collections]
   (let [personal-ids         (set (t2/select-fn-set :id :model/Collection
                                                     {:where
-                                                     [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]}))
+                                                     [:and
+                                                      [:!= :personal_owner_id nil]
+                                                      [:!= :personal_owner_id user-id]
+                                                      [:= :worktree_id nil]]}))
         personal-descendant? (fn [collection]
                                (let [first-parent-collection-id (-> collection
                                                                     :location

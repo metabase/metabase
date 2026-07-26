@@ -7,6 +7,7 @@
    [metabase.collections.core :as collections]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -21,8 +22,8 @@
    (list-native-query-snippets false))
   ([archived :- ms/BooleanValue]
    (let [snippets (t2/select :model/NativeQuerySnippet
-                             :archived archived
-                             {:order-by [[:%lower.name :asc]]})]
+                             {:where    [:and [:= :archived archived] (remote-sync/worktree-visibility-clause)]
+                              :order-by [[:%lower.name :asc]]})]
      (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -53,7 +54,7 @@
   (get-native-query-snippet id))
 
 (defn- check-snippet-name-is-unique [snippet-name]
-  (when (t2/exists? :model/NativeQuerySnippet :name snippet-name)
+  (when (t2/exists? :model/NativeQuerySnippet :name snippet-name :worktree_id api/*current-worktree-id*)
     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
                     {:status-code 400}))))
 

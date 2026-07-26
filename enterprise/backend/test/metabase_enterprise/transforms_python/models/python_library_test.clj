@@ -1,8 +1,16 @@
 (ns metabase-enterprise.transforms-python.models.python-library-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
+   [metabase-enterprise.transforms-python.python-runner :as python-runner]
+   [metabase.api.common :as api]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (set! *warn-on-reflection* true)
 
@@ -71,3 +79,61 @@
       (is (=? {:source "def test(): pass"
                :path "common.py"}
               (python-library/get-python-library-by-path "common"))))))
+
+(deftest worktree-isolation-test
+  (testing "get-python-library-by-path is scoped to the current worktree"
+    ;; python_library.path still carries a single-column (non-worktree-scoped) unique index (uk_python_library_path,
+    ;; from migration v57.2025-09-11T10:00:00), so a worktree and the main app can't yet hold a same-path row at the
+    ;; same time -- these tests exercise one scope's row at a time rather than a coexistence scenario.
+    (mt/with-temp [:model/RemoteSyncWorktree wt {:branch (str (random-uuid))}]
+      (testing "a library created inside a worktree is invisible from the main app"
+        (t2/delete! :model/PythonLibrary)
+        (binding [api/*current-worktree-id* (:id wt)]
+          (python-library/update-python-library-source! "common" "def wt_version(): return 2"))
+        (is (= 1 (t2/count :model/PythonLibrary)))
+        (is (nil? (python-library/get-python-library-by-path "common")))
+        (binding [api/*current-worktree-id* (:id wt)]
+          (is (= "def wt_version(): return 2"
+                 (:source (python-library/get-python-library-by-path "common"))))))
+      (testing "a library created in the main app is invisible from a worktree"
+        (t2/delete! :model/PythonLibrary)
+        (python-library/update-python-library-source! "common" "def main_version(): return 1")
+        (is (= "def main_version(): return 1"
+               (:source (python-library/get-python-library-by-path "common"))))
+        (binding [api/*current-worktree-id* (:id wt)]
+          (is (nil? (python-library/get-python-library-by-path "common"))))))))
+
+(deftest execute-python-code-http-call-worktree-isolation-test
+  (testing "execute-python-code-http-call! only sends the current worktree's PythonLibrary source to the runner"
+    (mt/with-temp [:model/RemoteSyncWorktree wt {:branch (str (random-uuid))}]
+      (let [captured     (atom ::not-called)
+            fake-request (fn [opts & _]
+                           (reset! captured (get (json/decode (:body opts)) "library"))
+                           {:status 200 :body "{}"})
+            call!        (fn [run-id]
+                           (python-runner/execute-python-code-http-call!
+                            {:server-url "http://fake" :code "pass" :run-id run-id
+                             :source-tables [] :shared-storage {:objects {}}}))]
+        (testing "a library created inside a worktree is only sent when running as that worktree"
+          (t2/delete! :model/PythonLibrary)
+          (binding [api/*current-worktree-id* (:id wt)]
+            (python-library/update-python-library-source! "common" "def wt_only(): return 'wt'"))
+          (with-redefs [http/request fake-request]
+            (binding [api/*current-worktree-id* (:id wt)]
+              (call! 1)))
+          (is (= {"common.py" "def wt_only(): return 'wt'"} @captured))
+          (with-redefs [http/request fake-request]
+            (binding [api/*current-worktree-id* nil]
+              (call! 2)))
+          (is (= {} @captured) "the main app run never sees the worktree's library"))
+        (testing "a library created in the main app is only sent when running outside any worktree"
+          (t2/delete! :model/PythonLibrary)
+          (python-library/update-python-library-source! "common" "def main_only(): return 'main'")
+          (with-redefs [http/request fake-request]
+            (binding [api/*current-worktree-id* (:id wt)]
+              (call! 3)))
+          (is (= {} @captured) "the worktree run never sees the main app's library")
+          (with-redefs [http/request fake-request]
+            (binding [api/*current-worktree-id* nil]
+              (call! 4)))
+          (is (= {"common.py" "def main_only(): return 'main'"} @captured)))))))

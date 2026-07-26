@@ -2,11 +2,15 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupRemoteSyncEndpoints } from "__support__/server-mocks";
+import {
+  setupRemoteSyncEndpoints,
+  setupRemoteSyncWorktreeEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
+  createMockRemoteSyncWorktree,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -31,6 +35,9 @@ const setup = ({
   syncType = "read-write",
   dirty = [],
   branches = ["main", "develop"],
+  worktreeId = null,
+  worktree,
+  worktreeDelay = 0,
 }: {
   isAdmin?: boolean;
   remoteSyncEnabled?: boolean;
@@ -41,6 +48,9 @@ const setup = ({
   syncType?: "read-only" | "read-write";
   dirty?: ReturnType<typeof createMockDirtyEntity>[];
   branches?: string[];
+  worktreeId?: number | null;
+  worktree?: ReturnType<typeof createMockRemoteSyncWorktree>;
+  worktreeDelay?: number;
 } = {}) => {
   setupRemoteSyncEndpoints({
     branches,
@@ -52,12 +62,21 @@ const setup = ({
   setupCollectionEndpoints();
   setupSessionEndpoints({ remoteSyncEnabled, currentBranch, syncType });
 
+  if (typeof worktreeId === "number") {
+    setupRemoteSyncWorktreeEndpoint(
+      worktreeId,
+      worktree ?? createMockRemoteSyncWorktree({ id: worktreeId }),
+      { delay: worktreeDelay },
+    );
+  }
+
   return renderWithProviders(<GitSyncControls />, {
     storeInitialState: createRemoteSyncStoreState({
       isAdmin,
       remoteSyncEnabled,
       currentBranch,
       syncType,
+      worktreeId,
     }),
   });
 };
@@ -145,6 +164,49 @@ describe("GitSyncControls", () => {
       expect(await findOption(/Pull changes/)).toBeInTheDocument();
       // Branch switching moved to the Settings panel (GHY-4019); it is no longer offered here.
       expect(screen.queryByText(/Switch branch/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("worktree branch", () => {
+    it("shows the git branch with no worktree label when the user has no worktree", async () => {
+      setup({ currentBranch: "main" });
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      expect(screen.queryByText("worktree")).not.toBeInTheDocument();
+    });
+
+    it("renders nothing while the worktree branch is loading", async () => {
+      setup({
+        currentBranch: "main",
+        worktreeId: 42,
+        worktreeDelay: 50,
+      });
+
+      expect(screen.queryByTestId("git-sync-controls")).not.toBeInTheDocument();
+      expect(queryBranchButton(/main/)).not.toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(screen.getByTestId("git-sync-controls")).toBeInTheDocument();
+      });
+    });
+
+    it("shows the worktree branch and a 'worktree' label once loaded", async () => {
+      setup({
+        currentBranch: "main",
+        worktreeId: 42,
+        worktree: createMockRemoteSyncWorktree({
+          id: 42,
+          branch: "feature/my-worktree",
+        }),
+      });
+
+      await waitFor(() => {
+        expect(getBranchButton(/feature\/my-worktree/)).toBeInTheDocument();
+      });
+      expect(screen.getByText("worktree")).toBeInTheDocument();
+      expect(queryBranchButton(/^main$/)).not.toBeInTheDocument();
     });
   });
 

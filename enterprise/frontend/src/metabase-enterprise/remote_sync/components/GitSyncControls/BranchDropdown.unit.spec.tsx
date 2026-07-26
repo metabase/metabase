@@ -35,7 +35,7 @@ function WrapperComponent({
 
 const setupEndpoints = () => {
   setupRemoteSyncBranchesEndpoint(["main", "develop", "feature-1"]);
-  fetchMock.post("path:/api/ee/remote-sync/create-branch", {});
+  fetchMock.post("path:/api/ee/remote-sync/branch", {});
 };
 
 const setup = (
@@ -70,7 +70,7 @@ describe("BranchDropdown", () => {
   describe("error handling", () => {
     it("should show error message when branches fail to load", async () => {
       const onChange = jest.fn();
-      fetchMock.get("path:/api/ee/remote-sync/branches", {
+      fetchMock.get("path:/api/ee/remote-sync/branch", {
         status: 401,
         body: { message: "Unauthorized" },
       });
@@ -266,7 +266,7 @@ describe("BranchDropdown", () => {
 
       await waitFor(() => {
         expect(
-          fetchMock.callHistory.done("path:/api/ee/remote-sync/create-branch"),
+          fetchMock.callHistory.done("path:/api/ee/remote-sync/branch"),
         ).toBe(true);
       });
 
