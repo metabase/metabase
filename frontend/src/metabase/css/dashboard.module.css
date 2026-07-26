@@ -100,8 +100,8 @@
   bottom: 6px;
   right: 6px;
   border-bottom: 2px solid var(--mb-color-border-neutral);
-  border-inline-end: 2px solid var(--mb-color-border-neutral);
-  border-end-end-radius: 2px;
+  border-right: 2px solid var(--mb-color-border-neutral);
+  border-bottom-right-radius: 2px;
   transition: opacity 0.2s;
   opacity: 0.01;
 }
