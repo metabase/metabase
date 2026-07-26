@@ -26,11 +26,13 @@
   /* react-resizable covers panel, we have to override it */
   z-index: 2;
 
-  /* left align on small cards on the left edge to not make the actions go out of the viewport */
+  /* left align on small cards on the left edge to not make the actions go out of the viewport.
+     `onLeftEdge` is a physical grid-column predicate (dashcard.col === 0), so keep this
+     override physical rather than logical. */
   &.onLeftEdge {
     @container DashboardCard (max-width: 12rem) {
-      inset-inline-end: unset;
-      inset-inline-start: 20px;
+      right: unset;
+      left: 20px;
     }
   }
 

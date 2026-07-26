@@ -43,6 +43,7 @@ import type {
 import { getDataColumn } from "metabase/data-grid/utils/columns/data-column";
 import { getRowIdColumn } from "metabase/data-grid/utils/columns/row-id-column";
 import { getScrollBarSize } from "metabase/utils/dom";
+import { getDocumentDirection } from "metabase/utils/i18n";
 import { isNotNull } from "metabase/utils/types";
 
 import { getTruncatedColumnSizing } from "../utils/column-sizing";
@@ -284,6 +285,8 @@ export const useDataGridInstance = <TData, TValue>({
       ? getPaginationRowModel()
       : undefined,
     columnResizeMode: "onChange",
+    // Match the document direction so resize deltas use the correct sign in RTL
+    columnResizeDirection: getDocumentDirection(),
     onColumnOrderChange: setColumnOrder,
     onColumnSizingChange: setColumnSizingMap,
     onPaginationChange: setPagination,
