@@ -552,6 +552,24 @@ describe("dataAppSandboxDevPlugin", () => {
         // Nudging on those would rebuild the poll loop from the other side.
         expect(changeNudges(server)).toBe(1);
       });
+
+      it("clears on DELETE and nudges every reader, so Clear is global", async () => {
+        const { server } = await setup();
+        report(server, [{ summary: "boom" }], "page-1");
+        const nudgesBefore = changeNudges(server);
+
+        const { statusCode } = await server.request(DATA_APP_DIAGNOSTICS_URL, {
+          method: "DELETE",
+        });
+
+        expect(statusCode).toBe(204);
+        // Other open toolbars only re-read on the nudge — without it they'd
+        // keep showing the entries that were just cleared.
+        expect(changeNudges(server)).toBe(nudgesBefore + 1);
+
+        const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
+        expect(body.entries).toEqual([]);
+      });
     });
   });
 });

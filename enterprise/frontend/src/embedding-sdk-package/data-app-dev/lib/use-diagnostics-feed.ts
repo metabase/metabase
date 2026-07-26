@@ -91,7 +91,7 @@ export const useDiagnosticsFeed = (
     latestRead.current += 1;
     setReport((current) => (current ? { ...current, entries: [] } : current));
 
-    void fetch(url, { method: "DELETE" }).catch(() =>
+    fetch(url, { method: "DELETE" }).catch(() =>
       setProblem({ kind: "unreachable" }),
     );
   }, [url]);

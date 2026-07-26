@@ -50,8 +50,9 @@ export const diagnosticsReport = (
 
 /**
  * Serve a fixed buffer, filtered by `startEventId` exactly as the dev server
- * does, and clear it on DELETE. Modelling the real contract keeps the toolbar's
- * cursor/poll logic honestly exercised.
+ * does, and clear it on DELETE. The toolbar reads the feed wholesale, but
+ * modelling the real contract (cursor filtering included) keeps these tests
+ * honest about what the endpoint actually serves.
  */
 export function serveDiagnosticsFeed(
   entries: DataAppDiagnosticPayload[],
@@ -80,12 +81,21 @@ export function serveUnreachableDiagnosticsFeed() {
   cy.intercept("GET", FEED, { forceNetworkError: true }).as("feed");
 }
 
+/**
+ * Mirror the real dev page's structure: the dev entry mounts the app under
+ * `DataAppDevProvider` and the toolbar in its own React root beside it — never
+ * under the provider's theme wrapper, whose mount (when the SDK store arrives)
+ * remounts its children and would reset the toolbar's open/tab state.
+ */
 export const mountDevToolbar = (props: Partial<DevToolbarProps> = {}) =>
   cy.mount(
-    <DataAppDevProvider
-      appSlug="sales"
-      authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-    >
+    <>
+      <DataAppDevProvider
+        appSlug="sales"
+        authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+      >
+        <div />
+      </DataAppDevProvider>
       <DevToolbar {...props} />
-    </DataAppDevProvider>,
+    </>,
   );

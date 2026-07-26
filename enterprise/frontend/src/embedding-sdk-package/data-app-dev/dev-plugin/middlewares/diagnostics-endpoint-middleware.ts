@@ -13,6 +13,7 @@ export interface DiagnosticsEndpointMiddlewareOptions {
   getManifest: () => DataAppManifestStatus | null;
   getClients: () => number;
   getLastRebuildAt: () => number | null;
+  notifyChanged: () => void;
 }
 
 /**
@@ -25,6 +26,7 @@ export const getDiagnosticsEndpointMiddleware =
     getManifest,
     getClients,
     getLastRebuildAt,
+    notifyChanged,
   }: DiagnosticsEndpointMiddlewareOptions): Connect.NextHandleFunction =>
   (req, res, next) => {
     const [pathname, query] = (req.url ?? "").split("?");
@@ -38,6 +40,7 @@ export const getDiagnosticsEndpointMiddleware =
     // Clear diagnostics store on DELETE
     if (req.method === "DELETE") {
       store.clear();
+      notifyChanged();
       res.statusCode = 204;
       res.end();
 

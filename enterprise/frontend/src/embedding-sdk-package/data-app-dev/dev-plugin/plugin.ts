@@ -58,6 +58,11 @@ export function dataAppSandboxDevPlugin(
           getManifest: () => manifestStatus,
           getClients: () => server.ws.clients.size,
           getLastRebuildAt: () => bundle.lastRebuildAt,
+          notifyChanged: () =>
+            server.ws.send({
+              type: "custom",
+              event: DATA_APP_DIAGNOSTICS_CHANGED_EVENT,
+            }),
         }),
       );
 
