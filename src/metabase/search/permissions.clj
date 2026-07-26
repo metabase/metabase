@@ -3,7 +3,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config :refer [SearchContext]]
    [metabase.search.spec :as search.spec]
    [metabase.util.malli :as mu]))
@@ -48,16 +47,17 @@
    ;; to different namespaces via parameters.
    (perms/namespace-clause :collection.namespace nil true)])
 
-(defn workspace-visibility-clause
-  "HoneySQL predicate restricting `column` (the index's `workspace_id` column, `:search_index.workspace_id` by
-  default) to rows visible under remote-sync workspace isolation: rows of a search model that isn't
-  workspace-scoped are always visible, and rows of a workspace-scoped model are visible only when their
-  workspace matches the caller's active workspace (nil for the main app)."
-  ([] (workspace-visibility-clause :search_index.workspace_id))
+(defn index-visible-filter-clause
+  "HoneySQL predicate restricting `column` (the index's scope-partition column, `:search_index.workspace_id` by
+  default) to search-index rows visible to the current user in the active content scope: rows of a search model that
+  isn't scope-partitioned are always visible, and rows of a scope-partitioned model are visible only when they belong
+  to the caller's active content scope (nil for the main app). The scope mechanism is handled by the permissions
+  layer; this wrapper only adds the search-index model awareness on top."
+  ([] (index-visible-filter-clause :search_index.workspace_id))
   ([column]
    [:or
     [:not-in :search_index.model (vec (search.spec/workspace-scoped-search-models))]
-    (remote-sync/workspace-visibility-clause column)]))
+    (perms/entity-visible-filter-clause column)]))
 
 (mu/defn permitted-tables-clause
   "Build the WHERE clause and optional CTEs for table permission filtering.

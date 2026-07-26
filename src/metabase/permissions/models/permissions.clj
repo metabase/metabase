@@ -532,6 +532,50 @@
     (throw (IllegalArgumentException.
             "define-collection-based-visibility! target must be a t2-model keyword or search-model string"))))
 
+(defn entity-visible-filter-clause
+  "HoneySQL predicate selecting rows of a scope-partitioned model that are visible to the current user: rows that
+  belong to the caller's active content scope (where nil is the main app). This is the perms-layer entry point that
+  hides the remote-sync workspace mechanism behind the permissions layer, so endpoint and query code filters by
+  visibility without reaching into remote-sync directly. `column` is the model's own scope-partition column
+  (defaulting to `:workspace_id`, qualify it when the query joins other tables), or nil for a model that carries no
+  such column and is therefore always main-app. Prefer an entity-specific `*-visible-filter-clause` below where one
+  exists; use this generic form for multi-model or dynamically-columned callers. Collection-parented content should
+  instead pass `:workspace-column` to
+  [[metabase.collections.models.collection/visible-collection-filter-clause]], which scopes its root branch centrally."
+  ([] (remote-sync/workspace-visibility-clause))
+  ([column] (remote-sync/workspace-visibility-clause column)))
+
+;;; Entity-named visibility filters for models whose permissions are NOT collection-based, so the collection
+;;; visibility machinery cannot scope them. Collection-based models (Card, Dashboard, Document, Timeline,
+;;; Collection, NativeQuerySnippet) are scoped entirely through
+;;; [[metabase.collections.models.collection/visible-collection-filter-clause]] instead -- their content is enforced
+;;; to share its collection's scope by the `:hook/workspace-id` stamp and the check-parent-same-workspace guard, so
+;;; filtering by visible collections scopes the content automatically.
+
+(defn segment-visible-filter-clause
+  "HoneySQL predicate selecting Segments (table-based, not collection-scoped) visible to the current user in the
+  active content scope."
+  ([] (entity-visible-filter-clause :workspace_id))
+  ([column] (entity-visible-filter-clause column)))
+
+(defn measure-visible-filter-clause
+  "HoneySQL predicate selecting Measures (table-based, not collection-scoped) visible to the current user in the
+  active content scope."
+  ([] (entity-visible-filter-clause :workspace_id))
+  ([column] (entity-visible-filter-clause column)))
+
+(defn transform-visible-filter-clause
+  "HoneySQL predicate selecting Transforms (source-database-permission-based, not collection-scoped) visible to the
+  current user in the active content scope."
+  ([] (entity-visible-filter-clause :workspace_id))
+  ([column] (entity-visible-filter-clause column)))
+
+(defn transform-tag-visible-filter-clause
+  "HoneySQL predicate selecting TransformTags (tag-based, not collection-scoped) visible to the current user in the
+  active content scope."
+  ([] (entity-visible-filter-clause :workspace_id))
+  ([column] (entity-visible-filter-clause column)))
+
 ; Audit permissions helper fns end
 
 (defn revoke-application-permissions!

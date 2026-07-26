@@ -20,7 +20,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.util :as u]
@@ -211,7 +210,7 @@
   - Transform: Analysts can view any transform they have source view permission to.
 
   Workspace-scoped models (see [[serdes/workspace-scoped-models]]) also get a
-  [[remote-sync/workspace-visibility-clause]] conjunct, so a caller only ever sees entities in their own
+  [[perms/entity-visible-filter-clause]] conjunct, so a caller only ever sees entities in their own
   remote-sync workspace (nil for the main app)."
   ([entity-type-field entity-id-field]
    (visible-entities-filter-clause entity-type-field entity-id-field nil))
@@ -221,7 +220,7 @@
                  (let [table-name (t2/table-name model)
                        id-column (keyword (name table-name) "id")
                        workspace-clause (when (serdes/workspace-scoped? model)
-                                          (remote-sync/workspace-visibility-clause
+                                          (perms/entity-visible-filter-clause
                                            (keyword (name table-name) "workspace_id")))]
                    (case model
                      ;; Sandbox is superuser-only

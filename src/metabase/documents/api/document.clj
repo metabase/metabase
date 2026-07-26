@@ -15,7 +15,6 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -167,8 +166,8 @@
   [_route-params
    _query-params]
   {:items (t2/hydrate (t2/select :model/Document {:where [:and
-                                                          (collection/visible-collection-filter-clause)
-                                                          (remote-sync/workspace-visibility-clause)
+                                                          (collection/visible-collection-filter-clause
+                                                           :collection_id {:workspace-column :workspace_id})
                                                           [:= :archived false]]})
                       :creator :can_write :is_remote_synced)})
 

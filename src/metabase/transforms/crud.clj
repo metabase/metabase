@@ -10,7 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.remote-sync.core :as remote-sync]
+   [metabase.permissions.core :as perms]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -99,7 +99,7 @@
     (api/check-403 (seq enabled-types))
     (let [transforms (t2/select :model/Transform {:where    (into [:and
                                                                    [:in :source_type enabled-types]
-                                                                   (remote-sync/workspace-visibility-clause)]
+                                                                   (perms/transform-visible-filter-clause)]
                                                                   (when database-id
                                                                     [[:= :source_database_id database-id]]))
                                                   :order-by [[:id :asc]]})]

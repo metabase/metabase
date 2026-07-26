@@ -98,7 +98,12 @@
   revoke-collection-permissions!
   set-has-application-permission-of-type?
   set-has-full-permissions-for-set?
-  set-has-full-permissions?]
+  set-has-full-permissions?
+  entity-visible-filter-clause
+  segment-visible-filter-clause
+  measure-visible-filter-clause
+  transform-visible-filter-clause
+  transform-tag-visible-filter-clause]
  [metabase.permissions.models.permissions-group
   non-magic-groups
   all-users-magic-group-type

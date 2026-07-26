@@ -7,7 +7,6 @@
    [metabase.collections.core :as collections]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -17,12 +16,14 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn list-native-query-snippets :- [:sequential (ms/InstanceOf :model/NativeQuerySnippet)]
-  "List all native query snippets the current user has read access to."
+  "List all native query snippets the current user has read access to. No explicit scope filter is applied because
+  `can-read?` for NativeQuerySnippet already enforces both collection permissions and content-scope isolation, so
+  filtering the raw select through it yields the visible, correctly-scoped set."
   ([]
    (list-native-query-snippets false))
   ([archived :- ms/BooleanValue]
    (let [snippets (t2/select :model/NativeQuerySnippet
-                             {:where    [:and [:= :archived archived] (remote-sync/workspace-visibility-clause)]
+                             {:where    [:= :archived archived]
                               :order-by [[:%lower.name :asc]]})]
      (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced))))
 

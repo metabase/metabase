@@ -25,7 +25,6 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.queries.core :as queries]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.tracing.core :as tracing]
@@ -397,15 +396,6 @@
      :is_not_pinned [:= col nil]
      always-true-hsql-expr)))
 
-(defn- root-content-workspace-clause
-  "Restricts a collection-children row to the caller's workspace scope, but only at the root collection: a
-  non-root `collection` is already workspace-scoped transitively, via its own row in the visible-collection CTE.
-  `column` is the content table's own `workspace_id` column (qualified with its FROM alias), or `nil` for models
-  that carry no such column, in which case every row is treated as belonging to the main app."
-  [collection column]
-  (when (nil? (:id collection))
-    (remote-sync/workspace-visibility-clause column)))
-
 (defn- poison-when-pinned-clause
   "Poison a query to return no results when filtering to pinned items. Use for items that do not have a notion of
   pinning so that no results return when asking for pinned items."
@@ -456,13 +446,14 @@
                                    [:= :r.model (h2x/literal "Document")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where [:and
-               (collection/visible-collection-filter-clause :document.collection_id {:cte-name :visible_collection_ids})
+               (collection/visible-collection-filter-clause :document.collection_id
+                                                            {:cte-name        :visible_collection_ids
+                                                             :workspace-column :document.workspace_id})
                (if (collection/is-trash? collection)
                  [:= :document.archived_directly true]
                  [:and
                   [:= :document.collection_id (:id collection)]
                   [:= :document.archived_directly false]])
-               (root-content-workspace-clause collection :document.workspace_id)
                [:= :document.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
 
@@ -479,7 +470,8 @@
        :where           [:and
                          [:= :p.collection_id      (:id collection)]
                          [:= :p.archived           (boolean archived?)]
-                         (root-content-workspace-clause collection nil)
+                         (when (nil? (:id collection))
+                           (perms/entity-visible-filter-clause nil))
                          ;; exclude alerts
                          [:= :p.alert_condition    nil]
                          ;; exclude dashboard subscriptions
@@ -513,7 +505,9 @@
    :where  [:and
             (poison-when-pinned-clause pinned-state)
             [:= :collection_id (:id collection)]
-            (root-content-workspace-clause collection :workspace_id)
+            (collection/visible-collection-filter-clause :collection_id
+                                                         {:cte-name        :visible_collection_ids
+                                                          :workspace-column :workspace_id})
             [:= :archived (boolean archived?)]]})
 
 (defmethod collection-children-query :transform
@@ -524,7 +518,9 @@
      :where  [:and
               (poison-when-pinned-clause pinned-state)
               [:= :collection_id (:id collection)]
-              (root-content-workspace-clause collection :workspace_id)
+              ;; Transform read perms are source-database-based, not collection-based, so scope root rows directly.
+              (when (nil? (:id collection))
+                (perms/transform-visible-filter-clause :workspace_id))
               (if (seq enabled-types)
                 [:in :source_type enabled-types]
                 [:=
@@ -580,13 +576,14 @@
                                              [:= :mr.moderated_item_type (h2x/literal "card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :c.collection_id {:cte-name :visible_collection_ids})
+                   (collection/visible-collection-filter-clause :c.collection_id
+                                                                {:cte-name        :visible_collection_ids
+                                                                 :workspace-column :c.workspace_id})
                    (if (collection/is-trash? collection)
                      [:= :c.archived_directly true]
                      [:and
                       [:= :c.collection_id (:id collection)]
                       [:= :c.archived_directly false]])
-                   (root-content-workspace-clause collection :c.workspace_id)
                    (when-not show-dashboard-questions?
                      [:= :c.dashboard_id nil])
                    [:= :c.document_id nil]
@@ -690,13 +687,14 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :d.collection_id {:cte-name :visible_collection_ids})
+                   (collection/visible-collection-filter-clause :d.collection_id
+                                                                {:cte-name        :visible_collection_ids
+                                                                 :workspace-column :d.workspace_id})
                    (if (collection/is-trash? collection)
                      [:= :d.archived_directly true]
                      [:and
                       [:= :d.collection_id (:id collection)]
                       [:not= :d.archived_directly true]])
-                   (root-content-workspace-clause collection :d.workspace_id)
                    [:= :d.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 

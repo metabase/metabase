@@ -633,7 +633,6 @@
            permissions
            premium-features
            queries
-           remote-sync
            request
            revisions
            settings
@@ -769,7 +768,6 @@
            queries
            query-permissions
            query-processor
-           remote-sync
            request
            revisions
            util
@@ -2049,7 +2047,6 @@
            premium-features
            queries
            query-processor
-           remote-sync
            request
            settings
            startup
@@ -2410,6 +2407,7 @@
            collections
            events
            models
+           permissions
            remote-sync
            util}
    :model-exports #{:model/Timeline}
@@ -2514,7 +2512,7 @@
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
            models
-           remote-sync
+           permissions
            request
            transforms
            transforms-base
@@ -3210,7 +3208,6 @@
            premium-features
            queries
            query-processor
-           remote-sync
            request
            revisions
            settings

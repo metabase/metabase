@@ -43,7 +43,6 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.util :as u]
@@ -79,7 +78,8 @@
                                                        (:all :archived)  true
                                                        :mine [:= :creator_id api/*current-user-id*])
                                                 [:= :archived (= (keyword filter-option) :archived)]
-                                                (remote-sync/workspace-visibility-clause)]
+                                                (collection/visible-collection-filter-clause
+                                                 :collection_id {:workspace-column :workspace_id})]
                                      :order-by [:%lower.name]}) <>
     (t2/hydrate <> :creator)
     (filter mi/can-read? <>)))

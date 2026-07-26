@@ -813,7 +813,8 @@
    [:include-archived-items {:optional true} [:enum :only :exclude :all]]
    [:archive-operation-id {:optional true} [:maybe :string]]
    [:permission-level {:optional true} [:enum :read :write]]
-   [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]])
+   [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]
+   [:workspace-column {:optional true} [:maybe :keyword]]])
 
 (def ^:private UserScope
   [:map
@@ -986,7 +987,14 @@
 (mu/defn visible-collection-filter-clause
   "Given a `CollectionVisibilityConfig`, return a HoneySQL filter clause ready for use in queries. Takes an optional
   `cte-name` in the visibility config which is used as the source for collection IDs if provided; otherwise, we filter
-  based on the results of `visible-collection-query` above."
+  based on the results of `visible-collection-query` above.
+
+  When the visibility config contains a `:workspace-column` (the content table's own qualified `workspace_id` column,
+  or `nil` for content that carries no such column and is therefore always main-app), remote-sync workspace isolation
+  is applied centrally at the root-collection branch: a root-level row (`collection_id` is nil) is visible only when
+  its own workspace matches the caller's active workspace. Non-root content needs no per-row check -- it is scoped
+  transitively through its (workspace-scoped) parent collection in `visible-collection-query`. Callers therefore no
+  longer add their own `workspace-visibility-clause` for root content."
   ([]
    (visible-collection-filter-clause :collection_id))
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]]
@@ -1003,7 +1011,11 @@
    (let [{:keys [cte-name] :as visibility-config} (merge default-visibility-config visibility-config)]
      [:or
       (when (should-display-root-collection? user-scope visibility-config)
-        [:= collection-id-field nil])
+        (if (contains? visibility-config :workspace-column)
+          [:and
+           [:= collection-id-field nil]
+           (remote-sync/workspace-visibility-clause (:workspace-column visibility-config))]
+          [:= collection-id-field nil]))
       ;; the non-root collections are here. We're saying "let this row through if..."
       [:in
        collection-id-field

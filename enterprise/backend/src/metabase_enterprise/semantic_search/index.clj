@@ -79,7 +79,7 @@
      [:dashboardcard_count :int]
      [:view_count :int]
      ;; Remote-sync workspace a row belongs to; nil for main-app content and for search-models that aren't
-     ;; workspace-scoped. See metabase.search.permissions/workspace-visibility-clause.
+     ;; workspace-scoped. See metabase.search.permissions/index-visible-filter-clause.
      [:workspace_id :int]
      [:created_at :timestamp-with-time-zone [:default [:raw "CURRENT_TIMESTAMP"]] :not-null]
      [:model_created_at :timestamp-with-time-zone]

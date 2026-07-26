@@ -6,8 +6,8 @@
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
+   [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config
     :as search.config
     :refer [SearchContext SearchableModel]]
@@ -229,7 +229,7 @@
          ;; add a JOIN against Collection *unless* the source table is already Collection
          (not= model "collection") (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
          personal-clause           (sql.helpers/where personal-clause)
-         workspace-column           (sql.helpers/where (remote-sync/workspace-visibility-clause workspace-column))))))
+         workspace-column           (sql.helpers/where (perms/entity-visible-filter-clause workspace-column))))))
 
 (mu/defn- replace-select :- :map
   "Replace a select from query that has alias is `target-alias` with [`with` `target-alias`] column, throw an error if
@@ -625,7 +625,7 @@
 (defmethod search-query-for-model "transform"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/where (remote-sync/workspace-visibility-clause :transform.workspace_id))))
+      (sql.helpers/where (perms/transform-visible-filter-clause :transform.workspace_id))))
 
 (defmethod search-query-for-model "dashboard"
   [model search-ctx]
@@ -644,10 +644,9 @@
    query
    (collection/visible-collection-filter-clause
     :collection_id
-    {}
+    {:workspace-column :model.workspace_id}
     {:current-user-id current-user-id
-     :is-superuser?   is-superuser?})
-   (remote-sync/workspace-visibility-clause :model.workspace_id)))
+     :is-superuser?   is-superuser?})))
 
 (defmethod search-query-for-model "indexed-entity"
   [model search-ctx]

@@ -112,7 +112,8 @@
                                :where [:and
                                        [:= :m.id model-id]
                                        [:not :c.archived]
-                                       (remote-sync/workspace-visibility-clause :c.workspace_id)]
+                                       (collection/visible-collection-filter-clause
+                                        :c.collection_id {:workspace-column :c.workspace_id})]
                                :order-by [[[:lower :c.name] :asc]]})
        ;; now check if model-id really occurs as a card ID
        (filter (fn [card]
@@ -124,7 +125,8 @@
   (->> (t2/select :model/Card (merge order-by-name
                                      {:where [:and
                                               [:like :dataset_query (str "%" (name model-type) "%" model-id "%")]
-                                              (remote-sync/workspace-visibility-clause)]}))
+                                              (collection/visible-collection-filter-clause
+                                               :collection_id {:workspace-column :workspace_id})]}))
        ;; now check if the segment/metric with model-id really occurs in a filter/aggregation expression
        (filter (fn [{query :dataset_query, :as _card}]
                  (when (seq query)

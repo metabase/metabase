@@ -3,6 +3,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [methodical.core :as methodical]
@@ -39,14 +40,17 @@
 
 (defn timelines-for-collection
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
-  timeline at `:events` on the timeline."
+  timeline at `:events` on the timeline. Collection read permission is enforced by the caller, and this helper also
+  runs outside a request (no bound user), so it cannot use the collection visibility filter; only the root-collection
+  case needs a per-row content-scope check -- nested timelines inherit their (already scope-filtered) collection's
+  scope."
   [collection-id {:keys [timeline/events? timeline/archived?] :as options}]
   (cond-> (t2/hydrate (t2/select :model/Timeline
                                  {:where [:and
                                           [:= :collection_id collection-id]
                                           [:= :archived (boolean archived?)]
                                           (when (nil? collection-id)
-                                            (remote-sync/workspace-visibility-clause))]})
+                                            (perms/entity-visible-filter-clause))]})
                       :creator
                       [:collection :can_write])
     (nil? collection-id) (->> (map collection.root/hydrate-root-collection))

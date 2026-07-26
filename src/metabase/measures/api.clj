@@ -8,7 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
-   [metabase.remote-sync.core :as remote-sync]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -101,7 +101,7 @@
   "Fetch *all* `Measures`."
   []
   (as-> (t2/select :model/Measure
-                   {:where    [:and [:= :archived false] (remote-sync/workspace-visibility-clause)]
+                   {:where    [:and [:= :archived false] (perms/measure-visible-filter-clause)]
                     :order-by [[:%lower.name :asc]]}) measures
     (filter mi/can-read? measures)
     (t2/hydrate measures :creator :definition_description)))
