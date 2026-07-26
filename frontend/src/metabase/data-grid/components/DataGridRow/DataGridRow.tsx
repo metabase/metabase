@@ -46,7 +46,9 @@ export const DataGridRow = <TData,>({
   styles,
 }: DataGridRowProps<TData>) => {
   const rowPositionStyles = getRowPositionStyles(row);
-  const paddingLeft = columns[0]?.virtualItem?.start ?? 0;
+  // Offset the virtualized window from the inline-start edge so it follows the
+  // scroll direction in both LTR and RTL.
+  const paddingInlineStart = columns[0]?.virtualItem?.start ?? 0;
 
   /**
    * we must render this div with a ref even if there are no columns.
@@ -75,7 +77,7 @@ export const DataGridRow = <TData,>({
         },
         classNames?.row,
       )}
-      style={{ ...rowPositionStyles, paddingLeft, ...styles?.row }}
+      style={{ ...rowPositionStyles, paddingInlineStart, ...styles?.row }}
     >
       {columns.map((column) => {
         const cell = column.getCell(row.origin);

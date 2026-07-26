@@ -336,6 +336,7 @@ export const useDataGridInstance = <TData, TValue>({
     getRowHeight,
     datasetIndexAttributeName,
     virtualIndexAttributeName,
+    isRtl: columnResizeDirection === "rtl",
   });
 
   const measureColumnWidths = useMeasureColumnWidths(

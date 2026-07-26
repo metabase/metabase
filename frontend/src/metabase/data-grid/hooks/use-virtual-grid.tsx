@@ -15,6 +15,7 @@ interface VirtualGridProps<TData> {
   getRowHeight: (index: number) => number;
   datasetIndexAttributeName: string;
   virtualIndexAttributeName: string;
+  isRtl?: boolean;
 }
 
 export interface VirtualGrid {
@@ -35,6 +36,7 @@ export const useVirtualGrid = <TData,>({
   getRowHeight,
   datasetIndexAttributeName,
   virtualIndexAttributeName,
+  isRtl,
 }: VirtualGridProps<TData>): VirtualGrid => {
   const centerColumns = table.getCenterLeafColumns();
   const centerRows = table.getCenterRows();
@@ -47,6 +49,9 @@ export const useVirtualGrid = <TData,>({
     horizontal: true,
     overscan: 3,
     scrollMargin: leftPinnedColumnsWidth,
+    // In RTL the scroll container reports a negative scrollLeft; isRtl makes the
+    // virtualizer read the offset from the inline-start (right) edge correctly.
+    isRtl,
   });
 
   const rowVirtualizer = useVirtualizer({
