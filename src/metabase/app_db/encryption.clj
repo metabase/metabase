@@ -20,7 +20,7 @@
    [:metabase_database :admin_details]
    [:core_user :settings]
    [:channel :details]
-   [:workspace_database :database_details]
+   [:workspace_database_deprecated :database_details]
    [:auth_identity :credentials]])
 
 ;; Older versions of dump-to-h2 and key rotation only processed `metabase_database.details` (plus settings and

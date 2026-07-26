@@ -185,6 +185,7 @@
                                                :date_joined   :%now
                                                :is_superuser  false
                                                :is_active     true
+                                               :entity_id     (u/generate-nano-id)
                                                :settings      raw-settings})))
 
 (defn- insert-channel-with-raw-details!
