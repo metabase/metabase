@@ -3,8 +3,15 @@ import { thaw } from "icepick";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  fireEvent,
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
+import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import Question from "metabase-lib/v1/Question";
@@ -238,6 +245,71 @@ describe("table.pivot", () => {
 
       expect(isHidden).toBe(false);
     });
+  });
+});
+
+describe("dashboard client-side sorting", () => {
+  beforeAll(() => {
+    mockGetBoundingClientRect();
+  });
+
+  it("sorts null and text values consistently in small datasets (#67756)", () => {
+    const series = [
+      createMockSingleSeries(
+        { display: "table" },
+        {
+          data: {
+            cols: [
+              createMockNumericColumn({ display_name: "id", name: "id" }),
+              createMockCategoryColumn({
+                display_name: "name",
+                name: "name",
+              }),
+            ],
+            rows: [
+              [1, "Alice"],
+              [2, null],
+              [3, "Charlie"],
+              [4, null],
+              [5, "Bob"],
+              [6, null],
+              [7, "Delta"],
+              [8, null],
+            ],
+          },
+        },
+      ),
+    ];
+
+    renderWithProviders(
+      <Visualization rawSeries={series} isDashboard width={600} height={400} />,
+    );
+
+    const nameHeader = screen.getByRole("columnheader", { name: "name" });
+    const clickTarget = within(nameHeader).getByTestId("cell-data");
+
+    fireEvent.mouseDown(clickTarget, { clientX: 0, clientY: 0 });
+    fireEvent.mouseUp(clickTarget, { clientX: 0, clientY: 0 });
+
+    const rows = screen
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) =>
+        within(row)
+          .getAllByRole("gridcell")
+          .map((cell) => cell.textContent),
+      );
+
+    expect(rows).toEqual([
+      ["7", "Delta"],
+      ["3", "Charlie"],
+      ["5", "Bob"],
+      ["1", "Alice"],
+      ["2", ""],
+      ["4", ""],
+      ["6", ""],
+      ["8", ""],
+    ]);
   });
 });
 
