@@ -98,13 +98,20 @@
     (doseq [value ["true" "TRUE"]]
       (testing value
         (with-redefs [env/env {:mb-semantic-search-enabled value}]
-          ;; Exercise both ways semantic can be active; neither should be treated as inconsistent with true.
-          (with-engines {:supported all-engines :additional ["semantic"]}
-            (is (=? [{:level   :warn
-                      :message "MB_SEMANTIC_SEARCH_ENABLED is no longer supported. Remove it from your configuration."}]
-                    (mt/with-log-messages-for-level [messages :warn]
-                      (search/check-for-removed-env-vars!)
-                      (messages)))))))))
+          (testing "when semantic is the default engine"
+            (with-engines {:supported all-engines}
+              (is (=? [{:level   :warn
+                        :message "MB_SEMANTIC_SEARCH_ENABLED is no longer supported. Remove it from your configuration."}]
+                      (mt/with-log-messages-for-level [messages :warn]
+                        (search/check-for-removed-env-vars!)
+                        (messages))))))
+          (testing "when semantic is an additional engine"
+            (with-engines {:supported all-engines :configured :appdb :additional ["semantic"]}
+              (is (=? [{:level   :warn
+                        :message "MB_SEMANTIC_SEARCH_ENABLED is no longer supported. Remove it from your configuration."}]
+                      (mt/with-log-messages-for-level [messages :warn]
+                        (search/check-for-removed-env-vars!)
+                        (messages))))))))))
   (testing "startup proceeds when the kill switch is absent"
     (with-redefs [env/env {}]
       (is (nil? (search/check-for-removed-env-vars!)))))
