@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable metabase/no-literal-metabase-strings */
-/* eslint-disable no-console */
 
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";

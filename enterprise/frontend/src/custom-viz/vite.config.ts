@@ -1,4 +1,3 @@
-/* eslint-disable import/no-default-export */
 import { resolve } from "path";
 
 import { defineConfig } from "vite";
