@@ -7,14 +7,11 @@ import {
   ChartWithLegend,
   HIDE_HORIZONTAL_LEGEND_THRESHOLD,
   HIDE_SECONDARY_INFO_THRESHOLD,
+  getChartLayout,
 } from "./ChartWithLegend";
-
-type LegendTitle = string | string[];
-
-type LegendHover = {
-  index: number;
-  element?: HTMLElement | null;
-};
+import { LegendHorizontal } from "./LegendHorizontal";
+import { LegendVertical } from "./LegendVertical";
+import type { LegendHover, LegendTitle } from "./types";
 
 interface SetupProps {
   children?: ReactNode;
@@ -104,5 +101,93 @@ describe("ChartWithLegend", () => {
 
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("Foo 10%");
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("Bar 90%");
+  });
+});
+
+describe("getChartLayout", () => {
+  const defaultInput: Parameters<typeof getChartLayout>[0] = {
+    width: 800,
+    height: 400,
+    gridSize: undefined,
+    aspectRatio: 1,
+    legendTitles: ["Series 1", "Series 2"],
+  };
+
+  it("should lay out a wide chart horizontally with a fixed chart size", () => {
+    const layout = getChartLayout(defaultInput);
+
+    expect(layout).toMatchObject({
+      type: "horizontal",
+      LegendComponent: LegendVertical,
+      chartWidth: 386,
+      chartHeight: 386,
+      flexChart: false,
+      hasDimensions: true,
+    });
+    expect(layout.processedLegendTitles).toEqual(["Series 1", "Series 2"]);
+  });
+
+  it("should hide secondary title info and flex the chart when the area is narrow", () => {
+    const layout = getChartLayout({
+      ...defaultInput,
+      width: 250,
+      height: 200,
+      legendTitles: [["Series 1", "50%"], "Series 2"],
+    });
+
+    expect(layout).toMatchObject({
+      type: "horizontal",
+      flexChart: true,
+      chartWidth: undefined,
+      chartHeight: 186,
+    });
+    expect(layout.processedLegendTitles).toEqual([["Series 1"], "Series 2"]);
+  });
+
+  it("should lay out vertically with joined titles when the grid is tall", () => {
+    const layout = getChartLayout({
+      ...defaultInput,
+      height: 600,
+      gridSize: { width: 3, height: 8 },
+      aspectRatio: 2,
+      legendTitles: [["Series 1", "50%"], "Series 2"],
+    });
+
+    expect(layout).toMatchObject({
+      type: "vertical",
+      LegendComponent: LegendHorizontal,
+      chartWidth: 772,
+      chartHeight: 386,
+      flexChart: false,
+    });
+    expect(layout.processedLegendTitles).toEqual(["Series 1 50%", "Series 2"]);
+  });
+
+  it("should use the small layout when the grid has too few columns", () => {
+    const layout = getChartLayout({
+      ...defaultInput,
+      gridSize: { width: 2, height: 8 },
+    });
+
+    expect(layout).toMatchObject({
+      type: "small",
+      LegendComponent: undefined,
+      chartWidth: undefined,
+      chartHeight: undefined,
+      flexChart: false,
+    });
+  });
+
+  it("should use the small layout when a horizontal chart is below the legend width threshold", () => {
+    const layout = getChartLayout({ ...defaultInput, width: 200, height: 100 });
+
+    expect(layout.type).toBe("small");
+    expect(layout.LegendComponent).toBeUndefined();
+  });
+
+  it("should report missing dimensions when the chart is not measured yet", () => {
+    const layout = getChartLayout({ ...defaultInput, width: 0, height: 0 });
+
+    expect(layout).toMatchObject({ type: "small", hasDimensions: false });
   });
 });

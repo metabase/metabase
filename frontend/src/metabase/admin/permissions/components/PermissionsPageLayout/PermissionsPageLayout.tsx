@@ -18,7 +18,6 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useDispatch, useSelector } from "metabase/redux";
 import { updateUserSetting } from "metabase/redux/settings";
-import type { Route } from "metabase/router";
 import { push } from "metabase/router";
 import {
   Group,
@@ -56,7 +55,6 @@ type PermissionsPageLayoutProps = {
   saveError?: string;
   clearSaveError?: () => void;
   navigateToLocation?: (location: string) => void;
-  route: Route;
   navigateToTab?: (tab: string) => void;
   helpContent?: ReactNode;
   showSplitPermsModal?: boolean;
@@ -77,7 +75,6 @@ export function PermissionsPageLayout({
   isDirty,
   onSave,
   onLoad,
-  route,
   helpContent,
   showSplitPermsModal: _showSplitPermsModal = false,
 }: PermissionsPageLayoutProps) {
@@ -120,7 +117,7 @@ export function PermissionsPageLayout({
           />
         )}
 
-        <LeaveRouteConfirmModal isEnabled={Boolean(isDirty)} route={route} />
+        <LeaveRouteConfirmModal isEnabled={Boolean(isDirty)} />
 
         <ConfirmModal
           opened={saveError != null}

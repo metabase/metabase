@@ -17,6 +17,7 @@ import type { HoveredObject } from "metabase/visualizations/types";
 import styles from "./ChartWithLegend.module.css";
 import { LegendHorizontal } from "./LegendHorizontal";
 import { LegendVertical } from "./LegendVertical";
+import type { LegendHover, LegendTitle } from "./types";
 
 const GRID_ASPECT_RATIO = 4 / 3;
 const PADDING = 14;
@@ -25,11 +26,19 @@ const DEFAULT_GRID_SIZE = 100;
 export const HIDE_HORIZONTAL_LEGEND_THRESHOLD = 180;
 export const HIDE_SECONDARY_INFO_THRESHOLD = 260;
 
-type LegendTitle = string | string[];
+type GridSize = {
+  width: number;
+  height: number;
+};
 
-type LegendHover = {
-  index: number;
-  element?: HTMLElement | null;
+type ChartLayout = {
+  type: "horizontal" | "vertical" | "small";
+  LegendComponent: typeof LegendHorizontal | typeof LegendVertical | undefined;
+  processedLegendTitles: LegendTitle[];
+  chartWidth: number | undefined;
+  chartHeight: number | undefined;
+  flexChart: boolean;
+  hasDimensions: boolean;
 };
 
 type ChartWithLegendProps = {
@@ -42,10 +51,7 @@ type ChartWithLegendProps = {
   className?: string;
   chartClassName?: string;
   style?: CSSProperties;
-  gridSize?: {
-    width: number;
-    height: number;
-  };
+  gridSize?: GridSize;
   aspectRatio?: number;
   height: number;
   width: number;
@@ -92,75 +98,17 @@ const ChartWithLegendInner = ({
     }
   }, [height, width]);
 
-  const layout = useMemo(() => {
-    // padding
-    const adjustedWidth = stableWidth - PADDING * 2;
-    const adjustedHeight = stableHeight - PADDING;
-
-    const calculatedGridSize = gridSize || {
-      width: adjustedWidth / DEFAULT_GRID_SIZE,
-      height: adjustedHeight / DEFAULT_GRID_SIZE,
-    };
-
-    let chartWidth;
-    let chartHeight;
-    let flexChart = false;
-    let type: "horizontal" | "vertical" | "small";
-    let LegendComponent;
-    let processedLegendTitles = legendTitles;
-
-    const isHorizontal =
-      calculatedGridSize.width > calculatedGridSize.height / GRID_ASPECT_RATIO;
-
-    if (isHorizontal && adjustedWidth > HIDE_HORIZONTAL_LEGEND_THRESHOLD) {
-      type = "horizontal";
-      LegendComponent = LegendVertical;
-
-      if (adjustedWidth < HIDE_SECONDARY_INFO_THRESHOLD) {
-        processedLegendTitles = legendTitles.map((title) =>
-          Array.isArray(title) ? title.slice(0, 1) : title,
-        );
-      }
-      const desiredWidth = adjustedHeight * aspectRatio;
-      if (desiredWidth > adjustedWidth * (2 / 3)) {
-        flexChart = true;
-      } else {
-        chartWidth = desiredWidth;
-      }
-      chartHeight = adjustedHeight;
-    } else if (
-      !isHorizontal &&
-      calculatedGridSize.height > 3 &&
-      calculatedGridSize.width > 2
-    ) {
-      type = "vertical";
-      LegendComponent = LegendHorizontal;
-      processedLegendTitles = legendTitles.map((title) =>
-        Array.isArray(title) ? title.join(" ") : title,
-      );
-      const desiredHeight = adjustedWidth * (1 / aspectRatio);
-      if (desiredHeight > adjustedHeight * (3 / 4)) {
-        flexChart = true;
-      } else {
-        chartHeight = desiredHeight;
-      }
-      chartWidth = adjustedWidth;
-    } else {
-      type = "small";
-    }
-
-    const hasDimensions = adjustedWidth > 0 && adjustedHeight > 0;
-
-    return {
-      type,
-      LegendComponent,
-      processedLegendTitles,
-      chartWidth,
-      chartHeight,
-      flexChart,
-      hasDimensions,
-    };
-  }, [stableWidth, stableHeight, gridSize, aspectRatio, legendTitles]);
+  const layout = useMemo(
+    () =>
+      getChartLayout({
+        width: stableWidth,
+        height: stableHeight,
+        gridSize,
+        aspectRatio,
+        legendTitles,
+      }),
+    [stableWidth, stableHeight, gridSize, aspectRatio, legendTitles],
+  );
 
   const legend =
     showLegend && layout.type !== "small" && layout.LegendComponent ? (
@@ -169,7 +117,6 @@ const ChartWithLegendInner = ({
         titles={layout.processedLegendTitles}
         hiddenIndices={legendHiddenIndices}
         colors={legendColors}
-        dotSize={isDashboard || isMetricsViewer ? "8px" : "12px"}
         hovered={hovered}
         onHoverChange={onHoverChange}
         onToggleSeriesVisibility={onToggleSeriesVisibility}
@@ -239,3 +186,82 @@ export const ChartWithLegend = ExplicitSize<ChartWithLegendProps>({
   wrapped: true,
   refreshMode: "debounce",
 })(ChartWithLegendRefWrapper);
+
+export function getChartLayout({
+  width,
+  height,
+  gridSize,
+  aspectRatio,
+  legendTitles,
+}: {
+  width: number;
+  height: number;
+  gridSize: GridSize | undefined;
+  aspectRatio: number;
+  legendTitles: LegendTitle[];
+}): ChartLayout {
+  const adjustedWidth = width - PADDING * 2;
+  const adjustedHeight = height - PADDING;
+  const hasDimensions = adjustedWidth > 0 && adjustedHeight > 0;
+
+  const calculatedGridSize = gridSize || {
+    width: adjustedWidth / DEFAULT_GRID_SIZE,
+    height: adjustedHeight / DEFAULT_GRID_SIZE,
+  };
+
+  const isHorizontal =
+    calculatedGridSize.width > calculatedGridSize.height / GRID_ASPECT_RATIO;
+
+  if (isHorizontal && adjustedWidth > HIDE_HORIZONTAL_LEGEND_THRESHOLD) {
+    const processedLegendTitles =
+      adjustedWidth < HIDE_SECONDARY_INFO_THRESHOLD
+        ? legendTitles.map((title) =>
+            Array.isArray(title) ? title.slice(0, 1) : title,
+          )
+        : legendTitles;
+    const desiredWidth = adjustedHeight * aspectRatio;
+    const flexChart = desiredWidth > adjustedWidth * (2 / 3);
+
+    return {
+      type: "horizontal",
+      LegendComponent: LegendVertical,
+      processedLegendTitles,
+      chartWidth: flexChart ? undefined : desiredWidth,
+      chartHeight: adjustedHeight,
+      flexChart,
+      hasDimensions,
+    };
+  }
+
+  if (
+    !isHorizontal &&
+    calculatedGridSize.height > 3 &&
+    calculatedGridSize.width > 2
+  ) {
+    const processedLegendTitles = legendTitles.map((title) =>
+      Array.isArray(title) ? title.join(" ") : title,
+    );
+    const desiredHeight = adjustedWidth * (1 / aspectRatio);
+    const flexChart = desiredHeight > adjustedHeight * (3 / 4);
+
+    return {
+      type: "vertical",
+      LegendComponent: LegendHorizontal,
+      processedLegendTitles,
+      chartWidth: adjustedWidth,
+      chartHeight: flexChart ? undefined : desiredHeight,
+      flexChart,
+      hasDimensions,
+    };
+  }
+
+  return {
+    type: "small",
+    LegendComponent: undefined,
+    processedLegendTitles: legendTitles,
+    chartWidth: undefined,
+    chartHeight: undefined,
+    flexChart: false,
+    hasDimensions,
+  };
+}

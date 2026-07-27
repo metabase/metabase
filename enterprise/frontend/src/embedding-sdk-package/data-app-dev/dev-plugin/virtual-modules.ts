@@ -1,4 +1,6 @@
 import fs from "node:fs";
+import { createRequire } from "node:module";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 // A namespace import stays single-line so the disable covers the reported line.
@@ -9,7 +11,12 @@ import {
   DATA_APP_BUNDLE_URL,
   DATA_APP_REBUILT_EVENT,
 } from "../constants/bundle";
-import { DATA_APP_DEV_ENTRY_FILE_NAME } from "../constants/paths";
+import { DATA_APP_DIAGNOSTICS_CHANGED_EVENT } from "../constants/diagnostics-channel";
+import {
+  DATA_APP_DEV_ENTRY_FILE_NAME,
+  PACKAGE_JSON_FILE_NAME,
+  SDK_PACKAGE_NAME,
+} from "../constants/paths";
 
 const { DATA_APP_DEV_CONFIG_VIRTUAL_ID, DATA_APP_DEV_ENTRY_VIRTUAL_ID } =
   dataAppVirtualModules;
@@ -20,6 +27,26 @@ const RESOLVED_PREFIX = "\0";
 const DEV_ENTRY_SOURCE_PATH = fileURLToPath(
   new URL(DATA_APP_DEV_ENTRY_FILE_NAME, import.meta.url),
 );
+
+const readInstalledSdkVersion = (appRoot: string): string | null => {
+  try {
+    const requireFromApp = createRequire(
+      path.join(appRoot, PACKAGE_JSON_FILE_NAME),
+    );
+    const pkg: unknown = requireFromApp(
+      `${SDK_PACKAGE_NAME}/${PACKAGE_JSON_FILE_NAME}`,
+    );
+
+    return typeof pkg === "object" &&
+      pkg !== null &&
+      "version" in pkg &&
+      typeof pkg.version === "string"
+      ? pkg.version
+      : null;
+  } catch {
+    return null;
+  }
+};
 
 export const resolveDataAppVirtualId = (id: string): string | undefined =>
   id === DATA_APP_DEV_ENTRY_VIRTUAL_ID || id === DATA_APP_DEV_CONFIG_VIRTUAL_ID
@@ -45,6 +72,8 @@ export const loadDataAppVirtualModule = (
       `export const appSlug = ${JSON.stringify(appSlug)};`,
       `export const bundleUrl = ${JSON.stringify(DATA_APP_BUNDLE_URL)};`,
       `export const rebuiltEvent = ${JSON.stringify(DATA_APP_REBUILT_EVENT)};`,
+      `export const diagnosticsChangedEvent = ${JSON.stringify(DATA_APP_DIAGNOSTICS_CHANGED_EVENT)};`,
+      `export const sdkVersion = ${JSON.stringify(readInstalledSdkVersion(process.cwd()))};`,
     ].join("\n");
   }
 };
