@@ -249,7 +249,6 @@
                          {}
                          rows)]
       {:groups (intern groups)
-       ;; core update-vals, not perf/update-vals: the latter skips replacing equal values, which would undo interning
        :tables (update-vals tables intern)})))
 
 (defn prime-db-cache
