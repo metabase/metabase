@@ -5,7 +5,7 @@
   or mfa.settings directly."
   (:require
    [metabase-enterprise.mfa.gate :as gate]
-   [metabase-enterprise.mfa.settings]
+   [metabase-enterprise.mfa.settings :as settings]
    [metabase-enterprise.mfa.verification :as verification]
    [metabase.channel.email.messages :as messages]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -67,3 +67,9 @@
         ;; don't tell an unauthenticated caller "the code exists but the email failed"
         (throw (ex-info (tru "Failed to send the sign-in code. Please try again or contact your administrator.")
                         {:status-code 500}))))))
+
+(defenterprise mfa-required?
+  "Whether MFA is currently required for all users on the "
+  :feature :multi-factor-auth
+  []
+  (settings/mfa-required?))
