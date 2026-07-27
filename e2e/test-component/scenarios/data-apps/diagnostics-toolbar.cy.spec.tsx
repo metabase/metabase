@@ -1,9 +1,9 @@
+import { mountDevToolbar } from "e2e/support/helpers/e2e-data-app-dev-component-helpers";
 import {
   devToolbarPanel,
   devToolbarRoot,
   devToolbarToggle,
   diagnosticEntry,
-  mountDevToolbar,
   openDevToolbar,
   serveDiagnosticsFeed,
   serveUnreachableDiagnosticsFeed,

@@ -120,11 +120,9 @@ loadAndRender().catch((error) => {
   console.error(error);
 });
 
-if (hot) {
-  // Mirror the toolbar's data to the dev server, which re-serves it as JSON for
-  // tools that have a shell but no browser (see `diagnostics-channel.ts`).
-  installDiagnosticsReporter(hot);
+installDiagnosticsReporter();
 
+if (hot) {
   hot.on(rebuiltEvent, () => {
     loadAndRender().catch((error) => {
       console.error(error);

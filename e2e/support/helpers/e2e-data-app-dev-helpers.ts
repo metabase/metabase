@@ -1,24 +1,46 @@
-import {
-  DataAppDevProvider,
-  type DataAppDiagnosticPayload,
-  type DataAppDiagnosticsReport,
-  DevToolbar,
-  type DevToolbarProps,
+import type {
+  DataAppDiagnosticPayload,
+  DataAppDiagnosticsReport,
 } from "@metabase/embedding-sdk-react/data-app-dev";
 
-import { DEFAULT_SDK_AUTH_PROVIDER_CONFIG } from "e2e/support/helpers/embedding-sdk-component-testing";
+export const DATA_APP_DEV_DIAGNOSTICS_PATH = "/__data-app/diagnostics";
 
-const FEED = "**/__data-app/diagnostics*";
+const FEED = `**${DATA_APP_DEV_DIAGNOSTICS_PATH}*`;
 
 export const devToolbarRoot = () => cy.get("[data-cy-root]");
 
-export const devToolbarPanel = () =>
-  devToolbarRoot().findByTestId("dev-toolbar-panel");
+export const devToolbarPanel = () => cy.findByTestId("dev-toolbar-panel");
 
 export const devToolbarToggle = () =>
-  devToolbarRoot().findByRole("button", { name: /Diagnostics/ });
+  cy.findByRole("button", { name: /Diagnostics/ });
 
 export const openDevToolbar = () => devToolbarToggle().click();
+
+export const devToolbarTab = (name: string) => cy.findByRole("tab", { name });
+
+/**
+ * Poll the real diagnostics endpoint until `predicate` holds — the page's
+ * reporter batches, so the feed converges rather than reflecting an event
+ * instantly. Host-app suites only.
+ */
+export const readDiagnosticsUntil = (
+  url: string,
+  description: string,
+  predicate: (report: DataAppDiagnosticsReport) => boolean,
+  attempt = 0,
+): Cypress.Chainable<DataAppDiagnosticsReport> =>
+  cy
+    .request<DataAppDiagnosticsReport>(url)
+    .then(({ body }): Cypress.Chainable<DataAppDiagnosticsReport> => {
+      if (predicate(body)) {
+        return cy.wrap(body, { log: false });
+      }
+      if (attempt >= 30) {
+        throw new Error(`Diagnostics endpoint never reported: ${description}`);
+      }
+      cy.wait(1000);
+      return readDiagnosticsUntil(url, description, predicate, attempt + 1);
+    });
 
 export const diagnosticEntry = (
   over: Partial<DataAppDiagnosticPayload> = {},
@@ -49,10 +71,8 @@ export const diagnosticsReport = (
 });
 
 /**
- * Serve a fixed buffer, filtered by `startEventId` exactly as the dev server
- * does, and clear it on DELETE. The toolbar reads the feed wholesale, but
- * modelling the real contract (cursor filtering included) keeps these tests
- * honest about what the endpoint actually serves.
+ * Serve a fixed buffer with the dev server's contract — `startEventId`
+ * filtering included — and clear it on DELETE.
  */
 export function serveDiagnosticsFeed(
   entries: DataAppDiagnosticPayload[],
@@ -80,22 +100,3 @@ export function serveDiagnosticsFeed(
 export function serveUnreachableDiagnosticsFeed() {
   cy.intercept("GET", FEED, { forceNetworkError: true }).as("feed");
 }
-
-/**
- * Mirror the real dev page's structure: the dev entry mounts the app under
- * `DataAppDevProvider` and the toolbar in its own React root beside it — never
- * under the provider's theme wrapper, whose mount (when the SDK store arrives)
- * remounts its children and would reset the toolbar's open/tab state.
- */
-export const mountDevToolbar = (props: Partial<DevToolbarProps> = {}) =>
-  cy.mount(
-    <>
-      <DataAppDevProvider
-        appSlug="sales"
-        authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-      >
-        <div />
-      </DataAppDevProvider>
-      <DevToolbar {...props} />
-    </>,
-  );
