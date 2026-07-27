@@ -1251,6 +1251,46 @@
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id-2))]
           (is (not (contains? ser :made_public_by_id))))))))
 
+(deftest parameters-with-deleted-source-card-test
+  (testing (str "A parameter whose values-source Card is gone — e.g. it was hard-deleted along with its Database — "
+                "exports with the source dropped rather than knocking the whole entity out of the export (GHY-3259)")
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc
+        [:model/Collection {coll-id :id}   {:name "Dropdowns"}
+         ;; non-H2 engine so the Database isn't filtered out of the export before we delete it
+         :model/Database   {db-id :id}     {:name "Doomed Database" :engine :postgres}
+         :model/Card       {source-id :id} {:name          "Dropdown List Options"
+                                            :database_id   db-id
+                                            :collection_id coll-id}
+         :model/Card       _               {:name          "Card with dropdown"
+                                            :collection_id coll-id
+                                            :parameters    [{:id                   "abc"
+                                                             :type                 "category"
+                                                             :name                 "CATEGORY"
+                                                             :values_source_type   "card"
+                                                             :values_source_config {:card_id source-id}}]}
+         :model/Dashboard  _               {:name          "Dashboard with dropdown"
+                                            :collection_id coll-id
+                                            :parameters    [{:id                   "def"
+                                                             :type                 "category"
+                                                             :name                 "CATEGORY"
+                                                             :values_source_type   "card"
+                                                             :values_source_config {:card_id source-id}}]}]
+        ;; deleting a Database hard-deletes its Cards, leaving the parameters above pointing at a row that is gone
+        (t2/delete! :model/Database :id db-id)
+        (is (not (t2/exists? :model/Card :id source-id))
+            "deleting the Database should have taken its Card with it")
+        (let [ser      (into [] (extract/extract {:targets       [["Collection" coll-id]]
+                                                  :no-settings   true
+                                                  :no-data-model true}))
+              by-model (group-by (comp :model last :serdes/meta) (remove #(instance? Exception %) ser))]
+          (is (empty? (filter #(instance? Exception %) ser))
+              "nothing should be skipped because of the dangling reference")
+          (is (= [{:id "abc" :type :category :name "CATEGORY" :position 0}]
+                 (:parameters (first (get by-model "Card")))))
+          (is (= [{:id "def" :type :category :name "CATEGORY" :position 0}]
+                 (:parameters (first (get by-model "Dashboard"))))))))))
+
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest selective-serialization-basic-test
   (mt/with-empty-h2-app-db!

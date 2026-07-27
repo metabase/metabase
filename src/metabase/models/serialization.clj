@@ -1462,6 +1462,16 @@
        (map import-mbql)
        (map #(m/update-existing % :card_id *import-fk* 'Card))))
 
+(defn- export-parameter
+  "Convert a single parameter to portable form. A values source pointing at a Card that no longer exists has no
+  portable id, so the source is dropped and the parameter falls back to its connected fields — the same shape the app
+  produces when the source Card is archived."
+  [parameter]
+  (if (get-in parameter [:values_source_config :card_id])
+    (or (fk-elide (export-mbql parameter))
+        (export-mbql (dissoc parameter :values_source_type :values_source_config)))
+    (export-mbql parameter)))
+
 (mu/defn export-parameters
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
   it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references.
@@ -1471,7 +1481,7 @@
   (->> parameters
        (map-indexed (fn [i p] (assoc p :position i)))
        (sort-by :id)
-       (mapv export-mbql)))
+       (mapv export-parameter)))
 
 (defn import-parameters
   "Given the :parameter field as exported by serialization convert its field references
