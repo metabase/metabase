@@ -23,6 +23,8 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
@@ -31,15 +33,59 @@
 
 (set! *warn-on-reflection* true)
 
+(def app-db-schema
+  "Schema holding the library entity index when it shares the application database.
+  Not semantic search's: [[metabase-enterprise.semantic-search.db.migration.impl]] wipes that one wholesale."
+  "library_retrieval")
+
 ;; TODO (Chris 2026-07-14) -- these names carry no version, so an on-disk upgrade has nothing to key off.
 ;; Revisit when the semantic-search indexing mechanism is reworked, sharing its scheme.
-(def ^:dynamic *vectors-table*
-  "Vectors table name. Dynamic so tests can rebind it to an isolated table."
-  "library_entity_index")
+(def default-tables
+  "Table names for a dedicated pgvector database (MB_PGVECTOR_DB_URL)."
+  {:vectors "library_entity_index"
+   :meta    "library_entity_index_meta"})
 
-(def ^:dynamic *meta-table*
-  "Meta table name. Dynamic so tests can rebind it to an isolated table."
-  "library_entity_index_meta")
+(def app-db-tables
+  "Table names when the index shares the application database, qualified so nothing here can resolve
+  against an application table."
+  {:schema  app-db-schema
+   :vectors (str app-db-schema ".library_entity_index")
+   :meta    (str app-db-schema ".library_entity_index_meta")})
+
+(def ^:dynamic *tables*
+  "Table names to use, or nil to derive them from the pgvector mode. Bound by tests to isolated names."
+  nil)
+
+(defn tables
+  "[[default-tables]] or [[app-db-tables]], per the pgvector mode. Resolved per use: the mode can change
+  without a restart."
+  []
+  (or *tables*
+      (if (= :app-db (semantic.db.datasource/pgvector-mode))
+        app-db-tables
+        default-tables)))
+
+(defn vectors-table
+  "Name of the vectors table, schema-qualified in app-db mode.
+  For raw SQL use [[vectors-table-sql]]: interpolated into `\"%s\"`, a qualified name reads as one
+  identifier."
+  []
+  (:vectors (tables)))
+
+(defn meta-table
+  "Name of the meta table, schema-qualified in app-db mode. For raw SQL use [[meta-table-sql]]."
+  []
+  (:meta (tables)))
+
+(defn vectors-table-sql
+  "[[vectors-table]] quoted for interpolation into raw SQL."
+  []
+  (semantic.util/quote-table (vectors-table)))
+
+(defn meta-table-sql
+  "[[meta-table]] quoted for interpolation into raw SQL."
+  []
+  (semantic.util/quote-table (meta-table)))
 
 (def schema-version
   "Canonical version of the index's *document format* — both the vectors table schema and the
@@ -72,7 +118,7 @@
   (str "'[" (str/join ", " embedding) "]'::vector"))
 
 (defn- create-meta-table-sql []
-  (-> (sql.helpers/create-table (keyword *meta-table*) :if-not-exists)
+  (-> (sql.helpers/create-table (keyword (meta-table)) :if-not-exists)
       (sql.helpers/with-columns
         [[:id :smallint [:primary-key] [:default 1] [:check [:= :id 1]]]
          [:provider :text :not-null]
@@ -87,7 +133,7 @@
       sql-format-quoted))
 
 (defn- create-vectors-table-sql [dims]
-  (-> (sql.helpers/create-table (keyword *vectors-table*) :if-not-exists)
+  (-> (sql.helpers/create-table (keyword (vectors-table)) :if-not-exists)
       (sql.helpers/with-columns
         [[:doc_id :text [:primary-key]]
          [:entity_type :text :not-null]
@@ -107,14 +153,14 @@
 
 (defn- read-meta [tx]
   (jdbc/execute-one! tx
-                     [(format "SELECT provider, model_name, vector_dimensions, schema_version FROM \"%s\" WHERE id = 1"
-                              *meta-table*)]
+                     [(format "SELECT provider, model_name, vector_dimensions, schema_version FROM %s WHERE id = 1"
+                              (meta-table-sql))]
                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn- write-meta! [tx embedding-model]
   (let [{:keys [provider model_name vector_dimensions schema_version]} (model-identity embedding-model)]
     (jdbc/execute! tx
-                   (-> (sql.helpers/insert-into (keyword *meta-table*))
+                   (-> (sql.helpers/insert-into (keyword (meta-table)))
                        (sql.helpers/values [{:id                1
                                              :provider          provider
                                              :model_name        model_name
@@ -129,38 +175,47 @@
 (defn- create-tables! [tx dims]
   (jdbc/execute! tx (create-vectors-table-sql dims)))
 
+(defn- ensure-schema!
+  "Create the app-db schema; a no-op for a dedicated store.
+  Nothing else creates it: semantic search provisions its own, and library retrieval runs without it."
+  [tx]
+  (when-let [schema (:schema (tables))]
+    (jdbc/execute! tx [(format "CREATE SCHEMA IF NOT EXISTS %s" (semantic.util/quote-ident schema))])))
+
 (defn vectors-table-exists?
   "Whether the configured entity-retrieval vectors table exists."
   [tx]
-  (some? (:exists (jdbc/execute-one! tx [(format "SELECT to_regclass('%s') AS exists" *vectors-table*)]
+  ;; to_regclass takes a string literal, so a qualified name is valid input.
+  (some? (:exists (jdbc/execute-one! tx [(format "SELECT to_regclass('%s') AS exists" (vectors-table))]
                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
 
 (defn- meta-column-exists? [tx column]
   (some? (jdbc/execute-one! tx [(str "SELECT 1 FROM pg_attribute"
                                      " WHERE attrelid = to_regclass(?) AND attname = ? AND NOT attisdropped")
-                                *meta-table* column])))
+                                (meta-table) column])))
 
 (defn- can-alter-meta-table? [tx]
   (:owns_table
    (jdbc/execute-one! tx
                       [(str "SELECT pg_has_role(c.relowner, 'USAGE') AS owns_table"
                             " FROM pg_class c WHERE c.oid = to_regclass(?)")
-                       *meta-table*]
+                       (meta-table)]
                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
 (defonce ^:private warned-about-missing-reconciled-at (atom #{}))
 
 (defn- warn-about-missing-reconciled-at-once! []
-  (let [[warned-before _] (swap-vals! warned-about-missing-reconciled-at conj *meta-table*)]
-    (when-not (contains? warned-before *meta-table*)
-      (log/warnf "Cannot add reconciled_at to %s because the current role does not own it" *meta-table*))))
+  (let [table (meta-table)
+        [warned-before _] (swap-vals! warned-about-missing-reconciled-at conj table)]
+    (when-not (contains? warned-before table)
+      (log/warnf "Cannot add reconciled_at to %s because the current role does not own it" table))))
 
 (defn- ensure-reconciled-at-column! [tx]
   (or (meta-column-exists? tx "reconciled_at")
       (if (can-alter-meta-table? tx)
         (do
-          (jdbc/execute! tx [(format "ALTER TABLE \"%s\" ADD COLUMN IF NOT EXISTS reconciled_at timestamp with time zone"
-                                     *meta-table*)])
+          (jdbc/execute! tx [(format "ALTER TABLE %s ADD COLUMN IF NOT EXISTS reconciled_at timestamp with time zone"
+                                     (meta-table-sql))])
           true)
         (do
           ;; An ALTER permission error would abort ensure-tables!'s transaction. Grant-only installations can
@@ -175,12 +230,14 @@
   no-op for legacy meta tables the current database role cannot upgrade."
   [tx reconciled-at]
   (when (meta-column-exists? tx "reconciled_at")
-    (jdbc/execute! tx [(format "UPDATE \"%s\" SET reconciled_at = ? WHERE id = 1" *meta-table*)
+    (jdbc/execute! tx [(format "UPDATE %s SET reconciled_at = ? WHERE id = 1"
+                               (meta-table-sql))
                        reconciled-at])))
 
 (defn- clear-reconciled-at! [tx]
   (when (meta-column-exists? tx "reconciled_at")
-    (jdbc/execute! tx [(format "UPDATE \"%s\" SET reconciled_at = NULL WHERE id = 1" *meta-table*)])))
+    (jdbc/execute! tx [(format "UPDATE %s SET reconciled_at = NULL WHERE id = 1"
+                               (meta-table-sql))])))
 
 (defn index-status
   "Compatibility of the built index against `embedding-model` and [[schema-version]]:
@@ -209,6 +266,7 @@
   (jdbc/with-transaction [tx pgvector]
     (jdbc/execute! tx [(format "SELECT pg_advisory_xact_lock(%d)" ensure-lock-id)])
     (jdbc/execute! tx (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
+    (ensure-schema! tx)
     (jdbc/execute! tx (create-meta-table-sql))
     ;; CREATE TABLE IF NOT EXISTS does not add columns to an existing table. Upgrade when this role owns it;
     ;; grant-only roles keep reconciling without the optional freshness timestamp.
@@ -223,7 +281,8 @@
                         :created)
 
                     (not= stored current)
-                    (do (jdbc/execute! tx [(format "DROP TABLE IF EXISTS \"%s\"" *vectors-table*)])
+                    (do (jdbc/execute! tx [(format "DROP TABLE IF EXISTS %s"
+                                                   (vectors-table-sql))])
                         (create-tables! tx dims)
                         (write-meta! tx embedding-model)
                         :rebuilt)

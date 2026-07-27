@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.entity-retrieval.index-table :as index-table]
    [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase.test :as mt]
    [metabase.util.log.capture :as log.capture]
    [next.jdbc :as jdbc]))
@@ -38,6 +39,38 @@
       #(is (false? (#'index-table/can-alter-meta-table? ::tx))))
     (is (re-find #"pg_has_role\(c\.relowner, 'USAGE'\)" @query)
         "a NOINHERIT member cannot use the owner role's ALTER privilege without SET ROLE")))
+
+(deftest table-names-follow-the-pgvector-mode-test
+  (testing "a dedicated store keeps bare names, so no existing index moves"
+    (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :dedicated)]
+      ;; strict =: a stray :schema here is what would make ensure-schema! fire on a dedicated store
+      (is (= {:vectors "library_entity_index"
+              :meta    "library_entity_index_meta"}
+             (index-table/tables)))))
+  (testing "sharing the app db qualifies every name by its own schema"
+    (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :app-db)]
+      (is (= {:schema  "library_retrieval"
+              :vectors "library_retrieval.library_entity_index"
+              :meta    "library_retrieval.library_entity_index_meta"}
+             (index-table/tables)))
+      (testing "and renders schema and table as separate identifiers"
+        ;; interpolating the qualified name into "%s" would read as one identifier containing a dot
+        (is (= "\"library_retrieval\".\"library_entity_index\"" (index-table/vectors-table-sql)))
+        (is (= "\"library_retrieval\".\"library_entity_index_meta\"" (index-table/meta-table-sql)))))))
+
+(deftest app-db-mode-creates-its-own-schema-test
+  (let [statements (atom [])]
+    (with-redefs-fn {#'jdbc/execute! (fn [_ sql] (swap! statements conj (first sql)) nil)}
+      (fn []
+        (testing "sharing the app db provisions the schema, which nothing else creates"
+          (binding [index-table/*tables* index-table/app-db-tables]
+            (#'index-table/ensure-schema! ::tx))
+          (is (= ["CREATE SCHEMA IF NOT EXISTS \"library_retrieval\""] @statements)))
+        (testing "a dedicated store has no schema to create"
+          (reset! statements [])
+          (binding [index-table/*tables* index-table/default-tables]
+            (#'index-table/ensure-schema! ::tx))
+          (is (empty? @statements)))))))
 
 (deftest reconcile-watermark-precedes-appdb-read-test
   (let [events (atom [])]
