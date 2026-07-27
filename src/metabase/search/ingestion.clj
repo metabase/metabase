@@ -347,20 +347,48 @@
       ;; callers run before a delete, where throwing would take the delete down with it.
       true)))
 
+(def ^:private max-enumerated-documents
+  "Ceiling on how many documents one statement may enumerate before it runs. A single delete can fan out to
+  arbitrarily many dependent documents, and this enumeration happens on the caller's thread inside its
+  transaction, so past the ceiling the documents are left to the convergence backstop rather than held in heap."
+  10000)
+
+(defn- doc-id-select-item
+  "The `:this`-qualified select-item a spec's documents take their id from.
+  Built through the same attr machinery the indexing query uses, so a compound `:id` lands identically here."
+  [search-model]
+  (first (search.spec/qualify-columns
+          :this
+          (attrs->select-items {:id (-> (search.spec/spec search-model) :attrs :id)}))))
+
+(defn- doc-id-expression
+  [select-item]
+  (if (vector? select-item) (first select-item) select-item))
+
 (defn doc-ids
-  "The ids of the documents `search-model` currently produces under `where-clause`.
-  Narrows the spec's indexing query to its `:id` attr, so enumerating documents that are about to disappear
-  costs an id scan rather than a full document build."
+  "The ids of the documents `search-model` currently produces under `where-clause`, or nil past
+  [[max-enumerated-documents]].
+  Narrows the spec's indexing query to its `:id` attr, so enumerating documents costs an id scan rather than a
+  full document build."
   [search-model where-clause]
-  (let [spec    (search.spec/spec search-model)
-        id-attr (-> spec :attrs :id)]
-    (into #{}
-          (map (comp str :id))
-          (mdb/streaming-reducible-query
-           (assoc (spec-index-query-where search-model where-clause)
-                  :select (search.spec/qualify-columns
-                           :this
-                           [(if (true? id-attr) :id [id-attr :id])]))))))
+  (let [select-item (doc-id-select-item search-model)
+        ids         (into []
+                          (comp (map :id) (take (inc max-enumerated-documents)))
+                          (mdb/streaming-reducible-query
+                           (assoc (spec-index-query-where search-model where-clause)
+                                  :select [select-item])))]
+    (if (< max-enumerated-documents (count ids))
+      (log/errorf "Skipping cascade enumeration for %s: statement reaches more than %d documents"
+                  search-model max-enumerated-documents)
+      (set ids))))
+
+(defn existing-doc-ids
+  "Which of `ids` `search-model` still produces a document for.
+  Asks about the documents themselves rather than the relationship that found them: a row whose foreign key was
+  nulled rather than deleted still has a document, and must not be purged."
+  [search-model ids]
+  (when (seq ids)
+    (doc-ids search-model [:in (doc-id-expression (doc-id-select-item search-model)) (vec ids)])))
 
 (defn bulk-ingest!
   "Process the given search model updates."

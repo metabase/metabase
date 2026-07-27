@@ -125,6 +125,36 @@
         (testing "action is reached through :this.model_id, so its documents are enumerated up front"
           (is (contains? (set (keys cascading)) "action")))))))
 
+(deftest ^:synchronized moved-document-is-not-purged-test
+  (testing "a document that stops matching the selector without being deleted keeps its index entry"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {from-card :id}  {:name "From Model" :type :model}
+                     :model/Card   {to-card :id}    {:name "To Model" :type :model}
+                     :model/Action {action-id :id}  {:name "Reparented Action" :model_id from-card :type :query}]
+        (let [cascading (search/cascading-documents [(t2/select-one :model/Card from-card)])]
+          (is (contains? (set (keys cascading)) "action"))
+          ;; The action leaves the captured selector alive rather than dead, the shape a SET NULL foreign key
+          ;; produces. Deciding survival by selector rather than by document would delete it here.
+          (t2/update! :model/Action action-id {:model_id to-card})
+          (search/purge-vanished-documents! cascading)
+          (is (= 1 (t2/count (search.index/active-table) :model "action" :model_id (str action-id)))))))))
+
+(deftest cascade-enumeration-ceiling-test
+  (testing "a fan-out past the ceiling is skipped rather than materialized"
+    (mt/with-temp [:model/Card   {card-id :id} {:name "Ceiling Model" :type :model}
+                   :model/Action {_a :id}      {:name "Ceiling Action" :model_id card-id :type :query}]
+      (let [instances [(t2/select-one :model/Card card-id)]]
+        (is (contains? (set (keys (search/cascading-documents instances))) "action"))
+        (with-redefs [search.ingestion/max-enumerated-documents 0]
+          (is (nil? (search/cascading-documents instances))))))))
+
+(deftest model-index-gets-delete-capture-test
+  (testing "ModelIndex is captured for deletes despite being kept out of :hook/search-index"
+    (testing "it is still excluded from the row-level hooks, whose update path trips a toucan2 bug"
+      (is (false? (isa? :model/ModelIndex :hook/search-index))))
+    (is (some? (dml-capture/capture-fields :model/ModelIndex :delete)))
+    (is (nil? (dml-capture/capture-fields :model/ModelIndex :insert)))))
+
 (deftest rollback-discards-handoff-and-leaves-the-row-test
   (testing "a rolled-back delete discards its post-commit handoff, and the row survives"
     (let [calls (atom [])]

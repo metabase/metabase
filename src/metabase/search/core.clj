@@ -251,29 +251,31 @@
        (u/group-by first second)))
 
 (defn cascading-documents
-  "Documents that `instances` feed which would become unpurgeable once those rows are gone, with the selector
-  that found them. Ingestion recovers a document id only from a `:this.id` selector, so anything reached
-  through a join on another column — or keyed by a compound id — has to be enumerated while it still exists.
+  "Document ids that `instances` feed which would become unpurgeable once those rows are gone, by search-model.
+  Ingestion recovers a document id only from a `:this.id` selector, so anything reached through a join on
+  another column — or keyed by a compound id — has to be enumerated while it still exists.
   Resolve this before the delete and hand the result to [[purge-vanished-documents!]] after it commits."
   [instances]
   (when (supports-index?)
     (not-empty
      (into {}
            (keep (fn [[search-model selectors]]
-                   (let [where (into [:or] (distinct selectors))]
-                     (when-let [ids (not-empty (search.ingestion/doc-ids search-model where))]
-                       [search-model {:where where, :ids ids}]))))
+                   (when-let [ids (not-empty (search.ingestion/doc-ids
+                                              search-model (into [:or] (distinct selectors))))]
+                     [search-model ids])))
            (cascading-selectors instances)))))
 
 (defn purge-vanished-documents!
-  "Remove index entries for [[cascading-documents]] that no longer resolve, leaving survivors alone."
+  "Remove index entries for [[cascading-documents]] that no longer exist.
+  Survival is decided per document, not by the relationship that found it: a row whose foreign key was nulled
+  rather than deleted still produces a document and keeps its entry."
   [cascading]
   (when (and (seq cascading) (supports-index?))
-    (doseq [[search-model {:keys [where ids]}] cascading
-            :let [gone (set/difference ids (search.ingestion/doc-ids search-model where))]
+    (doseq [[search-model ids] cascading
+            :let [gone (set/difference ids (search.ingestion/existing-doc-ids search-model ids))]
             :when (seq gone)
             e (search.engine/active-engines)]
-      (search.engine/delete! e search-model gone))))
+      (search.engine/delete! e search-model (into #{} (map str) gone)))))
 
 (defn delete!
   "Given a model and a list of model's ids, remove corresponding search entries."
