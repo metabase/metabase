@@ -38,7 +38,7 @@
              (:groups entry)))
       (is (= {10 {1 #{{:schema "public" :value :query-builder}
                       {:schema "public" :value :no}}
-                  2 {:schema "legacy" :value :query-builder}}}
+                  2 #{{:schema "legacy" :value :query-builder}}}}
              (:tables entry))))))
 
 (deftest ^:parallel at-least-as-permissive?-test

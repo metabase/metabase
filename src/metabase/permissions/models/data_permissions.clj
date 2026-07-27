@@ -188,14 +188,12 @@
     - :perms  -> A map of permissions with the structure `{user-id {perm-type {db-id entry}}}` so that we NEVER
                  accidentally use the cache of the wrong user. Each `entry` is a compact map
 
-                     {:groups {group-id slot}              ; db-level rows
-                      :tables {table-id {group-id slot}}}  ; table-level rows
+                     {:groups {group-id #{perm-value}}                                    ; db-level rows
+                      :tables {table-id {group-id #{{:schema schema-name                 ; table-level rows
+                                                     :value  perm-value}}}}}
 
-                 where a `slot` in :groups holds a perm-value keyword and a `slot` in :tables holds a
-                 `{:schema schema-name :value perm-value}` map. data_permissions has no unique constraint on
-                 (group_id, perm_type, db_id, table_id), so when duplicate rows disagree the slot is promoted to
-                 a set of its values ([[slot-seq]] normalizes both shapes); every row's value then reaches the
-                 consumers' coalescing logic, exactly as the raw rows did.
+                 The sets almost always hold exactly one value; see [[rows->cache-entry]] for why every distinct
+                 value of duplicate rows is preserved rather than one row winning.
 
                  On instances with many databases these maps are typically identical across most of them, so
                  they are interned at load time: equal values share one instance. This keeps the cache size
@@ -213,49 +211,30 @@
       (when (some? v)
         (intern! v)))))
 
-(defn- conj-slot
-  "Merge a row's value `v` into a cache-entry slot.
-
-  Slots exist because data_permissions has no unique constraint on (group_id, perm_type, db_id, table_id), and its
-  delete-then-insert write paths take different cluster locks, so racing writers can — and in production data do —
-  leave multiple rows for the same logical key. The raw rows fed every duplicate's value into the consumers'
-  coalescing logic, which resolved conflicts deterministically; a plain `{group-id value}` map would instead keep
-  whichever row the unordered SELECT returned last, making permission results flip with JDBC row order (e.g.
-  duplicate download-results rows {:no, :one-million-rows} granting downloads that coalescing would deny).
-
-  So: a slot holds its single value directly in the (overwhelmingly common) duplicate-free case, and is promoted to
-  a set of the conflicting values only when duplicate rows actually disagree — no value is silently dropped, and
-  [[slot-seq]] feeds them all to the same coalescing logic the raw rows reached."
-  [slot v]
-  (cond
-    (nil? slot) v
-    (= slot v)  slot
-    (set? slot) (conj slot v)
-    :else       (hash-set slot v)))
-
-(defn- slot-seq
-  "The values of a cache-entry slot as a collection: the single value in the common case, or all conflicting values
-  when duplicate rows disagreed (see [[conj-slot]] for why). Readers must union these into their coalescing sets
-  rather than treating a slot as one value."
-  [slot]
-  (if (set? slot) slot [slot]))
-
 (defn- rows->cache-entry
   "Build the compact cache entry (see [[*permissions-for-user*]]) for one (perm-type, db-id) bucket of
-  data_permissions rows, deduping values through `interner`. Returns nil when there are no rows."
+  data_permissions rows, deduping values through `interner`. Returns nil when there are no rows.
+
+  Values accumulate into sets rather than a single value per key: data_permissions has no unique constraint on
+  (group_id, perm_type, db_id, table_id), and its delete-then-insert write paths take different cluster locks, so
+  racing writers can — and in production data do — leave multiple rows for the same logical key. The raw rows fed
+  every duplicate's value into the consumers' coalescing logic, which resolved conflicts deterministically; a
+  single-value map would instead keep whichever row the unordered SELECT returned last, making permission results
+  flip with JDBC row order (e.g. duplicate download-results rows {:no, :one-million-rows} granting downloads that
+  coalescing would deny)."
   [interner rows]
   (when (seq rows)
     (let [groups (reduce (fn [m {:keys [table_id group_id perm_value]}]
                            (if table_id
                              m
-                             (update m group_id conj-slot perm_value)))
+                             (update m group_id (fnil conj #{}) perm_value)))
                          {}
                          rows)
           tables (reduce (fn [m {:keys [table_id schema_name group_id perm_value]}]
                            (if table_id
                              (update m table_id
-                                     (fn [group-id->slot]
-                                       (update group-id->slot group_id conj-slot
+                                     (fn [group-id->values]
+                                       (update group-id->values group_id (fnil conj #{})
                                                (interner {:schema schema_name :value perm_value}))))
                              m))
                          {}
@@ -393,7 +372,7 @@
                     {perm-type (permissions.schema/data-permissions perm-type)})))
   (if (is-superuser? user-id)
     (most-permissive-value perm-type)
-    (let [perm-values (into #{} (mapcat slot-seq) (vals (:groups (get-permissions user-id perm-type database-id))))]
+    (let [perm-values (into #{} cat (vals (:groups (get-permissions user-id perm-type database-id))))]
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
@@ -473,8 +452,8 @@
 
     :else
     (let [{:keys [groups tables]} (get-permissions user-id perm-type database-id)
-          perm-values (-> (into #{} (mapcat slot-seq) (vals groups))
-                          (into (comp (mapcat slot-seq) (map :value)) (vals (get tables table-id))))
+          perm-values (-> (into #{} cat (vals groups))
+                          (into (comp cat (map :value)) (vals (get tables table-id))))
           table-perm (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
                                                                                              perm-type)))]
       (or (when-not (= table-perm (least-permissive-value perm-type))
@@ -506,13 +485,13 @@
   "Returns `{:group-id g :value v}` maps for every db-level row in a cache entry, plus every table-level row whose
   schema-name satisfies `schema-match?`."
   [{:keys [groups tables]} schema-match?]
-  (into (reduce-kv (fn [acc group-id slot]
-                     (reduce #(conj %1 {:group-id group-id :value %2}) acc (slot-seq slot)))
+  (into (reduce-kv (fn [acc group-id values]
+                     (reduce #(conj %1 {:group-id group-id :value %2}) acc values))
                    []
                    groups)
-        (for [[_table-id group-id->slot] tables
-              [group-id slot] group-id->slot
-              {:keys [schema value]} (slot-seq slot)
+        (for [[_table-id group-id->rows] tables
+              [group-id rows] group-id->rows
+              {:keys [schema value]} rows
               :when (schema-match? schema)]
           {:group-id group-id :value value})))
 
