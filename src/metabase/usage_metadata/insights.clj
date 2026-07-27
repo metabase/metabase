@@ -21,7 +21,7 @@
    [metabase.usage-metadata.query-source :as query-source]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -1010,6 +1010,50 @@
       (log/debug e "Failed to generate candidate definition description")
       fallback)))
 
+(def ^:private candidate-name-max-inline-values
+  3)
+
+(defn- literal-display-name
+  [value]
+  (cond
+    (string? value) value
+    (keyword? value) (name value)
+    (nil? value) (tru "empty")
+    :else (str value)))
+
+(defn- detailed-multi-value-filter-name
+  [definition [operator _opts field & values]]
+  (when (and (contains? #{:= :in :!= :not-in} operator)
+             (> (count values) 1)
+             (every? #(or (string? %)
+                          (number? %)
+                          (boolean? %)
+                          (keyword? %)
+                          (nil? %))
+                     values))
+    (let [field-name     (safe-display-name definition field (tru "Field"))
+          visible-values (take candidate-name-max-inline-values values)
+          remaining      (- (count values) (count visible-values))
+          value-names    (cond-> (mapv literal-display-name visible-values)
+                           (pos? remaining) (conj (tru "{0} more" remaining)))
+          joined-values  (i18n/join-strings-with-conjunction (tru "or") value-names)]
+      (if (contains? #{:= :in} operator)
+        (tru "{0} is one of {1}" field-name joined-values)
+        (tru "{0} excludes {1}" field-name joined-values)))))
+
+(defn- detailed-candidate-display-name
+  [definition clause fallback]
+  (or (detailed-multi-value-filter-name definition clause)
+      (when (and (vector? clause)
+                 (contains? #{:and :or} (first clause)))
+        (let [[operator _opts & subclauses] clause
+              names (mapv #(detailed-candidate-display-name definition % fallback)
+                          subclauses)]
+          (i18n/join-strings-with-conjunction
+           (if (= operator :and) (tru "and") (tru "or"))
+           names)))
+      (safe-display-name definition clause fallback)))
+
 (defn- source-display-name
   [source]
   (or (:display-name source) (:name source)))
@@ -1035,7 +1079,7 @@
       (let [base-name      (safe-display-name definition
                                               (conditional-base-aggregation clause)
                                               (tru "Measure"))
-            condition-name (safe-display-name definition condition (tru "matching condition"))]
+            condition-name (detailed-candidate-display-name definition condition (tru "matching condition"))]
         (tru "{0} where {1}" base-name condition-name))
       (safe-display-name definition clause (tru "Measure")))))
 
@@ -1059,10 +1103,13 @@
 (defn- add-segment-suggestions
   [{:keys [predicate source] :as candidate}]
   (let [naming-definition (candidate-naming-definition candidate)
-        suggested-name    (safe-display-name naming-definition predicate (tru "Segment"))
-        description       (safe-definition-description naming-definition
-                                                       :filters
-                                                       (tru "Filtered by {0}" suggested-name))]
+        compact-name      (safe-display-name naming-definition predicate (tru "Segment"))
+        suggested-name    (detailed-candidate-display-name naming-definition predicate (tru "Segment"))
+        description       (if (= compact-name suggested-name)
+                            (safe-definition-description naming-definition
+                                                         :filters
+                                                         (tru "Filtered by {0}" suggested-name))
+                            (tru "Filtered by {0}" suggested-name))]
     (-> candidate
         (dissoc ::metadata-provider)
         (assoc :suggested-name (u.str/elide suggested-name candidate-name-max-length)

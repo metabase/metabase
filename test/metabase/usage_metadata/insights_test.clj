@@ -34,6 +34,7 @@
 (def ^:private existing-segment-signatures @#'insights/existing-segment-signatures)
 (def ^:private segment-signature           @#'insights/segment-signature)
 (def ^:private canonical-signature         @#'insights/canonical-signature)
+(def ^:private add-measure-suggestions     @#'insights/add-measure-suggestions)
 (def ^:private add-segment-suggestions     @#'insights/add-segment-suggestions)
 (def ^:private merge-candidates            @#'insights/merge-candidates)
 (def ^:private card-table-dependencies     @#'insights/card-table-dependencies)
@@ -1307,6 +1308,32 @@
                 (str "Expected " expected-signature " among existing signatures " existing))
             (is (= 2 (count candidates)))
             (is (every? (complement :composite?) candidates))))))))
+
+(deftest candidate-suggestions-expand-short-multi-value-filters-test
+  (let [mp        (lib-be/application-database-metadata-provider (mt/id))
+        products  (lib.metadata/table mp (mt/id :products))
+        category  (lib.metadata/field mp (mt/id :products :category))
+        predicate (lib/in category "Gadget" "Widget")
+        definition (lib/query mp products)
+        base-candidate {:source {:name "Products"}
+                        :metabase.usage-metadata.insights/metadata-provider mp}]
+    (testing "segment names include the selected values"
+      (is (= {:suggested-name "Category is one of Gadget or Widget"
+              :suggested-description "Filtered by Category is one of Gadget or Widget on Products"}
+             (-> (assoc base-candidate
+                        :definition (lib/filter definition predicate)
+                        :predicate predicate)
+                 add-segment-suggestions
+                 (select-keys [:suggested-name :suggested-description])))))
+    (testing "conditional measure names include the selected values"
+      (let [measure-predicate (lib/in category "Gadget" "Widget")]
+        (is (= "Count where Category is one of Gadget or Widget"
+               (-> (assoc base-candidate
+                          :definition (lib/aggregate definition (lib/count-where measure-predicate))
+                          :aggregation {:type :count-where
+                                        :condition measure-predicate})
+                   add-measure-suggestions
+                   :suggested-name)))))))
 
 (deftest candidate-suggestions-are-bounded-and-fall-back-safely-test
   (let [candidate {:definition {}
