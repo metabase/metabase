@@ -242,8 +242,8 @@
           tables (reduce (fn [m {:keys [table_id schema_name group_id perm_value]}]
                            (if table_id
                              (update m table_id
-                                     (fn [gid->slot]
-                                       (update gid->slot group_id conj-slot
+                                     (fn [group-id->slot]
+                                       (update group-id->slot group_id conj-slot
                                                (intern {:schema schema_name :value perm_value}))))
                              m))
                          {}
@@ -498,8 +498,8 @@
                      (reduce #(conj %1 {:group-id group-id :value %2}) acc (slot-seq slot)))
                    []
                    groups)
-        (for [[_table-id gid->slot] tables
-              [group-id slot] gid->slot
+        (for [[_table-id group-id->slot] tables
+              [group-id slot] group-id->slot
               {:keys [schema value]} (slot-seq slot)
               :when (schema-match? schema)]
           {:group-id group-id :value value})))
@@ -629,14 +629,9 @@
   (if (is-superuser? user-id)
     (most-permissive-value :perms/download-results)
     (let [pairs (entry-group-value-pairs (get-permissions user-id :perms/download-results database-id)
-                                         (constantly true))
-
-          value-by-group
-          (-> (group-by :group-id pairs)
-              (update-vals (fn [perms]
-                             (let [values (set (map :value perms))]
-                               (coalesce-most-restrictive :perms/download-results values)))))]
-      (or (coalesce :perms/download-results (vals value-by-group))
+                                         (constantly true))]
+      (or (coalesce :perms/download-results
+                    (most-restrictive-per-group :perms/download-results pairs))
           (least-permissive-value :perms/download-results)))))
 
 (mu/defn user-has-any-perms-of-type? :- :boolean
