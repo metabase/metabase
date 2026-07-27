@@ -25,6 +25,7 @@ import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
+import { CanAccessDataModel, CanAccessDataStudio } from "./route-guards";
 import { getDataStudioSettingsRoutes } from "./settings/routes";
 import {
   DependenciesUpsellPage,
@@ -34,11 +35,7 @@ import {
 
 const RoutedTransformsSectionLayout = withRouteProps(TransformsSectionLayout);
 
-export function getDataStudioRoutes(
-  CanAccessDataStudio: RouteComponent,
-  CanAccessDataModel: RouteComponent,
-  IsAdmin: RouteComponent,
-) {
+export function getDataStudioRoutes(IsAdmin: RouteComponent) {
   return (
     <>
       {/* These redirects sit
