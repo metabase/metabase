@@ -149,6 +149,20 @@
           (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :unavailable)]
             (mt/with-premium-features #{:library :library-retrieval}
               (is (false? (entity-retrieval.core/available?)))))))
+      (testing "the app-db arm checks this feature's own schema, not semantic search's"
+        (with-redefs [semantic.db.datasource/db-url nil]
+          (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :app-db)]
+            (mt/with-premium-features #{:library :library-retrieval}
+              (with-redefs [entity-retrieval.core/app-db-schema-usable? (constantly false)]
+                (is (false? (entity-retrieval.core/available?))
+                    "a role that can use semantic_search but cannot create library_retrieval is not ready"))
+              (with-redefs [entity-retrieval.core/app-db-schema-usable? (constantly true)]
+                (is (true? (entity-retrieval.core/available?))))))))
+      (testing "a dedicated store needs no app-db schema check"
+        (with-redefs [semantic.db.datasource/db-url                    "jdbc:postgresql://stub"
+                      entity-retrieval.core/app-db-schema-usable?      #(throw (ex-info "must not probe" {}))]
+          (mt/with-premium-features #{:library :library-retrieval}
+            (is (true? (entity-retrieval.core/available?))))))
       (testing "an unlicensed instance resolves no store: doing so probes the app db"
         (with-redefs [semantic.db.datasource/db-url nil]
           (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode

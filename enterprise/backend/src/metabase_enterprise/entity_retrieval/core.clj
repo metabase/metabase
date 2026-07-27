@@ -5,6 +5,7 @@
   OSS shims live in [[metabase.entity-retrieval.mirror]]; the background sync they nudge is the
   [[metabase-enterprise.entity-retrieval.task.sync]] Quartz job."
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [clojurewerkz.quartzite.jobs :as jobs]
    [honey.sql :as sql]
@@ -14,6 +15,7 @@
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase-enterprise.semantic-search.embedding-health :as embedding-health]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -48,11 +50,42 @@
       (and (licensed?)
            (= :postgres (mdb/db-type)))))
 
+(defn- app-db-schema-usable?*
+  "Whether [[index-table/app-db-schema]] exists or this role can create it.
+  Reads information_schema, which is privilege-filtered, so a schema the role cannot use reads as absent.
+  Creation is verified in a rolled-back transaction, never persisted."
+  []
+  (let [app-datasource (mdb/data-source)]
+    (or (boolean (:exists (jdbc/execute-one!
+                           app-datasource
+                           [(str "SELECT EXISTS (SELECT 1 FROM information_schema.schemata"
+                                 " WHERE schema_name = ?) AS exists")
+                            index-table/app-db-schema]
+                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+        (try
+          (jdbc/with-transaction [tx app-datasource {:rollback-only true}]
+            (jdbc/execute! tx [(format "CREATE SCHEMA IF NOT EXISTS %s"
+                                       (semantic.util/quote-ident index-table/app-db-schema))]))
+          true
+          (catch Exception e
+            (log/debug e "The application database user cannot provision the library retrieval schema")
+            false)))))
+
+(def ^:private app-db-schema-usable?
+  "Cached [[app-db-schema-usable?*]]: [[available?]] runs on every write nudge and every search, and this
+  can attempt DDL."
+  (memoize/ttl app-db-schema-usable?* :ttl/threshold (* 5 60 1000)))
+
 (defn pgvector-configured?
   "Whether a pgvector store is resolvable, dedicated or on the app db.
+  The app-db arm checks this feature's own schema: semantic search's predicate answers for
+  `semantic_search`, so a role that can use that one but not create ours would read as ready and then fail
+  every reconcile.
   Probes the app db, so check the license first (see [[available?]])."
   []
-  (semantic.db.datasource/pgvector-configured?))
+  (and (semantic.db.datasource/pgvector-configured?)
+       (or (semantic.db.datasource/dedicated-url-configured?)
+           (app-db-schema-usable?))))
 
 (defn- embedder-configured?
   "Whether an embedding backend is configured: without one we can neither index nor retrieve."
