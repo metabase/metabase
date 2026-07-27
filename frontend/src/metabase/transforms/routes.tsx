@@ -3,7 +3,7 @@ import {
   PLUGIN_REPLACEMENT,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
@@ -16,7 +16,9 @@ import {
   NewQueryTransformPage,
 } from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
+import { RunsPage } from "./pages/RunsPage";
 import { TransformDependenciesPage } from "./pages/TransformDependenciesPage";
+import { TransformGraphRunListPage } from "./pages/TransformGraphRunListPage";
 import { TransformIndexesPage } from "./pages/TransformIndexesPage";
 import { TransformListPage } from "./pages/TransformListPage";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
@@ -24,53 +26,34 @@ import { TransformRunPage } from "./pages/TransformRunPage";
 import { TransformSettingsPage } from "./pages/TransformSettingsPage";
 import { TransformsNotDisabled } from "./route-guards";
 
-const RoutedTransformListPage = withRouteProps(TransformListPage);
-const RoutedRunListPage = withRouteProps(RunListPage);
-const RoutedNewJobPage = withRouteProps(NewJobPage);
-const RoutedJobPage = withRouteProps(JobPage);
-const RoutedJobRunListPage = withRouteProps(JobRunListPage);
-const RoutedNewQueryTransformPage = withRouteProps(NewQueryTransformPage);
-const RoutedNewNativeTransformPage = withRouteProps(NewNativeTransformPage);
-const RoutedNewCardTransformPage = withRouteProps(NewCardTransformPage);
-const RoutedTransformQueryPage = withRouteProps(TransformQueryPage);
-const RoutedTransformRunPage = withRouteProps(TransformRunPage);
-const RoutedTransformSettingsPage = withRouteProps(TransformSettingsPage);
-const RoutedTransformIndexesPage = withRouteProps(TransformIndexesPage);
-const RoutedTransformDependenciesPage = withRouteProps(
-  TransformDependenciesPage,
-);
-
 export function getDataStudioTransformRoutes() {
   return (
     <Route element={<TransformsNotDisabled />}>
-      <Route index element={<RoutedTransformListPage />} />
-      <Route path="runs" element={<RoutedRunListPage />} />
+      <Route index element={<TransformListPage />} />
+      <Route path="runs" element={<RunsPage />}>
+        <Route index element={<TransformGraphRunListPage />} />
+        <Route path="individual" element={<RunListPage />} />
+      </Route>
       <Route path="jobs" element={<JobSectionLayout />}>
         <Route index element={<JobListPage />} />
-        <Route path="new" element={<RoutedNewJobPage />} />
-        <Route path=":jobId" element={<RoutedJobPage />} />
-        <Route path=":jobId/runs" element={<RoutedJobRunListPage />} />
+        <Route path="new" element={<NewJobPage />} />
+        <Route path=":jobId" element={<JobPage />} />
+        <Route path=":jobId/runs" element={<JobRunListPage />} />
       </Route>
 
-      <Route path="new/query" element={<RoutedNewQueryTransformPage />} />
-      <Route path="new/native" element={<RoutedNewNativeTransformPage />} />
-      <Route path="new/card/:cardId" element={<RoutedNewCardTransformPage />} />
-      <Route path=":transformId" element={<RoutedTransformQueryPage />} />
-      <Route path=":transformId/edit" element={<RoutedTransformQueryPage />} />
-      <Route path=":transformId/run" element={<RoutedTransformRunPage />} />
-      <Route
-        path=":transformId/settings"
-        element={<RoutedTransformSettingsPage />}
-      />
-      <Route
-        path=":transformId/indexes"
-        element={<RoutedTransformIndexesPage />}
-      />
+      <Route path="new/query" element={<NewQueryTransformPage />} />
+      <Route path="new/native" element={<NewNativeTransformPage />} />
+      <Route path="new/card/:cardId" element={<NewCardTransformPage />} />
+      <Route path=":transformId" element={<TransformQueryPage />} />
+      <Route path=":transformId/edit" element={<TransformQueryPage />} />
+      <Route path=":transformId/run" element={<TransformRunPage />} />
+      <Route path=":transformId/settings" element={<TransformSettingsPage />} />
+      <Route path=":transformId/indexes" element={<TransformIndexesPage />} />
       {PLUGIN_TRANSFORMS_PYTHON.getInspectorRoutes()}
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           path=":transformId/dependencies"
-          element={<RoutedTransformDependenciesPage />}
+          element={<TransformDependenciesPage />}
         >
           <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>

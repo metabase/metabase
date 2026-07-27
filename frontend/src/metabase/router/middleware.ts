@@ -1,11 +1,11 @@
 import type { Middleware } from "@reduxjs/toolkit";
-import type { History } from "history";
 import { match } from "ts-pattern";
 
 import {
   CALL_HISTORY_METHOD,
   type CallHistoryMethodAction,
 } from "./navigation";
+import type { History } from "./types";
 
 /**
  * The slice of `history` the middleware drives. v3's `History` satisfies it, and

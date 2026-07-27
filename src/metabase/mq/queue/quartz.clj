@@ -301,11 +301,15 @@
   (backend-id [_this] backend-id)
 
   (publish! [_this queue payload]
-    ;; A nil scheduler (e.g. MB_DISABLE_SCHEDULER, or during shutdown) must be a hard failure, not a
-    ;; silent no-op: the transactional outbox relies on a thrown exception to keep its row for the
-    ;; recovery sweep, and the publish buffer relies on it to retry / loudly drop. Returning nil
-    ;; here would silently lose the message.
-    (if-let [scheduler (task/scheduler)]
+    ;; A scheduler that is nil (during shutdown) or disabled (MB_DISABLE_SCHEDULER) must be a hard
+    ;; failure, not a silent no-op: the transactional outbox relies on a thrown exception to keep its
+    ;; row for the recovery sweep, and the publish buffer relies on it to retry / loudly drop.
+    ;; The disabled check matters because a disabled scheduler is still *initialized* (standby, so its
+    ;; job store accepts writes) — without it the trigger would be durably written and never fire.
+    ;; Merely being in standby is NOT a failure: during the startup window (init-scheduler! →
+    ;; start-scheduler!) publishes land in the store and fire once the scheduler starts.
+    (if-let [scheduler (when-not (task/scheduler-disabled?)
+                         (task/scheduler))]
       (try
         (ensure-queue-job! scheduler queue (q.registry/exclusive? queue))
         (schedule-message-trigger! scheduler queue payload 0 (Date.))

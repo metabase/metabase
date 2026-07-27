@@ -1,7 +1,7 @@
-import type { Location } from "history";
 import { useCallback } from "react";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import type { Location } from "metabase/router";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetColumn } from "metabase-types/api";

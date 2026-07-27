@@ -1,10 +1,12 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
+  setupCancelJobRunEndpoint,
   setupGetTransformJobEndpoint,
   setupRunTransformJobEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { TransformJob } from "metabase-types/api";
 import {
   createMockTransformJob,
@@ -79,6 +81,28 @@ describe("ScheduleSection", () => {
     expect(
       await screen.findByRole("button", { name: "Ran successfully" }),
     ).toBeInTheDocument();
+  });
+
+  it("should allow cancelling a running job", async () => {
+    const job = createMockTransformJob({
+      id: 3,
+      last_run: createMockTransformRun({ id: 42, status: "started" }),
+    });
+    setupCancelJobRunEndpoint(3, 42);
+    setup({ job });
+
+    await userEvent.click(screen.getByTestId("cancel-button"));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Cancel run" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called(
+          "path:/api/transform-job/3/runs/42/cancel",
+        ),
+      ).toBe(true);
+    });
   });
 
   it("should handle job run failures", async () => {

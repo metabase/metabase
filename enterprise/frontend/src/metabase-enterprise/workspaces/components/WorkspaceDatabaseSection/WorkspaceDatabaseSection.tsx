@@ -100,8 +100,8 @@ export function WorkspaceDatabaseSection({
         <>
           <DatabaseInfoSectionDivider />
           <Alert
+            size="compact"
             variant="light"
-            color="info"
             icon={<FixedSizeIcon name="info" />}
             mb="md"
           >

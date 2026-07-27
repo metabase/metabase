@@ -1,7 +1,6 @@
 (ns metabase-enterprise.scim.api
   "/api/ee/scim/ endpoints"
   (:require
-   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -15,12 +14,6 @@
   ;; This is only used internally, since API keys require names, but isn't displayed on the UI, so it doesn't need to be
   ;; translated.
   (format "Metabase SCIM API Key - %s" (random-uuid)))
-
-(defn- backfill-required-entity-ids!
-  "Backfills entity IDs for Users and Groups whenever a SCIM key is generated, in case any are not set"
-  []
-  (serdes.backfill/backfill-ids-for! :model/User)
-  (serdes.backfill/backfill-ids-for! :model/PermissionsGroup))
 
 (defn- refresh-scim-api-key!
   "Generates a new SCIM API key and deletes any that already exist."
@@ -63,5 +56,4 @@
   this is equivalent to enabling SCIM."
   []
   (api/check-superuser)
-  (backfill-required-entity-ids!)
   (refresh-scim-api-key! api/*current-user-id*))

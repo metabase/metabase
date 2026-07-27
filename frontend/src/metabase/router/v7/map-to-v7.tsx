@@ -5,11 +5,10 @@ import {
   type ReactNode,
   isValidElement,
 } from "react";
-import { Route as V7Route } from "react-router-v7";
+import { Route as V7Route } from "react-router";
 
 import type { RouteElementProps } from "../route";
 import { Route } from "../route";
-import { translatePatternToV3 } from "../translate-pattern";
 
 import { RouterBridge } from "./RouterBridge";
 
@@ -45,7 +44,7 @@ export function mapToV7(node: ReactNode): ReactNode {
 }
 
 function toV7Route(element: ReactElement<RouteElementProps>): ReactElement {
-  const { path, index, element: routeElement, children } = element.props;
+  const { path, index, element: routeElement, children, props } = element.props;
 
   // v7 defaults a route with no `element` to `<Outlet/>`; only wrap (and publish
   // context) when the facade route actually renders something.
@@ -54,8 +53,11 @@ function toV7Route(element: ReactElement<RouteElementProps>): ReactElement {
       <RouterBridge v3Element={routeElement} />
     ) : undefined;
 
-  const handle =
-    path != null ? { v3Path: translatePatternToV3(path) } : undefined;
+  // Keep the route `path` and the arbitrary route `props` on `handle`: the
+  // matched-route branch the facade republishes exposes both, and consumers read
+  // them (`redirect` reads `route.path`, the command palette reads
+  // `route.props.disableCommandPalette`).
+  const handle = path != null || props != null ? { path, props } : undefined;
 
   if (index) {
     return <V7Route index element={bridged} handle={handle} />;

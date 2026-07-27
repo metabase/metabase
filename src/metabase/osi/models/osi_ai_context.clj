@@ -124,10 +124,6 @@
 
 (defmethod serdes/entity-id "OsiAiContext" [_ _] nil)
 
-(defmethod serdes/hash-fields :model/OsiAiContext
-  [_model]
-  [:entity_type :entity_local_id])
-
 (defmethod serdes/generate-path "OsiAiContext" [_ {:keys [entity_type entity_local_id]}]
   (conj (vec (entity-parent-path entity_type entity_local_id))
         {:model "OsiAiContext" :id "ai_context"}))

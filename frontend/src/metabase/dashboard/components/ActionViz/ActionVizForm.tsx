@@ -95,17 +95,7 @@ function ActionVizForm({
       return {};
     }
 
-    if (getDashboardType(dashboard.id) === "public") {
-      return runRtkEndpoint(
-        {
-          dashboardId: dashboard.id,
-          dashcardId: dashcard.id,
-          parameters: JSON.stringify(dashcardParamValues),
-        },
-        dispatch,
-        publicApi.endpoints.prefetchPublicDashcardValues,
-      );
-    }
+    const isPublic = getDashboardType(dashboard.id) === "public";
 
     return runRtkEndpoint(
       {
@@ -114,7 +104,9 @@ function ActionVizForm({
         parameters: dashcardParamValues,
       },
       dispatch,
-      actionApi.endpoints.prefetchDashcardValues,
+      isPublic
+        ? publicApi.endpoints.prefetchPublicDashcardValues
+        : actionApi.endpoints.prefetchDashcardValues,
     );
   }, [dashboard.id, dashcard.id, dashcardParamValues, dispatch]);
 
