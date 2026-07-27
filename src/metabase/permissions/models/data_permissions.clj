@@ -230,8 +230,8 @@
 
 (defn- rows->cache-entry
   "Build the compact cache entry (see [[*permissions-for-user*]]) for one (perm-type, db-id) bucket of
-  data_permissions rows, deduping values through `intern`. Returns nil when there are no rows."
-  [intern rows]
+  data_permissions rows, deduping values through `interner`. Returns nil when there are no rows."
+  [interner rows]
   (when (seq rows)
     (let [groups (reduce (fn [m {:keys [table_id group_id perm_value]}]
                            (if table_id
@@ -244,30 +244,30 @@
                              (update m table_id
                                      (fn [group-id->slot]
                                        (update group-id->slot group_id conj-slot
-                                               (intern {:schema schema_name :value perm_value}))))
+                                               (interner {:schema schema_name :value perm_value}))))
                              m))
                          {}
                          rows)]
-      {:groups (intern groups)
-       :tables (update-vals tables intern)})))
+      {:groups (interner groups)
+       :tables (update-vals tables interner)})))
 
 (defn prime-db-cache
   "Prime the permissions cache for a given user and database IDs.
   This can be called directly prior to checking the permissions for a large number of databases to improve performance"
   [db-ids]
-  (let [{cached-db-ids :db-ids intern :intern perms :perms} @*permissions-for-user*
+  (let [{cached-db-ids :db-ids interner :intern perms :perms} @*permissions-for-user*
         filtered-ids (remove cached-db-ids db-ids)]
     (when (seq filtered-ids)
       (let [user-id           api/*current-user-id*
             fetched-perm-rows (relevant-permissions-for-user-and-dbs user-id filtered-ids)
-            intern            (or intern (cache-interner))
+            interner          (or interner (cache-interner))
             new-by-type       (reduce-kv (fn [m [perm-type db-id] bucket]
-                                           (assoc-in m [perm-type db-id] (rows->cache-entry intern bucket)))
+                                           (assoc-in m [perm-type db-id] (rows->cache-entry interner bucket)))
                                          {}
                                          (group-by (juxt :perm_type :db_id) fetched-perm-rows))]
         (reset! *permissions-for-user*
                 {:db-ids (into cached-db-ids db-ids)
-                 :intern intern
+                 :intern interner
                  :perms  (update perms user-id #(merge-with merge % new-by-type))})))))
 
 (defenterprise enforced-sandboxes-for-user
