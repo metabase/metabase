@@ -50,26 +50,37 @@
       (and (licensed?)
            (= :postgres (mdb/db-type)))))
 
+(def ^:private schema-privilege-sql
+  "NULL when the schema does not exist, otherwise whether this role may both use it and create in it.
+  Two calls rather than `'USAGE, CREATE'`: a comma-separated list reads as OR, which USAGE alone passes."
+  "SELECT CASE WHEN to_regnamespace(?) IS NULL THEN NULL
+              ELSE has_schema_privilege(?, 'USAGE') AND has_schema_privilege(?, 'CREATE')
+         END AS privileged")
+
 (defn- app-db-schema-usable?*
-  "Whether [[index-table/app-db-schema]] exists or this role can create it.
-  Reads information_schema, which is privilege-filtered, so a schema the role cannot use reads as absent.
-  Creation is verified in a rolled-back transaction, never persisted."
+  "Whether this role can hold the index in [[index-table/app-db-schema]].
+  Privileges, not existence: USAGE without CREATE passes a mere existence check, then fails in
+  [[index-table/ensure-tables!]].
+  A database failure reads as unusable, so an outage can't throw out of the fire-and-forget
+  [[request-entity-sync!]]."
   []
-  (let [app-datasource (mdb/data-source)]
-    (or (boolean (:exists (jdbc/execute-one!
-                           app-datasource
-                           [(str "SELECT EXISTS (SELECT 1 FROM information_schema.schemata"
-                                 " WHERE schema_name = ?) AS exists")
-                            index-table/app-db-schema]
-                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
-        (try
-          (jdbc/with-transaction [tx app-datasource {:rollback-only true}]
-            (jdbc/execute! tx [(format "CREATE SCHEMA IF NOT EXISTS %s"
-                                       (semantic.util/quote-ident index-table/app-db-schema))]))
-          true
-          (catch Exception e
-            (log/debug e "The application database user cannot provision the library retrieval schema")
-            false)))))
+  (let [schema index-table/app-db-schema]
+    (try
+      (if-some [privileged (:privileged (jdbc/execute-one!
+                                         (mdb/data-source)
+                                         [schema-privilege-sql schema schema schema]
+                                         {:builder-fn jdbc.rs/as-unqualified-lower-maps}))]
+        privileged
+        ;; Not there yet -- can this role create it? Rolled back, so nothing is persisted here.
+        (do
+          (jdbc/with-transaction [tx (mdb/data-source) {:rollback-only true}]
+            (jdbc/execute! tx [(format "CREATE SCHEMA IF NOT EXISTS %s" (semantic.util/quote-ident schema))]))
+          true))
+      (catch InterruptedException e
+        (throw e))
+      (catch Exception e
+        (log/debug e "The application database user cannot host the library retrieval schema")
+        false))))
 
 (def ^:private app-db-schema-usable?
   "Cached [[app-db-schema-usable?*]]: [[available?]] runs on every write nudge and every search, and this
