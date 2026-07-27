@@ -5,6 +5,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.health-inspector.core :as health-inspector]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -93,17 +94,52 @@
   (atom {}))
 
 (defonce ^:private live-gauge-series
-  ;; Only clear series that previously held a real value; inactive indexes should not create NaN-only series.
-  (atom #{}))
+  ;; [gauge-key labels] -> a u/start-timer taken when this process last published a real value. Only series
+  ;; that held a real value are ever cleared; inactive indexes should not create NaN-only series.
+  (atom {}))
+
+(defn set-cluster-gauge!
+  "Publish `value` for a gauge this process measured on behalf of the whole cluster, or clear it when nil.
+
+  These measurements describe the shared index, not this node, so exactly one node computes and exports
+  them -- whichever the clustered scheduler picked. Recording when we last published lets
+  [[expire-cluster-gauges!]] retire the series if this node stops being that one, rather than serving its
+  final reading forever."
+  [gauge-key labels value]
+  (let [series [gauge-key labels]]
+    (if (some? value)
+      (do
+        (analytics/set-gauge! gauge-key labels value)
+        (swap! live-gauge-series assoc series (u/start-timer)))
+      (when (contains? @live-gauge-series series)
+        (analytics/set-gauge! gauge-key labels ##NaN)
+        (swap! live-gauge-series dissoc series)))))
+
+(defn expire-cluster-gauges!
+  "Clear every [[set-cluster-gauge!]] series this process hasn't refreshed within `max-age-ms`.
+
+  A node that loses the scheduled job simply stops refreshing, so without this its last reading would
+  linger next to the new owner's and drift further from the truth with every scrape."
+  [max-age-ms]
+  (doseq [[[gauge-key labels :as series] published] @live-gauge-series
+          :when (>= (u/since-ms published) max-age-ms)]
+    (analytics/set-gauge! gauge-key labels ##NaN)
+    (swap! live-gauge-series dissoc series)))
+
+(def ^:private cluster-gauge-max-age-ms
+  "How long a node keeps exporting a measurement it made. Three times the collectors' ten-minute interval,
+  so an ordinary missed run doesn't blink the series."
+  (* 30 60 1000))
+
+;; Runs on every node, but only ever clears what this one published: whichever node the scheduler picks
+;; keeps exporting, and a node that loses the job drops its readings instead of freezing them.
+(defmethod analytics.core/pull-collector ::expire-cluster-gauges [_]
+  {:min-interval-s 60
+   :f              #(expire-cluster-gauges! cluster-gauge-max-age-ms)})
 
 (defn- set-index-gauge!
   [gauge-key index value]
-  (if (some? value)
-    (do
-      (analytics/set-gauge! gauge-key {:index (name index)} value)
-      (swap! live-gauge-series conj [gauge-key index]))
-    (when (contains? @live-gauge-series [gauge-key index])
-      (analytics/set-gauge! gauge-key {:index (name index)} ##NaN))))
+  (set-cluster-gauge! gauge-key {:index (name index)} value))
 
 (defn- run-measure!
   "Run one collector and update its gauge. Returns nil for N/A or a health-inspector result."

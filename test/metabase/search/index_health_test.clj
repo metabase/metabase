@@ -5,7 +5,8 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.health-inspector.core :as health-inspector]
    [metabase.search.index-health :as index-health]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -62,7 +63,7 @@
 
 (deftest ^:sequential run-measure!-test
   (let [calls (atom [])
-        live  (atom #{})]
+        live  (atom {})]
     (with-redefs [index-health/live-gauge-series live]
       (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
         (testing "a collector result updates the gauge and returns the health row"
@@ -114,25 +115,26 @@
   (testing "a failed first gauge write does not make later clears create a NaN-only series"
     (let [set-index-gauge! @#'index-health/set-index-gauge!
           live             @#'index-health/live-gauge-series
-          series           [:metabase-search/index-coverage-ratio :failed-write-test-engine]
+          index            :failed-write-test-engine
+          series           [:metabase-search/index-coverage-ratio {:index (name index)}]
           calls            (atom [])]
       (try
         (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& _]
                                                            (throw (ex-info "prometheus down" {})))]
-          (is (thrown? Exception (apply set-index-gauge! (conj series 1.0))))
+          (is (thrown? Exception (set-index-gauge! (first series) index 1.0)))
           (is (not (contains? @live series))))
         (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
-          (apply set-index-gauge! (conj series nil))
+          (set-index-gauge! (first series) index nil)
           (is (empty? @calls))
-          (apply set-index-gauge! (conj series 0.5))
+          (set-index-gauge! (first series) index 0.5)
           (is (contains? @live series)))
         (finally
-          (swap! live disj series))))))
+          (swap! live dissoc series))))))
 
 (deftest ^:sequential refresh-isolates-measure-failures-test
   (testing "one collector failure does not stop later measures from refreshing"
     (let [calls (atom [])
-          live  (atom #{})
+          live  (atom {})
           boom  {:check-name :test-boom
                  :gauge-key  :metabase-search/index-staleness-seconds
                  :index     :refresh-isolation-test
@@ -201,3 +203,21 @@
                                                        :gauge-key  :metabase-search/index-coverage-ratio
                                                        :index      :interrupted
                                                        :collect    #(throw (InterruptedException.))})))))
+
+(deftest ^:sequential expire-cluster-gauges!-test
+  (let [calls (atom [])
+        live  (atom {[:metabase-search/index-coverage-ratio {:index "fresh"}] ::fresh
+                     [:metabase-search/index-coverage-ratio {:index "stale"}] ::stale})]
+    ;; a map is a function of its keys, so this stands in for the timers' ages
+    (with-redefs [index-health/live-gauge-series live
+                  u/since-ms                    {::fresh 1000, ::stale 60000}]
+      (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+        (index-health/expire-cluster-gauges! 30000)
+        (testing "a reading this node stopped refreshing is retired, not left to drift"
+          (is (= [:metabase-search/index-coverage-ratio {:index "stale"}] (butlast (first @calls))))
+          (is (Double/isNaN ^double (last (first @calls))))
+          (is (= 1 (count @calls)) "the series it is still measuring is left alone"))
+        (testing "and only once -- a retired series is forgotten"
+          (reset! calls [])
+          (index-health/expire-cluster-gauges! 30000)
+          (is (empty? @calls)))))))
