@@ -15,12 +15,24 @@
    [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
-   [metabase.app-db.core :as mdb]
    [metabase.search.index-health :as search.index-health]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
+
+(defn- readiness-gauges
+  "Every readiness gauge for both storage labels, as `{storage {:available _ :connected _ :last-success _}}`."
+  [system]
+  (into {}
+        (for [storage ["external" "app-db"]]
+          [storage {:available    (mt/metric-value system :metabase-search/pgvector-store-available
+                                                   {:storage storage})
+                    :connected    (mt/metric-value system :metabase-search/pgvector-store-connected
+                                                   {:storage storage})
+                    :last-success (mt/metric-value
+                                   system :metabase-search/pgvector-store-last-success-timestamp-seconds
+                                   {:storage storage})}])))
 
 (deftest pgvector-readiness-metrics-test
   (mt/with-prometheus-system! [_ system]
@@ -30,59 +42,66 @@
                                   semantic.db.datasource/probe-dedicated-connection!
                                   (fn [] (throw (ex-info "should not connect" {})))]
         (@#'semantic.task.collector/collect-pgvector-readiness-metrics!)
-        (doseq [storage ["external" "app-db"]]
-          (is (zero? (mt/metric-value system :metabase-search/pgvector-store-available
-                                      {:storage storage})))
-          (is (zero? (mt/metric-value system :metabase-search/pgvector-store-connected
-                                      {:storage storage}))))))
+        (is (=? {"external" {:available zero?, :connected zero?}
+                 "app-db"   {:available zero?, :connected zero?}}
+                (readiness-gauges system)))))
     (testing "a connected external store is available and healthy"
       (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly true)
                                   semantic.db.datasource/probe-dedicated-connection! (constantly {:one 1})]
         (@#'semantic.task.collector/collect-pgvector-readiness-metrics!))
-      (is (== 1 (mt/metric-value system :metabase-search/pgvector-store-available
-                                 {:storage "external"})))
-      (is (== 1 (mt/metric-value system :metabase-search/pgvector-store-connected
-                                 {:storage "external"})))
-      (is (zero? (mt/metric-value system :metabase-search/pgvector-store-available
-                                  {:storage "app-db"})))
-      (is (zero? (mt/metric-value system :metabase-search/pgvector-store-connected
-                                  {:storage "app-db"})))
-      (let [last-success (mt/metric-value
-                          system :metabase-search/pgvector-store-last-success-timestamp-seconds
-                          {:storage "external"})]
-        (is (pos? last-success))
+      (is (=? {"external" {:available #(== 1 %), :connected #(== 1 %), :last-success pos?}
+               "app-db"   {:available zero?, :connected zero?}}
+              (readiness-gauges system)))
+      (let [last-success (get-in (readiness-gauges system) ["external" :last-success])]
         (testing "a later failure clears connected but preserves the last-success timestamp"
           (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly true)
                                       semantic.db.datasource/probe-dedicated-connection!
                                       (fn [] (throw (ex-info "connection failed" {})))]
             (@#'semantic.task.collector/collect-pgvector-readiness-metrics!))
-          (is (== 1 (mt/metric-value system :metabase-search/pgvector-store-available
-                                     {:storage "external"})))
-          (is (zero? (mt/metric-value system :metabase-search/pgvector-store-connected
-                                      {:storage "external"})))
-          (is (== last-success
-                  (mt/metric-value
-                   system :metabase-search/pgvector-store-last-success-timestamp-seconds
-                   {:storage "external"}))))))
+          (is (=? {"external" {:available #(== 1 %), :connected zero?, :last-success #(== last-success %)}}
+                  (readiness-gauges system))))))
     (testing "a connected app-db pgvector store is available and healthy"
       (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly false)
+                                  semantic.u/semantic-search-configured? (constantly true)
                                   semantic.db.datasource/pgvector-mode (constantly :app-db)
-                                  mdb/data-source (constantly ::app-db-datasource)
-                                  jdbc/execute-one! (fn [datasource sql]
-                                                      (is (= ::app-db-datasource datasource))
-                                                      (is (= ["SELECT 1"] sql))
-                                                      {:one 1})]
+                                  semantic.db.datasource/probe-app-db-store! (constantly true)]
         (@#'semantic.task.collector/collect-pgvector-readiness-metrics!))
-      (is (zero? (mt/metric-value system :metabase-search/pgvector-store-available
-                                  {:storage "external"})))
-      (is (zero? (mt/metric-value system :metabase-search/pgvector-store-connected
-                                  {:storage "external"})))
-      (is (== 1 (mt/metric-value system :metabase-search/pgvector-store-available
-                                 {:storage "app-db"})))
-      (is (== 1 (mt/metric-value system :metabase-search/pgvector-store-connected
-                                 {:storage "app-db"})))
-      (is (pos? (mt/metric-value system :metabase-search/pgvector-store-last-success-timestamp-seconds
-                                 {:storage "app-db"}))))))
+      (is (=? {"external" {:available zero?, :connected zero?}
+               "app-db"   {:available #(== 1 %), :connected #(== 1 %), :last-success pos?}}
+              (readiness-gauges system))))
+    (testing "an app-db store whose vector extension went away reads available but disconnected"
+      (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly false)
+                                  semantic.u/semantic-search-configured? (constantly true)
+                                  semantic.db.datasource/pgvector-mode (constantly :app-db)
+                                  semantic.db.datasource/probe-app-db-store! (constantly false)]
+        (@#'semantic.task.collector/collect-pgvector-readiness-metrics!))
+      (is (=? {"app-db" {:available #(== 1 %), :connected zero?}}
+              (readiness-gauges system))))))
+
+(deftest pgvector-readiness-skips-unlicensed-app-db-probe-test
+  (testing "an unlicensed instance never resolves pgvector-mode, whose app-db arm probes the app db"
+    (mt/with-premium-features #{}
+      (mt/with-prometheus-system! [_ system]
+        (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly false)
+                                    semantic.db.datasource/pgvector-mode
+                                    (fn [] (throw (ex-info "must not probe the app db" {})))]
+          (@#'semantic.task.collector/collect-pgvector-readiness-metrics!)
+          (is (=? {"external" {:available zero?, :connected zero?}
+                   "app-db"   {:available zero?, :connected zero?}}
+                  (readiness-gauges system))))))))
+
+(deftest pgvector-store-health-check-test
+  (let [check @#'semantic.task.collector/pgvector-store-health-check
+        probe @#'semantic.task.collector/last-readiness-probe]
+    (testing "the check reports the collector's last probe instead of running its own"
+      (reset! probe nil)
+      (is (nil? (check)) "omitted until the first probe")
+      (reset! probe {:storage nil, :connected? false})
+      (is (nil? (check)) "omitted when there is no store to reach")
+      (reset! probe {:storage "external", :connected? true})
+      (is (=? {:health 100, :message #"pgvector store \(external\) reachable\."} (check)))
+      (reset! probe {:storage "app-db", :connected? false})
+      (is (=? {:health 0, :message #"pgvector store \(app-db\) unreachable\."} (check))))))
 
 (deftest ^:sequential pull-collector-refreshes-pgvector-metrics-on-each-instance-test
   (let [initialized? @#'semantic.task.collector/pgvector-readiness-metrics-initialized?
@@ -102,11 +121,11 @@
          semantic.task.collector/submit-pgvector-readiness-refresh!  #(swap! submitted conj %)]
         ((:f collector))
         ((:f collector))
-        (is (= 6 (count @gauge-calls)) "the first scrape initializes both storage series")
+        (is (= 4 (count @gauge-calls)) "the first scrape initializes both storage series")
         (is (= 1 (count @submitted)) "overlapping scrapes share one local refresh")
         (is (zero? @refreshes) "the database probe does not run on the synchronous scrape path")
         ((first @submitted)))
-      (is (= 900 (:min-interval-s collector)))
+      (is (= 3600 (:min-interval-s collector)))
       (is (= 1 @refreshes))
       (is (false? @running?))
       (finally

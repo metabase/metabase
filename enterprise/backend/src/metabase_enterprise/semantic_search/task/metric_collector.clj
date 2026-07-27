@@ -10,7 +10,7 @@
    [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
-   [metabase.app-db.core :as mdb]
+   [metabase.health-inspector.core :as health-inspector]
    [metabase.search.index-health :as search.index-health]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
@@ -26,27 +26,44 @@
 (def ^:private collector-job-key (jobs/key "metabase.task.semantic-metric-collector.job"))
 (def ^:private collector-trigger-key (triggers/key "metabase.task.semantic-metric-collector.trigger"))
 
+(defonce ^:private ^{:doc "The most recent readiness probe as `{:storage :connected?}`, or nil before the
+  first one. Lets [[pgvector-store-health-check]] report the store without probing it a second time."}
+  last-readiness-probe
+  (atom nil))
+
 (defn- probe-connected?
   [mode]
   (try
     (case mode
-      :dedicated (semantic.datasource/probe-dedicated-connection!)
-      :app-db    (jdbc/execute-one! (mdb/data-source) ["SELECT 1"])
-      :unavailable nil)
-    (not= mode :unavailable)
+      :dedicated   (do (semantic.datasource/probe-dedicated-connection!) true)
+      :app-db      (semantic.datasource/probe-app-db-store!)
+      :unavailable false)
     (catch InterruptedException e
       (throw e))
     (catch Exception e
-      (log/debug e "Pgvector connection probe failed" {:mode mode})
+      ;; warn, not debug: this gauge dropping to 0 is the whole point of the series, and the exception is
+      ;; the only record of whether it was a rotated password, DNS, or a saturated pool.
+      (log/warn e "Pgvector connection probe failed" {:mode mode})
       false)))
+
+(defn- readiness-probe-allowed?
+  "Whether this instance may resolve its pgvector store to publish readiness metrics.
+  The same boot-safe gate [[SemanticMetricCollector]] schedules on. Without the license arm an unlicensed
+  instance would resolve [[semantic.datasource/pgvector-mode]] every scrape interval, and the app-db arm of
+  that runs the rolled-back CREATE EXTENSION / CREATE SCHEMA probe against the customer's application
+  database -- exactly what [[semantic.u/semantic-search-available?]] documents as forbidden."
+  []
+  (or (semantic.datasource/dedicated-url-configured?)
+      (semantic.u/semantic-search-configured?)))
 
 (defn- collect-pgvector-readiness-metrics!
   "Record availability and connection health for the selected pgvector store.
-  This deliberately ignores semantic-search feature and engine activation so operators can validate a
-  pgvector rollout before enabling any feature that consumes it."
+  This deliberately ignores engine activation so operators can validate a pgvector rollout before enabling
+  any feature that consumes it; the license still gates it, see [[readiness-probe-allowed?]]."
   []
-  (let [dedicated? (semantic.datasource/dedicated-url-configured?)
-        mode       (if dedicated? :dedicated (semantic.datasource/pgvector-mode))
+  (let [mode       (if (readiness-probe-allowed?)
+                     (semantic.datasource/pgvector-mode)
+                     :unavailable)
         storage    (case mode :dedicated "external" :app-db "app-db" nil)
         connected? (probe-connected? mode)]
     ;; Publish both stable series on every instance. Exactly one can be available because a dedicated URL
@@ -58,10 +75,25 @@
       (analytics/set-gauge! :metabase-search/pgvector-store-connected
                             {:storage candidate}
                             (if (and (= candidate storage) connected?) 1 0)))
+    (reset! last-readiness-probe {:storage storage, :connected? connected?})
     (when connected?
       (analytics/set-gauge! :metabase-search/pgvector-store-last-success-timestamp-seconds
                             {:storage storage}
                             (.getEpochSecond (Instant/now))))))
+
+(defn- pgvector-store-health-check
+  "Health-inspector row for pgvector store reachability, reporting the last probe rather than running its
+  own. Nil (check omitted) until the first probe, and on an instance with no pgvector store to reach.
+  Reading the collector's result is what keeps this row and the gauges from ever disagreeing; the freshness
+  bound is the pull collector's interval, not the daily health-inspector report."
+  []
+  (when-let [{:keys [storage connected?]} @last-readiness-probe]
+    (when storage
+      (if connected?
+        (search.index-health/healthy (format "pgvector store (%s) reachable." storage))
+        (search.index-health/degraded (format "pgvector store (%s) unreachable." storage))))))
+
+(health-inspector/register-check! :pgvector-store pgvector-store-health-check)
 
 (defonce ^:private pgvector-readiness-metrics-initialized? (atom false))
 (defonce ^:private pgvector-readiness-refresh-running? (atom false))
@@ -79,8 +111,10 @@
                                      (semantic.datasource/dedicated-url-configured?))
                               1
                               0))
-      (analytics/set-gauge! :metabase-search/pgvector-store-connected {:storage storage} 0)
-      (analytics/set-gauge! :metabase-search/pgvector-store-last-success-timestamp-seconds {:storage storage} 0))))
+      ;; The last-success series is deliberately not seeded: a sentinel 0 reads as a 1970 timestamp, so the
+      ;; natural `time() - last_success > threshold` alert would fire on every instance forever, including
+      ;; for the storage this instance doesn't use. It appears on the first successful probe.
+      (analytics/set-gauge! :metabase-search/pgvector-store-connected {:storage storage} 0))))
 
 (defn- refresh-pgvector-readiness-metrics!
   []
@@ -107,8 +141,10 @@
 ;; Prometheus scrapes every Metabase process, whereas a Quartz job runs on only one member of a cluster. Start
 ;; a local, single-flight background probe from the scrape path so every process refreshes its own gauge series
 ;; without putting database connection latency on the synchronous scrape.
+;; Hourly: readiness changes on deploy or operator action, not minute to minute, and in app-db mode the probe
+;; is the one place a rolled-back CREATE EXTENSION reaches a customer's application database.
 (defmethod analytics.core/pull-collector ::pgvector-readiness-gauges [_]
-  {:min-interval-s (* 15 60)
+  {:min-interval-s (* 60 60)
    :f              request-pgvector-readiness-refresh!})
 
 (defn- row-count

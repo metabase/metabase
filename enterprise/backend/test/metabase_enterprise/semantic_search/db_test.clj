@@ -58,7 +58,20 @@
 
 (def ^:private parse-db-url #'semantic.db.datasource/parse-db-url)
 
+(def ^:private probe-jdbc-url #'semantic.db.datasource/probe-jdbc-url)
+
 (def ^:private base-url "jdbc:postgresql://localhost:5432/mb_semantic_search")
+
+(deftest probe-jdbc-url-test
+  (testing "the probe URL fills in the fail-fast timeouts the one-shot datasource would otherwise lack"
+    ;; db-url is a value, not a fn, so with-dynamic-fn-redefs can't bind it
+    (with-redefs [semantic.db.datasource/db-url base-url]
+      (is (= (str base-url "?connectTimeout=5&socketTimeout=10")
+             (probe-jdbc-url)))))
+  (testing "a timeout the operator set on MB_PGVECTOR_DB_URL wins"
+    (with-redefs [semantic.db.datasource/db-url (str base-url "?socketTimeout=60")]
+      (is (= (str base-url "?socketTimeout=60&connectTimeout=5")
+             (probe-jdbc-url))))))
 
 (deftest parse-db-url-defaults-test
   (testing "a URL with no params leaves the URL untouched and uses the default pool props"

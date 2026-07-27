@@ -191,14 +191,39 @@
         (throw e)))
     (throw (ex-info "Semantic search connection pool is not initialized. Call init-db! first." {}))))
 
+(def ^:private probe-timeout-params
+  "pgjdbc timeouts, in seconds, for the readiness probe's one-shot datasource.
+  It is built from the URL alone and so inherits none of the pool's fail-fast configuration; without these a
+  blackholed host (TCP established, no FIN) blocks the probe thread for the life of the JVM."
+  {"connectTimeout" "5"
+   "socketTimeout"  "10"})
+
+(def ^:private probe-query-timeout-seconds
+  "Statement timeout for the readiness probe. Covers the pooled path too, where the socket outlives the
+  probe and the driver-level timeouts belong to whoever built the pool."
+  10)
+
+(defn- probe-jdbc-url
+  "The dedicated pgvector URL with [[probe-timeout-params]] applied. A timeout the operator set on
+  MB_PGVECTOR_DB_URL wins, so this only fills in what is missing."
+  []
+  (let [url        (:jdbc-url (parsed-db-config))
+        [_ pairs]  (split-query url)
+        configured (into #{} (map first) pairs)
+        added      (for [[k v] probe-timeout-params
+                         :when (not (configured k))]
+                     (str k "=" v))]
+    (cond-> url
+      (seq added) (str (if (str/includes? url "?") "&" "?") (str/join "&" added)))))
+
 (defn probe-dedicated-connection!
   "Test the dedicated pgvector database without initializing its connection pool.
   Reuse the pool when a consuming feature has already initialized it; otherwise use a one-shot datasource so
   readiness monitoring does not keep an idle server-side connection open before those features are enabled."
   []
   (let [datasource (or @data-source
-                       (jdbc/get-datasource {:jdbcUrl (:jdbc-url (parsed-db-config))}))]
-    (jdbc/execute-one! datasource ["SELECT 1 AS test"])))
+                       (jdbc/get-datasource {:jdbcUrl (probe-jdbc-url)}))]
+    (jdbc/execute-one! datasource ["SELECT 1 AS test"] {:timeout probe-query-timeout-seconds})))
 
 (comment
   ;; docker-compose.yml
@@ -285,6 +310,22 @@
       :else                          (app-db-can-provision-pgvector? app-datasource
                                                                      (not installed)
                                                                      (not schema-exists)))))
+
+(defn probe-app-db-store!
+  "Whether the application database is serving as a usable pgvector store right now: it answers, and the
+  `vector` extension is installed.
+  Read-only and uncached, unlike [[check-app-db-pgvector-support]] — readiness monitoring has to see an
+  extension dropped under a running instance, which [[app-db-pgvector-support]] latches past.
+  Deliberately does not require [[app-db-schema]]: that schema is created at activation, so requiring it
+  would read as not-ready on an instance that is only validating its pgvector rollout. Schema and table
+  health belong to the semantic-search index health check."
+  []
+  (boolean
+   (:installed
+    (jdbc/execute-one! (mdb/data-source)
+                       ["SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS installed"]
+                       {:builder-fn jdbc.rs/as-unqualified-kebab-maps
+                        :timeout    probe-query-timeout-seconds}))))
 
 (defn- app-db-pgvector-supported?
   "Whether the application database can act as the pgvector store, via a cached probe.
