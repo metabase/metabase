@@ -1,5 +1,6 @@
 (ns metabase-enterprise.semantic-search.db.migration.impl
   (:require
+   [clojure.string :as str]
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.util :as semantic.util]
@@ -22,13 +23,27 @@
   Their presence in a to-be-wiped dedicated database means MB_PGVECTOR_DB_URL was pointed at an app db."
   #{"core_user" "metabase_database"})
 
+(def ^:private own-table-prefixes
+  "Every table this module creates in its store:
+  - `index_`  — `index_metadata`, `index_control`, `index_gate`, and `index_<provider>_<model>_<dims>`
+  - `dlq_`    — one dead-letter queue per index, `dlq_<index-id>`
+  - `repair_` — repair's scratch tables, `repair_<millis>_<id>`
+
+  Used to scope the reset in a dedicated store, whose default schema we share with library retrieval."
+  ["index_" "dlq_" "repair_"])
+
+(defn- ours?
+  [{:keys [tablename]}]
+  (some #(str/starts-with? tablename %) own-table-prefixes))
+
 (defn- drop-all-but-migration-table
   "Destructive: clears out semantic-search storage ahead of recreating it from scratch.
   When index-metadata carries a `:schema` (shared app-db mode) ONLY tables inside that schema may be
   dropped — the application's tables live in other schemas and must never be touched here.
   Without a `:schema` the database is assumed dedicated to semantic search and its default schema is
-  wiped; refuses outright when the database looks like a Metabase app db (MB_PGVECTOR_DB_URL pointed at
-  the application database would otherwise destroy it here, on first init)."
+  swept, but only for [[own-table-prefixes]] — library retrieval keeps its index there too. Refuses
+  outright when the database looks like a Metabase app db (MB_PGVECTOR_DB_URL pointed at the application
+  database would otherwise destroy it here, on first init)."
   [index-metadata tx]
   (let [schema (:schema index-metadata)
         tables (jdbc/execute! tx
@@ -45,13 +60,19 @@
                                            [:= :schemaname [:raw "current_schema()"]]
                                            [:<> :tablename  [:inline "migration"]]])})
                               {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+    ;; the sentinel scan reads every table in scope, not just ours: an app db is recognized by tables we
+    ;; would never drop
     (when (and (nil? schema)
                (some (comp app-db-sentinel-tables :tablename) tables))
       (throw (ex-info (str "Refusing to reset the semantic search database: it contains Metabase application"
                            " tables. Point MB_PGVECTOR_DB_URL at a dedicated pgvector database, or unset it to"
                            " share the application database in the isolated semantic_search schema.")
                       {:type ::refused-app-db-wipe})))
-    (doseq [{:keys [schemaname tablename]} tables]
+    (doseq [{:keys [schemaname tablename]} (cond->> tables
+                                             ;; the module's own schema holds nothing else, so a reset
+                                             ;; there is free to clear leftovers from older naming
+                                             ;; schemes. A dedicated store's default schema is shared.
+                                             (nil? schema) (filter ours?))]
       (jdbc/execute! tx
                      (sql/format
                       {:drop-table [[[:raw (str (semantic.util/quote-ident schemaname) "."

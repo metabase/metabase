@@ -90,15 +90,19 @@
 (deftest dedicated-reset-stays-in-default-schema-test
   (mt/with-premium-features #{:semantic-search}
     (semantic.tu/with-test-db-defaults!
-      (testing "the dedicated-mode reset wipes only the default schema — cohabitant schemas survive"
+      (testing "the dedicated-mode reset drops only its own tables, by schema and by name"
         (let [pgvector (semantic.env/get-pgvector-datasource!)]
           (jdbc/execute! pgvector ["CREATE SCHEMA cohabitant"])
           (jdbc/execute! pgvector ["CREATE TABLE cohabitant.precious (id int)"])
-          (jdbc/execute! pgvector ["CREATE TABLE doomed (id int)"])
+          (jdbc/execute! pgvector ["CREATE TABLE index_doomed (id int)"])
+          ;; library retrieval shares a dedicated store, and used to keep its index unqualified here
+          (jdbc/execute! pgvector ["CREATE TABLE library_entity_index (id int)"])
           (semantic.db.connection/with-migrate-tx [tx]
             (semantic.db.migration/maybe-migrate! tx {:index-metadata semantic.index-metadata/default-index-metadata}))
           (is (true? (semantic.util/table-exists? pgvector "cohabitant.precious")))
-          (is (false? (semantic.util/table-exists? pgvector "public.doomed"))))))))
+          (is (true? (semantic.util/table-exists? pgvector "public.library_entity_index"))
+              "another module's table in the same schema is not ours to drop")
+          (is (false? (semantic.util/table-exists? pgvector "public.index_doomed"))))))))
 
 (deftest dedicated-reset-refuses-app-db-test
   (mt/with-premium-features #{:semantic-search}
@@ -124,9 +128,9 @@
           (semantic.db.connection/with-migrate-tx [tx]
             (semantic.db.migration/maybe-migrate!
              tx {:index-metadata semantic.index-metadata/default-index-metadata}))
-          (testing "migration proceeds: the module tables are created and the stray table is wiped"
+          (testing "migration proceeds: the module tables are created, and a table that isn't ours is left"
             (is (true? (semantic.util/table-exists? pgvector "public.index_metadata")))
-            (is (false? (semantic.util/table-exists? pgvector "public.databasechangelog")))))))))
+            (is (true? (semantic.util/table-exists? pgvector "public.databasechangelog")))))))))
 
 (defn- executions-overlap?
   "Check if any two executions overlap in time. Each entry is [tid :started/:ended timestamp].
