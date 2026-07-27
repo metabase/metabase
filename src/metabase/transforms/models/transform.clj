@@ -452,6 +452,14 @@
 (defn- import-maybe-int-field-fk [v]
   (if (pos-int? v) v (some-> v serdes/*import-field-fk*)))
 
+(defn- export-checkpoint-field-fk
+  "Portable ref for the checkpoint field. A dangling id (field since deleted) is exported as-is:
+  the importer passes numbers through, so one stale config can't fail the whole import."
+  [field-id]
+  (if (t2/exists? :model/Field :id field-id)
+    (serdes/*export-field-fk* field-id)
+    field-id))
+
 (defn- update-checkpoint-field
   "Apply `f` to the source's `:checkpoint-filter-field-id`, when one is set."
   [source f]
@@ -480,7 +488,7 @@
                                                                       (mapv #(-> %
                                                                                  (m/update-existing :table_id serdes/*export-table-fk*)
                                                                                  (m/update-existing :database_id serdes/*export-database-fk*))))))
-                                            (update-checkpoint-field serdes/*export-field-fk*))
+                                            (update-checkpoint-field export-checkpoint-field-fk))
                                         ;; Orphan: source DB has been deleted, so table/field rows it referenced
                                         ;; are gone too. Null the dead numeric refs and flag the body so
                                         ;; the importer skips ref resolution.
@@ -522,7 +530,7 @@
         [[{:model "Database" :id source_database_id}]])
       (for [{tag-id :tag_id} tags]
         [{:model "TransformTag" :id tag-id}])
-      (when-not (pos-int? checkpoint-field-ref)
+      (when (some-> checkpoint-field-ref pos-int? not)
         [(serdes/field->path checkpoint-field-ref)])
       (serdes/mbql-deps false source)))))
 
