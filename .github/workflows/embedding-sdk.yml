@@ -86,13 +86,15 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+          # SC2016: the '$a' and '$aEOF' are sed commands, not shell variables.
+          # shellcheck disable=SC2016
           bun run embedding-sdk:docs:generate:pure --emit none 2>&1 \
           | tee /dev/stdout \
           | tee >( tail -n 10 \
           | sed '1s/^/output<<EOF\n/' \
                    | sed '$aEOF' \
                    >> "$GITHUB_OUTPUT" )
-          exit ${PIPESTATUS[0]}
+          exit "${PIPESTATUS[0]}"
       - name: Comment on PR if 'not included in the documentation' error happens
         uses: ./.github/actions/notify-pull-request
         with:
