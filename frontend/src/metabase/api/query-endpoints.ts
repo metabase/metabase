@@ -81,6 +81,7 @@ export function maybeUsePivotEndpoint<Arg>(
   if (!shouldUsePivotEndpoint(card, metadata)) {
     return endpoint;
   }
+  // Unjustified type cast. FIXME
   return (PIVOT_ENDPOINTS.get(endpoint) as QueryEndpoint<Arg>) ?? endpoint;
 }
 

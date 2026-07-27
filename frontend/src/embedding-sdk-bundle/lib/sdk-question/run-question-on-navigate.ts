@@ -47,10 +47,15 @@ export const runQuestionOnNavigateSdk =
 
     // Fallback when a visualization legend is clicked
     if (cardIsEquivalent(previousCard, nextCard)) {
-      nextCard = await loadCard(
-        { cardId: nextCard.id },
-        { dispatch, getState },
-      );
+      // Reload the canonical card only for saved questions. Ad-hoc questions
+      // have no id, so keep the card as-is rather than firing
+      // `GET /api/card/undefined`.
+      if (nextCard.id !== null && nextCard.id !== undefined) {
+        nextCard = await loadCard(
+          { cardId: nextCard.id },
+          { dispatch, getState },
+        );
+      }
     } else {
       nextCard = getCardAfterVisualizationClick(nextCard, previousCard);
       onClearQueryResults();

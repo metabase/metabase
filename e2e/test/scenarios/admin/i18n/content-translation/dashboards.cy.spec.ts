@@ -93,6 +93,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
         H.visitEmbeddedPage(
           {
+            // Unjustified type cast. FIXME
             resource: { dashboard: dashboardId as number },
             params: {},
           },
@@ -176,6 +177,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
         H.visitEmbeddedPage(
           {
+            // Unjustified type cast. FIXME
             resource: { dashboard: dashboardId as number },
             params: {},
           },
@@ -273,6 +275,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
         H.visitEmbeddedPage(
           {
+            // Unjustified type cast. FIXME
             resource: { dashboard: dashboardId as number },
             params: {},
           },
@@ -391,6 +394,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
       cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
       cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
       cy.intercept("GET", "/api/embed/dashboard/**/search/*").as("searchQuery");
+      // Unjustified type cast. FIXME
       H.restore("with-translations" as any);
     });
 
@@ -408,6 +412,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
         display: "pivot",
         visualization_settings: {
           "pivot_table.column_split": {
+            // Unjustified type cast. FIXME
             rows: [ORDERS.CREATED_AT, ORDERS.QUANTITY] as any,
             columns: [],
             values: ["count"],
@@ -430,6 +435,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
       }).then(({ body: { dashboard_id } }) => {
         H.visitEmbeddedPage(
           {
+            // Unjustified type cast. FIXME
             resource: { dashboard: dashboard_id as number },
             params: {},
           },
@@ -476,6 +482,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
         cy.intercept("GET", "/api/embed/dashboard/**/search/*").as(
           "searchQuery",
         );
+        // Unjustified type cast. FIXME
         H.restore("with-translations" as any);
       });
 
@@ -531,6 +538,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
               });
               H.visitEmbeddedPage(
                 {
+                  // Unjustified type cast. FIXME
                   resource: { dashboard: dashboard_id as number },
                   params: {},
                 },
@@ -669,6 +677,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
           });
           H.visitEmbeddedPage(
             {
+              // Unjustified type cast. FIXME
               resource: { dashboard: dashboard_id as number },
               params: {},
             },
@@ -748,6 +757,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
           });
           H.visitEmbeddedPage(
             {
+              // Unjustified type cast. FIXME
               resource: { dashboard: dashboard_id as number },
               params: {},
             },
@@ -831,6 +841,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
             },
           },
           dashboardDetails: {
+            // Unjustified type cast. FIXME
             parameters: [staticListFilter as any], // current API isn't set to accept string[][] as values
             enable_embedding: true,
             embedding_params: {
@@ -867,6 +878,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
           H.visitEmbeddedPage(
             {
+              // Unjustified type cast. FIXME
               resource: { dashboard: dashboard_id as number },
               params: {},
             },
@@ -904,6 +916,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
             },
           },
           dashboardDetails: {
+            // Unjustified type cast. FIXME
             parameters: [staticListFilter as any], // current API isn't set to accept string[][] as values
             enable_embedding: true,
             embedding_params: {
@@ -940,6 +953,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
           H.visitEmbeddedPage(
             {
+              // Unjustified type cast. FIXME
               resource: { dashboard: dashboard_id as number },
               params: {},
             },
@@ -965,7 +979,9 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
       { locale: "de", msgid: "Sample Text", msgstr: "Beispieltext" },
     ];
     type VisitWithLocale = (options?: { locale?: string }) => void;
+    // Unjustified type cast. FIXME
     let visitEmbeddedDashboard = null as unknown as VisitWithLocale,
+      // Unjustified type cast. FIXME
       visitNormalDashboard = null as unknown as VisitWithLocale;
 
     before(() => {
@@ -1005,6 +1021,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
       cy.intercept("POST", "api/ee/content-translation/upload-dictionary").as(
         "uploadDictionary",
       );
+      // Unjustified type cast. FIXME
       H.restore("tab-names-and-text-cards" as any);
       cy.signInAsAdmin();
       visitEmbeddedDashboard = ({ locale = "de" } = {}) => {
@@ -1112,6 +1129,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
           H.publishChanges("dashboard", () => {});
           H.visitEmbeddedPage(
             {
+              // Unjustified type cast. FIXME
               resource: { dashboard: dashboardId as number },
               params: {},
             },

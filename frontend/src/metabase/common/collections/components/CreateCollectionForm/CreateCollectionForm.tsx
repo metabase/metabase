@@ -5,7 +5,6 @@ import * as Yup from "yup";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import type {
   EntityPickerOptions,
@@ -14,14 +13,14 @@ import type {
 } from "metabase/common/components/Pickers";
 import {
   Form,
+  FormErrorMessage,
   FormProvider,
   FormSubmitButton,
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import type { WithRouterProps } from "metabase/router";
-import { withRouter } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { Button, Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, CollectionNamespace } from "metabase-types/api";
@@ -58,13 +57,11 @@ export interface CreateCollectionFormOwnProps {
   showAuthorityLevelPicker?: boolean;
 }
 
-type Props = CreateCollectionFormOwnProps & WithRouterProps;
+type Props = CreateCollectionFormOwnProps;
 
 function CreateCollectionForm({
   collectionId,
   initialCollectionId: explicitInitialCollectionId,
-  location,
-  params,
   onSubmit,
   onCancel,
   filterPersonalCollections,
@@ -73,6 +70,7 @@ function CreateCollectionForm({
   namespaces,
   showAuthorityLevelPicker = true,
 }: Props) {
+  const { location, params } = useRouter();
   const defaultInitialCollectionId = useInitialCollectionId({
     collectionId,
     location,
@@ -162,7 +160,7 @@ function CreateCollectionForm({
               <FormAuthorityLevelField />
             )}
             <FormFooter mt="lg">
-              <FormErrorMessage inline />
+              <FormErrorMessage />
               <Flex style={{ flexShrink: 1 }} justify="flex-end" gap="sm">
                 {!!onCancel && (
                   <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
@@ -182,4 +180,4 @@ function CreateCollectionForm({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default withRouter(CreateCollectionForm);
+export default CreateCollectionForm;

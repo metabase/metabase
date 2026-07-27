@@ -20,6 +20,7 @@ describe("getAxisTransforms", () => {
     ])(
       "should have fromEChartsAxisValue as the inverse of toEChartsAxisValue for %d",
       (value) => {
+        // Unjustified type cast. FIXME
         const encoded = toEChartsAxisValue(value) as number;
         const decoded = fromEChartsAxisValue(encoded);
         expect(decoded).toBeCloseTo(value, 5);

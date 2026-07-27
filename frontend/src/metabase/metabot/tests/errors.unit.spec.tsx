@@ -13,7 +13,7 @@ import {
   input,
   lastReqBody,
   mockAgentEndpoint,
-  resetChatButton,
+  newConversationButton,
   setup,
   whoIsYourFavoriteResponse,
 } from "./utils";
@@ -55,6 +55,19 @@ describe("metabot > errors", () => {
     await assertConversation([
       ["user", "Who is your favorite?"],
       ["agent", METABOT_ERR_MSG.unauthenticated("Metabot")],
+    ]);
+    expect(await input()).toHaveTextContent("Who is your favorite?");
+  });
+
+  it("should show a conversation-out-of-sync message for a stale parent_message_id (409)", async () => {
+    setup();
+    fetchMock.post(`path:/api/metabot/agent-streaming`, 409);
+
+    await enterChatMessage("Who is your favorite?");
+
+    await assertConversation([
+      ["user", "Who is your favorite?"],
+      ["agent", METABOT_ERR_MSG.outOfSync],
     ]);
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
@@ -137,7 +150,7 @@ describe("metabot > errors", () => {
       ["agent", "You, but don't tell anyone."],
     ]);
 
-    await userEvent.click(await resetChatButton());
+    await userEvent.click(await newConversationButton());
 
     await assertConversation([]);
     expect(await input()).toHaveTextContent("");
@@ -187,8 +200,8 @@ describe("metabot > errors", () => {
 
     const retryBody = await lastReqBody(retrySpy);
     expect(retryBody.message).toBe("new first prompt");
-    expect(retryBody.history).not.toContainEqual(
-      expect.objectContaining({ role: "user", content: "first prompt" }),
-    );
+    expect(retryBody.retry_message_id).toBeUndefined();
+    // the errored turn was rewound, so the resubmit doesn't point back at it
+    expect(retryBody.parent_message_id).toBeUndefined();
   });
 });

@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.sql-mbql5.pivot]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
@@ -27,6 +28,21 @@
       driver-api/add-alias-info
       :stages))
 
+(defn- add-source-query [driver prev-stage prev-hsql stage-hsql]
+  (let [table-alias (sql.qp/->honeysql driver (h2x/identifier :table-alias sql.qp/source-query-alias))
+        columns-metadata (get-in prev-stage [:lib/stage-metadata :columns])
+        desired-aliases (mapv :lib/desired-column-alias columns-metadata)
+        cur-hsql (cond-> (assoc stage-hsql :from [[prev-hsql [table-alias]]])
+                   (sql.qp/needs-cte-for-duplicate-cols? columns-metadata)
+                   (assoc :with [[[sql.qp/source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
+                                  prev-hsql]]
+                          :from [[table-alias]])
+
+                   ;; Clear the default select if it's just :* so add-default-select can recompute it
+                   (= (:select stage-hsql) [[:*]])
+                   (dissoc :select))]
+    (#'sql.qp/add-default-select driver cur-hsql)))
+
 (defn- stage->honeysql [driver stage]
   (cond
     (:persisted-info/native stage)
@@ -43,22 +59,12 @@
   (first
    (reduce
     (fn [[prev-hsql prev-stage] stage]
-      (let [stage-hsql (stage->honeysql driver stage)]
-        (if prev-hsql
-          (let [table-alias (sql.qp/->honeysql driver (h2x/identifier :table-alias sql.qp/source-query-alias))
-                columns-metadata (get-in prev-stage [:lib/stage-metadata :columns])
-                desired-aliases (mapv :lib/desired-column-alias columns-metadata)
-                cur-hsql (cond-> (assoc stage-hsql :from [[prev-hsql [table-alias]]])
-                           (sql.qp/needs-cte-for-duplicate-cols? columns-metadata)
-                           (assoc :with [[[sql.qp/source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
-                                          prev-hsql]]
-                                  :from [[table-alias]])
-
-                           ;; Clear the default select if it's just :* so add-default-select can recompute it
-                           (= (:select stage-hsql) [[:*]])
-                           (dissoc :select))]
-            [(#'sql.qp/add-default-select driver cur-hsql) stage])
-          [stage-hsql stage])))
+      [(cond->> (stage->honeysql driver stage)
+         ;; We don't add the source query if the stage is persisted, because the persisted query
+         ;; is already all of the previous stages materialized from the cached table
+         (and prev-hsql (not (:persisted-info/native stage)))
+         (add-source-query driver prev-stage prev-hsql))
+       stage])
     [nil nil]
     stages)))
 

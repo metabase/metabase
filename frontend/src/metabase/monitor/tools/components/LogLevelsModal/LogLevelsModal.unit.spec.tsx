@@ -14,7 +14,7 @@ import {
   within,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { modalRoute } from "metabase/common/components/ModalRoute";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { LoggerPreset } from "metabase-types/api";
@@ -56,11 +56,9 @@ const setup = ({ error, presets = [PRESET_A, PRESET_B] }: SetupOpts = {}) => {
 
   return renderWithProviders(
     <Route path="/">
-      <ModalRoute
-        path="levels"
-        modal={LogLevelsModal}
-        modalProps={{ transitionProps: { duration: 0 } }}
-      />
+      {modalRoute("levels", LogLevelsModal, {
+        modalProps: { transitionProps: { duration: 0 } },
+      })}
     </Route>,
     {
       initialRoute: "/levels",

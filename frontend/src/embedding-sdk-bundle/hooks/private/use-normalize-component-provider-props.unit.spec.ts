@@ -7,8 +7,10 @@ jest.mock("embedding-sdk-bundle/store", () => ({
   useSdkSelector: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const mockUseSdkSelector = useSdkSelector as jest.Mock;
 
+// Unjustified type cast. FIXME
 const BASE_PROPS = {
   authConfig: { uri: "http://localhost" },
 } as unknown as ComponentProviderInternalProps;

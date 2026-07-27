@@ -43,13 +43,13 @@ function setup({ cardId = 19, cardName = "Number of Orders" }: SetupOpts = {}) {
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <MetricCachingModal
           cardId={cardId}
           cardName={cardName}
           onClose={onClose}
         />
-      )}
+      }
     />,
     { storeInitialState, withRouter: true, initialRoute: "/" },
   );

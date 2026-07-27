@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { useToast } from "metabase/common/hooks/use-toast";
 import {
   Form,
   FormCheckboxGroup,
@@ -18,6 +19,7 @@ import {
 import type { Database, Workspace } from "metabase-types/api";
 
 import { trackWorkspaceCreated } from "../../../analytics";
+import { getProvisioningFailureMessage, isUnprovisioned } from "../../../utils";
 
 type NewWorkspaceModalProps = {
   databases: Database[];
@@ -76,6 +78,7 @@ function NewWorkspaceForm({
 }: NewWorkspaceFormProps) {
   const [createWorkspace] = useCreateWorkspaceMutation();
   const [fetchWorkspaces] = useLazyListWorkspacesQuery();
+  const [sendToast] = useToast();
 
   const handleSubmit = async ({
     name,
@@ -85,8 +88,19 @@ function NewWorkspaceForm({
       name,
       database_ids: database_ids.map(Number),
     }).unwrap();
-    await fetchWorkspaces();
     trackWorkspaceCreated({ workspaceId: workspace.id });
+
+    const workspaceDatabases = workspace.databases ?? [];
+    if (workspaceDatabases.some(isUnprovisioned)) {
+      sendToast({
+        message: getProvisioningFailureMessage(),
+        icon: "warning",
+        toastColor: "feedback-negative",
+        timeout: null,
+      });
+    }
+
+    await fetchWorkspaces();
     onCreate(workspace);
   };
 

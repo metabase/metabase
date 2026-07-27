@@ -10,11 +10,16 @@
    [metabase.measures.test-util :as measures.tu]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;; raw t2/collections.tu access below runs before any auto-initializing mt helper, so the app db must be
+;; set up explicitly — on the appdb-mode CI job this namespace can be the first db touch in the JVM
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 ;; OsiAiContext write hooks fire request-entity-sync!, which would spawn a background targeted reconcile
 ;; using the *real* configured embedding model and race these tests — they drive reconcile! / reconcile-entity!
@@ -99,6 +104,11 @@
   [ds entity-type entity-local-id]
   (filter #(and (= entity-type (:entity_type %)) (= entity-local-id (:entity_local_id %)))
           (index-rows ds)))
+
+(defn- reconciled-at! [ds]
+  (:reconciled_at (jdbc/execute-one! ds
+                                     [(format "SELECT reconciled_at FROM \"%s\" WHERE id = 1" index-table/*meta-table*)]
+                                     {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
 (deftest ^:sequential reconcile-lifecycle-test
   ;; :library lets us publish a Table into a library-data collection; the reconcile enumerates the
@@ -188,11 +198,14 @@
                                                          :name "orders" :display_name "Orders"}]
           (testing "populate the index under the original model"
             (reconcile/reconcile! ds (constantly model))
-            (is (seq (docs-for ds "table" table-id))))
+            (is (seq (docs-for ds "table" table-id)))
+            (is (some? (reconciled-at! ds)) "a converged reconcile stamps reconciled_at"))
           (testing "a model-identity change drops the vectors table and the next run re-embeds everything"
             (let [new-model (assoc model :model-name "model-v2")]
               (is (= :rebuilt (index-table/ensure-tables! ds new-model)))
               (is (= [] (index-rows ds)))
+              (is (nil? (reconciled-at! ds))
+                  "the rebuild clears reconciled_at, so NLQ staleness can't read the empty index as fresh")
               (reconcile/reconcile! ds (constantly new-model))
               (is (seq (docs-for ds "table" table-id)))
               (testing "a schema-version mismatch alone also triggers the rebuild"

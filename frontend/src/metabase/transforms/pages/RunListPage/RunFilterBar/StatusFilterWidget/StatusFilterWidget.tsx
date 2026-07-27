@@ -89,6 +89,7 @@ function StatusFilterForm({
   const isValid = statuses.length > 0;
 
   const handleChange = (values: string[]) => {
+    // Unjustified type cast. FIXME
     setStatuses(values as TransformRunStatus[]);
   };
 

@@ -20,8 +20,10 @@ export type ExpandedCollectionNode = Collection & {
 };
 
 export const SHARED_TENANT_COLLECTIONS_ROOT_ID =
+  // Unjustified type cast. FIXME
   "shared-tenant-collections-root" as CollectionId;
 
+// Unjustified type cast. FIXME
 export const COLLECTIONS_TOP_LEVEL_ID = "collections-top-level" as CollectionId;
 
 /**
@@ -56,6 +58,7 @@ export function useCollectionsWithTenants(
       return collectionsById;
     }
 
+    // Unjustified type cast. FIXME
     const sharedCollectionsById = getExpandedCollectionsById(
       sharedTenantCollections,
       userPersonalCollectionId,
@@ -90,6 +93,7 @@ export function mergeSharedCollections(
   displayName: string,
 ): Record<CollectionId, Collection> {
   const sharedRoot = sharedCollectionsById[ROOT_COLLECTION.id];
+  // Unjustified type cast. FIXME
   const rootCollection = baseCollectionsById[
     ROOT_COLLECTION.id
   ] as ExpandedCollectionNode;
@@ -151,6 +155,7 @@ export function mergeSharedCollections(
       continue;
     }
 
+    // Unjustified type cast. FIXME
     mergedCollectionsById[id as CollectionId] = {
       ...collection,
 
@@ -183,12 +188,14 @@ export function mergeSharedCollections(
       continue; // already rewritten above
     }
 
+    // Unjustified type cast. FIXME
     const collectionNode = collection as ExpandedCollectionNode;
 
     if (!collectionNode.path) {
       continue;
     }
 
+    // Unjustified type cast. FIXME
     mergedCollectionsById[id as CollectionId] = {
       ...collectionNode,
       // Rewrite path: Collections > Our Analytics > ...

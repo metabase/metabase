@@ -67,6 +67,7 @@ describe("FunnelNormal row matching (metabase#71488)", () => {
     // Metrics should still be correct
     const metrics = sortedRows.map((row) => row[1]) as number[];
     const funnelData = metrics.map(
+      // Unjustified type cast. FIXME
       (metric, i) => [i, metric] as [number, number],
     );
     expect(() => calculateFunnelSteps(funnelData, 1, 1)).not.toThrow();

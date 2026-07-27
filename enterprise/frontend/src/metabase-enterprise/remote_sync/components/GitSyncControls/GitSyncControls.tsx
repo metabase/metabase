@@ -107,6 +107,7 @@ export const GitSyncControls = () => {
       hasBranchMismatch,
       errorMessage,
       currentBranch: serverBranch,
+      // Unjustified type cast. FIXME
     } = parseSyncError(error as SyncError);
     if (hasBranchMismatch) {
       setBranchMismatch({
@@ -205,6 +206,7 @@ export const GitSyncControls = () => {
         return;
       }
 
+      // Unjustified type cast. FIXME
       const { hasConflict, errorMessage } = parseSyncError(error as SyncError);
 
       if (hasConflict) {

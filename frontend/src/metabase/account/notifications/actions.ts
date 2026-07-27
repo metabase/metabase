@@ -1,6 +1,5 @@
-import { push } from "react-router-redux";
-
 import type { NotificationListItem } from "metabase/notifications/types";
+import { push } from "metabase/router";
 
 const PREFIX = `/account/notifications`;
 

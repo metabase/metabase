@@ -1,5 +1,10 @@
+import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import type {
+  Card,
   DeleteSuggestedMetabotPromptRequest,
+  ListMetabotConversationsRequest,
+  ListMetabotConversationsResponse,
+  MetabotConversationTitleResponse,
   MetabotFeedback,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
@@ -10,6 +15,7 @@ import type {
   MetabotSlackSettings,
   MetabotSourceFeedback,
   RegenerateSuggestedMetabotPromptsResponse,
+  SaveMetabotEntityRequest,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
   UpdateMetabotSettingsRequest,
@@ -31,6 +37,32 @@ export const metabotApi = Api.injectEndpoints({
         ...(result?.items || []).map((metabot) => idTag("metabot", metabot.id)),
       ],
     }),
+    listMetabotConversations: builder.query<
+      ListMetabotConversationsResponse,
+      ListMetabotConversationsRequest | void
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/metabot/conversations",
+        params,
+      }),
+      providesTags: () => [listTag("metabot-conversations")],
+    }),
+    getMetabotConversationTitle: builder.query<
+      MetabotConversationTitleResponse,
+      string
+    >({
+      query: (conversationId) => ({
+        method: "GET",
+        url: `/api/metabot/conversations/${conversationId}/title`,
+      }),
+    }),
+    getMetabotConversation: builder.query<MetabotConversationDetail, string>({
+      query: (conversationId) => ({
+        method: "GET",
+        url: `/api/metabot/conversations/${conversationId}`,
+      }),
+    }),
     getMetabotSettings: builder.query<
       MetabotSettingsResponse,
       { provider: MetabotProvider }
@@ -40,7 +72,7 @@ export const metabotApi = Api.injectEndpoints({
         url: "/api/metabot/settings",
         params: { provider },
       }),
-      providesTags: () => [listTag("llm-models"), "session-properties"],
+      providesTags: () => [listTag("llm-models")],
     }),
     updateMetabotSettings: builder.mutation<
       MetabotSettingsResponse,
@@ -52,7 +84,7 @@ export const metabotApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("llm-models"), "session-properties"]),
+        invalidateTags(error, ["session-properties"]),
     }),
     updateMetabot: builder.mutation<
       MetabotInfo,
@@ -121,6 +153,14 @@ export const metabotApi = Api.injectEndpoints({
         body: params,
       }),
     }),
+    saveMetabotEntity: builder.mutation<Card, SaveMetabotEntityRequest>({
+      query: ({ conversation_id, ...body }) => ({
+        method: "POST",
+        url: `/api/metabot/conversations/${conversation_id}/saved-entity`,
+        body,
+      }),
+      invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
+    }),
     submitMetabotFeedback: builder.mutation<void, MetabotFeedback>({
       query: (params) => ({
         method: "POST",
@@ -161,6 +201,8 @@ export const metabotApi = Api.injectEndpoints({
 
 export const {
   useGetMetabotSettingsQuery,
+  useGetMetabotConversationQuery,
+  useListMetabotConversationsQuery,
   useListMetabotsQuery,
   useUpdateMetabotSettingsMutation,
   useUpdateMetabotMutation,
@@ -168,6 +210,7 @@ export const {
   useDeleteSuggestedMetabotPromptMutation,
   useRegenerateSuggestedMetabotPromptsMutation,
   useLazyMetabotGenerateContentQuery,
+  useSaveMetabotEntityMutation,
   useSubmitMetabotFeedbackMutation,
   useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,

@@ -110,14 +110,11 @@ jobs:
       - name: Run frontend unit tests
         id: fe-tests
         run: bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
-        # Keep this step continue-on-error because the quarantine gate controls whether it ultimately fails.
+        # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
       - name: Report failed tests to ci-conductor
-        # Positioned between the test run and "Upload Test Results" so it reads
-        # pristine JUnit (before Trunk quarantine processing). Gated to non-clean
-        # runs + continue-on-error so it can never change the job outcome — Trunk
-        # Quarantine remains the sole arbiter. See DEV-2224 / DEV-2235.
-        if: ${{ always() && steps.fe-tests.outcome != 'success' }}
+        if: ${{ !cancelled() && steps.fe-tests.outcome == 'failure' }}
+        # This step should NEVER fail the job!
         continue-on-error: true
         uses: ./.github/actions/report-failures-to-ci-conductor
         with:

@@ -23,6 +23,7 @@ const CHART_ANALYSIS_ENABLED = {
   waterfall: true,
   // disabled
   action: false,
+  "audit-table": false,
   heading: false,
   iframe: false,
   link: false,

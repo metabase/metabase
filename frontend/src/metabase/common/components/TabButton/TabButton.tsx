@@ -94,8 +94,10 @@ const _TabButton = forwardRef(function TabButton(
     (event: React.MouseEvent<HTMLDivElement>) => {
       if (
         disabled ||
+        // Unjustified type cast. FIXME
         menuButtonRef.current?.contains(event.target as Node) ||
         (typeof inputRef === "object" &&
+          // Unjustified type cast. FIXME
           inputRef?.current?.contains(event.target as Node))
       ) {
         return;

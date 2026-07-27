@@ -155,6 +155,7 @@ export const MetabotPromptSuggestionPane = ({
             ) : (
               <SuggestedPromptRow
                 key={row.id}
+                // Unjustified type cast. FIXME
                 row={row as SuggestedMetabotPrompt}
                 onDelete={() => handleDeletePrompt(row.id)}
                 metabotId={metabot.id}

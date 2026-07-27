@@ -335,9 +335,6 @@ function DashCardActionsPanelInner({
         },
         className,
       )}
-      pos="absolute"
-      top={0}
-      right="20px"
       data-testid="dashboardcard-actions-panel"
       data-dontdrag // allows to interact with the actions panel while in the edit mode
       onMouseDown={onMouseDown}

@@ -3,9 +3,9 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import {
   Form,
+  FormErrorMessage,
   FormProvider,
   FormSubmitButton,
   FormTextInput,

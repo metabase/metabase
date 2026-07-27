@@ -341,6 +341,7 @@ async function setup({
   const settings = mockSettings(sessionProperties);
   setupEnterpriseOnlyPlugin("metabot");
 
+  // Unjustified type cast. FIXME
   for (const provider of Object.keys(responseMap) as MetabotProvider[]) {
     const response = responseMap[provider];
 
@@ -370,6 +371,7 @@ async function setup({
   });
 
   const handleMetabotSettingsUpdate = (call: { options?: RequestInit }) => {
+    // Unjustified type cast. FIXME
     const body = JSON.parse(
       String(call.options?.body ?? "{}"),
     ) as MetabotSettingsUpdateBody;
@@ -456,16 +458,21 @@ async function setup({
       return settingUpdateResponse;
     }
 
+    // Unjustified type cast. FIXME
     const body = JSON.parse(String(call.options?.body ?? "{}")) as Partial<
       Record<MetabotSettingKey, string | null>
     >;
 
     Object.entries(body).forEach(([key, nextValue]) => {
       if (key in settingsDefinitions) {
+        // Unjustified type cast. FIXME
         settingsDefinitions[key as keyof typeof settingsDefinitions] =
           createMockSettingDefinition({
+            // Unjustified type cast. FIXME
             ...settingsDefinitions[key as keyof typeof settingsDefinitions],
+            // Unjustified type cast. FIXME
             key: key as keyof typeof settingsDefinitions,
+            // Unjustified type cast. FIXME
             value: (nextValue ??
               undefined) as MetabotSettingDefinition["value"],
           });
@@ -491,7 +498,10 @@ async function setup({
         },
       )
     : renderWithProviders(
-        <Route path="/admin/metabot*" component={AIProviderSettingsSection} />,
+        <Route
+          path="/admin/metabot*"
+          element={<AIProviderSettingsSection />}
+        />,
         {
           withRouter: true,
           initialRoute: "/admin/metabot",
@@ -2397,5 +2407,184 @@ describe("AIProviderSettingsSection", () => {
         screen.getByRole("button", { name: "Disconnect" }),
       ).toBeInTheDocument();
     });
+  });
+});
+
+const DEFAULT_PROVIDER_VALUE = "anthropic/claude-sonnet-4-6";
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
+const DIVERGENT_MODELS = [
+  { id: "claude-sonnet-4-6", display_name: "Claude Sonnet 4.6" },
+  { id: "claude-sonnet-5", display_name: "Claude Sonnet 5" },
+];
+
+function setupDivergentReadsBackend({
+  delayAdminSettingDetailsRefetch = false,
+}: { delayAdminSettingDetailsRefetch?: boolean } = {}) {
+  fetchMock.removeRoutes();
+  fetchMock.clearHistory();
+
+  const backend: { apiKeySaved: boolean; providerRow: string | null } = {
+    apiKeySaved: false,
+    providerRow: null,
+  };
+
+  const providerValue = () => backend.providerRow ?? DEFAULT_PROVIDER_VALUE;
+  const isConfigured = () => backend.apiKeySaved;
+
+  const sessionPropertiesResponse = () =>
+    createMockSettings({
+      "llm-metabot-provider": providerValue(),
+      "llm-metabot-configured?": isConfigured(),
+    });
+
+  const disconnectedSnapshot = sessionPropertiesResponse();
+  let pendingStaleSessionPropertiesReads = 0;
+
+  fetchMock.get("path:/api/session/properties", () => {
+    if (pendingStaleSessionPropertiesReads > 0) {
+      pendingStaleSessionPropertiesReads -= 1;
+      return disconnectedSnapshot;
+    }
+    return sessionPropertiesResponse();
+  });
+
+  const adminSettingDetailsResponse = () => [
+    createMockSettingDefinition({
+      key: "llm-metabot-provider",
+      value: backend.providerRow ?? undefined,
+    }),
+    createMockSettingDefinition({
+      key: "llm-anthropic-api-key",
+      value: backend.apiKeySaved ? "**********ey" : undefined,
+    }),
+  ];
+
+  const detailsRefetchDeferred = defer<void>();
+  let adminSettingDetailsRequestCount = 0;
+
+  fetchMock.get("path:/api/setting", async () => {
+    adminSettingDetailsRequestCount += 1;
+    if (
+      delayAdminSettingDetailsRefetch &&
+      adminSettingDetailsRequestCount > 1
+    ) {
+      await detailsRefetchDeferred.promise;
+    }
+    return adminSettingDetailsResponse();
+  });
+
+  fetchMock.get("path:/api/metabot/settings", () => ({
+    value: providerValue(),
+    models: backend.apiKeySaved ? DIVERGENT_MODELS : [],
+  }));
+
+  fetchMock.put("path:/api/metabot/settings", (call) => {
+    const body: MetabotSettingsUpdateBody = JSON.parse(
+      String(call.options?.body ?? "{}"),
+    );
+    const currentProviderFromGetter = providerValue().split("/")[0];
+    const providerChanged = currentProviderFromGetter !== body.provider;
+
+    if ("api-key" in body) {
+      backend.apiKeySaved = Boolean(body["api-key"]);
+    }
+
+    const model =
+      body.model ?? (providerChanged ? DEFAULT_ANTHROPIC_MODEL : null);
+    if (model) {
+      backend.providerRow = `${body.provider}/${model}`;
+    }
+
+    return { value: providerValue(), models: DIVERGENT_MODELS };
+  });
+
+  renderWithProviders(
+    <Route path="/admin/metabot*" element={<AIProviderSettingsSection />} />,
+    {
+      withRouter: true,
+      initialRoute: "/admin/metabot",
+      storeInitialState: {
+        settings: mockSettings(disconnectedSnapshot),
+        currentUser: createMockUser({ is_superuser: true }),
+      },
+    },
+  );
+
+  return {
+    backend,
+    releaseAdminSettingDetailsRefetch: () => detailsRefetchDeferred.resolve(),
+    markNextSessionPropertiesReadStale: () => {
+      pendingStaleSessionPropertiesReads += 1;
+    },
+  };
+}
+
+async function connectToAnthropicFromScratch() {
+  await screen.findByText("Connect to an AI provider");
+  await userEvent.click(await screen.findByLabelText("Provider"));
+  await userEvent.click(
+    await screen.findByRole("option", { name: "Anthropic" }),
+  );
+  await userEvent.type(
+    await screen.findByLabelText("API key"),
+    "sk-ant-test-key",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+}
+
+describe("AIProviderSettingsSection with divergent settings reads", () => {
+  it("keeps the entered API key and offers the model picker while the setting-details refetch lags behind session-properties", async () => {
+    const { releaseAdminSettingDetailsRefetch } = setupDivergentReadsBackend({
+      delayAdminSettingDetailsRefetch: true,
+    });
+
+    await connectToAnthropicFromScratch();
+
+    expect(await screen.findByLabelText("Model")).toBeInTheDocument();
+    expect(screen.getByLabelText("API key")).toHaveValue("sk-ant-test-key");
+
+    await userEvent.click(screen.getByLabelText("Model"));
+    expect(
+      await screen.findByRole("option", { name: "Claude Sonnet 5" }),
+    ).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    releaseAdminSettingDetailsRefetch();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("API key")).toHaveValue("**********ey");
+    });
+    expect(
+      await screen.findByText("Connected to Anthropic"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Disconnect" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the provider and model selection when a stale node serves the session-properties refetch after picking a model", async () => {
+    const { backend, markNextSessionPropertiesReadStale } =
+      setupDivergentReadsBackend();
+
+    await connectToAnthropicFromScratch();
+    await screen.findByText("Connected to Anthropic");
+    await waitFor(() => {
+      expect(screen.getByLabelText("Model")).toHaveValue("Claude Sonnet 4.6");
+    });
+
+    markNextSessionPropertiesReadStale();
+
+    await userEvent.click(screen.getByLabelText("Model"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Claude Sonnet 5" }),
+    );
+
+    await waitFor(() => {
+      expect(backend.providerRow).toBe("anthropic/claude-sonnet-5");
+    });
+
+    expect(screen.getByLabelText("API key")).toBeInTheDocument();
+    expect(screen.getByLabelText("Model")).toHaveValue("Claude Sonnet 5");
+    expect(screen.getByLabelText("Provider")).toHaveValue("Anthropic");
   });
 });

@@ -9,6 +9,7 @@ function makeSettings(overrides: Partial<ComputedVisualizationSettings> = {}) {
   const base: ComputedVisualizationSettings = {
     column: () => ({}),
   };
+  // Unjustified type cast. FIXME
   return { ...base, ...overrides } as ComputedVisualizationSettings;
 }
 

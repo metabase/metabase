@@ -176,6 +176,7 @@ function setup({
     dashcards: _.indexBy(dashcards, "id"),
   });
 
+  // Unjustified type cast. FIXME
   const store = getMainStore(
     createMockState({ dashboard: dashboardState }),
   ) as Store<State>;

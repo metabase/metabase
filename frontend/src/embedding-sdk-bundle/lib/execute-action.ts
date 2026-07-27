@@ -16,8 +16,8 @@ export type ExecuteActionParams = {
 };
 
 /**
- * Loose response shape from the execute-action endpoint. The body varies by
- * action kind (created-row / rows-updated / rows-deleted / rows-affected /
+ * Loose response shape from the execute-action endpoint. The body varies
+ * by action kind (created-row / rows-updated / rows-deleted / rows-affected
  * success+counts). Per-kind discrimination happens in the package hook via the
  * generated `ActionResult<TAction>` type — this lib stays loose.
  *
@@ -41,9 +41,10 @@ const parseActionId = (
 
 /**
  * Triggers a pre-existing Metabase action. The curried `(store) => fn` shape
- * mirrors `createDashboard` / `queryQuestion` / `queryMetric` so the package
+ * mirrors `createDashboard` / `queryQuestion` so the package
  * hook can read `executeAction(reduxStore)({...})` off
- * `window.METABASE_EMBEDDING_SDK_BUNDLE`.
+ * `window.METABASE_EMBEDDING_SDK_BUNDLE`. The action runs by dispatching the
+ * `metabase/api` execute-action mutation on the passed store.
  */
 export const executeAction =
   (reduxStore: SdkStore) =>

@@ -114,11 +114,13 @@ export const DragBetweenTwoInputs = {
     );
 
     const handleDragStart = (event: DragStartEvent) => {
+      // Unjustified type cast. FIXME
       setActiveId(event.active.id as string);
     };
 
     const handleDragOver = (event: DragOverEvent) => {
       const { over } = event;
+      // Unjustified type cast. FIXME
       const containerId = over?.data?.current?.containerId as
         | "left"
         | "right"
@@ -138,6 +140,7 @@ export const DragBetweenTwoInputs = {
       }
 
       const activeId = String(active.id);
+      // Unjustified type cast. FIXME
       const from = active.data?.current?.containerId as
         | "left"
         | "right"
@@ -150,6 +153,7 @@ export const DragBetweenTwoInputs = {
       let overIndexInTo = -1;
 
       if (over.data?.current?.containerId) {
+        // Unjustified type cast. FIXME
         to = over.data.current.containerId as "left" | "right";
         const toList = to === "left" ? leftValues : rightValues;
         overIndexInTo = toList.indexOf(String(over.id));

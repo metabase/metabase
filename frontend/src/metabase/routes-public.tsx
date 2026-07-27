@@ -9,17 +9,17 @@ import { Route } from "metabase/router";
 export const getRoutes = () => {
   return (
     <Route>
-      <Route path="public" component={PublicApp}>
-        <Route path="action/:uuid" component={PublicAction} />
-        <Route path="question/:uuid" component={PublicOrEmbeddedQuestion} />
+      <Route path="public" element={<PublicApp />}>
+        <Route path="action/:uuid" element={<PublicAction />} />
+        <Route path="question/:uuid" element={<PublicOrEmbeddedQuestion />} />
         <Route
-          path="dashboard/:uuid(/:tabSlug)"
-          component={PublicOrEmbeddedDashboardPage}
+          path="dashboard/:uuid/:tabSlug?"
+          element={<PublicOrEmbeddedDashboardPage />}
         />
-        <Route path="document/:uuid" component={PublicDocument} />
-        <Route path="*" component={PublicNotFound} />
+        <Route path="document/:uuid" element={<PublicDocument />} />
+        <Route path="*" element={<PublicNotFound />} />
       </Route>
-      <Route path="*" component={PublicNotFound} />
+      <Route path="*" element={<PublicNotFound />} />
     </Route>
   );
 };

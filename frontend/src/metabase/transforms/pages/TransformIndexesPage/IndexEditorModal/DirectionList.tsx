@@ -33,6 +33,7 @@ export function DirectionList({
             <SegmentedControl
               value={column.direction}
               onChange={(direction) =>
+                // Unjustified type cast. FIXME
                 onChange(column.name, direction as IndexColumnDirection)
               }
               data={getDirectionOptions()}

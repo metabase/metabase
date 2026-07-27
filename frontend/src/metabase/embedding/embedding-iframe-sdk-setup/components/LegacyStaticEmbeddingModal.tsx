@@ -1,20 +1,12 @@
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { DashboardSharingEmbeddingModal } from "metabase/embedding/components/DashboardSharingEmbeddingModal";
+import { DashboardSharingEmbeddingModal } from "metabase/dashboard/components/DashboardSharingEmbeddingModal";
 import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
 import { useGetCurrentResource } from "metabase/embedding/embedding-iframe-sdk-setup/hooks";
-import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js-wizard";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
-import type { Card, Dashboard, DashboardId } from "metabase-types/api";
-
-export type LegacyStaticEmbeddingModalProps = {
-  experience: SdkIframeEmbedSetupExperience;
-  dashboardId?: DashboardId | null;
-  questionId?: string | number | null;
-  parentInitialState: SdkIframeEmbedSetupModalInitialState;
-};
+import type { LegacyStaticEmbeddingModalProps } from "metabase/plugins";
+import type { Card, Dashboard } from "metabase-types/api";
 
 export type InternalProps = LegacyStaticEmbeddingModalProps & {
   onClose: () => void;
@@ -53,6 +45,7 @@ export const LegacyStaticEmbeddingModal = ({
   if (experience === "chart") {
     return (
       <QuestionEmbedWidget
+        // Unjustified type cast. FIXME
         card={resource as Card}
         onBack={handleBack}
         onClose={onClose}
@@ -63,6 +56,7 @@ export const LegacyStaticEmbeddingModal = ({
   if (experience === "dashboard") {
     return (
       <DashboardSharingEmbeddingModal
+        // Unjustified type cast. FIXME
         dashboard={resource as Dashboard}
         onBack={handleBack}
         onClose={onClose}

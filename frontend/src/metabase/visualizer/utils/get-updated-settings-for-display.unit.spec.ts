@@ -1,4 +1,4 @@
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { VisualizerColumnValueSource } from "metabase-types/api";
 import {
   createMockCategoryColumn,
@@ -12,6 +12,7 @@ import { getUpdatedSettingsForDisplay } from "./get-updated-settings-for-display
 registerVisualizations();
 
 describe("updateSettingsForDisplay", () => {
+  // Unjustified type cast. FIXME
   const columnValuesMapping = {
     COLUMN_1: [
       { sourceId: "card:45", originalName: "CREATED_AT", name: "COLUMN_1" },

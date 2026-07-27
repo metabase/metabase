@@ -3,7 +3,6 @@ import {
   createAction,
   createSlice,
 } from "@reduxjs/toolkit";
-import { LOCATION_CHANGE, push } from "react-router-redux";
 
 import { combineReducers, handleActions } from "metabase/redux";
 import type {
@@ -13,6 +12,7 @@ import type {
   TempStorageKey,
   TempStorageValue,
 } from "metabase/redux/store";
+import { LOCATION_CHANGE, push } from "metabase/router";
 import { isSmallScreen, openInBlankWindow } from "metabase/utils/dom";
 import { shouldOpenInBlankWindow } from "metabase/visualizations/lib/open-url";
 
@@ -132,6 +132,7 @@ const detailView = handleActions(
 
 const tempStorageSlice = createSlice({
   name: "tempStorage",
+  // Unjustified type cast. FIXME
   initialState: {} as TempStorage,
   reducers: {
     setTempSetting: (

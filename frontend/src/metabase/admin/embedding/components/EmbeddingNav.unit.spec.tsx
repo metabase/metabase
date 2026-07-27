@@ -25,7 +25,7 @@ const setup = ({
     }),
   });
 
-  renderWithProviders(<Route path="*" component={EmbeddingNav} />, {
+  renderWithProviders(<Route path="*" element={<EmbeddingNav />} />, {
     withRouter: true,
     initialRoute,
     storeInitialState: {

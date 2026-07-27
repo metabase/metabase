@@ -331,6 +331,7 @@ const getNamespace = (
   }
 
   if ("collection_namespace" in item) {
+    // Unjustified type cast. FIXME
     return item.collection_namespace as CollectionNamespace;
   }
   return undefined;

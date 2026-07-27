@@ -216,6 +216,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
       <Tabs
         value={activeTab}
         onChange={(value) => {
+          // Unjustified type cast. FIXME
           setActiveTab(value as SidesheetTab);
         }}
       >

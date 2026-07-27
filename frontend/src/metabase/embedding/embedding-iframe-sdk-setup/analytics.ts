@@ -220,6 +220,7 @@ const buildEventDetailsPartsForSettings = (
   const options: string[] = [];
 
   for (const _optionKey in settings) {
+    // Unjustified type cast. FIXME
     const optionKey = _optionKey as keyof SdkIframeEmbedSettings;
 
     if (!EMBED_SETTINGS_TO_TRACK.includes(optionKey)) {

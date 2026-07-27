@@ -15,6 +15,7 @@ const BOUNDS: ChartBoundsCoords = { top: 0, bottom: 100, left: 50, right: 450 };
 const createChartInstance = (
   pixelByDate: Record<string, number | number[]>,
 ): EChartsType =>
+  // Unjustified type cast. FIXME
   ({
     convertToPixel: (_finder: unknown, value: string) =>
       pixelByDate[value] ?? NaN,

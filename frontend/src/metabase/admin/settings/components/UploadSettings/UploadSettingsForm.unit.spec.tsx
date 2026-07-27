@@ -32,6 +32,7 @@ import {
   UploadSettingsFormView,
 } from "./UploadSettingsForm";
 
+// Unjustified type cast. FIXME
 const TEST_DATABASES = [
   createMockDatabase({
     id: 1,

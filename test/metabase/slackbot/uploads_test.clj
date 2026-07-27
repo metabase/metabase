@@ -178,7 +178,6 @@
                   (testing "no upload was attempted"
                     (is (= 0 (count @upload-calls))))
                   (testing "responds directly with skip message"
-                    #_{:clj-kondo/ignore [:unresolved-namespace]}
                     (let [message-text (:text (first @post-calls))]
                       (is (str/includes? message-text "can only process CSV and TSV"))
                       (is (str/includes? message-text "query_result.xlsx")))))))))))))

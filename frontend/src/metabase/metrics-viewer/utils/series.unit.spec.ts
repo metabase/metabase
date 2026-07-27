@@ -64,6 +64,7 @@ function makeColorMap(values: string[]): BreakoutColorMap {
 }
 
 const METRIC_ENTITY: MetricsViewerFormulaEntity = {
+  // Unjustified type cast. FIXME
   id: "metric:1" as MetricSourceId,
   type: "metric",
   definition: null,
@@ -354,6 +355,7 @@ describe("computeSourceBreakoutColors", () => {
     );
 
     expect(result[0]).toBeInstanceOf(Map);
+    // Unjustified type cast. FIXME
     const colorMap = result[0] as Map<string, string>;
     expect(colorMap.size).toBe(2);
     expect(colorMap.has("Gadgets")).toBe(true);
@@ -649,6 +651,7 @@ describe("buildDimensionItemsFromDefinitions", () => {
       );
 
       expect(items).toHaveLength(1);
+      // Unjustified type cast. FIXME
       const expressionItem = items[0] as ExpressionDimensionItem;
       expect(expressionItem.type).toBe("expression");
       expect(expressionItem.label).toBe("Created At");
@@ -670,6 +673,7 @@ describe("buildDimensionItemsFromDefinitions", () => {
       );
 
       expect(items).toHaveLength(1);
+      // Unjustified type cast. FIXME
       const expressionItem = items[0] as ExpressionDimensionItem;
       expect(expressionItem.type).toBe("expression");
       expect(expressionItem.label).toBe("Multiple dimensions");
@@ -683,6 +687,7 @@ describe("shouldShowStackSeries", () => {
   const metricMeta = createMetricMetadata([REVENUE_METRIC]);
 
   const metricEntity: MetricsViewerFormulaEntity = {
+    // Unjustified type cast. FIXME
     id: "metric:1" as MetricSourceId,
     type: "metric",
     definition: null,
@@ -699,7 +704,9 @@ describe("shouldShowStackSeries", () => {
       ? setupDefinitionWithBreakout(metricMeta, REVENUE_METRIC.id, 0)
       : setupDefinition(metricMeta, REVENUE_METRIC.id);
     return {
+      // Unjustified type cast. FIXME
       ["metric:1" as MetricSourceId]: {
+        // Unjustified type cast. FIXME
         id: "metric:1" as MetricSourceId,
         definition,
       },

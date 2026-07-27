@@ -10,6 +10,7 @@
    [metabase.notification.settings :as notification.settings]
    [metabase.task-history.core :as task-history]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
@@ -76,6 +77,10 @@
                                                            :notification_id   notification-id
                                                            :notification_type payload-type
                                                            :recipient_ids     (map :id (:recipients handler))}}
+          (when (and (:channel_id handler) (nil? (:channel handler)))
+            (throw (ex-info (tru "The channel this notification is set to send to no longer exists or is inactive.")
+                            {:channel-id   (:channel_id handler)
+                             :channel-type (:channel_type handler)})))
           (retry/with-retry (assoc retry-config
                                    :retry-on Exception
                                    :abort-if (fn [_ ex]
@@ -156,7 +161,11 @@
           (task-history/with-task-history {:task          "notification-send"
                                            :task_details {:notification_id       id
                                                           :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
-            (let [notification-payload (notification.payload/notification-payload (dissoc hydrated-notification :handlers))
+            ;; :handlers stays on the info so payload impls can tailor execution to them
+            ;; (e.g. attachment-only dashboard subscriptions skip non-attached cards)
+            (let [notification-payload (-> hydrated-notification
+                                           notification.payload/notification-payload
+                                           (dissoc :handlers))
                   skip-reason          (notification.payload/skip-reason notification-payload)]
               (if skip-reason
                 (log/info "Skipping" {:skip-reason skip-reason})

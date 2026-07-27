@@ -56,6 +56,7 @@ describe("getDatasetResponse", () => {
 });
 
 describe("getDatasetParams - embed question (token-based)", () => {
+  // Unjustified type cast. FIXME
   const TOKEN = "fake.jwt.token" as EntityToken;
   const question = new Question(createMockCard({ id: 1 }), undefined);
   const result = createMockDataset();
@@ -159,12 +160,14 @@ describe("getDatasetParams - public question (uuid-based)", () => {
 describe("readDownloadBlob", () => {
   it("returns the blob when the response reads to completion", async () => {
     const blob = new Blob(["a,b,c"], { type: "text/csv" });
+    // Unjustified type cast. FIXME
     const response = { blob: () => Promise.resolve(blob) } as Response;
 
     await expect(readDownloadBlob(response)).resolves.toBe(blob);
   });
 
   it("surfaces a localized error when the stream was aborted mid-download", async () => {
+    // Unjustified type cast. FIXME
     const response = {
       blob: () => Promise.reject(new TypeError("Failed to fetch")),
     } as unknown as Response;

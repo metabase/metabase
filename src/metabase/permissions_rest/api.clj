@@ -212,7 +212,7 @@
   "Fetch the details for a certain permissions group."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (perms/check-group-manager id)
+  (perms/check-manager-of-group id)
   (api/check-404
    (some-> (t2/select-one :model/PermissionsGroup :id id)
            (t2/hydrate :members)

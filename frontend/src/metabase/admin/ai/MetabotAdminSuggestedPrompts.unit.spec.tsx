@@ -95,7 +95,7 @@ const setup = async (opts?: SetupOpts) => {
     </>
   );
 
-  renderWithProviders(<Route path="/" component={TestComponent} />, {
+  renderWithProviders(<Route path="/" element={<TestComponent />} />, {
     withRouter: true,
   });
 

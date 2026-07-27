@@ -7,9 +7,11 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [mage.color :as c]
+   [mage.shell :as shell]
    [mage.util :as u])
   (:import
-   [java.io InputStream]))
+   [java.io InputStream PushbackInputStream]
+   (java.net ConnectException Socket)))
 
 (set! *warn-on-reflection* true)
 
@@ -36,21 +38,21 @@
   "Acquire a Java socket or die."
   [host port]
   (try
-    (java.net.Socket. host port)
-    (catch java.net.ConnectException _
+    (Socket. ^String host ^int port)
+    (catch ConnectException _
       (println
        (str "Could not connect to the REPL server on port: " (c/red port) " (found port number in .nrepl-port).\n"
             "Is the Metabase backend running?\n\n"
             "To start it, run:\n"
             (c/green "  clj -M:dev:ee:ee-dev:drivers:drivers-dev:dev-start\n\n")
             "If you prefer a different way to start the backend, please use that instead."))
-      (System/exit 1))
+      (u/exit 1))
     (catch Exception e
       (if (= "No matching ctor found for class java.net.Socket" (ex-message e))
         (do
           (println (format "There seems to be an error specifying port: '%s'."
                            (c/yellow (pr-str port))))
-          (System/exit 1))
+          (u/exit 1))
         (throw e)))))
 
 (defn ^:private consume [v]
@@ -83,7 +85,7 @@
   (let [port        (nrepl-port port)
         s           (socket! "localhost" port)
         out         (.getOutputStream s)
-        in          (java.io.PushbackInputStream. (.getInputStream s))
+        in          (PushbackInputStream. (.getInputStream s))
         code-str    (str (eval-in-ns nns code))
         _           (u/debug "Code:\n-----\n" code-str "\n-----")
         _           (bencode/write-bencode out {:op "eval" :code code-str})
@@ -102,7 +104,6 @@
 
         ;; Flush to ensure output appears immediately
         (flush)
-
         (if (some #{"done"} (get response "status"))
           (some->> @final-value
                    (safe-print "\n=>\n"))
@@ -119,6 +120,48 @@
                (nrepl-eval "user" "(+ 1 1)" port))]
        (= "2" o))
      (catch Exception _ false))))
+
+(defn- resolve-port
+  "Best-effort nREPL port: explicit `port`, else `.nrepl-port`, else nil. Never throws."
+  [port]
+  (or (safe-parse-int port)
+      (try (safe-parse-int (slurp ".nrepl-port"))
+           (catch Exception _ nil))))
+
+(defn nrepl-reachable?
+  "Whether something is accepting TCP connections on the dev nREPL port (explicit `port`, else `.nrepl-port`).
+
+  A raw-socket probe: it never evaluates code and never exits the process, so it is safe to branch on when
+  choosing between a running REPL and a cold-JVM fallback. (Contrast [[nrepl-open?]], which evaluates
+  through [[socket!]] and will `System/exit` if the port file is stale.)"
+  ([] (nrepl-reachable? nil))
+  ([port]
+   (boolean
+    (when-let [p (resolve-port port)]
+      (try
+        (with-open [_ (Socket. "localhost" (int p))] true)
+        (catch Exception _ false))))))
+
+(defn eval-or-spawn
+  "Run backend work that needs a live JVM, preferring a running dev nREPL for speed and spawning a cold JVM
+  when none is reachable. Returns the exit code (0 for the nREPL path, else the subprocess exit code).
+
+  The reusable form of the \"piggyback on the dev REPL, else boot a JVM\" pattern any mage command can use
+  when its work depends on a running backend.
+
+    :nrepl-ns    namespace to evaluate `:nrepl-code` in when a REPL is reachable
+    :nrepl-code  Clojure code string to evaluate in the running REPL
+    :jvm-args    args passed to `clojure` for the cold-JVM fallback, e.g. [\"-X:dev\" \"my.ns/entry\"]
+    :port        explicit nREPL port (defaults to `.nrepl-port`)
+    :nrepl-msg   status line printed when taking the REPL path
+    :jvm-msg     status line printed when taking the JVM path"
+  [{:keys [nrepl-ns nrepl-code jvm-args port nrepl-msg jvm-msg]}]
+  (if (nrepl-reachable? port)
+    (do (when nrepl-msg (println nrepl-msg))
+        (nrepl-eval nrepl-ns nrepl-code (resolve-port port))
+        0)
+    (do (when jvm-msg (println jvm-msg))
+        (:exit (apply shell/sh* "clojure" jvm-args)))))
 
 (defn nrepl-type
   "Returns :bb :cljs or :clj to indicate what type of nrepl server is running on the given port (or the port in .nrepl-port if none given)."

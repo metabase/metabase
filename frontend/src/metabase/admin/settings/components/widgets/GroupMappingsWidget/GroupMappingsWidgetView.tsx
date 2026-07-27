@@ -5,10 +5,10 @@ import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
-import { isDefaultGroup } from "metabase/admin/utils/groups";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useToast } from "metabase/common/hooks";
+import { isDefaultGroup } from "metabase/common/utils/groups";
 import { FormSwitch } from "metabase/forms";
 import {
   Box,

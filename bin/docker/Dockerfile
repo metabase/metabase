@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 
 ENV FC_LANG=en-US LC_CTYPE=en_US.UTF-8
 
@@ -9,7 +9,7 @@ ENV GIT_COMMIT_SHA=${GIT_COMMIT_SHA}
 COPY DigiCertGlobalRootG2.crt.pem /app/certs/DigiCertGlobalRootG2.crt.pem
 
 # dependencies
-RUN apk add -U bash fontconfig curl font-noto font-noto-arabic font-noto-hebrew font-noto-cjk font-noto-thai java-cacerts nodejs && \
+RUN apk add -U bash fontconfig curl font-noto font-noto-arabic font-noto-hebrew font-noto-cjk font-noto-thai java-cacerts && \
     apk upgrade && \
     rm -rf /var/cache/apk/* && \
     mkdir -p /app/certs && \

@@ -55,6 +55,9 @@
   api-call?
   auth-call?
   cacheable?
+  data-app-embed-prefix
+  data-app-url-segment
+  data-app?
   device-info
   embed?
   embedded?

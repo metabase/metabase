@@ -130,6 +130,7 @@ export const getTableQuestions = createSelector(
   [getTable, getQuestions],
   (table, questions): Card[] => {
     const tableId = table.id;
+    // Unjustified type cast. FIXME
     return Object.values(questions as Record<string, Card>).filter(
       (question) => question.table_id === tableId,
     );
@@ -137,9 +138,11 @@ export const getTableQuestions = createSelector(
 );
 
 export const getLoading = (state: State) =>
+  // Unjustified type cast. FIXME
   (state as StateWithReference).reference.isLoading;
 
 export const getError = (state: State) =>
+  // Unjustified type cast. FIXME
   (state as StateWithReference).reference.error;
 
 export const getHasSingleSchema = createSelector(
@@ -156,6 +159,7 @@ export const getHasSingleSchema = createSelector(
 );
 
 export const getIsEditing = (state: State) =>
+  // Unjustified type cast. FIXME
   (state as StateWithReference).reference.isEditing;
 
 export const getIsFormulaExpanded = (state: StateWithReference) =>

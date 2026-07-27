@@ -7,14 +7,14 @@ import { PublicOrEmbeddedDashboardPage } from "./public/containers/PublicOrEmbed
 
 export const getRoutes = () => (
   <Route>
-    <Route path="embed" component={PublicApp}>
-      <Route path="question/:token" component={PublicOrEmbeddedQuestion} />
+    <Route path="embed" element={<PublicApp />}>
+      <Route path="question/:token" element={<PublicOrEmbeddedQuestion />} />
       <Route
         path="dashboard/:token"
-        component={PublicOrEmbeddedDashboardPage}
+        element={<PublicOrEmbeddedDashboardPage />}
       />
-      <Route path="*" component={PublicNotFound} />
+      <Route path="*" element={<PublicNotFound />} />
     </Route>
-    <Route path="*" component={PublicNotFound} />
+    <Route path="*" element={<PublicNotFound />} />
   </Route>
 );

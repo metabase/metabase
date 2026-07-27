@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { isDefaultGroup } from "metabase/admin/utils/groups";
 import { useListPermissionsGroupsQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
+import { isDefaultGroup } from "metabase/common/utils/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Tabs } from "metabase/ui";
 import {
@@ -121,6 +121,7 @@ export function GroupLimitsSettingsSection() {
     <SettingsSection title={t`Group and tenant limits`}>
       <Tabs
         value={activeTab}
+        // Unjustified type cast. FIXME
         onChange={(value) => setActiveTab(value as GroupLimitsTabValue)}
       >
         <Tabs.List mb="md">

@@ -61,16 +61,18 @@ function setup({ table = TEST_TABLE }: SetupOpts = {}) {
     `${successUrl}/${segment.id}`;
 
   const { history } = renderWithProviders(
+    // Catch-all so the page stays mounted after a successful save navigates to
+    // the deep success URL; the test asserts the form survived the save.
     <Route
-      path="/"
-      component={() => (
+      path="*"
+      element={
         <NewSegmentPage
-          route={{ path: "/" } as never}
+          // Unjustified type cast. FIXME
           table={table}
           breadcrumbs={<DataModelSegmentBreadcrumbs table={table} />}
           getSuccessUrl={getSuccessUrl}
         />
-      )}
+      }
     />,
     {
       withRouter: true,

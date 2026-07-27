@@ -247,14 +247,9 @@ export const setup = ({
   }
 
   renderWithProviders(
-    <Route
-      path="/"
-      component={() => (
-        <DataStudioLayout>
-          <div data-testid="content">{"Content"}</div>
-        </DataStudioLayout>
-      )}
-    />,
+    <Route path="/" element={<DataStudioLayout />}>
+      <Route index element={<div data-testid="content">{"Content"}</div>} />
+    </Route>,
     {
       storeInitialState: state,
       withRouter: true,

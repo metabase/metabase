@@ -58,10 +58,12 @@ const PUBLIC_COLLECTION = createMockCollection({
 });
 
 const collectionInRootCollectionItem = createMockCollectionItem({
+  // Unjustified type cast. FIXME
   id: PUBLIC_COLLECTION.id as number,
   name: PUBLIC_COLLECTION.name,
   model: "collection",
   here: ["card", "dashboard"],
+  // Unjustified type cast. FIXME
   collection_id: PUBLIC_COLLECTION.id as number,
 });
 
@@ -165,6 +167,7 @@ describe("LinkedEntityPicker", () => {
     describe("dashboard in a public collection", () => {
       const dashboardInPublicCollection = createMockDashboard({
         collection: PUBLIC_COLLECTION,
+        // Unjustified type cast. FIXME
         collection_id: PUBLIC_COLLECTION.id as number,
       });
 
@@ -227,6 +230,7 @@ describe("LinkedEntityPicker", () => {
     describe("dashboard in a personal collection", () => {
       const dashboardInPersonalCollection = createMockDashboard({
         collection: PERSONAL_COLLECTION,
+        // Unjustified type cast. FIXME
         collection_id: PERSONAL_COLLECTION.id as number,
       });
 
@@ -303,6 +307,7 @@ describe("LinkedEntityPicker", () => {
     describe("dashboard in a public collection", () => {
       const dashboardInPublicCollection = createMockDashboard({
         collection: PUBLIC_COLLECTION,
+        // Unjustified type cast. FIXME
         collection_id: PUBLIC_COLLECTION.id as number,
       });
 
@@ -373,6 +378,7 @@ describe("LinkedEntityPicker", () => {
     describe("dashboard in a personal collection", () => {
       const dashboardInPersonalCollection = createMockDashboard({
         collection: PERSONAL_COLLECTION,
+        // Unjustified type cast. FIXME
         collection_id: PERSONAL_COLLECTION.id as number,
       });
 

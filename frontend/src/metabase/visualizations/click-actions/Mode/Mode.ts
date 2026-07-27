@@ -76,6 +76,7 @@ export class Mode implements ClickActionsMode {
             buttonType: "horizontal",
             name: "default",
 
+            // Unjustified type cast. FIXME
             ...(actionsOrActionObject as Partial<ClickAction>),
           },
         ];

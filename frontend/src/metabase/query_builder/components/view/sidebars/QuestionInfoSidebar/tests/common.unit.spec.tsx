@@ -176,6 +176,7 @@ describe("QuestionInfoSidebar", () => {
     it("should not show entity id", () => {
       const card = createMockCard({
         name: "Question",
+        // Unjustified type cast. FIXME
         entity_id: "jenny8675309" as BaseEntityId,
       });
       setup({ card });

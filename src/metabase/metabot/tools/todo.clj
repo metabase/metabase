@@ -3,6 +3,7 @@
   Todos are stored in agent memory and streamed to the frontend via todo_list data parts."
   (:require
    [clojure.string :as str]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
@@ -59,7 +60,7 @@
   (log/info "Writing todo list" {:todo-count (count todos)})
   (let [validated-todos (validate-todos todos)]
     ;; Store in memory
-    (swap! memory-atom update :state assoc :todos validated-todos)
+    (swap! memory-atom memory/set-todos validated-todos)
     (log/debug "Stored todos in memory" {:count (count validated-todos)})
     {:structured-output {:message "Todo list updated successfully."
                          :todo_count (count validated-todos)}

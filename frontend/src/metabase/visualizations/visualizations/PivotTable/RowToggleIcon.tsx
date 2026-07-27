@@ -30,6 +30,7 @@ export function RowToggleIcon({
   if (value == null) {
     return null;
   }
+  // Unjustified type cast. FIXME
   const setting = settings[
     COLLAPSED_ROWS_SETTING
   ] as PivotTableCollapsedRowsSetting;
@@ -39,6 +40,7 @@ export function RowToggleIcon({
   const settingValue: PivotTableCollapsedRowsSetting["value"] =
     setting.value || [];
   const isColumnCollapsed =
+    // Unjustified type cast. FIXME
     !isColumn && settingValue.includes(columnRef as string);
   const isCollapsed = settingValue.includes(ref) || isColumnCollapsed;
 

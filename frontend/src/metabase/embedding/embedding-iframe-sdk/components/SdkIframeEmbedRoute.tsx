@@ -15,10 +15,10 @@ import {
 } from "embedding-sdk-bundle/components/public/dashboard";
 import { getSdkStore, useSdkSelector } from "embedding-sdk-bundle/store";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { createSnowplowTracker } from "metabase/analytics";
 import type { OnBeforeRequestHandler } from "metabase/api/client";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
@@ -117,6 +117,7 @@ export const SdkIframeEmbedRoute = () => {
     return <SdkIframeExistingUserSessionInProductionError />;
   }
 
+  // Unjustified type cast. FIXME
   const authConfig = {
     isGuest: embedSettings.isGuest,
     metabaseInstanceUrl: embedSettings.instanceUrl,

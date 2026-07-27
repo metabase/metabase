@@ -81,6 +81,7 @@ export const useCellSelection = ({
         return;
       }
 
+      // Unjustified type cast. FIXME
       const target = e.target as HTMLElement;
       const isInsideSelectableCell = target.closest("[data-selectable-cell]");
       if (isInsideSelectableCell || selectedCells.length === 0) {
@@ -233,6 +234,7 @@ export const useCellSelection = ({
         return;
       }
 
+      // Unjustified type cast. FIXME
       const selectedCellsInRange = getCellsBetween(
         table,
         selectedStartCell,
@@ -524,6 +526,7 @@ const getCellValues = (
 
   const columnIds = Object.keys(columnGroups);
 
+  // Unjustified type cast. FIXME
   const headerRow = columnIds
     .map((columnId) => {
       return columnId

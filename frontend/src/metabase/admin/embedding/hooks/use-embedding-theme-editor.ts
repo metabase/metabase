@@ -239,6 +239,7 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
     const colors = currentTheme.settings.colors ?? {};
     const defaultColors = defaultThemeSettings.colors ?? {};
     return PRIMARY_COLORS_KEYS.some(
+      // Unjustified type cast. FIXME
       (key) => (colors[key] ?? "") !== ((defaultColors[key] as string) ?? ""),
     );
   }, [currentTheme, defaultThemeSettings]);

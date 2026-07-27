@@ -246,6 +246,7 @@ export function SettingsOIDCForm() {
           provider: updateData,
         }).unwrap();
       } else {
+        // Unjustified type cast. FIXME
         await createProvider(providerData as CustomOidcConfig).unwrap();
       }
     },
@@ -260,6 +261,7 @@ export function SettingsOIDCForm() {
   );
 
   const { data: allGroupsData } = useListPermissionsGroupsQuery(undefined);
+  // Unjustified type cast. FIXME
   const allGroups = (allGroupsData ?? []) as Group[];
   const [deleteGroupMutation] = useDeletePermissionsGroupMutation();
   const [clearGroupMembershipMutation] = useClearGroupMembershipMutation();

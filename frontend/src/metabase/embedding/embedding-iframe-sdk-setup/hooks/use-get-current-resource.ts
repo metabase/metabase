@@ -58,6 +58,7 @@ export const useGetCurrentResource = ({
     error: cardLoadingError,
     isLoading: isCardLoading,
     isFetching: isCardFetching,
+    // Unjustified type cast. FIXME
   } = useGetCardQuery(questionId ? { id: questionId as number } : skipToken, {
     refetchOnMountOrArgChange: true,
   });

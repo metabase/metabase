@@ -1,6 +1,6 @@
 import { merge } from "icepick";
 
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { OnBeforeRequestHandlerConfig } from "metabase/api/client";
 import { overrideRequestsForGuestEmbeds } from "metabase/embedding/lib/override-requests-for-embeds";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";

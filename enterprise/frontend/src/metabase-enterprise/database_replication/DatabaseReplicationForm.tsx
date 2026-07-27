@@ -168,6 +168,7 @@ export const DatabaseReplicationForm = ({
                 label={t`Select schemas to replicate`}
                 onChange={(value) =>
                   setSchemaFiltersType(
+                    // Unjustified type cast. FIXME
                     value as typeof initialValues.schemaFiltersType,
                   )
                 }

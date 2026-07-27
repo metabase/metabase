@@ -18,9 +18,11 @@ const getDefaultPluginUploadManagement = () => ({
   UploadManagementTable: PluginPlaceholder,
   GdriveSyncStatus: PluginPlaceholder,
   GdriveConnectionModal:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<GdriveConnectionModalProps>,
   GdriveDbMenu: PluginPlaceholder,
   GdriveAddDataPanel:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<GdriveAddDataPanelProps>,
 });
 

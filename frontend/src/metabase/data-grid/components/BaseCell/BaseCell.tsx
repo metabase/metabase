@@ -28,6 +28,7 @@ export const BaseCell = memo(function BaseCell({
 }: BaseCellProps) {
   const cellStyle = useMemo(() => {
     if (isSelected) {
+      // Unjustified type cast. FIXME
       return {
         "--cell-bg-color": `color-mix(in srgb, var(--mb-color-core-brand), transparent 80%)`,
         "--cell-hover-bg-color": hasHover
@@ -36,6 +37,7 @@ export const BaseCell = memo(function BaseCell({
       } as React.CSSProperties;
     }
     if (!backgroundColor) {
+      // Unjustified type cast. FIXME
       return {
         "--cell-hover-bg-color": hasHover
           ? `color-mix(in srgb, var(--mb-color-core-brand), transparent 90%)`
@@ -48,6 +50,7 @@ export const BaseCell = memo(function BaseCell({
       ? `color-mix(in srgb, ${backgroundColor} 95%, white)`
       : `color-mix(in srgb, ${backgroundColor} 97%, black)`;
 
+    // Unjustified type cast. FIXME
     return {
       "--cell-bg-color": backgroundColor,
       "--cell-hover-bg-color": hasHover ? hoverColor : undefined,

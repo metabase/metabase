@@ -1,6 +1,7 @@
 (ns metabase-enterprise.analytics.stats
   (:require
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
+   [metabase-enterprise.mfa.core :as mfa]
    [metabase-enterprise.scim.core :as scim]
    [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase-enterprise.sso.settings :as ee-sso-settings]
@@ -22,6 +23,12 @@
    {:name      :scim
     :available (premium-features/enable-scim?)
     :enabled   (boolean (scim/scim-enabled))}
+   ;; the `and` upholds this ping's enabled⊆available invariant: MFA enforcement survives a
+   ;; license lapse (fail-closed), so mfa-enabled? alone can be true on an unlicensed instance
+   {:name      :multi-factor-auth
+    :available (premium-features/enable-multi-factor-auth?)
+    :enabled   (and (premium-features/enable-multi-factor-auth?)
+                    (mfa/mfa-enabled?))}
    {:name      :sandboxes
     :available (and (premium-features/enable-official-collections?)
                     (t2/exists? :model/Database :engine [:in (descendants driver/hierarchy :sql)]))

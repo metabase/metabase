@@ -1,7 +1,7 @@
 (ns metabase.metabot.agent.streaming
   "Streaming helpers for the agent loop.
-  Provides utilities for creating AI-SDK data parts, including navigation,
-  and transducers for stream processing."
+  Provides utilities for creating AI-SDK data parts and transducers for stream
+  processing."
   (:require
    [buddy.core.codecs :as codecs]
    [metabase.metabot.agent.markdown-link-buffer :as markdown-link-buffer]
@@ -13,21 +13,22 @@
 ;;
 ;; These match the Python AI Service's AISDKDataTypes enum
 
-(def navigate-to-type "AI-SDK data type for navigation links." "navigate_to")
 (def state-type "AI-SDK data type for state updates." "state")
 (def todo-list-type "AI-SDK data type for todo lists." "todo_list")
 (def code-edit-type "AI-SDK data type for code edits." "code_edit")
 (def transform-suggestion-type "AI-SDK data type for transform suggestions." "transform_suggestion")
 (def generated-entity-type "AI-SDK data type for generated entities." "generated_entity")
+(def entity-saved-type "AI-SDK data type for saved-entity annotations." "entity_saved")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
-  skipped because their value is salvaged separately into MetabotConversation.state;
-  duplicating the blob in every message would bloat storage. Non-data parts are
-  always persistable here; the caller is responsible for filtering stream-level
-  metadata (`:start`, `:usage`, `:finish`) separately."
+  skipped because their value is diffed separately into MetabotMessage.state;
+  duplicating the full blob in the message data would bloat storage. Non-data
+  parts are always persistable here; the caller is responsible for filtering
+  stream-level metadata
+  (`:start`, `:usage`, `:finish`) separately."
   [part]
   (not (and (= :data (:type part))
             (= state-type (:data-type part)))))
@@ -57,17 +58,6 @@
    (str "/question#" (query->url-hash query display))))
 
 ;;; Data Part Constructors
-
-(defn navigate-to-part
-  "Create a NAVIGATE_TO data part for streaming.
-  The URL should be a path like '/question#...' or '/model/123'.
-
-  This matches Python AI Service's:
-  ai_sdk.create_data_part(data_type=AISDKDataTypes.NAVIGATE_TO, version=1, value=path)"
-  [url]
-  {:type :data
-   :data-type navigate-to-type
-   :data url})
 
 (defn state-part
   "Create a STATE data part for streaming."
@@ -141,52 +131,40 @@
    :data-type generated-entity-type
    :data entity})
 
+(defn entity-saved-part
+  "Create an ENTITY_SAVED data part for streaming. `value` is a map describing where a
+  previously-generated inline chart was persisted: `{:chart_id <generated chart id>,
+  :card_id <saved card id>, :destination {:type :id}}`. The FE resolves the card's
+  and the destination's display names at render time."
+  [value]
+  {:type :data
+   :data-type entity-saved-type
+   :data value})
+
 (defn viz-part
-  "Return the data part used to surface a query/chart result to the frontend.
+  "Return the `generated_entity` card data part that surfaces a query/chart result
+  to the frontend. Embeds the (legacy) `query` so the FE runs and renders the card
+  in the conversation. The caller must supply a distinct `entity-id` (card id) and
+  `query-id`, plus a `title`; `display` and `description` are included when present."
+  [{:keys [entity-id query-id query display title description]}]
+  (generated-entity-part
+   (cond-> {:type  "card"
+            :id    entity-id
+            :title title
+            :query {:id query-id :query query}}
+     display     (assoc :display (some-> display name))
+     description (assoc :description description))))
 
-  When `inline?` is true (the surface declared it can render visualizations
-  inline) returns a `generated_entity` card part that embeds the (legacy)
-  dataset_query so the FE runs and renders it in the conversation; otherwise
-  returns a `navigate_to` part that sends the user to the question. Pure: the
-  caller passes `inline?` (typically `(shared/inline-viz-capable?)`) and a legacy
-  `query`. The caller must supply a distinct `entity-id` (card id), `query-id`,
-  and `title`; `display` is included when present."
-  [{:keys [inline? entity-id query-id query display title link]}]
-  (if inline?
-    (generated-entity-part
-     (cond-> {:type  "card"
-              :id    entity-id
-              :title title
-              :query {:id query-id :query query}}
-       display (assoc :display (some-> display name))))
-    (navigate-to-part link)))
-
-;;; Reaction Conversion
-
-(defn reactions->data-parts
-  "Convert tool reactions to AI-SDK data parts for streaming.
-
-  Reactions are metadata returned by tools that trigger side effects:
-  - :metabot.reaction/redirect -> navigate_to data part
-
-  Returns a vector of data parts (may be empty if no relevant reactions)."
-  [reactions]
-  (into []
-        (keep (fn [{:keys [type url]}]
-                (case type
-                  :metabot.reaction/redirect (navigate-to-part url)
-                  nil)))
-        reactions))
+(defn dashboard-entity-part
+  "Return a `generated_entity` dashboard data part. `url` is the navigation path the
+  FE will route to (e.g. `/auto/dashboard/table/123`), `title` is a short human label
+  for the inline link card, and `id` is an optional entity id."
+  [{:keys [id title url]}]
+  (generated-entity-part
+   (cond-> {:type "dashboard" :url url :title title}
+     id (assoc :id id))))
 
 ;;; Stream Processing Transducers
-
-(def expand-reactions-xf
-  "Stateless transducer that expands :reactions from tool-output parts into data parts.
-  Passes through all parts unchanged, then appends any reaction data parts after tool-output parts."
-  (mapcat (fn [part]
-            (if (= (:type part) :tool-output)
-              (cons part (reactions->data-parts (get-in part [:result :reactions])))
-              [part]))))
 
 (def expand-data-parts-xf
   "Stateless transducer that expands :data-parts from tool-output results.
@@ -201,11 +179,7 @@
 
   Applies in order:
   1. expand-data-parts-xf - Extract data-parts from tool outputs
-  2. expand-reactions-xf - Extract reactions from tool outputs as data parts
-  3. resolve-links-xf - Resolve metabase:// links in text parts
-
-  Note: expand-data-parts-xf comes first so its output appears before reactions,
-  matching the original stream-parts-to-output! behavior.
+  2. resolve-links-xf - Resolve metabase:// links in text parts
 
   Parameters:
   - initial-queries: Initial map of query-id to query data
@@ -214,5 +188,4 @@
   [initial-queries initial-charts link-registry-atom]
   (comp
    expand-data-parts-xf
-   expand-reactions-xf
    (markdown-link-buffer/resolve-xf initial-queries initial-charts link-registry-atom)))

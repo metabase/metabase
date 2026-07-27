@@ -1,5 +1,3 @@
-import type { Location } from "history";
-import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { AppBarContainer } from "metabase/app/nav/AppBar";
@@ -7,7 +5,9 @@ import { Navbar } from "metabase/app/nav/Navbar";
 import {
   getIsAdminApp,
   getIsAppBarVisible,
+  getIsDataApp,
   getIsDataStudioApp,
+  getIsMonitorApp,
   getIsNavBarEnabled,
 } from "metabase/app/selectors";
 import { AppBanner } from "metabase/common/components/AppBanner";
@@ -26,6 +26,8 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { connect, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor, State } from "metabase/redux/store";
+import type { Location } from "metabase/router";
+import { Outlet, useLocation } from "metabase/router";
 import { getErrorPage } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { StatusListing } from "metabase/status/components/StatusListing";
@@ -34,6 +36,7 @@ import { initializeIframeResizer } from "metabase/utils/dom";
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import { AppKBarProvider } from "./AppKBarProvider";
 import ErrorBoundary from "./ErrorBoundary";
+import { trackPageView } from "./analytics";
 import { useTokenRefresh } from "./api/utils/use-token-refresh";
 import { Metabot } from "./metabot/components/Metabot";
 import { NewModals } from "./new/components/NewModals/NewModals";
@@ -59,6 +62,8 @@ interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
   isDataStudioApp: boolean;
+  isMonitorApp: boolean;
+  isDataApp: boolean;
   bannerMessageDescriptor?: string;
   isAppBarVisible: boolean;
   isNavBarEnabled: boolean;
@@ -70,7 +75,6 @@ interface AppDispatchProps {
 
 interface AppRouterOwnProps {
   location: Location;
-  children: ReactNode;
 }
 
 type AppProps = AppStateProps & AppDispatchProps & AppRouterOwnProps;
@@ -82,6 +86,8 @@ const mapStateToProps = (
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
   isDataStudioApp: getIsDataStudioApp(state, props),
+  isMonitorApp: getIsMonitorApp(state, props),
+  isDataApp: getIsDataApp(state, props),
   isAppBarVisible: getIsAppBarVisible(state, props),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
 });
@@ -94,13 +100,15 @@ function App({
   errorPage,
   isAdminApp,
   isDataStudioApp,
+  isMonitorApp,
+  isDataApp,
   isAppBarVisible,
   isNavBarEnabled,
-  children,
   onError,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
   const applicationName = useSelector(getApplicationName);
+  const { pathname } = useLocation();
 
   usePageTitle(applicationName, { titleIndex: 0 });
   useTokenRefresh();
@@ -108,6 +116,10 @@ function App({
   useEffect(() => {
     initializeIframeResizer();
   }, []);
+
+  useEffect(() => {
+    trackPageView(pathname);
+  }, [pathname]);
 
   return (
     <ErrorBoundary onError={onError}>
@@ -123,13 +135,17 @@ function App({
                 <ContentViewportContext.Provider
                   value={viewportElement ?? null}
                 >
-                  {errorPage ? getErrorComponent(errorPage) : children}
+                  {errorPage ? getErrorComponent(errorPage) : <Outlet />}
                 </ContentViewportContext.Provider>
               </AppContent>
               <UndoListing />
               <StatusListing />
               <NewModals />
-              <Metabot hide={isAdminApp || isDataStudioApp} />
+              <Metabot
+                hide={
+                  isAdminApp || isDataStudioApp || isMonitorApp || isDataApp
+                }
+              />
             </AppContentContainer>
           </AppContainer>
           <Palette />
@@ -140,7 +156,12 @@ function App({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect<AppStateProps, unknown, AppRouterOwnProps, State>(
+export default connect<
+  AppStateProps,
+  AppDispatchProps,
+  AppRouterOwnProps,
+  State
+>(
   mapStateToProps,
   mapDispatchToProps,
 )(App);

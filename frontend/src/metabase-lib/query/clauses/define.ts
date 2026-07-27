@@ -8,6 +8,7 @@ export function defineClauses<
   options: Partial<MBQLClauseDefinition>,
   clauses: T,
 ): Record<keyof T, MBQLClauseDefinition> {
+  // Unjustified type cast. FIXME
   const result = {} as Record<keyof T, MBQLClauseDefinition>;
   for (const name in clauses) {
     if (names.has(name)) {

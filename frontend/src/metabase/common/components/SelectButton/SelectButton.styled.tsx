@@ -2,7 +2,6 @@
 import styled from "@emotion/styled";
 import type { ComponentPropsWithRef } from "react";
 
-import { inputPadding } from "metabase/common/style/input";
 import { Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 interface SelectButtonRootProps {
@@ -20,7 +19,7 @@ const getColor = ({ hasValue, highlighted }: SelectButtonRootProps) => {
 };
 
 export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
-  ${inputPadding()}
+  padding: 0.625rem 0.75rem;
   cursor: pointer;
   display: flex;
   width: ${(props) => (props.fullWidth ? "100%" : "unset")};

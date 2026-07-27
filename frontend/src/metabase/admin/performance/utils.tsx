@@ -106,6 +106,7 @@ export const getStrategyValidationSchema = (strategyData: StrategyData) => {
   }
 };
 
+// Unjustified type cast. FIXME
 export const strategyValidationSchema = Yup.object().test(
   "strategy-validation",
   "The object must match one of the strategy validation schemas",
@@ -115,6 +116,7 @@ export const strategyValidationSchema = Yup.object().test(
         message: "Strategy is falsy",
       });
     }
+    // Unjustified type cast. FIXME
     const { type } = value as unknown as { type: string };
     if (!isValidStrategyName(type)) {
       return this.createError({
@@ -143,6 +145,7 @@ export const strategyValidationSchema = Yup.object().test(
 export const getFieldsForStrategyType = (strategyType: CacheStrategyType) => {
   const { strategies } = PLUGIN_CACHING;
   const strategyData = strategies[strategyType];
+  // Unjustified type cast. FIXME
   const validationSchemaDescription = getStrategyValidationSchema(
     strategyData,
   ).describe() as SchemaObjectDescription;
@@ -155,6 +158,7 @@ export const translateConfig = <T extends CacheConfig>(
   config: T,
   direction: "fromAPI" | "toAPI",
 ): T => {
+  // Unjustified type cast. FIXME
   const translated = { ...config, strategy: { ...config.strategy } } as T;
 
   // If strategy type is unsupported, use a fallback

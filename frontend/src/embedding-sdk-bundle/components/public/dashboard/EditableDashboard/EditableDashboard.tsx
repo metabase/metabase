@@ -69,6 +69,7 @@ const EditableDashboardContent = (props: EditableDashboardProps) => {
         getEmbeddingMode({
           question,
           queryMode: createEmbeddingSdkMode({ pushNavigation }),
+          // Unjustified type cast. FIXME
           plugins: props.drillThroughQuestionProps
             ?.plugins as InternalMetabasePluginsConfig,
         }),

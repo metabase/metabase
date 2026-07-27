@@ -12,6 +12,9 @@
 (p/import-vars
  [metabase.sso.common
   sync-group-memberships!]
+ [metabase.sso.ldap
+  find-user
+  verify-password]
  [metabase.sso.ldap.default-implementation
   LDAPSettings
   ldap-search-result->user-info]

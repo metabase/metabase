@@ -42,12 +42,14 @@ export const saveEditingPulse = createThunkAction(
         if (isEdit) {
           return await dispatch(
             subscriptionApi.endpoints.updateSubscription.initiate(
+              // Unjustified type cast. FIXME
               editingPulse as unknown as UpdateSubscriptionRequest,
             ),
           ).unwrap();
         } else {
           return await dispatch(
             subscriptionApi.endpoints.createSubscription.initiate(
+              // Unjustified type cast. FIXME
               editingPulse as unknown as CreateSubscriptionRequest,
             ),
           ).unwrap();

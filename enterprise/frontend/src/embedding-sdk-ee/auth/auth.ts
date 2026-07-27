@@ -9,7 +9,6 @@ import {
   openSamlLoginPopup,
   validateSession,
 } from "embedding/auth-common";
-import * as MetabaseError from "embedding-sdk-bundle/errors";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import {
   PLUGIN_EMBEDDING_SDK_AUTH,
@@ -23,16 +22,15 @@ import type {
   SdkDispatch,
   SdkStoreState,
 } from "embedding-sdk-bundle/store/types";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
+import * as MetabaseError from "embedding-sdk-shared/errors";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
-import {
-  sessionTokenHeaders,
-  setApiKeyHeader,
-} from "metabase/embedding/lib/embedding-request-auth";
+import { getSessionTokenHeaders } from "metabase/embedding/lib/auth/get-session-token-headers";
+import { setApiKeyHeader } from "metabase/embedding/lib/auth/set-api-key-header";
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
   isEmbeddingEajs,
@@ -74,7 +72,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
   // applies to the very request that triggered the refresh.
   const sessionTokenHandler = async () => {
     const session = await dispatch(getOrRefreshSession(authConfig)).unwrap();
-    return session?.id ? sessionTokenHeaders(session.id) : undefined;
+    return session?.id ? getSessionTokenHeaders(session.id) : undefined;
   };
 
   // Check if we can use the auth pre-fetched by the bootstrap chunk
@@ -104,7 +102,9 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
         }),
       );
       dispatch(refreshCurrentUser.fulfilled(authState.user, "", undefined));
+      // Unjustified type cast. FIXME
       dispatch(loadSettings(authState.siteSettings as Settings));
+      // Unjustified type cast. FIXME
       MetabaseSettings.setAll(authState.siteSettings as Settings);
 
       // The session handler emits the X-Metabase-Session header on every API
@@ -152,6 +152,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
       if ((e as Error).name === "MetabaseError") {
         throw e;
       }
+      // Unjustified type cast. FIXME
       throw MetabaseError.REFRESH_TOKEN_BACKEND_ERROR(e as Error);
     }
   }
@@ -178,6 +179,7 @@ const refreshTokenImpl = async (
   config: MetabaseAuthConfig,
   { getState }: { getState: () => unknown },
 ): Promise<MetabaseEmbeddingSessionToken | null> => {
+  // Unjustified type cast. FIXME
   const state = getState() as SdkStoreState;
 
   if (isEmbeddingEajs()) {
@@ -210,6 +212,7 @@ export const getOrRefreshSession = createAsyncThunk(
     // necessary to ensure that we don't use a popup every time the user
     // refreshes the page
     const storedAuthToken = samlTokenStorage.get();
+    // Unjustified type cast. FIXME
     const state = getSessionTokenState(getState() as SdkStoreState);
     /**
      * @see {@link https://github.com/metabase/metabase/pull/64238#discussion_r2394229266}
@@ -307,6 +310,7 @@ async function waitForAuthCompletion(
 ): Promise<SdkAuthState> {
   // early return if already completed
   if (getAuthState()?.status !== "in-progress") {
+    // Unjustified type cast. FIXME
     return getAuthState() as SdkAuthState;
   }
   const startTime = Date.now();

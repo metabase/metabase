@@ -53,6 +53,7 @@ export function renderWithSDKProviders(
 
   const storeMiddleware = _.compact([Api.middleware]);
 
+  // Unjustified type cast. FIXME
   const store = getStore(
     sdkReducers,
     initialState,
@@ -66,6 +67,7 @@ export function renderWithSDKProviders(
 
   if (metabaseEmbeddingSdkBundleExports) {
     window.METABASE_EMBEDDING_SDK_BUNDLE =
+      // Unjustified type cast. FIXME
       metabaseEmbeddingSdkBundleExports as typeof window.METABASE_EMBEDDING_SDK_BUNDLE;
 
     ensureMetabaseProviderPropsStore().updateInternalProps({

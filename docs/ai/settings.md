@@ -54,9 +54,15 @@ To disable Metabase AI provider and stop charges:
 
 ### Bring your own API key
 
-You can specify your own API key and model for Metabot from one of the supported providers. Currently, Metabase only supports models from Anthropic.
+You can specify your own API key and model for Metabot from one of the supported providers. When you connect a provider, the **Model** dropdown lists the supported models that your API key can access.
 
-If you're interested in Metabase supporting more AI providers, let us know by submitting a [feature request](../troubleshooting-guide/requesting-new-features.md).
+- **Amazon Bedrock**: Claude and GPT models.
+- **Anthropic**: Claude models (Opus, Sonnet, Haiku, and Fable).
+- **Microsoft Azure**: Your own Azure deployments of Claude or GPT models. Enter the deployment name you configured in Azure.
+- **OpenAI**: GPT models.
+- **OpenRouter**: Claude and GPT models.
+
+If you're interested in Metabase supporting more AI providers or models, let us know by submitting a [feature request](../troubleshooting-guide/requesting-new-features.md).
 
 To enable AI features with your own API key:
 

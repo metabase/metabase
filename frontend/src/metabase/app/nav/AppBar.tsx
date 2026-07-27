@@ -1,6 +1,5 @@
-import { push } from "react-router-redux";
-
 import { skipToken, useGetDashboardQuery } from "metabase/api";
+import { QuestionLineage } from "metabase/app/nav/QuestionLineage";
 import {
   getCollectionId,
   getIsAppSwitcherVisible,
@@ -20,7 +19,6 @@ import {
 import { getMetabotVisible } from "metabase/metabot/state";
 import { AppBar as AppBarView } from "metabase/nav/components/AppBar";
 import type { AppBarProps } from "metabase/nav/components/AppBar/AppBar";
-import { QuestionLineage } from "metabase/nav/components/QuestionLineage";
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
 import { isQuestionPath } from "metabase/nav/containers/MainNavbar/getSelectedItems";
 import { zoomInRow } from "metabase/query_builder/actions";
@@ -31,7 +29,7 @@ import {
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
-import { withRouter } from "metabase/router";
+import { push, withRouteProps } from "metabase/router";
 import type { RouterProps } from "metabase/selectors/app";
 import { getDetailViewState, getIsNavbarOpen } from "metabase/selectors/app";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
@@ -99,6 +97,7 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
     dashboardId != null ? { id: dashboardId } : skipToken,
   );
 
+  // Unjustified type cast. FIXME
   const locationState = props.location.state as { cardId?: number } | undefined;
 
   const onSearchItemSelect = (result: SearchResult) => {
@@ -131,6 +130,6 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
   );
 }
 
-export const AppBarContainer = withRouter(
+export const AppBarContainer = withRouteProps(
   connect(mapStateToProps, mapDispatchToProps)(AppBarContainerInner),
 );

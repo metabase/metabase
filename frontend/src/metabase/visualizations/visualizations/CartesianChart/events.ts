@@ -870,6 +870,7 @@ export const getGoalLineHoverData = (
   event: EChartsSeriesMouseEvent,
   formatGoal?: AxisFormatter,
 ) => {
+  // Unjustified type cast. FIXME
   const element = event.event.event.target as Element;
 
   if (element?.nodeName !== "text") {

@@ -856,6 +856,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
         mountSdkContent(
           <div style={{ display: "flex", padding: "20px" }}>
             <CollectionBrowser
+              // Unjustified type cast. FIXME
               collectionId={collectionId as unknown as number}
               visibleColumns={["type", "name", "description"]}
             />

@@ -71,6 +71,7 @@ jest.mock("./MetricsSegmentFilterPillPopover", () => ({
   ),
 }));
 
+// Unjustified type cast. FIXME
 const mockLibMetric = LibMetricModule as jest.Mocked<typeof LibMetric>;
 
 function makeDefinitionSource(
@@ -79,8 +80,11 @@ function makeDefinitionSource(
 ): DefinitionSource {
   return {
     index,
+    // Unjustified type cast. FIXME
     id: `src-${index}` as DefinitionSource["id"],
+    // Unjustified type cast. FIXME
     definition: { __fakeDef: index } as unknown as LibMetric.MetricDefinition,
+    // Unjustified type cast. FIXME
     entity: {
       type: "metric",
       id: index,
@@ -98,9 +102,11 @@ beforeEach(() => {
 describe("MetricsFilterPills", () => {
   it("renders a segment-iconed pill for a segment filter with its display name", () => {
     const source = makeDefinitionSource(0);
+    // Unjustified type cast. FIXME
     const segmentClause = {
       __clause: "segment",
     } as unknown as LibMetric.FilterClause;
+    // Unjustified type cast. FIXME
     const segmentMetadata = {
       __seg: "active",
     } as unknown as LibMetric.SegmentMetadata;
@@ -131,12 +137,15 @@ describe("MetricsFilterPills", () => {
 
   it("calls removeClause when segment pill remove is invoked", async () => {
     const source = makeDefinitionSource(0);
+    // Unjustified type cast. FIXME
     const segmentClause = {
       __clause: "segment",
     } as unknown as LibMetric.FilterClause;
+    // Unjustified type cast. FIXME
     const segmentMetadata = {
       __seg: "active",
     } as unknown as LibMetric.SegmentMetadata;
+    // Unjustified type cast. FIXME
     const newDefinition = {
       __fakeDef: "after-remove",
     } as unknown as LibMetric.MetricDefinition;
@@ -169,6 +178,7 @@ describe("MetricsFilterPills", () => {
 
   it("uses the popover pill for regular (non-segment) filter clauses", () => {
     const source = makeDefinitionSource(0);
+    // Unjustified type cast. FIXME
     const normalClause = {
       __clause: "normal",
     } as unknown as LibMetric.FilterClause;

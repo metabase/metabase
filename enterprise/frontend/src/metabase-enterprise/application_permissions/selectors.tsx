@@ -12,7 +12,7 @@ import {
 import {
   getGroupNameLocalized,
   isAdminGroup,
-} from "metabase/admin/utils/groups";
+} from "metabase/common/utils/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { Group } from "metabase-types/api";
 

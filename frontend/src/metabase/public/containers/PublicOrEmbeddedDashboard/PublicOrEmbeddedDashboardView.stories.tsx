@@ -66,6 +66,7 @@ export default {
 };
 
 function ReduxDecorator(Story: StoryFn, context: StoryContext) {
+  // Unjustified type cast. FIXME
   const dashboard = (context.args.dashboard as Dashboard) ?? createDashboard();
   const initialState = createMockState({
     currentUser: null,

@@ -88,8 +88,10 @@ const tree1: TreemapTree = [
   { rawName: "Grains", displayName: "Grains", value: 15, rowIndices: [1] },
 ];
 
+// Unjustified type cast. FIXME
 const settings = {} as ComputedVisualizationSettings;
 
+// Unjustified type cast. FIXME
 const rawSeries1 = [
   {
     card: createMockCard(),
@@ -102,6 +104,7 @@ const rawSeries1 = [
     }),
   },
 ] as RawSeries;
+// Unjustified type cast. FIXME
 const rawSeries2 = [
   {
     card: createMockCard(),
@@ -118,6 +121,7 @@ const rawSeries2 = [
 // A click event carrying the path-encoded node id plus the nested DOM event
 // that `getTreemapClickData` forwards onto the `ClickObject`.
 function makeClickEvent(id: unknown) {
+  // Unjustified type cast. FIXME
   const domEvent = {} as MouseEvent;
   return { data: { id }, event: { event: domEvent } };
 }
@@ -128,6 +132,7 @@ function makeChartRef(overrides: Record<string, unknown> = {}) {
   const add = jest.fn();
   const remove = jest.fn();
   const zr = { add, remove };
+  // Unjustified type cast. FIXME
   const chartRef = {
     current: {
       dispatchAction,
@@ -409,12 +414,14 @@ describe("getTreemapClickData", () => {
         treemapColumns: treemapColumns2,
         rawSeries: rawSeries2,
         settings,
+        // Unjustified type cast. FIXME
         event: makeClickEvent("9-9") as never,
       }),
     ).toBeNull();
   });
 
   it("omits dimensions for a native card (no field refs to filter on)", () => {
+    // Unjustified type cast. FIXME
     const nativeRawSeries = [
       { card: createMockNativeCard(), data: rawSeries2[0].data },
     ] as RawSeries;
@@ -425,6 +432,7 @@ describe("getTreemapClickData", () => {
       treemapColumns: treemapColumns2,
       rawSeries: nativeRawSeries,
       settings,
+      // Unjustified type cast. FIXME
       event: makeClickEvent("0-1") as never,
     });
 
@@ -439,6 +447,7 @@ describe("getTreemapClickData", () => {
       treemapColumns: treemapColumns2,
       rawSeries: rawSeries2,
       settings,
+      // Unjustified type cast. FIXME
       event: makeClickEvent("0-1") as never,
     });
 
@@ -464,6 +473,7 @@ describe("hideTreemapHoverOverlay", () => {
   it("clears the ref even when the chart is already disposed", () => {
     const { chartRef, remove } = makeChartRef({ isDisposed: () => true });
     const overlayRef = {
+      // Unjustified type cast. FIXME
       current: {} as TreemapHoverOverlay,
     };
 
@@ -496,6 +506,7 @@ describe("dispatchTreemapViewRoot", () => {
   });
 
   it("is a no-op when the chart isn't ready", () => {
+    // Unjustified type cast. FIXME
     const chartRef = {
       current: undefined,
     } as React.MutableRefObject<EChartsType | undefined>;

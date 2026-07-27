@@ -58,6 +58,7 @@ describe("toSnowplowContext", () => {
       "search-bar": true,
       "type-filter": true,
     };
+    // Unjustified type cast. FIXME
     for (const context of Object.keys(allContexts) as SearchContext[]) {
       expect(toSnowplowContext(context)).toBe(context);
     }

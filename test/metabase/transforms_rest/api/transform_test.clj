@@ -25,6 +25,7 @@
                                           parse-instant
                                           seconds-from-now-ns
                                           table-rows
+                                          transform-run-timeout-seconds
                                           utc-timestamp
                                           wait-for-table
                                           with-transform-cleanup!]]
@@ -182,7 +183,8 @@
             (with-transform-cleanup! [table-name "gadget_products"]
               (testing "Cannot create a transform with a required param"
                 (let [base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
-                      tag          (get (lib/template-tags base-query) "id")
+                      tag          (m/find-first #(= (:name %) "id")
+                                                 (lib/template-tags base-query))
                       query        (lib/with-template-tags base-query
                                      {"id" (assoc tag :required true)})
                       schema       (get-test-schema)
@@ -349,7 +351,8 @@
                                                                :name table-name}})
                   transform-id (:id created)
                   base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
-                  tag          (get (lib/template-tags base-query) "id")
+                  tag          (m/find-first #(= (:name %) "id")
+                                             (lib/template-tags base-query))
                   new-query        (lib/with-template-tags base-query
                                      {"id" (assoc tag :required true)})
                   response     (mt/user-http-request :crowberto :put 400
@@ -825,7 +828,7 @@
   (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
     (mt/with-data-analyst-role! (mt/user->id :lucky)
       (let [resp      (mt/user-http-request :lucky :post 202 (format "transform/%s/run" transform-id))
-            timeout-s 20 ; 20 seconds is our timeout to finish execution and sync
+            timeout-s transform-run-timeout-seconds
             deadline  (seconds-from-now-ns timeout-s)]
         (is (=? {:message "Transform run started"}
                 resp))
@@ -1876,7 +1879,7 @@
                                                                     :schema   (get-test-schema)
                                                                     :name     (str "target_" (u/generate-nano-id))
                                                                     :database (mt/id)}}]
-            (search.tu/with-new-search-and-legacy-search
+            (search.tu/with-appdb-search-and-legacy-search
               (let [transform-ids (search-transform-ids search-term)]
                 (is (contains? transform-ids query-id))
                 (is (not (contains? transform-ids python-id)))))))))))
@@ -1894,7 +1897,7 @@
                                                               :target {:type   "table"
                                                                        :schema (get-test-schema)
                                                                        :name   (str "target_" (u/generate-nano-id))}}]
-            (search.tu/with-new-search-and-legacy-search
+            (search.tu/with-appdb-search-and-legacy-search
               (let [results (mt/user-http-request :rasta :get 200 "search" :q search-term :models "transform")
                     ids     (set (map :id (:data results)))]
                 (is (empty? ids))
@@ -1921,7 +1924,7 @@
                                                          :target {:type   "table"
                                                                   :schema (get-test-schema)
                                                                   :name   (str "target_" (u/generate-nano-id))}}]
-            (search.tu/with-new-search-and-legacy-search
+            (search.tu/with-appdb-search-and-legacy-search
               (is (= #{native-id mbql-id}
                      (search-transform-ids search-term))))))))))
 

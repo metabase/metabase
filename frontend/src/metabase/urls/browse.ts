@@ -29,3 +29,20 @@ export function browseSchema(table: {
     table.schema_name ?? "",
   )}`;
 }
+
+export function browseSchemaBySlug(databaseSlug: string, schemaName: string) {
+  return `/browse/databases/${encodeURIComponent(databaseSlug)}/schema/${encodeURIComponent(schemaName)}`;
+}
+
+type DatabaseRef = Pick<Database, "id" | "name">;
+
+// A name that starts with a digit is parsed as an id by the router, so fall back
+// to the id for those databases; otherwise use the raw (encoded) name.
+const databaseSegment = (database: DatabaseRef) =>
+  /^\d/.test(database.name)
+    ? `${database.id}`
+    : encodeURIComponent(database.name);
+
+export function permalinkDatabase(database: DatabaseRef) {
+  return `/browse/databases/${databaseSegment(database)}`;
+}

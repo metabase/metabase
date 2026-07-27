@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { modalRoute } from "metabase/common/components/ModalRoute";
 import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Badge, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -79,8 +79,9 @@ export function initializePlugin() {
       };
     };
 
-    PLUGIN_COLLECTIONS.cleanUpRoute = (
-      <ModalRoute path="cleanup" modal={CleanupCollectionModal} />
+    PLUGIN_COLLECTIONS.cleanUpRoute = modalRoute(
+      "cleanup",
+      CleanupCollectionModal,
     );
   }
 }

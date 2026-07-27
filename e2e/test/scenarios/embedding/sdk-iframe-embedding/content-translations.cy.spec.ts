@@ -182,6 +182,7 @@ describe("scenarios > embedding > sdk iframe embedding > content-translations", 
 
       cy.get("@questionId").then(async (questionId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: questionId as unknown as number,
           resourceType: "question",
         });

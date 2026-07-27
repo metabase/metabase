@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -15,6 +14,7 @@ import { listTag } from "metabase/api/tags";
 import { TRASHABLE_MODELS, getParentEntityLink } from "metabase/archive/utils";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import type {
   Card,
   CardId,

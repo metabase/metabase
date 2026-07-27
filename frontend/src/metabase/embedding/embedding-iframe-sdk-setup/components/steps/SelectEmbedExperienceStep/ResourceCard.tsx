@@ -23,6 +23,7 @@ import { getResourceIdFromSettings } from "../../../utils/get-default-sdk-iframe
 // The picker uses the "recents" id to open on the Recent items tab while still
 // being able to resolve to a valid initial path.
 const PICKER_RECENTS_VALUE = {
+  // Unjustified type cast. FIXME
   id: "recents" as CollectionId,
   model: "collection" as const,
 };
@@ -259,6 +260,7 @@ const hasResourceSelectionStep = (
   SdkIframeEmbedSetupExperience,
   (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number]
 > =>
+  // Unjustified type cast. FIXME
   !(
     EXPERIENCES_WITHOUT_RESOURCE_SELECTION as SdkIframeEmbedSetupExperience[]
   ).includes(experience);

@@ -53,4 +53,5 @@ function DatabaseListContainer(props: DatabaseListContainerProps) {
 export default connect(
   null,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(DatabaseListContainer as unknown as React.ComponentType);

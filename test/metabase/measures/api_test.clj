@@ -49,31 +49,32 @@
   (testing "POST /api/measure"
     (testing "Test security. Requires superuser perms."
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "measure" {:name       "abc"
-                                                               :table_id   (mt/id :venues)
-                                                               :definition {}}))))))
+             (mt/user-http-request :rasta :post 403 "measure"
+                                   {:name       "abc"
+                                    :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}))))))
 
 (deftest create-measure-input-validation-test
   (testing "POST /api/measure"
     (is (=? {:errors {:name "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :post 400 "measure" {})))
-    (is (=? {:errors {:table_id "value must be an integer greater than zero."}}
-            (mt/user-http-request :crowberto :post 400 "measure" {:name "abc"})))
-    (is (=? {:errors {:table_id "value must be an integer greater than zero."}}
-            (mt/user-http-request :crowberto :post 400 "measure" {:name     "abc"
-                                                                  :table_id "foobar"})))
     (is (=? {:errors {:definition "Value must be a map."}}
-            (mt/user-http-request :crowberto :post 400 "measure" {:name     "abc"
-                                                                  :table_id 123})))
+            (mt/user-http-request :crowberto :post 400 "measure" {:name "abc"})))
     (is (=? {:errors {:definition "Value must be a map."}}
             (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
-                                                                  :table_id   123
-                                                                  :definition "foobar"})))))
+                                                                  :definition "foobar"})))
+    (testing "definition must specify a source table"
+      (is (= "Measure definition must specify a source table."
+             (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
+                                                                   :definition {}})))
+      (is (= "Measure definition must specify a source table."
+             (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
+                                                                   :definition {:aggregation [[:count]]}}))))))
 
 (deftest create-measure-test
   (testing "POST /api/measure"
     (is (=? {:name        "A Measure"
              :description "I did it!"
+             :table_id    (mt/id :venues)
              :creator_id  (mt/user->id :crowberto)
              :creator     {:id (mt/user->id :crowberto)}
              :entity_id   string?
@@ -84,7 +85,6 @@
             (mt/user-http-request :crowberto :post 200 "measure"
                                   {:name        "A Measure"
                                    :description "I did it!"
-                                   :table_id    (mt/id :venues)
                                    :definition  (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))})))))
 
 ;; ## PUT /api/measure
@@ -114,6 +114,24 @@
                                                                    :revision_message "123"
                                                                    :definition       "foobar"})))))
 
+(deftest update-definition-table-test
+  (testing "PUT /api/measure/:id"
+    (testing "an updated definition must still specify a source table"
+      (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
+                                                  :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+        (is (= "Measure definition must specify a source table."
+               (mt/user-http-request :crowberto :put 400 (str "measure/" id)
+                                     {:revision_message "no more source table"
+                                      :definition       {}})))))
+    (testing "a definition that moves the Measure to another table keeps table_id in sync"
+      (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
+                                                  :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+        (mt/user-http-request :crowberto :put 200 (str "measure/" id)
+                              {:revision_message "move to checkins"
+                               :definition       (mbql5-measure-definition (mt/id :checkins) (mt/id :checkins :user_id))})
+        (is (= (mt/id :checkins)
+               (t2/select-one-fn :table_id :model/Measure :id id)))))))
+
 (deftest update-test
   (testing "PUT /api/measure/:id"
     (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
@@ -132,7 +150,6 @@
                {:id               id
                 :name             "Updated Measure"
                 :description      nil
-                :table_id         (mt/id :venues)
                 :revision_message "I got me some revisions"
                 :definition       (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}))))))
 
@@ -195,7 +212,6 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :lucky :post 403 "measure"
                                          {:name       "New Measure"
-                                          :table_id   (mt/id :venues)
                                           :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}))))
           (testing "PUT /api/measure/:id is still blocked"
             (is (= "You don't have permissions to do that."
@@ -304,7 +320,6 @@
         (let [response (mt/user-http-request
                         :crowberto :post 200 "measure"
                         {:name       "Fragment Measure"
-                         :table_id   (mt/id :venues)
                          :definition (mbql4-fragment-definition (mt/id :venues) [[:count]])})]
           (is (some? (:id response)))
           (is (mbql5-definition? (:definition response))
@@ -313,7 +328,6 @@
         (let [response (mt/user-http-request
                         :crowberto :post 200 "measure"
                         {:name       "Full Query Measure"
-                         :table_id   (mt/id :venues)
                          :definition (legacy-mbql-measure-definition (mt/id) (mt/id :venues) [[:count]])})]
           (is (some? (:id response)))
           (is (mbql5-definition? (:definition response))
@@ -346,7 +360,6 @@
       (let [{measure-id :id} (mt/user-http-request
                               :crowberto :post 200 "measure"
                               {:name       "Venue Count"
-                               :table_id   (mt/id :venues)
                                :definition (mbql4-fragment-definition (mt/id :venues) [[:count]])})
             measure-query (mt/mbql-query venues {:aggregation [[:measure measure-id]]})
             direct-query  (mt/mbql-query venues {:aggregation [[:count]]})]

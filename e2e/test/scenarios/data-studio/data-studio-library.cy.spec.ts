@@ -8,7 +8,7 @@ import {
 } from "e2e/support/test-library-data";
 import type { Collection } from "metabase-types/api";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 
 type LibraryResponse = Collection & {
   effective_children?: Collection[];
@@ -272,7 +272,7 @@ describe("scenarios > data studio > library", () => {
         expect(response?.statusCode).to.equal(200);
       });
 
-      expandLibraryCollection("Destination Collection");
+      H.DataStudio.Library.expandCollection("Destination Collection");
       H.DataStudio.Library.result("Collection To Move")
         .should("be.visible")
         .and("have.attr", "aria-level", "3");
@@ -339,7 +339,7 @@ describe("scenarios > data studio > library", () => {
         expect(response?.statusCode).to.equal(200);
       });
 
-      expandLibraryCollection("Table Destination Collection");
+      H.DataStudio.Library.expandCollection("Table Destination Collection");
       H.DataStudio.Library.result("Orders")
         .should("be.visible")
         .and("have.attr", "aria-level", "3");
@@ -477,6 +477,237 @@ describe("scenarios > data studio > library", () => {
       });
     });
   });
+
+  describe("bulk actions", () => {
+    it("selects, moves, and unpublishes library items in bulk", () => {
+      H.createLibrary();
+      getLibraryRootCollections().then(
+        ({ dataCollection, metricCollection }) => {
+          H.publishTables({
+            table_ids: [ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID],
+          });
+          H.createQuestion({ ...TRUSTED_ORDERS_METRIC }).then(
+            ({ body: card }) => {
+              cy.request("PUT", `/api/card/${card.id}`, {
+                collection_id: metricCollection.id,
+              });
+            },
+          );
+          createLibraryCollection({
+            name: "Folder A",
+            parent_id: dataCollection.id,
+          });
+          createLibraryCollection({
+            name: "Folder B",
+            parent_id: dataCollection.id,
+          });
+          createLibraryCollection({
+            name: "Folder C",
+            parent_id: dataCollection.id,
+          });
+          createLibraryCollection({
+            name: "Folder D",
+            parent_id: dataCollection.id,
+          });
+        },
+      );
+      H.DataStudio.Library.visit();
+
+      cy.log("Section-root checkbox selects every item in the section");
+      H.DataStudio.Library.selectRow("Data");
+      H.DataStudio.Library.rowCheckbox("Orders").should("be.checked");
+      H.DataStudio.Library.rowCheckbox("Reviews").should("be.checked");
+      H.DataStudio.Library.rowCheckbox("Folder A").should("be.checked");
+      bulkBar().findByRole("button", { name: "Clear" }).click();
+      bulkBar().should("not.exist");
+
+      cy.log("Selection is limited to one section, replacing across sections");
+      H.DataStudio.Library.selectRow("Orders");
+      bulkBar().findByText("1 item selected").should("be.visible");
+      // A table is selected, so Move to trash is hidden (tables are unpublished).
+      bulkBar().findByText("Move to trash").should("not.exist");
+      H.DataStudio.Library.selectRow(TRUSTED_ORDERS_METRIC.name);
+      bulkBar().findByText("1 item selected").should("be.visible");
+      H.DataStudio.Library.rowCheckbox("Orders").should("not.be.checked");
+      H.DataStudio.Library.rowCheckbox(TRUSTED_ORDERS_METRIC.name).should(
+        "be.checked",
+      );
+      bulkBar().findByRole("button", { name: "Clear" }).click();
+      bulkBar().should("not.exist");
+
+      cy.log(
+        "Bulk-move tables into a sub-collection (picker defaults to Library)",
+      );
+      H.DataStudio.Library.selectRow("Products");
+      H.DataStudio.Library.selectRow("People");
+      bulkBar().findByText("2 items selected").should("be.visible");
+      bulkBar().findByRole("button", { name: "Move" }).click();
+      // Folder A (a Data sub-collection) is visible without navigating, proving
+      // the picker opened inside the Library rather than at Our analytics.
+      H.entityPickerModalItem(2, "Folder A").should("be.visible").click();
+      H.entityPickerModal().button("Move").click();
+      H.DataStudio.Library.expandCollection("Folder A");
+      H.DataStudio.Library.result("Products").should(
+        "have.attr",
+        "aria-level",
+        "3",
+      );
+      H.DataStudio.Library.result("People").should(
+        "have.attr",
+        "aria-level",
+        "3",
+      );
+
+      cy.log("Bulk-move a collection — can't move into itself; no Unpublish");
+      H.DataStudio.Library.selectRow("Folder B");
+      bulkBar().findByText("1 item selected").should("be.visible");
+      bulkBar().findByText("Unpublish").should("not.exist");
+      bulkBar().findByRole("button", { name: "Move" }).click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalItem(2, "Folder B").should(
+          "have.attr",
+          "data-disabled",
+        );
+        H.entityPickerModalItem(2, "Folder C").click();
+        cy.button("Move").click();
+      });
+      H.DataStudio.Library.expandCollection("Folder C");
+      H.DataStudio.Library.result("Folder B").should(
+        "have.attr",
+        "aria-level",
+        "3",
+      );
+
+      cy.log("Bulk-unpublish removes the selected tables from the Library");
+      H.DataStudio.Library.selectRow("Orders");
+      H.DataStudio.Library.selectRow("Reviews");
+      bulkBar().findByText("2 items selected").should("be.visible");
+      bulkBar().findByRole("button", { name: "Unpublish" }).click();
+      H.modal().within(() => {
+        cy.findByText("Unpublish these tables?").should("be.visible");
+        cy.button("Unpublish these tables").click();
+      });
+
+      // Gate on positive signals (bar cleared, Folder A re-rendered) so the
+      // checks don't pass against the transient post-unpublish loading state.
+      bulkBar().should("not.exist");
+      H.DataStudio.Library.collectionItem("Folder A").should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Orders")
+        .should("not.exist");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Reviews")
+        .should("not.exist");
+
+      cy.log("Move multiple collections to trash (confirm warns of unpublish)");
+      H.DataStudio.Library.selectRow("Folder A");
+      H.DataStudio.Library.selectRow("Folder C");
+      bulkBar().findByText("2 items selected").should("be.visible");
+      bulkBar().findByText("Unpublish").should("not.exist");
+      bulkBar().findByRole("button", { name: "Move to trash" }).click();
+      H.modal().within(() => {
+        cy.findByText("Move to trash?").should("be.visible");
+        // Plural wording, since multiple collections are selected.
+        cy.findByText(/these collections will also unpublish/).should(
+          "be.visible",
+        );
+        cy.button("Move to trash").click();
+      });
+
+      bulkBar().should("not.exist");
+      H.DataStudio.Library.collectionItem("Folder D").should("be.visible");
+      H.DataStudio.Library.collectionItem("Folder A").should("not.exist");
+      H.DataStudio.Library.collectionItem("Folder C").should("not.exist");
+    });
+
+    it("subsumes a collection's descendants so moving the parent preserves nesting", () => {
+      H.createLibrary();
+      getLibraryRootCollections().then(({ dataCollection }) => {
+        createLibraryCollection({
+          name: "Parent Folder",
+          parent_id: dataCollection.id,
+        }).then((parent) => {
+          H.publishTables({ table_ids: [ORDERS_ID], collection_id: parent.id });
+          createLibraryCollection({
+            name: "Child Folder",
+            parent_id: parent.id,
+          });
+        });
+        createLibraryCollection({
+          name: "Target Folder",
+          parent_id: dataCollection.id,
+        });
+      });
+      H.DataStudio.Library.visit();
+
+      cy.log("Selecting the parent collection subsumes its table and folder");
+      H.DataStudio.Library.expandCollection("Parent Folder");
+      H.DataStudio.Library.selectRow("Orders");
+      bulkBar().findByText("1 item selected").should("be.visible");
+      H.DataStudio.Library.selectRow("Parent Folder");
+
+      H.DataStudio.Library.rowCheckbox("Orders").should("be.checked");
+      H.DataStudio.Library.rowCheckbox("Orders").should("be.disabled");
+      H.DataStudio.Library.result("Orders").should(
+        "have.attr",
+        "data-disabled",
+      );
+      H.DataStudio.Library.rowCheckbox("Child Folder").should("be.checked");
+      H.DataStudio.Library.rowCheckbox("Child Folder").should("be.disabled");
+      // The count reflects only the top level items selected
+      bulkBar().findByText("1 item selected").should("be.visible");
+
+      cy.log("Collapsing the parent keeps its subsumed selection intact");
+      H.DataStudio.Library.collapseCollection("Parent Folder");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Orders")
+        .should("not.exist");
+      bulkBar().findByText("1 item selected").should("be.visible");
+
+      cy.log(
+        "Moving the collapsed parent carries the descendants, keeping nesting",
+      );
+      bulkBar().findByRole("button", { name: "Move" }).click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalItem(2, "Target Folder").click();
+        cy.button("Move").click();
+      });
+
+      H.DataStudio.Library.expandCollection("Target Folder");
+      H.DataStudio.Library.result("Parent Folder").should(
+        "have.attr",
+        "aria-level",
+        "3",
+      );
+      H.DataStudio.Library.expandCollection("Parent Folder");
+      H.DataStudio.Library.result("Orders").should(
+        "have.attr",
+        "aria-level",
+        "4",
+      );
+      H.DataStudio.Library.result("Child Folder").should(
+        "have.attr",
+        "aria-level",
+        "4",
+      );
+    });
+
+    it("offers no bulk selection on remote-sync read-only instances", () => {
+      H.createLibrary();
+      H.publishTables({ table_ids: [ORDERS_ID] });
+      H.updateEnterpriseSettings({
+        "remote-sync-url": "file:///tmp/library-read-only",
+        "remote-sync-type": "read-only",
+      });
+      H.DataStudio.Library.visit();
+
+      cy.log("Tables render, but there are no checkboxes (no bulk actions)");
+      H.DataStudio.Library.tableItem("Orders").should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByRole("checkbox")
+        .should("not.exist");
+    });
+  });
 });
 
 function getLibraryRootCollections(): Cypress.Chainable<LibraryRootCollections> {
@@ -494,7 +725,9 @@ function getLibraryRootCollections(): Cypress.Chainable<LibraryRootCollections> 
       expect(metricCollection, "Metrics collection").to.exist;
 
       return {
+        // Unjustified type cast. FIXME
         dataCollection: dataCollection as Collection,
+        // Unjustified type cast. FIXME
         metricCollection: metricCollection as Collection,
       };
     });
@@ -530,8 +763,6 @@ function openTableOptions(name: string) {
     .click();
 }
 
-function expandLibraryCollection(name: string) {
-  H.DataStudio.Library.result(name)
-    .findByRole("button", { name: "Expand" })
-    .click();
+function bulkBar() {
+  return cy.findByTestId("toast-card");
 }

@@ -36,5 +36,21 @@
                           {:msgstr ["Average of ${ 0 }"]}
 
                           "Median of ${ 0 }"
-                          {:msgstr ["Median of ${ 0 }"]}}}}
-         (#'frontend/->i18n-map test-common/po-contents #{}))))
+                          {:msgstr ["Median of ${ 0 }"]}
+
+                          "Year"
+                          {:msgid_plural "Years"
+                           :msgstr       ["Año" "Años"]}}
+
+                         "Date granularity option, distinct from the pluralized unit"
+                         {"Year"
+                          {:msgstr ["Año"]}}}}
+         (#'frontend/->i18n-map test-common/po-contents #{})))
+  (testing "a msgid that exists under several contexts keeps one entry per context, so neither
+  translation (nor a plural form) is lost"
+    (let [{translations :translations} (#'frontend/->i18n-map test-common/po-contents #{})]
+      (is (= {:msgid_plural "Years", :msgstr ["Año" "Años"]}
+             (get-in translations ["" "Year"])))
+      (is (= {:msgstr ["Año"]}
+             (get-in translations ["Date granularity option, distinct from the pluralized unit"
+                                   "Year"]))))))

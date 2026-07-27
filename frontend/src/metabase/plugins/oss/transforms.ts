@@ -1,10 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import {
-  NotFoundPlaceholder,
-  PluginPlaceholder,
-} from "metabase/plugins/components/PluginPlaceholder";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { PythonTransformSourceDraft, Transform } from "metabase-types/api";
 
 // Types
@@ -79,7 +76,7 @@ const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   getPythonSourceValidationResult: () => ({ isValid: true }),
   TransformEditor: PluginPlaceholder,
   SourceSection: PluginPlaceholder,
-  PythonRunnerSettingsPage: NotFoundPlaceholder,
+  PythonRunnerSettingsPage: PluginPlaceholder,
   getAdminRoutes: () => null,
   getTransformsNavLinks: () => null,
   sharedLibImportPath: "",

@@ -1,7 +1,7 @@
-import type { LocationDescriptor } from "history";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { LocationDescriptor } from "metabase/router";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName, RecentItem } from "metabase-types/api";
 
@@ -96,6 +96,7 @@ export const getCommandPaletteIcon = (
   item: PaletteActionImpl,
 ): { name: IconName; c: ColorName } => {
   const icon = {
+    // Unjustified type cast. FIXME
     name: item.icon as IconName,
     c: item.extra?.iconColor || "core-brand",
   };

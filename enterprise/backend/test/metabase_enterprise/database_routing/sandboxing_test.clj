@@ -9,7 +9,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -19,10 +18,7 @@
     (mt/with-premium-features #{:database-routing :sandboxes :advanced-permissions}
       (binding [driver.settings/*allow-testing-h2-connections* true]
         (met/with-user-attributes! :rasta {"db_name" "destination-db" "filter_val" "keep"}
-          (e2e/with-temp-dbs! [router-db destination-db]
-            (t2/update! :model/Database (u/the-id destination-db)
-                        {:name "destination-db" :router_database_id (u/the-id router-db)})
-            (sync/sync-database! router-db)
+          (e2e/with-routing-setup! [router-db [[destination-db "destination-db"]]]
             (e2e/execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('keep')")
             (e2e/execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('drop')")
             (e2e/execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router-only')")

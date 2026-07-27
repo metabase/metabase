@@ -17,6 +17,11 @@
     :legacy_query
     :made_public_by_id
     :metabase_version
+    ;; internal Metabot bookkeeping (which conversation/chart the card was saved from);
+    ;; excluding them also keeps a revert from writing back a stale conversation id
+    ;; after the conversation is deleted (the FK would reject it)
+    :metabot_chart_id
+    :metabot_conversation_id
     :public_uuid
     :updated_at
     :view_count})

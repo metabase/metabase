@@ -91,21 +91,22 @@ export const renderTaskRunCounters = ({
 };
 
 export const guardTaskRunRunType = (value: string): value is TaskRunType =>
-  (
-    ["subscription", "alert", "sync", "fingerprint"] satisfies TaskRunType[]
-  ).includes(value as TaskRunType);
+  (["subscription", "alert", "sync", "fingerprint"] satisfies TaskRunType[])
+    // Unjustified type cast. FIXME
+    .includes(value as TaskRunType);
 
 export const guardTaskRunEntityType = (
   value: string,
 ): value is TaskRunEntityType =>
   (["database", "card", "dashboard"] satisfies TaskRunEntityType[]).includes(
+    // Unjustified type cast. FIXME
     value as TaskRunEntityType,
   );
 
 export const guardTaskRunStatus = (value: string): value is TaskRunStatus =>
-  (
-    ["started", "success", "failed", "abandoned"] satisfies TaskRunStatus[]
-  ).includes(value as TaskRunStatus);
+  (["started", "success", "failed", "abandoned"] satisfies TaskRunStatus[])
+    // Unjustified type cast. FIXME
+    .includes(value as TaskRunStatus);
 
 export const toBackendStartedAt = (
   value: TaskRunDateFilterOption | null,
@@ -116,7 +117,11 @@ export const toBackendStartedAt = (
   }
   // A trailing "~" makes the date range open-ended on the upper bound,
   // extending it through today so the current day's runs are included.
-  return includeToday ? `${value}~` : value;
+  // The backend grammar only accepts "~" on the relative "past*" forms;
+  // appending it to "this*" values (e.g. "thisday~") is a parse error, so
+  // includeToday is ignored for those.
+  const supportsIncludeToday = value.startsWith("past");
+  return includeToday && supportsIncludeToday ? `${value}~` : value;
 };
 
 export const guardTaskRunStartedAtRange = (
@@ -133,4 +138,6 @@ export const guardTaskRunStartedAtRange = (
       "past3months",
       "past12months",
     ] satisfies TaskRunDateFilterOption[]
-  ).includes(value as TaskRunDateFilterOption);
+  )
+    // Unjustified type cast. FIXME
+    .includes(value as TaskRunDateFilterOption);

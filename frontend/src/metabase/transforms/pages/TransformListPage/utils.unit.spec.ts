@@ -45,7 +45,9 @@ jest.mock("metabase-lib", () => ({
 
 const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
 
+// Unjustified type cast. FIXME
 const mockGetLibQuery = getLibQuery as jest.MockedFunction<typeof getLibQuery>;
+// Unjustified type cast. FIXME
 const mockTemplateTags = Lib.templateTags as jest.MockedFunction<
   typeof Lib.templateTags
 >;

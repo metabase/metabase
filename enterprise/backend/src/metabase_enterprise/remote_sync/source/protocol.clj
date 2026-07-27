@@ -49,6 +49,50 @@
 
     Returns a collection of file path strings.")
 
+  (list-dir [snapshot path]
+    "Lists the immediate children of the directory `path` (repo-root relative, no trailing slash; the
+    empty string is the root).
+
+    Takes a SourceSnapshot instance implementing this protocol.
+
+    Returns a lexicographically sorted vector of repo-root relative paths, or an empty vector. Given
+
+        .
+        ├── bar
+        └── baz
+            └── burp
+
+      (list-files snapshot)      ;; => [\"bar\" \"baz/burp\"]
+
+      (list-dir snapshot \"\")     ;; => [\"bar\" \"baz\"]
+      (list-dir snapshot \"baz\")  ;; => [\"baz/burp\"]
+      (list-dir snapshot \"bar\")  ;; => []
+      (list-dir snapshot \"nope\") ;; => []
+
+    Every choice that example shows is deliberate, and hard to revisit once callers depend on it:
+
+    - *Full paths, not bare names* — `baz/burp`, never `burp`. `read-file` takes a repo-root relative
+      path and `list-files` returns them, so a child can be fed straight back in without reassembling
+      it, and one rule covers everything this protocol hands out.
+
+    - *One level only.* \"Every file under `path`\" is derivable by prefix-filtering `list-files`; a
+      single directory's contents are not derivable from anything cheaper, and for a git source cost
+      one tree object rather than one per subtree. So this is the primitive; the recursive form is the
+      derived one.
+
+    - *Directories are listed alongside files* — and are the reason this exists. `list-files` yields
+      only leaves, so a directory never appears there and can be discovered only here.
+
+    - *Only a directory has children.* A file, a symlink (even one pointing at a directory), a
+      submodule, and a path that doesn't exist all return `[]` rather than throwing. Dotted names are
+      ordinary entries: git has no notion of a hidden file, so neither does this.
+
+    - *Sorted lexicographically*, not in git's own tree order — git compares a directory as if it
+      ended in `/`, which would put `d/a-b` before `d/a`. Lexicographic is the one order the snapshots
+      that hold a flat file list can produce too, so every implementation agrees.
+
+    Reads only the one directory, so its cost is independent of the size of the rest of the repo.")
+
   (read-file [snapshot path]
     "Reads the contents of a file from the snapshot.
 
@@ -84,8 +128,15 @@
   (empty-commit? [commit]
     "True if the staged tree is identical to the parent's, i.e. finishing would introduce no changes. Always
     false for a root commit (no parent).")
-  (finish-commit! [commit message]
-    "Write the staged tree, commit with `message`, push, and release resources. Returns the new version.")
+  (finish-commit!
+    [commit message]
+    [commit message report-progress]
+    "Write the staged tree, commit with `message`, push, and release resources. Returns the new version.
+
+    `report-progress`, when given, is an optional reporter fn accepting `(fraction)` or `(fraction opts)`;
+    nil to skip. It is called once, forced, at the commit checkpoint just after the local commit is durable
+    and before the network push begins, and then repeatedly (throttled) by the push's ProgressMonitor as
+    the push proceeds.")
   (abort-commit! [commit]
     "Release the commit's resources without committing or pushing. Returns nil."))
 

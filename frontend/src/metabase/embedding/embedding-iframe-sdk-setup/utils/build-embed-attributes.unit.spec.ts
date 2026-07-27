@@ -347,6 +347,7 @@ describe("buildEmbedAttributes", () => {
 
   describe("base settings exclusion", () => {
     it("should exclude base configuration keys from attributes", () => {
+      // Unjustified type cast. FIXME
       const settings: SdkIframeEmbedSetupSettings = {
         componentName: "metabase-question",
         questionId: 123,
@@ -399,6 +400,7 @@ describe("buildEmbedAttributes", () => {
 
   describe("undefined and null values", () => {
     it("should omit undefined values from attributes", () => {
+      // Unjustified type cast. FIXME
       const settings: SdkIframeEmbedSetupSettings = {
         questionId: 123,
         withTitle: undefined,
@@ -419,9 +421,12 @@ describe("buildEmbedAttributes", () => {
     });
 
     it("should omit null values from attributes", () => {
+      // Unjustified type cast. FIXME
       const settings: SdkIframeEmbedSetupSettings = {
         questionId: 123,
+        // Unjustified type cast. FIXME
         withTitle: null as any,
+        // Unjustified type cast. FIXME
         drills: null as any,
         apiKey: "test-api-key",
       } as SdkIframeEmbedSetupSettings;
@@ -441,6 +446,7 @@ describe("buildEmbedAttributes", () => {
 
   describe("camelCase to dash-case conversion", () => {
     it("should convert camelCase keys to dash-case", () => {
+      // Unjustified type cast. FIXME
       const settings: SdkIframeEmbedSetupSettings = {
         questionId: 123,
         isSaveEnabled: true,

@@ -13,6 +13,7 @@ export function useCompletions(state: EditorState) {
   const completions = useMemo(() => {
     return {
       status: completionStatus(state),
+      // Unjustified type cast. FIXME
       options: (currentCompletions(state) ??
         []) as readonly ExpressionSuggestion[],
       selectedOption: selectedCompletionIndex(state),

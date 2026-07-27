@@ -174,6 +174,10 @@
   "Should we enable user/group provisioning via SCIM?"
   :scim)
 
+(define-premium-feature enable-multi-factor-auth?
+  "Should we enable native multi-factor authentication for interactive logins?"
+  :multi-factor-auth)
+
 (defn enable-any-sso?
   "Should we enable any SSO-based authentication?"
   []
@@ -289,6 +293,10 @@
   "Does this instance support remote syncing collections."
   :remote-sync)
 
+(define-premium-feature ^{:added "0.57.0"} enable-data-apps?
+  "Should we allow users to publish and run data apps?"
+  :data-apps)
+
 (define-premium-feature ^{:added "0.59.0"} enable-basic-transforms?
   "Should we allow users to use transforms? Replacement for transforms"
   :transforms-basic)
@@ -390,6 +398,7 @@
    :content_verification           (enable-content-verification?)
    :custom-viz                     (enable-custom-viz?)
    :custom-viz-available           (has-feature? :custom-viz)
+   :data-apps                      (enable-data-apps?)
    :data-complexity-score          (enable-data-complexity-score?)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
@@ -410,6 +419,7 @@
    :hosting                        (is-hosted?)
    :metabot-v3                     (enable-metabot-v3?)
    :metabase-ai-managed            (enable-metabase-ai-managed?)
+   :multi-factor-auth              (enable-multi-factor-auth?)
    :offer-metabase-ai-managed      (enable-offer-metabase-ai-managed?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)

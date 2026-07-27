@@ -1,3 +1,4 @@
+/* eslint-disable metabase/no-unjustified-type-casts */
 import dayjs, { type Dayjs } from "dayjs";
 
 import * as LibMetric from "cljs/metabase.lib_metric.js";

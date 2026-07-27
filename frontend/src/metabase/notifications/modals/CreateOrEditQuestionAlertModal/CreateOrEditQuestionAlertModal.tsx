@@ -202,6 +202,7 @@ export const CreateOrEditQuestionAlertModal = ({
 
       if (isEditMode) {
         result = await updateNotification(
+          // Unjustified type cast. FIXME
           notification as UpdateAlertNotificationRequest, // TODO: remove typecast
         );
       } else {

@@ -22,7 +22,7 @@ import {
   trackSdkSimpleEvent,
 } from "embedding-sdk-bundle/analytics/snowplow";
 import { setSdkTrackerReady } from "embedding-sdk-bundle/store/reducer";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 
 import { deriveAuthMethod, useInitSdkTracker } from "./tracker";
@@ -32,6 +32,7 @@ const mockInitSdkTracker = jest.mocked(initSdkTracker);
 const mockTrackSdkSimpleEvent = jest.mocked(trackSdkSimpleEvent);
 
 function makeStore() {
+  // Unjustified type cast. FIXME
   return { dispatch: jest.fn(), getState: jest.fn() } as any;
 }
 

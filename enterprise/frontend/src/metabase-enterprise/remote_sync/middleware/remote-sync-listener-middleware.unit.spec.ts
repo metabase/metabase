@@ -94,10 +94,12 @@ describe("remote-sync-listener-middleware", () => {
 
       // Wait for the request to complete and middleware to process
       await waitForCondition(() => {
+        // Unjustified type cast. FIXME
         const state = store.getState() as TestState;
         return state.remoteSyncPlugin?.showModal === true;
       });
 
+      // Unjustified type cast. FIXME
       const state = store.getState() as TestState;
       expect(state.remoteSyncPlugin?.showModal).toBe(true);
       expect(state.remoteSyncPlugin?.currentTask?.sync_task_type).toBe(
@@ -128,6 +130,7 @@ describe("remote-sync-listener-middleware", () => {
       // Give middleware time to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
+      // Unjustified type cast. FIXME
       const state = store.getState() as TestState;
       expect(state.remoteSyncPlugin?.showModal).toBe(false);
       expect(state.remoteSyncPlugin?.currentTask).toBeNull();
@@ -157,6 +160,7 @@ describe("remote-sync-listener-middleware", () => {
       // Give middleware time to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
+      // Unjustified type cast. FIXME
       const state = store.getState() as TestState;
       expect(state.remoteSyncPlugin?.showModal).toBe(false);
       expect(state.remoteSyncPlugin?.currentTask).toBeNull();
@@ -185,6 +189,7 @@ describe("remote-sync-listener-middleware", () => {
       // Give middleware time to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
+      // Unjustified type cast. FIXME
       const state = store.getState() as TestState;
       expect(state.remoteSyncPlugin?.showModal).toBe(false);
       expect(state.remoteSyncPlugin?.currentTask).toBeNull();
@@ -210,10 +215,12 @@ describe("remote-sync-listener-middleware", () => {
 
       // The import listener triggers on matchPending, so modal should show immediately
       await waitForCondition(() => {
+        // Unjustified type cast. FIXME
         const state = store.getState() as TestState;
         return state.remoteSyncPlugin?.showModal === true;
       });
 
+      // Unjustified type cast. FIXME
       const state = store.getState() as TestState;
       expect(state.remoteSyncPlugin?.showModal).toBe(true);
       expect(state.remoteSyncPlugin?.currentTask?.sync_task_type).toBe(
@@ -245,6 +252,7 @@ describe("remote-sync-listener-middleware", () => {
       // Give middleware time to process the rejection
       await new Promise((resolve) => setTimeout(resolve, 100));
 
+      // Unjustified type cast. FIXME
       const state = store.getState() as TestState;
       expect(state.remoteSyncPlugin?.showModal).toBe(false);
       expect(state.remoteSyncPlugin?.currentTask).toBeNull();

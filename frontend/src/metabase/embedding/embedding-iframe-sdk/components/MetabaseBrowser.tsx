@@ -166,11 +166,13 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
               collectionId={view.id}
               visibleColumns={settings.collectionVisibleColumns}
               visibleEntityTypes={settings.collectionEntityTypes}
+              showDashboardQuestions={settings.collectionShowDashboardQuestions}
               pageSize={settings.collectionPageSize}
               onClick={(item) => {
                 const type = match<string, SdkBreadcrumbItemType>(item.model)
                   .with("card", () => "question")
                   .with("dataset", () => "model")
+                  // Unjustified type cast. FIXME
                   .otherwise((model) => model as SdkBreadcrumbItemType);
 
                 setCurrentView({ type, id: item.id });

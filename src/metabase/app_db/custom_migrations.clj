@@ -2215,3 +2215,25 @@
                              :where  [:and
                                       [:not= :embed_url nil]
                                       [:= :embedding_hostname nil]]})))
+
+(define-migration BackfillMfaConfirmedAt
+  ;; MFA enrollment confirmation used to live only inside the credentials JSON — encrypted at
+  ;; rest when MB_ENCRYPTION_SECRET_KEY is set, and therefore invisible to SQL. Lift it into the
+  ;; new auth_identity.confirmed_at column so enrollment state is queryable (admin visibility of
+  ;; users without 2FA; Phase 2 mfa-required). The JSON keeps working as the source for rows
+  ;; written by older code; new code writes only the column.
+  (run! (fn [{:keys [id credentials]}]
+          (let [creds        (encrypted-json-out credentials)
+                confirmed-at (when (map? creds)
+                               (try
+                                 (some-> ^String (:confirmed_at creds) java.time.OffsetDateTime/parse)
+                                 (catch Exception _ nil)))]
+            (when confirmed-at
+              (t2/query {:update :auth_identity
+                         :set    {:confirmed_at confirmed-at}
+                         :where  [:= :id id]}))))
+        (t2/reducible-query {:select [:id :credentials]
+                             :from   [:auth_identity]
+                             :where  [:and
+                                      [:= :provider "totp"]
+                                      [:= :confirmed_at nil]]})))

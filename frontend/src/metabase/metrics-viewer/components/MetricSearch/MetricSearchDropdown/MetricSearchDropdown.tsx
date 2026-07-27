@@ -93,6 +93,7 @@ export const MetricSearchDropdown = forwardRef<
       const firstElement =
         miniPickerRef.current?.querySelector('[role="menuitem"]');
       if (firstElement) {
+        // Unjustified type cast. FIXME
         (firstElement as HTMLElement).focus();
       }
       return true;
@@ -102,6 +103,7 @@ export const MetricSearchDropdown = forwardRef<
         miniPickerRef.current?.querySelectorAll('[role="menuitem"]') ?? [];
       const lastElement = elements[elements.length - 1];
       if (lastElement) {
+        // Unjustified type cast. FIXME
         (lastElement as HTMLElement).focus();
       }
       return true;

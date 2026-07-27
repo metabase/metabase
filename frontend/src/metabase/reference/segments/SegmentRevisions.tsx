@@ -117,6 +117,7 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
                             currentUser={user || {}}
                             userColor={
                               userColorAssignments[
+                                // Unjustified type cast. FIXME
                                 getIn(revision, ["user", "id"]) as string
                               ]
                             }
@@ -143,4 +144,5 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(SegmentRevisions as unknown as React.ComponentType);

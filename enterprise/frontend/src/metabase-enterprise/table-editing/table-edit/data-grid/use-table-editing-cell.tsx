@@ -46,6 +46,7 @@ export function useTableEditingCell({
         }
 
         return acc;
+        // Unjustified type cast. FIXME
       }, {} as RowCellsWithPkValue);
 
       const columnIndex = cols.findIndex((col) => col.name === columnId);

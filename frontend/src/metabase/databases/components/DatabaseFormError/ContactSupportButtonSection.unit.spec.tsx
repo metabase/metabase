@@ -22,7 +22,7 @@ const setup = (params?: SetupParams) => {
   });
 
   renderWithProviders(
-    <Route path="*" component={ContactSupportButtonSection} />,
+    <Route path="*" element={<ContactSupportButtonSection />} />,
     {
       storeInitialState,
       withRouter: true,

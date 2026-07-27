@@ -13,8 +13,8 @@ export async function* parseSSEStream(
   stream: ReadableStream<Uint8Array>,
 ): AsyncGenerator<SSEEvent> {
   const eventStream = stream
-    // TypeScript v5.9 issue - cast works around TS Uint8Array generic variance issue: https://github.com/microsoft/TypeScript/issues/62240
     .pipeThrough(
+      // TypeScript v5.9 issue - cast works around TS Uint8Array generic variance issue: https://github.com/microsoft/TypeScript/issues/62240
       new TextDecoderStream() as unknown as ReadableWritablePair<
         string,
         Uint8Array<ArrayBufferLike>
@@ -33,6 +33,7 @@ export async function* parseSSEStream(
       }
 
       try {
+        // Unjustified type cast. FIXME
         yield JSON.parse(value.data) as SSEEvent;
       } catch {
         console.warn("Skipping unparseable SSE event:", value.data);

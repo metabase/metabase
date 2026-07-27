@@ -41,6 +41,7 @@ const renderingContext: RenderingContext = {
 export const Default = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.twoScalars as any,
     renderingContext,
   },

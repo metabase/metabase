@@ -24,10 +24,10 @@ import {
   within,
 } from "__support__/ui";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { IndexRedirect, Link, Redirect, Route } from "metabase/router";
+import { Link, Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Database,
   Field,
@@ -254,26 +254,28 @@ async function setup({
 
   const { history } = renderWithProviders(
     <>
-      <Route path="notData" component={OtherComponent} />
+      <Route path="notData" element={<OtherComponent />} />
       <Route path="data-studio/data">
-        <IndexRedirect to="database" />
-        <Route path="database" component={DataModel} />
-        <Route path="database/:databaseId" component={DataModel} />
+        <Route index element={redirect("database")} />
+        <Route path="database" element={<DataModel />} />
+        <Route path="database/:databaseId" element={<DataModel />} />
         <Route
           path="database/:databaseId/schema/:schemaId"
-          component={DataModel}
+          element={<DataModel />}
         />
-        <Redirect
-          from="database/:databaseId/schema/:schemaId/table/:tableId"
-          to="database/:databaseId/schema/:schemaId/table/:tableId/details"
+        <Route
+          path="database/:databaseId/schema/:schemaId/table/:tableId"
+          element={redirect(
+            "database/:databaseId/schema/:schemaId/table/:tableId/details",
+          )}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
-          component={DataModel}
+          element={<DataModel />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/:tab/:fieldId"
-          component={DataModel}
+          element={<DataModel />}
         />
       </Route>
       <Route path="data-studio/library/segments/new" />
@@ -754,6 +756,7 @@ describe("DataModel", () => {
       });
 
       const lastCall = calls[calls.length - 1];
+      // Unjustified type cast. FIXME
       expect(JSON.parse(lastCall.options.body as string)).toEqual({
         table_ids: [ORDERS_TABLE.id],
       });
@@ -786,6 +789,7 @@ describe("DataModel", () => {
       });
 
       const lastCall = calls[calls.length - 1];
+      // Unjustified type cast. FIXME
       expect(JSON.parse(lastCall.options.body as string)).toEqual({
         table_ids: [ORDERS_TABLE.id],
       });

@@ -136,6 +136,7 @@ export const trackPublicLinkCopied = ({
   trackSchemaEvent(SCHEMA_NAME, {
     event: "public_link_copied",
     artifact,
+    // Unjustified type cast. FIXME
     format: format as any, // ExportFormatType is untyped
   });
 };

@@ -66,6 +66,7 @@ export function NavbarPromoCard({
             {linkText}
           </Anchor>
         ) : (
+          // Unjustified type cast. FIXME
           <Anchor component={Link} to={linkTo as string} size="sm" fw="bold">
             {linkText}
           </Anchor>

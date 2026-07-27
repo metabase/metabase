@@ -113,7 +113,7 @@ export async function setup(
   const view = renderWithProviders(
     <Route
       path="embed/dashboard/:token"
-      component={PublicOrEmbeddedDashboardPage}
+      element={<PublicOrEmbeddedDashboardPage />}
     />,
     {
       storeInitialState: createMockState(),

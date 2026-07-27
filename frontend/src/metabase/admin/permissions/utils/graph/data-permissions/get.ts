@@ -179,6 +179,7 @@ export const getEntityPermission = (
     return getFieldsPermission(
       permissions,
       groupId,
+      // Unjustified type cast. FIXME
       entityId as TableEntityId,
       permission,
     );
@@ -186,6 +187,7 @@ export const getEntityPermission = (
     return getTablesPermission(
       permissions,
       groupId,
+      // Unjustified type cast. FIXME
       entityId as SchemaEntityId,
       permission,
     );

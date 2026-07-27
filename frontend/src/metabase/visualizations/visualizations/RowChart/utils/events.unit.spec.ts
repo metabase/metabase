@@ -28,8 +28,11 @@ import {
 } from "./events";
 
 const datasetColumns = [
+  // Unjustified type cast. FIXME
   { name: "y", display_name: "Y" } as RemappingHydratedDatasetColumn,
+  // Unjustified type cast. FIXME
   { name: "x", display_name: "X" } as RemappingHydratedDatasetColumn,
+  // Unjustified type cast. FIXME
   { name: "x1", display_name: "X1" } as RemappingHydratedDatasetColumn,
 ];
 
@@ -149,6 +152,7 @@ describe("events utils", () => {
           barData,
           {
             "stackable.stack_type":
+              // Unjustified type cast. FIXME
               stackType as VisualizationSettings["stackable.stack_type"],
           },
           chartColumns,

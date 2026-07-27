@@ -68,6 +68,7 @@ export const ColumnsListItem = forwardRef<HTMLDivElement, ColumnsListItemProps>(
             miw={16}
           />
           <Icon
+            // Unjustified type cast. FIXME
             name={getIconForField(column) as IconName}
             mr={4}
             size={16}

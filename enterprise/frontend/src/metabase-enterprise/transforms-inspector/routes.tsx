@@ -8,11 +8,11 @@ export function getInspectorUpsellRoutes() {
     <>
       <Route
         path=":transformId/inspect"
-        component={TransformInspectorUpsellPage}
+        element={<TransformInspectorUpsellPage />}
       />
       <Route
         path=":transformId/inspect/:lensId"
-        component={TransformInspectorUpsellPage}
+        element={<TransformInspectorUpsellPage />}
       />
     </>
   );
@@ -21,10 +21,10 @@ export function getInspectorUpsellRoutes() {
 export function getInspectorRoutes() {
   return (
     <>
-      <Route path=":transformId/inspect" component={TransformInspectPage} />
+      <Route path=":transformId/inspect" element={<TransformInspectPage />} />
       <Route
         path=":transformId/inspect/:lensId"
-        component={TransformInspectPage}
+        element={<TransformInspectPage />}
       />
     </>
   );

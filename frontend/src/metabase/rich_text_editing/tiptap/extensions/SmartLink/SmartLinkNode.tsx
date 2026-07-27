@@ -512,6 +512,7 @@ export const SmartLinkComponent = memo(
         ? getIcon(cachedEntity)
         : getIcon(
             entityToObjectWithModel(
+              // Unjustified type cast. FIXME
               entity as NonNullable<typeof networkEntity>,
               model,
             ),
@@ -556,8 +557,11 @@ function entityToObjectWithModel(
   model: SuggestionModel | null,
 ): ObjectWithModel {
   return {
+    // Unjustified type cast. FIXME
     model: ((entity as Dashboard).model || model || "") as IconModel,
+    // Unjustified type cast. FIXME
     display: (entity as Card).display,
+    // Unjustified type cast. FIXME
     is_personal: (entity as Collection).is_personal,
   };
 }

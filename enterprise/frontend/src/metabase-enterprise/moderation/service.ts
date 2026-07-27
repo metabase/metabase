@@ -156,6 +156,7 @@ export function getModerationTimelineEvents(
 export const getQuestionIcon = (card: any) => {
   return (card.model === "dataset" || card.type === "model") &&
     card.moderated_status === "verified"
-    ? { icon: "model_with_badge" as IconName, tooltip: "Verified model" }
+    ? // Unjustified type cast. FIXME
+      { icon: "model_with_badge" as IconName, tooltip: "Verified model" }
     : null;
 };

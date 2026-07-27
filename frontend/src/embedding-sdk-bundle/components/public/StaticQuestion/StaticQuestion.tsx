@@ -32,13 +32,13 @@ import {
 import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/notifications/QuestionAlertsButton";
 import { useMobileLayout } from "embedding-sdk-bundle/hooks/private/use-mobile-layout";
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
+import { resolveDeserializedCard } from "embedding-sdk-bundle/lib/sdk-question/resolve-deserialized-card";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type {
   SdkQuestionEntityInternalProps,
   SdkQuestionEntityPublicProps,
 } from "embedding-sdk-bundle/types/question";
-import { deserializeCardFromQuery } from "metabase/common/utils/card";
 import { Box, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
@@ -107,10 +107,12 @@ const StaticQuestionInner = (
   props: StaticQuestionInternalProps,
 ): JSX.Element | null => {
   const query = props.query;
+  const card = props.card;
 
   // Normalize props for Guest Embed usage (e.g. enforce withDownloads in OSS).
   const normalizedProps =
     useNormalizeGuestEmbedQuestionOrDashboardComponentProps(
+      // Unjustified type cast. FIXME
       props as StaticQuestionProps,
     );
 
@@ -154,8 +156,8 @@ const StaticQuestionInner = (
   );
 
   const deserializedCard = useMemo(
-    () => (query ? deserializeCardFromQuery(query) : undefined),
-    [query],
+    () => resolveDeserializedCard({ card, query }),
+    [card, query],
   );
 
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
@@ -271,6 +273,7 @@ const _StaticQuestionWrapped = withPublicComponentWrapper(StaticQuestionInner, {
 });
 
 export const StaticQuestion = Object.assign(
+  // Unjustified type cast. FIXME
   _StaticQuestionWrapped as FC<StaticQuestionProps>,
   subComponents,
   { schema: staticQuestionSchema },
@@ -281,6 +284,7 @@ export const StaticQuestion = Object.assign(
  * internal `query` prop. This component is intended for internal use only.
  */
 export const StaticQuestionInternal = Object.assign(
+  // Unjustified type cast. FIXME
   _StaticQuestionWrapped as FC<StaticQuestionInternalProps>,
   subComponents,
   { schema: staticQuestionSchema },

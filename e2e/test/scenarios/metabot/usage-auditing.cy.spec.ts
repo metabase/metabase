@@ -27,6 +27,9 @@ type UsageAuditingTenants = {
   robertTenant: UsageAuditingTenant;
 };
 
+// must match the title seeded by testing_api/api.clj
+const SEEDED_CONVERSATION_TITLE = "E2E usage auditing conversation";
+
 const METRIC_TAB_NAMES: Record<UsageStatsMetric, string> = {
   conversations: "Conversations",
   messages: "Messages",
@@ -395,7 +398,7 @@ function openConversationFromProfile(profileLabel: string): void {
 
 function assertConversationDetailProfile(profileLabel: string): void {
   H.main().within(() => {
-    cy.findByRole("heading", { name: /Conversation with/ }).should(
+    cy.findByRole("heading", { name: SEEDED_CONVERSATION_TITLE }).should(
       "be.visible",
     );
     cy.findByText(profileLabel).should("be.visible");

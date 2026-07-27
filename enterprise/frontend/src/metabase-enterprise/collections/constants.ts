@@ -56,4 +56,5 @@ export const COLLECTION_TYPES: Record<
 };
 
 export const CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID =
+  // Unjustified type cast. FIXME
   "okNLSZKdSxaoG58JSQY54" as BaseEntityId;

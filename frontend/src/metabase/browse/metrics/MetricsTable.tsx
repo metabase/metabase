@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { type MouseEvent, useCallback, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import {
@@ -15,7 +14,6 @@ import { SortableColumnHeader } from "metabase/common/components/ItemsTable/Base
 import {
   ColumnHeader,
   ItemNameCell,
-  MaybeItemLink,
   TBody,
   Table,
   TableColumn,
@@ -25,6 +23,7 @@ import type { ResponsiveProps } from "metabase/common/components/ItemsTable/util
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   Button,
   FixedSizeIcon,
@@ -229,36 +228,28 @@ function preventDefault(event: MouseEvent) {
 
 function NameCell({ metric }: { metric?: MetricResult }) {
   const headingId = `metric-${metric?.id ?? "dummy"}-heading`;
-
   return (
     <ItemNameCell
       data-testid="metric-name"
       aria-labelledby={headingId}
       {...nameProps}
     >
-      <MaybeItemLink
-        to={
-          metric
-            ? Urls.metric({ id: metric.id, name: metric.name, type: "metric" })
-            : undefined
-        }
-        style={{
-          // To align the icons with "Name" in the <th>
-          paddingInlineStart: "1.4rem",
-          paddingInlineEnd: ".5rem",
-        }}
-        onClick={preventDefault}
-      >
+      <Flex align="center" gap="0.5rem" ps="1.4rem" pe="0.5rem">
         {metric ? (
-          <EntityItem.Name
-            name={metric?.name || ""}
-            variant="list"
-            id={headingId}
-          />
+          <Link
+            to={Urls.metric({
+              id: metric.id,
+              name: metric.name,
+              type: "metric",
+            })}
+            onClick={preventDefault}
+          >
+            <EntityItem.Name name={metric.name} variant="list" id={headingId} />
+          </Link>
         ) : (
           <SkeletonText />
         )}
-      </MaybeItemLink>
+      </Flex>
     </ItemNameCell>
   );
 }

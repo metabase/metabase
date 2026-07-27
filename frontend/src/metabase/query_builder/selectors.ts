@@ -827,6 +827,7 @@ export const getTimeseriesXDomain = createSelector(
   [getIsTimeseries, getTimeseriesXValues],
   (isTimeseries, xValues) => {
     if (isTimeseries && Array.isArray(xValues) && xValues.length > 0) {
+      // Unjustified type cast. FIXME
       return d3.extent(xValues as Array<d3.Numeric>) as Domain<dayjs.Dayjs>;
     }
     return null;
@@ -891,6 +892,7 @@ function getXDomainForTimelines<T extends Numeric>(
       maxValue = maxValue.subtract(1, "day");
     }
 
+    // Unjustified type cast. FIXME
     return [xDomain[0], maxValue as T];
   }
 

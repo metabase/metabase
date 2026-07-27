@@ -3,6 +3,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   Card,
   ConcreteFieldReference,
+  DashboardId,
   StructuredQuery,
 } from "metabase-types/api";
 
@@ -724,10 +725,8 @@ export function goBackToDashboard() {
   cy.findByTestId("dashboard-grid").should("be.visible");
 }
 
-export function getDashboardId(): Cypress.Chainable<number> {
-  return cy
-    .get("@dashboardId")
-    .then((dashboardId) => dashboardId as unknown as number);
+export function getDashboardId(): Cypress.Chainable<DashboardId> {
+  return cy.get<DashboardId>("@dashboardId").then((dashboardId) => dashboardId);
 }
 
 export function waitForPublicDashboardData(requestCount: number) {

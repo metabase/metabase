@@ -12,7 +12,7 @@ const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 function setup() {
   setupDeleteCurrentWorkspaceEndpoint();
 
-  renderWithProviders(<Route path="*" component={DeleteSection} />, {
+  renderWithProviders(<Route path="*" element={<DeleteSection />} />, {
     withRouter: true,
   });
 }

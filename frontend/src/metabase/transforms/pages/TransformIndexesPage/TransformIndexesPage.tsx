@@ -13,6 +13,8 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { useParams } from "metabase/router";
+import { trackTransformIndexDeleted } from "metabase/transforms/analytics";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -27,13 +29,12 @@ import { NoIndexes } from "./NoIndexes";
 import { TransformIndexTable } from "./TransformIndexTable";
 import { getKindLabels } from "./TransformIndexTable/utils";
 
-type TransformIndexesPageProps = {
-  params: {
-    transformId?: string;
-  };
+type TransformIndexesPageParams = {
+  transformId: string;
 };
 
-export function TransformIndexesPage({ params }: TransformIndexesPageProps) {
+export function TransformIndexesPage() {
+  const params = useParams<TransformIndexesPageParams>();
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     data: transform,
@@ -137,10 +138,11 @@ function useDeleteIndex() {
     useConfirmation();
 
   function deleteIndex(index: TableIndexEntry) {
-    const requestId = index.request?.id;
-    if (requestId == null) {
+    const request = index.request;
+    if (request == null) {
       return;
     }
+    const { id: requestId, transform_id: transformId, structured } = request;
     showConfirmation({
       title: t`Delete this index?`,
       message: t`This removes the index from the warehouse.`,
@@ -149,8 +151,18 @@ function useDeleteIndex() {
       onConfirm: async () => {
         try {
           await deleteTableIndex(requestId).unwrap();
+          trackTransformIndexDeleted({
+            transformId,
+            kind: structured.kind,
+            result: "success",
+          });
           sendToast({ message: t`Index deleted` });
         } catch (deleteError) {
+          trackTransformIndexDeleted({
+            transformId,
+            kind: structured.kind,
+            result: "failure",
+          });
           sendToast({
             message: getErrorMessage(deleteError, t`Failed to delete index`),
             icon: "warning",

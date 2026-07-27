@@ -41,6 +41,13 @@
            (and (api/is-data-analyst?)
                 (apply transforms.u/source-tables-readable? instance args)))))
 
+(defn- native-transform-write-allowed?
+  [instance source-db-id]
+  (or (not (transforms-base.u/native-query-transform? instance))
+      (and source-db-id
+           (= :query-builder-and-native
+              (perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries source-db-id)))))
+
 (defn- transform-writable?
   "Whether the current user can write `instance`. Any extra `args` (an optional `models-cache`) are
   passed through to the source-readability check, as in `transform-readable?`."
@@ -49,7 +56,8 @@
        (transforms.u/check-feature-enabled instance)
        (or api/*is-superuser?*
            (and (apply transform-readable? instance args)
-                (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))))))
+                (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))
+                (native-transform-write-allowed? instance (:source_database_id instance))))))
 
 (defmethod mi/can-read? :model/Transform
   ([instance]
@@ -83,7 +91,8 @@
            (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
              (and api/*is-data-analyst?*
                   (transforms.u/source-tables-readable? instance)
-                  (perms/has-db-transforms-permission? api/*current-user-id* source-db-id))))))
+                  (perms/has-db-transforms-permission? api/*current-user-id* source-db-id)
+                  (native-transform-write-allowed? instance source-db-id))))))
 
 (defn- orphan-query?
   "True when the query map has its `:database` key explicitly set to nil — the
@@ -424,10 +433,6 @@
     (for [transform transforms]
       (assoc transform :table
              (get id->table (:target_table_id transform))))))
-
-(defmethod serdes/hash-fields :model/Transform
-  [_transform]
-  [:name :created_at])
 
 (defn- import-maybe-int-database-fk
   "Import a database reference back to an ID. Tolerates raw numeric IDs from older exports

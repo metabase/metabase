@@ -1,10 +1,10 @@
-import type { LocationDescriptor } from "history";
-import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { connect } from "metabase/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
+import type { LocationDescriptor } from "metabase/router";
+import { replace } from "metabase/router";
 
 type DispatchProps = {
   refreshCurrentUser: () => any;

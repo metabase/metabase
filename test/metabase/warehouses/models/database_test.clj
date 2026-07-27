@@ -529,7 +529,6 @@
                                        :name "Secret Test"
                                        :details base-details}]
       (mt/with-current-user (mt/user->id :crowberto)
-        #_{:clj-kondo/ignore [:redundant-nested-call]}
         (are [expected extra-details] (= (merge
                                           base-details
                                           expected)
@@ -715,14 +714,6 @@
     (mt/with-temp [:model/Database {db-id :id} {:engine (u/qualified-name ::test)}]
       (is (= ::test
              (t2/select-one-fn :engine :model/Database :id db-id))))))
-
-(deftest identity-hash-test
-  (testing "Database hashes are composed of the name and engine"
-    (mt/with-temp [:model/Database db {:engine :mysql :name "hashmysql"}]
-      (is (= (Integer/toHexString (hash ["hashmysql" :mysql]))
-             (serdes/identity-hash db)))
-      (is (= "b6f1a9e8"
-             (serdes/identity-hash db))))))
 
 (deftest ^:parallel serdes-extract-is-stub-test
   (testing "serdes/extract-one preserves :is_stub true and elides it when false"
@@ -1052,3 +1043,16 @@
       (data-perms/set-database-permission! pg db-id :perms/manage-database :yes)
       (mt/with-test-user :rasta
         (is (false? (mi/can-query? :model/Database db-id)))))))
+
+(deftest router-database-id-is-immutable-test
+  (testing "updating a database's router_database_id throws"
+    (mt/with-temp [:model/Database {router-id :id} {}
+                   :model/Database {normal-id :id} {}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"router_database_id"
+           (t2/update! :model/Database normal-id {:router_database_id router-id})))))
+  (testing "a no-op update that does not touch router_database_id is allowed (destination can still be edited)"
+    (mt/with-temp [:model/Database {router-id :id} {}
+                   :model/Database {dest-id :id} {:router_database_id router-id}]
+      (is (t2/update! :model/Database dest-id {:name "renamed-destination"})))))

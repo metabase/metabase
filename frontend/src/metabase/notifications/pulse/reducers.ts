@@ -50,6 +50,7 @@ export const formInput = handleActions(
       ) => payload,
     },
   },
+  // Unjustified type cast. FIXME
   {} as ChannelApiResponse,
 );
 
@@ -62,5 +63,6 @@ export const pulseList = handleActions(
       ) => payload,
     },
   },
+  // Unjustified type cast. FIXME
   [] as DashboardSubscription[],
 );

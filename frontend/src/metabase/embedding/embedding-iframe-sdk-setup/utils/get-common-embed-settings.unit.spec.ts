@@ -10,6 +10,7 @@ jest.mock("metabase/plugins", () => ({
 }));
 
 const mockIsPluginEnabled = (enabled: boolean) => {
+  // Unjustified type cast. FIXME
   (PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled as jest.Mock).mockReturnValue(
     enabled,
   );

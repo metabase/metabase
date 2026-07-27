@@ -86,7 +86,7 @@ async function setup({
 
   const path = Urls.transformJobList();
   const { history } = renderWithProviders(
-    <Route path={path} component={JobListPage} />,
+    <Route path={path} element={<JobListPage />} />,
     {
       withRouter: true,
       initialRoute: path,

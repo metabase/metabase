@@ -124,9 +124,9 @@ export function setup({
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <SegmentDetailPage
-          route={{ path: "/" } as never}
+          // Unjustified type cast. FIXME
           segment={segment}
           tabUrls={tabUrls}
           breadcrumbs={
@@ -134,7 +134,7 @@ export function setup({
           }
           onRemove={onRemove}
         />
-      )}
+      }
     />,
     {
       withRouter: true,

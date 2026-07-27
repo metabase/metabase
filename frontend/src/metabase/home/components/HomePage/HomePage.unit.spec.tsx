@@ -40,8 +40,8 @@ const setup = async ({ dashboardId }: SetupOpts = {}) => {
 
   renderWithProviders(
     <>
-      <Route path="/" component={HomePage} />
-      <Route path="/dashboard/:slug" component={TestDashboard} />
+      <Route path="/" element={<HomePage />} />
+      <Route path="/dashboard/:slug" element={<TestDashboard />} />
     </>,
     {
       withRouter: true,

@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { focusOutlineStyle } from "metabase/common/style/input";
+import { focusOutlineStyle } from "metabase/common/style/focus-outline";
 
 interface TextAreaRootProps {
   readOnly?: boolean;

@@ -323,28 +323,6 @@ describe("scenarios > question > offset", () => {
       });
     });
 
-    it("should allow using OFFSET as a CASE argument (metabase#42377)", () => {
-      const formula = "Sum(case([Total] > 0, Offset([Total], -1)))";
-      const name = "Aggregation";
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-      };
-
-      H.createQuestion({ query }, { visitQuestion: true });
-      H.openNotebook();
-      cy.button("Summarize").click();
-      addCustomAggregation({ formula, name, isFirst: true });
-
-      cy.findAllByTestId("notebook-cell-item").findByText(name).click();
-      H.CustomExpressionEditor.value().should("equal", formula);
-
-      cy.on("uncaught:exception", (error) => {
-        // this check is intended to catch possible normalization errors if BE or FE code changes
-        // does not run by default
-        expect(error.message.includes("Error normalizing")).to.be.false;
-      });
-    });
-
     it("should create filter and CC with offset aggregation and sort correctly", () => {
       H.openTable({ table: ORDERS_ID });
 

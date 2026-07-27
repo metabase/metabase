@@ -52,6 +52,7 @@ function resolveEmbeddingSdkPackage(): ResolvedSdkPackage {
       "utf-8",
     );
     embeddingSdkPackageVersion = JSON.stringify(
+      // Unjustified type cast. FIXME
       (JSON.parse(packageJsonContent) as { version: string }).version,
     );
   } catch {
@@ -61,6 +62,7 @@ function resolveEmbeddingSdkPackage(): ResolvedSdkPackage {
       ),
       "utf-8",
     );
+    // Unjustified type cast. FIXME
     const sdkPackageTemplateJsonContent = JSON.parse(
       sdkPackageTemplateJson,
     ) as { version: string };

@@ -12,10 +12,10 @@ import {
   SidesheetCardTitle,
   SidesheetTabPanelContainer,
 } from "metabase/common/components/Sidesheet";
-import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/components/InsightsTabOrLink";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetStyles from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
+import { InsightsTabOrLink } from "metabase/common/components/upsells/components/InsightsTabOrLink";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
 import { useDispatch } from "metabase/redux";

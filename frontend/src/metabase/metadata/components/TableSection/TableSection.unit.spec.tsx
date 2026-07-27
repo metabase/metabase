@@ -16,7 +16,7 @@ function setup({ table = createMockTable(), fieldId }: SetupOpts = {}) {
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <TableSection
           table={table}
           fieldId={fieldId}
@@ -24,7 +24,7 @@ function setup({ table = createMockTable(), fieldId }: SetupOpts = {}) {
           getFieldHref={(fieldId) => `/field/${fieldId}`}
           onSyncOptionsClick={onSyncOptionsClick}
         />
-      )}
+      }
     />,
     { withRouter: true },
   );

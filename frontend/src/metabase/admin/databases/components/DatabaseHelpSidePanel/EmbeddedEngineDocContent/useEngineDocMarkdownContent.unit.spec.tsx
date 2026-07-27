@@ -42,6 +42,7 @@ describe("useEngineDocMarkdownContent", () => {
   describe("when markdown content fails to load", () => {
     it("should set loadingError and return undefined markdownContent", async () => {
       const { result } = renderHook(() =>
+        // Unjustified type cast. FIXME
         useEngineDocMarkdownContent("invalid-engine" as EngineKey),
       );
       await waitFor(() => {

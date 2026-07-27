@@ -844,6 +844,7 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(within(rhsColumnPicker).getByText("Rating"));
 
       const { query, fields } = getRecentJoin();
+      // Unjustified type cast. FIXME
       const columns = fields as Lib.ColumnMetadata[];
       const reviewer = columns.find(
         (column) => Lib.displayInfo(query, 0, column).name === "REVIEWER",
@@ -934,6 +935,7 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(within(picker).getByText("Vendor"));
 
       const { query, fields } = getRecentJoin();
+      // Unjustified type cast. FIXME
       const columns = fields as Lib.ColumnMetadata[];
       const vendor = columns.find(
         (column) => Lib.displayInfo(query, 0, column).name === "VENDOR",

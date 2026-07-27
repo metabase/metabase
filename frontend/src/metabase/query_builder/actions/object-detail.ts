@@ -142,6 +142,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
         const aggregatedQuery = Lib.aggregateByCount(baseQuery, -1);
         const query = filterByFk(
           aggregatedQuery,
+          // Unjustified type cast. FIXME
           fk.origin.getPlainObject() as Field,
           objectId,
         );

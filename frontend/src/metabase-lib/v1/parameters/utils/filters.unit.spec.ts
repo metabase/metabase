@@ -176,6 +176,7 @@ function createMockDimension(
   const dimension = new TemplateTagDimension(
     "tag",
     metadata,
+    // Unjustified type cast. FIXME
     question.legacyNativeQuery() as NativeQuery,
   );
   return Object.assign(dimension, mocks);

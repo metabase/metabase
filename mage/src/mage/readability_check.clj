@@ -70,10 +70,10 @@
                       ])
            %))
    [1 3 4 5])
-;; => [[1 {:start 1, :end 2}]
-;;     [3 {:start 2, :end 4}]
-;;     [4 {:start 4, :end 7}]
-;;     [5 {:start 4, :end 7}]]
+  ;; => [[1 {:start 1, :end 2}]
+  ;;     [3 {:start 2, :end 4}]
+  ;;     [4 {:start 4, :end 7}]
+  ;;     [5 {:start 4, :end 7}]]
   )
 
 (defn- read-check-problem [reason]
@@ -124,7 +124,6 @@
                                                               corpus)))
                            :starting-at (nth lines (dec start))
                            :ending-at (nth lines (dec (dec end))))]
-               #_:clj-kondo/ignore
                (pprint/pprint result)
                result))
            (catch Exception e

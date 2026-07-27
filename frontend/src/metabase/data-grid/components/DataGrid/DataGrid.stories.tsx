@@ -18,6 +18,7 @@ import { Checkbox, Flex } from "metabase/ui";
 import { DataGrid } from "./DataGrid";
 import classes from "./DataGrid.module.css";
 
+// Unjustified type cast. FIXME
 export default {
   title: "DataGrid/DataGrid",
   component: DataGrid,

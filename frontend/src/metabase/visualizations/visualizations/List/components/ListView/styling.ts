@@ -21,9 +21,11 @@ export const ENTITY_ICONS = {
 } satisfies Record<string, IconName>;
 
 export const getEntityIcon = (entityType?: string) => {
+  // Unjustified type cast. FIXME
   return (
     entityType
-      ? ENTITY_ICONS[entityType as keyof typeof ENTITY_ICONS] || "document"
+      ? // Unjustified type cast. FIXME
+        ENTITY_ICONS[entityType as keyof typeof ENTITY_ICONS] || "document"
       : "document"
   ) as IconName;
 };

@@ -1,9 +1,9 @@
-import type { Location } from "history";
 import { getIn } from "icepick";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import type { SelectedTabId } from "metabase/redux/store";
+import type { Location } from "metabase/router";
 import {
   isQuestionDashCard,
   isVirtualDashCard,
@@ -58,6 +58,7 @@ export function syncParametersAndEmbeddingParams(before: any, after: any) {
         }
       }
       return memo;
+      // Unjustified type cast. FIXME
     }, {} as any);
   } else {
     return before.embedding_params;
@@ -76,6 +77,7 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
       ...dashcard,
       id: _.uniqueId("dashcard"),
       card: expandInlineCard(dashcard?.card),
+      // Unjustified type cast. FIXME
       series: ((dashcard as any).series || []).map((card: Card) =>
         expandInlineCard(card),
       ),
@@ -141,6 +143,7 @@ export function findDashCardForInlineParameter(
   parameterId: ParameterId,
   dashcards: BaseDashboardCard[],
 ): DashboardCardWithInlineFilters | undefined {
+  // Unjustified type cast. FIXME
   return dashcards.find((dashcard) => {
     if (hasInlineParameters(dashcard)) {
       return dashcard.inline_parameters.some((id) => id === parameterId);
@@ -197,6 +200,7 @@ export function showVirtualDashCardInfoText(
 export function getAllDashboardCards(dashboard: Dashboard) {
   const results = [];
   for (const dashcard of dashboard.dashcards) {
+    // Unjustified type cast. FIXME
     const cards = [dashcard.card].concat((dashcard as any).series || []);
     results.push(...cards.map((card) => ({ card, dashcard })));
   }
@@ -276,6 +280,7 @@ export function getDashcardResultsError(
     return permissionError;
   }
 
+  // Unjustified type cast. FIXME
   const staticEntityLoadingError = datasets.find((dataset) =>
     isStaticEmbeddingEntityLoadingError(dataset.error, {
       isGuestEmbed,
@@ -523,6 +528,7 @@ export function getClickBehaviorDescription(dashcard: DashboardCard) {
     return noBehaviorMessage;
   }
 
+  // Unjustified type cast. FIXME
   const clickBehavior = dashcard.visualization_settings
     .click_behavior as ClickBehavior;
 

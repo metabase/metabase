@@ -37,6 +37,7 @@ export function useExternalDragOverlay({
   >(null);
 
   const handleDragStart = (event: DragStartEvent) => {
+    // Unjustified type cast. FIXME
     setActivePillId(event.active.id as string);
   };
 
@@ -61,6 +62,7 @@ export function useExternalDragOverlay({
     }
 
     const activeId = String(active.id);
+    // Unjustified type cast. FIXME
     const from = active.data?.current?.containerId as ContainerId | undefined;
 
     if (!from) {
@@ -73,6 +75,7 @@ export function useExternalDragOverlay({
 
     // Check if we're dropping on an item (has containerId)
     if (over.data?.current?.containerId) {
+      // Unjustified type cast. FIXME
       to = over.data.current.containerId as ContainerId;
       const toList = to === "left" ? leftValues : rightValues;
       overIndexInTo = toList.indexOf(String(over.id));

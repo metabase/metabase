@@ -154,4 +154,5 @@ class TableList extends Component<TableListProps> {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(TableList as unknown as React.ComponentType);

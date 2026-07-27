@@ -63,6 +63,7 @@ export function setup({
 
   const state = createMockState({
     settings: mockSettings(settingValues),
+    // Unjustified type cast. FIXME
     currentUser: {
       ...user,
       permissions: {

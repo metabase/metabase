@@ -25,6 +25,7 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
+;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
 (t2/deftransforms :model/NativeQuerySnippet
   {:template_tags {:in mi/json-in
                    :out (comp (mi/catch-normalization-exceptions
@@ -60,7 +61,9 @@
                                      (filter snippet-tag?)
                                      (map (juxt :snippet-name identity)))
                             old-tags)
-        new-tags (lib/recognize-template-tags (:content snippet))
+        new-tags (into {}
+                       (map (juxt :name identity))
+                       (lib/recognize-template-tags (:content snippet)))
         set-snippet-id (fn [{:keys [snippet-name] :as tag}]
                          ;; Check for exact match in database:
                          (if-let [snippet-id (t2/select-one-fn :id :model/NativeQuerySnippet
@@ -106,10 +109,6 @@
   [snippet]
   (u/prog1 snippet
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
-
-(defmethod serdes/hash-fields :model/NativeQuerySnippet
-  [_snippet]
-  [:name (serdes/hydrated-hash :collection) :created_at])
 
 (defmethod mi/can-read? :model/NativeQuerySnippet
   [& args]

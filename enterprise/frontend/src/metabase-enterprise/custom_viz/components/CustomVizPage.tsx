@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from "react";
-import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 import * as Yup from "yup";
 
@@ -16,6 +15,7 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   Box,
   Button,

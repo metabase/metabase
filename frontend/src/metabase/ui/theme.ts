@@ -86,7 +86,8 @@ export const getThemeOverrides = (
     colorScheme,
   },
   shadows: {
-    xs: "0 0 0 0.5px var(--mb-color-border-neutral), 0 1px 2px 0 var(--mb-color-shadow-default)",
+    // eslint-disable-next-line metabase/no-color-literals
+    xs: "0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 1px 3px 0 rgba(0, 0, 0, 0.07)",
     // eslint-disable-next-line metabase/no-color-literals
     sm: "0px 1px 4px 2px rgba(0, 0, 0, 0.08)",
     // eslint-disable-next-line metabase/no-color-literals

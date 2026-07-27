@@ -225,6 +225,7 @@ export const Onboarding = () => {
             label: S.label,
           }}
           onChange={(value: string | null) =>
+            // Unjustified type cast. FIXME
             handleValueChange(value as ChecklistItemValue | null)
           }
         >

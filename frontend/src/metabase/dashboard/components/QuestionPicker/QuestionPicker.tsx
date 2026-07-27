@@ -6,7 +6,6 @@ import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
 import { isPublicCollection } from "metabase/common/collections/utils";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
-import { Input } from "metabase/common/components/Input";
 import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
@@ -22,7 +21,7 @@ import {
   canUserCreateQueries,
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
-import { Button, Flex, Icon } from "metabase/ui";
+import { Button, Flex, Icon, Input, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { Collection, CollectionId } from "metabase-types/api";
 
@@ -44,6 +43,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
   const baseCollectionsById = useMemo(
     () =>
+      // Unjustified type cast. FIXME
       getExpandedCollectionsById(
         allCollectionsList,
         userPersonalCollectionId,
@@ -92,14 +92,21 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
   const onNewNativeQuestion = () => dispatch(addDashboardQuestion("native"));
   return (
     <div className={S.questionPickerRoot}>
-      <Input
+      <TextInput
         className={S.searchInput}
-        fullWidth
         autoFocus
         data-autofocus
         placeholder={t`Search…`}
         value={searchText}
-        onResetClick={() => setSearchText("")}
+        rightSectionPointerEvents="all"
+        rightSection={
+          searchText.length > 0 ? (
+            <Input.ClearButton
+              c="text-secondary"
+              onClick={() => setSearchText("")}
+            />
+          ) : null
+        }
         onChange={handleSearchTextChange}
       />
 

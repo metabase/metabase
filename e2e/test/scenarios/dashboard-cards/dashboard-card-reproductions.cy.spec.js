@@ -1665,3 +1665,37 @@ describe("issue 63416", () => {
     });
   });
 });
+
+describe("issue 76056", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+
+    H.createDashboard().then(({ body: dashboard }) => {
+      H.visitDashboard(dashboard.id);
+    });
+  });
+
+  it("the dashcard actions panel should not have redundant horizontal space (metabase#76056)", () => {
+    H.editDashboard();
+    cy.button("Add action").click();
+    cy.button("Close").click();
+
+    H.showDashboardCardActions();
+
+    cy.findByTestId("dashboardcard-actions-panel")
+      .should("be.visible")
+      .then(($panel) => {
+        const panelRect = $panel[0].getBoundingClientRect();
+        const buttonRects = Array.from($panel[0].querySelectorAll("a")).map(
+          (button) => button.getBoundingClientRect(),
+        );
+        const maxRight = Math.max(...buttonRects.map((rect) => rect.right));
+        const minLeft = Math.min(...buttonRects.map((rect) => rect.left));
+        const contentWidth = maxRight - minLeft;
+
+        expect(panelRect.width).to.be.closeTo(contentWidth, 10);
+      });
+  });
+});

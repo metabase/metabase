@@ -64,12 +64,13 @@
 (deftest ^:parallel format-viewing-context-test
   (let [mp meta/metadata-provider]
     (testing "formats adhoc notebook (MBQL) query context"
-      (is (=? (re-pattern
-               (format "(?s).*notebook editor.*Database ID: %d.*"
-                       (meta/id)))
-              (user-context/format-viewing-context
-               {:user_is_viewing [{:type  "adhoc"
-                                   :query (lib/query mp (lib.metadata/table mp (meta/id :venues)))}]}))))
+      (mt/with-test-user :crowberto
+        (is (=? (re-pattern
+                 (format "(?s).*notebook editor.*Database ID: %d.*"
+                         (meta/id)))
+                (user-context/format-viewing-context
+                 {:user_is_viewing [{:type  "adhoc"
+                                     :query (lib/query mp (lib.metadata/table mp (meta/id :venues)))}]})))))
     (testing "formats adhoc native SQL query from frontend (type: adhoc, query.type: native)"
       (let [result (user-context/format-viewing-context
                     {:user_is_viewing [{:type       "adhoc"
@@ -277,13 +278,11 @@
             result (user-context/enrich-context-for-template context)]
         (is (contains? result :current_time))
         (is (contains? result :first_day_of_week))
-        (is (contains? result :sql_dialect))
         (is (contains? result :current_user_info))
         (is (contains? result :viewing_context))
         (is (contains? result :recent_views))
         (is (string? (:current_time result)))
         (is (= "Monday" (:first_day_of_week result)))
-        (is (= "postgresql" (:sql_dialect result)))
         (is (= "<user>Jane Doe</user>" (:current_user_info result)))
         (is (string? (:viewing_context result)))
         (is (string? (:recent_views result))))))
@@ -297,7 +296,6 @@
                                            :id 123
                                            :name "users"}]}
           result (user-context/enrich-context-for-template context)]
-      (is (= "postgresql" (:sql_dialect result)))
       (is (re-find #"SQL editor" (:viewing_context result)))
       (is (re-find #"SELECT \* FROM users" (:viewing_context result)))))
   (testing "uses default first_day_of_week when not provided"
@@ -309,7 +307,6 @@
           result (user-context/enrich-context-for-template context)]
       (is (some? (:current_time result)))
       (is (= "Sunday" (:first_day_of_week result)))
-      (is (nil? (:sql_dialect result)))
       (is (= "" (:viewing_context result)))
       (is (= "" (:recent_views result))))))
 
@@ -476,3 +473,31 @@
           (is (string? text))
           (is (re-find #"\"mbql.stage/native\"" text))
           (is (re-find #"SELECT \* FROM VENUES" text)))))))
+
+(deftest ^:parallel adhoc-viewing-context-includes-query-test
+  (testing "adhoc viewing context renders the query so the model can see the chart"
+    (let [out (user-context/format-viewing-context
+               {:user_is_viewing
+                [{:type  "adhoc"
+                  :query {:type "query" :query {:source-table 1}}}]})]
+      (is (str/includes? out "notebook editor"))
+      (is (str/includes? out "source-table")))))
+
+(deftest adhoc-viewing-context-read-checks-database-test
+  (let [viewing (fn [db-id]
+                  {:user_is_viewing [{:type  "adhoc"
+                                      :query {:database db-id
+                                              :type     "query"
+                                              :query    {:source-table (mt/id :venues)}}}]})]
+    (testing "renders the query when the user can read its database"
+      (mt/with-test-user :crowberto
+        (let [out (user-context/format-viewing-context (viewing (mt/id)))]
+          (is (str/includes? out "notebook editor"))
+          (is (str/includes? out "source-table")))))
+    (testing "omits the query when the user cannot read its database"
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-test-user :rasta
+            (let [out (user-context/format-viewing-context (viewing db-id))]
+              (is (str/includes? out "notebook editor"))
+              (is (not (str/includes? out "source-table"))))))))))

@@ -73,6 +73,7 @@ const setup = ({ table, remoteSyncType, onMoved }: SetupOpts = {}) => {
       id: 1,
       db_id: 1,
       schema: "PUBLIC",
+      // Unjustified type cast. FIXME
       collection_id: dataCollection.id as number,
     });
 
@@ -117,6 +118,7 @@ const setup = ({ table, remoteSyncType, onMoved }: SetupOpts = {}) => {
     collection: { id: 6464 },
     collectionItems: [
       createMockCollectionItem({
+        // Unjustified type cast. FIXME
         id: dataCollection.id as number,
         name: dataCollection.name,
         model: "collection",
@@ -134,11 +136,13 @@ const setup = ({ table, remoteSyncType, onMoved }: SetupOpts = {}) => {
     collection: dataCollection,
     collectionItems: [
       createMockCollectionItem({
+        // Unjustified type cast. FIXME
         id: destinationCollection.id as number,
         name: destinationCollection.name,
         model: "collection",
         type: destinationCollection.type,
         can_write: destinationCollection.can_write,
+        // Unjustified type cast. FIXME
         collection_id: dataCollection.id as number,
         location: "/6464/10/",
         here: ["table"],
@@ -151,7 +155,7 @@ const setup = ({ table, remoteSyncType, onMoved }: SetupOpts = {}) => {
   renderWithProviders(
     <Route
       path="/"
-      component={() => <TableMoreMenu table={tableData} onMoved={onMoved} />}
+      element={<TableMoreMenu table={tableData} onMoved={onMoved} />}
     />,
     {
       withRouter: true,
@@ -240,6 +244,7 @@ describe("TableMoreMenu", () => {
       model: "table",
       name: "Orders",
       database_id: 1,
+      // Unjustified type cast. FIXME
       collection_id: dataCollection.id as number,
     });
 

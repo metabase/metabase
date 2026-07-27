@@ -344,7 +344,7 @@
 ;; ### Database Deletion (orphans transforms)
 ;; Transforms whose `source_database_id` matches the database being deleted survive the delete
 ;; but their existing `analysis_finding` rows still say "OK". Mark them stale here so the entity-check
-;; job re-runs and surfaces them on `/data-studio/dependency-diagnostics/broken`.
+;; job re-runs and surfaces them on `/monitor/dependency-diagnostics/broken`.
 (defenterprise mark-transforms-stale-on-database-delete!
   "Enterprise implementation: mark all transforms whose source database is being deleted as stale
    for dependency re-analysis. See the OSS declaration in `metabase.warehouses.models.database`."

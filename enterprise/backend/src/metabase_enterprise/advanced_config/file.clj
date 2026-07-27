@@ -96,6 +96,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [environ.core :as env]
+   [medley.core :as m]
    [metabase-enterprise.advanced-config.file.api-keys]
    [metabase-enterprise.advanced-config.file.databases]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
@@ -161,15 +162,22 @@
 (defn- path
   "Path for the YAML config file Metabase should use for initialization and Settings values."
   ^java.nio.file.Path []
-  (let [path* (or (some-> (get *env* :mb-config-file-path) u.files/get-path)
-                  (u.files/get-path (System/getProperty "user.dir") "config.yml"))]
-    (if (u.files/exists? path*)
-      (log/info (u/format-color :magenta
-                                "Found config file at path %s; Metabase will be initialized with values from this file"
-                                (pr-str (str path*)))
-                (u/emoji "🗄️"))
-      (log/info (u/format-color :yellow "No config file found at path %s" (pr-str (str path*)))))
-    path*))
+  (let [configured-path     (get *env* :mb-config-file-path)
+        default-config-yml  (u.files/get-path (System/getProperty "user.dir") "config.yml")
+        default-config-yaml (u.files/get-path (System/getProperty "user.dir") "config.yaml")
+        paths-to-try       (if-not (str/blank? configured-path)
+                             [(u.files/get-path configured-path)]
+                             [default-config-yml
+                              default-config-yaml])]
+    (if-let [path* (m/find-first u.files/exists? paths-to-try)]
+      (u/prog1 path*
+        (log/info (u/format-color :magenta
+                                  "Found config file at path %s; Metabase will be initialized with values from this file"
+                                  (pr-str (str path*)))
+                  (u/emoji "🗄️")))
+      (log/info (u/format-color :yellow "No config file found at path %s" (str/join " or "
+                                                                                    (map #(pr-str (str %))
+                                                                                         paths-to-try)))))))
 
 (defmulti ^:private expand-parsed-template-form
   {:arglists '([form])}
@@ -234,7 +242,8 @@
 (defn- config-from-disk
   "Read the config file from disk."
   []
-  (yaml/from-file (str (path))))
+  (when-let [yaml-path (path)]
+    (yaml/from-file (str yaml-path))))
 
 (defn- config
   "Spec-validate `parsed-config` and (optionally) expand `{{env VAR}}` templates.

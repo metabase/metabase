@@ -40,12 +40,12 @@ const setup = ({
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <div>
           <SettingsPage />
           <UndoListing />
         </div>
-      )}
+      }
     />,
     {
       storeInitialState: createMockState({

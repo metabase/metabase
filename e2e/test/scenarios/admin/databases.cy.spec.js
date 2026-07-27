@@ -674,7 +674,6 @@ describe("scenarios > admin > databases > sample database", () => {
     H.createSegment({
       name: "Small orders",
       description: "All orders with a total under $100.",
-      table_id: ORDERS_ID,
       definition: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],

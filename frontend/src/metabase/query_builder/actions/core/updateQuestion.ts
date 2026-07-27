@@ -51,12 +51,14 @@ function shouldTemplateTagEditorBeVisible({
   ).isNative;
 
   const previousTags = isCurrentQuestionNative
-    ? (
+    ? // Unjustified type cast. FIXME
+      (
         currentQuestion.legacyNativeQuery() as NativeQuery
       ).variableTemplateTags()
     : [];
   const nextTags = isNewQuestionNative
-    ? (newQuestion.legacyNativeQuery() as NativeQuery).variableTemplateTags()
+    ? // Unjustified type cast. FIXME
+      (newQuestion.legacyNativeQuery() as NativeQuery).variableTemplateTags()
     : [];
   if (nextTags.length > previousTags.length) {
     return true;

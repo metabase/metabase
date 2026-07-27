@@ -4,12 +4,12 @@ import _ from "underscore";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { getParameterValues } from "metabase/dashboard/selectors";
+import { fillParametersInText } from "metabase/dashboard/visualizations/parameter-substitution";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import { useSelector } from "metabase/redux";
-import { Popover } from "metabase/ui";
+import { Popover, TextInput } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { getUrlTarget } from "metabase/visualizations/lib/open-url";
-import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
   LinkCardSettings,
@@ -30,7 +30,6 @@ import {
   EditLinkCardWrapper,
   ExternalLink,
   SearchResultsContainer,
-  StyledInput,
   StyledRecentsList,
 } from "./LinkViz.styled";
 import { settings } from "./LinkVizSettings";
@@ -157,8 +156,7 @@ function LinkVizInner({
       <EditLinkCardWrapper data-testid="custom-edit-text-link">
         <Popover opened={inputIsFocused && !isUrlString(url)} position="bottom">
           <Popover.Target>
-            <StyledInput
-              fullWidth
+            <TextInput
               value={url ?? ""}
               autoFocus={autoFocus}
               placeholder={"https://example.com"}
@@ -168,6 +166,14 @@ function LinkVizInner({
               onBlur={_.debounce(onBlurInput, 100)}
               // the dashcard really wants to turn all mouse events into drag events
               onMouseDown={(e) => e.stopPropagation()}
+              size="sm"
+              // DashEditing disables pointer-events on card content; the Input
+              // wrapper's `none` breaks inheritance, so re-enable on both root
+              // and input or the field can't be clicked/typed into.
+              styles={{
+                root: { pointerEvents: "all" },
+                input: { pointerEvents: "all" },
+              }}
             />
           </Popover.Target>
           <Popover.Dropdown>

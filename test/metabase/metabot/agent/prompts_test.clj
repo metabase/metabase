@@ -79,7 +79,6 @@
   (testing "builds complete system message"
     (let [profile {:prompt-template "embedding-next.selmer"}
           context {:current_time "2024-01-15 14:30:00"
-                   :first_day_of_week "Sunday"
                    :sql-dialect "postgresql"}
           tools {}
           content (prompts/build-system-message-content profile context tools [])]
@@ -87,7 +86,8 @@
       (is (string? content))
       (is (> (count content) 100))
       (is (re-find #"Metabot" content))
-      (is (re-find #"2024-01-15 14:30:00" content)))))
+      (is (not (str/includes? content "2024-01-15 14:30:00"))
+          "current time is not in system message (moved to message injection)"))))
 
 (deftest ^:parallel build-system-message-content-test-2
   (testing "includes dialect instructions when dialect specified"
@@ -146,3 +146,39 @@
       (is (some? content))
       (is (not (str/includes? content "Here is some information about the user:")))
       (is (not (str/includes? content "<user><name>Jane Doe</name></user>"))))))
+
+(deftest ^:parallel build-system-message-content-test-7
+  (testing "viewing context and recent views are not in system message (moved to message injection)"
+    (let [profile {:prompt-template "internal.selmer"}
+          context {:viewing_context "The user is currently looking at dashboard 42."
+                   :recent_views    "Here are some items the user has recently viewed: card 7"}
+          tools {}
+          content (prompts/build-system-message-content profile context tools [])]
+      (is (some? content))
+      (is (not (str/includes? content "dashboard 42")))
+      (is (not (str/includes? content "recently viewed"))))))
+
+(deftest ^:parallel inject-context-test
+  (testing "prepends the rendered context block to the message"
+    (let [injected (prompts/inject-context {:current_time      "2024-01-15 14:30:00"
+                                            :first_day_of_week "Monday"}
+                                           "Show me revenue")]
+      (is (str/starts-with? injected "<context>"))
+      (is (str/ends-with? injected "Show me revenue"))
+      (is (str/includes? injected "2024-01-15 14:30:00"))
+      (is (str/includes? injected "Monday")))))
+
+(deftest ^:parallel inject-context-recent-views-test
+  (testing "recent views are injected into the message"
+    (let [recent   "Here are some items the user has recently viewed: card 7"
+          injected (prompts/inject-context {:recent_views recent} "Show me revenue")]
+      (is (str/starts-with? injected "<context>"))
+      (is (str/includes? injected recent)))))
+
+(deftest ^:parallel inject-context-no-context-test
+  (testing "message is returned unchanged when there is nothing to inject"
+    (is (= "Hi" (prompts/inject-context {} "Hi")))
+    (is (= "Hi" (prompts/inject-context {:viewing_context ""
+                                         :current_time    ""
+                                         :recent_views    ""}
+                                        "Hi")))))

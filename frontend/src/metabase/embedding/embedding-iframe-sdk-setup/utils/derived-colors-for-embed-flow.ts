@@ -66,6 +66,7 @@ export function getDerivedDefaultColorsForEmbedFlow({
   for (const [_colorKey, config] of Object.entries(
     EMBED_FLOW_DERIVED_COLORS_CONFIG,
   )) {
+    // Unjustified type cast. FIXME
     const colorKey = _colorKey as MetabaseColor;
 
     // Do not derive colors if the user has already defined them

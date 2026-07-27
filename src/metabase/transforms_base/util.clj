@@ -129,10 +129,10 @@
   This is the table variable the incremental range filter is injected into (see
   `inject-filters-into-table-tag`). When `table-id` is nil, any table template tag qualifies."
   [query table-id]
-  (some (fn [[k v]]
-          (when (and (#{:table "table"} (:type v))
-                     (or (nil? table-id) (= table-id (:table-id v))))
-            k))
+  (some (fn [{tag-name :name, :as tag}]
+          (when (and (#{:table "table"} (:type tag))
+                     (or (nil? table-id) (= table-id (:table-id tag))))
+            tag-name))
         (lib/template-tags query)))
 
 (defn incremental-table-tag-name
@@ -335,7 +335,13 @@
                     hi (conj {:field-id checkpoint-filter-field-id :op :<= :value (:value hi)}))]
     (lib.util/update-query-stage
      query 0
-     #(assoc-in % [:template-tags tag-name :source-filters] filters))))
+     update :template-tags
+     (fn [template-tags]
+       (mapv (fn [tag]
+               (cond-> tag
+                 (= (:name tag) tag-name)
+                 (assoc :source-filters filters)))
+             template-tags)))))
 
 (mu/defn get-source-range-params :- [:maybe ::transforms-base.schema/source-range-params]
   "Returns information on the incremental range filters that ought to be applied to a source query.
@@ -352,7 +358,7 @@
         {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
     (when (and (incremental-target? transform)
                (native-query-transform? transform)
-               (not (some (fn [[_k v]] (#{:table "table"} (:type v)))
+               (not (some (fn [tag] (#{:table "table"} (:type tag)))
                           (lib/template-tags (:query source)))))
       (let [msg (i18n/tru (str "Incremental transform with a native query requires a table variable. "
                                "Please add a table variable to the query and update the checkpoint field."))]
@@ -389,8 +395,13 @@
                   query             (-> (lib/aggregate (lib/append-stage filtered-query) (lib/max column))
                                         (lib/aggregate (lib/count)))
                   query-result      (qp/process-query query)
-                  [mv cv]           (first (get-in query-result [:data :rows]))]
-              [mv (some-> cv long)])]
+                  [mv cv]           (first (get-in query-result [:data :rows]))
+                  cv                (some-> cv long)]
+              ;; Some databases (e.g. ClickHouse) return the column type's default value (0, epoch, ...)
+              ;; instead of NULL for `max()` over an empty relation when the column is non-nullable. Only
+              ;; trust the max when the count from the same scan says there were rows, otherwise the
+              ;; watermark would silently regress and the next run would reprocess already-seen rows.
+              [(when-not (and cv (zero? cv)) mv) cv])]
         (cond-> {:column                     column
                  :checkpoint-filter-field-id checkpoint-filter-field-id
                  :lo                         (when lo {:value lo})
@@ -430,18 +441,13 @@
 
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."
-  [{:keys [source]} source-range-params]
-  (let [{query-type :type} source]
-    (assert (= :query (keyword query-type)))
-    (let [query  (:query source)
-          driver (some->> query :database (t2/select-one :model/Database) :engine keyword)]
-      (binding [driver/*compile-with-inline-parameters*
-                (or (= :clickhouse driver)
-                    driver/*compile-with-inline-parameters*)]
-        (-> query
-            (preprocess-incremental-query source-range-params)
-            massage-sql-query
-            qp.compile/compile)))))
+  [{:keys [source] :as transform} source-range-params]
+  (let [{:keys [query]} source]
+    (assert (query-transform? transform))
+    (-> query
+        (preprocess-incremental-query source-range-params)
+        massage-sql-query
+        qp.compile/compile)))
 
 ;;; ------------------------------------------------- Target Table Management -------------------------------------------------
 

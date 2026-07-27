@@ -62,8 +62,9 @@ const SIZES = {
   sm: { height: "1.5rem", paddingX: "0.5rem" }, // 24px / 8px
 } as const;
 
-const isBadgeColor = (value: unknown): value is BadgeColor =>
-  BADGE_COLORS.includes(value as BadgeColor);
+const isBadgeColor = (value: unknown): value is BadgeColor => {
+  return BADGE_COLORS.some((color) => color === value);
+};
 
 type BadgeRootVars = Partial<
   Record<

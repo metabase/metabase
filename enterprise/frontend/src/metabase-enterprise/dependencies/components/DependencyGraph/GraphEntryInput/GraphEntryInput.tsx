@@ -1,9 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
-import { push } from "react-router-redux";
 
 import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Card } from "metabase/ui";
 import type {
   DependencyEntry,

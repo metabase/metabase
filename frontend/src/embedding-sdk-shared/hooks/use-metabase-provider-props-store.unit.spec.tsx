@@ -8,6 +8,7 @@ import { useMetabaseProviderPropsStore } from "./use-metabase-provider-props-sto
 const PROPS_STORE_KEY = "METABASE_PROVIDER_PROPS_STORE" as const;
 
 const resetWindow = () => {
+  // Unjustified type cast. FIXME
   delete (window as any)[PROPS_STORE_KEY];
 };
 

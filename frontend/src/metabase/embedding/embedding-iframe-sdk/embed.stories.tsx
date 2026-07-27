@@ -13,8 +13,10 @@ import type { MetabaseDashboardElement } from "./embed";
 type Mode = "controlled" | "uncontrolled";
 
 const INSTANCE_URL =
+  // Unjustified type cast. FIXME
   (window as any).METABASE_INSTANCE_URL || "http://localhost:3000";
 
+// Unjustified type cast. FIXME
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || 1;
 
 // Module-level init: the custom element reads `window.metabaseConfig`
@@ -61,6 +63,7 @@ const ControlledParametersEmbedJsPlayground = () => {
     let onParametersChange: ((event: Event) => void) | null = null;
     if (mode === "controlled") {
       onParametersChange = (event: Event) => {
+        // Unjustified type cast. FIXME
         const detail = (event as CustomEvent<ParameterChangePayload>).detail;
 
         playground.handleParametersChange(detail);
@@ -103,7 +106,8 @@ const ControlledParametersEmbedJsPlayground = () => {
           <SegmentedControl
             size="xs"
             value={mode}
-            onChange={(value) => setMode(value)}
+            // Unjustified type cast. FIXME
+            onChange={(value) => setMode(value as Mode)}
             data={[
               { value: "controlled", label: "controlled" },
               { value: "uncontrolled", label: "uncontrolled" },

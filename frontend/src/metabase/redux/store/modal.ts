@@ -1,6 +1,8 @@
 import type { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
-import type { LegacyStaticEmbeddingModalProps } from "metabase/embedding/embedding-iframe-sdk-setup/components/LegacyStaticEmbeddingModal";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins/oss/embedding-iframe-sdk-setup";
+import type {
+  LegacyStaticEmbeddingModalProps,
+  SdkIframeEmbedSetupModalInitialState,
+} from "metabase/plugins/oss/embedding-iframe-sdk-setup";
 
 export type ModalName =
   | null

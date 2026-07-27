@@ -24,24 +24,27 @@ export const getCollectionIdValueFromReference = createSelector(
     tenantCollectionId,
     collectionReference,
   ): CollectionId | null => {
-    return match(collectionReference)
-      .with("personal", () => personalCollectionId as RegularCollectionId)
-      .with("tenant", () => {
-        if (!tenantCollectionId) {
-          throw new Error(
-            "You must be a tenant member to access the tenant collection.",
-          );
-        }
+    return (
+      match(collectionReference)
+        // Unjustified type cast. FIXME
+        .with("personal", () => personalCollectionId as RegularCollectionId)
+        .with("tenant", () => {
+          if (!tenantCollectionId) {
+            throw new Error(
+              "You must be a tenant member to access the tenant collection.",
+            );
+          }
 
-        return tenantCollectionId;
-      })
-      .with("root", () => null)
-      .with(P.union(P.number, P.string), (id) => id)
-      .otherwise(() => {
-        throw new Error(
-          "Invalid collection id, expected `number | string | 'root' | 'personal' | 'tenant'`",
-        );
-      });
+          return tenantCollectionId;
+        })
+        .with("root", () => null)
+        .with(P.union(P.number, P.string), (id) => id)
+        .otherwise(() => {
+          throw new Error(
+            "Invalid collection id, expected `number | string | 'root' | 'personal' | 'tenant'`",
+          );
+        })
+    );
   },
 );
 
@@ -62,23 +65,26 @@ export const getCollectionIdSlugFromReference = createSelector(
     tenantCollectionId,
     collectionReference,
   ): CollectionId => {
-    return match(collectionReference)
-      .with("personal", () => personalCollectionId as RegularCollectionId)
-      .with("tenant", () => {
-        if (!tenantCollectionId) {
-          throw new Error(
-            "You must be a tenant member to access the tenant collection.",
-          );
-        }
+    return (
+      match(collectionReference)
+        // Unjustified type cast. FIXME
+        .with("personal", () => personalCollectionId as RegularCollectionId)
+        .with("tenant", () => {
+          if (!tenantCollectionId) {
+            throw new Error(
+              "You must be a tenant member to access the tenant collection.",
+            );
+          }
 
-        return tenantCollectionId;
-      })
-      .with("root", () => "root" as const)
-      .with(P.union(P.number, P.string), (id) => id)
-      .otherwise(() => {
-        throw new Error(
-          "Invalid collection id, expected `number | string | 'root' | 'personal' | 'tenant'`",
-        );
-      });
+          return tenantCollectionId;
+        })
+        .with("root", () => "root" as const)
+        .with(P.union(P.number, P.string), (id) => id)
+        .otherwise(() => {
+          throw new Error(
+            "Invalid collection id, expected `number | string | 'root' | 'personal' | 'tenant'`",
+          );
+        })
+    );
   },
 );

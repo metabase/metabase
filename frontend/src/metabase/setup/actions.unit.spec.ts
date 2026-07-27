@@ -54,6 +54,7 @@ describe("submitUserInvite", () => {
   });
 
   it("tracks user_invited from setup when the create succeeds", async () => {
+    // Unjustified type cast. FIXME
     (dispatch as unknown as jest.Mock).mockReturnValue({
       unwrap: () => Promise.resolve(),
     });
