@@ -225,16 +225,15 @@ export const getRoutes = (store: AppStore) => {
           <Route
             path="dashboard/entity/:entity_id/*"
             element={createEntityIdRedirect({
+              // Only translate the dashboard entity_id in the path. The `?tab=`
+              // and `#scrollTo=` entity IDs are resolved client-side once the
+              // dashboard loads (see resolveTabId / useAutoScrollToDashcard), so
+              // they pass through the redirect untouched.
               parametersToTranslate: [
                 {
                   name: "entity_id",
                   resourceType: "dashboard",
                   type: "param",
-                },
-                {
-                  name: "tab",
-                  resourceType: "dashboard-tab",
-                  type: "search",
                 },
               ],
             })}

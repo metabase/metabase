@@ -9,12 +9,9 @@ import {
   hasDatabaseActionsEnabled,
   hasInlineParameters,
   isDashcardLoading,
-  parseTabSlug,
   setDashboardHeaderParameterIndex,
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
-import { createMockLocation } from "metabase/redux/store/mocks";
-import type { Location } from "metabase/router";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
@@ -42,10 +39,6 @@ const DISABLED_ACTIONS_DATABASE = createMockDatabase({
   settings: { "database-enable-actions": false },
 });
 const NO_ACTIONS_DATABASE = createMockDatabase({ id: 3 });
-
-function getMockLocationWithTab(slug: Location["query"][string]) {
-  return createMockLocation({ query: { tab: slug } });
-}
 
 describe("Dashboard utils", () => {
   describe("fetchDataOrError()", () => {
@@ -499,26 +492,6 @@ describe("Dashboard utils", () => {
           dashcard: visibleDashcard,
         },
       ]);
-    });
-  });
-
-  describe("parseTabSlug", () => {
-    it("should return the tab ID from the location object if valid", () => {
-      expect(parseTabSlug(getMockLocationWithTab("1-tab-name"))).toBe(1);
-    });
-
-    it("should return null if the slug is invalid", () => {
-      expect(parseTabSlug(getMockLocationWithTab(null))).toBe(null);
-      expect(parseTabSlug(getMockLocationWithTab(undefined))).toBe(null);
-      expect(parseTabSlug(getMockLocationWithTab(""))).toBe(null);
-      expect(
-        parseTabSlug(
-          getMockLocationWithTab(["1-tab-name", "2-another-tab-name"]),
-        ),
-      ).toBe(null);
-      expect(parseTabSlug({ ...getMockLocationWithTab(""), query: {} })).toBe(
-        null,
-      );
     });
   });
 

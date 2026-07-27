@@ -3,7 +3,6 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import type { SelectedTabId } from "metabase/redux/store";
-import type { Location } from "metabase/router";
 import {
   isQuestionDashCard,
   isVirtualDashCard,
@@ -404,15 +403,6 @@ export {
 export const isDashboardCacheable = (
   dashboard: Dashboard,
 ): dashboard is CacheableDashboard => typeof dashboard.id !== "string";
-
-export function parseTabSlug(location: Location) {
-  const slug = location.query?.tab;
-  if (typeof slug === "string" && slug.length > 0) {
-    const id = parseInt(slug, 10);
-    return Number.isSafeInteger(id) ? id : null;
-  }
-  return null;
-}
 
 export function createTabSlug({
   id,

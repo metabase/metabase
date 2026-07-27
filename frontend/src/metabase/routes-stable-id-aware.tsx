@@ -42,7 +42,9 @@ export const EntityIdRedirect = ({
   const params = useParams();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const currentUrl = location.pathname + location.search;
+  // Keep the hash so deep-link fragments (e.g. a dashboard's `#scrollTo`) survive
+  // the redirect and reach the destination page.
+  const currentUrl = location.pathname + location.search + location.hash;
 
   const paramsWithValues: ParamWithValue[] = useMemo(() => {
     // add the value from the params or the query
