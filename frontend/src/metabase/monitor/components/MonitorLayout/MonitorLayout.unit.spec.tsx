@@ -368,7 +368,13 @@ describe("MonitorLayout", () => {
     within(screen.getByRole("link", { name })).queryByTestId("upsell-gem");
 
   it("gates only Erroring questions when audit_app is unavailable", async () => {
-    setup({ tokenFeatures: { dependencies: true, audit_app: false } });
+    setup({
+      tokenFeatures: {
+        dependencies: true,
+        content_diagnostics: true,
+        audit_app: false,
+      },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
@@ -376,27 +382,60 @@ describe("MonitorLayout", () => {
 
     expect(getTabGem("Erroring questions")).toBeInTheDocument();
     expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
+    expect(getTabGem("Content diagnostics")).not.toBeInTheDocument();
   });
 
   it("gates only Dependency diagnostics when dependencies is unavailable", async () => {
-    setup({ tokenFeatures: { dependencies: false, audit_app: true } });
+    setup({
+      tokenFeatures: {
+        dependencies: false,
+        content_diagnostics: true,
+        audit_app: true,
+      },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
     expect(getTabGem("Dependency diagnostics")).toBeInTheDocument();
+    expect(getTabGem("Content diagnostics")).not.toBeInTheDocument();
     expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
   });
 
-  it("gates neither when both features are available", async () => {
-    setup({ tokenFeatures: { dependencies: true, audit_app: true } });
+  it("gates only Content diagnostics when content_diagnostics is unavailable", async () => {
+    setup({
+      tokenFeatures: {
+        dependencies: true,
+        content_diagnostics: false,
+        audit_app: true,
+      },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
     expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
+    expect(getTabGem("Content diagnostics")).toBeInTheDocument();
+    expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
+  });
+
+  it("gates none of the token-feature tabs when all features are available", async () => {
+    setup({
+      tokenFeatures: {
+        dependencies: true,
+        content_diagnostics: true,
+        audit_app: true,
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
+    expect(getTabGem("Content diagnostics")).not.toBeInTheDocument();
     expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
   });
 });

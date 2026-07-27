@@ -64,6 +64,9 @@ export function MonitorLayout() {
 
   const { pathname } = useSelector(getLocation);
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
+  const hasContentDiagnosticsFeature = useHasTokenFeature(
+    "content_diagnostics",
+  );
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
   const canAccessDiagnostics = useSelector(canAccessMonitorDiagnostics);
   const canAccessTools = useSelector(canAccessMonitoringTools);
@@ -101,6 +104,7 @@ export function MonitorLayout() {
               to={Urls.contentDiagnostics()}
               isSelected={activeSection === "content-diagnostics"}
               showLabel={isNavbarOpened}
+              isGated={!hasContentDiagnosticsFeature}
               onClick={() => trackMonitorSectionClicked("content-diagnostics")}
             />
           )}
