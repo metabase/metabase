@@ -1,0 +1,26 @@
+.stream {
+  overflow-y: auto;
+}
+
+/* User mentions (SmartLink user nodes) read as plain colored text here, not
+ * bold — scoped so document comments keep their own styling. */
+.stream :global([data-type="smart-link"] > span) {
+  font-weight: 400;
+}
+
+/* Doubled class outranks the editor module's equal-specificity rules
+ * regardless of css injection order. */
+.composer.composer :global(.ProseMirror) {
+  /* the editor's line-height is 1.5 — reserve three text lines */
+  min-height: calc(3 * 1.5rem);
+  justify-content: flex-start;
+}
+
+.comment {
+  border-radius: 0.5rem;
+}
+
+.target {
+  background-color: var(--mb-color-background-brand);
+  outline: 1px solid var(--mb-color-brand);
+}

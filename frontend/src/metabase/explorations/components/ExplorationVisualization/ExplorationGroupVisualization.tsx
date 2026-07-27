@@ -6,7 +6,6 @@ import { noop } from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { explorationApi } from "metabase/api/exploration";
-import { Comments } from "metabase/comments/components/Comments";
 import { Warnings } from "metabase/common/components/Warnings";
 import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -37,7 +36,6 @@ import type {
   ExplorationPageNode,
   ExplorationQuery,
   HydratedExplorationExploreFilter,
-  IconName,
   SingleSeries,
   Timeline,
   TimelineEvent,
@@ -51,6 +49,7 @@ import type { CommentDrafts } from "../../types";
 
 import { ActionToolbar } from "./ActionToolbar";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
+import { ExplorationComments } from "./ExplorationComments";
 import S from "./ExplorationGroupVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
 import { TimelineEventsSidebar } from "./TimelineEventsSidebar";
@@ -280,7 +279,7 @@ function ExplorationGroupVisualizationChart({
     [onCloseCommentsSidebar],
   );
 
-  const renderCommentExtra = useCallback(
+  const renderCommentTags = useCallback(
     (comment: Comment) => {
       const context = comment.context;
 
@@ -310,11 +309,17 @@ function ExplorationGroupVisualizationChart({
       }
 
       return (
-        <Group gap="xs" mt="0.375rem" wrap="wrap">
+        <Group gap="xs" wrap="wrap">
+          <Icon
+            name="corner_up_right"
+            size={12}
+            c="text-secondary"
+            className={S.commentTagArrow}
+            aria-hidden
+          />
           {commentLabel && (
             <CommentBadge
               label={commentLabel}
-              iconName="filter"
               buttonProps={{
                 onMouseEnter: () => {
                   if (commentHighlight) {
@@ -328,7 +333,6 @@ function ExplorationGroupVisualizationChart({
           {timeline && (
             <CommentBadge
               label={timeline.name}
-              iconName="clock"
               buttonProps={{
                 onClick: () => {
                   onSelectTimelineId(timelineId ?? null);
@@ -443,22 +447,18 @@ function ExplorationGroupVisualizationChart({
       )}
       {isCommentsSidebarOpen && seeAllEvents.length === 0 && (
         <Box w="23rem" h="100%" className={S.commentsSidebar}>
-          <Comments
-            // since ExplorationGroupVisualization is keyed on the page, Comments remounts whenever the page changes
+          <ExplorationComments
+            // since ExplorationGroupVisualization is keyed on the page, the panel remounts whenever the page changes
             // but autofocus can steal the focus and prevent keyboard nav from working
-            // so we only allow autofocus is the sidebar is truly opening, not just Comments remounting
+            // so we only allow autofocus if the sidebar is truly opening, not just remounting
             disableAutoFocus={wasCommentsSidebarOpen}
-            commentTarget={{
-              target_id: explorationId,
-              target_type: "exploration",
-            }}
-            childTargetId={String(page.id)}
-            showCloseButton={false}
-            onCloseComments={onCloseCommentsSidebar}
+            explorationId={explorationId}
+            pageId={String(page.id)}
+            onClose={onCloseCommentsSidebar}
             context={{
               timeline_id: selectedTimelineId,
             }}
-            renderExtra={renderCommentExtra}
+            renderCommentTags={renderCommentTags}
           />
         </Box>
       )}
@@ -652,25 +652,21 @@ function Message({ groupName, message, iconProps }: MessageProps) {
 
 interface CommentBadgeProps {
   label: string;
-  iconName: IconName;
   buttonProps?: ComponentPropsWithoutRef<typeof UnstyledButton>;
 }
 
-function CommentBadge({ label, iconName, buttonProps }: CommentBadgeProps) {
+function CommentBadge({ label, buttonProps }: CommentBadgeProps) {
   return (
     <UnstyledButton
-      bd="0.5px solid border"
-      bdrs="lg"
+      bdrs="md"
       py="xs"
       px="sm"
+      fz="sm"
       c="text-primary"
       className={S.commentBadge}
       {...buttonProps}
     >
-      <Group gap={4} wrap="nowrap">
-        <Icon name={iconName} size={12} aria-hidden />
-        {label}
-      </Group>
+      {label}
     </UnstyledButton>
   );
 }

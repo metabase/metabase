@@ -88,23 +88,23 @@ jest.mock("metabase/visualizations/components/Visualization", () => {
   return { __esModule: true, default: Visualization };
 });
 
-jest.mock("metabase/comments/components/Comments", () => ({
-  Comments: ({
-    renderExtra,
+jest.mock("./ExplorationComments", () => ({
+  ExplorationComments: ({
+    renderCommentTags,
     disableAutoFocus,
-    onCloseComments,
+    onClose,
   }: {
-    renderExtra?: (comment: Comment) => React.ReactNode;
+    renderCommentTags?: (comment: Comment) => React.ReactNode;
     disableAutoFocus?: boolean;
-    onCloseComments?: () => void;
+    onClose?: () => void;
   }) => (
     <div
       data-testid="comments-stub"
       data-disable-autofocus={disableAutoFocus ? "true" : "false"}
     >
-      <button data-testid="comments-stub-close" onClick={onCloseComments} />
+      <button data-testid="comments-stub-close" onClick={onClose} />
       {mockComments.map((comment) => (
-        <div key={comment.id}>{renderExtra?.(comment)}</div>
+        <div key={comment.id}>{renderCommentTags?.(comment)}</div>
       ))}
     </div>
   ),

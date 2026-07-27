@@ -45,9 +45,13 @@
 }
 
 .commentBadge {
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background-brand);
 
   &:hover {
-    background-color: var(--mb-color-background-tertiary);
+    background-color: var(--mb-color-background-hover);
   }
+}
+
+.commentTagArrow {
+  transform: scaleY(-1);
 }
