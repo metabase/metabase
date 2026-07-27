@@ -243,6 +243,7 @@ function NameCell({ metric }: { metric?: MetricResult }) {
               type: "metric",
             })}
             onClick={preventDefault}
+            style={{ overflow: "hidden" }}
           >
             <EntityItem.Name name={metric.name} variant="list" id={headingId} />
           </Link>

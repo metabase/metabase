@@ -93,4 +93,15 @@ describe("BrowseMetrics (OSS)", () => {
     const location = history?.getCurrentLocation();
     expect(location?.pathname).toBe("/metric/1");
   });
+
+  it("should clip long metric names instead of letting them overflow the row (metabase#78583)", async () => {
+    setup({ metricCount: 5 });
+    const table = await screen.findByRole("table", {
+      name: /Table of metrics/,
+    });
+
+    const link = within(table).getByRole("link", { name: /Metric 1/ });
+
+    expect(link).toHaveStyle({ overflow: "hidden" });
+  });
 });
