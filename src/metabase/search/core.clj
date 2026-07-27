@@ -265,6 +265,12 @@
                      [search-model ids])))
            (cascading-selectors instances)))))
 
+(def ^:private reindex-batch-size
+  "Ids per re-derivation message. The ingestion worker ORs a whole batch of same-model selectors into a single
+  query, so an unbounded id list here becomes an unbounded bind-parameter count and the database rejects the
+  statement — losing the entire batch, not just the oversized message."
+  100)
+
 (defn reconcile-cascading-documents!
   "Settle the documents [[cascading-documents]] enumerated, now that the statement has run.
   Survival is decided per document, not by the relationship that found it: a row whose foreign key was nulled
@@ -277,7 +283,9 @@
                   gone  (set/difference ids alive)]]
       (when (seq alive)
         (search.ingestion/ingest-maybe-async!
-         #{[search-model (search.ingestion/doc-id-selector search-model alive)]}))
+         (into #{}
+               (map (fn [chunk] [search-model (search.ingestion/doc-id-selector search-model chunk)]))
+               (partition-all reindex-batch-size alive))))
       (when (seq gone)
         (doseq [e (search.engine/active-engines)]
           (search.engine/delete! e search-model (into #{} (map str) gone)))))))
