@@ -4,14 +4,13 @@ import {
   type To,
   UNSAFE_RouteContext,
   type NavigateFunction as V7NavigateFunction,
-  Outlet as V7Outlet,
   useNavigationType,
   useLocation as useV7Location,
   useNavigate as useV7Navigate,
   useParams as useV7Params,
 } from "react-router";
 
-import { OutletContext, RouteContext } from "../Outlet";
+import { RouteContext } from "../Outlet";
 import { RouterContext } from "../RouterProvider";
 import type { Route } from "../route";
 import type {
@@ -33,10 +32,10 @@ type RouteStub = PlainRoute & { pathnameBase?: string };
 /**
  * Runs as the `element` of every v7 route and republishes v7's location,
  * params, matched-route branch, and an imperative-router shim into the shared
- * `RouterContext` (and the `Outlet`/`Route` contexts). The facade hooks
- * (`useLocation`, `useParams`, `useNavigate`, `useRouter`, `withRouteProps`)
- * read that context unchanged, so nothing downstream can tell which engine it
- * runs on. Deleted with the v3 engine in Phase 4.
+ * `RouterContext` (and the `Route` context). The facade hooks (`useNavigate`,
+ * `useRouter`, `withRouteProps`) read that context unchanged, so nothing
+ * downstream can tell which engine it runs on. Deleted with the v3 engine in
+ * Phase 4.
  */
 export function RouterBridge({
   v3Element,
@@ -133,11 +132,7 @@ export function RouterBridge({
 
   return (
     <RouterContext.Provider value={value}>
-      <RouteContext.Provider value={route}>
-        <OutletContext.Provider value={<V7Outlet />}>
-          {v3Element}
-        </OutletContext.Provider>
-      </RouteContext.Provider>
+      <RouteContext.Provider value={route}>{v3Element}</RouteContext.Provider>
     </RouterContext.Provider>
   );
 }
