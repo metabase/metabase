@@ -22,4 +22,5 @@
    [metabase-enterprise.sso.init]
    [metabase-enterprise.stale.init]
    [metabase-enterprise.support-access-grants.init]
+   [metabase-enterprise.tenants.init]
    [metabase-enterprise.transforms-python.init]))
