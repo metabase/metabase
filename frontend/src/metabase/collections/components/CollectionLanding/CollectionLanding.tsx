@@ -2,21 +2,18 @@ import { useEffect } from "react";
 
 import { useGetCollectionQuery } from "metabase/api";
 import { useDispatch } from "metabase/redux";
-import { Outlet, replace } from "metabase/router";
+import { Outlet, replace, useParams } from "metabase/router";
 import { extractCollectionId } from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
 
 import { CollectionContent } from "../CollectionContent";
 
-export interface CollectionLandingProps {
-  params: CollectionLandingParams;
-}
-
-export interface CollectionLandingParams {
+export type CollectionLandingParams = {
   slug: string;
-}
+};
 
-const CollectionLanding = ({ params: { slug } }: CollectionLandingProps) => {
+const CollectionLanding = () => {
+  const { slug } = useParams<CollectionLandingParams>();
   const dispatch = useDispatch();
   const { data: trashCollection } = useGetCollectionQuery({ id: "trash" });
 

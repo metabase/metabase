@@ -689,13 +689,18 @@
   {:arglists '([model-name ingested local])}
   (fn [model _ _] model))
 
-(defmethod load-update! :default [model-name ingested local]
+(defn default-load-update!
+  "Default implementation of [[load-update!]]."
+  [model-name ingested local]
   (let [model    (t2.model/resolve-model (symbol model-name))
         pk       (primary-key model-name)
         id       (get local pk)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
     (t2/update! model id ingested)
     (t2/select-one model pk id)))
+
+(defmethod load-update! :default [model-name ingested local]
+  (default-load-update! model-name ingested local))
 
 (defmulti load-insert!
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
@@ -1297,12 +1302,38 @@
       import-mbql-update-refs
       import-mbql-update-maps))
 
+(defn- stale-card-tag-rename
+  "New name for a card template tag whose `#<id>-slug` name embeds a different id than its (already
+  remapped) `:card-id`: the id is swapped, the slug is kept verbatim. Nil when they already agree or
+  the name doesn't embed an id."
+  [{tag-type :type, :keys [card-id], tag-name :name}]
+  (when (and (= tag-type :card) (pos-int? card-id) (string? tag-name))
+    (when-let [[_ embedded-id suffix] (re-matches #"#(\d+)(-.*)?" tag-name)]
+      (when (not= (parse-long embedded-id) card-id)
+        (str "#" card-id suffix)))))
+
+(defn- repair-card-template-tag-names
+  "Card template tag names (and the `{{#id-slug}}` refs in the native text) embed the referenced
+  card's id, which goes stale when [[import-mbql-map]] remaps `:card-id` to the local card's id.
+  Swap the embedded id for the remapped one, leaving the slug as it was exported."
+  [x]
+  (if (= (:lib/type x) :mbql/query)
+    (lib/replace-template-tag-names
+     x
+     (into {}
+           (keep (fn [{tag-name :name, :as tag}]
+                   (when-let [new-name (stale-card-tag-rename tag)]
+                     [tag-name new-name])))
+           (lib/all-template-tags x)))
+    x))
+
 (defn import-mbql
   "Given an MBQL expression as an EDN structure with portable IDs embedded, convert the IDs back to raw numeric IDs."
   [x]
   (-> x
       import-mbql*
-      normalize-imported))
+      normalize-imported
+      repair-card-template-tag-names))
 
 (declare ^:private mbql-deps-map)
 
@@ -1442,6 +1473,16 @@
        (map import-mbql)
        (map #(m/update-existing % :card_id *import-fk* 'Card))))
 
+(defn- export-parameter
+  "Convert a single parameter to portable form. A values source pointing at a Card that no longer exists has no
+  portable id, so the source is dropped and the parameter falls back to its connected fields — the same shape the app
+  produces when the source Card is archived."
+  [parameter]
+  (if (get-in parameter [:values_source_config :card_id])
+    (or (fk-elide (export-mbql parameter))
+        (export-mbql (dissoc parameter :values_source_type :values_source_config)))
+    (export-mbql parameter)))
+
 (mu/defn export-parameters
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
   it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references.
@@ -1451,7 +1492,7 @@
   (->> parameters
        (map-indexed (fn [i p] (assoc p :position i)))
        (sort-by :id)
-       (mapv export-mbql)))
+       (mapv export-parameter)))
 
 (defn import-parameters
   "Given the :parameter field as exported by serialization convert its field references

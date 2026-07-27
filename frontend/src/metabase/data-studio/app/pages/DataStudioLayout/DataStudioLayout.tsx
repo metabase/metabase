@@ -9,7 +9,6 @@ import { AreaLayout, AreaTab } from "metabase/nav/components/AreaLayout";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
-  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet } from "metabase/router";
@@ -35,9 +34,6 @@ export function DataStudioLayout() {
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
   );
   const canAccessTransforms = useSelector(canAccessTransformsSelector);
-  const canManageWorkspaces = useSelector(
-    PLUGIN_WORKSPACES.canManageWorkspaces,
-  );
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
@@ -145,15 +141,6 @@ export function DataStudioLayout() {
           isSelected={currentTab === "git-sync"}
           showLabel={isNavbarOpened}
           isGated
-        />
-      )}
-      {canManageWorkspaces && (
-        <AreaTab
-          label={t`Workspaces`}
-          icon="workspace"
-          to={Urls.workspaces()}
-          isSelected={currentTab === "workspaces"}
-          showLabel={isNavbarOpened}
         />
       )}
       {canUseTransforms && (

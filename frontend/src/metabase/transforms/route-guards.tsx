@@ -1,4 +1,4 @@
-import { createRedirectGuard } from "metabase/router/guards";
+import { createRedirectGuard } from "metabase/route-guards";
 import { getSetting } from "metabase/selectors/settings";
 import * as Urls from "metabase/urls";
 

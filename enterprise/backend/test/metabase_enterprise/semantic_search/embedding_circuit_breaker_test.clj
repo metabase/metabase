@@ -3,8 +3,12 @@
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [diehard.circuit-breaker :as dh.cb]
+   ;; loaded for side effects: the health namespaces register the breaker state-change hooks that
+   ;; state-change-persists-affected-checks-test exercises
+   [metabase-enterprise.entity-retrieval.health]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.embedding-health :as embedding-health]
+   [metabase-enterprise.semantic-search.health]
    [metabase-enterprise.semantic-search.models.token-tracking :as token-tracking]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.analytics-interface.core :as analytics]
@@ -302,6 +306,19 @@
       (#'embedding-health/request-recovery-on-open! :half-open)
       (#'embedding-health/request-recovery-on-open! :open)
       (is (= 1 @requests)))))
+
+(deftest ^:sequential state-change-persists-affected-checks-test
+  (testing "a breaker state transition runs the registered hooks, persisting both embedder-dependent health
+           checks immediately"
+    (let [persisted (atom [])
+          completed (CountDownLatch. 2)]
+      (mt/with-dynamic-fn-redefs
+        [health-inspector/run-and-save-check! (fn [check-name]
+                                                (swap! persisted conj check-name)
+                                                (.countDown completed))]
+        (#'semantic.embedding/on-embedder-circuit-state-change! :open)
+        (is (.await completed 5 TimeUnit/SECONDS) "state-change hooks did not finish")
+        (is (= #{:semantic-search-index :nlq-retrieval} (set @persisted)))))))
 
 (deftest ^:sequential state-changes-run-serially-in-arrival-order-test
   (testing "transitions queue through one agent: a later transition's hooks can't overtake an earlier
