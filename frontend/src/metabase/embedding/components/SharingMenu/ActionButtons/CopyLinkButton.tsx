@@ -20,13 +20,12 @@ export function CopyLinkButton({ url }: { url: string }) {
           }
           onClick={copy}
         >
-          <span className={S.labelStack}>
-            <span style={{ visibility: copied ? "hidden" : undefined }}>
-              {t`Copy link`}
-            </span>
-            <span style={{ visibility: copied ? undefined : "hidden" }}>
-              {t`Copied`}
-            </span>
+          <span
+            className={S.labelStack}
+            data-copy-label={t`Copy link`}
+            data-copied-label={t`Copied`}
+          >
+            <span>{copied ? t`Copied` : t`Copy link`}</span>
           </span>
         </Button>
       )}

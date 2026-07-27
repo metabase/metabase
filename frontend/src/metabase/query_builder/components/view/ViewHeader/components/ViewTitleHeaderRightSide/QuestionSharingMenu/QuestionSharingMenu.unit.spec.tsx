@@ -171,10 +171,8 @@ describe("QuestionSharingMenu", () => {
             "http://localhost:3000/question/1-my-cool-question",
           ),
         );
-        // both labels stay in the DOM to reserve the button width; only the
-        // active one is visible
-        await waitFor(() => expect(screen.getByText("Copied")).toBeVisible());
-        expect(screen.getByText("Copy link")).not.toBeVisible();
+        expect(await screen.findByText("Copied")).toBeInTheDocument();
+        expect(screen.queryByText("Copy link")).not.toBeInTheDocument();
       });
 
       it("should copy the public link from the menu", async () => {
