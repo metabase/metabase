@@ -6,7 +6,6 @@ import { validateDataAppManifest } from "../config/validate-manifest";
 import { DATA_APP_REBUILT_EVENT } from "../constants/bundle";
 import { DATA_APP_DIAGNOSTICS_CHANGED_EVENT } from "../constants/diagnostics-channel";
 import { DATA_APP_MANIFEST_FILE_NAME } from "../constants/paths";
-import type { DataAppManifestStatus } from "../types/manifest-status";
 
 import { createAppBundle } from "./app-bundle";
 import { DiagnosticsStore } from "./diagnostics-store";
@@ -23,7 +22,6 @@ export function dataAppSandboxDevPlugin(
   allowedHosts: string[],
 ): Plugin {
   const diagnostics = new DiagnosticsStore();
-  let manifestStatus: DataAppManifestStatus | null = null;
 
   return {
     name: "metabase-data-app-dev",
@@ -42,17 +40,11 @@ export function dataAppSandboxDevPlugin(
         onError: (message) => server.config.logger.error(message),
       });
 
-      const refreshManifestStatus = () => {
-        manifestStatus = validateDataAppManifest(root, allowedHosts);
-      };
-
-      refreshManifestStatus();
-
       server.middlewares.use(getAppBundleMiddleware(bundle));
       server.middlewares.use(
         getDiagnosticsEndpointMiddleware({
           store: diagnostics,
-          getManifest: () => manifestStatus,
+          getManifest: () => validateDataAppManifest(root, allowedHosts),
           getClients: () => server.ws.clients.size,
           getLastRebuildAt: () => bundle.lastRebuildAt,
           notifyChanged: () =>
@@ -67,8 +59,6 @@ export function dataAppSandboxDevPlugin(
 
       server.watcher.on("all", async (_event, file) => {
         if (path.basename(file) === DATA_APP_MANIFEST_FILE_NAME) {
-          refreshManifestStatus();
-
           server.ws.send({
             type: "custom",
             event: DATA_APP_DIAGNOSTICS_CHANGED_EVENT,

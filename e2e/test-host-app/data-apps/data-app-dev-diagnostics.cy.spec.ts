@@ -235,6 +235,8 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
         .should("exist");
 
       cy.writeFile(DATA_APP_DEV_MANIFEST_PATH, originalManifest);
+      cy.request("DELETE", DIAGNOSTICS_URL);
+
       devToolbarPanel()
         .findByText(/allowed_hosts changed since the dev server started/, {
           timeout: TIMEOUT_MS,
