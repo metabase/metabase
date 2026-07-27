@@ -35,7 +35,13 @@
     (try
       (perms/add-user-to-group! user-or-id group-or-id)
       (catch Throwable e
-        (log/errorf e "Error adding user %s to group %s" (u/the-id user-or-id) (u/the-id group-or-id))))))
+        ;; A tenant/group mismatch means the user landed in the wrong space (e.g. an SSO login whose
+        ;; tenant assignment was lost); swallowing it would silently wedge the account (UXW-4898),
+        ;; so fail the login loudly instead. A nil :group-is-tenant? means the group doesn't exist —
+        ;; that stays on the log-and-continue path like any other bogus group id.
+        (if (some (comp some? :group-is-tenant?) (:bad-user-group-pairs (ex-data e)))
+          (throw e)
+          (log/errorf e "Error adding user %s to group %s" (u/the-id user-or-id) (u/the-id group-or-id)))))))
 
 (defn sync-group-memberships!
   "Update the PermissionsGroups a User belongs to, adding or deleting membership entries as needed so that Users is
