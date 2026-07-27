@@ -85,6 +85,29 @@ describe("useDiagnosticsFeed", () => {
     );
   });
 
+  it("converges by polling when there is no nudge channel", async () => {
+    // The nudge channel rides the HMR socket, which a dev-server restart can
+    // strand — the feed must keep converging without it.
+    jest.useFakeTimers();
+    try {
+      let current = report([entry(1)]);
+      jest
+        .spyOn(globalThis, "fetch")
+        .mockImplementation(() => Promise.resolve(ok(current)));
+
+      const { result } = renderHook(() => useDiagnosticsFeed("/feed"));
+      await act(() => jest.advanceTimersByTimeAsync(0));
+      expect(result.current.entries).toHaveLength(1);
+
+      current = report([entry(1), entry(2)]);
+      await act(() => jest.advanceTimersByTimeAsync(2100));
+
+      expect(result.current.entries.map((e) => e.eventId)).toEqual([1, 2]);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it("does not let a slow read overwrite a fresher one", async () => {
     const { subscribe, nudge } = makeSubscribe();
 

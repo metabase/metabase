@@ -172,6 +172,9 @@ export function setUpDataAppDevServer(clientHost: string) {
     throw new Error("baseUrl must be set for the data-app dev-server suite");
   }
 
+  cy.exec(`rm -f ${DATA_APP_DEV_ENV_PATH}`);
+  waitForDataAppDevServerEnv(clientHost, mbUrl, { expectPresent: false });
+
   cy.request("POST", "/api/api-key", {
     name: `data-app-dev-e2e-${Date.now()}`,
     group_id: USER_GROUPS.ADMIN_GROUP,
@@ -182,18 +185,19 @@ export function setUpDataAppDevServer(clientHost: string) {
     );
   });
 
-  waitForDataAppDevServerEnv(clientHost, mbUrl);
+  waitForDataAppDevServerEnv(clientHost, mbUrl, { expectPresent: true });
 }
 
 export function tearDownDataAppDevServer() {
   cy.exec(`rm -f ${DATA_APP_DEV_ENV_PATH}`);
 }
 
-// `DATA_APP_MB_URL` shows up in the served CSP once Vite has restarted onto the
-// new env — poll that before visiting.
+// `DATA_APP_MB_URL` shows up in (or drops out of) the served CSP once Vite has
+// restarted onto the changed env — poll for the expected state before visiting.
 function waitForDataAppDevServerEnv(
   clientHost: string,
   mbUrl: string,
+  { expectPresent }: { expectPresent: boolean },
   attempt = 0,
 ) {
   const MAX_ATTEMPTS = 40;
@@ -206,17 +210,22 @@ function waitForDataAppDevServerEnv(
   }).then((res) => {
     const csp = String(res.headers["content-security-policy"] ?? "");
 
-    if (csp.includes(origin)) {
+    if (csp.includes(origin) === expectPresent) {
       return;
     }
 
     if (attempt >= MAX_ATTEMPTS) {
       throw new Error(
-        `Dev server never picked up DATA_APP_MB_URL (${origin}) in its CSP; last CSP: "${csp}"`,
+        `Dev server never restarted onto DATA_APP_MB_URL ${expectPresent ? "present" : "absent"} (${origin}); last CSP: "${csp}"`,
       );
     }
 
     cy.wait(1000);
-    waitForDataAppDevServerEnv(clientHost, mbUrl, attempt + 1);
+    waitForDataAppDevServerEnv(
+      clientHost,
+      mbUrl,
+      { expectPresent },
+      attempt + 1,
+    );
   });
 }

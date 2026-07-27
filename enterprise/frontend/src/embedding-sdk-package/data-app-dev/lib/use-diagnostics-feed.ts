@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { DATA_APP_DIAGNOSTICS_URL } from "../constants/diagnostics-channel";
+import { DIAGNOSTICS_POLL_MS } from "../constants/timings";
 import type {
   DataAppDiagnosticPayload,
   DataAppDiagnosticsReport,
@@ -80,8 +81,11 @@ export const useDiagnosticsFeed = (
 
     const unsubscribe = subscribe?.(() => readFeed());
 
+    const pollId = setInterval(() => readFeed(), DIAGNOSTICS_POLL_MS);
+
     return () => {
       unsubscribe?.();
+      clearInterval(pollId);
     };
   }, [readFeed, subscribe]);
 

@@ -29,14 +29,6 @@ import { createRoot } from "react-dom/client";
 // dev preview matches production. style-loader injects it at runtime.
 import "metabase-enterprise/data_apps/sandbox/iframe-baseline.css";
 
-// Built by rspack into the SDK dist (`rspack.embedding-sdk-package.config.js`).
-// React, the SDK subpaths and the virtual config stay EXTERNAL so the consumer's
-// Vite resolves them: the preview has to run against the same React and SDK
-// instances the app bundle is endowed with, not copies of them.
-
-// Either may be missing from `.env.local`. Rendering anyway is deliberate: the
-// requests then fail, and the diagnostics feed names the env var to fill — which
-// beats a blank page with the reason only in the terminal.
 const authConfig = {
   metabaseInstanceUrl: import.meta.env.DATA_APP_MB_URL ?? "",
   apiKey: import.meta.env.DATA_APP_MB_API_KEY ?? "",
