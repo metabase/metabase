@@ -2173,9 +2173,8 @@
                  (mt/user-http-request :lucky :get 404 url :schema "no such schema"))))
         (testing "the route-param form of such names is rejected at the HTTP layer, which is why the query
                  param exists; if this assertion fails, the query-param workaround may be obsolete (#77353)"
-          (is (= 400 (:status (mt/user-real-request-full-response
-                               :lucky :get 400
-                               (str url "public%2Ftransactions"))))))))))
+          ;; the expected 400 status is asserted inside the client
+          (mt/user-real-request :lucky :get 400 (str url "public%2Ftransactions")))))))
 
 (deftest ^:parallel get-schema-tables-publishing-test
   (testing "GET /api/database/:id/schema/:schema"
