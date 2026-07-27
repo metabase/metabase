@@ -101,13 +101,23 @@
   "How long a series survives without a refresh. Three intervals, so a missed run doesn't drop it."
   (* 3 gauge-refresh-interval-s 1000))
 
-(defonce ^:private live-gauge-timers
+(defonce ^:private live-gauge-series
   ;; [gauge-key labels] -> a u/start-timer from when this process last published a real value. Only series
   ;; that held one are ever removed; an inactive index should never create one.
-  ;; Named apart from the set this replaced, so a live upgrade starts from an empty map rather than
-  ;; inheriting a shape the code below can't read. Series the previous tracker held stay exported and
-  ;; untracked until something publishes them again, which the next refresh does.
   (atom {}))
+
+(defn- migrate-legacy-tracker
+  "Carry a reload's retained tracker into the timer map. It used to be a set of `[gauge-key index]`, whose
+  series are still exported: dropping them would leave nothing able to remove them, since a measure going
+  N/A only removes what it knows it published."
+  [tracked]
+  (if (map? tracked)
+    tracked
+    (into {}
+          (map (fn [[gauge-key index]] [[gauge-key {:index (name index)}] (u/start-timer)]))
+          tracked)))
+
+(swap! live-gauge-series migrate-legacy-tracker)
 
 ;; Publishing and expiring race otherwise: a sweep can read a timer, watch a refresh replace it, and then
 ;; remove the series the refresh just exported. Both sides are rare (one refresh per interval, one sweep a
@@ -116,26 +126,26 @@
   "Publish `value` for a search gauge, or stop exporting that series when `value` is nil.
   Removed rather than set to NaN: a NaN is still scraped, and poisons any `avg` or `sum` over the series."
   [gauge-key labels value]
-  (locking live-gauge-timers
+  (locking live-gauge-series
     (let [series [gauge-key labels]]
       (if (some? value)
         (do
           (analytics/set-gauge! gauge-key labels value)
-          (swap! live-gauge-timers assoc series (u/start-timer)))
-        (when (contains? @live-gauge-timers series)
+          (swap! live-gauge-series assoc series (u/start-timer)))
+        (when (contains? @live-gauge-series series)
           (analytics/remove-series! gauge-key labels)
-          (swap! live-gauge-timers dissoc series))))))
+          (swap! live-gauge-series dissoc series))))))
 
 (defn- expire-stale-gauges!
   "Stop exporting series this process hasn't refreshed within [[stale-gauge-age-ms]].
   Every process measures its own series, so one goes stale only when this node's refresh stopped happening
   -- and a reading nothing is renewing is worse than none."
   []
-  (locking live-gauge-timers
-    (doseq [[[gauge-key labels :as series] published] @live-gauge-timers
+  (locking live-gauge-series
+    (doseq [[[gauge-key labels :as series] published] @live-gauge-series
             :when (>= (u/since-ms published) stale-gauge-age-ms)]
       (analytics/remove-series! gauge-key labels)
-      (swap! live-gauge-timers dissoc series))))
+      (swap! live-gauge-series dissoc series))))
 
 (defmethod analytics.core/pull-collector ::expire-stale-gauges [_]
   {:min-interval-s 60
