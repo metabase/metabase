@@ -38,7 +38,9 @@
   (-observe! [this metric labels amount]
     "Record a histogram/summary observation.")
   (-clear! [this metric]
-    "Clear all values for a metric (reset all label combinations)."))
+    "Clear all values for a metric (reset all label combinations).")
+  (-remove-series! [this metric labels]
+    "Stop exporting one label combination of a metric."))
 
 (def ^:private no-op-reporter
   "A no-op reporter. This ideally should never be used in production, as the real one is installed after setting up the
@@ -48,7 +50,8 @@
     (-dec-gauge! [_this _metric _labels _amount])
     (-set-gauge! [_this _metric _labels _amount])
     (-observe! [_this _metric _labels _amount])
-    (-clear! [_this _metric])))
+    (-clear! [_this _metric])
+    (-remove-series! [_this _metric _labels])))
 
 (defonce ^:private reporter (atom no-op-reporter))
 
@@ -111,3 +114,10 @@
   [metric]
   (when-let [r @reporter]
     (-clear! r metric)))
+
+(defn remove-series!
+  "Stop exporting one label combination of a metric, so Prometheus marks it stale rather than continuing to
+  scrape a value nothing refreshes. No-op if no reporter is registered."
+  [metric labels]
+  (when-let [r @reporter]
+    (-remove-series! r metric labels)))
