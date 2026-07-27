@@ -1,6 +1,11 @@
 import * as Yup from "yup";
 
 import * as Errors from "metabase/utils/errors";
+import {
+  type FieldTypeInfo,
+  isDate,
+  isTime,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   LookbackUnit,
   Transform,
@@ -8,6 +13,13 @@ import type {
   TransformTarget,
   UpdateTransformRequest,
 } from "metabase-types/api";
+
+// Same rule as the BE's `date-or-datetime?`: temporal but not time-only (time watermarks wrap at
+// midnight). The predicates check effective_type first, so coerced columns (e.g. unix
+// timestamps) count as temporal.
+export const fieldSupportsLookback = (
+  field: FieldTypeInfo | null | undefined,
+): boolean => isDate(field) && !isTime(field);
 
 export type IncrementalSettingsFormValues = {
   incremental: boolean;

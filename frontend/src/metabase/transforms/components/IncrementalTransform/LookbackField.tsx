@@ -5,14 +5,13 @@ import { t } from "ttag";
 import { skipToken, useGetFieldQuery } from "metabase/api";
 import { FormField, FormNumberInput, FormSelect } from "metabase/forms";
 import { Group } from "metabase/ui";
-import {
-  isDate,
-  isDateWithoutTime,
-  isTime,
-} from "metabase-lib/v1/types/utils/isa";
+import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
 import type { LookbackUnit } from "metabase-types/api";
 
-import type { IncrementalSettingsFormValues } from "./form";
+import {
+  type IncrementalSettingsFormValues,
+  fieldSupportsLookback,
+} from "./form";
 
 const SUB_DAY_UNITS: ReadonlySet<LookbackUnit> = new Set([
   "millisecond",
@@ -45,21 +44,30 @@ export function LookbackField({ readOnly }: { readOnly?: boolean }) {
     fieldId != null ? { id: Number(fieldId) } : skipToken,
   );
 
-  const isSupported = isDate(field) && !isTime(field);
+  const isSupported = fieldSupportsLookback(field);
   const isDateOnly = isDateWithoutTime(field);
 
-  // Date-only columns only take day-or-coarser units; snap a finer unit (possible after a
-  // checkpoint-field change) back to days. Guarded on a set value — a write here counts as a
-  // form change and triggers an inline save.
+  // Keep a configured lookback consistent after a checkpoint-field change: clear it when the new
+  // column doesn't support one (hiding the input alone would still submit the stale value), and
+  // snap sub-day units back to days on date-only columns. Guarded on a set value — a write here
+  // counts as a form change and triggers an inline save.
   useEffect(() => {
-    if (
-      isDateOnly &&
-      values.lookbackValue != null &&
-      SUB_DAY_UNITS.has(values.lookbackUnit)
-    ) {
+    if (field == null || values.lookbackValue == null) {
+      return;
+    }
+    if (!isSupported) {
+      setFieldValue("lookbackValue", null);
+    } else if (isDateOnly && SUB_DAY_UNITS.has(values.lookbackUnit)) {
       setFieldValue("lookbackUnit", "day");
     }
-  }, [isDateOnly, values.lookbackValue, values.lookbackUnit, setFieldValue]);
+  }, [
+    field,
+    isSupported,
+    isDateOnly,
+    values.lookbackValue,
+    values.lookbackUnit,
+    setFieldValue,
+  ]);
 
   if (fieldId == null || !isSupported) {
     return null;
