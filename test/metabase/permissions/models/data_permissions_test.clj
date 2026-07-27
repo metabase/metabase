@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as impl]
+   [metabase.config.core :as config]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -779,11 +780,15 @@
             (mt/with-premium-features #{}
               (data-perms/set-database-permission! group-id db-id-2 :perms/view-data :blocked)
               (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
-                (is (= :unrestricted (t2/select-one-fn :perm_value
-                                                       :model/DataPermissions
-                                                       :db_id     new-db-id
-                                                       :group_id  group-id
-                                                       :perm_type :perms/view-data))))))))
+                ;; When EE code is on the classpath the new database fails CLOSED to :blocked for the
+                ;; blocked group regardless of token features (UXW-4927); only a true OSS jar (no EE
+                ;; code at all) falls back to :unrestricted.
+                (is (= (if config/ee-available? :blocked :unrestricted)
+                       (t2/select-one-fn :perm_value
+                                         :model/DataPermissions
+                                         :db_id     new-db-id
+                                         :group_id  group-id
+                                         :perm_type :perms/view-data))))))))
       (t2/delete! :model/DataPermissions :group_id group-id)
       (testing "Query permissions... "
         (testing "A new database gets `query-builder-and-native` query permissions if a group only has `query-builder-and-native` for other databases"
