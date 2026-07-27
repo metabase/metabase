@@ -56,7 +56,6 @@ export function CleanupHeader({
               }
               leftSection={<Icon name="refresh" />}
               loading={isStarting}
-              disabled={isRefreshing}
               onClick={onRefresh}
             >
               {snapshot || refreshStatus?.snapshot
