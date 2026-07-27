@@ -7,7 +7,7 @@ driver:
   display-name: BigQuery
   lazy-load: true
   parent:
-    - sql
+    - sql-mbql5
   connection-properties:
     - name: project-id
       display-name: Project ID (override)
