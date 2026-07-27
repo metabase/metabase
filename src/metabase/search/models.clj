@@ -87,4 +87,4 @@
        #(submit-handoff! model op
                          (fn []
                            (search/bulk-update! instances)
-                           (search/purge-vanished-documents! dependents)))))))
+                           (search/reconcile-cascading-documents! dependents)))))))
