@@ -176,7 +176,7 @@
 
 (defn- aggregation-clause
   [definition]
-  (first (lib/aggregations definition 0)))
+  (first (lib/aggregations (lib/normalize definition) 0)))
 
 (defn- field-id
   [clause]
@@ -194,7 +194,7 @@
 
 (defn- segment-atoms
   [definition]
-  (into #{} (map insights/canonical-signature) (lib/atomic-filters definition 0)))
+  (into #{} (map insights/canonical-signature) (lib/atomic-filters (lib/normalize definition) 0)))
 
 (defn- relation-for-segment
   [candidate existing]
@@ -308,22 +308,23 @@
 (defn- semantically-eligible?
   [{:keys [candidate_type semantic_details complexity verified_source_count
            official_source_count distinct_source_count]}]
-  (case candidate_type
-    :measure
-    (and (not (and (= :count (:type semantic_details))
-                   (nil? (:field semantic_details))))
-         (or (not (contains? conditional-measure-types (:type semantic_details)))
-             (pos? verified_source_count)
-             (pos? official_source_count)
-             (>= distinct_source_count 2)))
+  (let [semantic-type (some-> (:type semantic_details) keyword)]
+    (case candidate_type
+      :measure
+      (and (not (and (= :count semantic-type)
+                     (nil? (:field semantic_details))))
+           (or (not (contains? conditional-measure-types semantic-type))
+               (pos? verified_source_count)
+               (pos? official_source_count)
+               (>= distinct_source_count 2)))
 
-    :segment
-    (or (= complexity 1)
-        (pos? verified_source_count)
-        (pos? official_source_count)
-        (>= distinct_source_count 2))
+      :segment
+      (or (= complexity 1)
+          (pos? verified_source_count)
+          (pos? official_source_count)
+          (>= distinct_source_count 2))
 
-    false))
+      false)))
 
 (defn- evidence-eligible?
   [{:keys [verified_source_count official_source_count distinct_source_count total_view_count]}]
@@ -362,20 +363,21 @@
 
 (defn- source-provenance-index
   [candidate-ids]
-  (->> candidate-ids
-       (partition-all 200)
-       (mapcat (fn [ids]
-                 (t2/select [:model/UsageMetadataCandidateSource
-                             :candidate_id :card_id :card_name :card_type
-                             :verified :official :popular :view_count :joined
-                             :stage_numbers :model_lineage]
-                            :candidate_id [:in ids])))
-       (group-by :candidate_id)
-       (update-vals (fn [sources]
-                      (->> sources
-                           (map #(dissoc % :candidate_id))
-                           (sort-by :card_id)
-                           vec)))))
+  (let [sources (->> candidate-ids
+                     (partition-all 200)
+                     (mapcat (fn [ids]
+                               (t2/select [:model/UsageMetadataCandidateSource
+                                           :candidate_id :card_id :card_name :card_type
+                                           :verified :official :popular :view_count :joined
+                                           :stage_numbers :model_lineage]
+                                          :candidate_id [:in ids])))
+                     (group-by :candidate_id))]
+    (update-vals sources
+                 (fn [candidate-sources]
+                   (->> candidate-sources
+                        (map #(dissoc % :candidate_id))
+                        (sort-by :card_id)
+                        vec)))))
 
 (defn- non-closed-segment-candidate-ids
   [candidates provenance-index]

@@ -15,8 +15,10 @@
 
 (def ^:private relation-for-measure @#'candidates/relation-for-measure)
 (def ^:private relation-for-segment @#'candidates/relation-for-segment)
+(def ^:private segment-atoms @#'candidates/segment-atoms)
 (def ^:private globally-eligible? @#'candidates/globally-eligible?)
 (def ^:private prune-ineligible-candidates! @#'candidates/prune-ineligible-candidates!)
+(def ^:private source-provenance-index @#'candidates/source-provenance-index)
 (def ^:private non-closed-segment-candidate-ids
   @#'candidates/non-closed-segment-candidate-ids)
 
@@ -192,6 +194,59 @@
     (testing "only a proper subset with identical full provenance on the same table is pruned"
       (is (= #{1}
              (non-closed-segment-candidate-ids candidates provenance-index))))))
+
+(deftest source-provenance-index-groups-and-normalizes-sources-test
+  (let [metadata-provider (lib-be/application-database-metadata-provider (mt/id))
+        base-query        (lib/query metadata-provider
+                                     (lib.metadata/table metadata-provider (mt/id :orders)))
+        definition        (lib/filter base-query
+                                      (lib/> (lib.metadata/field metadata-provider
+                                                                 (mt/id :orders :subtotal))
+                                             10))]
+    (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :running
+                                                         :trigger           :manual
+                                                         :algorithm_version candidates/algorithm-version
+                                                         :source_config     {}}
+                   :model/UsageMetadataCandidate candidate
+                   (assoc (candidate-row (:id run) (mt/id :orders))
+                          :definition definition)
+                   :model/Card card {:name "Candidate source"
+                                     :type :question}
+                   :model/UsageMetadataCandidateSource _
+                   {:candidate_id  (:id candidate)
+                    :card_id       (:id card)
+                    :card_name     (:name card)
+                    :card_type     :question
+                    :verified      true
+                    :official      false
+                    :popular       true
+                    :view_count    12
+                    :joined        false
+                    :stage_numbers [0 1]
+                    :model_lineage []}]
+      (is (= 1 (count (segment-atoms
+                       (:definition (t2/select-one :model/UsageMetadataCandidate :id (:id candidate)))))))
+      (is (= {(:id candidate)
+              [{:card_id       (:id card)
+                :card_name     "Candidate source"
+                :card_type     :question
+                :verified      true
+                :official      false
+                :popular       true
+                :view_count    12
+                :joined        false
+                :stage_numbers [0 1]
+                :model_lineage []}]}
+             (source-provenance-index [(:id candidate)]))))))
+
+(deftest semantic-eligibility-normalizes-persisted-type-test
+  (is (not (globally-eligible? {:candidate_type         :measure
+                                :semantic_details       {:type "count", :field nil}
+                                :complexity             0
+                                :verified_source_count  1
+                                :official_source_count  1
+                                :distinct_source_count  3
+                                :total_view_count       100}))))
 
 (deftest structural-library-relations-test
   (let [metadata-provider (lib-be/application-database-metadata-provider (mt/id))
