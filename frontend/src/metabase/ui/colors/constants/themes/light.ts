@@ -82,11 +82,11 @@ const actualColors = {
   "background_page-highlighted":
     "color-mix(in srgb, var(--mb-color-core-brand) 7%, transparent)",
   "background_page-primary": baseColors.white,
-  "background_page-primary-inverse": baseColors.orion[80],
+  "background_page-primary-inverse": baseColors.orion[95],
   "background_page-secondary": baseColors.orion[5],
-  "background_page-secondary-inverse": `color-mix(in srgb, ${baseColors.orion[100]}, black 25%)`,
+  "background_page-secondary-inverse": baseColors.orion[100],
   "background_page-tertiary": baseColors.orion[10],
-  "background_page-tertiary-inverse": `color-mix(in srgb, ${baseColors.orion[100]}, black 50%)`,
+  "background_page-tertiary-inverse": baseColors.orion[110],
   "background_surface-brand-strong": baseColors.brand[60],
   "background_surface-brand-strong-hover": baseColors.brand[70],
   "background_surface-brand-strong-pressed": baseColors.brand[80],
@@ -173,7 +173,7 @@ const actualColors = {
   "text-syntax-parameter": baseColors.mango[60],
   "text-syntax-parameter-active": baseColors.mango[10],
   "tooltip-background": baseColors.orion[80],
-  "tooltip-background-focused": `color-mix(in srgb, ${baseColors.orion[80]} 50%, #000)`,
+  "tooltip-background-focused": baseColors.orion[90],
   "tooltip-text": baseColors.white,
   "tooltip-text-secondary": baseColors.orionAlphaInverse[60],
 };

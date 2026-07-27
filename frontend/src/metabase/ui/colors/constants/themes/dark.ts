@@ -5,6 +5,10 @@ import { getBaseColorsForThemeDefinitionOnly } from "../base-colors";
 
 const baseColors = getBaseColorsForThemeDefinitionOnly();
 
+// `orion[110]` at 20% opacity. Kept off the alpha scale because `orionAlpha` is
+// based on `orion[100]`.
+const ORION_110_ALPHA_20 = "hsla(205, 63%, 5%, 0.2)";
+
 // To be removed once the rename in GDGT-2517 is complete. Prefer the keys in
 // `actualColors` below.
 const deprecatedColors = {
@@ -51,7 +55,7 @@ const deprecatedColors = {
   "saturated-purple": baseColors.octopus[40],
   "saturated-red": baseColors.lobster[40],
   "saturated-yellow": baseColors.dubloon[30],
-  shadow: `color-mix(in srgb, ${baseColors.orion[110]} 20%, transparent)`,
+  shadow: ORION_110_ALPHA_20,
   "success-secondary": baseColors.palm[40],
   success: baseColors.palm[50],
   summarize: baseColors.palm[40],
@@ -81,13 +85,11 @@ const actualColors = {
   "background_page-filter": baseColors.filter[90],
   "background_page-highlighted":
     "color-mix(in srgb, var(--mb-color-core-brand) 7%, transparent)",
-  "background_page-primary": baseColors.orion[100],
+  "background_page-primary": baseColors.orion[95],
   "background_page-primary-inverse": "white",
-  "background_page-secondary":
-    "color-mix(in srgb, var(--mb-color-background_page-primary), black 25%)",
+  "background_page-secondary": baseColors.orion[100],
   "background_page-secondary-inverse": baseColors.orion[5],
-  "background_page-tertiary":
-    "color-mix(in srgb, var(--mb-color-background_page-primary), black 50%)",
+  "background_page-tertiary": baseColors.orion[110],
   "background_page-tertiary-inverse": baseColors.orion[10],
   "background_surface-brand-strong": baseColors.brand[20],
   "background_surface-brand-strong-hover": baseColors.brand[10],
@@ -155,7 +157,7 @@ const actualColors = {
   "navbar-admin": baseColors.octopus[80],
   "navbar-admin-inverse": baseColors.octopus[60],
   "navbar-admin-secondary": baseColors.octopus[60],
-  "shadow-default": `color-mix(in srgb, ${baseColors.orion[110]} 20%, transparent)`,
+  "shadow-default": ORION_110_ALPHA_20,
   "switch-off": baseColors.orionAlphaInverse[20],
   "text-brand": baseColors.brand[40],
   "text-brand-hover": baseColors.brand[30],
@@ -172,7 +174,7 @@ const actualColors = {
   "text-syntax-parameter": baseColors.mango[40],
   "text-syntax-parameter-active": baseColors.mango[90],
   "tooltip-background": baseColors.orion[70],
-  "tooltip-background-focused": `color-mix(in srgb, ${baseColors.orion[70]} 50%, #000)`,
+  "tooltip-background-focused": baseColors.orion[80],
   "tooltip-text": baseColors.orionAlphaInverse[80],
   "tooltip-text-secondary": baseColors.orionAlphaInverse[60],
 };
