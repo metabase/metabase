@@ -152,17 +152,18 @@ databaseChangeLog:
             constraintName: fk_table_user_settings_owner_user_id
             onDelete: SET NULL
 
-  ## Backfill settings for all active tables, assuming the worst case: values that cannot be
-  ## attributed are treated as user-authored. display_name cannot be compared against its default
-  ## (the humanization strategy is env-configurable) and description may be either user-written or
-  ## synced from a database comment, so both are copied as-is, along with the purely user-authored
-  ## columns (caveats, points_of_interest, collection_id, owner_email, owner_user_id). Columns with
-  ## a known system default are recorded only when they differ from it: data_layer 'internal',
+  ## Backfill settings for published tables: publishing is a deliberate curation act, so their
+  ## metadata is treated as user-authored, assuming the worst case for values that cannot be
+  ## attributed: display_name cannot be compared against its default (the humanization strategy is
+  ## env-configurable) and description may be either user-written or synced from a database
+  ## comment, so both are copied as-is, along with the purely user-authored columns (caveats,
+  ## points_of_interest, collection_id, is_published, owner_email, owner_user_id). Columns with a
+  ## known system default are recorded only when they differ from it: data_layer 'internal',
   ## data_authority 'unconfigured', field_order 'database' (every in-tree driver's
-  ## default-field-order), visibility_type NULL, is_published/show_in_getting_started FALSE.
-  ## entity_type and data_source stay NULL: the sync classifier writes entity_type on every table
-  ## (name-derived, no default to compare against) and uploads/transforms write data_source, so
-  ## recording them would pin system output as user-authored. Inactive tables are ignored and the
+  ## default-field-order), visibility_type NULL, show_in_getting_started FALSE. entity_type and
+  ## data_source stay NULL: the sync classifier writes entity_type on every table (name-derived, no
+  ## default to compare against) and uploads/transforms write data_source, so recording them would
+  ## pin system output as user-authored. Unpublished and inactive tables get no row, and the
   ## audit/instance-analytics database is excluded (curated by Metabase itself), via NOT EXISTS
   ## rather than NOT IN (SELECT ...) since NOT IN degrades on large instances (#78271). Rows that
   ## already exist (user edits made before this changeset ran) are left untouched.
@@ -170,7 +171,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-23T10:00:05
       author: ranquild
-      comment: Backfill metabase_table_user_settings for active tables
+      comment: Backfill metabase_table_user_settings for published tables
       changes:
         - sql:
             sql: >-
@@ -187,14 +188,15 @@ databaseChangeLog:
                 t.visibility_type,
                 CASE WHEN t.data_layer <> 'internal' THEN t.data_layer END,
                 t.collection_id,
-                CASE WHEN t.is_published = TRUE THEN t.is_published END,
+                t.is_published,
                 t.owner_email,
                 t.owner_user_id,
                 CASE WHEN t.data_authority <> 'unconfigured' THEN t.data_authority END,
                 CASE WHEN t.field_order <> 'database' THEN t.field_order END,
                 CASE WHEN t.show_in_getting_started = TRUE THEN t.show_in_getting_started END
               FROM metabase_table t
-              WHERE t.active = TRUE
+              WHERE t.is_published = TRUE
+                AND t.active = TRUE
                 AND NOT EXISTS (SELECT 1 FROM metabase_database d WHERE d.id = t.db_id AND d.is_audit = TRUE)
                 AND NOT EXISTS (SELECT 1 FROM metabase_table_user_settings s WHERE s.table_id = t.id)
       rollback: # not necessary; the table is dropped by the rollback of v64.2026-07-23T10:00:00

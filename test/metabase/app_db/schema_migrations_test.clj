@@ -3323,7 +3323,7 @@
             "metabot_conversation.state is gone")))))
 
 (deftest backfill-table-user-settings-test
-  (testing "v64.2026-07-23T10:00:05: active tables get settings backfilled worst-case, defaults recorded as NULL"
+  (testing "v64.2026-07-23T10:00:05: published tables get settings backfilled worst-case, defaults recorded as NULL"
     (impl/test-migrations ["v64.2026-07-23T10:00:05" "v64.2026-07-23T10:00:05"] [migrate!]
       (let [new-db!    (fn [name & {:as extra}]
                          (t2/insert-returning-pk! :metabase_database
@@ -3357,7 +3357,11 @@
             settings   (fn [table-id] (t2/select-one :metabase_table_user_settings :table_id table-id))
             defaults   (new-table! db-id "orders"
                                    :display_name "Orders"
-                                   :data_layer   "internal")
+                                   :data_layer   "internal"
+                                   :is_published true)
+            unpub      (new-table! db-id "drafts"
+                                   :display_name "Drafts Renamed"
+                                   :description  "Curated but unpublished")
             curated    (new-table! db-id "gold_customers"
                                    :display_name            "Customers Curated"
                                    :description             "Hand-written"
@@ -3375,11 +3379,14 @@
             inactive   (new-table! db-id "retired"
                                    :display_name "Retired Renamed"
                                    :description  "Curated but inactive"
+                                   :is_published true
                                    :active       false)
             audit-tbl  (new-table! audit-db "vw_users"
-                                   :display_name "Metabase Users")
+                                   :display_name "Metabase Users"
+                                   :is_published true)
             edited     (new-table! db-id "already_edited"
-                                   :display_name "Sync Value")
+                                   :display_name "Sync Value"
+                                   :is_published true)
             _          (t2/insert! :metabase_table_user_settings {:table_id     edited
                                                                   :display_name "User Value"})]
         (migrate!)
@@ -3390,7 +3397,7 @@
                    :visibility_type         nil
                    :data_layer              nil
                    :collection_id           nil
-                   :is_published            nil
+                   :is_published            true
                    :owner_email             nil
                    :owner_user_id           nil
                    :data_authority          nil
@@ -3415,6 +3422,8 @@
                    :entity_type             nil
                    :data_source             nil}
                   (settings curated))))
+        (testing "unpublished tables get no row, even with curated-looking values"
+          (is (nil? (settings unpub))))
         (testing "inactive tables are ignored"
           (is (nil? (settings inactive))))
         (testing "audit database tables are excluded"
