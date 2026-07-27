@@ -94,6 +94,17 @@
       (testing "the check runs as a startup validation so a throw aborts the boot"
         (is (contains? (methods startup/def-startup-validation!)
                        :metabase.search.core/check-for-removed-env-vars)))))
+  (testing "startup proceeds with a warning when the kill switch is a double negative"
+    (doseq [value ["true" "TRUE"]]
+      (testing value
+        (with-redefs [env/env {:mb-semantic-search-enabled value}]
+          ;; Exercise both ways semantic can be active; neither should be treated as inconsistent with true.
+          (with-engines {:supported all-engines :additional ["semantic"]}
+            (is (=? [{:level   :warn
+                      :message "MB_SEMANTIC_SEARCH_ENABLED is no longer supported. Remove it from your configuration."}]
+                    (mt/with-log-messages-for-level [messages :warn]
+                      (search/check-for-removed-env-vars!)
+                      (messages)))))))))
   (testing "startup proceeds when the kill switch is absent"
     (with-redefs [env/env {}]
       (is (nil? (search/check-for-removed-env-vars!)))))
