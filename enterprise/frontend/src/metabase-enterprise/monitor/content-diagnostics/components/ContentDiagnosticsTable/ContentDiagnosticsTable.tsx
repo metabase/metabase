@@ -61,7 +61,10 @@ export function ContentDiagnosticsTable({
       const newSortingState =
         typeof updater === "function" ? updater(sortingState) : updater;
       onSortOptionsChange(
-        getNextOptionalSorting(newSortingState, CONTENT_DIAGNOSTICS_SORT_COLUMNS),
+        getNextOptionalSorting(
+          newSortingState,
+          CONTENT_DIAGNOSTICS_SORT_COLUMNS,
+        ),
       );
     },
     [sortingState, onSortOptionsChange],
