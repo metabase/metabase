@@ -20,7 +20,7 @@
   "license": "AGPL-3.0-or-later",
   "dependencies": {
     "@octokit/rest": "^21.1.1",
-    "@slack/web-api": "^7.16.0",
+    "@slack/web-api": "^8.0.0",
     "dayjs": "^1.11.20",
     "dotenv": "^16.6.1",
     "esbuild": "^0.28.1",
@@ -38,8 +38,5 @@
     "@types/semver": "^7.7.1",
     "jest": "^29.7.0",
     "oxfmt": "^0.38.0"
-  },
-  "overrides": {
-    "form-data": "4.0.6"
   }
 }

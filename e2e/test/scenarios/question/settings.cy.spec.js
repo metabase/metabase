@@ -174,6 +174,12 @@ describe("scenarios > question > settings", () => {
 
       findColumnAtIndex("Products → Category", 5);
 
+      // Let the refreshed results finish rendering (Total visible) before hiding,
+      // so the hide toggle doesn't race the in-flight results render.
+      cy.findByTestId("query-builder-main")
+        .findByText("117.03")
+        .should("exist");
+
       // Remove "Total"
       hideColumn("Total");
 
@@ -603,8 +609,10 @@ function getVisibleSidebarColumns() {
 }
 
 function hideColumn(name) {
+  // Click the hide button without force so Cypress waits for actionability and
+  // re-queries on re-render — a force click can land on a stale node and be lost.
   H.sidebar()
     .findByTestId(`draggable-item-${name}`)
-    .icon("eye_outline")
-    .click({ force: true });
+    .findByTestId(`${name}-hide-button`)
+    .click();
 }
