@@ -78,15 +78,22 @@
    :is_superuser    false
    :is_data_analyst false})
 
+(defn settings-map
+  "Returns the user's settings (defaulting to an empty map)."
+  [settings]
+  (if (map? settings)
+    settings
+    (cond-> {}
+      (some? settings) (vary-meta assoc setting/unreadable-user-settings-key true))))
+
 (defn user-local-settings
   "Returns the user's settings (defaulting to an empty map) or `nil` if the user/user-id isn't set"
   [user-or-user-id]
   (when user-or-user-id
-    (or
+    (settings-map
      (if (integer? user-or-user-id)
        (:settings (t2/select-one [:model/User :settings] :id user-or-user-id))
-       (:settings user-or-user-id))
-     {})))
+       (:settings user-or-user-id)))))
 
 ;;; -------------------------------------------------- Validation Helpers --------------------------------------------------
 

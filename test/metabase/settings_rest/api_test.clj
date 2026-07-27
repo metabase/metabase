@@ -9,7 +9,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.log.capture :as log.capture]))
+   [metabase.util.log.capture :as log.capture]
+   [toucan2.core :as t2]))
 
 (comment h2/keep-me)
 
@@ -425,3 +426,16 @@
         (let [site-name-setting (some #(when (= "site-name" (:key %)) %)
                                       (mt/user-http-request :crowberto :get 200 "setting"))]
           (is (str/includes? (:description site-name-setting) "New Test Co")))))))
+
+(deftest set-user-local-setting-with-unparseable-settings-column-test
+  (testing "PUT /api/setting/:key"
+    (testing "works when the user's `settings` column can't be decrypted or parsed (#76900)"
+      (mt/with-temp [:model/User {user-id :id} {}]
+        ;; simulate a row that was encrypted with a key the instance no longer has: the transform can't decrypt or
+        ;; parse it, so it hands back the raw column value (a String) instead of a map
+        (t2/query {:update :core_user
+                   :set    {:settings "not-decryptable-and-not-json"}
+                   :where  [:= :id user-id]})
+        (mt/user-http-request user-id :put 204 "setting/test-user-local-only-setting" {:value "NEW"})
+        (is (= "NEW"
+               (mt/user-http-request user-id :get 200 "setting/test-user-local-only-setting")))))))

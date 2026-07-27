@@ -371,8 +371,21 @@
     (and (allows-user-local-values? setting)
          @@*user-local-values*)))
 
+(def unreadable-user-settings-key
+  "Metadata key flagging the map inside [[*user-local-values*]] as a stand-in for a `User.settings` column that could
+  neither be decrypted nor parsed."
+  ::unreadable-user-settings)
+
+(defn- warn-discarding-unreadable-settings!
+  [user-local-values]
+  (when (core/get (meta @user-local-values) unreadable-user-settings-key)
+    (log/warnf (str "Discarding unreadable settings for user %s: the `settings` column could neither be decrypted nor parsed and is being overwritten.")
+               api/*current-user-id*)
+    (swap! user-local-values vary-meta dissoc unreadable-user-settings-key)))
+
 (defn- set-user-local-value! [setting-definition-or-name value]
   (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
+    (warn-discarding-unreadable-settings! @*user-local-values*)
     ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
     ;; subsequent setting updates within the same API request will not overwrite this value.
     (swap! @*user-local-values* u/assoc-dissoc setting-name value)

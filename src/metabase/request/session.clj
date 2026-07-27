@@ -49,8 +49,9 @@
     (letfn [(do-with-user-local-values [thunk]
               (if (= *user-local-values-user-id* metabase-user-id)
                 (thunk)
-                (setting/with-user-local-values (delay (atom (or settings
-                                                                 (user/user-local-settings metabase-user-id))))
+                (setting/with-user-local-values (delay (atom (if settings
+                                                               (user/settings-map settings)
+                                                               (user/user-local-settings metabase-user-id))))
                   (binding [*user-local-values-user-id* metabase-user-id]
                     (thunk)))))]
       (do-with-user-local-values
