@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
@@ -12,11 +13,74 @@
    [metabase-enterprise.semantic-search.task.metric-collector :as semantic.task.collector]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase-enterprise.semantic-search.util :as semantic.u]
+   [metabase.app-db.core :as mdb]
    [metabase.search.index-health :as search.index-health]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
+
+(deftest pgvector-readiness-metrics-test
+  (mt/with-prometheus-system! [_ system]
+    (testing "an instance without any pgvector backend is explicitly not ready"
+      (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly false)
+                                  semantic.db.datasource/pgvector-mode (constantly :unavailable)
+                                  semantic.db.datasource/probe-dedicated-connection!
+                                  (fn [] (throw (ex-info "should not connect" {})))]
+        (@#'semantic.task.collector/collect-pgvector-readiness-metrics!)
+        (doseq [storage ["external" "app-db"]]
+          (is (zero? (mt/metric-value system :metabase-search/pgvector-store-available
+                                      {:storage storage})))
+          (is (zero? (mt/metric-value system :metabase-search/pgvector-store-connected
+                                      {:storage storage}))))))
+    (testing "a connected external store is available and healthy"
+      (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly true)
+                                  semantic.db.datasource/probe-dedicated-connection! (constantly {:one 1})]
+        (@#'semantic.task.collector/collect-pgvector-readiness-metrics!))
+      (is (== 1 (mt/metric-value system :metabase-search/pgvector-store-available
+                                 {:storage "external"})))
+      (is (== 1 (mt/metric-value system :metabase-search/pgvector-store-connected
+                                 {:storage "external"})))
+      (is (zero? (mt/metric-value system :metabase-search/pgvector-store-available
+                                  {:storage "app-db"})))
+      (is (zero? (mt/metric-value system :metabase-search/pgvector-store-connected
+                                  {:storage "app-db"})))
+      (let [last-success (mt/metric-value
+                          system :metabase-search/pgvector-store-last-success-timestamp-seconds
+                          {:storage "external"})]
+        (is (pos? last-success))
+        (testing "a later failure clears connected but preserves the last-success timestamp"
+          (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly true)
+                                      semantic.db.datasource/probe-dedicated-connection!
+                                      (fn [] (throw (ex-info "connection failed" {})))]
+            (@#'semantic.task.collector/collect-pgvector-readiness-metrics!))
+          (is (== 1 (mt/metric-value system :metabase-search/pgvector-store-available
+                                     {:storage "external"})))
+          (is (zero? (mt/metric-value system :metabase-search/pgvector-store-connected
+                                      {:storage "external"})))
+          (is (== last-success
+                  (mt/metric-value
+                   system :metabase-search/pgvector-store-last-success-timestamp-seconds
+                   {:storage "external"}))))))
+    (testing "a connected app-db pgvector store is available and healthy"
+      (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly false)
+                                  semantic.db.datasource/pgvector-mode (constantly :app-db)
+                                  mdb/data-source (constantly ::app-db-datasource)
+                                  jdbc/execute-one! (fn [datasource sql]
+                                                      (is (= ::app-db-datasource datasource))
+                                                      (is (= ["SELECT 1"] sql))
+                                                      {:one 1})]
+        (@#'semantic.task.collector/collect-pgvector-readiness-metrics!))
+      (is (zero? (mt/metric-value system :metabase-search/pgvector-store-available
+                                  {:storage "external"})))
+      (is (zero? (mt/metric-value system :metabase-search/pgvector-store-connected
+                                  {:storage "external"})))
+      (is (== 1 (mt/metric-value system :metabase-search/pgvector-store-available
+                                 {:storage "app-db"})))
+      (is (== 1 (mt/metric-value system :metabase-search/pgvector-store-connected
+                                 {:storage "app-db"})))
+      (is (pos? (mt/metric-value system :metabase-search/pgvector-store-last-success-timestamp-seconds
+                                 {:storage "app-db"}))))))
 
 (defn- create-test-tables!
   [pgvector index-metadata model]

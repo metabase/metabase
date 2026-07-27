@@ -191,6 +191,15 @@
         (throw e)))
     (throw (ex-info "Semantic search connection pool is not initialized. Call init-db! first." {}))))
 
+(defn probe-dedicated-connection!
+  "Test the dedicated pgvector database without initializing its connection pool.
+  Reuse the pool when a consuming feature has already initialized it; otherwise use a one-shot datasource so
+  readiness monitoring does not keep an idle server-side connection open before those features are enabled."
+  []
+  (let [datasource (or @data-source
+                       (jdbc/get-datasource {:jdbcUrl (:jdbc-url (parsed-db-config))}))]
+    (jdbc/execute-one! datasource ["SELECT 1 AS test"])))
+
 (comment
   ;; docker-compose.yml
   (.doReset #'db-url "jdbc:postgres://localhost:55432/mb_semantic_search?user=postgres&password=postgres")

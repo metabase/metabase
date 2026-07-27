@@ -49,6 +49,13 @@
         (finally
           (reset! semantic.db.datasource/data-source orig-data-source))))))
 
+(deftest probe-dedicated-connection-test
+  (testing "the readiness probe connects without initializing the dedicated pool"
+    (when semantic.db.datasource/db-url
+      (with-redefs [semantic.db.datasource/data-source (atom nil)]
+        (is (= {:test 1} (semantic.db.datasource/probe-dedicated-connection!)))
+        (is (nil? @semantic.db.datasource/data-source))))))
+
 (def ^:private parse-db-url #'semantic.db.datasource/parse-db-url)
 
 (def ^:private base-url "jdbc:postgresql://localhost:5432/mb_semantic_search")

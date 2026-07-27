@@ -365,6 +365,15 @@
                      {:description "Number of rows in the active semantic index dead-letter-queue table."})
    (prometheus/gauge :metabase-search/semantic-gate-size
                      {:description "Number of rows in the semantic gate table"})
+   (prometheus/gauge :metabase-search/pgvector-store-available
+                     {:description "Whether a pgvector store is available to this instance."
+                      :labels      [:storage]})
+   (prometheus/gauge :metabase-search/pgvector-store-connected
+                     {:description "Whether the most recent connection probe to a pgvector store succeeded."
+                      :labels      [:storage]})
+   (prometheus/gauge :metabase-search/pgvector-store-last-success-timestamp-seconds
+                     {:description "Unix timestamp in seconds of the most recent successful pgvector store connection probe."
+                      :labels      [:storage]})
    (prometheus/gauge :metabase-search/queue-size
                      {:description "Number of updates on the search indexing queue."})
    (prometheus/counter :metabase-search/response-ok
