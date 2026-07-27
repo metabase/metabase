@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-studio.api.usage-metadata-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-studio.api.usage-metadata :as usage-metadata.api]
    [metabase.lib.core :as lib]
    [metabase.measures.test-util :as measures.tu]
    [metabase.models.interface :as mi]
@@ -10,7 +11,15 @@
    [metabase.usage-metadata.insights :as insights]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
+
+(def ^:private run-refresh-async! @#'usage-metadata.api/run-refresh-async!)
+
+(deftest temporary-direct-refresh-must-not-merge-to-master-test
+  ;; Remove this test only after the usage-metadata refresh API path is wired through Quartz again.
+  (is false "DO NOT MERGE: the usage-metadata refresh API temporarily bypasses Quartz."))
 
 (defn- candidate-row
   ([run-id]
@@ -35,6 +44,30 @@
      :total_view_count       10
      :complexity             1}
     overrides)))
+
+(deftest manual-refresh-runs-without-quartz-test
+  (let [run       {:id 42, :status :queued}
+        started   (promise)
+        completed (promise)]
+    (with-redefs [candidates/run-refresh! (fn [submitted-run]
+                                            (deliver started submitted-run)
+                                            (deliver completed true))]
+      (run-refresh-async! run)
+      (is (= run (deref started 1000 ::timeout)))
+      (is (true? (deref completed 1000 ::timeout))))))
+
+(deftest manual-refresh-api-starts-direct-run-test
+  (mt/with-premium-features #{:library}
+    (let [run     {:id 42, :status :queued}
+          started (promise)]
+      (with-redefs-fn {#'candidates/queue-refresh!                 (fn [_trigger _requested-by] run)
+                       #'usage-metadata.api/run-refresh-async! #(deliver started %)}
+        (fn []
+          (let [response (mt/user-http-request :crowberto :post 202
+                                               "ee/data-studio/usage-metadata/refresh")
+                submitted-run (deref started 1000 ::timeout)]
+            (is (= (:run_id response) (:id submitted-run)))
+            (is (= run submitted-run))))))))
 
 (defn- definition-signature
   [candidate-type table-id definition]
