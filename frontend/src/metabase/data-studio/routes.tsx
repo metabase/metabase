@@ -13,7 +13,6 @@ import {
   Route,
   type RouteComponent,
   redirect,
-  withRouteProps,
 } from "metabase/router";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
@@ -35,8 +34,6 @@ import {
   SchemaViewerUpsellPage,
 } from "./upsells/pages";
 
-const RoutedTransformsSectionLayout = withRouteProps(TransformsSectionLayout);
-
 export function getDataStudioRoutes(IsAdmin: RouteComponent) {
   return (
     <>
@@ -56,7 +53,7 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
               {getDataStudioMetadataRoutes(IsAdmin)}
             </Route>
           </Route>
-          <Route path="transforms" element={<RoutedTransformsSectionLayout />}>
+          <Route path="transforms" element={<TransformsSectionLayout />}>
             {getDataStudioTransformRoutes()}
           </Route>
           <Route element={<WorkspacesSectionLayout />}>
