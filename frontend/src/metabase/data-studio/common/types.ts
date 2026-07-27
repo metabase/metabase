@@ -6,7 +6,7 @@ import type {
   Table,
 } from "metabase-types/api";
 
-export type LibrarySectionType = "data" | "metrics" | "snippets";
+export type LibrarySectionType = "data" | "metrics" | "snippets" | "seeds";
 
 export type EmptyStateData = {
   model: "empty-state";
@@ -38,7 +38,14 @@ export type TableData = Table & {
   model: "table";
 };
 
-export type TreeItemModel = CollectionItemModel | "empty-state";
+export type SeedData = {
+  model: "seed";
+  id: number;
+  name: string;
+  tableId: number | null;
+};
+
+export type TreeItemModel = CollectionItemModel | "empty-state" | "seed";
 
 export type TreeItem = {
   id: string;
@@ -47,7 +54,12 @@ export type TreeItem = {
   updatedAt?: string;
   model: TreeItemModel;
   parentCollectionName?: string;
-  data: CollectionItemData | CollectionData | TableData | EmptyStateData;
+  data:
+    | CollectionItemData
+    | CollectionData
+    | TableData
+    | EmptyStateData
+    | SeedData;
   children?: TreeItem[];
   childrenLoaded?: boolean;
 };

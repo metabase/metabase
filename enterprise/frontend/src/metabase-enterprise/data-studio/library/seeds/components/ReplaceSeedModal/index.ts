@@ -1,0 +1,1 @@
+export { ReplaceSeedModal } from "./ReplaceSeedModal";

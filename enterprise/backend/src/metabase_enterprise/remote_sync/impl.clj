@@ -4,6 +4,7 @@
    [diehard.core :as dh]
    [java-time.api :as t]
    [metabase-enterprise.data-apps.sync :as data-apps.sync]
+   [metabase-enterprise.data-studio.seeds :as seeds]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
@@ -324,6 +325,44 @@
    {:read-file (fn [path] (source.p/read-file snapshot path))
     :list-dir  (fn [path] (source.p/list-dir snapshot path))
     :sha       (source.p/version snapshot)}))
+
+(defn- materialize-seeds!
+  "After a successful import, materialize seeds from the same snapshot. Seeds live
+   under `seeds/` in the repo (outside the serdes paths), like data apps, and ride
+   this import. `seeds/materialize-from-sync!` never throws. Returns `{:changed n}`."
+  [^SourceSnapshot snapshot]
+  (seeds/materialize-from-sync!
+   {:read-file  (fn [path] (source.p/read-file snapshot path))
+    :list-files (fn [] (source.p/list-files snapshot))
+    :sha        (source.p/version snapshot)}))
+
+(def ^:private seed-repo-file-re #"^seeds/[a-z][a-z0-9_]*\.csv$")
+
+(defn- stage-seeds!
+  "Stage every seed's CSV into the export commit as `seeds/<name>.csv`, and delete
+   repo seed files whose seed no longer exists. Seeds sit outside the managed dirs,
+   so `replace-all!` never touches them — this owns their writes and stale cleanup."
+  [commit snapshot]
+  (let [rows       (seeds/sync-export-rows)
+        keep-paths (set (map #(str "seeds/" (:name %) ".csv") rows))]
+    (doseq [{:keys [name csv]} rows]
+      (source.p/stage-upsert! commit {:path (str "seeds/" name ".csv") :content csv}))
+    (doseq [path (filter #(re-matches seed-repo-file-re %) (source.p/list-files snapshot))
+            :when (not (contains? keep-paths path))]
+      (source.p/stage-delete! commit path))))
+
+(defn- seeds-dirty?
+  "True if the local seeds differ from what's committed under `seeds/` in the snapshot,
+   so a seed-only change still triggers an export (seeds don't touch RemoteSyncObject)."
+  [^SourceSnapshot snapshot]
+  (let [repo (into {} (for [path  (source.p/list-files snapshot)
+                            :when (re-matches seed-repo-file-re path)]
+                        [path (source.p/read-file snapshot path)]))
+        rows (seeds/sync-export-rows)]
+    (or (not= (count repo) (count rows))
+        (boolean (some (fn [{:keys [name csv]}]
+                         (not= csv (get repo (str "seeds/" name ".csv"))))
+                       rows)))))
 
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
@@ -685,13 +724,15 @@
         ;; how many they upserted or removed into the outcome — otherwise a
         ;; data-app-only pull would report `pull-skipped` / `count 0`.
         (if (= :success (:status result))
-          (let [da-result  (materialize-data-apps! snapshot)
+          (let [da-result    (materialize-data-apps! snapshot)
                 ;; Removals count too: a pull whose only change is deleting an app
                 ;; directory upserts nothing (`:changed` 0) but still changed what
                 ;; this instance serves, so it must report as a pull, not skipped.
-                da-changed (+ (:changed da-result 0) (:removed da-result 0))]
+                da-changed   (+ (:changed da-result 0) (:removed da-result 0))
+                seed-changed (:changed (materialize-seeds! snapshot) 0)]
             (cond-> result
-              (pos? da-changed) (update :outcome fold-data-app-changes da-changed)))
+              (pos? (+ da-changed seed-changed))
+              (update :outcome fold-data-app-changes (+ da-changed seed-changed))))
           result))
       (catch Exception e
         ;; A cancellation isn't a failure: log it and return nil. Otherwise log the error, count it, and
@@ -1133,6 +1174,7 @@
                                                                           (fn [staged]
                                                                             (report (+ export-progress-plan-done
                                                                                        (* span (/ staged total))))))]
+                                                 (stage-seeds! commit snapshot)
                                                  (report export-progress-serialize {:force? true})
                                                  synced))
                                              report)]
@@ -1165,6 +1207,7 @@
                                                                           (report (+ export-progress-plan-done
                                                                                      (* span (/ staged total))))))]
                                                (stage-deletes commit delete-paths)
+                                               (stage-seeds! commit snapshot)
                                                (report export-progress-serialize {:force? true})
                                                synced))
                                            report)]
@@ -1237,8 +1280,8 @@
              :conflicts []
              :message   "The remote branch has changed since your last sync. Choose how to proceed."}
 
-            ;; There's nothing to export: no dirty rows and no stale files.
-            (and (empty? @dirty-rows) (empty? @disabled-files))
+            ;; There's nothing to export: no dirty rows, no stale files, no seed changes.
+            (and (empty? @dirty-rows) (empty? @disabled-files) (not (seeds-dirty? snapshot)))
             (do
               (log/info "Remote sync export: no changes to export")
               {:status :success

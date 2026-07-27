@@ -3,6 +3,7 @@ import type { GetLibraryCollectionResponse } from "metabase-types/api";
 import type {
   CollectionData,
   EmptyStateData,
+  SeedData,
   TableData,
   TreeItem,
 } from "../types";
@@ -32,4 +33,8 @@ export const isEmptyStateData = (
   data: TreeItem["data"],
 ): data is EmptyStateData => {
   return data.model === "empty-state";
+};
+
+export const isSeedData = (data: TreeItem["data"]): data is SeedData => {
+  return data.model === "seed";
 };

@@ -25,6 +25,7 @@ import { ActionCell } from "../components/ActionCell";
 import { EmptyStateAction } from "../components/EmptyStateAction";
 import { getTreeRowHref } from "../utils";
 
+import { useBuildSeedsTree } from "./useBuildSeedsTree";
 import { useErrorHandling } from "./useErrorHandling";
 import { useLibraryCollectionTree } from "./useLibraryCollectionTree";
 import { useLibraryCollections } from "./useLibraryCollections";
@@ -36,6 +37,30 @@ type Params = {
   searchQuery: string;
   onPublishTableClick: VoidFunction;
 };
+
+function excludeSeedTables(
+  nodes: TreeItem[],
+  seedTableIds: Set<number>,
+): TreeItem[] {
+  if (seedTableIds.size === 0) {
+    return nodes;
+  }
+  return nodes
+    .filter(
+      (node) =>
+        !(
+          node.model === "table" &&
+          "id" in node.data &&
+          typeof node.data.id === "number" &&
+          seedTableIds.has(node.data.id)
+        ),
+    )
+    .map((node) =>
+      node.children
+        ? { ...node, children: excludeSeedTables(node.children, seedTableIds) }
+        : node,
+    );
+}
 
 export function useLibraryTreeTableInstance({
   collections,
@@ -86,6 +111,18 @@ export function useLibraryTreeTableInstance({
     isLoading: loadingSnippets,
     error: snippetsError,
   } = useBuildSnippetTree();
+  const {
+    tree: seedsTree,
+    isLoading: loadingSeeds,
+    seedTableIds,
+  } = useBuildSeedsTree();
+
+  // Seeds have their own bucket, so drop their tables from the Data tree to
+  // avoid listing the same seed twice.
+  const dataTree = useMemo(
+    () => excludeSeedTables(tablesTree, seedTableIds),
+    [tablesTree, seedTableIds],
+  );
 
   // Server-side search for tables and metrics, client-side for snippets
   const {
@@ -98,8 +135,8 @@ export function useLibraryTreeTableInstance({
     () =>
       isSearchActive
         ? searchTree
-        : [...tablesTree, ...metricsTree, ...snippetTree],
-    [isSearchActive, searchTree, tablesTree, metricsTree, snippetTree],
+        : [...dataTree, ...metricsTree, ...snippetTree, ...seedsTree],
+    [isSearchActive, searchTree, dataTree, metricsTree, snippetTree, seedsTree],
   );
 
   const isLoading =
@@ -107,6 +144,7 @@ export function useLibraryTreeTableInstance({
     loadingTables ||
     loadingMetrics ||
     loadingSnippets ||
+    loadingSeeds ||
     isSearchLoading;
   useErrorHandling(tablesError || metricsError || snippetsError);
 

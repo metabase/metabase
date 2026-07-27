@@ -16,6 +16,8 @@ import * as Urls from "metabase/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
+import { NewSeedModal } from "../../seeds/components/NewSeedModal";
+
 import { PublishTableModal } from "./PublishTableModal";
 
 export const CreateMenu = ({
@@ -33,6 +35,10 @@ export const CreateMenu = ({
   const [
     showPublishTableModal,
     { close: closePublishTableModal, open: openPublishTableModal },
+  ] = useDisclosure(false);
+  const [
+    showNewSeedModal,
+    { close: closeNewSeedModal, open: openNewSeedModal },
   ] = useDisclosure(false);
 
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
@@ -77,6 +83,15 @@ export const CreateMenu = ({
     >
       {t`Published table`}
     </Menu.Item>,
+    dataCollectionId && canWriteToDataCollection && (
+      <Menu.Item
+        key="seed"
+        leftSection={<FixedSizeIcon name="table2" />}
+        onClick={openNewSeedModal}
+      >
+        {t`Seed`}
+      </Menu.Item>
+    ),
     canCreateMetric && (
       <Menu.Item
         key="metric"
@@ -142,6 +157,7 @@ export const CreateMenu = ({
         onClose={closePublishTableModal}
         onPublished={(table) => dispatch(push(Urls.dataStudioTable(table.id)))}
       />
+      <NewSeedModal opened={showNewSeedModal} onClose={closeNewSeedModal} />
     </>
   );
 };
