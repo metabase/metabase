@@ -59,7 +59,7 @@ const setup = ({
   const { store } = renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <MockDashboardContext
           dashboardId={dashboard.id}
           dashboard={dashboard}
@@ -69,7 +69,7 @@ const setup = ({
         >
           <DashboardSubscriptionsButton />
         </MockDashboardContext>
-      )}
+      }
     />,
     {
       withRouter: true,
