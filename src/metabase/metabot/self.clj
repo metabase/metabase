@@ -316,9 +316,9 @@
                                 :tool-choice tool-choice :ai-proxy? ai-proxy?})
        (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
              streaming-opts (cond-> {:model model :input parts :tools (vals tools) :ai-proxy? ai-proxy?}
-                              system-msg        (assoc :system system-msg)
-                              (and (seq tools)
-                                   tool-choice) (assoc :tool_choice tool-choice))
+                              system-msg                    (assoc :system system-msg)
+                              (and (seq tools) tool-choice) (assoc :tool_choice tool-choice)
+                              (:session-id tracking-opts)   (assoc :prompt-cache-key (:session-id tracking-opts)))
              make-source    (fn []
                               (eduction (comp (core/tool-executor-xf tools)
                                               (core/lite-aisdk-xf)
@@ -382,7 +382,8 @@
                                 :temperature temperature
                                 :max-tokens  max-tokens
                                 :ai-proxy?   ai-proxy?}
-                         system-msg (assoc :system system-msg))]
+                         system-msg                  (assoc :system system-msg)
+                         (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
                       :msg-count (count input)}

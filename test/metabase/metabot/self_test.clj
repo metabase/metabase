@@ -90,6 +90,89 @@
                     (throw e))))
               (is (= expected (:tool_choice @captured))))))))))
 
+(deftest call-llm-prompt-cache-key-test
+  (testing "the conversation id (:session-id) is forwarded as the Mistral prompt_cache_key"
+    (let [captured (atom nil)]
+      ;; `:api-error true` makes `rethrow-api-error!` rethrow as-is, so `::skip` survives on the outer ex-data.
+      (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                 (when (:body opts)
+                                                   (reset! captured (json/decode+kw (:body opts))))
+                                                 (throw (ex-info "stop" {::skip true :api-error true})))]
+        (mt/with-temporary-setting-values [llm-mistral-api-key "mistral-key-test"]
+          (let [call! (fn [tracking-opts]
+                        (reset! captured nil)
+                        (try
+                          (run! identity (self/call-llm "mistral/mistral-medium-3-5" nil [] {} tracking-opts))
+                          (catch Exception e
+                            (when-not (::skip (ex-data e))
+                              (throw e)))))]
+            (call! {:tag "agent" :session-id "d34d4c93-a5cc-4d5e-b0a6-6b8f89525b48"})
+            (is (= "d34d4c93-a5cc-4d5e-b0a6-6b8f89525b48" (:prompt_cache_key @captured)))
+            (testing "no prompt_cache_key without a :session-id"
+              (call! {:tag "agent"})
+              (is (not (contains? @captured :prompt_cache_key))))))))))
+
+(deftest call-llm-structured-prompt-cache-key-test
+  (testing "call-llm-structured forwards :session-id as the prompt_cache_key, same contract as call-llm"
+    (let [captured (atom nil)]
+      ;; `:api-error true` makes `rethrow-api-error!` rethrow as-is, so `::skip` survives on the outer ex-data.
+      (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                 (when (:body opts)
+                                                   (reset! captured (json/decode+kw (:body opts))))
+                                                 (throw (ex-info "stop" {::skip true :api-error true})))]
+        (mt/with-temporary-setting-values [llm-mistral-api-key "mistral-key-test"]
+          (let [call! (fn [tracking-opts]
+                        (reset! captured nil)
+                        (try
+                          (self/call-llm-structured "mistral/mistral-medium-3-5"
+                                                    [{:role "user" :content "hi"}]
+                                                    {:type "object" :properties {:title {:type "string"}}}
+                                                    nil
+                                                    128
+                                                    tracking-opts)
+                          (catch Exception e
+                            (when-not (::skip (ex-data e))
+                              (throw e)))))]
+            (call! {:tag "conversation-title" :session-id "d34d4c93-a5cc-4d5e-b0a6-6b8f89525b48"})
+            (is (= "d34d4c93-a5cc-4d5e-b0a6-6b8f89525b48" (:prompt_cache_key @captured)))
+            (testing "no prompt_cache_key without a :session-id"
+              (call! {:tag "example-question-generation"})
+              (is (not (contains? @captured :prompt_cache_key))))))))))
+
+(deftest call-llm-prompt-cache-key-not-leaked-to-other-providers-test
+  (testing "call-llm hands :prompt-cache-key to every adapter, but only mistral forwards it to the wire"
+    (let [captured (atom nil)]
+      (mt/with-premium-features #{:metabase-ai-managed}
+        ;; `:api-error true` makes `rethrow-api-error!` rethrow as-is, so `::skip` survives on the outer ex-data.
+        (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                   (when (:body opts)
+                                                     (reset! captured (json/decode+kw (:body opts))))
+                                                   (throw (ex-info "stop" {::skip true :api-error true})))]
+          (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
+                                             llm-proxy-base-url     "http://proxy.example"
+                                             llm-openrouter-api-key "sk-or-v1-test-key"
+                                             llm-openai-api-key     "sk-test-key"
+                                             llm-zai-api-key        "zai-key.test"]
+            (doseq [model ["anthropic/test-model"
+                           "metabase/anthropic/claude-sonnet-4-6"
+                           "openrouter/test-model"
+                           "openai/test-model"
+                           "zai/glm-5.2"]]
+              (testing model
+                (reset! captured nil)
+                (try
+                  (run! identity (self/call-llm model
+                                                nil
+                                                []
+                                                {}
+                                                {:tag "agent" :session-id "d34d4c93-a5cc-4d5e-b0a6-6b8f89525b48"}))
+                  (catch Exception e
+                    (when-not (::skip (ex-data e))
+                      (throw e))))
+                (is (map? @captured))
+                (is (not (contains? @captured :prompt_cache_key)))
+                (is (not (contains? @captured :prompt-cache-key)))))))))))
+
 ;;; utils tests
 
 (deftest sse-reducible-test
