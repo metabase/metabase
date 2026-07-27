@@ -254,6 +254,27 @@
        node))
    x))
 
+(defn- remove-physical-field-enrichment-metadata
+  "Remove redundant inferred type metadata from physical Field refs.
+
+  Lib may enrich the same physical Field ref differently depending on which query path produced it. These keys help
+  Lib reason about the query but do not change the Field or the computation, so they must not split otherwise identical
+  candidate signatures. Preserve an effective type that differs from the base type because it represents a coercion,
+  along with semantic Field options such as temporal units, binning, join aliases, and source fields."
+  [x]
+  (walk/postwalk
+   (fn [node]
+     (if (and (vector? node)
+              (= :field (first node))
+              (map? (second node))
+              (pos-int? (nth node 2 nil)))
+       (let [options (second node)]
+         (assoc node 1
+                (cond-> (dissoc options :lib/transformation-added-base-type)
+                  (= (:effective-type options) (:base-type options)) (dissoc :effective-type))))
+       node))
+   x))
+
 (defn canonical-signature
   "Canonical JSON used for deterministic candidate grouping and semantic collision checks.
 
@@ -263,6 +284,7 @@
   [x]
   (-> x
       remove-clause-presentation-metadata
+      remove-physical-field-enrichment-metadata
       lib.schema.util/remove-lib-uuids
       (lib.schema.util/sorted-maps lib.schema.common/unfussy-sorted-map)
       json/encode))
@@ -571,6 +593,15 @@
    :stages   [(assoc {:lib/type     :mbql.stage/mbql
                       :source-table table-id}
                      clause-key [clause])]})
+
+(defn- minimal-segment-definition
+  [query table-id predicates]
+  {:lib/type :mbql/query
+   :database (:database query)
+   :stages   [{:lib/type     :mbql.stage/mbql
+               :source-table table-id
+               ;; Multiple top-level filters are implicitly ANDed by MBQL and render as separate filters in Data Studio.
+               :filters      (vec predicates)}]})
 
 (defn- field-summary
   [{:keys [id name display-name]}]
@@ -1436,7 +1467,7 @@
                                           :stage-number stage-number
                                           :joined? joined?)]
                  {:keys [predicate predicates columns]} (predicate-candidates atoms)
-                 :let [definition (minimal-definition query table-id :filters predicate)]
+                 :let [definition (minimal-segment-definition query table-id predicates)]
                  :when (mr/validate ::lib.schema/query definition)]
              {::signature   (segment-signature table-id predicates)
               ::table-id    table-id

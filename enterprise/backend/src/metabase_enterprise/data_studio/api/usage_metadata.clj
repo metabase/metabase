@@ -115,6 +115,7 @@
    [:modeling-status {:optional true} [:maybe [:enum :missing :partially-modeled :modeled]]]
    [:signal          {:optional true} [:maybe [:enum :verified :official :popular]]]
    [:dismissed       {:default :exclude} [:enum :exclude :include :only]]
+   [:queue           {:optional true} [:maybe [:enum :recommended :review :all :dismissed]]]
    [:search          {:optional true} [:maybe :string]]
    [:sort            {:default :priority} [:enum :priority :name :source-count :view-count]]
    [:direction       {:default :asc} [:enum :asc :desc]]])
@@ -134,7 +135,7 @@
                  [:= :candidate.signature_hash :dismissal.signature_hash]]]})
 
 (defn- candidate-where
-  [run-id {:keys [table-id database-id schema candidate-type modeling-status signal dismissed search]}]
+  [run-id {:keys [table-id database-id schema candidate-type modeling-status signal dismissed queue search]}]
   (cond-> [:and [:= :candidate.run_id run-id]]
     table-id
     (conj [:= :candidate.table_id table-id])
@@ -158,10 +159,23 @@
                 :popular  :candidate.popular_source_count)
            0])
 
-    (= dismissed :exclude)
+    (= queue :recommended)
+    (conj [:= :table.is_published true]
+          [:in :candidate.modeling_status ["missing" "partially-modeled"]])
+
+    (= queue :review)
+    (conj [:= :candidate.modeling_status "partially-modeled"])
+
+    (and queue (not= queue :dismissed))
     (conj [:= :dismissal.id nil])
 
-    (= dismissed :only)
+    (= queue :dismissed)
+    (conj [:!= :dismissal.id nil])
+
+    (and (nil? queue) (= dismissed :exclude))
+    (conj [:= :dismissal.id nil])
+
+    (and (nil? queue) (= dismissed :only))
     (conj [:!= :dismissal.id nil])
 
     (not (str/blank? search))
@@ -179,7 +193,7 @@
   (if (= direction :asc) :desc :asc))
 
 (defn- candidate-order
-  [sort-column direction]
+  [sort-column direction queue]
   (let [ordered (case sort-column
                   :name
                   [[[:lower :candidate.suggested_name] :asc]]
@@ -192,12 +206,20 @@
 
                   ;; Preserve the miner's ordering exactly: presence of verified
                   ;; and official evidence is binary; source count then breaks ties.
-                  [[[:case [:> :candidate.verified_source_count 0] [:inline 0] :else [:inline 1]] :asc]
-                   [[:case [:> :candidate.official_source_count 0] [:inline 0] :else [:inline 1]] :asc]
-                   [:candidate.distinct_source_count :desc]
-                   [:candidate.complexity :asc]
-                   [:candidate.total_view_count :desc]
-                   [:candidate.signature :asc]])
+                  (cond-> []
+                    (= queue :recommended)
+                    (conj [[:case
+                            [:= :candidate.modeling_status "partially-modeled"] [:inline 0]
+                            :else [:inline 1]]
+                           :asc])
+
+                    true
+                    (into [[[:case [:> :candidate.verified_source_count 0] [:inline 0] :else [:inline 1]] :asc]
+                           [[:case [:> :candidate.official_source_count 0] [:inline 0] :else [:inline 1]] :asc]
+                           [:candidate.distinct_source_count :desc]
+                           [:candidate.complexity :asc]
+                           [:candidate.total_view_count :desc]
+                           [:candidate.signature :asc]])))
         ordered (if (= direction :desc)
                   (mapv (fn [[column column-direction]]
                           [column (reverse-direction column-direction)])
@@ -216,7 +238,7 @@
                          (t2/query
                           (assoc base-query
                                  :select [[:candidate.id :id]]
-                                 :order-by (candidate-order (:sort opts) (:direction opts))
+                                 :order-by (candidate-order (:sort opts) (:direction opts) (:queue opts))
                                  :limit limit
                                  :offset offset)))
         candidates (if (seq ids)
@@ -269,6 +291,10 @@
                                     :select [[[:count [:distinct :candidate.table_id]] :total]])))
          select     [[:candidate.table_id :table_id]
                      [[:count :candidate.id] :candidate_count]
+                     [[:+
+                       (status-count-expression :measure :partially-modeled)
+                       (status-count-expression :segment :partially-modeled)]
+                      :review_count]
                      [(status-count-expression :measure :missing) :measure_missing]
                      [(status-count-expression :measure :partially-modeled) :measure_partially_modeled]
                      [(status-count-expression :measure :modeled) :measure_modeled]
@@ -279,8 +305,16 @@
                      (assoc base-query
                             :select select
                             :group-by [:candidate.table_id :table.display_name :table.name]
-                            :order-by [[[:lower [:coalesce :table.display_name :table.name]] :asc]
-                                       [:candidate.table_id :asc]]
+                            :order-by (cond-> []
+                                        (contains? #{:recommended :review} (:queue opts))
+                                        (conj [:review_count :desc])
+
+                                        (:queue opts)
+                                        (conj [:candidate_count :desc])
+
+                                        true
+                                        (into [[[:lower [:coalesce :table.display_name :table.name]] :asc]
+                                               [:candidate.table_id :asc]]))
                             :limit limit
                             :offset offset))]
      {:rows rows, :total total, :limit limit, :offset offset})))

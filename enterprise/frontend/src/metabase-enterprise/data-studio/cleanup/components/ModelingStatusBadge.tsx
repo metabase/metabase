@@ -10,7 +10,7 @@ type ModelingStatusBadgeProps = {
 export function ModelingStatusBadge({ status }: ModelingStatusBadgeProps) {
   const color =
     status === "missing"
-      ? "negative"
+      ? "neutral"
       : status === "partially-modeled"
         ? "warning"
         : "positive";

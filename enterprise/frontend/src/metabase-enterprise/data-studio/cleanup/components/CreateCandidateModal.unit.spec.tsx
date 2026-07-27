@@ -88,7 +88,9 @@ describe("CreateCandidateModal", () => {
     await userEvent.type(nameInput, "Net revenue");
     await userEvent.clear(descriptionInput);
     await userEvent.type(descriptionInput, "Revenue after discounts");
-    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create Measure" }),
+    );
 
     await waitFor(() => {
       expect(onCreated).toHaveBeenCalledWith("measure", 99);

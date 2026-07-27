@@ -116,9 +116,9 @@ export function CreateCandidateModal({
             disabled={!name.trim()}
             onClick={handleCreate}
           >
-            {candidate.modeling_status === "partially-modeled"
-              ? t`Create separately`
-              : t`Create`}
+            {candidate.candidate_type === "measure"
+              ? t`Create Measure`
+              : t`Create Segment`}
           </Button>
         </Group>
       </Stack>

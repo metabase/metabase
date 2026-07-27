@@ -11,6 +11,7 @@ import type {
   TableId,
   UsageMetadataCandidateSort,
   UsageMetadataCandidateType,
+  UsageMetadataCleanupQueue,
   UsageMetadataDismissedFilter,
   UsageMetadataModelingStatus,
   UsageMetadataSignal,
@@ -122,6 +123,7 @@ export type DataStudioCleanupParams = {
   dismissed?: UsageMetadataDismissedFilter;
   sort?: UsageMetadataCandidateSort;
   direction?: UsageMetadataSortDirection;
+  queue?: UsageMetadataCleanupQueue;
   candidateId?: number;
 };
 
@@ -136,6 +138,7 @@ function getCleanupQueryString({
   dismissed,
   sort,
   direction,
+  queue,
   candidateId,
 }: DataStudioCleanupParams = {}) {
   const params = new URLSearchParams();
@@ -168,6 +171,9 @@ function getCleanupQueryString({
   }
   if (direction && direction !== "asc") {
     params.set("direction", direction);
+  }
+  if (queue && queue !== "recommended") {
+    params.set("queue", queue);
   }
   if (candidateId != null) {
     params.set("candidate", String(candidateId));

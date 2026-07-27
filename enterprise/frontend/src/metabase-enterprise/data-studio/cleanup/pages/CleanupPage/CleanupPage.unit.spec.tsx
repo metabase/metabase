@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
@@ -7,7 +8,7 @@ import {
   setupUsageMetadataTablesEndpoint,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
 import type {
   UsageMetadataRefreshStatus,
@@ -57,7 +58,7 @@ const tableSummary: UsageMetadataTableSummary = {
     data_layer: null,
     data_authority: null,
     view_count: 12,
-    is_published: false,
+    is_published: true,
     collection_id: null,
     database: { id: 1, name: "Sample Database" },
   },
@@ -120,11 +121,24 @@ describe("CleanupPage", () => {
     setup();
 
     expect(await screen.findByText("Orders")).toBeInTheDocument();
-    expect(screen.getByText("Unpublished")).toBeInTheDocument();
+    expect(screen.getByText("Published")).toBeInTheDocument();
     expect(screen.getByText("6")).toBeInTheDocument();
-    expect(screen.getByText("Not in Library")).toBeInTheDocument();
-    expect(screen.getByText("Needs review")).toBeInTheDocument();
-    expect(screen.getByText("Modeled, still used raw")).toBeInTheDocument();
+    expect(
+      screen.getByText("1 need review · 3 suggested additions"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: "Recommended" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: "Needs review" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: "All suggestions" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Dismissed" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Schema")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Evidence")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Modeling status")).not.toBeInTheDocument();
   });
 
   it("offers an explicit first analysis when no snapshot exists", async () => {
@@ -143,5 +157,23 @@ describe("CleanupPage", () => {
     expect(
       screen.getByRole("button", { name: "Analyze instance" }),
     ).toBeInTheDocument();
+  });
+
+  it("uses named queues instead of exposing modeling and evidence filters", async () => {
+    setup();
+
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Needs review" }),
+    );
+
+    await waitFor(() => {
+      const call = fetchMock.callHistory.lastCall(
+        "path:/api/ee/data-studio/usage-metadata/tables",
+      );
+      expect(call?.url).toContain("queue=review");
+    });
+    expect(screen.queryByLabelText("Schema")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Evidence")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Sort candidates")).not.toBeInTheDocument();
   });
 });

@@ -16,34 +16,23 @@ import {
   Flex,
   Group,
   Icon,
-  SimpleGrid,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useListUsageMetadataTablesQuery } from "metabase-enterprise/api";
-import type {
-  UsageMetadataCandidateCounts,
-  UsageMetadataModelingStatus,
-  UsageMetadataTableSummary,
-} from "metabase-types/api";
+import type { UsageMetadataTableSummary } from "metabase-types/api";
 
-import { CleanupFilters } from "../../components/CleanupFilters";
+import {
+  CleanupFilters,
+  CleanupQueueTabs,
+} from "../../components/CleanupFilters";
 import { CleanupHeader } from "../../components/CleanupHeader";
 import { useCleanupRefresh } from "../../hooks/useCleanupRefresh";
-import {
-  getModelingStatusLabel,
-  hasActiveFilters,
-  parseCleanupParams,
-} from "../../utils";
+import { hasActiveFilters, parseCleanupParams } from "../../utils";
 
 const PAGE_SIZE = 50;
-const STATUSES: UsageMetadataModelingStatus[] = [
-  "missing",
-  "partially-modeled",
-  "modeled",
-];
 
 type CleanupPageProps = {
   location: Location;
@@ -56,11 +45,7 @@ export function CleanupPage({ location }: CleanupPageProps) {
   const refresh = useCleanupRefresh();
   const query = useListUsageMetadataTablesQuery({
     "database-id": params.databaseId,
-    schema: params.schema,
-    "candidate-type": params.candidateType,
-    "modeling-status": params.modelingStatus,
-    signal: params.signal,
-    dismissed: params.dismissed,
+    queue: params.queue,
     search: params.search,
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
@@ -82,7 +67,14 @@ export function CleanupPage({ location }: CleanupPageProps) {
           onRefresh={refresh.start}
         />
         {snapshot != null && (
-          <CleanupFilters params={params} onChange={updateParams} />
+          <>
+            <CleanupQueueTabs params={params} onChange={updateParams} />
+            <CleanupFilters
+              params={params}
+              onChange={updateParams}
+              searchPlaceholder={t`Search tables`}
+            />
+          </>
         )}
         <Box flex={1} mih={0}>
           {query.isLoading ? (
@@ -96,7 +88,10 @@ export function CleanupPage({ location }: CleanupPageProps) {
           ) : snapshot == null ? (
             <NoSnapshotState />
           ) : query.data?.data.length === 0 ? (
-            <EmptyQueueState filtered={hasActiveFilters(params)} />
+            <EmptyQueueState
+              filtered={hasActiveFilters(params)}
+              queue={params.queue}
+            />
           ) : (
             <Stack gap="sm">
               {query.data?.data.map((row) => (
@@ -136,16 +131,13 @@ function CleanupTableRow({
   row: UsageMetadataTableSummary;
   params: Urls.DataStudioCleanupParams;
 }) {
-  const { table, candidate_count: candidateCount, counts } = row;
+  const { table, candidate_count: candidateCount } = row;
 
   return (
     <Card
       component={Link}
       to={Urls.dataStudioCleanupTable(table.id, {
-        candidateType: params.candidateType,
-        modelingStatus: params.modelingStatus,
-        signal: params.signal,
-        dismissed: params.dismissed,
+        queue: params.queue,
       })}
       withBorder
       p="lg"
@@ -171,44 +163,18 @@ function CleanupTableRow({
             </Text>
           </Stack>
         </Group>
-        <SimpleGrid cols={3} spacing="lg" miw="34rem">
-          {STATUSES.map((status) => (
-            <CountSummary key={status} status={status} counts={counts} />
-          ))}
-        </SimpleGrid>
-        <Stack gap={0} align="flex-end" miw="5rem">
+        <Text c="text-secondary" size="sm" flex={1} ta="right">
+          {getTableQueueSummary(row, params.queue)}
+        </Text>
+        <Stack gap={0} align="flex-end" miw="7rem">
           <Text fw="bold">{candidateCount}</Text>
-          <Text c="text-secondary" size="xs">{t`candidates`}</Text>
+          <Text c="text-secondary" size="xs">
+            {params.queue === "dismissed" ? t`dismissed` : t`suggestions`}
+          </Text>
         </Stack>
         <Icon name="chevronright" />
       </Flex>
     </Card>
-  );
-}
-
-function CountSummary({
-  status,
-  counts,
-}: {
-  status: UsageMetadataModelingStatus;
-  counts: UsageMetadataCandidateCounts;
-}) {
-  return (
-    <Stack gap={2}>
-      <Text size="xs" c="text-secondary">
-        {getModelingStatusLabel(status)}
-      </Text>
-      <Group gap="xs">
-        <Text size="sm">{t`Measures`}</Text>
-        <Badge size="sm" variant="light">
-          {counts.measure[status]}
-        </Badge>
-        <Text size="sm">{t`Segments`}</Text>
-        <Badge size="sm" variant="light">
-          {counts.segment[status]}
-        </Badge>
-      </Group>
-    </Stack>
   );
 }
 
@@ -229,20 +195,58 @@ function NoSnapshotState() {
   );
 }
 
-function EmptyQueueState({ filtered }: { filtered: boolean }) {
+function EmptyQueueState({
+  filtered,
+  queue,
+}: {
+  filtered: boolean;
+  queue: Urls.DataStudioCleanupParams["queue"];
+}) {
   return (
     <Center h="100%">
       <Stack align="center" ta="center">
         <Icon name={filtered ? "search" : "check"} size={40} />
         <Title order={3}>
-          {filtered ? t`No matching tables` : t`Nothing to clean up`}
+          {queue === "dismissed"
+            ? t`No dismissed suggestions`
+            : filtered
+              ? t`No matching tables`
+              : t`Nothing to clean up`}
         </Title>
         <Text c="text-secondary">
-          {filtered
-            ? t`Try changing or clearing the filters.`
-            : t`No Measure or Segment candidates were found in this snapshot.`}
+          {queue === "dismissed"
+            ? t`Dismissed suggestions will appear here so they can be restored.`
+            : filtered
+              ? t`Try changing or clearing the filters.`
+              : t`No Measure or Segment candidates were found in this snapshot.`}
         </Text>
       </Stack>
     </Center>
   );
+}
+
+function getTableQueueSummary(
+  row: UsageMetadataTableSummary,
+  queue: Urls.DataStudioCleanupParams["queue"],
+) {
+  const missing = row.counts.measure.missing + row.counts.segment.missing;
+  const review =
+    row.counts.measure["partially-modeled"] +
+    row.counts.segment["partially-modeled"];
+  const modeled = row.counts.measure.modeled + row.counts.segment.modeled;
+
+  if (queue === "dismissed") {
+    return t`Previously muted suggestions`;
+  }
+  if (queue === "review") {
+    return t`${review} definitions differ from the Library`;
+  }
+
+  const parts = [
+    review > 0 ? t`${review} need review` : null,
+    missing > 0 ? t`${missing} suggested additions` : null,
+    queue === "all" && modeled > 0 ? t`${modeled} already modeled` : null,
+  ].filter(Boolean);
+
+  return parts.join(" · ");
 }

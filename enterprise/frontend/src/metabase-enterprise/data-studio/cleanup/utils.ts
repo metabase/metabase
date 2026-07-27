@@ -14,6 +14,7 @@ const SIGNALS = ["verified", "official", "popular"] as const;
 const DISMISSED_FILTERS = ["exclude", "include", "only"] as const;
 const SORTS = ["priority", "name", "source-count", "view-count"] as const;
 const DIRECTIONS = ["asc", "desc"] as const;
+const QUEUES = ["recommended", "review", "all", "dismissed"] as const;
 
 export function parseCleanupParams(
   location: Location,
@@ -35,6 +36,7 @@ export function parseCleanupParams(
     sort: Urls.parseEnumParam(location.query.sort, SORTS) ?? "priority",
     direction:
       Urls.parseEnumParam(location.query.direction, DIRECTIONS) ?? "asc",
+    queue: Urls.parseEnumParam(location.query.queue, QUEUES) ?? "recommended",
     candidateId: Urls.parseNumberParam(location.query.candidate),
   };
 }
@@ -80,10 +82,6 @@ export function hasActiveFilters(params: Urls.DataStudioCleanupParams) {
   return Boolean(
     params.search ||
     params.databaseId ||
-    params.schema ||
-    params.candidateType ||
-    params.modelingStatus ||
-    params.signal ||
-    (params.dismissed && params.dismissed !== "exclude"),
+    (params.queue && params.queue !== "recommended"),
   );
 }

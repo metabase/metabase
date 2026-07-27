@@ -1039,6 +1039,27 @@
          (canonical-signature [:count {:lib/uuid     "named-count"
                                        :name         "Total PV"
                                        :display-name "Total PV"}])))
+  (testing "inferred physical Field metadata does not split one semantic candidate"
+    (let [field-id (mt/id :orders :product_id)]
+      (is (= (canonical-signature [:field {:base-type :type/Integer} field-id])
+             (canonical-signature [:field {:base-type      :type/Integer
+                                           :effective-type :type/Integer}
+                                   field-id])
+             (canonical-signature [:field {:base-type                         :type/Integer
+                                           :effective-type                    :type/Integer
+                                           :lib/transformation-added-base-type true}
+                                   field-id])))))
+  (testing "semantic physical Field options remain part of the signature"
+    (let [field-id (mt/id :orders :product_id)]
+      (doseq [[left right] [[{:temporal-unit :month} {:temporal-unit :year}]
+                            [{:join-alias "Products"} {:join-alias "Categories"}]
+                            [{:source-field 1} {:source-field 2}]
+                            [{:base-type :type/Text}
+                             {:base-type :type/Text, :effective-type :type/Date}]
+                            [{:binning {:strategy :num-bins, :num-bins 10}}
+                             {:binning {:strategy :num-bins, :num-bins 20}}]]]
+        (is (not= (canonical-signature [:field left field-id])
+                  (canonical-signature [:field right field-id]))))))
   (testing "map-shaped literal values retain semantically meaningful name keys"
     (is (not= (canonical-signature [:= {:lib/uuid "a"} [:field {:lib/uuid "b"} 1] {:name "A"}])
               (canonical-signature [:= {:lib/uuid "c"} [:field {:lib/uuid "d"} 1] {:name "B"}])))))
@@ -1263,6 +1284,9 @@
           (is (= 2 (count (remove :composite? candidates))))
           (is (every? #(= 1 (:atom-count %)) (remove :composite? candidates)))
           (is (= [2] (mapv :atom-count (filter :composite? candidates))))
+          (let [filters (lib/filters (:definition (first (filter :composite? candidates))) 0)]
+            (is (= 2 (count filters)))
+            (is (not-any? #(lib/clause-of-type? % :and) filters)))
           (is (= #{"Product ID is 987654"
                    "Subtotal is greater than 12345"}
                  (into #{} (map :suggested-name) (remove :composite? candidates))))
