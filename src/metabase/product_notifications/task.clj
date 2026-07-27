@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.product-notifications.settings :as settings]
    [metabase.product-notifications.sync :as sync]
@@ -21,7 +22,8 @@
 (defn- sync-enabled?
   "Whether this instance is allowed to fetch remote product notifications."
   []
-  (not (premium-features/airgap-enabled)))
+  (and (not config/is-dev?)
+       (not (premium-features/airgap-enabled))))
 
 (defn- stale?
   "Whether the instance has never synced or its last completed sync is older than twelve hours."

@@ -2966,3 +2966,22 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
+
+(deftest seed-product-notification-demo-data-test
+  (testing "v64.product-notifications5 seeds demo rows only when explicitly enabled"
+    (doseq [[seed? expected]
+            [[false []]
+             [true
+              [{:notification_id "demo-product-notification-release"
+                :audience        "all_users"
+                :position        0}
+               {:notification_id "demo-product-notification-admin"
+                :audience        "admins"
+                :position        1}]]]]
+      (impl/test-migrations "v64.product-notifications5" [migrate!]
+        (binding [custom-migrations/*seed-product-notification-demo-data?* seed?]
+          (migrate!))
+        (is (= expected
+               (t2/query {:select   [:notification_id :audience :position]
+                          :from     [:product_notification]
+                          :order-by [[:position :asc]]})))))))

@@ -2237,3 +2237,50 @@
                              :where  [:and
                                       [:= :provider "totp"]
                                       [:= :confirmed_at nil]]})))
+
+(def ^:dynamic *seed-product-notification-demo-data?*
+  "Whether the product notification demo-data migration should insert rows."
+  config/is-dev?)
+
+(def ^:private product-notification-demo-data
+  [{:notification_id "demo-product-notification-release"
+    :schema_version  1
+    :title           "Product notifications are ready"
+    :content         "This notification is visible to everyone. Dismiss it to try the per-user dismissal flow."
+    :icon            "sparkles"
+    :audience        "all_users"
+    :deployment      "any"
+    :edition         "any"
+    :min_version     nil
+    :max_version     nil
+    :starts_at       (java.time.OffsetDateTime/parse "2026-01-01T00:00:00Z")
+    :ends_at         (java.time.OffsetDateTime/parse "2099-01-01T00:00:00Z")
+    :position        0
+    :active          true
+    :retired_at      nil
+    :last_seen_at    :%now
+    :created_at      :%now
+    :updated_at      :%now}
+   {:notification_id "demo-product-notification-admin"
+    :schema_version  1
+    :title           "An admin-only notification"
+    :content         "Only admins can see this one. It demonstrates audience targeting and display order."
+    :icon            "join_full_outer"
+    :audience        "admins"
+    :deployment      "any"
+    :edition         "any"
+    :min_version     nil
+    :max_version     nil
+    :starts_at       (java.time.OffsetDateTime/parse "2026-01-01T00:00:00Z")
+    :ends_at         (java.time.OffsetDateTime/parse "2099-01-01T00:00:00Z")
+    :position        1
+    :active          true
+    :retired_at      nil
+    :last_seen_at    :%now
+    :created_at      :%now
+    :updated_at      :%now}])
+
+(define-migration SeedProductNotificationDemoData
+  (when *seed-product-notification-demo-data?*
+    (t2/query {:insert-into :product_notification
+               :values      product-notification-demo-data})))

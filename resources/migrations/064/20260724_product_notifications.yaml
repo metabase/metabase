@@ -179,3 +179,11 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_product_notification_dismissal_user
             onDelete: CASCADE
+
+  - changeSet:
+      id: v64.product-notifications5
+      author: metabase
+      comment: Seed product notification demo data in development
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.SeedProductNotificationDemoData"

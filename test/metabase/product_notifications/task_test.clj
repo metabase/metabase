@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.product-notifications.settings :as settings]
    [metabase.product-notifications.sync :as sync]
@@ -17,7 +18,10 @@
   (mt/with-dynamic-fn-redefs [premium-features/airgap-enabled (constantly false)]
     (is (true? (#'task/sync-enabled?))))
   (mt/with-dynamic-fn-redefs [premium-features/airgap-enabled (constantly true)]
-    (is (false? (#'task/sync-enabled?)))))
+    (is (false? (#'task/sync-enabled?))))
+  (with-redefs [config/is-dev? true]
+    (mt/with-dynamic-fn-redefs [premium-features/airgap-enabled (constantly false)]
+      (is (false? (#'task/sync-enabled?))))))
 
 (deftest run-sync-test
   (let [calls (atom 0)]
