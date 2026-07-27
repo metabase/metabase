@@ -1,19 +1,18 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
-import { useDispatch } from "metabase/redux";
-import { Link, Outlet, Route, push, useLocation } from "metabase/router";
+import { act, renderWithProviders, screen } from "__support__/ui";
+import { Link, Outlet, Route, useLocation, useNavigate } from "metabase/router";
 
 function Home() {
   const { pathname, key } = useLocation();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   return (
     <div>
       <span data-testid="location">{pathname}</span>
       <span data-testid="location-key">{key}</span>
       <Link to="/other">go</Link>
       {/* A `<Link>` used as a button: it navigates through its own onClick. */}
-      <Link onClick={() => dispatch(push("/other"))}>act</Link>
+      <Link onClick={() => navigate("/other")}>act</Link>
       {/* A button-like `<Link to="">` (e.g. the undo toast) must not navigate. */}
       <Link to="" onClick={() => undefined}>
         noop
@@ -85,14 +84,16 @@ describe("RouterLink", () => {
   });
 
   // v7's `<Link>` downgrades a click to a `replace` when the target equals the
-  // current URL, which leaves the location key untouched. v3 always pushed, and
-  // the documents page shows its unsaved-changes prompt when the key changes.
-  it("pushes a new entry when linking to the current url", async () => {
-    renderWithProviders(tree, {
+  // current URL, so the entry is reused rather than stacked. The navigation is
+  // still observable: the location gets a fresh key, which is what the documents
+  // page keys its unsaved-changes prompt off.
+  it("replaces the entry when linking to the current url, with a new location key", async () => {
+    const { history } = renderWithProviders(tree, {
       withRouter: true,
-      initialRoute: "/other",
+      initialRoute: "/",
     });
 
+    await userEvent.click(screen.getByRole("link", { name: "go" }));
     await screen.findByTestId("other");
     const keyBefore = screen.getByTestId("location-key").textContent;
 
@@ -101,6 +102,11 @@ describe("RouterLink", () => {
     expect(screen.getByTestId("location-key")).not.toHaveTextContent(
       String(keyBefore),
     );
+
+    // The second click reused the entry instead of stacking one, so a single
+    // step back lands on the page we came from.
+    await act(() => history?.goBack());
+    expect(await screen.findByTestId("location")).toHaveTextContent("/");
   });
 
   it("applies activeClassName to the link that matches the route", async () => {
@@ -122,8 +128,8 @@ describe("RouterLink", () => {
       initialRoute: "/",
     });
 
-    // The click handler dispatches the navigation; the link itself must not
-    // navigate, or on v7 it would clobber the push and never reach /other.
+    // The click handler performs the navigation; the link itself must not
+    // navigate, or on v7 it would clobber it and never reach /other.
     await userEvent.click(screen.getByText("act"));
 
     expect(await screen.findByTestId("other")).toBeInTheDocument();

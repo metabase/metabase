@@ -6,7 +6,7 @@ import type { Location as HistoryLocation, LocationDescriptor } from "../types";
 import { queryToSearch } from "./location";
 
 /**
- * The live v7 `navigate`, registered by `V7ReduxBridge` once the router mounts.
+ * The live v7 `navigate`, registered by `V7RouterBridge` once the router mounts.
  * The redux navigator adapter is built at store creation, before the router
  * exists, so it reads `navigate` through this holder rather than capturing it.
  */
@@ -40,7 +40,7 @@ export function setV7Navigate(navigate: NavigateFunction | null): void {
 
 /**
  * Subscribers to location changes, backing the imperative router's `listen`. v3's
- * `router.listen` had no v7 equivalent, so `V7ReduxBridge` fans every location
+ * `router.listen` had no v7 equivalent, so `V7RouterBridge` fans every location
  * change out to these on the app's behalf (e.g. `use-dashboard-url-query`).
  */
 type LocationListener = (location: HistoryLocation) => void;

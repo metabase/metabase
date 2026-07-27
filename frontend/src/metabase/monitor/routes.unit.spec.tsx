@@ -1,13 +1,44 @@
-import type { ReactNode } from "react";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { renderWithProviders, screen } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Outlet, Route } from "metabase/router";
+import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { getMonitorRedirects, getMonitorRoutes } from "./routes";
+
+type MonitorGuard =
+  | "CanAccessMonitor"
+  | "CanAccessMonitorDiagnostics"
+  | "CanAccessMonitoringTools"
+  | "CanAccessAlertsManagement";
+
+/**
+ * These specs assert route-tree structure, not access policy, so the guards are
+ * stubbed to allow by default. Adding a guard here makes it deny instead, which
+ * is how a single section gets blocked without touching permissions state.
+ */
+const mockDeniedGuards = new Set<MonitorGuard>();
+
+jest.mock("./route-guards", () => {
+  const { Outlet } = jest.requireActual("metabase/router");
+  const stubGuard = (name: MonitorGuard) => {
+    const Guard = () =>
+      mockDeniedGuards.has(name) ? (
+        <div data-testid="unauthorized-marker">{"Unauthorized"}</div>
+      ) : (
+        <Outlet />
+      );
+    return Guard;
+  };
+
+  return {
+    CanAccessMonitor: stubGuard("CanAccessMonitor"),
+    CanAccessMonitorDiagnostics: stubGuard("CanAccessMonitorDiagnostics"),
+    CanAccessMonitoringTools: stubGuard("CanAccessMonitoringTools"),
+    CanAccessAlertsManagement: stubGuard("CanAccessAlertsManagement"),
+  };
+});
 
 jest.mock("metabase-enterprise/settings", () => ({
   hasPremiumFeature: jest.fn().mockReturnValue(true),
@@ -90,32 +121,27 @@ jest.mock(
   }),
 );
 
-const CanAccessMonitor = () => <Outlet />;
-const CanAccessMonitorDiagnostics = () => <Outlet />;
-const CanAccessMonitoringTools = () => <Outlet />;
-const CanAccessAlertsManagement = () => <Outlet />;
-
 const UPSELL_TITLE =
   "Find and fix broken dependencies without hunting them down";
 
 type SetupOpts = {
   initialRoute: string;
   user?: ReturnType<typeof createMockUser>;
+  /** Guards to make deny access, so a section can be blocked in isolation. */
+  deny?: MonitorGuard[];
 };
 
 const setup = ({
   initialRoute,
   user = createMockUser({ is_superuser: true }),
+  deny = [],
 }: SetupOpts) => {
+  deny.forEach((guard) => mockDeniedGuards.add(guard));
+
   return renderWithProviders(
     <Route path="/">
       {getMonitorRedirects()}
-      {getMonitorRoutes(
-        CanAccessMonitor,
-        CanAccessMonitorDiagnostics,
-        CanAccessMonitoringTools,
-        CanAccessAlertsManagement,
-      )}
+      {getMonitorRoutes()}
     </Route>,
     {
       withRouter: true,
@@ -125,39 +151,10 @@ const setup = ({
   );
 };
 
-const DenyingGuard = () => (
-  <div data-testid="unauthorized-marker">{"Unauthorized"}</div>
-);
-
-const setupWithGuards = ({
-  initialRoute,
-  CanAccessMonitorDiagnostics: Diagnostics = CanAccessMonitorDiagnostics,
-  CanAccessMonitoringTools: Tools = CanAccessMonitoringTools,
-  CanAccessAlertsManagement: AlertsManagement = CanAccessAlertsManagement,
-}: {
-  initialRoute: string;
-  CanAccessMonitorDiagnostics?: () => ReactNode;
-  CanAccessMonitoringTools?: () => ReactNode;
-  CanAccessAlertsManagement?: () => ReactNode;
-}) => {
-  return renderWithProviders(
-    <Route path="/">
-      {getMonitorRedirects()}
-      {getMonitorRoutes(CanAccessMonitor, Diagnostics, Tools, AlertsManagement)}
-    </Route>,
-    {
-      withRouter: true,
-      initialRoute,
-      storeInitialState: createMockState({
-        currentUser: createMockUser({ is_superuser: true }),
-      }),
-    },
-  );
-};
-
 describe("monitor routes", () => {
   afterEach(() => {
     reinitialize();
+    mockDeniedGuards.clear();
   });
 
   describe("getMonitorRoutes", () => {
@@ -236,9 +233,9 @@ describe("monitor routes", () => {
       });
 
       it("blocks section routes when the section guard denies", async () => {
-        setupWithGuards({
+        setup({
           initialRoute: "/monitor/logs",
-          CanAccessMonitoringTools: DenyingGuard,
+          deny: ["CanAccessMonitoringTools"],
         });
 
         expect(
@@ -248,9 +245,9 @@ describe("monitor routes", () => {
       });
 
       it("blocks the notifications route when its own guard denies, independent of the Tools guard", async () => {
-        setupWithGuards({
+        setup({
           initialRoute: "/monitor/notifications",
-          CanAccessAlertsManagement: DenyingGuard,
+          deny: ["CanAccessAlertsManagement"],
         });
 
         expect(
@@ -262,10 +259,9 @@ describe("monitor routes", () => {
       });
 
       it("renders NotFound for unknown paths even when both section guards deny (catch-all sits outside the guards)", async () => {
-        setupWithGuards({
+        setup({
           initialRoute: "/monitor/does-not-exist",
-          CanAccessMonitorDiagnostics: DenyingGuard,
-          CanAccessMonitoringTools: DenyingGuard,
+          deny: ["CanAccessMonitorDiagnostics", "CanAccessMonitoringTools"],
         });
 
         expect(await screen.findByLabelText("error page")).toBeInTheDocument();

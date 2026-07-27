@@ -167,3 +167,77 @@
                 (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-enc))))
               (testing "short keys fail to rotate"
                 (is (thrown? Throwable (rotate-encryption-key! "short")))))))))))
+
+(defn- set-encryption-check-raw!
+  "Set the raw value of the `encryption-check` sentinel setting, replacing any existing row."
+  [value]
+  (t2/delete! :setting :key "encryption-check")
+  (t2/insert! :setting {:key "encryption-check" :value value}))
+
+(defn- insert-user-with-raw-settings!
+  "Insert a row directly into the `core_user` table (bypassing model transforms) and return its id."
+  [raw-settings]
+  (first (t2/insert-returning-pks! :core_user {:email         (str (mt/random-name) "@nowhere.test")
+                                               :first_name    "No"
+                                               :last_name     "Body"
+                                               :password      "nopassword"
+                                               :password_salt "nosalt"
+                                               :date_joined   :%now
+                                               :is_superuser  false
+                                               :is_active     true
+                                               :settings      raw-settings})))
+
+(defn- insert-channel-with-raw-details!
+  "Insert a row directly into the `channel` table (bypassing model transforms) and return its id."
+  [raw-details]
+  (first (t2/insert-returning-pks! :channel {:name       (mt/random-name)
+                                             :type       "channel/http"
+                                             :details    raw-details
+                                             :active     true
+                                             :created_at :%now
+                                             :updated_at :%now})))
+
+(deftest decrypt-db-undecryptable-values-test
+  (let [k1        "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
+        k2        "yHa/6VEQuIItMyd5CNcgV9nXvzZcX6bWmiY0oOh6pLU="
+        k2-hashed (encryption/validate-and-hash-secret-key k2)]
+    (testing "when encryption-check verifies the key, a clearable column under an unknown key is reset to {} instead of aborting"
+      (mt/with-empty-h2-app-db!
+        (encryption-test/with-secret-key k1
+          (set-encryption-check-raw! (encryption/encrypt (str (random-uuid))))
+          (let [good-id (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"en\"}"))
+                bad-id  (insert-user-with-raw-settings! (encryption/encrypt k2-hashed "{\"locale\":\"fr\"}"))]
+            (mdb/decrypt-db :h2 (mdb/data-source))
+            (is (= "{\"locale\":\"en\"}" (t2/select-one-fn :settings :core_user :id good-id)))
+            (is (= "{}" (t2/select-one-fn :settings :core_user :id bad-id)))
+            (is (= "unencrypted" (t2/select-one-fn :value :setting :key "encryption-check")))))))
+    (testing "when encryption-check does not decrypt, decryption aborts before touching any rows"
+      (mt/with-empty-h2-app-db!
+        (let [user-id (encryption-test/with-secret-key k1
+                        (set-encryption-check-raw! (encryption/encrypt (str (random-uuid))))
+                        (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"en\"}")))
+              raw-settings (t2/select-one-fn :settings :core_user :id user-id)]
+          (encryption-test/with-secret-key k2
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains"
+                 (mdb/decrypt-db :h2 (mdb/data-source)))))
+          (is (= raw-settings (t2/select-one-fn :settings :core_user :id user-id))))))
+    (testing "without an encryption-check sentinel, an undecryptable value still aborts even in a clearable column"
+      (mt/with-empty-h2-app-db!
+        (encryption-test/with-secret-key k1
+          (t2/delete! :setting :key "encryption-check")
+          (insert-user-with-raw-settings! (encryption/encrypt k2-hashed "{\"locale\":\"fr\"}"))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
+               (mdb/decrypt-db :h2 (mdb/data-source)))))))
+    (testing "an undecryptable value in a non-clearable column aborts even when the key is verified"
+      (mt/with-empty-h2-app-db!
+        (encryption-test/with-secret-key k1
+          (set-encryption-check-raw! (encryption/encrypt (str (random-uuid))))
+          (insert-channel-with-raw-details! (encryption/encrypt k2-hashed "{\"url\":\"http://bad\"}"))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
+               (mdb/decrypt-db :h2 (mdb/data-source)))))))))

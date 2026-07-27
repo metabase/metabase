@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { DatabaseRoutingSection } from "./DatabaseRoutingSection";
@@ -9,16 +9,6 @@ import { DestinationDatabaseConnectionModal } from "./DestinationDatabaseConnect
 import { DestinationDatabasesModal } from "./DestinationDatabasesModal";
 import { RemoveDestinationDatabaseModal } from "./RemoveDestinationDatabaseModal";
 import { useRedirectDestinationDatabase } from "./hooks";
-
-const RoutedDestinationDatabasesModal = withRouteProps(
-  DestinationDatabasesModal,
-);
-const RoutedDestinationDatabaseConnectionModal = withRouteProps(
-  DestinationDatabaseConnectionModal,
-);
-const RoutedRemoveDestinationDatabaseModal = withRouteProps(
-  RemoveDestinationDatabaseModal,
-);
 
 /**
  * Initialize database_routing plugin features that depend on hasPremiumFeature.
@@ -48,20 +38,17 @@ export function initializePlugin() {
 
     PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes = (IsAdmin: any) => (
       <Route path="destination-databases">
-        <Route index element={<RoutedDestinationDatabasesModal />} />
+        <Route index element={<DestinationDatabasesModal />} />
         <Route element={<IsAdmin />}>
           <Route
             path="create"
-            element={<RoutedDestinationDatabaseConnectionModal />}
+            element={<DestinationDatabaseConnectionModal />}
           />
         </Route>
         <Route path=":destinationDatabaseId">
-          <Route index element={<RoutedDestinationDatabaseConnectionModal />} />
+          <Route index element={<DestinationDatabaseConnectionModal />} />
           <Route element={<IsAdmin />}>
-            <Route
-              path="remove"
-              element={<RoutedRemoveDestinationDatabaseModal />}
-            />
+            <Route path="remove" element={<RemoveDestinationDatabaseModal />} />
           </Route>
         </Route>
       </Route>
