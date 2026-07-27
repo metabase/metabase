@@ -6,6 +6,7 @@ import type {
   DashboardId,
   DashboardTab,
   DashboardTabId,
+  Parameter,
   ParameterId,
   ParameterValueOrArray,
   ParameterValuesMap,
@@ -76,6 +77,7 @@ export type TabDeletion = {
   id: TabDeletionId;
   tabId: DashboardTabId;
   removedDashCardIds: DashCardId[];
+  removedParameters: Parameter[];
 };
 
 export type DashboardLoadingStatus = "idle" | "running" | "complete";
