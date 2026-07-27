@@ -185,7 +185,7 @@
     - :perms  -> A map of permissions with the structure `{user-id {perm-type {db-id entry}}}` so that we NEVER
                  accidentally use the cache of the wrong user. Each `entry` is a compact map
 
-                     {:groups {group-id perm-value}                          ; db-level rows
+                     {:groups {group-id perm-value}                           ; db-level rows
                       :tables {table-id [schema-name {group-id perm-value}]}} ; table-level rows
 
                  On instances with many databases the group->value maps are typically identical across most of
