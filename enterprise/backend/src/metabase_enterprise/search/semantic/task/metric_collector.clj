@@ -8,7 +8,6 @@
    [metabase-enterprise.search.semantic.dlq :as semantic.dlq]
    [metabase-enterprise.search.semantic.env :as semantic.env]
    [metabase-enterprise.search.semantic.util :as semantic.u]
-   [metabase.analytics-interface.core :as analytics]
    [metabase.search.index-health :as search.index-health]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
@@ -39,7 +38,7 @@
     (if (semantic.u/table-exists? pgvector gate-table-name)
       (let [table-size (row-count pgvector gate-table-name)]
         (log/debugf "Setting `semantic-gate-size` metric to %d" table-size)
-        (analytics/set-gauge! :metabase-search/semantic-gate-size table-size)
+        (search.index-health/set-cluster-gauge! :metabase-search/semantic-gate-size nil table-size)
         nil)
       (log/warn "Gate table does not exist. Index may not have been initialized."))))
 
@@ -61,7 +60,7 @@
       (when (semantic.u/table-exists? pgvector dlq-table-name)
         (let [table-size (row-count pgvector dlq-table-name)]
           (log/debugf "Setting `semantic-dlq-size` metric to %d" table-size)
-          (analytics/set-gauge! :metabase-search/semantic-dlq-size table-size)
+          (search.index-health/set-cluster-gauge! :metabase-search/semantic-dlq-size nil table-size)
           nil)))
     (log/warn "DLQ table does not exist. Index may not have been initialized.")))
 
