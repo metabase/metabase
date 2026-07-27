@@ -1,6 +1,6 @@
 # Build product notifications as a persisted backend domain
 
-**Status:** Ready for implementation
+**Status:** Implemented
 
 **Related work:** [PR #78404](https://github.com/metabase/metabase/pull/78404)
 
@@ -122,19 +122,20 @@ Every notification has its own integer `schema_version`. This lets one feed
 serve different Metabase versions safely:
 
 - Validate supported schema versions strictly.
-- Reject duplicate IDs across the complete feed.
-- Reject the complete sync when a notification using a supported schema is
-  malformed.
-- Skip notifications using a newer, unsupported schema.
+- Treat every duplicate ID as invalid.
+- Reject a malformed notification without blocking valid notifications.
+- Skip notifications using a newer, unsupported schema and mark any existing
+  row for that ID inactive.
 - Treat an unsupported representation of an existing ID as absent, so an older
   server doesn't keep displaying stale content under that ID.
 - Reject unknown conditions within a supported schema. Ignoring an unknown
   condition could broaden the intended audience.
+- Require a new schema version whenever a new targeting condition is added.
 
-The publishing workflow must run the same semantic validation before uploading
-the feed. It must also reject changes to an ID that appeared in the repository's
-feed history. The workflow should publish only from the main Metabase
-repository's default branch and retain the existing code-owner review boundary.
+The system that hosts and publishes the feed is outside the backend scope. It
+must run the same semantic validation before uploading the feed, reject changes
+to an ID in its history, publish only from its default branch, and require
+code-owner review.
 
 Use the same HTTPS and static-hosting trust model as `version-info.json`. Feed
 signatures are out of scope.
@@ -147,54 +148,51 @@ namespaces. The synchronization path should follow this order:
 ```text
 fetch
   → decode
-  → validate
-  → normalize
-  → reconcile in one transaction
-  → record successful synchronization
+  → validate the envelope
+  → validate and normalize each notification
+  → reconcile each notification independently
+  → retire missing and invalid notifications
+  → record the completed synchronization
 ```
 
 The HTTP client must use explicit connection and socket timeouts, refuse
 unbounded response bodies, and handle non-success responses without trying to
-decode them. A network, HTTP, decoding, validation, or database error must leave
+decode them. A network, HTTP, decoding, or envelope validation error must leave
 all existing rows unchanged.
 
-For every successful feed:
+For every decoded feed:
 
-1. Validate and normalize the complete response before opening the write
-   transaction.
-2. Compare existing IDs with the immutable fields in the incoming feed. Reject
-   the transaction if an ID has changed.
-3. Insert new supported notifications.
-4. Update `position`, `last_seen_at`, and active state for notifications still
-   in the feed.
-5. Set `active` to false and `retired_at` to the current time for notifications
-   absent from the feed.
-6. Commit all changes together.
+1. Validate the feed envelope before writing.
+2. Validate and normalize every notification independently.
+3. Insert or update each valid notification in its own transaction.
+4. Keep processing when one notification fails validation or persistence.
+5. Set `active` to false for invalid, unsupported, immutable, duplicate, and
+   missing IDs.
+6. Preserve the previous state for an item whose database write fails.
 
 A notification that becomes active again may clear `retired_at`, but it keeps
 the same database ID and existing dismissals.
 
 Record an internal `product-notifications-last-synced-at` Setting only after the
-transaction commits. Log failed syncs with enough context to distinguish HTTP,
-decoding, validation, immutability, and database failures. Never clear existing
-rows in an error handler.
+feed has been reconciled. Log item failures and enough context to distinguish
+network, HTTP, response, decoding, validation, immutability, database, and
+Setting failures. Never clear existing rows in an error handler.
 
 ## Run one cluster-safe synchronization job
 
 Create a dedicated Quartz job for product notifications:
 
-- Gate the job on the existing `check-for-updates` Setting.
-- Don't run the job on air-gapped instances.
+- Don't run the job on air-gapped instances. Product notifications otherwise
+  run independently from update checks.
 - Run twice daily at randomized times.
 - Use `DisallowConcurrentExecution`; Metabase's clustered Quartz scheduler
   prevents the same job from running concurrently on multiple nodes.
 - Use the do-nothing misfire policy.
 - Trigger an immediate sync only when the instance has never completed one or
-  when the last successful sync is stale.
+  when the last completed sync is stale.
 
 Don't modify the version-check job or make product-notification failures affect
-version-info updates. Disabling `check-for-updates` must also make the API return
-no product notifications, even if rows from an earlier sync remain active.
+version-info updates.
 
 ## Match notifications with explicit rules
 
@@ -238,15 +236,9 @@ Add an authenticated endpoint:
 GET /api/product-notifications
 ```
 
-Return a JSON array containing zero or one eligible, undismissed notification by
-default. Add `include_all=true` to return every eligible, undismissed
-notification in `position` order:
-
-```text
-GET /api/product-notifications?include_all=true
-```
-
-Both forms return the existing frontend object shape and no internal fields:
+Return a JSON array containing every eligible, undismissed notification in
+`position` order. The frontend decides how many notifications to display. The
+endpoint returns the existing frontend object shape and no internal fields:
 
 ```json
 [
@@ -289,9 +281,8 @@ notification and must not use this dismissal table or API.
 ## Replace the old flow without coupling it to the new tables
 
 The frontend can replace `WhatsNewNotification` with `ProductNotifications`
-after the new API is available. The frontend must fetch
-`include_all=true` if it needs to reveal the next notification immediately after
-a dismissal.
+after the new API is available. The frontend can reveal the next returned
+notification immediately after a dismissal.
 
 The existing `last-acknowledged-version` user-local Setting doesn't map to the
 new immutable notification IDs. Don't migrate it into
@@ -314,14 +305,15 @@ Backend tests must cover:
 - Inclusive minimum and exclusive maximum version matching for OSS and EE
   version strings.
 - Unknown running versions failing closed only for version-targeted messages.
-- Transactional insertion, reordering, retirement, and reactivation.
-- Existing IDs rejecting content or targeting changes.
-- Fetch, decoding, validation, and database failures preserving existing rows.
-- The sync timestamp changing only after a committed transaction.
-- `check-for-updates` and air-gap synchronization gates.
+- Insertion, reordering, retirement, and reactivation.
+- Existing IDs rejecting content or targeting changes without blocking other
+  notifications.
+- Fetch, decoding, and envelope validation failures preserving existing rows.
+- Item validation and database failures remaining isolated.
+- The sync timestamp changing only after reconciliation completes.
+- Air-gap synchronization gates and independence from update checks.
 - Non-concurrent task metadata, misfire behavior, and startup freshness checks.
-- Default API limiting, `include_all`, response schemas, and deterministic
-  ordering.
+- Response schemas and deterministic API ordering.
 - Per-person dismissal isolation and idempotent repeated dismissal.
 - Ineligible IDs returning `404`.
 - User deletion cascading dismissal rows.
@@ -335,11 +327,11 @@ The backend is ready for frontend integration when:
 
 - A valid published feed becomes queryable without restarting Metabase.
 - A bad or unavailable feed never removes the last known good notifications.
-- A valid feed update is applied atomically across all notification rows.
+- One bad notification never blocks valid notifications from the same feed.
 - Old Metabase versions never ignore targeting they don't understand.
 - Two people can dismiss the same notification independently.
 - Concurrent or repeated dismissals can't lose state or create duplicates.
-- Disabling update checks or enabling air-gap mode prevents remote fetches.
+- Enabling air-gap mode prevents remote fetches.
 - The API returns only eligible, undismissed notifications in stable order.
 - No product-notification data is exposed through Settings or session
   properties.

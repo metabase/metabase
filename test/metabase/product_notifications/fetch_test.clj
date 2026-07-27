@@ -14,7 +14,7 @@
   [body]
   (ByteArrayInputStream. (.getBytes ^String body StandardCharsets/UTF_8)))
 
-(deftest ^:parallel fetch-feed-test
+(deftest fetch-feed-test
   (testing "decodes and validates a bounded successful response"
     (mt/with-dynamic-fn-redefs
       [http/get (fn [_url _options]
@@ -22,7 +22,7 @@
                    :body   (body-stream
                             "{\"notifications\":[{\"id\":\"hello\",\"schema_version\":1,\"title\":\"Hello\",\"content\":\"World\",\"conditions\":{\"audience\":\"all_users\",\"deployment\":\"any\",\"edition\":\"any\",\"starts_at\":\"2026-01-01T00:00:00Z\",\"ends_at\":\"2027-01-01T00:00:00Z\"}}]}")})]
       (is (= ["hello"]
-             (mapv :notification_id (:notifications (fetch/fetch-feed)))))))
+             (mapv :notification_id (:notifications (fetch/fetch-feed!)))))))
   (testing "does not decode a non-success response"
     (mt/with-dynamic-fn-redefs
       [http/get (fn [_url _options]
@@ -30,7 +30,7 @@
                    :body   (body-stream "not json")})]
       (is (= :http
              (-> (try
-                   (fetch/fetch-feed)
+                   (fetch/fetch-feed!)
                    (catch clojure.lang.ExceptionInfo e e))
                  ex-data
                  :phase)))))
@@ -41,5 +41,21 @@
                    :body   (ByteArrayInputStream. (byte-array (inc (* 1024 1024))))})]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"decode or validate"
-           (fetch/fetch-feed))))))
+           #"response size"
+           (fetch/fetch-feed!))))))
+
+(deftest fetch-feed-error-phases-test
+  (doseq [[label response expected-phase]
+          [["network" #(throw (Exception. "connection refused")) :network]
+           ["decode" (constantly {:status 200
+                                  :body   (body-stream "not json")}) :decode]
+           ["validation" (constantly {:status 200
+                                      :body   (body-stream "{\"notifications\":{}}")}) :validation]]]
+    (testing label
+      (mt/with-dynamic-fn-redefs [http/get (fn [& _args] (response))]
+        (is (= expected-phase
+               (-> (try
+                     (fetch/fetch-feed!)
+                     (catch clojure.lang.ExceptionInfo e e))
+                   ex-data
+                   :phase)))))))

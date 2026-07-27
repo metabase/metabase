@@ -1697,8 +1697,7 @@
            premium-features
            settings
            task
-           util
-           version}}
+           util}}
 
   public-sharing
   {:team "UX West"
@@ -2674,7 +2673,7 @@
 
   version
   {:team "UX West"
-   :api  #{metabase.version.core metabase.version.init metabase.version.settings}
+   :api  #{metabase.version.core metabase.version.init}
    :uses #{config
            settings
            system

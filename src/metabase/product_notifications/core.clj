@@ -1,6 +1,7 @@
 (ns metabase.product-notifications.core
   "Validation, normalization, and eligibility rules for product notifications."
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
@@ -43,9 +44,9 @@
 
 (def ^:private Feed
   [:map {:closed true}
-   [:notifications [:vector GenericNotification]]])
+   [:notifications [:vector :any]]])
 
-(defn- parse-version
+(defn- parsed-version
   [version]
   (when version
     (try
@@ -58,30 +59,36 @@
   (some->> version
            (re-matches #"(?i)^v?[01]\.(.+)$")
            second
-           parse-version))
+           parsed-version))
 
 (defn- validate-version-range!
-  [{:keys [min_version max_version] :as notification}]
-  (let [^Semver minimum (parse-version min_version)
-        ^Semver maximum (parse-version max_version)]
-    (when (and min_version (nil? minimum))
+  [{min-version :min_version, max-version :max_version, :as notification}]
+  (let [^Semver minimum (parsed-version min-version)
+        ^Semver maximum (parsed-version max-version)]
+    (when (and min-version (nil? minimum))
       (throw (ex-info "Invalid minimum product notification version"
-                      {:id (:notification_id notification), :version min_version})))
-    (when (and max_version (nil? maximum))
+                      {:id (:notification_id notification), :version min-version})))
+    (when (and max-version (nil? maximum))
       (throw (ex-info "Invalid maximum product notification version"
-                      {:id (:notification_id notification), :version max_version})))
+                      {:id (:notification_id notification), :version max-version})))
     (when (and minimum maximum (not (.isLowerThan minimum maximum)))
       (throw (ex-info "Product notification minimum version must be lower than its maximum version"
                       {:id (:notification_id notification)
-                       :min-version min_version
-                       :max-version max_version}))))
+                       :min-version min-version
+                       :max-version max-version}))))
   notification)
 
-(defn- normalize-notification
+(defn- normalized-notification
   [position notification]
   (mu/validate-throw NotificationV1 notification)
-  (let [{:keys [audience deployment edition starts_at ends_at min_version max_version]}
-        (:conditions notification)
+  (let [conditions  (:conditions notification)
+        audience    (:audience conditions)
+        deployment  (:deployment conditions)
+        edition     (:edition conditions)
+        starts-at   (:starts_at conditions)
+        ends-at     (:ends_at conditions)
+        min-version (:min_version conditions)
+        max-version (:max_version conditions)
         normalized
         {:notification_id (:id notification)
          :schema_version  (:schema_version notification)
@@ -91,55 +98,94 @@
          :audience        (keyword audience)
          :deployment      (keyword deployment)
          :edition         (keyword edition)
-         :min_version     min_version
-         :max_version     max_version
-         :starts_at       (t/offset-date-time starts_at)
-         :ends_at         (t/offset-date-time ends_at)
+         :min_version     min-version
+         :max_version     max-version
+         :starts_at       (t/offset-date-time starts-at)
+         :ends_at         (t/offset-date-time ends-at)
          :position        position}]
     (when-not (t/before? (:starts_at normalized) (:ends_at normalized))
       (throw (ex-info "Product notification start must be before its end"
                       {:id (:notification_id normalized)})))
     (validate-version-range! normalized)))
 
-(mu/defn normalize-feed :- [:map
-                            [:notifications [:vector :map]]
-                            [:present-ids [:set :string]]]
-  "Validate a complete remote feed and normalize supported notifications for persistence.
+(defn- valid-notification-id
+  [notification]
+  (let [notification-id (when (map? notification) (:id notification))]
+    (when (and (string? notification-id)
+               (not (str/blank? notification-id)))
+      notification-id)))
 
-  Notifications using a newer schema are retained in `:present-ids`, but omitted
-  from `:notifications` so this server cannot accidentally broaden their targeting."
+(defn- notification-error
+  [notification phase exception]
+  {:notification-id (valid-notification-id notification)
+   :phase           phase
+   :exception       exception})
+
+(defn- normalized-notification-result
+  [duplicate-ids position notification]
+  (try
+    (mu/validate-throw GenericNotification notification)
+    (cond
+      (contains? duplicate-ids (:id notification))
+      {:error (notification-error
+               notification
+               :duplicate-id
+               (ex-info "Duplicate product notification ID"
+                        {:notification-id (:id notification)}))}
+
+      (not= supported-schema-version (:schema_version notification))
+      {:error (notification-error
+               notification
+               :unsupported-schema
+               (ex-info "Unsupported product notification schema"
+                        {:notification-id (:id notification)
+                         :schema-version  (:schema_version notification)}))}
+
+      :else
+      {:notification (normalized-notification position notification)})
+    (catch Exception e
+      {:error (notification-error notification :validation e)})))
+
+(mu/defn normalized-feed :- [:map
+                             [:notifications [:vector :map]]
+                             [:errors [:vector :map]]]
+  "Validate a remote feed and normalize each valid notification for persistence.
+
+  Invalid, duplicate, and unsupported notifications are returned in `:errors`
+  without blocking valid notifications. New targeting conditions require a new
+  schema version."
   [feed :- :map]
   (mu/validate-throw Feed feed)
-  (let [ids (:notifications feed)
-        duplicates (->> ids
-                        (map :id)
-                        frequencies
-                        (keep (fn [[id n]] (when (> n 1) id)))
-                        seq)]
-    (when duplicates
-      (throw (ex-info "Duplicate product notification IDs"
-                      {:ids (vec duplicates)})))
-    {:present-ids (into #{} (map :id) ids)
-     :notifications
-     (into []
-           (keep-indexed
-            (fn [position notification]
-              (when (= supported-schema-version (:schema_version notification))
-                (normalize-notification position notification))))
-           ids)}))
+  (let [notifications (:notifications feed)
+        duplicate-ids (->> notifications
+                           (keep valid-notification-id)
+                           frequencies
+                           (keep (fn [[notification-id n]]
+                                   (when (> n 1) notification-id)))
+                           set)]
+    (reduce-kv
+     (fn [result position notification]
+       (let [{normalized :notification, :keys [error]}
+             (normalized-notification-result duplicate-ids position notification)]
+         (if error
+           (update result :errors conj error)
+           (update result :notifications conj normalized))))
+     {:notifications []
+      :errors        []}
+     notifications)))
 
 (defn- time-matches?
-  [{:keys [starts_at ends_at]} now]
-  (and (not (t/before? now starts_at))
-       (t/before? now ends_at)))
+  [{starts-at :starts_at, ends-at :ends_at} now]
+  (and (not (t/before? now starts-at))
+       (t/before? now ends-at)))
 
 (defn- version-matches?
-  [{:keys [min_version max_version]} version]
-  (if-not (or min_version max_version)
+  [{min-version :min_version, max-version :max_version} version]
+  (if-not (or min-version max-version)
     true
     (when-let [^Semver current (marketing-version version)]
-      (let [^Semver minimum (parse-version min_version)
-            ^Semver maximum (parse-version max_version)]
+      (let [^Semver minimum (parsed-version min-version)
+            ^Semver maximum (parsed-version max-version)]
         (and (or (nil? minimum) (.isGreaterThanOrEqualTo current minimum))
              (or (nil? maximum) (.isLowerThan current maximum)))))))
 

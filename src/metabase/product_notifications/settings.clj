@@ -4,8 +4,10 @@
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
+(set! *warn-on-reflection* true)
+
 (defsetting product-notifications-last-synced-at
-  (deferred-tru "Timestamp of the last successful product notification sync.")
+  (deferred-tru "Timestamp of the last completed product notification sync.")
   :type               :timestamp
   :default            nil
   :encryption         :no

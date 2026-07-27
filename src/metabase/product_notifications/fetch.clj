@@ -22,25 +22,41 @@
                         {:phase :response-size, :limit max-response-bytes})))
       (String. bytes StandardCharsets/UTF_8))))
 
-(defn fetch-feed
-  "Fetch, decode, strictly validate, and normalize the remote product notification feed."
+(defn fetch-feed!
+  "Fetch, decode, and normalize the remote product notification feed."
   []
   (let [url      (config/config-str :mb-product-notifications-url)
-        response (http/get url
-                           {:throw-exceptions   false
-                            :socket-timeout     5000
-                            :connection-timeout 2000
-                            :as                 :stream})]
+        response (try
+                   (http/get url
+                             {:throw-exceptions   false
+                              :socket-timeout     5000
+                              :connection-timeout 2000
+                              :as                 :stream})
+                   (catch Exception e
+                     (throw (ex-info "Unable to fetch the product notification feed"
+                                     {:phase :network, :url url}
+                                     e))))]
     (when-not (http/success? response)
       (some-> (:body response) ^InputStream .close)
       (throw (ex-info "Product notification feed returned a non-success status"
                       {:phase :http, :status (:status response), :url url})))
-    (try
-      (-> (:body response)
-          bounded-body
-          json/decode+kw
-          product-notifications/normalize-feed)
-      (catch Exception e
-        (throw (ex-info "Unable to decode or validate the product notification feed"
-                        {:phase :decode-or-validation, :url url}
-                        e))))))
+    (let [body (try
+                 (bounded-body (:body response))
+                 (catch Exception e
+                   (if (:phase (ex-data e))
+                     (throw e)
+                     (throw (ex-info "Unable to read the product notification feed"
+                                     {:phase :response, :url url}
+                                     e)))))
+          feed (try
+                 (json/decode+kw body)
+                 (catch Exception e
+                   (throw (ex-info "Unable to decode the product notification feed"
+                                   {:phase :decode, :url url}
+                                   e))))]
+      (try
+        (product-notifications/normalized-feed feed)
+        (catch Exception e
+          (throw (ex-info "Unable to validate the product notification feed"
+                          {:phase :validation, :url url}
+                          e)))))))
