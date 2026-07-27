@@ -213,14 +213,32 @@
   (boolean (and updated-at
                 (not (t/before? (t/instant updated-at) (t/instant invalidated-at))))))
 
+(defn- not-too-stale?
+  "Whether an entry last written at `updated-at` is close enough to `invalidated-at` (the strategy's freshness
+  boundary) that serving it is still serving roughly what the caller asked for -- within
+  [[*refresh-lease-duration-ms*]] of it.
+
+  Serving an expired entry is only defensible while its replacement is on the way, and that is the one thing an
+  expired entry doesn't tell you: it can sit untouched for weeks until the first request arrives, wins the lease, and
+  starts refreshing, while every other request in that batch loses the lease. Without a bound those losers are served
+  results from an arbitrarily older window -- a monthly subscription batch gets last month's numbers (#78339). The
+  lease duration is the bound because it is how long a refresh may legitimately be in flight; past it, the entry is
+  old enough that recomputing beats answering with it."
+  [updated-at invalidated-at]
+  (boolean (and updated-at
+                (not (t/before? (t/instant updated-at)
+                                (t/minus (t/instant invalidated-at) (t/millis *refresh-lease-duration-ms*)))))))
+
 (mu/defn- maybe-serve-cached-results :- [:tuple
                                          #_status [:enum ::fresh ::stale ::miss ::canceled]
                                          #_result :any]
   "Look up the cache entry for `query-hash` and decide what to do (stale-while-revalidate):
     - `[::fresh result]` -- entry is within its TTL; serve it.
-    - `[::stale result]` -- entry is expired but another process holds the refresh lease; serve it stale while that
-                            process refreshes, so we don't stampede the data warehouse.
-    - `[::miss nil]`     -- no entry, or it's expired and *this* process won the lease; the caller must recompute.
+    - `[::stale result]` -- entry is expired but not too stale to stand in for a fresh one, and another process holds
+                            the refresh lease; serve it while that process refreshes, so we don't stampede the data
+                            warehouse.
+    - `[::miss nil]`     -- no entry; or it's expired and *this* process won the lease; or it's too stale to serve to
+                            anyone. The caller must recompute.
     - `[::canceled nil]` -- the request was canceled."
   [ignore-cache?
    query-hash :- bytes?
@@ -246,12 +264,18 @@
                                        (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*)
                                        nil
 
-                                       ;; expired, another process is refreshing -> serve stale
-                                       :else
+                                       ;; another process is refreshing, and the entry is still close enough to what
+                                       ;; was asked for -> serve it stale rather than stampede the warehouse
+                                       (not-too-stale? updated-at invalidated-at)
                                        (when-let [result (reduce-cached-stream is rff query-hash)]
-                                         (log/debugf "Serving stale cached results for hash '%s' while another process refreshes"
-                                                     (i/short-hex-hash query-hash))
-                                         [::stale result])))))
+                                         (log/debugf "Serving stale cached results written at %s for hash '%s' while another process refreshes"
+                                                     updated-at (i/short-hex-hash query-hash))
+                                         [::stale result])
+
+                                       ;; the entry is too far past its window to answer with, whoever holds the
+                                       ;; lease -> recompute (#78339)
+                                       :else
+                                       nil))))
           [::miss nil])
       (catch EofException _
         (log/debug "Request is closed; no one to return cached results to")
