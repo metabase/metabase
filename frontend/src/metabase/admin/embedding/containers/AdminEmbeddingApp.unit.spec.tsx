@@ -1,29 +1,14 @@
-import type { ComponentProps } from "react";
-
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 
 import { AdminEmbeddingApp } from "./AdminEmbeddingApp";
 
-const TestAdminEmbeddingApp = (
-  props: ComponentProps<typeof AdminEmbeddingApp>,
-) => (
-  <AdminEmbeddingApp {...props}>
-    <div>content</div>
-  </AdminEmbeddingApp>
-);
-
-const RoutedTestAdminEmbeddingApp = withRouteProps(TestAdminEmbeddingApp);
-
 describe("AdminEmbeddingApp", () => {
   it("shows the sidebar on the setup guide root", () => {
-    renderWithProviders(
-      <Route path="*" element={<RoutedTestAdminEmbeddingApp />} />,
-      {
-        initialRoute: "/admin/embedding/setup-guide",
-        withRouter: true,
-      },
-    );
+    renderWithProviders(<Route path="*" element={<AdminEmbeddingApp />} />, {
+      initialRoute: "/admin/embedding/setup-guide",
+      withRouter: true,
+    });
 
     expect(screen.getByTestId("admin-layout-sidebar")).toBeInTheDocument();
   });
@@ -32,13 +17,10 @@ describe("AdminEmbeddingApp", () => {
     "/admin/embedding/setup-guide/permissions",
     "/admin/embedding/setup-guide/sso",
   ])("hides the sidebar for %s", (pathname) => {
-    renderWithProviders(
-      <Route path="*" element={<RoutedTestAdminEmbeddingApp />} />,
-      {
-        initialRoute: pathname,
-        withRouter: true,
-      },
-    );
+    renderWithProviders(<Route path="*" element={<AdminEmbeddingApp />} />, {
+      initialRoute: pathname,
+      withRouter: true,
+    });
 
     expect(
       screen.queryByTestId("admin-layout-sidebar"),
@@ -47,13 +29,10 @@ describe("AdminEmbeddingApp", () => {
   });
 
   it("hides the sidebar for theme editor paths", () => {
-    renderWithProviders(
-      <Route path="*" element={<RoutedTestAdminEmbeddingApp />} />,
-      {
-        initialRoute: "/admin/embedding/themes/42",
-        withRouter: true,
-      },
-    );
+    renderWithProviders(<Route path="*" element={<AdminEmbeddingApp />} />, {
+      initialRoute: "/admin/embedding/themes/42",
+      withRouter: true,
+    });
 
     expect(
       screen.queryByTestId("admin-layout-sidebar"),
@@ -62,13 +41,10 @@ describe("AdminEmbeddingApp", () => {
   });
 
   it("shows the sidebar on the themes listing page", () => {
-    renderWithProviders(
-      <Route path="*" element={<RoutedTestAdminEmbeddingApp />} />,
-      {
-        initialRoute: "/admin/embedding/themes",
-        withRouter: true,
-      },
-    );
+    renderWithProviders(<Route path="*" element={<AdminEmbeddingApp />} />, {
+      initialRoute: "/admin/embedding/themes",
+      withRouter: true,
+    });
 
     expect(screen.getByTestId("admin-layout-sidebar")).toBeInTheDocument();
   });

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useEffectOnce, useLatest } from "react-use";
+import _ from "underscore";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useDispatch } from "metabase/redux";
@@ -46,8 +47,12 @@ export function useUrlState<State extends BaseState>(
   const updateUrlRef = useLatest(updateUrl);
 
   useEffectOnce(function cleanInvalidQueryParams() {
-    const newLocation = { ...location, query: serialize(urlState) };
-    dispatch(replace(newLocation));
+    const query = serialize(urlState);
+    // Replacing to the identical URL notifies the router, which re-renders every
+    // location consumer on the page for nothing.
+    if (!_.isEqual(query, location.query)) {
+      dispatch(replace({ ...location, query }));
+    }
   });
 
   useEffect(() => {

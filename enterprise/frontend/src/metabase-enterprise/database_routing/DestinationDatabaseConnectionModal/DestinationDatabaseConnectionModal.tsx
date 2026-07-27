@@ -9,8 +9,7 @@ import { useDocsUrl } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import type { Route } from "metabase/router";
-import { push, replace } from "metabase/router";
+import { push, replace, useParams } from "metabase/router";
 import { Flex, Icon, Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useCreateDestinationDatabaseMutation } from "metabase-enterprise/api";
@@ -21,13 +20,11 @@ import { paramIdToGetQuery } from "../utils";
 import S from "./DestinationDatabaseConnectionModal.module.css";
 import { pickPrefillFieldsFromPrimaryDb } from "./utils";
 
-export const DestinationDatabaseConnectionModal = ({
-  params: { databaseId, destinationDatabaseId },
-  route,
-}: {
-  params: { databaseId: string; destinationDatabaseId?: string };
-  route: Route;
-}) => {
+export const DestinationDatabaseConnectionModal = () => {
+  const { databaseId = "", destinationDatabaseId } = useParams<{
+    databaseId: string;
+    destinationDatabaseId: string;
+  }>();
   const dispatch = useDispatch();
 
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
@@ -142,7 +139,6 @@ export const DestinationDatabaseConnectionModal = ({
             handleSaveDb={handleSaveDatabase}
             onSubmitted={handleOnSubmit}
             onCancel={handleCloseModal}
-            route={route}
             config={{
               name: { isSlug: true },
               engine: { fieldState: "hidden" },
