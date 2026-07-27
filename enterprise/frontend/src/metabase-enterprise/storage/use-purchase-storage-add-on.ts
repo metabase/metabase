@@ -19,7 +19,7 @@ import { STORAGE_PRODUCT_TYPE } from "./use-storage-add-on";
 export const POLL_INTERVAL_MS = 4000;
 
 /** Setup lives only in this tab, so it needs its own deadline to stop spinning. */
-export const STORAGE_SETUP_TIMEOUT_MS = 4 * 60 * 1000;
+export const STORAGE_SETUP_TIMEOUT_MS = 6 * 60 * 1000;
 
 /** `failed` is terminal for the session; only another purchase or a reload clears it. */
 type StorageSetupPhase = "idle" | "setting-up" | "failed";
@@ -102,7 +102,6 @@ export function usePurchaseStorageAddOn() {
   useListDatabasesQuery(undefined, {
     skip: !isSettingUp,
     pollingInterval: POLL_INTERVAL_MS,
-    skipPollingIfUnfocused: true,
   });
 
   const handlePurchase = useCallback(async () => {

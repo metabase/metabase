@@ -41,6 +41,12 @@ import {
   STORAGE_SETUP_TIMEOUT_MS,
 } from "./use-purchase-storage-add-on";
 
+/**
+ * What RTK Query's `setupListeners` dispatches when the document loses focus.
+ * Dispatched by hand because nothing in the app calls `setupListeners`.
+ */
+const RTK_QUERY_UNFOCUSED = { type: "__rtkq/unfocused" };
+
 const TestConsumer = () => {
   const { isSettingUp, hasSetupFailed } = useStorageSetup();
 
@@ -142,8 +148,9 @@ const setup = ({
 };
 
 /**
- * Setup polls every 2s and gives up after 10 minutes, so tests drive a fake
- * clock. The click that starts setup must advance it too, hence the `userEvent`.
+ * Setup polls on a short interval and gives up minutes later, so tests drive a
+ * fake clock rather than waiting it out. The click that starts setup has to
+ * advance that clock too, hence binding `userEvent` to it.
  */
 const setupFakeClock = () => {
   jest.useFakeTimers();
@@ -219,6 +226,33 @@ describe("StorageSetupProvider", () => {
     expect(await screen.findByText("setting up")).toBeInTheDocument();
 
     // The databases list, not the token feature, is what ends setup.
+    const storage = [createMockDatabase({ id: 1, is_attached_dwh: true })];
+    fetchMock.modifyRoute("database-list", {
+      response: () => ({ data: storage, total: storage.length }),
+    });
+
+    await advanceToNextPoll();
+
+    expect(screen.queryByText("setting up")).not.toBeInTheDocument();
+    expect(
+      await screen.findByText("Metabase Storage is ready"),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps polling for the attached DWH while the document is unfocused", async () => {
+    // RTK Query gates polling on `config.focused`, which is fixed at whatever
+    // `document.visibilityState` said when the store was built — only
+    // `setupListeners`, which this app never calls, can change it afterwards. A
+    // page first opened in a background tab is therefore unfocused for its whole
+    // life, so setup must not be gated on focus or it would never finish.
+    const user = setupFakeClock();
+    const { store } = setup();
+
+    store.dispatch(RTK_QUERY_UNFOCUSED);
+
+    await confirmPurchase(user);
+    expect(await screen.findByText("setting up")).toBeInTheDocument();
+
     const storage = [createMockDatabase({ id: 1, is_attached_dwh: true })];
     fetchMock.modifyRoute("database-list", {
       response: () => ({ data: storage, total: storage.length }),
