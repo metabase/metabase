@@ -99,28 +99,24 @@
       (> (- (.getEpochSecond (Instant/now)) ^long at)
          (* 2 readiness-refresh-interval-seconds))))
 
-(defn- refresh-readiness-if-stale!
-  "Probe when the last result has aged out, rechecking under the lock so a caller that queued behind another
-  refresh reports its result instead of probing again."
-  []
-  (when (readiness-probe-stale? @last-readiness-probe)
-    (locking last-readiness-probe
-      (when (readiness-probe-stale? @last-readiness-probe)
-        (collect-pgvector-readiness-metrics!)))))
-
 (defn- pgvector-store-health-check
   "Health-inspector row for pgvector store reachability. Nil (check omitted) on an instance with no pgvector
   store to reach.
   Shares the collector's result, so this row and the gauges cannot disagree. The probe is normally driven by
   Prometheus scrapes; refreshing a stale one here is what keeps the row current on an instance that is not
-  scraped at all, and stops a scrape that stopped days ago from reading as a live result."
+  scraped at all, and stops a scrape that stopped days ago from reading as a live result.
+  Refresh and read happen under the collector's lock: reading between a concurrent probe's gauge writes and
+  its result would report the older of the two as the one the gauges show. A scrape-driven probe in flight
+  therefore blocks this check, bounded by the probe's own timeouts."
   []
-  (refresh-readiness-if-stale!)
-  (when-let [{:keys [storage connected?]} @last-readiness-probe]
-    (when storage
-      (if connected?
-        (search.index-health/healthy (format "pgvector store (%s) reachable." storage))
-        (search.index-health/degraded (format "pgvector store (%s) unreachable." storage))))))
+  (locking last-readiness-probe
+    (when (readiness-probe-stale? @last-readiness-probe)
+      (collect-pgvector-readiness-metrics!))
+    (when-let [{:keys [storage connected?]} @last-readiness-probe]
+      (when storage
+        (if connected?
+          (search.index-health/healthy (format "pgvector store (%s) reachable." storage))
+          (search.index-health/degraded (format "pgvector store (%s) unreachable." storage)))))))
 
 (health-inspector/register-check! :pgvector-store pgvector-store-health-check)
 
