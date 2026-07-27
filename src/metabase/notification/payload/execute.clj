@@ -316,22 +316,27 @@
 (mu/defn execute-dashboard :- [:sequential ::Part]
   "Execute a dashboard and return its parts.
 
-  `spill-budget` is the shared [[metabase.notification.payload.temp-storage/ResidentBudget]] for the whole dashboard
-  (all tabs), so cards can't collectively exhaust heap regardless of how they're split into tabs. The 3-arity uses the
-  production default ([[new-spill-budget]]); pass your own (e.g. with lower limits) to the 4-arity for testing.
-
-  `attached-card-ids` identifies cards whose results are exported as file attachments; they run to the attachment row
-  limit while the rest get the interactive display limits."
+  Options:
+  - `:spill-budget` the shared [[metabase.notification.payload.temp-storage/ResidentBudget]] for the whole dashboard
+    (all tabs), so cards can't collectively exhaust heap regardless of how they're split into tabs. Defaults to the
+    production budget; pass your own (e.g. with lower limits) for testing.
+  - `:only-card-ids` when set, only dashcards whose :card_id is in this set are executed (e.g. attachment-only
+    subscriptions that never render the other cards).
+  - `:attached-card-ids` cards whose results are exported as file attachments; they run to the attachment row limit
+    while the rest get the interactive display limits."
   ([dashboard-id user-id parameters]
-   (execute-dashboard dashboard-id user-id parameters (new-spill-budget) nil))
-  ([dashboard-id user-id parameters spill-budget]
-   (execute-dashboard dashboard-id user-id parameters spill-budget nil))
-  ([dashboard-id user-id parameters spill-budget attached-card-ids]
-   (let [spill-budget (or spill-budget (new-spill-budget))]
+   (execute-dashboard dashboard-id user-id parameters nil))
+  ([dashboard-id user-id parameters {:keys [spill-budget only-card-ids attached-card-ids]
+                                     :or   {spill-budget (new-spill-budget)}}]
+   (let [keep-dashcards (fn [dashcards]
+                          (cond->> dashcards
+                            only-card-ids (filter #(contains? only-card-ids (:card_id %)))))]
      (request/with-current-user user-id
        (if (render-tabs? dashboard-id)
          (let [tabs               (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)
-               tabs-with-cards    (filter #(seq (:cards %)) tabs)
+               tabs-with-cards    (->> tabs
+                                       (map #(update % :cards keep-dashcards))
+                                       (filter #(seq (:cards %))))
                should-render-tab? (< 1 (count tabs-with-cards))]
            (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
                              (do
@@ -340,7 +345,7 @@
                                 (when should-render-tab?
                                   [(tab->part tab)])
                                 (dashcards->part cards parameters spill-budget attached-card-ids)))))))
-         (let [dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id)]
+         (let [dashcards (keep-dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id))]
            (log/debugf "Rendering dashboard with %d cards" (count dashcards))
            (dashcards->part dashcards parameters spill-budget attached-card-ids)))))))
 

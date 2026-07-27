@@ -64,7 +64,8 @@
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
       (let [row-count (fn [attached-card-ids]
                         (let [part (first (card-parts (notification.payload.execute/execute-dashboard
-                                                       dash-id (mt/user->id :rasta) [] nil attached-card-ids)))]
+                                                       dash-id (mt/user->id :rasta) []
+                                                       {:attached-card-ids attached-card-ids})))]
                           (temp-storage/cleanup! (-> part :result :data :rows))
                           (-> part :result :row_count)))]
         (is (= 2000 (row-count nil)))
@@ -81,7 +82,7 @@
                                                                     :position         0}]
       (let [part          (first (card-parts (notification.payload.execute/execute-dashboard
                                               dash-id (mt/user->id :rasta) []
-                                              nil #{card-id})))
+                                              {:attached-card-ids #{card-id}})))
             series-result (-> part :dashcard :series-results first)]
         (is (< 2000 (-> part :result :row_count)) "attached primary card keeps the attachment limit")
         (is (= 2000 (-> series-result :result :row_count)) "display-only series gets the interactive limit")
@@ -107,7 +108,7 @@
                    :model/DashboardCard _ {:dashboard_id dash-id :dashboard_tab_id tab2 :card_id card-id}]
       (let [budget (temp-storage/make-resident-budget {:per-card 100000 :resident-cap 1000 :floor 100})
             parts  (card-parts (notification.payload.execute/execute-dashboard
-                                dash-id (mt/user->id :rasta) [] budget))]
+                                dash-id (mt/user->id :rasta) [] {:spill-budget budget}))]
         (is (= 4 (count parts)) "all four cards render")
         (is (some spilled-part? parts)
             "with a shared budget the cumulative cells across tabs cross the cap, so a later card spills to disk")
