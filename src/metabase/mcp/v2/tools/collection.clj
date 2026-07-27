@@ -1,15 +1,14 @@
 (ns metabase.mcp.v2.tools.collection
   "The v2 MCP `collection_write` tool: create, rename, move, archive, and restore collections.
    Both methods delegate to the shared domain fns the REST endpoints use
-   ([[metabase.collections.create/create-collection!]] and
-   [[metabase.collections.update/update-collection!]]), so parent write-checks, authority-level
+   ([[metabase.collections.core/create-collection!]] and
+   [[metabase.collections.core/update-collection!]]), so parent write-checks, authority-level
    gating, parent inheritance, descendant path rewriting, and the event pair are inherited
    rather than reimplemented. The tool's own work is id resolution behind read checks,
    method-appropriateness checks, and the write echo."
   (:require
    [metabase.channel.urls :as channel.urls]
    [metabase.collections.core :as collections]
-   [metabase.collections.update :as collections.update]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
@@ -72,7 +71,7 @@
   (check-method-args! :update args)
   (let [collection (resolve-existing id)]
     (write-result
-     (collections.update/update-collection!
+     (collections/update-collection!
       (:id collection)
       (cond-> {}
         (contains? args :name)            (assoc :name name)

@@ -7,7 +7,11 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
-   [metabase.notification.core :as notification]
+   ;; `metabase.notification.card`, not `notification.core`: `core` pulls the payload/send chain,
+   ;; which reaches `queries.core` -> `queries.models.card` -> `collections.core` and so cycles
+   ;; back into this module. `notification.card` requires only events, the notification models,
+   ;; and toucan.
+   [metabase.notification.card :as notification.card]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -41,7 +45,7 @@
   [& {:keys [collection-before-update collection-updates actor]}]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
     (doseq [card (t2/select :model/Card :collection_id (u/the-id collection-before-update))]
-      (notification/delete-card-notifications-and-notify! :event/card-update.notification-deleted.card-archived actor card))))
+      (notification.card/delete-card-notifications-and-notify! :event/card-update.notification-deleted.card-archived actor card))))
 
 (defn- move-collection!
   "If `collection-updates` specifies that we should *move* a Collection, do appropriate permissions checks and move it

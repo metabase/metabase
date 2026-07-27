@@ -592,8 +592,7 @@
            metabase.collections.init
            metabase.collections.models.collection
            metabase.collections.models.collection.root
-           metabase.collections.schema
-           metabase.collections.update}
+           metabase.collections.schema}
    :uses #{api
            api-keys
            app-db
@@ -1517,6 +1516,7 @@
   notification
   {:team "Gadget"
    :api  #{metabase.notification.api
+           metabase.notification.card
            metabase.notification.core
            metabase.notification.init
            metabase.notification.models

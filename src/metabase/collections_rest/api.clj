@@ -13,7 +13,6 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.collections.update :as collections.update]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -385,11 +384,11 @@
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
-;; Create-collection business logic lives in `metabase.collections.create` so that non-REST
-;; callers (notably the agent API's MCP `create_collection` tool) can use the same entry point
-;; without crossing the module-linter's non-rest -> rest barrier. Re-exported through
-;; `metabase.collections.core` as `create-collection!`, `apply-defaults-to-collection`,
-;; `validate-new-tenant-collection!`, etc.
+;; Create- and update-collection business logic live in `metabase.collections.create` and
+;; `metabase.collections.update` so that non-REST callers (notably the MCP `collection_write`
+;; tool) can use the same entry points without crossing the module-linter's non-rest -> rest
+;; barrier. Both are re-exported through `metabase.collections.core` — `create-collection!`,
+;; `apply-defaults-to-collection`, `validate-new-tenant-collection!`, `update-collection!`.
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -520,7 +519,7 @@
                           [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
                           [:type             {:optional true} [:maybe collections.children/CollectionType]]
                           [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
-  (collection-detail (collections.update/update-collection! id collection-updates)))
+  (collection-detail (collections/update-collection! id collection-updates)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
