@@ -124,6 +124,10 @@
 (api-scope/defscope agent-resource-read "agent:resource:read"
   (deferred-tru "View resources"))
 
+;; Bookmark
+(api-scope/defscope agent-bookmark-write "agent:bookmark:write"
+  (deferred-tru "Bookmark and un-bookmark content"))
+
 ;; Todo
 (api-scope/defscope agent-todo-read "agent:todo:read"
   (deferred-tru "View todos"))
@@ -202,6 +206,7 @@
                                         "agent:document:*"
                                         "agent:alert:*"
                                         "agent:notification:*"
+                                        "agent:bookmark:*"
                                         "agent:collection:*"}})
 
 (def always-granted-scopes

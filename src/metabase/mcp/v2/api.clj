@@ -11,6 +11,7 @@
    [metabase.mcp.transport :as transport]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.tools.bookmark]
    [metabase.mcp.v2.tools.browse]
    [metabase.mcp.v2.tools.content]
    [metabase.mcp.v2.tools.dashboard]
