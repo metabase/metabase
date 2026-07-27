@@ -6,7 +6,7 @@ visibility_type: normal
 table_id: [Internal Metabase Database, public, v_audit_log]
 database_type: text
 base_type: type/Text
-effective_type: type/Integer
+effective_type: type/Text
 semantic_type: type/FK
 fk_target_field_id: [Internal Metabase Database, public, v_content, id]
 dimensions: []
