@@ -3,6 +3,8 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [metabase.util.string :as string]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -20,16 +22,50 @@
    [:channel :details]
    [:workspace_database :database_details]])
 
+;; Older versions of dump-to-h2 and key rotation only processed `metabase_database.details` (plus settings and
+;; secrets), skipping every other encrypted JSON column. A dump or rotation from such a version left the skipped
+;; columns encrypted with the source instance's key, so on databases that have been through one they can hold values
+;; the current (otherwise correct) key cannot decrypt. Only the columns listed here — the ones confirmed affected in
+;; production — may be cleared when undecryptable; everything else still aborts, so that legitimately decryptable
+;; data can never be cleared by mistake.
+(def ^:private clearable-when-undecryptable
+  #{[:core_user :settings]})
+
+(defn- encryption-check-status
+  "Whether the current MB_ENCRYPTION_SECRET_KEY is the right key for this database, according to the
+  `encryption-check` sentinel setting (a random UUID stored encrypted whenever the database is encrypted):
+
+    :valid   - the sentinel decrypts to a UUID, so the key is correct
+    :invalid - the sentinel exists but does not decrypt, so the key is wrong (or unset) for this database
+    :unknown - no sentinel (database predates it), or the database is marked unencrypted"
+  []
+  (let [raw (t2/select-one-fn :value :setting :key "encryption-check")]
+    (cond
+      (or (nil? raw) (= raw "unencrypted"))               :unknown
+      (string/valid-uuid? (encryption/maybe-decrypt raw)) :valid
+      :else                                               :invalid)))
+
 (defn- reencrypt-encrypted-json-column!
-  "Re-encrypt `column` for every row in `table` using `encrypt-str-fn`. See `encrypted-json-columns`."
-  [conn table column encrypt-str-fn]
+  "Re-encrypt `column` for every row in `table` using `encrypt-str-fn`. See `encrypted-json-columns`.
+
+  When `clear-undecryptable?` is true, a value that cannot be decrypted with the current key is reset to an empty
+  JSON object (with a warning) instead of aborting. Only pass true when the current key is known to be correct for
+  this database (see `encryption-check-status`) and the column can legitimately hold values written with some other
+  key (see `clearable-when-undecryptable`): such values are equally unreadable at runtime, so clearing them loses
+  nothing that was usable."
+  [conn table column encrypt-str-fn clear-undecryptable?]
   (doseq [{:keys [id value]} (t2/select [table :id [column :value]])]
     (when (some? value)
       (let [decrypted (encryption/maybe-decrypt value)]
-        (when (encryption/possibly-encrypted-string? decrypted)
-          (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY")
-                          {:table table, :id id, :column column})))
-        (t2/update! :conn conn table {:id id} {column (encrypt-str-fn decrypted)})))))
+        (if (encryption/possibly-encrypted-string? decrypted)
+          (if clear-undecryptable?
+            (do
+              (log/warnf "Can't decrypt %s.%s for id %s with MB_ENCRYPTION_SECRET_KEY even though the key is correct for this database; resetting the value to {}. It was likely written with a different key and has been unreadable at runtime."
+                         (name table) (name column) id)
+              (t2/update! :conn conn table {:id id} {column (encrypt-str-fn "{}")}))
+            (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY")
+                            {:table table, :id id, :column column})))
+          (t2/update! :conn conn table {:id id} {column (encrypt-str-fn decrypted)}))))))
 
 (defn- do-encryption
   "Encrypt or decrypts the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
@@ -39,8 +75,14 @@
   (let [encrypt-str-fn (make-encrypt-fn encryption/maybe-encrypt)
         encrypt-bytes-fn (make-encrypt-fn encryption/maybe-encrypt-bytes)]
     (t2/with-transaction [conn {:datasource data-source}]
-      (doseq [[table column] encrypted-json-columns]
-        (reencrypt-encrypted-json-column! conn table column encrypt-str-fn))
+      (let [check-status (encryption-check-status)]
+        (when (= check-status :invalid)
+          (throw (ex-info (trs "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains")
+                          {})))
+        (doseq [[table column] encrypted-json-columns]
+          (reencrypt-encrypted-json-column! conn table column encrypt-str-fn
+                                            (and (= check-status :valid)
+                                                 (contains? clearable-when-undecryptable [table column])))))
       (doseq [[key value] (t2/select-fn->fn :key :value :model/Setting)]
         (case key
           "settings-last-updated" (let [current-timestamp-as-string-honeysql (h2x/cast (if (= db-type :mysql) :char :text)
