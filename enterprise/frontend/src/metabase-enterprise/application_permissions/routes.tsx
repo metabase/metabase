@@ -1,13 +1,9 @@
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 
 import ApplicationPermissionsPage from "./pages/ApplicationPermissionsPage";
 
-const RoutedApplicationPermissionsPage = withRouteProps(
-  ApplicationPermissionsPage,
-);
-
 const getRoutes = () => (
-  <Route path="application" element={<RoutedApplicationPermissionsPage />} />
+  <Route path="application" element={<ApplicationPermissionsPage />} />
 );
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

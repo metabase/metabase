@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-v7";
+import { MemoryRouter } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import {

@@ -13,6 +13,7 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { useParams } from "metabase/router";
 import { trackTransformIndexDeleted } from "metabase/transforms/analytics";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
@@ -28,13 +29,12 @@ import { NoIndexes } from "./NoIndexes";
 import { TransformIndexTable } from "./TransformIndexTable";
 import { getKindLabels } from "./TransformIndexTable/utils";
 
-type TransformIndexesPageProps = {
-  params: {
-    transformId?: string;
-  };
+type TransformIndexesPageParams = {
+  transformId: string;
 };
 
-export function TransformIndexesPage({ params }: TransformIndexesPageProps) {
+export function TransformIndexesPage() {
+  const params = useParams<TransformIndexesPageParams>();
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     data: transform,
