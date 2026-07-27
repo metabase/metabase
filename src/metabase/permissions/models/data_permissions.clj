@@ -16,7 +16,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :as perf]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -466,11 +465,14 @@
   "Returns `{:group-id g :value v}` maps for every db-level row in a cache entry, plus every table-level row whose
   schema-name satisfies `schema-match?`."
   [{:keys [groups tables]} schema-match?]
-  (perf/concat (perf/mapv (fn [[group-id value]] {:group-id group-id :value value}) groups)
-               (for [[_table-id [schema gid->value]] tables
-                     :when (schema-match? schema)
-                     [group-id value] gid->value]
-                 {:group-id group-id :value value})))
+  (into (reduce-kv (fn [acc group-id value]
+                     (conj acc {:group-id group-id :value value}))
+                   []
+                   groups)
+        (for [[_table-id [schema gid->value]] tables
+              :when (schema-match? schema)
+              [group-id value] gid->value]
+          {:group-id group-id :value value})))
 
 (mu/defn full-schema-permission-for-user :- ::permissions.schema/data-permission-value
   "Returns the effective *schema-level* permission value for a given user, permission type, and database ID, and
