@@ -69,25 +69,20 @@
           normalize-definition))
 
 (defn- check-metric-shape!
-  "Throw a teaching error unless `dataset-query` is a saveable metric. The stored/serialized query
-   carries no metadata provider, and `lib/can-save?` reads field metadata to type-check the
-   breakout, so hydrate one against the query's own database first."
+  "Throw a teaching error unless `dataset-query` is a saveable metric. `lib/can-save?` reads field
+   metadata to type-check the breakout, which the query carries: [[normalize-definition]] leaves a
+   metadata provider attached. Restates the rule rather than reusing
+   [[metabase.queries.core/check-card-can-be-saved!]]'s REST-facing 400, whose message an agent
+   can't act on — and which the update-side check stack doesn't run at all."
   [dataset-query]
   (when (lib/native-only-query? dataset-query)
     (common/throw-teaching-error
      (str "A metric can't be built from a native (SQL) query — metrics are MBQL so other queries can "
           "reuse them. Save it with question_write instead, or rebuild the aggregation with execute_query.")))
-  (let [query (try
-                (lib/query (lib-be/application-database-metadata-provider (:database dataset-query))
-                           dataset-query)
-                (catch Exception e
-                  (common/throw-teaching-error
-                   (format "`definition` could not be resolved against the database: %s %s"
-                           (common/ellipsize (ex-message e) 300) accepted-shapes))))]
-    (when-not (lib/can-save? query :metric)
-      (common/throw-teaching-error
-       (format "This query can't be saved as a metric. %s Build it with execute_query first — a single summarize (count, sum, average…) with at most one date grouping."
-               shape-rule)))))
+  (when-not (lib/can-save? dataset-query :metric)
+    (common/throw-teaching-error
+     (format "This query can't be saved as a metric. %s Build it with execute_query first — a single summarize (count, sum, average…) with at most one date grouping."
+             shape-rule))))
 
 ;;; ------------------------------------------------- Responses ----------------------------------------------------
 
