@@ -33,7 +33,7 @@
 
 (def ^:private readiness-refresh-interval-seconds
   "How often the readiness probe runs. Hourly: an app db that can't host pgvector yet re-runs the support
-  check, which attempts a rolled-back CREATE EXTENSION."
+  check, which may attempt rolled-back DDL."
   (* 60 60))
 
 (defn- probe-connected?
@@ -53,8 +53,7 @@
 (defn- readiness-probe-allowed?
   "Whether this instance may resolve its pgvector store, the same boot-safe gate
   [[SemanticMetricCollector]] schedules on.
-  Licensed, so an unlicensed instance never runs the app-db support check and its rolled-back
-  CREATE EXTENSION."
+  Licensed, so an unlicensed instance never runs the app-db support check and its rolled-back DDL."
   []
   (or (semantic.datasource/dedicated-url-configured?)
       (semantic.u/semantic-search-configured?)))
