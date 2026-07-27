@@ -96,17 +96,21 @@
  * Mantine renders its own chevron SVG (not a Metabase `Icon-*`) and transforms
  * the wrapping section itself, so the global icon mirroring doesn't reach it.
  *
- * Collapsed: mirror the section so the chevron points toward the content in RTL.
- * Expanded: Mantine rotates the section 90deg to point the chevron down, which is
- * direction-neutral — so re-assert that rotation with a more specific selector,
- * otherwise the mirror below would override it and the chevron would never turn
- * down when a section is open.
+ * With no transform the chevron points to the inline end (right in LTR); Mantine
+ * rotates the section 90deg when the section expands so it points down.
+ *
+ * In RTL the collapsed chevron must point left. Use `rotate(180deg)` rather than
+ * `scaleX(-1)`: a chevron is symmetric about the horizontal axis so the two look
+ * identical, but keeping *both* states expressed as a rotation lets the expand
+ * transition interpolate as a simple quarter turn (180deg -> 90deg). Mixing
+ * scaleX with rotate forces CSS to interpolate the decomposed matrices instead,
+ * which visibly spins the chevron left -> up -> right -> down.
  *
  * `[dir="rtl"]` rather than `:dir(rtl)`: the latter needs Chrome 120 and is
  * stripped from the bundle at our Chrome 89 build target.
  */
 [dir="rtl"] .NavLinkSection[data-position="right"] {
-  transform: scaleX(-1);
+  transform: rotate(180deg);
 }
 
 [dir="rtl"] [data-expanded="true"] .NavLinkSection[data-position="right"] {
