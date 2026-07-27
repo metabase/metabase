@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useRef } from "react";
 import { t } from "ttag";
+import { once } from "underscore";
 
 import { useToast } from "metabase/common/hooks";
 import {
@@ -9,6 +10,10 @@ import {
 } from "metabase/explorations/analytics";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
 import { selectionToResearchPlanContext } from "metabase/explorations/research-plan-context";
+import {
+  groupMetricsByDimension,
+  indexDimensionsById,
+} from "metabase/explorations/utils";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotChatEditor } from "metabase/metabot/components/MetabotChat/MetabotChatEditor";
@@ -26,9 +31,6 @@ import type {
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import type {
   AddResearchGroupsResponse,
-  DimensionId,
-  ExplorationDimensionGroup,
-  ExplorationMetric,
   RemoveFromResearchPlanResponse,
 } from "metabase-types/api";
 
@@ -109,12 +111,12 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
   const handleAddResearchGroupsToolCallMessages = useCallback(
     (messages: MetabotToolCallMessageWithResult[]) => {
-      if (messages.length === 0) {
-        return;
-      }
-
-      let editedMetrics = false;
-      let editedDimensions = false;
+      const trackMetricsEdited = once(() =>
+        trackExplorationPlanEdited("agent", "metrics"),
+      );
+      const trackDimensionsEdited = once(() =>
+        trackExplorationPlanEdited("agent", "dimensions"),
+      );
 
       try {
         for (const message of messages) {
@@ -124,36 +126,15 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
           ) as AddResearchGroupsResponse;
 
           const metricsById = new Map(metrics.map((m) => [m.id, m] as const));
-          const dimensionsById = new Map(
-            dimension_groups
-              .flatMap((g) => g.dimensions)
-              .map((d) => [d.id, d] as const),
-          );
+          const dimensionsById = indexDimensionsById(dimension_groups);
+          const metricsByDimension = groupMetricsByDimension(metrics);
           // Any dimension id (not just the head) -> its dimension group, so a dimension-anchored
           // group authored on any member resolves to the whole group, like the manual picker.
-          const groupByDimensionId = new Map<
-            DimensionId,
-            ExplorationDimensionGroup
-          >();
-          for (const group of dimension_groups) {
-            for (const d of group.dimensions) {
-              groupByDimensionId.set(d.id, group);
-            }
-          }
-          const metricsByDimension = new Map<
-            DimensionId,
-            ExplorationMetric[]
-          >();
-          for (const metric of metrics) {
-            for (const id of metric.dimension_ids) {
-              const list = metricsByDimension.get(id);
-              if (list) {
-                list.push(metric);
-              } else {
-                metricsByDimension.set(id, [metric]);
-              }
-            }
-          }
+          const groupByDimensionId = new Map(
+            dimension_groups.flatMap((group) =>
+              group.dimensions.map((d) => [d.id, group] as const),
+            ),
+          );
 
           for (const group of groups) {
             if (group.anchor === "metric") {
@@ -166,7 +147,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
                   ),
                   replace: group.replace_default_dimensions,
                 });
-                editedMetrics = true;
+                trackMetricsEdited();
               }
             } else {
               const dimensionGroup = groupByDimensionId.get(group.dimension_id);
@@ -178,16 +159,10 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
                     ? new Set(group.metric_ids)
                     : undefined,
                 });
-                editedDimensions = true;
+                trackDimensionsEdited();
               }
             }
           }
-        }
-        if (editedMetrics) {
-          trackExplorationPlanEdited("agent", "metrics");
-        }
-        if (editedDimensions) {
-          trackExplorationPlanEdited("agent", "dimensions");
         }
       } catch (error) {
         console.error(error);
@@ -203,13 +178,15 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
   const handleRemoveFromResearchPlanToolCallMessages = useCallback(
     (messages: MetabotToolCallMessageWithResult[]) => {
-      if (messages.length === 0) {
-        return;
-      }
-
-      let editedMetrics = false;
-      let editedDimensions = false;
-      let editedTimelines = false;
+      const trackMetricsEdited = once(() =>
+        trackExplorationPlanEdited("agent", "metrics"),
+      );
+      const trackDimensionsEdited = once(() =>
+        trackExplorationPlanEdited("agent", "dimensions"),
+      );
+      const trackTimelinesEdited = once(() =>
+        trackExplorationPlanEdited("agent", "timelines"),
+      );
 
       try {
         for (const message of messages) {
@@ -220,9 +197,9 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
           for (const blockId of block_ids ?? []) {
             removeBlock(blockId);
             if (blockId.startsWith("metric:")) {
-              editedMetrics = true;
+              trackMetricsEdited();
             } else if (blockId.startsWith("dim:")) {
-              editedDimensions = true;
+              trackDimensionsEdited();
             }
           }
           for (const member of members ?? []) {
@@ -231,15 +208,15 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
               dimensionIds: member.dimension_ids,
             });
             if (member.metric_ids?.length) {
-              editedMetrics = true;
+              trackMetricsEdited();
             }
             if (member.dimension_ids?.length) {
-              editedDimensions = true;
+              trackDimensionsEdited();
             }
           }
           if (timeline_ids?.length) {
             removeTimelinesById(timeline_ids);
-            editedTimelines = true;
+            trackTimelinesEdited();
           }
         }
       } catch (error) {
@@ -249,17 +226,6 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
           iconColor: "warning",
           message: t`Failed to update research plan`,
         });
-        return;
-      }
-
-      if (editedMetrics) {
-        trackExplorationPlanEdited("agent", "metrics");
-      }
-      if (editedDimensions) {
-        trackExplorationPlanEdited("agent", "dimensions");
-      }
-      if (editedTimelines) {
-        trackExplorationPlanEdited("agent", "timelines");
       }
     },
     [removeBlock, removeBlockMembers, removeTimelinesById, sendToast],
@@ -267,16 +233,15 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
   const handleSetExplorationNameToolCallMessages = useCallback(
     (messages: MetabotToolCallMessageWithResult[]) => {
-      if (messages.length === 0) {
+      // there can only be one name, use the latest if multiple
+      const lastMessage = messages.at(-1);
+      if (!lastMessage) {
         return;
       }
       try {
-        // there can only be one name, use the latest if multiple
         // tool result shape verified by the backend
-        const parsed = JSON.parse(messages[messages.length - 1].result) as {
-          name: string;
-        };
-        setName(parsed.name);
+        const { name } = JSON.parse(lastMessage.result) as { name: string };
+        setName(name);
       } catch (error) {
         console.error(error);
         // don't bother with toast for this one, it's not critical
@@ -287,10 +252,6 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
   const handleSelectExplorationTimelinesToolCallMessages = useCallback(
     (messages: MetabotToolCallMessageWithResult[]) => {
-      if (messages.length === 0) {
-        return;
-      }
-
       try {
         const timelineIds = messages.flatMap((message) => {
           // tool result shape verified by the backend
@@ -299,8 +260,10 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
           };
           return parsed.timeline_ids;
         });
-        addTimelinesById(timelineIds);
-        trackExplorationPlanEdited("agent", "timelines");
+        if (timelineIds.length) {
+          addTimelinesById(timelineIds);
+          trackExplorationPlanEdited("agent", "timelines");
+        }
       } catch (error) {
         console.error(error);
         sendToast({

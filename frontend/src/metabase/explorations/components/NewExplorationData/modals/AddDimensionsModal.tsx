@@ -5,12 +5,12 @@ import { useGetExplorationDataQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
+import { groupMetricsByDimension } from "metabase/explorations/utils";
 import { Tabs } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
   DimensionId,
   ExplorationDimensionGroup,
-  ExplorationMetric,
 } from "metabase-types/api";
 
 import {
@@ -77,20 +77,10 @@ export function AddDimensionsModal({
     return map;
   }, [groups]);
 
-  const metricsByDimension = useMemo(() => {
-    const map = new Map<DimensionId, ExplorationMetric[]>();
-    for (const metric of response?.metrics ?? []) {
-      for (const id of metric.dimension_ids) {
-        const list = map.get(id);
-        if (list) {
-          list.push(metric);
-        } else {
-          map.set(id, [metric]);
-        }
-      }
-    }
-    return map;
-  }, [response]);
+  const metricsByDimension = useMemo(
+    () => groupMetricsByDimension(response?.metrics ?? []),
+    [response],
+  );
 
   const presentTypes = useMemo(() => {
     const present = new Set(groups.map(groupTypeKey));

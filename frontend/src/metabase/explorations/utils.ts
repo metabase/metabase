@@ -1,3 +1,10 @@
+import type {
+  DimensionId,
+  ExplorationDimensionGroup,
+  ExplorationMetric,
+  MetricDimension,
+} from "metabase-types/api";
+
 export function shouldIgnoreKeyboardEvent(event: KeyboardEvent) {
   // Never hijack OS/browser chords: Cmd+C must copy, Ctrl+S must not star a
   // chart, and Cmd/Alt+ArrowLeft must keep navigating browser history.
@@ -40,4 +47,28 @@ export function getAdjacentById<T extends { id: unknown }>(
   }
   const nextIndex = (currentIndex + direction + items.length) % items.length;
   return items[nextIndex];
+}
+
+export function indexDimensionsById(
+  dimensionGroups: ExplorationDimensionGroup[],
+): Map<DimensionId, MetricDimension> {
+  return new Map(
+    dimensionGroups.flatMap((group) =>
+      group.dimensions.map((dimension) => [dimension.id, dimension] as const),
+    ),
+  );
+}
+
+export function groupMetricsByDimension(
+  metrics: ExplorationMetric[],
+): Map<DimensionId, ExplorationMetric[]> {
+  const map = new Map<DimensionId, ExplorationMetric[]>();
+  for (const metric of metrics) {
+    for (const id of metric.dimension_ids) {
+      const list = map.get(id) ?? [];
+      list.push(metric);
+      map.set(id, list);
+    }
+  }
+  return map;
 }

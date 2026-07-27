@@ -319,9 +319,11 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
 
       <Group justify="space-between" align="center" wrap="nowrap">
         <Text
+          className={CS.alignSelfEnd}
           c="text-secondary"
           size="sm"
           lh="1rem"
+          mb="0.5rem"
         >{t`${applicationName} will automate running combinations of these pairings and then do a basic analysis of the results.`}</Text>
         <Button
           className={cx(!canStart && CS.hidden)} // hide with css to make sure caption text is aligned vertically

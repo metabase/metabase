@@ -5,10 +5,10 @@ import { useGetExplorationDataQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
+import { indexDimensionsById } from "metabase/explorations/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { Icon, Tabs } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import type { DimensionId, MetricDimension } from "metabase-types/api";
 
 import { AddEntitiesModal } from "./AddEntitiesModal";
 
@@ -48,15 +48,10 @@ export function AddMetricsModal({
     q: debouncedSearch.trim() || undefined,
   });
 
-  const dimensionsById = useMemo(() => {
-    const map = new Map<DimensionId, MetricDimension>();
-    for (const group of response?.dimension_groups ?? []) {
-      for (const dimension of group.dimensions) {
-        map.set(dimension.id, dimension);
-      }
-    }
-    return map;
-  }, [response]);
+  const dimensionsById = useMemo(
+    () => indexDimensionsById(response?.dimension_groups ?? []),
+    [response],
+  );
 
   const metrics = useMemo(
     () => (response?.metrics ?? []).filter((m) => !metricBlockIds.has(m.id)),
