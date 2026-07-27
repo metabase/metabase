@@ -104,17 +104,35 @@
   (with-open [stmt (prepare-statement conn lock-name-str timeout mode)
               result-set (.executeQuery stmt)]
     (when-not (.next result-set)
-      ;; this record will not be visible until the tx commits, so there's no need to lock it
-      ;; we instead rely on concurrent threads having constraint violation trying to insert their own record
-      (t2/query-one {:insert-into [:metabase_cluster_lock]
-                     :columns [:lock_name]
-                     :values [[lock-name-str]]})))
+      ;; this record will not be visible until the tx commits, so there's no need to lock it; concurrent
+      ;; inserters get a constraint violation and retry. Raw JDBC because the insert must run on `conn`
+      ;; (under a detached lock ambient resolution would hand it a different connection) and needs the
+      ;; same query timeout as the SELECT — concurrent first-time inserters block on the winner's
+      ;; uncommitted unique-index entry
+      (let [[sql] (mdb.query/compile {:insert-into [:metabase_cluster_lock]
+                                      :columns     [:lock_name]
+                                      :values      [[[:raw "?"]]]})]
+        (with-open [insert-stmt (.prepareStatement conn ^String sql)]
+          (doto insert-stmt
+            (.setQueryTimeout timeout)
+            (.setString 1 lock-name-str))
+          (.executeUpdate insert-stmt)))))
   (log/debugf "Obtained cluster lock: %s (%s)" lock-name-str mode))
+
+(def ^:private ^:dynamic *detached-locks-held*
+  "Lock-name strings currently held by [[do-with-detached-cluster-lock]] in this dynamic scope. A detached
+  hold lives on a dedicated connection, so re-acquiring the same name from this scope — detached or
+  transactional — would block against our own row lock; acquisitions fail fast instead."
+  #{})
 
 (defn- do-with-cluster-locks*
   "Acquire all `locks` (each a `{:lock-name-str, :mode}` map) inside a single
   transaction, then run `thunk`."
   [locks timeout-seconds thunk]
+  (doseq [{:keys [lock-name-str]} locks]
+    (when (*detached-locks-held* lock-name-str)
+      (throw (ex-info "Cluster lock is already held detached in this scope"
+                      {:lock-name lock-name-str}))))
   (t2/with-transaction [conn]
     (doseq [{:keys [lock-name-str mode]} locks]
       (acquire-lock-row! conn lock-name-str timeout-seconds mode))
@@ -270,12 +288,78 @@
 (defmacro with-cluster-lock
   "Run `body` in a transaction that tries to take a lock from the metabase_cluster_lock table of
   the specified name to coordinate concurrency with other metabase instances sharing the appdb.
+  (On an h2 appdb the lock is an in-process read-write lock and no transaction is involved.)
 
   `lock-options` may be a lock-name keyword, or an options map
   `{:lock, :locks, :mode, :timeout-seconds, :retry-config, :retry-transient?}` —
-  see [[do-with-cluster-lock]] for the full description of each."
+  see [[do-with-cluster-lock]] for the full description of each.
+
+  For long-running work whose appdb writes should commit incrementally instead of riding the lock's
+  transaction, see [[with-detached-cluster-lock]]."
   ([lock-options & body]
    `(do-with-cluster-lock ~lock-options (fn [] ~@body))))
+
+(mu/defn do-with-detached-cluster-lock
+  "Impl for [[with-detached-cluster-lock]]."
+  [{:keys [lock timeout-seconds retry-config]
+    :or   {timeout-seconds cluster-lock-timeout-seconds}}
+   :- [:map
+       [:lock            :keyword]
+       [:timeout-seconds {:optional true} :int]
+       [:retry-config    {:optional true} [:ref ::retry/retry-overrides]]]
+   thunk :- ifn?]
+  (let [lock-name-str (keyword->lock-name-str lock)]
+    (when (*detached-locks-held* lock-name-str)
+      (throw (ex-info "Cluster lock is already held detached in this scope"
+                      {:lock-name lock-name-str})))
+    (if (= (mdb.connection/db-type) :h2)
+      ;; the h2 in-process lock never holds a transaction, so it is already 'detached'
+      (do-with-h2-cluster-locks* [{:lock-name-str lock-name-str :mode :exclusive}]
+                                 #(binding [*detached-locks-held* (conj *detached-locks-held* lock-name-str)]
+                                    (thunk)))
+      (mdb.connection/with-unshared-connection [conn]
+        (.setAutoCommit ^Connection conn false)
+        (let [config (merge default-retry-config retry-config)]
+          (try
+            (retry/with-retry config
+              ;; clear the aborted transaction a failed previous attempt leaves behind
+              (.rollback ^Connection conn)
+              (acquire-lock-row! conn lock-name-str timeout-seconds :exclusive))
+            (catch Throwable e
+              (if (retryable? e)
+                (throw (ex-info (str "Failed to obtain cluster lock: " lock-name-str)
+                                {:lock-names [lock-name-str]
+                                 :retries    (:max-retries config)}
+                                e))
+                (throw e)))))
+        ;; the body runs outside the retry above, so its errors are never retried (its work has already
+        ;; committed) and never mistaken for acquisition failure
+        (let [result (binding [*detached-locks-held* (conj *detached-locks-held* lock-name-str)]
+                       (thunk))]
+          ;; releases the row lock; on a body throw the pool's check-in rollback releases it instead
+          (.commit ^Connection conn)
+          result)))))
+
+(defmacro with-detached-cluster-lock
+  "Like [[with-cluster-lock]], but holds the (exclusive) lock row on a dedicated connection
+  (see [[metabase.app-db.connection/with-unshared-connection]]) while `body` runs on ordinary pooled
+  connections: `body`'s appdb work commits incrementally in its own short transactions instead of riding
+  one long transaction that holds the lock. The lock is released when `body` completes (commit) or
+  throws (pool check-in rollback) — but `body`'s already-committed work is NOT rolled back by a throw,
+  so only use this for long-running work that is idempotent/self-healing (the audit boot pipeline).
+
+  Not reentrant: re-acquiring a lock this scope already holds detached — in either detached or
+  transactional form — throws instead of self-deadlocking against the dedicated connection. (The
+  reverse — requesting a detached hold on a lock this scope holds transactionally — is not detected
+  and times out; don't.) Taking *different* locks inside `body` works normally. Hold duration is
+  bounded by the connection pool's limits: c3p0's `unreturnedConnectionTimeout`, when configured,
+  destroys the connection and silently releases the lock, and with the appdb checkout timeout set to
+  0 (wait forever) a body blocked on pool checkout holds the lock indefinitely.
+
+  `opts` is `{:lock, :timeout-seconds, :retry-config}` as in [[with-cluster-lock]]; retries apply to
+  lock acquisition only, never to `body`."
+  [opts & body]
+  `(do-with-detached-cluster-lock ~opts (fn [] ~@body)))
 
 (def card-statistics-lock
   "A shared keyword that any method doing a batch update of card statistics can use for the cluster lock"
