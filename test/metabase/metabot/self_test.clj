@@ -35,7 +35,9 @@
     (is (=? {:provider "openrouter" :model "google/gemini-2.5-flash" :ai-proxy? false}
             (#'self/parse-provider-model "openrouter/google/gemini-2.5-flash")))
     (is (=? {:provider "zai" :model "glm-5.2" :ai-proxy? false}
-            (#'self/parse-provider-model "zai/glm-5.2"))))
+            (#'self/parse-provider-model "zai/glm-5.2")))
+    (is (=? {:provider "mistral" :model "mistral-medium-3-5" :ai-proxy? false}
+            (#'self/parse-provider-model "mistral/mistral-medium-3-5"))))
   (testing "parses metabase/ prefix (AI proxy)"
     (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? true}
             (#'self/parse-provider-model "metabase/anthropic/claude-haiku-4-5")))
@@ -53,7 +55,8 @@
     (is (fn? (#'self/resolve-adapter "anthropic")))
     (is (fn? (#'self/resolve-adapter "openai")))
     (is (fn? (#'self/resolve-adapter "openrouter")))
-    (is (fn? (#'self/resolve-adapter "zai"))))
+    (is (fn? (#'self/resolve-adapter "zai")))
+    (is (fn? (#'self/resolve-adapter "mistral"))))
   (testing "throws for unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
                           (#'self/resolve-adapter "unknown")))))

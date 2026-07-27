@@ -18,6 +18,7 @@
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.zai :as zai]
@@ -34,6 +35,7 @@
     "anthropic"  claude/claude
     "azure"      azure/azure
     "bedrock"    bedrock/bedrock
+    "mistral"    mistral/mistral
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
     "zai"        zai/zai
@@ -46,6 +48,7 @@
     "anthropic"  claude/list-models
     "azure"      azure/list-models
     "bedrock"    bedrock/list-models
+    "mistral"    mistral/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
     "zai"        zai/list-models
