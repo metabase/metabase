@@ -2586,6 +2586,7 @@
                     :model/Dashboard
                     :model/DataApp
                     :model/Database
+                    :model/ModelIndex
                     :model/Table
                     :model/User}}
 
