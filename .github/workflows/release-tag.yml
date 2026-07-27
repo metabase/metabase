@@ -319,7 +319,7 @@ jobs:
       uses: actions/github-script@v9
       with:
         script: | # js
-          const { updateVersionInfoLatest } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const { updateVersionInfoLatest, isPatchVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
           const fs = require('fs');
 
           const edition = '${{ matrix.edition }}';
@@ -334,6 +334,19 @@ jobs:
           });
 
           fs.writeFileSync('version-info.json', JSON.stringify(newVersionInfo));
+
+          // currently we don't support patch versions as latest, or store them in version-info.json
+          if (!isPatchVersion(canonical_version)) {
+            await github.rest.repos.createDispatchEvent({
+              owner: context.repo.owner,
+              repo: '${{ vars.WEBSITE_REPO }}',
+              event_type: 'update-latest',
+              client_payload: {
+                version: canonical_version,
+              }
+            }).catch(console.warn);
+          }
+
     - name: Upload new version-info.json to S3
       run: |
         if [[ "${{ matrix.edition }}" == "ee" ]]; then
