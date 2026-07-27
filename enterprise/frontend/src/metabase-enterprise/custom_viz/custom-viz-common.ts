@@ -50,9 +50,6 @@ export function applyDefaultVisualizationProps(
     minSize: vizDef.minSize,
     defaultSize: vizDef.defaultSize,
     isDev: settings.isDev,
-    // custom visualizations render their icon through `iconUrl`; "unknown"
-    // mirrors the fallback consumers use when no iconName is registered
-    iconName: "unknown" as const,
     ...settings,
   });
 }

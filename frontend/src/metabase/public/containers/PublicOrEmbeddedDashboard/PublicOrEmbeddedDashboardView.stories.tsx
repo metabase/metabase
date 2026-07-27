@@ -399,7 +399,6 @@ export function ComponentCompatibility() {
 
 // Card visualizations
 
-// @ts-expect-error: ObjectDetail uses its own OwnProps shape; migrate props to VisualizationProps
 registerVisualization(ObjectDetail);
 
 export const CardVisualizationsLightTheme = {

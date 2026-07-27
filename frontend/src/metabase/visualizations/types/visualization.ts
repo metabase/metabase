@@ -640,7 +640,7 @@ export type VisualizationDefinition = {
   getUiName: () => string;
   identifier: VisualizationDisplay;
   aliases?: string[];
-  iconName: IconName;
+  iconName?: IconName;
   iconUrl?: string;
   hasEmptyState?: boolean;
   isDev?: boolean; // is custom viz in dev mode
