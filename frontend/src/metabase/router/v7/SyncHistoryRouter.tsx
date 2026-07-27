@@ -38,7 +38,7 @@ export function SyncHistoryRouter({
 }: PropsWithChildren<{
   history: History;
   basename?: string;
-  onLocationChange?: (location: V7Location, action: NavigationType) => void;
+  onLocationChange?: (location: V7Location) => void;
 }>): JSX.Element {
   const [state, setState] = useState<{
     action: NavigationType;
@@ -56,10 +56,10 @@ export function SyncHistoryRouter({
   // Layout, not passive, so the router state is committed before the browser
   // paints the click that triggered it.
   useLayoutEffect(() => {
-    onLocationChangeRef.current?.(history.location, history.action);
+    onLocationChangeRef.current?.(history.location);
     return history.listen((update) => {
       setState(update);
-      onLocationChangeRef.current?.(update.location, update.action);
+      onLocationChangeRef.current?.(update.location);
     });
   }, [history]);
 

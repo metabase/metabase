@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import {
   type HistoryRouterProps,
-  useNavigationType,
   useLocation as useV7Location,
   useNavigate as useV7Navigate,
 } from "react-router";
@@ -32,7 +31,6 @@ export function V7RouterBridge({
 }): null {
   const navigate = useV7Navigate();
   const location = useV7Location();
-  const action = useNavigationType();
 
   // Read through a ref so a new callback identity does not re-run the mirror for
   // a location that has not changed.
@@ -50,8 +48,8 @@ export function V7RouterBridge({
     if (history) {
       return;
     }
-    onLocationChangeRef.current?.(location, action);
-  }, [history, location, action]);
+    onLocationChangeRef.current?.(location);
+  }, [history, location]);
 
   return null;
 }

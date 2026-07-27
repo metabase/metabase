@@ -21,7 +21,7 @@ import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { LocationDescriptorObject } from "metabase/router";
-import { push, searchToQuery } from "metabase/router";
+import { push } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { Flex, Group, type IconProps, Menu, Title } from "metabase/ui";
 import { parseSearchQuery } from "metabase/utils/browser";

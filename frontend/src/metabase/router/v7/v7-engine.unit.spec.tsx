@@ -8,7 +8,7 @@ import {
   useLocation,
   useNavigate,
   useParams,
-  useRouter,
+  useSearchParams,
 } from "metabase/router";
 
 import { V7RouterTree } from "./RouterProviderV7";
@@ -26,14 +26,14 @@ function ThingPage() {
   const { pathname, search } = useLocation();
   const params = useParams();
   const navigate = useNavigate();
-  const { location } = useRouter();
+  const [searchParams] = useSearchParams();
 
   return (
     <div>
       <span data-testid="pathname">{pathname}</span>
       <span data-testid="search">{search}</span>
       <span data-testid="thing-id">{params.thingId}</span>
-      <span data-testid="query-tab">{String(location.query.tab)}</span>
+      <span data-testid="query-tab">{searchParams.get("tab")}</span>
       <button onClick={() => navigate("/other")}>go absolute</button>
       <button onClick={() => navigate("..")}>go up</button>
     </div>
@@ -65,7 +65,7 @@ describe("v7 engine (facade over real react-router v7)", () => {
     expect(screen.getByTestId("thing-id")).toHaveTextContent("42");
   });
 
-  it("exposes a v3-shaped location.query", () => {
+  it("exposes the search params through useSearchParams", () => {
     setup("/things/42?tab=x");
     expect(screen.getByTestId("query-tab")).toHaveTextContent("x");
   });

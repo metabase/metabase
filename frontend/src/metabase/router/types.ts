@@ -31,18 +31,6 @@ export type To = string | Partial<Path>;
 export type Action = "POP" | "PUSH" | "REPLACE";
 
 /**
- * The default parsed `query` shape: repeated keys become arrays, matching
- * history@3's parser that the `location.query` readers were written against.
- */
-export type DefaultQuery = Record<string, string | string[] | null | undefined>;
-
-/**
- * The parsed query object carried on a `Location`. The generic is the concrete
- * shape a call site knows its query to have (e.g. `Location<{ tab?: string }>`).
- */
-export type Query<T = DefaultQuery> = T;
-
-/**
  * The `state` carried through a navigation. history@3 typed this `any` and the
  * legacy route-prop readers were written against that; tightened once those call
  * sites migrate off the compat shape onto the pure v7 `Location`.
@@ -50,21 +38,16 @@ export type Query<T = DefaultQuery> = T;
 export type LocationState = any;
 
 /**
- * An entry in a history stack. Mirrors history@3's `Location`: alongside the URL
- * parts it carries the parsed `query` object and the navigation `action` that
- * the legacy route-prop call sites still read. The generic is the shape of
- * `query`, not `state`. Thinned to the pure v7 shape (no `query`/`action`) once
- * those call sites migrate off `query`/`action` (follow-up to DEV-2290).
+ * An entry in a history stack. Read the query string off `search`, either with
+ * the `useSearchParams` hook or by constructing a `URLSearchParams`.
  *
  * @see https://api.reactrouter.com/v7/interfaces/react-router.Location.html
  */
-export interface Location<Q = DefaultQuery> {
+export interface Location {
   pathname: string;
   search: string;
   hash: string;
-  query: Query<Q>;
   state: LocationState;
-  action: Action;
   key: string;
 }
 
@@ -96,10 +79,10 @@ type TransitionHook = (
  * driver, the sync bridge, and the route-leave tests). Mirrors history@3's
  * `History` so the v3 engine and the v7 navigator both satisfy it.
  */
-export interface History<Q = DefaultQuery> {
+export interface History {
   listenBefore(hook: TransitionHook): () => void;
   listen(listener: LocationListener): () => void;
-  transitionTo(location: Location<Q>): void;
+  transitionTo(location: Location): void;
   push(path: LocationDescriptor): void;
   replace(path: LocationDescriptor): void;
   go(n: number): void;
@@ -112,8 +95,8 @@ export interface History<Q = DefaultQuery> {
     path?: LocationDescriptor,
     action?: Action,
     key?: string,
-  ): Location<Q>;
-  getCurrentLocation(): Location<Q>;
+  ): Location;
+  getCurrentLocation(): Location;
 }
 
 /**
@@ -209,9 +192,14 @@ export interface PlainRoute extends RouteProps {
 
 /**
  * A route-leave hook, v3's `setRouteLeaveHook` callback: it receives the
- * attempted destination and returns `false` to cancel the navigation.
+ * attempted destination and how it was reached, and returns `false` to cancel
+ * the navigation. The navigation type is a second argument rather than a field
+ * on the location, which carries only the URL parts.
  */
-export type RouteHook = (nextLocation?: Location) => unknown;
+export type RouteHook = (
+  nextLocation?: Location,
+  navigationType?: Action,
+) => unknown;
 
 /**
  * v3's imperative router, the `router` prop the facade injects. The v7
@@ -238,12 +226,10 @@ export interface InjectedRouter {
  *
  * `params` defaults to v3's non-optional string map (not the facade's optional
  * `Params`), because the legacy route-prop readers were written against that and
- * treat matched params as always present. `Q` defaults to `any`, matching v3's
- * `Location<any>`, so the legacy `location.query` readers keep their loose typing
- * (tightened when the `state.routing` slice is thinned, DEV-2290).
+ * treat matched params as always present.
  */
-export interface WithRouterProps<P = Record<string, string>, Q = any> {
-  location: Location<Q>;
+export interface WithRouterProps<P = Record<string, string>> {
+  location: Location;
   params: P;
   router: InjectedRouter;
   routes: PlainRoute[];

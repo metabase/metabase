@@ -4,7 +4,6 @@ import {
   type To,
   UNSAFE_RouteContext,
   type NavigateFunction as V7NavigateFunction,
-  useNavigationType,
   useLocation as useV7Location,
   useNavigate as useV7Navigate,
   useParams as useV7Params,
@@ -22,7 +21,7 @@ import type {
 } from "../types";
 
 import { registerLeaveHook } from "./blocking-history";
-import { toV3Location } from "./location";
+import { toFacadeLocation } from "./location";
 import { subscribeLocation, toNavigateArgs } from "./navigator";
 
 // The facade route stub, plus the route's matched pathname so `setRouteLeaveHook`
@@ -44,7 +43,6 @@ export function RouterBridge({
 }): JSX.Element {
   const v7Location = useV7Location();
   const navigate = useV7Navigate();
-  const action = useNavigationType();
   const v7Params = useV7Params();
   // v7's `useParams` returns v7's readonly `Params`; the context wants v3's shape,
   // which is structurally the same string map apart from the splat: v3 exposed the
@@ -88,8 +86,8 @@ export function RouterBridge({
   );
 
   const location = useMemo<HistoryLocation>(
-    () => toV3Location(v7Location, action),
-    [v7Location, action],
+    () => toFacadeLocation(v7Location),
+    [v7Location],
   );
 
   // v3 handed consumers a stable `router`, so effects keyed on it (notably the

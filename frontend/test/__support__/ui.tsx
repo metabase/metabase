@@ -42,7 +42,6 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import {
-  type Action,
   type History,
   type LocationDescriptor,
   type MemoryTestHistory,
@@ -52,8 +51,8 @@ import {
   createMemoryTestHistory,
   createV7Navigator,
   routerMiddleware,
+  toFacadeLocation,
   toNavigateArgs,
-  toV3Location,
 } from "metabase/router";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
@@ -365,10 +364,7 @@ export function TestWrapper({
  * keeps its type; it implements the subset they use.
  */
 function createV3HistoryAdapter(history: MemoryTestHistory): History {
-  const getCurrentLocation = () =>
-    // v7 types `action` as its own `Action` enum; the values are the same
-    // "POP"/"PUSH"/"REPLACE" strings the facade's `Action` union uses.
-    toV3Location(history.location, history.action as Action);
+  const getCurrentLocation = () => toFacadeLocation(history.location);
 
   const adapter = {
     getCurrentLocation,
@@ -388,11 +384,7 @@ function createV3HistoryAdapter(history: MemoryTestHistory): History {
     goForward: () => history.go(1),
     listen: (
       listener: (location: ReturnType<typeof getCurrentLocation>) => void,
-    ) =>
-      history.listen(({ location, action }) =>
-        // Same enum-vs-union mismatch as in `getCurrentLocation` above.
-        listener(toV3Location(location, action as Action)),
-      ),
+    ) => history.listen(({ location }) => listener(toFacadeLocation(location))),
   };
 
   // The adapter implements the subset of v3's `History` the specs actually call,
