@@ -237,6 +237,17 @@
                           :previous-object existing-notification
                           :user-id         api/*current-user-id*}))
 
+(defn update-notification!
+  "Update notification `id` from `body` with the permission check and post-update side effects, and
+  return the updated hydrated notification. `body` is a whole notification, not a patch: the update
+  spec deletes the subscription and handler rows it doesn't find there."
+  [id body]
+  (let [existing-notification (get-notification id)]
+    (api/update-check existing-notification body)
+    (models.notification/update-notification! existing-notification body)
+    (u/prog1 (get-notification id)
+      (publish-notification-update! <> existing-notification))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -252,11 +263,7 @@
    _query
    body :- ::NotificationApiInput]
   (check-no-resource-templates! (:handlers body))
-  (let [existing-notification (get-notification id)]
-    (api/update-check existing-notification body)
-    (models.notification/update-notification! existing-notification body)
-    (u/prog1 (get-notification id)
-      (publish-notification-update! <> existing-notification))))
+  (update-notification! id body))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

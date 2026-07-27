@@ -107,6 +107,8 @@
 ;; Alert
 (api-scope/defscope agent-alert-create "agent:alert:create"
   (deferred-tru "Create alerts"))
+(api-scope/defscope agent-alert-update "agent:alert:update"
+  (deferred-tru "Update alerts"))
 
 ;; Notification (alerts and dashboard subscriptions)
 (api-scope/defscope agent-notification-read "agent:notification:read"
