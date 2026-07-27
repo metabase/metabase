@@ -1,7 +1,7 @@
 import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import { createListenerMiddleware } from "@reduxjs/toolkit";
 
-import { Api } from "metabase/api";
+import { Api, userApi } from "metabase/api";
 import type { State } from "metabase/redux/store";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
@@ -65,6 +65,21 @@ const ALL_INVALIDATION_TAGS = [
   tag("transform"),
   tag("python-transform-library"),
 ];
+
+function invalidateAllContentTags(dispatch: AppDispatch) {
+  dispatch(EnterpriseApi.util.invalidateTags(ALL_INVALIDATION_TAGS));
+}
+
+remoteSyncListenerMiddleware.startListening({
+  matcher: userApi.endpoints.updateUser.matchFulfilled,
+  effect: async (action, { dispatch }) => {
+    const isWorkspaceChange =
+      action.meta.arg.originalArgs?.workspace_id !== undefined;
+    if (isWorkspaceChange) {
+      invalidateAllContentTags(dispatch);
+    }
+  },
+});
 
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.exportChanges.matchPending,
@@ -142,7 +157,7 @@ remoteSyncListenerMiddleware.startListening({
 
           // Both import and a merged export change local content, so refresh everything. A plain push
           // doesn't change local data, but the extra refetch is harmless and keeps this simple.
-          dispatch(EnterpriseApi.util.invalidateTags(ALL_INVALIDATION_TAGS));
+          invalidateAllContentTags(dispatch);
         }
 
         invalidateRemoteSyncTags(dispatch);

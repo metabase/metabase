@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { useState } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -67,24 +68,34 @@ function setup({
   setupCurrentTask(currentTask);
 
   const onClose = jest.fn();
-  renderWithProviders(
-    <EnterWorkspaceModal
-      opened
-      currentWorkspaceId={currentWorkspaceId}
-      onClose={onClose}
-    />,
-    {
-      storeInitialState: createMockState({
-        currentUser: CURRENT_USER,
-        settings: mockSettings({
-          "token-features": createMockTokenFeatures({ remote_sync: true }),
-          "remote-sync-enabled": true,
-          "remote-sync-branch": "main",
-          "remote-sync-type": "read-write",
-        }),
+
+  // The real modal is controlled by GitSyncControls; mirror that here so onClose actually closes it and
+  // we can assert the form goes away once the workspace is entered.
+  function TestHost() {
+    const [opened, setOpened] = useState(true);
+    return (
+      <EnterWorkspaceModal
+        opened={opened}
+        currentWorkspaceId={currentWorkspaceId}
+        onClose={() => {
+          setOpened(false);
+          onClose();
+        }}
+      />
+    );
+  }
+
+  renderWithProviders(<TestHost />, {
+    storeInitialState: createMockState({
+      currentUser: CURRENT_USER,
+      settings: mockSettings({
+        "token-features": createMockTokenFeatures({ remote_sync: true }),
+        "remote-sync-enabled": true,
+        "remote-sync-branch": "main",
+        "remote-sync-type": "read-write",
       }),
-    },
-  );
+    }),
+  });
 
   return { onClose };
 }
@@ -141,8 +152,8 @@ describe("EnterWorkspaceModal", () => {
   });
 
   describe("entering a new branch", () => {
-    it("creates the branch and workspace, enters it, then auto-pulls", async () => {
-      setup({ branches: ["main"], workspaces: [] });
+    it("creates the branch and workspace, enters it, then auto-pulls and closes", async () => {
+      const { onClose } = setup({ branches: ["main"], workspaces: [] });
       await typeNewBranch("feature/new");
       await userEvent.click(
         screen.getByRole("button", { name: "Create branch and workspace" }),
@@ -176,11 +187,16 @@ describe("EnterWorkspaceModal", () => {
           fetchMock.callHistory.done("path:/api/ee/remote-sync/import"),
         ).toBe(true);
       });
-      // Body swaps in place from the form to the shared sync-status view.
-      expect(await screen.findByText("Importing content…")).toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: /workspace/ }),
-      ).not.toBeInTheDocument();
+      // The modal hands off to the app-level sync-status modal and closes: the branch form must not
+      // linger over the pull progress.
+      await waitFor(() => {
+        expect(onClose).toHaveBeenCalled();
+      });
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("button", { name: /workspace/ }),
+        ).not.toBeInTheDocument();
+      });
     });
   });
 

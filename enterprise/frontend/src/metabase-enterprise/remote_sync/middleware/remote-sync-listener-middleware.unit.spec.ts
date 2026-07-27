@@ -9,11 +9,11 @@ import {
   setupRemoteSyncDirtyEndpoint,
   setupUpdateCollectionEndpoint,
 } from "__support__/server-mocks";
-import { Api } from "metabase/api";
+import { Api, userApi } from "metabase/api";
 import { collectionApi } from "metabase/api/collection";
 import { settings as settingsReducer } from "metabase/redux/settings";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
-import { createMockCollection } from "metabase-types/api/mocks";
+import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
 
 import {
   type SyncTaskState,
@@ -311,6 +311,85 @@ describe("remote-sync-listener-middleware", () => {
       expect(store.getState().remoteSyncPlugin?.syncConflictVariant).not.toBe(
         "setup",
       );
+    });
+  });
+
+  describe("updateUser workspace listener", () => {
+    afterEach(() => {
+      fetchMock.clearHistory();
+    });
+
+    // Subscribe to a query that provides one of the broad content tags (collection list) so an
+    // invalidation triggers a refetch we can observe.
+    const subscribeToCollections = async (
+      store: ReturnType<typeof createTestStore>,
+    ) => {
+      fetchMock.get("path:/api/collection", [], { name: "list-collections" });
+      store.dispatch(collectionApi.endpoints.listCollections.initiate());
+      await waitForCondition(() =>
+        fetchMock.callHistory.done("list-collections"),
+      );
+    };
+
+    it("invalidates content when a user update enters/switches a workspace", async () => {
+      fetchMock.put(
+        "path:/api/user/1",
+        createMockUser({ id: 1, workspace_id: 5 }),
+        { name: "update-user-1" },
+      );
+
+      const store = createTestStore();
+      await subscribeToCollections(store);
+
+      store.dispatch(
+        userApi.endpoints.updateUser.initiate({ id: 1, workspace_id: 5 }),
+      );
+      await waitForCondition(() => fetchMock.callHistory.done("update-user-1"));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const collectionCalls = fetchMock.callHistory.calls("list-collections");
+      expect(collectionCalls.length).toBeGreaterThan(1);
+    });
+
+    it("invalidates content when a user update leaves a workspace (workspace_id: null)", async () => {
+      fetchMock.put(
+        "path:/api/user/1",
+        createMockUser({ id: 1, workspace_id: null }),
+        { name: "update-user-1" },
+      );
+
+      const store = createTestStore();
+      await subscribeToCollections(store);
+
+      store.dispatch(
+        userApi.endpoints.updateUser.initiate({ id: 1, workspace_id: null }),
+      );
+      await waitForCondition(() => fetchMock.callHistory.done("update-user-1"));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const collectionCalls = fetchMock.callHistory.calls("list-collections");
+      expect(collectionCalls.length).toBeGreaterThan(1);
+    });
+
+    it("does NOT invalidate content for a user update that doesn't touch workspace_id", async () => {
+      fetchMock.put("path:/api/user/1", createMockUser({ id: 1 }), {
+        name: "update-user-1",
+      });
+
+      const store = createTestStore();
+      await subscribeToCollections(store);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const callsBefore =
+        fetchMock.callHistory.calls("list-collections").length;
+
+      store.dispatch(
+        userApi.endpoints.updateUser.initiate({ id: 1, first_name: "New" }),
+      );
+      await waitForCondition(() => fetchMock.callHistory.done("update-user-1"));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const callsAfter = fetchMock.callHistory.calls("list-collections").length;
+      expect(callsAfter).toBe(callsBefore);
     });
   });
 
