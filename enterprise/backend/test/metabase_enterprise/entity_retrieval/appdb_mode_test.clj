@@ -67,7 +67,7 @@
     (testing "opted in, but the app db can't host the index — the CI service must be misconfigured"
       (is false "the appdb-mode job expects a pgvector-capable Postgres app db"))
 
-    (schema-exists? (mdb/data-source) index-table/app-db-schema)
+    (schema-exists? (mdb/data-source) index-table/index-schema)
     (testing "opted in, but a library_retrieval schema already exists — refusing to clobber it"
       (is false "the appdb-mode job should start from a fresh app db"))
 
@@ -88,7 +88,7 @@
               (testing "the app db serves as the store, with no dedicated URL"
                 (is (= :app-db (semantic.db.datasource/pgvector-mode)))
                 (is (true? (entity-retrieval.core/available?)))
-                (is (= index-table/app-db-tables (index-table/tables))))
+                (is (= index-table/default-tables (index-table/tables))))
               (let [ds            (semantic.db.datasource/ensure-initialized-data-source!)
                     public-before (tables-in-schema app-db "public")]
                 (is (identical? app-db ds) "app-db mode shares the application pool")
@@ -105,7 +105,7 @@
                   (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
                   (testing "both tables live inside the library_retrieval schema"
                     (is (= #{"library_entity_index" "library_entity_index_meta"}
-                           (tables-in-schema app-db index-table/app-db-schema))))
+                           (tables-in-schema app-db index-table/index-schema))))
                   (testing "the application schema is untouched"
                     (is (= public-before (tables-in-schema app-db "public"))))
                   (testing "retrieval round-trips through the app-db pool"
@@ -120,7 +120,7 @@
                       (#'semantic.migration.impl/drop-all-but-migration-table
                        semantic.index-metadata/app-db-index-metadata tx))
                     (is (= #{"library_entity_index" "library_entity_index_meta"}
-                           (tables-in-schema app-db index-table/app-db-schema))))))
+                           (tables-in-schema app-db index-table/index-schema))))))
               (finally
                 (jdbc/execute! app-db [(format "DROP SCHEMA IF EXISTS %s CASCADE"
-                                               index-table/app-db-schema)])))))))))
+                                               index-table/index-schema)])))))))))

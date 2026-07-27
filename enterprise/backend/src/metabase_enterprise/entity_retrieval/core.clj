@@ -58,13 +58,13 @@
          END AS privileged")
 
 (defn- app-db-schema-usable?*
-  "Whether this role can hold the index in [[index-table/app-db-schema]].
+  "Whether this role can hold the index in [[index-table/index-schema]].
   Privileges, not existence: USAGE without CREATE passes a mere existence check, then fails in
   [[index-table/ensure-tables!]].
   A database failure reads as unusable, so an outage can't throw out of the fire-and-forget
   [[request-entity-sync!]]."
   []
-  (let [schema index-table/app-db-schema]
+  (let [schema index-table/index-schema]
     (try
       (if-some [privileged (:privileged (jdbc/execute-one!
                                          (mdb/data-source)

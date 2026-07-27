@@ -23,57 +23,54 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
-   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
   (:import
+   (java.sql SQLException)
    (java.time Instant)))
 
 (set! *warn-on-reflection* true)
 
-(def app-db-schema
-  "Schema holding the library entity index when it shares the application database.
-  Not semantic search's: [[metabase-enterprise.semantic-search.db.migration.impl]] wipes that one wholesale."
+(def index-schema
+  "Schema holding the library entity index, in a dedicated store and on the app db alike.
+  Its own, not semantic search's: [[metabase-enterprise.semantic-search.db.migration.impl]] wipes the
+  schema it is given, and in a dedicated store that is the default schema these tables used to sit in."
   "library_retrieval")
 
 ;; TODO (Chris 2026-07-14) -- these names carry no version, so an on-disk upgrade has nothing to key off.
 ;; Revisit when the semantic-search indexing mechanism is reworked, sharing its scheme.
 (def default-tables
-  "Table names for a dedicated pgvector database (MB_PGVECTOR_DB_URL)."
+  "Where the index lives. Qualified in both modes, so nothing here can resolve against an application
+  table, and a semantic-search migration cannot reach it."
+  {:schema  index-schema
+   :vectors (str index-schema ".library_entity_index")
+   :meta    (str index-schema ".library_entity_index_meta")})
+
+(def legacy-tables
+  "The unqualified names used before [[index-schema]] existed. [[adopt-legacy-tables!]] moves them."
   {:vectors "library_entity_index"
    :meta    "library_entity_index_meta"})
 
-(def app-db-tables
-  "Table names when the index shares the application database, qualified so nothing here can resolve
-  against an application table."
-  {:schema  app-db-schema
-   :vectors (str app-db-schema ".library_entity_index")
-   :meta    (str app-db-schema ".library_entity_index_meta")})
-
 (def ^:dynamic *tables*
-  "Table names to use, or nil to derive them from the pgvector mode. Bound by tests to isolated names."
+  "Table names to use, or nil for [[default-tables]]. Bound by tests to isolated names."
   nil)
 
 (defn tables
-  "[[default-tables]] or [[app-db-tables]], per the pgvector mode. Resolved per use: the mode can change
-  without a restart."
+  "The index's table names, as a `{:schema :vectors :meta}` map."
   []
-  (or *tables*
-      (if (= :app-db (semantic.db.datasource/pgvector-mode))
-        app-db-tables
-        default-tables)))
+  (or *tables* default-tables))
 
 (defn vectors-table
-  "Name of the vectors table, schema-qualified in app-db mode.
+  "Name of the vectors table, schema-qualified.
   For raw SQL use [[vectors-table-sql]]: interpolated into `\"%s\"`, a qualified name reads as one
   identifier."
   []
   (:vectors (tables)))
 
 (defn meta-table
-  "Name of the meta table, schema-qualified in app-db mode. For raw SQL use [[meta-table-sql]]."
+  "Name of the meta table, schema-qualified. For raw SQL use [[meta-table-sql]]."
   []
   (:meta (tables)))
 
@@ -175,19 +172,45 @@
 (defn- create-tables! [tx dims]
   (jdbc/execute! tx (create-vectors-table-sql dims)))
 
+(defn- table-exists?
+  "Whether `table-name` resolves, schema-qualified or on the search path."
+  [tx table-name]
+  (some? (:exists (jdbc/execute-one! tx ["SELECT to_regclass(?) AS exists" table-name]
+                                     {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
+
 (defn- ensure-schema!
-  "Create the app-db schema; a no-op for a dedicated store.
-  Nothing else creates it: semantic search provisions its own, and library retrieval runs without it."
+  "Create the index's schema. Nothing else creates it: semantic search provisions its own, and library
+  retrieval runs without semantic search."
   [tx]
   (when-let [schema (:schema (tables))]
-    (jdbc/execute! tx [(format "CREATE SCHEMA IF NOT EXISTS %s" (semantic.util/quote-ident schema))])))
+    (try
+      (jdbc/execute! tx [(format "CREATE SCHEMA IF NOT EXISTS %s" (semantic.util/quote-ident schema))])
+      (catch SQLException e
+        (throw (ex-info (format (str "Failed to create the %s schema for the library entity index."
+                                     " Grant CREATE on the database to the Metabase user.")
+                                schema)
+                        {:type ::schema-creation-failed, :schema schema}
+                        e))))))
+
+(defn- adopt-legacy-tables!
+  "Move an index built before [[index-schema]] existed into it, preserving its rows.
+  Without this, the qualified tables would be created empty beside the old ones and the whole library
+  would be re-embedded. A no-op once moved: the unqualified name no longer resolves."
+  [tx]
+  (when (= default-tables (tables))
+    (doseq [k [:vectors :meta]]
+      (let [legacy (k legacy-tables)]
+        (when (and (table-exists? tx legacy)
+                   (not (table-exists? tx (k default-tables))))
+          (log/infof "Moving %s into the %s schema" legacy index-schema)
+          (jdbc/execute! tx [(format "ALTER TABLE %s SET SCHEMA %s"
+                                     (semantic.util/quote-ident legacy)
+                                     (semantic.util/quote-ident index-schema))]))))))
 
 (defn vectors-table-exists?
   "Whether the configured entity-retrieval vectors table exists."
   [tx]
-  ;; to_regclass takes a string literal, so a qualified name is valid input.
-  (some? (:exists (jdbc/execute-one! tx [(format "SELECT to_regclass('%s') AS exists" (vectors-table))]
-                                     {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
+  (table-exists? tx (vectors-table)))
 
 (defn- meta-column-exists? [tx column]
   (some? (jdbc/execute-one! tx [(str "SELECT 1 FROM pg_attribute"
@@ -267,6 +290,9 @@
     (jdbc/execute! tx [(format "SELECT pg_advisory_xact_lock(%d)" ensure-lock-id)])
     (jdbc/execute! tx (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
     (ensure-schema! tx)
+    ;; Before any CREATE below: those are IF NOT EXISTS, so creating first would leave an empty qualified
+    ;; table for the move to refuse, and the whole library would be re-embedded.
+    (adopt-legacy-tables! tx)
     (jdbc/execute! tx (create-meta-table-sql))
     ;; CREATE TABLE IF NOT EXISTS does not add columns to an existing table. Upgrade when this role owns it;
     ;; grant-only roles keep reconciling without the optional freshness timestamp.
