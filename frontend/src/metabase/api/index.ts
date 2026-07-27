@@ -39,6 +39,7 @@ export * from "./parameters";
 export * from "./permission";
 export * from "./persist";
 export * from "./premium-features";
+export * from "./product-notifications";
 export * from "./public";
 export * from "./pulse";
 export * from "./query-endpoints";

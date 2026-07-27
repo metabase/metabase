@@ -1,5 +1,9 @@
 import { useCallback } from "react";
 
+import {
+  useDismissProductNotificationMutation,
+  useListProductNotificationsQuery,
+} from "metabase/api";
 import { Markdown } from "metabase/common/components/Markdown";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
@@ -22,15 +26,31 @@ export const useDismissNotification = () => {
 };
 
 export function ProductNotifications() {
-  const notifications = useSetting("notifications");
-  const { dismissedIds, dismiss } = useDismissNotification();
+  const settingsNotifications = useSetting("notifications");
+  const { dismissedIds, dismiss: dismissSettingNotification } =
+    useDismissNotification();
+  const { data: apiNotifications, isSuccess: hasApiNotifications } =
+    useListProductNotificationsQuery();
+  const [dismissApiNotification] = useDismissProductNotificationMutation();
+  const notifications = hasApiNotifications
+    ? apiNotifications
+    : settingsNotifications;
+  const dismiss = useCallback(
+    (notificationId: string) => {
+      if (hasApiNotifications) {
+        void dismissApiNotification(notificationId);
+      } else {
+        dismissSettingNotification(notificationId);
+      }
+    },
+    [dismissApiNotification, dismissSettingNotification, hasApiNotifications],
+  );
 
-  // The backend already filters to relevant, undismissed notifications; we
-  // additionally filter by the locally-known dismissals so a just-dismissed
-  // card disappears (and the next one appears) without waiting on a refetch.
-  // Only one notification is shown at a time to avoid overwhelming new users.
+  // The Settings fallback keeps this stacked backend branch compatible with
+  // the frontend it was based on.
   const notification = (notifications ?? []).find(
-    (candidate) => !(dismissedIds ?? []).includes(candidate.id),
+    (candidate) =>
+      hasApiNotifications || !(dismissedIds ?? []).includes(candidate.id),
   );
 
   if (!notification) {
