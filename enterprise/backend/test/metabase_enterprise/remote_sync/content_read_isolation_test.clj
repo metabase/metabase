@@ -194,3 +194,42 @@
         (testing "GET /api/dashboard excludes main content from the workspace user"
           (is (not (contains? (into #{} (map :id) (mt/user-http-request wt-user :get 200 "dashboard"))
                               (:id main-dash)))))))))
+
+(deftest collection-items-workspace-isolation-test
+  (testing "GET /api/collection/:id/items and /api/collection/root/items respect workspace isolation.
+
+  Regression test: `collection/visible-collection-query`'s WHERE clause routes through a `WITH visible_collection_ids
+  AS (...)` CTE that is referenced from a nested derived-table subquery in the collection-children assembler
+  (`metabase.collections-rest.api/collection-children*`). `workspace-visibility-clause` used to compare the active
+  workspace id with a JDBC bind parameter; some app-db drivers (H2 in particular) silently drop that bound value
+  when the CTE containing it is referenced two levels deep, so the endpoint returned 200 with an empty item list
+  instead of erroring. The other scalar values folded into the same CTE (trash/archive-operation ids) were already
+  `[:inline ...]`d for this reason -- `workspace-visibility-clause` is now inlined too."
+    ;; two distinct superusers so we don't have to reason about collection-permission grants -- superusers bypass
+    ;; the permission-set check entirely, isolating the test to workspace-visibility behavior alone.
+    (mt/with-temp [:model/Workspace wt             {:branch (str (random-uuid))}
+                   :model/User      wt-superuser   {:is_superuser true :workspace_id (:id wt)}
+                   :model/User      main-superuser {:is_superuser true}]
+      (mt/with-current-user (:id wt-superuser)
+        (mt/with-temp [:model/Collection wt-coll {:name "wt collection"}
+                       :model/Card       wt-card {:name "wt card" :collection_id (:id wt-coll)}]
+          (testing "the workspace user sees their own content via /api/collection/:id/items"
+            (is (contains? (into #{} (map :id) (:data (mt/user-http-request wt-superuser :get 200
+                                                                            (str "collection/" (:id wt-coll) "/items"))))
+                           (:id wt-card))))
+          (testing "the workspace user sees their own collection via /api/collection/root/items"
+            (is (contains? (into #{} (map :id) (:data (mt/user-http-request wt-superuser :get 200 "collection/root/items")))
+                           (:id wt-coll))))
+          (testing "the main user cannot read the workspace collection at all"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request main-superuser :get 403 (str "collection/" (:id wt-coll) "/items")))))))
+      (mt/with-current-user (:id main-superuser)
+        (mt/with-temp [:model/Collection main-coll {:name "main collection"}
+                       :model/Card       main-card {:name "main card" :collection_id (:id main-coll)}]
+          (testing "the main user sees their own content via /api/collection/:id/items"
+            (is (contains? (into #{} (map :id) (:data (mt/user-http-request main-superuser :get 200
+                                                                            (str "collection/" (:id main-coll) "/items"))))
+                           (:id main-card))))
+          (testing "the workspace user cannot read the main collection at all"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request wt-superuser :get 403 (str "collection/" (:id main-coll) "/items"))))))))))

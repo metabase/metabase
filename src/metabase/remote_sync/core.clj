@@ -36,10 +36,22 @@
 (defn workspace-visibility-clause
   "HoneySQL predicate selecting rows visible to the current user: rows whose workspace matches the user's active
   workspace, where nil (no workspace) is the main app. `column` defaults to `:workspace_id`; pass a qualified column
-  when the query joins other tables."
+  when the query joins other tables.
+
+  The active workspace id is inlined into the generated SQL rather than passed as a JDBC bind parameter, matching
+  the other scalar config values (e.g. trash/archive-operation ids) baked into
+  [[metabase.collections.models.collection/visible-collection-query]]. This clause is typically embedded inside a
+  `WITH` CTE that's itself referenced from a nested derived-table subquery (see the collection children assembler
+  in `metabase.collections-rest.api`); at least one app-db driver (H2) silently drops the bound parameter's value
+  in that shape, so the query runs without error but returns zero rows. Inlining sidesteps the issue -- the value
+  being inlined is a trusted server-side var, never user input. `nil` (main app) is left unparameterized so Honey
+  SQL still emits `IS NULL` rather than the always-false `= NULL`."
   ([] (workspace-visibility-clause :workspace_id))
   ([column]
-   [:= column api/*current-workspace-id*]))
+   (let [workspace-id api/*current-workspace-id*]
+     (if (nil? workspace-id)
+       [:= column nil]
+       [:= column [:inline workspace-id]]))))
 
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.
