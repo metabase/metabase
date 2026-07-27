@@ -161,16 +161,6 @@
   [_db-id]
   (mi/superuser?))
 
-(defenterprise reconcile-workspace-database-refs-before-delete!
-  "Hook called from the `:model/Database` before-delete. In workspaces mode this refuses
-   the delete (409) if any non-`:unprovisioned` `workspace_database` rows reference `db-id`,
-   and explicitly removes any `:unprovisioned` rows so the FK RESTRICT is satisfied. OSS
-   implementation is a no-op — fresh OSS installs have no workspace_database table, and
-   feature-off EE instances have nothing to reconcile."
-  metabase-enterprise.workspaces.models.workspace-database
-  [_db-id]
-  nil)
-
 (defenterprise mark-transforms-stale-on-database-delete!
   "Hook called from the `:model/Database` before-delete. Transforms whose `source_database_id`
    is about to be SET NULL by the FK action survive the delete (so the analyst can read the
@@ -434,11 +424,6 @@
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
-  ;; Reconcile workspace_database rows first: the FK is RESTRICT, so :unprovisioned
-  ;; rows must be cleaned up explicitly, and non-:unprovisioned rows must refuse the delete.
-  ;; Runs before any other cleanup so we don't partially unwind sync tasks / secrets
-  ;; / fields for a Database whose deletion is about to be refused.
-  (reconcile-workspace-database-refs-before-delete! id)
   ;; Mark transforms with this DB as source as stale so dependency-diagnostics re-analyzes
   ;; them after the row's gone. Must run BEFORE the FK SET NULL fires (which happens when
   ;; the database row is deleted below) so we can still resolve the affected transforms by
