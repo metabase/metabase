@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePrevious } from "react-use";
 import { c, t } from "ttag";
@@ -13,7 +12,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { push, useParams, useRouter } from "metabase/router";
 import { Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
@@ -66,19 +65,10 @@ const QUERY_POLL_INTERVAL_MS = 2000;
 
 const TIMELINE_QUERY_PARAM = "timeline";
 
-interface ExplorationPageQuery {
-  [TIMELINE_QUERY_PARAM]?: string;
-  comments?: string;
-  tab?: string;
-}
-
-interface ExplorationPageProps {
-  params: {
-    id: string;
-    pageId?: string;
-  };
-  location: Location<ExplorationPageQuery>;
-}
+type ExplorationPageParams = {
+  id: string;
+  pageId?: string;
+};
 
 // A dead/stalled worker never stamps a terminal state, so a thread could stay "in flight"
 // forever. Stop polling (and spinning) once a thread has been running longer than this long.
@@ -108,12 +98,17 @@ function activeThreadStaleDeadlines(
     });
 }
 
-export function ExplorationPage(props: ExplorationPageProps) {
-  return <ExplorationPageForId key={props.params.id} {...props} />;
+export function ExplorationPage() {
+  const params = useParams<ExplorationPageParams>();
+
+  return <ExplorationPageForId key={params.id} />;
 }
 
-function ExplorationPageForId({ params, location }: ExplorationPageProps) {
+function ExplorationPageForId() {
   const dispatch = useDispatch();
+  const { id = "", pageId } = useParams<ExplorationPageParams>();
+  const params = { id, pageId };
+  const { location } = useRouter();
 
   const isCommentsSidebarOpen = location.query?.comments === "true";
   const wasCommentsSidebarOpen = usePrevious(isCommentsSidebarOpen);
