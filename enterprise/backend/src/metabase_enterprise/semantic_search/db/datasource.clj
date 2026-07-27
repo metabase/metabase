@@ -192,20 +192,17 @@
     (throw (ex-info "Semantic search connection pool is not initialized. Call init-db! first." {}))))
 
 (def ^:private probe-timeout-params
-  "pgjdbc timeouts, in seconds, for the readiness probe's one-shot datasource.
-  It is built from the URL alone and so inherits none of the pool's fail-fast configuration; without these a
-  blackholed host (TCP established, no FIN) blocks the probe thread for the life of the JVM."
+  "pgjdbc timeouts, in seconds, for the readiness probe, so a blackholed host can't block it forever."
   {"connectTimeout" "5"
    "socketTimeout"  "10"})
 
 (def ^:private probe-query-timeout-seconds
-  "Statement timeout for the readiness probe, backing up [[probe-timeout-params]] for a server that accepts
-  the query and never answers."
+  "Statement timeout for the readiness probe, for a server that accepts the query and never answers."
   10)
 
 (defn- probe-jdbc-url
-  "The dedicated pgvector URL with [[probe-timeout-params]] applied. A timeout the operator set on
-  MB_PGVECTOR_DB_URL wins, so this only fills in what is missing."
+  "The dedicated pgvector URL with [[probe-timeout-params]] filled in.
+  A timeout already on MB_PGVECTOR_DB_URL wins."
   []
   (let [url        (:jdbc-url (parsed-db-config))
         [_ pairs]  (split-query url)
@@ -217,12 +214,9 @@
       (seq added) (str (if (str/includes? url "?") "&" "?") (str/join "&" added)))))
 
 (defn probe-dedicated-connection!
-  "Test the dedicated pgvector database without initializing or touching its connection pool.
-  Always a one-shot datasource, never [[data-source]], for two reasons: a pooled connection carries whatever
-  socket timeouts the pool was built with, and `Statement.setQueryTimeout` is not a network read deadline, so
-  a blackholed host could still wedge the probe indefinitely; and borrowing from a saturated pool would
-  report ordinary load as an unreachable store. The cost is one connection handshake per probe, which at the
-  readiness interval is nothing, and readiness monitoring keeps no idle server-side connection of its own."
+  "Test the dedicated pgvector database, without initializing or borrowing its connection pool.
+  Always a one-shot connection: a pooled one carries the pool's timeouts, and waiting on a saturated pool
+  would read as an unreachable store."
   []
   (jdbc/execute-one! (jdbc/get-datasource {:jdbcUrl (probe-jdbc-url)})
                      ["SELECT 1 AS test"]
@@ -315,17 +309,12 @@
                                                                      (not schema-exists)))))
 
 (defn probe-app-db-store!
-  "Whether the application database is serving as a usable pgvector store right now: it answers, and the
-  `vector` extension is installed.
-  Read-only and uncached, unlike [[check-app-db-pgvector-support]] — readiness monitoring has to see an
-  extension dropped under a running instance, which [[app-db-pgvector-support]] latches past.
-  Deliberately does not require [[app-db-schema]]: that schema is created at activation, so requiring it
-  would read as not-ready on an instance that is only validating its pgvector rollout. Schema and table
-  health belong to the semantic-search index health check.
-  Unlike [[probe-dedicated-connection!]] this gets no network read deadline of its own -- it runs on the
-  application pool, and an app db that accepts connections and never answers has already wedged every other
-  app-db read in the process, this probe's callers included."
+  "Whether the app db is a usable pgvector store right now: it answers, and `vector` is installed.
+  Uncached, so an extension dropped under a running instance shows up despite [[app-db-pgvector-support]]
+  latching true. Does not require [[app-db-schema]], which is only created at activation."
   []
+  ;; No timeout of its own beyond the statement: an app db that never answers has already wedged every other
+  ;; app-db read in the process.
   (boolean
    (:installed
     (jdbc/execute-one! (mdb/data-source)

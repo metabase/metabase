@@ -26,15 +26,14 @@
 (def ^:private collector-job-key (jobs/key "metabase.task.semantic-metric-collector.job"))
 (def ^:private collector-trigger-key (triggers/key "metabase.task.semantic-metric-collector.trigger"))
 
-(defonce ^:private ^{:doc "The most recent readiness probe as `{:storage :connected? :at}`, or nil before
-  the first one. Lets [[pgvector-store-health-check]] report the store without probing it a second time."}
+(defonce ^:private ^{:doc "The last readiness probe, `{:storage :connected? :at}`, nil before the first.
+  Shared with [[pgvector-store-health-check]] so it doesn't probe again."}
   last-readiness-probe
   (atom nil))
 
 (def ^:private readiness-refresh-interval-seconds
-  "How often the readiness probe runs. Readiness changes on deploy or operator action, not minute to minute,
-  and in app-db mode the probe is the one place a rolled-back CREATE EXTENSION reaches a customer's
-  application database."
+  "How often the readiness probe runs. Hourly: in app-db mode it reaches the customer's app db with a
+  rolled-back CREATE EXTENSION."
   (* 60 60))
 
 (defn- probe-connected?
@@ -47,29 +46,24 @@
     (catch InterruptedException e
       (throw e))
     (catch Exception e
-      ;; warn, not debug: this gauge dropping to 0 is the whole point of the series, and the exception is
-      ;; the only record of whether it was a rotated password, DNS, or a saturated pool.
+      ;; The exception is the only record of why the gauge dropped.
       (log/warn e "Pgvector connection probe failed" {:mode mode})
       false)))
 
 (defn- readiness-probe-allowed?
-  "Whether this instance may resolve its pgvector store to publish readiness metrics.
-  The same boot-safe gate [[SemanticMetricCollector]] schedules on. Without the license arm an unlicensed
-  instance would resolve [[semantic.datasource/pgvector-mode]] every scrape interval, and the app-db arm of
-  that runs the rolled-back CREATE EXTENSION / CREATE SCHEMA probe against the customer's application
-  database -- exactly what [[semantic.u/semantic-search-available?]] documents as forbidden."
+  "Whether this instance may resolve its pgvector store, the same boot-safe gate
+  [[SemanticMetricCollector]] schedules on.
+  Licensed, to avoid probing an unlicensed instance's app db with a rolled-back CREATE EXTENSION."
   []
   (or (semantic.datasource/dedicated-url-configured?)
       (semantic.u/semantic-search-configured?)))
 
 (defn- collect-pgvector-readiness-metrics!
   "Record availability and connection health for the selected pgvector store.
-  This deliberately ignores engine activation so operators can validate a pgvector rollout before enabling
-  any feature that consumes it; the license still gates it, see [[readiness-probe-allowed?]]."
+  Ignores engine activation, so a pgvector rollout can be validated before enabling anything that uses it."
   []
-  ;; Serialized because two callers reach this: the scrape path and a stale health check. The gauge writes
-  ;; and the [[last-readiness-probe]] reset are not one atomic step, so concurrent probes could interleave
-  ;; and leave the two disagreeing -- the exact thing sharing one result is meant to rule out.
+  ;; The scrape path and a stale health check both call this. Serialize, so their gauge writes and results
+  ;; can't interleave.
   (locking last-readiness-probe
     (let [mode       (if (readiness-probe-allowed?)
                        (semantic.datasource/pgvector-mode)
@@ -100,14 +94,9 @@
          (* 2 readiness-refresh-interval-seconds))))
 
 (defn- pgvector-store-health-check
-  "Health-inspector row for pgvector store reachability. Nil (check omitted) on an instance with no pgvector
-  store to reach.
-  Shares the collector's result, so this row and the gauges cannot disagree. The probe is normally driven by
-  Prometheus scrapes; refreshing a stale one here is what keeps the row current on an instance that is not
-  scraped at all, and stops a scrape that stopped days ago from reading as a live result.
-  Refresh and read happen under the collector's lock: reading between a concurrent probe's gauge writes and
-  its result would report the older of the two as the one the gauges show. A scrape-driven probe in flight
-  therefore blocks this check, bounded by the probe's own timeouts."
+  "Health-inspector row for pgvector store reachability, nil when there is no store to reach.
+  Reports the collector's last probe, refreshing a stale one so an unscraped instance still gets a current
+  row. Runs under the collector's lock, so the row can't disagree with the gauges."
   []
   (locking last-readiness-probe
     (when (readiness-probe-stale? @last-readiness-probe)
@@ -136,9 +125,8 @@
                                      (semantic.datasource/dedicated-url-configured?))
                               1
                               0))
-      ;; The last-success series is deliberately not seeded: a sentinel 0 reads as a 1970 timestamp, so the
-      ;; natural `time() - last_success > threshold` alert would fire on every instance forever, including
-      ;; for the storage this instance doesn't use. It appears on the first successful probe.
+      ;; last-success only appears once a probe succeeds: a seeded 0 reads as 1970, firing any staleness
+      ;; alert forever.
       (analytics/set-gauge! :metabase-search/pgvector-store-connected {:storage storage} 0))))
 
 (defn- refresh-pgvector-readiness-metrics!
