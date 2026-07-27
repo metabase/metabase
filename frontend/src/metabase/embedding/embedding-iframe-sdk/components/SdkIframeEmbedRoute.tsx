@@ -20,7 +20,10 @@ import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/qu
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { createSnowplowTracker } from "metabase/analytics";
-import type { OnBeforeRequestHandler } from "metabase/api/client";
+import {
+  type OnBeforeRequestHandler,
+  embeddingIframeSdkRequestHooks,
+} from "metabase/api/client";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
@@ -60,8 +63,7 @@ const embedReferrerHandler: OnBeforeRequestHandler = async (config) => {
 };
 
 // Install the iframe embed-referrer handler into its plugin slot.
-PLUGIN_EMBEDDING_IFRAME_SDK.onBeforeRequestHandlers.embedReferrer =
-  embedReferrerHandler;
+embeddingIframeSdkRequestHooks.embedReferrer = embedReferrerHandler;
 
 const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
   // Tell the SDK whether to use the existing user session or not.

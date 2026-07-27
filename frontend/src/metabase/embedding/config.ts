@@ -1,10 +1,10 @@
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
+import { PLUGIN_API, embeddingSdkRequestHooks } from "metabase/api/client";
 import {
   EMBEDDING_SDK_CONFIG,
   isDataApp,
   isEmbeddingSdk,
 } from "metabase/embedding-sdk/config";
-import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
 import { setEmbedPreviewHeader } from "./lib/auth/set-embed-preview-header";
@@ -66,7 +66,7 @@ export function setDataApp(
   PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader =
     setEmbedPreviewHeader;
 
-  PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.reactSdkEmbedReferrer =
+  embeddingSdkRequestHooks.reactSdkEmbedReferrer =
     setReactSdkEmbedReferrerHeader;
 }
 

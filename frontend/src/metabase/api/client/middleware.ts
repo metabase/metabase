@@ -1,29 +1,15 @@
 import {
+  type OnBeforeRequestHandler,
+  type OnBeforeRequestHandlerConfig,
   PLUGIN_API,
-  PLUGIN_EMBEDDING_IFRAME_SDK,
-  PLUGIN_EMBEDDING_SDK,
-} from "metabase/plugins";
+  embeddingIframeSdkRequestHooks,
+  embeddingSdkRequestHooks,
+} from "./request-hooks";
 
-import type { RequestMethod } from "./method";
-
-export type OnBeforeRequestHandlerConfig = {
-  method: RequestMethod;
-  url: string;
-  headers?: Record<string, string>;
-  // URL `:tag` params (and querystring leftovers). For the legacy GET/POST
-  // helpers this holds the whole request bag.
-  data: Record<string, unknown>;
-  // The JSON-body bag, kept as a separate channel from `data`. Exposed to
-  // handlers so embed URL `:tag`s — notably the guest-embed `:token` — can be
-  // filled from body fields, and so the refresh handler can swap a stale body
-  // token. `undefined` for GETs, raw (FormData/URLSearchParams) bodies, and the
-  // legacy helpers (which pack everything into `data`).
-  body?: Record<string, unknown>;
-};
-
-export type OnBeforeRequestHandler = (
-  data: OnBeforeRequestHandlerConfig,
-) => Promise<void | Partial<OnBeforeRequestHandlerConfig>>;
+export type {
+  OnBeforeRequestHandler,
+  OnBeforeRequestHandlerConfig,
+} from "./request-hooks";
 
 /**
  * The complete, ordered request-manipulation pipeline.
@@ -44,14 +30,13 @@ function getOnBeforeRequestHandlers(): OnBeforeRequestHandler[] {
     PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader,
     PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders,
     PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader,
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler,
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
-      .getOrRefreshGuestSessionHandler,
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds,
+    embeddingSdkRequestHooks.getOrRefreshSessionHandler,
+    embeddingSdkRequestHooks.getOrRefreshGuestSessionHandler,
+    embeddingSdkRequestHooks.overrideRequestsForGuestEmbeds,
     PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
     PLUGIN_API.onBeforeRequestHandlers.rewriteEmbedPreviewUrl,
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.reactSdkEmbedReferrer,
-    PLUGIN_EMBEDDING_IFRAME_SDK.onBeforeRequestHandlers.embedReferrer,
+    embeddingSdkRequestHooks.reactSdkEmbedReferrer,
+    embeddingIframeSdkRequestHooks.embedReferrer,
   ];
 }
 

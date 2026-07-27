@@ -1,15 +1,7 @@
-import type { OnBeforeRequestHandler } from "metabase/api/client";
-
-const noop: OnBeforeRequestHandler = async () => {};
+import { reinitializeEmbeddingSdkRequestHooks } from "metabase/api/client";
 
 const getDefaultPluginEmbeddingSdk = () => ({
   isEnabled: () => false,
-  onBeforeRequestHandlers: {
-    getOrRefreshSessionHandler: noop,
-    getOrRefreshGuestSessionHandler: noop,
-    overrideRequestsForGuestEmbeds: noop,
-    reactSdkEmbedReferrer: noop,
-  },
 });
 
 export const PLUGIN_EMBEDDING_SDK = getDefaultPluginEmbeddingSdk();
@@ -19,4 +11,8 @@ export const PLUGIN_EMBEDDING_SDK = getDefaultPluginEmbeddingSdk();
  */
 export function reinitialize() {
   Object.assign(PLUGIN_EMBEDDING_SDK, getDefaultPluginEmbeddingSdk());
+  // The SDK's request handlers live with the api client (see
+  // `embeddingSdkRequestHooks`), but they are still part of this plugin's
+  // reset surface.
+  reinitializeEmbeddingSdkRequestHooks();
 }

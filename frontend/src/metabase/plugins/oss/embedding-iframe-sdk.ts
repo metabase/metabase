@@ -1,12 +1,7 @@
-import type { OnBeforeRequestHandler } from "metabase/api/client";
-
-const noop: OnBeforeRequestHandler = async () => {};
+import { reinitializeEmbeddingIframeSdkRequestHooks } from "metabase/api/client";
 
 const getDefaultPluginEmbeddingIframeSdk = () => ({
   isEnabled: () => false,
-  onBeforeRequestHandlers: {
-    embedReferrer: noop,
-  },
 });
 
 export const PLUGIN_EMBEDDING_IFRAME_SDK = getDefaultPluginEmbeddingIframeSdk();
@@ -19,4 +14,8 @@ export function reinitialize() {
     PLUGIN_EMBEDDING_IFRAME_SDK,
     getDefaultPluginEmbeddingIframeSdk(),
   );
+  // The iframe SDK's request handlers live with the api client (see
+  // `embeddingIframeSdkRequestHooks`), but they are still part of this
+  // plugin's reset surface.
+  reinitializeEmbeddingIframeSdkRequestHooks();
 }

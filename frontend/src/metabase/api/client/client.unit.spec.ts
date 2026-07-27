@@ -1,10 +1,11 @@
 import fetchMock from "fetch-mock";
 
 import { setupBasename } from "__support__/basename";
-import { PLUGIN_API, reinitialize } from "metabase/plugins";
+import { reinitialize } from "metabase/plugins";
 import { setBasename } from "metabase/utils/basename";
 
 import { ApiClient } from "./client";
+import { PLUGIN_API } from "./request-hooks";
 
 describe("api", () => {
   describe("request (RTK entry point)", () => {

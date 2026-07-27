@@ -7,9 +7,9 @@ import { createRoot } from "react-dom/client";
 // Import the embedding SDK vendors side-effects (sets up global CSS vars, etc.)
 import "metabase/embedding-sdk/vendors-side-effects";
 
+import { PLUGIN_API } from "metabase/api/client";
 import { McpUiAppRoute } from "metabase/embedding/mcp/McpUiAppRoute";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
-import { PLUGIN_API } from "metabase/plugins";
 import { setBasename } from "metabase/utils/basename";
 
 // Load EE plugins (whitelabeling, etc.) - no-op in OSS

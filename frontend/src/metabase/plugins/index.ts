@@ -1,5 +1,4 @@
 // Re-export all plugins from OSS modules (excluding reinitialize functions to avoid conflicts)
-export { PLUGIN_API } from "./oss/api";
 export {
   PLUGIN_AUDIT,
   type InsightsLinkProps,
@@ -190,8 +189,11 @@ export type {
 } from "./types";
 
 // Export a single reinitialize function that calls all individual reinitialize functions
+// The api client owns its request-hook slots (see
+// `metabase/api/client/request-hooks`), so their reset comes from there.
+import { reinitializePluginApi as reinitializeApi } from "metabase/api/client";
+
 import { reinitialize as reinitializeAiControls } from "./oss/ai-controls";
-import { reinitialize as reinitializeApi } from "./oss/api";
 import { reinitialize as reinitializeAudit } from "./oss/audit";
 import { reinitialize as reinitializeAuth } from "./oss/auth";
 import { reinitialize as reinitializeCaching } from "./oss/caching";
