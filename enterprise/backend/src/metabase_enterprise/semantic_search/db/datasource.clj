@@ -321,7 +321,10 @@
   extension dropped under a running instance, which [[app-db-pgvector-support]] latches past.
   Deliberately does not require [[app-db-schema]]: that schema is created at activation, so requiring it
   would read as not-ready on an instance that is only validating its pgvector rollout. Schema and table
-  health belong to the semantic-search index health check."
+  health belong to the semantic-search index health check.
+  Unlike [[probe-dedicated-connection!]] this gets no network read deadline of its own -- it runs on the
+  application pool, and an app db that accepts connections and never answers has already wedged every other
+  app-db read in the process, this probe's callers included."
   []
   (boolean
    (:installed

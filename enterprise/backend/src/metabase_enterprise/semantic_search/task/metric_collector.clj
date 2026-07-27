@@ -67,33 +67,46 @@
   This deliberately ignores engine activation so operators can validate a pgvector rollout before enabling
   any feature that consumes it; the license still gates it, see [[readiness-probe-allowed?]]."
   []
-  (let [mode       (if (readiness-probe-allowed?)
-                     (semantic.datasource/pgvector-mode)
-                     :unavailable)
-        storage    (case mode :dedicated "external" :app-db "app-db" nil)
-        connected? (probe-connected? mode)]
-    ;; Publish both stable series on every instance. Exactly one can be available because a dedicated URL
-    ;; always wins over the app-db fallback; both are zero when no store is usable.
-    (doseq [candidate ["external" "app-db"]]
-      (analytics/set-gauge! :metabase-search/pgvector-store-available
-                            {:storage candidate}
-                            (if (= candidate storage) 1 0))
-      (analytics/set-gauge! :metabase-search/pgvector-store-connected
-                            {:storage candidate}
-                            (if (and (= candidate storage) connected?) 1 0)))
-    (reset! last-readiness-probe {:storage    storage
-                                  :connected? connected?
-                                  :at         (.getEpochSecond (Instant/now))})
-    (when connected?
-      (analytics/set-gauge! :metabase-search/pgvector-store-last-success-timestamp-seconds
-                            {:storage storage}
-                            (.getEpochSecond (Instant/now))))))
+  ;; Serialized because two callers reach this: the scrape path and a stale health check. The gauge writes
+  ;; and the [[last-readiness-probe]] reset are not one atomic step, so concurrent probes could interleave
+  ;; and leave the two disagreeing -- the exact thing sharing one result is meant to rule out.
+  (locking last-readiness-probe
+    (let [mode       (if (readiness-probe-allowed?)
+                       (semantic.datasource/pgvector-mode)
+                       :unavailable)
+          storage    (case mode :dedicated "external" :app-db "app-db" nil)
+          connected? (probe-connected? mode)]
+      ;; Publish both stable series on every instance. Exactly one can be available because a dedicated URL
+      ;; always wins over the app-db fallback; both are zero when no store is usable.
+      (doseq [candidate ["external" "app-db"]]
+        (analytics/set-gauge! :metabase-search/pgvector-store-available
+                              {:storage candidate}
+                              (if (= candidate storage) 1 0))
+        (analytics/set-gauge! :metabase-search/pgvector-store-connected
+                              {:storage candidate}
+                              (if (and (= candidate storage) connected?) 1 0)))
+      (reset! last-readiness-probe {:storage    storage
+                                    :connected? connected?
+                                    :at         (.getEpochSecond (Instant/now))})
+      (when connected?
+        (analytics/set-gauge! :metabase-search/pgvector-store-last-success-timestamp-seconds
+                              {:storage storage}
+                              (.getEpochSecond (Instant/now)))))))
 
 (defn- readiness-probe-stale?
   [{:keys [at]}]
   (or (nil? at)
       (> (- (.getEpochSecond (Instant/now)) ^long at)
          (* 2 readiness-refresh-interval-seconds))))
+
+(defn- refresh-readiness-if-stale!
+  "Probe when the last result has aged out, rechecking under the lock so a caller that queued behind another
+  refresh reports its result instead of probing again."
+  []
+  (when (readiness-probe-stale? @last-readiness-probe)
+    (locking last-readiness-probe
+      (when (readiness-probe-stale? @last-readiness-probe)
+        (collect-pgvector-readiness-metrics!)))))
 
 (defn- pgvector-store-health-check
   "Health-inspector row for pgvector store reachability. Nil (check omitted) on an instance with no pgvector
@@ -102,8 +115,7 @@
   Prometheus scrapes; refreshing a stale one here is what keeps the row current on an instance that is not
   scraped at all, and stops a scrape that stopped days ago from reading as a live result."
   []
-  (when (readiness-probe-stale? @last-readiness-probe)
-    (collect-pgvector-readiness-metrics!))
+  (refresh-readiness-if-stale!)
   (when-let [{:keys [storage connected?]} @last-readiness-probe]
     (when storage
       (if connected?
