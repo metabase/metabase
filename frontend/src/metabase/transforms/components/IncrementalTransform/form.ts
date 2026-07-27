@@ -130,7 +130,7 @@ export const buildIncrementalSource = (
               formValues.checkpointFilterFieldId,
             ),
             lookback:
-              formValues.lookbackValue != null
+              formValues.lookbackValue !== null
                 ? {
                     value: formValues.lookbackValue,
                     unit: formValues.lookbackUnit,
