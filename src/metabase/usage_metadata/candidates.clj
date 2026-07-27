@@ -20,7 +20,7 @@
 
 (def ^:const algorithm-version
   "Version of persisted candidate materialization behavior."
-  4)
+  5)
 
 (def ^:const signature-version
   "Version of the canonical identity used by durable dismissals."
@@ -360,6 +360,57 @@
           (t2/delete! :model/UsageMetadataCandidate :id (:id candidate)))
         (recur (long (:id (peek rows))))))))
 
+(defn- source-provenance-index
+  [candidate-ids]
+  (->> candidate-ids
+       (partition-all 200)
+       (mapcat (fn [ids]
+                 (t2/select [:model/UsageMetadataCandidateSource
+                             :candidate_id :card_id :card_name :card_type
+                             :verified :official :popular :view_count :joined
+                             :stage_numbers :model_lineage]
+                            :candidate_id [:in ids])))
+       (group-by :candidate_id)
+       (update-vals (fn [sources]
+                      (->> sources
+                           (map #(dissoc % :candidate_id))
+                           (sort-by :card_id)
+                           vec)))))
+
+(defn- non-closed-segment-candidate-ids
+  [candidates provenance-index]
+  (->> candidates
+       (map (fn [candidate]
+              (assoc candidate
+                     ::atoms (segment-atoms (:definition candidate))
+                     ::provenance (get provenance-index (:id candidate)))))
+       (group-by (juxt :table_id ::provenance))
+       (keep (fn [[[_table-id provenance] candidates]]
+               (when (seq provenance)
+                 (for [{candidate-id :id, candidate-atoms ::atoms} candidates
+                       :when (some (fn [{other-id :id, other-atoms ::atoms}]
+                                     (and (not= candidate-id other-id)
+                                          (< (count candidate-atoms) (count other-atoms))
+                                          (set/subset? candidate-atoms other-atoms)))
+                                   candidates)]
+                   candidate-id))))
+       (into #{} cat)))
+
+(defn- prune-non-closed-segment-candidates!
+  "Remove Segment subsets that carry no provenance beyond a stricter Segment on the same table."
+  [run-id]
+  (doseq [table-id (t2/select-fn-set :table_id :model/UsageMetadataCandidate
+                                     :run_id run-id
+                                     :candidate_type :segment)]
+    (let [candidates       (t2/select [:model/UsageMetadataCandidate :id :table_id :definition]
+                                      :run_id run-id
+                                      :candidate_type :segment
+                                      :table_id table-id)
+          provenance-index (source-provenance-index (map :id candidates))
+          candidate-ids    (non-closed-segment-candidate-ids candidates provenance-index)]
+      (when (seq candidate-ids)
+        (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids])))))
+
 (defn- run-summary
   [run-id]
   (let [measure-count (t2/count :model/UsageMetadataCandidate
@@ -399,6 +450,7 @@
       (doseq [batch (partition-all source-card-batch-size card-ids)]
         (persist-card-batch! run-id batch))
       (prune-ineligible-candidates! run-id)
+      (prune-non-closed-segment-candidates! run-id)
       (let [summary (run-summary run-id)]
         (t2/update! :model/UsageMetadataCandidateRun run-id
                     {:status :succeeded, :finished_at (mi/now), :summary summary})

@@ -17,6 +17,8 @@
 (def ^:private relation-for-segment @#'candidates/relation-for-segment)
 (def ^:private globally-eligible? @#'candidates/globally-eligible?)
 (def ^:private prune-ineligible-candidates! @#'candidates/prune-ineligible-candidates!)
+(def ^:private non-closed-segment-candidate-ids
+  @#'candidates/non-closed-segment-candidate-ids)
 
 (defn- candidate-row
   [run-id table-id]
@@ -150,6 +152,46 @@
     (prune-ineligible-candidates! (:id run))
     (is (not (t2/exists? :model/UsageMetadataCandidate :id (:id weak-candidate))))
     (is (t2/exists? :model/UsageMetadataCandidate :id (:id strong-candidate)))))
+
+(deftest closed-segment-pruning-uses-exact-provenance-test
+  (let [metadata-provider (lib-be/application-database-metadata-provider (mt/id))
+        base-query        (lib/query metadata-provider
+                                     (lib.metadata/table metadata-provider (mt/id :orders)))
+        subtotal          (lib.metadata/field metadata-provider (mt/id :orders :subtotal))
+        user-id           (lib.metadata/field metadata-provider (mt/id :orders :user_id))
+        product-id        (lib.metadata/field metadata-provider (mt/id :orders :product_id))
+        quantity          (lib.metadata/field metadata-provider (mt/id :orders :quantity))
+        atom-a            (lib/> subtotal 10)
+        atom-b            (lib/= user-id 1)
+        atom-c            (lib/= product-id 2)
+        atom-d            (lib/> quantity 3)
+        definition        (fn [& atoms]
+                            (lib/filter base-query
+                                        (if (next atoms)
+                                          (apply lib/and atoms)
+                                          (first atoms))))
+        table-id          (mt/id :orders)
+        candidates        [{:id 1, :table_id table-id, :definition (definition atom-a atom-b)}
+                           {:id 2, :table_id table-id, :definition (definition atom-a atom-b atom-c)}
+                           {:id 3, :table_id table-id, :definition (definition atom-a atom-b atom-d)}
+                           {:id 4, :table_id table-id, :definition (definition atom-a)}
+                           {:id 5, :table_id (mt/id :products), :definition (definition atom-a)}
+                           {:id 6, :table_id table-id, :definition (definition atom-a atom-c)}]
+        shared-provenance [{:card_id 10, :stage_numbers [0], :joined false}
+                           {:card_id 20, :stage_numbers [0], :joined false}]
+        different-provenance [{:card_id 10, :stage_numbers [0], :joined false}
+                              {:card_id 30, :stage_numbers [0], :joined false}]
+        different-stage-provenance [{:card_id 10, :stage_numbers [1], :joined false}
+                                    {:card_id 20, :stage_numbers [0], :joined false}]
+        provenance-index {1 shared-provenance
+                          2 shared-provenance
+                          3 shared-provenance
+                          4 different-provenance
+                          5 shared-provenance
+                          6 different-stage-provenance}]
+    (testing "only a proper subset with identical full provenance on the same table is pruned"
+      (is (= #{1}
+             (non-closed-segment-candidate-ids candidates provenance-index))))))
 
 (deftest structural-library-relations-test
   (let [metadata-provider (lib-be/application-database-metadata-provider (mt/id))
