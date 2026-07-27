@@ -95,13 +95,23 @@
   []
   (mbql5-definition))
 
+(defn- orders-query
+  "A Lib query over ORDERS — a runnable `:dataset_query` for card fixtures that only need the card
+   to have one."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
+
+(defn- orders-count-query
+  "[[orders-query]] plus the single count aggregation that makes it a valid metric."
+  []
+  (lib/aggregate (orders-query) (lib/count)))
+
 (defn- lib-count-definition
   "The same metric built through lib rather than by hand, so the tool is proven against a query
    that carries every `:lib/type` and uuid a lib-produced query does."
   []
-  (let [mp (mt/metadata-provider)]
-    (wire (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-              (lib/aggregate (lib/count))))))
+  (wire (orders-count-query)))
 
 (defn- portable-count-definition
   "The same metric in the portable external dialect — FK path source, named field refs — which is
@@ -402,7 +412,7 @@
     (doseq [card-type [:question :model]]
       (mt/with-temp [:model/Card {card-id :id} {:type          card-type
                                                 :name          "metric-test not a metric"
-                                                :dataset_query (mt/mbql-query orders)}]
+                                                :dataset_query (orders-query)}]
         (testing (name card-type)
           (let [msg (tool-error (call-tool! :crowberto write-scopes "metric_write"
                                             {:method "update" :id card-id :name "nope"}))]
@@ -424,7 +434,7 @@
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Card {metric-id :id} {:type          :metric
                                               :collection_id coll-id
-                                              :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
+                                              :dataset_query (orders-count-query)}]
     (perms/revoke-collection-permissions! (perms/all-users-group) coll-id)
     (let [norm (fn [msg] (str/replace msg #"\d+" "N"))]
       (testing "GHY-4146: an unreadable id and a nonexistent id must be indistinguishable — no existence oracle"
