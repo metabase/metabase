@@ -3,7 +3,7 @@
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.test :refer [deftest is]]
-   [compojure.core :as compojure :refer #_{:clj-kondo/ignore [:discouraged-var]} [GET]]
+   [compojure.core :as compojure :refer [GET]]
    [compojure.route :as route]
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.server.instance :as server.instance]

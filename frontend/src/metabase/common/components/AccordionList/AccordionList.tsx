@@ -370,14 +370,16 @@ export class AccordionList<
       }
     }
 
+    // TSection can't be constructed here and renderers only read optional Section fields
+    const syntheticSection: TSection = {} as TSection;
+
     if (globalSearch) {
       const isEmpty = rows.filter((row) => row.type === "item").length === 0;
 
       if (isSearching && isEmpty) {
         rows.unshift({
           type: "no-results",
-          // Unjustified type cast. FIXME
-          section: {} as TSection,
+          section: syntheticSection,
           sectionIndex: 0,
           isLastSection: false,
         });
@@ -385,11 +387,43 @@ export class AccordionList<
 
       rows.unshift({
         type: "search",
-        // Unjustified type cast. FIXME
-        section: {} as TSection,
+        section: syntheticSection,
         sectionIndex: 0,
         isLastSection: false,
       });
+    } else if (isSearching) {
+      /**
+       * Without this, a search that matches nothing filters out every type-less section
+       * and collapses the list, hiding the search input, so the query can't be cleared.
+       */
+      const hasItems = rows.some((row) => row.type === "item");
+      const hasSearchRow = rows.some((row) => row.type === "search");
+      const isListSearchable = sections.some(
+        (section, sectionIndex) =>
+          sectionIsSearchable(sectionIndex) &&
+          sectionIsExpanded(sectionIndex) &&
+          section.items &&
+          section.items.length > 0 &&
+          !section.loading,
+      );
+
+      if (isListSearchable && !hasItems) {
+        if (!hasSearchRow) {
+          rows.unshift({
+            type: "search",
+            section: syntheticSection,
+            sectionIndex: 0,
+            isLastSection: false,
+          });
+        }
+
+        rows.push({
+          type: "no-results",
+          section: syntheticSection,
+          sectionIndex: 0,
+          isLastSection: false,
+        });
+      }
     }
 
     return rows;

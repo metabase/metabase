@@ -1,3 +1,4 @@
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import * as Urls from "metabase/urls/data-apps";
 import type { DataApp } from "metabase-types/api";
 
@@ -134,4 +135,67 @@ export function openDataApp(slug: string) {
 
 export function dataAppIframe(displayName: string) {
   return getIframeBody(`iframe[title="${displayName}"]`);
+}
+
+const DATA_APP_DEV_ENV_PATH =
+  "e2e/embedding-sdk-host-apps/vite-6-data-app-host-app/.env.local";
+
+/**
+ * Provision auth for the data-app dev-server host app: create an API key and
+ * write the `.env.local` the SDK dev entry reads at startup, then wait for Vite
+ * to restart onto it. `clientHost` is the dev server origin.
+ */
+export function setUpDataAppDevServer(clientHost: string) {
+  const mbUrl = Cypress.config("baseUrl");
+  if (!mbUrl) {
+    throw new Error("baseUrl must be set for the data-app dev-server suite");
+  }
+
+  cy.request("POST", "/api/api-key", {
+    name: `data-app-dev-e2e-${Date.now()}`,
+    group_id: USER_GROUPS.ADMIN_GROUP,
+  }).then(({ body }) => {
+    cy.writeFile(
+      DATA_APP_DEV_ENV_PATH,
+      `DATA_APP_MB_URL=${mbUrl}\nDATA_APP_MB_API_KEY=${body.unmasked_key}\n`,
+    );
+  });
+
+  waitForDataAppDevServerEnv(clientHost, mbUrl);
+}
+
+export function tearDownDataAppDevServer() {
+  cy.exec(`rm -f ${DATA_APP_DEV_ENV_PATH}`);
+}
+
+// `DATA_APP_MB_URL` shows up in the served CSP once Vite has restarted onto the
+// new env — poll that before visiting.
+function waitForDataAppDevServerEnv(
+  clientHost: string,
+  mbUrl: string,
+  attempt = 0,
+) {
+  const MAX_ATTEMPTS = 40;
+  const origin = new URL(mbUrl).origin;
+
+  cy.request({
+    url: `${clientHost}/`,
+    headers: { Accept: "text/html" },
+    failOnStatusCode: false,
+  }).then((res) => {
+    const csp = String(res.headers["content-security-policy"] ?? "");
+
+    if (csp.includes(origin)) {
+      return;
+    }
+
+    if (attempt >= MAX_ATTEMPTS) {
+      throw new Error(
+        `Dev server never picked up DATA_APP_MB_URL (${origin}) in its CSP; last CSP: "${csp}"`,
+      );
+    }
+
+    cy.wait(1000);
+    waitForDataAppDevServerEnv(clientHost, mbUrl, attempt + 1);
+  });
 }

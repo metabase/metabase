@@ -32,7 +32,8 @@
                   [:query_id :string]]]
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]
-   [:title :string]])
+   [:title :string]
+   [:description :string]])
 
 (mu/defn ^{:tool-name "create_chart"
            :scope     scope/agent-viz-create}
@@ -40,8 +41,11 @@
   "Create a chart from a query.
 
   Provide a query_id in data_source, a chart_type in viz_settings, and a short,
-  human-friendly `title` shown above the chart."
-  [{:keys [data_source viz_settings title]} :- create-chart-schema]
+  human-friendly `title` shown above the chart. Also provide a concise one- or
+  two-sentence `description` explaining what the chart shows (the metric, the
+  grouping, and any notable filter); it is used as the saved question's
+  description."
+  [{:keys [data_source viz_settings title description]} :- create-chart-schema]
   (try
     (let [result     (create-chart-tools/create-chart
                       {:query-id      (get data_source :query_id)
@@ -51,13 +55,12 @@
       {:output            (format-chart-output structured)
        :structured-output structured
        :data-parts        [(streaming/viz-part
-                            {:inline?   (shared/inline-viz-capable?)
-                             :entity-id (:chart-id result)
-                             :query-id  (:query-id result)
-                             :query     (links/->legacy-mbql (:query result))
-                             :display   (:chart-type result)
-                             :title     title
-                             :link      (:results-url result)})]})
+                            {:entity-id   (:chart-id result)
+                             :query-id    (:query-id result)
+                             :query       (links/->legacy-mbql (:query result))
+                             :display     (:chart-type result)
+                             :title       title
+                             :description description})]})
     (catch Exception e
       (log/error e "Error creating chart")
       (if (:agent-error? (ex-data e))
@@ -69,7 +72,8 @@
    [:chart_id :string]
    [:new_viz_settings [:map {:closed true}
                        [:chart_type chart-type-enum]]]
-   [:title :string]])
+   [:title :string]
+   [:description :string]])
 
 (mu/defn ^{:tool-name "edit_chart"
            :scope     scope/agent-viz-edit}
@@ -77,8 +81,9 @@
   "Edit an existing chart's visualization type.
 
   Provide a new chart_type in new_viz_settings and a short, human-friendly `title`
-  shown above the chart."
-  [{:keys [chart_id new_viz_settings title]} :- edit-chart-schema]
+  shown above the chart. Also provide a concise `description` of what the chart
+  shows; it is used as the saved question's description."
+  [{:keys [chart_id new_viz_settings title description]} :- edit-chart-schema]
   (try
     (let [new-viz (keyword (get new_viz_settings :chart_type))
           chart (get (shared/current-charts-state) chart_id)
@@ -97,17 +102,13 @@
         (swap! shared/*memory-atom* memory/set-chart (:chart_id new-chart-data) new-chart-data))
       {:output            (format-chart-output structured)
        :structured-output structured
-       :data-parts        [(streaming/viz-part
-                            {:inline?   (shared/inline-viz-capable?)
-                             :entity-id (or (:chart_id new-chart-data) chart_id)
-                             :query-id  (or (:query_id chart) (str (random-uuid)))
-                             :query     (links/->legacy-mbql query)
-                             :display   new-viz
-                             :title     title
-                             :link      (links/pseudo-card->link
-                                         {:dataset_query query
-                                          :display new-viz
-                                          :displayIsLocked true})})]})
+       :data-parts [(streaming/viz-part
+                     {:entity-id   (or (:chart_id new-chart-data) chart_id)
+                      :query-id    (or (:query_id new-chart-data) (str (random-uuid)))
+                      :query       (links/->legacy-mbql query)
+                      :display     new-viz
+                      :title       title
+                      :description description})]})
     (catch Exception e
       (log/error e "Error editing chart")
       (if (:agent-error? (ex-data e))

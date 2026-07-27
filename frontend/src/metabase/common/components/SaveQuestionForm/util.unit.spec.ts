@@ -1,5 +1,5 @@
 import Question from "metabase-lib/v1/Question";
-import { createMockCard } from "metabase-types/api/mocks";
+import { createMockCard, createMockUser } from "metabase-types/api/mocks";
 
 import type { CreateQuestionOptions } from "./types";
 import {
@@ -7,6 +7,7 @@ import {
   getInitialValues,
   getPlaceholder,
   getTitle,
+  resolveCollectionReference,
 } from "./util";
 
 const mockCard = createMockCard({
@@ -134,6 +135,45 @@ describe("SaveQuestionForm utils", () => {
       const call = onCreateSpy.mock.calls[0][0];
 
       expect(call._card.collection_id).toBe(5);
+    });
+  });
+
+  describe("resolveCollectionReference", () => {
+    const tenantUser = createMockUser({
+      personal_collection_id: 10,
+      tenant_collection_id: 20,
+    });
+    const nonTenantUser = createMockUser({
+      personal_collection_id: 10,
+      tenant_collection_id: null,
+    });
+
+    it('resolves "personal" to the user\'s personal collection id', () => {
+      expect(resolveCollectionReference("personal", tenantUser)).toBe(10);
+    });
+
+    it('resolves "tenant" to the user\'s tenant collection id', () => {
+      expect(resolveCollectionReference("tenant", tenantUser)).toBe(20);
+    });
+
+    it('throws for "tenant" when the user is not a tenant member', () => {
+      expect(() => resolveCollectionReference("tenant", nonTenantUser)).toThrow(
+        "You must be a tenant member to access the tenant collection.",
+      );
+    });
+
+    it.each([5, "root", null, undefined] as const)(
+      "passes %p through unchanged",
+      (value) => {
+        expect(resolveCollectionReference(value, tenantUser)).toBe(value);
+      },
+    );
+
+    it("passes sentinels through unchanged while the user is not loaded", () => {
+      expect(resolveCollectionReference("tenant", null)).toBe("tenant");
+      expect(resolveCollectionReference("personal", undefined)).toBe(
+        "personal",
+      );
     });
   });
 

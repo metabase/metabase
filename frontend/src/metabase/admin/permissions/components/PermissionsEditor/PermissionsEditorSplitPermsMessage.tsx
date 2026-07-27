@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { getDocsUrl } from "metabase/selectors/settings";
-import { Alert, Anchor, Box, Icon, Text } from "metabase/ui";
+import { Alert, Anchor, Box, Icon } from "metabase/ui";
 
 export const PermissionsEditorSplitPermsMessage = () => {
   const dispatch = useDispatch();
@@ -30,20 +30,19 @@ export const PermissionsEditorSplitPermsMessage = () => {
       }}
     >
       <Alert
-        icon={<Icon name="info" size={16} />}
+        size="compact"
+        icon={<Icon name="info" />}
         color="core-brand"
         withCloseButton
         onClose={handleDismiss}
       >
-        <Text>
-          {t`Your data permissions may look different, but the access hasn’t changed.`}
-          <Anchor
-            ml="0.5rem"
-            fw="bold"
-            target="_blank"
-            href={docsUrl}
-          >{t`Learn more`}</Anchor>
-        </Text>
+        {t`Your data permissions may look different, but the access hasn’t changed.`}
+        <Anchor
+          ml="0.5rem"
+          fw="bold"
+          target="_blank"
+          href={docsUrl}
+        >{t`Learn more`}</Anchor>
       </Alert>
     </Box>
   );

@@ -260,7 +260,6 @@
 ;; `^:synchronized` because the `instance-workspace` setting is process-wide state
 ;; backed by the shared test app DB; running concurrently with other workspace-mode
 ;; tests would cross-pollute.
-#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (defn- with-redshift-describe-filter-disabled
   "Redshift test infra normally filters describe-database to only return tables
    prefixed by dataset name (`<dataset>_<name>`). Workspace e2e creates tables

@@ -122,7 +122,7 @@
   [row]
   {:conversation_id         (:id row)
    :created_at              (:created_at row)
-   :summary                 (:summary row)
+   :title                   (:title row)
    :message_count           (:message_count row)
    :user_message_count      (:user_message_count row)
    :assistant_message_count (:assistant_message_count row)
@@ -231,7 +231,7 @@
           hydrated     (t2/hydrate conversation :user)]
       {:conversation_id (:id conversation)
        :created_at      (:created_at conversation)
-       :summary         (:summary conversation)
+       :title           (:title conversation)
        :user            (trim-user (:user hydrated))
        :message_count   (count all-messages)
        :total_tokens    (transduce (keep :total_tokens) + 0 all-messages)

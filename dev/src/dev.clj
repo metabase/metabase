@@ -158,7 +158,6 @@
   (let [h2-dbs (t2/select :model/Database :engine :h2)
         in-memory? (fn [db] (some-> db :details :db (str/starts-with? "mem:")))
         can-connect? (fn [db]
-                       #_:clj-kondo/ignore
                        (binding [driver.settings/*allow-testing-h2-connections* true]
                          (try
                            (driver/can-connect? :h2 (:details db))

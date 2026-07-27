@@ -1,0 +1,18 @@
+.logsViewer {
+  height: 100%;
+  min-height: 0;
+  flex: 0 1 auto;
+  overflow: auto;
+  padding: var(--mantine-spacing-md);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.5rem;
+  background-color: var(--mb-color-background_page-secondary);
+  font-family: "Lucida Console", Monaco, monospace;
+  font-size: 0.825rem;
+  white-space: pre;
+}
+
+.logsViewer:focus-visible {
+  outline: 2px solid var(--mb-color-focus);
+  outline-offset: -2px;
+}

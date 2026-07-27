@@ -848,7 +848,6 @@
       (is (empty? (lib/fields query 2)))
       (is (= 25 (lib/current-limit query 2))))))
 
-#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:parallel test-query-comprehensive-all-features-test-with-fields
   (testing "test-query exercises all functionality in a comprehensive multi-stage query, with fields clause"
     (let [query (lib.query.test-spec/test-query

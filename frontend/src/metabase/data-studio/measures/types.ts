@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import type { Route } from "metabase/router";
 import type { Measure, Table } from "metabase-types/api";
 
 export type MeasureTabUrls = {
@@ -10,7 +9,6 @@ export type MeasureTabUrls = {
 };
 
 export type NewMeasurePageProps = {
-  route: Route;
   table: Table;
   breadcrumbs: ReactNode;
   getSuccessUrl: (measure: Measure) => string;
@@ -23,9 +21,7 @@ export type ExistingMeasurePageProps = {
   onRemove: () => Promise<void>;
 };
 
-export type MeasureDetailPageProps = ExistingMeasurePageProps & {
-  route: Route;
-};
+export type MeasureDetailPageProps = ExistingMeasurePageProps;
 
 export type MeasureRevisionHistoryPageProps = ExistingMeasurePageProps;
 

@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { t } from "ttag";
 
 import {
@@ -9,6 +8,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { DeleteAlertConfirmModal } from "metabase/notifications/modals/DeleteAlertConfirmModal";
+import type { Location } from "metabase/router";
 import type { Notification } from "metabase-types/api";
 
 import { getAlertId } from "../../selectors";

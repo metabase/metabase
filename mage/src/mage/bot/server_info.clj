@@ -25,7 +25,6 @@
   (let [env     (pr-env/load-pr-env)
         token   (pr-env/session-token)]
     (print-git-branch)
-
     (println "## Remote PR Environment")
     (println)
     (println "MODE=pr-env")
@@ -38,7 +37,6 @@
     (println "API calls via `./bin/mage -bot-api-call` transparently target BASE_URL")
     (println "using the cached session token — no code changes needed.")
     (println)
-
     (println "## REPL Access")
     (println)
     (println "NREPL_PORT=NONE")
@@ -51,7 +49,6 @@
     (println "will NOT work here. Send ONE form per connection via `nc`. Wrap")
     (println "multi-form work in `(do ...)`.")
     (println)
-
     (println "## Network")
     (println)
     (println "PR preview environments are only reachable via the Metabase Tailscale")
@@ -65,7 +62,6 @@
   (let [resolved     (bot-env/resolve-all)
         config-path  (get resolved "MB_CONFIG_FILE_PATH")]
     (print-git-branch)
-
     ;; MB_* environment variables section
     (println "## Environment Variables")
     (println)
@@ -75,7 +71,6 @@
           (println (str k "=" v)))
         (println "No MB_* variables found.")))
     (println)
-
     ;; Other useful variables
     (println "## Other Variables")
     (println)
@@ -86,7 +81,6 @@
                           v)]
           (println (str var-name "=" display-v)))))
     (println)
-
     ;; nREPL discovery — try clj-nrepl-eval first, fall back to reading
     ;; .nrepl-port directly (which Metabase's dev REPL writes on startup).
     (println "## nREPL Servers")
@@ -106,7 +100,6 @@
         port-from-file (println (str "NREPL_PORT=" port-from-file))
         :else          (println "NREPL_PORT=NONE")))
     (println)
-
     ;; Source info
     (println "## Sources")
     (println)
@@ -121,7 +114,6 @@
       (when has-lein?
         (println "Also loaded: .lein-env")))
     (println)
-
     ;; Config file section
     (println "## Instance Configuration")
     (println)
@@ -137,7 +129,9 @@
             (println "The instance may not have pre-configured users. Check /api/setup to see if initial setup is needed."))))
       ;; MB_CONFIG_FILE_PATH not set — look for config files in well-known locations
       (let [candidates [(str u/project-root-directory "/metabase.config.yml")
-                        (str u/project-root-directory "/local/config.yml")]
+                        (str u/project-root-directory "/local/config.yml")
+                        (str u/project-root-directory "/metabase.config.yaml")
+                        (str u/project-root-directory "/local/config.yaml")]
             found      (first (filter #(.exists (java.io.File. ^String %)) candidates))]
         (if found
           (do

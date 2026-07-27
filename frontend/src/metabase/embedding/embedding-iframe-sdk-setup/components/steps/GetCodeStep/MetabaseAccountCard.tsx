@@ -64,28 +64,21 @@ export const MetabaseAccountCard = () => {
 
         {!isSsoEnabledAndConfigured && !!settings.useExistingUserSession && (
           <Alert
-            icon={
-              <Icon
-                name="warning_triangle_filled"
-                c="text-secondary"
-                size={16}
-              />
-            }
+            size="compact"
+            icon={<Icon name="warning_triangle_filled" />}
             color="warning"
           >
-            <Text size="md" lh="lg">
-              {jt`The code below will only work for local testing. To get production ready code, configure ${(
-                <Anchor
-                  key="configure-sso"
-                  href={setupSsoUrl}
-                  target="_blank"
-                  size="md"
-                  lh="lg"
-                >
-                  {t`JWT SSO or SAML`}
-                </Anchor>
-              )}.`}
-            </Text>
+            {jt`The code below will only work for local testing. To get production ready code, configure ${(
+              <Anchor
+                key="configure-sso"
+                href={setupSsoUrl}
+                target="_blank"
+                size="md"
+                lh="lg"
+              >
+                {t`JWT SSO or SAML`}
+              </Anchor>
+            )}.`}
           </Alert>
         )}
       </Stack>

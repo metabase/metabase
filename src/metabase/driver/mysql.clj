@@ -1348,7 +1348,7 @@
            (try
              (.executeBatch ^Statement stmt)
              (catch Throwable t
-               (throw (driver.u/scrub-exceptions t [password escaped-password]))))))))
+               (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password escaped-password]))))))))
     nil))
 
 (defmethod driver/destroy-workspace-isolation! :mysql
@@ -1365,7 +1365,10 @@
                        (mysql-user-exists? {:connection conn} username)
                        (conj (format "DROP USER IF EXISTS %s@'%%'" quoted-user)))]
            (.addBatch ^Statement stmt ^String sql))
-         (.executeBatch ^Statement stmt))))))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/batch-exception t)))))))))
 
 (defn- grant-workspace-read-access-sqls
   "Build SQL statements that grant `username` SELECT on all tables in each database
@@ -1395,7 +1398,10 @@
        (with-open [^Statement stmt (.createStatement conn)]
          (doseq [sql sqls]
            (.addBatch ^Statement stmt ^String sql))
-         (.executeBatch ^Statement stmt))))))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/batch-exception t)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Indexes (Index Manager)                                               |

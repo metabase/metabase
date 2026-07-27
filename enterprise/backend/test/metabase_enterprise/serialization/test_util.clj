@@ -49,7 +49,6 @@
   "Wraps with-temp*, but binding `*allow-deleting-personal-collections*` to true so that temporary personal collections
   can still be deleted."
   [model-bindings & body]
-  #_{:clj-kondo/ignore [:discouraged-var]}
   `(binding [collection/*allow-deleting-personal-collections* true]
      (mt/with-temp ~model-bindings ~@body)))
 

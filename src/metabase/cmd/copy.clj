@@ -411,7 +411,6 @@
 ;; Update the sequence nextvals.
 (defmethod update-sequence-values! :postgres
   [_db-type data-source]
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (jdbc/with-db-transaction [target-db-conn {:datasource data-source}]
     (step (trs "Setting Postgres sequence ids to proper values...")
       (doseq [model entities
@@ -429,7 +428,6 @@
 
 (defmethod update-sequence-values! :h2
   [_db-type data-source]
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (jdbc/with-db-transaction [target-db-conn {:datasource data-source}]
     (step (trs "Setting H2 sequence ids to proper values...")
       (doseq [e     entities
@@ -465,7 +463,6 @@
   (step (trs "Clearing default entries created by Liquibase migrations...")
     (clear-existing-rows! target-db-type target-data-source))
   ;; create a transaction and load the data.
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (jdbc/with-db-transaction [target-conn-spec {:datasource target-data-source}]
     ;; transaction should be set as rollback-only until it completes. Only then should we disable rollback-only so the
     ;; transaction will commit (i.e., only commit if the whole thing succeeds)

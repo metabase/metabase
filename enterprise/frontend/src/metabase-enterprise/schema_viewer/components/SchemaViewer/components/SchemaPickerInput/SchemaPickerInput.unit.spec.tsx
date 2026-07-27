@@ -74,8 +74,10 @@ function setup({ databaseId, schema }: SetupOpts) {
 
   const onSchemaChange = jest.fn();
   const { history } = renderWithProviders(
+    // Catch-all so the picker stays mounted after it navigates to select a
+    // schema; the test reopens it and checks the database list.
     <Route
-      path="/"
+      path="*"
       element={
         <SchemaPickerInput
           databaseId={databaseId}

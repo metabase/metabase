@@ -1,0 +1,10 @@
+.errorBox {
+  padding: 0.5rem 1rem;
+  border-radius: var(--mantine-radius-sm);
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background_page-secondary);
+  font-family: var(--mantine-font-family-monospace);
+  font-weight: 400;
+  font-size: var(--mantine-font-size-xs);
+  line-height: 1.25rem;
+}
