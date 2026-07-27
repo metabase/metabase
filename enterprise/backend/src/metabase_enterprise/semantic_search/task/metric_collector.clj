@@ -9,6 +9,7 @@
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.app-db.core :as mdb]
    [metabase.search.index-health :as search.index-health]
    [metabase.task.core :as task]
@@ -24,10 +25,6 @@
 
 (def ^:private collector-job-key (jobs/key "metabase.task.semantic-metric-collector.job"))
 (def ^:private collector-trigger-key (triggers/key "metabase.task.semantic-metric-collector.trigger"))
-(def ^:private pgvector-readiness-job-key
-  (jobs/key "metabase.task.semantic-pgvector-readiness-metric-collector.job"))
-(def ^:private pgvector-readiness-trigger-key
-  (triggers/key "metabase.task.semantic-pgvector-readiness-metric-collector.trigger"))
 
 (defn- probe-connected?
   [mode]
@@ -65,6 +62,54 @@
       (analytics/set-gauge! :metabase-search/pgvector-store-last-success-timestamp-seconds
                             {:storage storage}
                             (.getEpochSecond (Instant/now))))))
+
+(defonce ^:private pgvector-readiness-metrics-initialized? (atom false))
+(defonce ^:private pgvector-readiness-refresh-running? (atom false))
+
+(defn- initialize-pgvector-readiness-metrics!
+  []
+  (when (compare-and-set! pgvector-readiness-metrics-initialized? false true)
+    ;; Publish explicit zeroes before the first asynchronous probe so every process exposes both series on
+    ;; its first scrape. A configured external store is already known to be available without touching it;
+    ;; app-db availability is discovered by the background probe.
+    (doseq [storage ["external" "app-db"]]
+      (analytics/set-gauge! :metabase-search/pgvector-store-available
+                            {:storage storage}
+                            (if (and (= storage "external")
+                                     (semantic.datasource/dedicated-url-configured?))
+                              1
+                              0))
+      (analytics/set-gauge! :metabase-search/pgvector-store-connected {:storage storage} 0)
+      (analytics/set-gauge! :metabase-search/pgvector-store-last-success-timestamp-seconds {:storage storage} 0))))
+
+(defn- refresh-pgvector-readiness-metrics!
+  []
+  (try
+    (collect-pgvector-readiness-metrics!)
+    (finally
+      (reset! pgvector-readiness-refresh-running? false))))
+
+(defn- submit-pgvector-readiness-refresh!
+  [f]
+  (future-call f))
+
+(defn- request-pgvector-readiness-refresh!
+  []
+  (initialize-pgvector-readiness-metrics!)
+  (when (compare-and-set! pgvector-readiness-refresh-running? false true)
+    (try
+      (submit-pgvector-readiness-refresh! refresh-pgvector-readiness-metrics!)
+      (catch Exception e
+        (reset! pgvector-readiness-refresh-running? false)
+        (log/error e "Could not schedule pgvector readiness metric refresh"))))
+  nil)
+
+;; Prometheus scrapes every Metabase process, whereas a Quartz job runs on only one member of a cluster. Start
+;; a local, single-flight background probe from the scrape path so every process refreshes its own gauge series
+;; without putting database connection latency on the synchronous scrape.
+(defmethod analytics.core/pull-collector ::pgvector-readiness-gauges [_]
+  {:min-interval-s (* 15 60)
+   :f              request-pgvector-readiness-refresh!})
 
 (defn- row-count
   [pgvector table-name-str]
@@ -130,14 +175,7 @@
   SemanticMetricCollector [_ctx]
   (collect-metrics!))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Collect pgvector store availability and connection-health metrics"}
-  PgvectorReadinessMetricCollector [_ctx]
-  (collect-pgvector-readiness-metrics!))
-
 (def ^:private job-interval-ms (* 10 60 1000))
-(def ^:private pgvector-readiness-job-interval-ms (* 15 60 1000))
-(def ^:private pgvector-readiness-startup-jitter-ms (* 60 1000))
 
 (defmethod task/init! ::SemanticMetricCollector
   [_]
@@ -163,31 +201,3 @@
     ;; Quartz's job store is persistent, so a collector scheduled by an earlier deploy would otherwise
     ;; keep firing (as a no-op) on an instance whose configuration went away.
     (task/delete-task! collector-job-key collector-trigger-key)))
-
-(defmethod task/init! ::PgvectorReadinessMetricCollector
-  [_]
-  ;; Publish explicit zeroes before the first asynchronous probe so all fleet members expose both series.
-  (doseq [storage ["external" "app-db"]]
-    (analytics/set-gauge! :metabase-search/pgvector-store-available
-                          {:storage storage}
-                          (if (and (= storage "external")
-                                   (semantic.datasource/dedicated-url-configured?))
-                            1
-                            0))
-    (analytics/set-gauge! :metabase-search/pgvector-store-connected {:storage storage} 0)
-    (analytics/set-gauge! :metabase-search/pgvector-store-last-success-timestamp-seconds {:storage storage} 0))
-  (let [job (jobs/build
-             (jobs/of-type PgvectorReadinessMetricCollector)
-             (jobs/with-identity pgvector-readiness-job-key))
-        trigger (triggers/build
-                 (triggers/with-identity pgvector-readiness-trigger-key)
-                 ;; Spread the first probe over one minute. Since the simple schedule repeats relative to
-                 ;; that first firing, the whole fleet remains staggered on subsequent 15-minute probes.
-                 (triggers/start-at
-                  (Date/from (.plusMillis (Instant/now)
-                                          (rand-int pgvector-readiness-startup-jitter-ms))))
-                 (triggers/with-schedule
-                  (simple/schedule
-                   (simple/with-interval-in-milliseconds pgvector-readiness-job-interval-ms)
-                   (simple/repeat-forever))))]
-    (task/schedule-task! job trigger)))

@@ -13,6 +13,8 @@
    [metabase-enterprise.semantic-search.task.metric-collector :as semantic.task.collector]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase-enterprise.semantic-search.util :as semantic.u]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.app-db.core :as mdb]
    [metabase.search.index-health :as search.index-health]
    [metabase.test :as mt]
@@ -81,6 +83,35 @@
                                  {:storage "app-db"})))
       (is (pos? (mt/metric-value system :metabase-search/pgvector-store-last-success-timestamp-seconds
                                  {:storage "app-db"}))))))
+
+(deftest ^:sequential pull-collector-refreshes-pgvector-metrics-on-each-instance-test
+  (let [initialized? @#'semantic.task.collector/pgvector-readiness-metrics-initialized?
+        running?     @#'semantic.task.collector/pgvector-readiness-refresh-running?
+        collector    (analytics.core/pull-collector
+                      :metabase-enterprise.semantic-search.task.metric-collector/pgvector-readiness-gauges)
+        gauge-calls  (atom [])
+        refreshes    (atom 0)
+        submitted    (atom [])]
+    (try
+      (reset! initialized? false)
+      (reset! running? false)
+      (mt/with-dynamic-fn-redefs
+        [semantic.db.datasource/dedicated-url-configured? (constantly true)
+         analytics/set-gauge!                            (fn [& args] (swap! gauge-calls conj (vec args)))
+         semantic.task.collector/collect-pgvector-readiness-metrics! #(swap! refreshes inc)
+         semantic.task.collector/submit-pgvector-readiness-refresh!  #(swap! submitted conj %)]
+        ((:f collector))
+        ((:f collector))
+        (is (= 6 (count @gauge-calls)) "the first scrape initializes both storage series")
+        (is (= 1 (count @submitted)) "overlapping scrapes share one local refresh")
+        (is (zero? @refreshes) "the database probe does not run on the synchronous scrape path")
+        ((first @submitted)))
+      (is (= 900 (:min-interval-s collector)))
+      (is (= 1 @refreshes))
+      (is (false? @running?))
+      (finally
+        (reset! initialized? false)
+        (reset! running? false)))))
 
 (defn- create-test-tables!
   [pgvector index-metadata model]
