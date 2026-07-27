@@ -7,7 +7,7 @@ import {
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { QueryColumnInfo } from "metabase/common/components/MetadataInfo/ColumnInfo";
+import { QueryColumnInfo } from "metabase/common/components/MetadataInfo/QueryColumnInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { getColumnQueries } from "metabase/querying/common/utils";
 import { useSelector } from "metabase/redux";

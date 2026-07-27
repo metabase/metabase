@@ -5,7 +5,7 @@ import { AccordionList } from "metabase/common/components/AccordionList";
 import {
   HoverParent,
   QueryColumnInfoIcon,
-} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+} from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
 import CS from "metabase/css/core/index.css";
 import { getColumnQueries } from "metabase/querying/common/utils";
 import { useSelector } from "metabase/redux";

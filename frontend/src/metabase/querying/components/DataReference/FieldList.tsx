@@ -4,7 +4,7 @@ import { msgid, ngettext } from "ttag";
 import {
   HoverParent,
   QueryColumnInfoIcon,
-} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+} from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
 import { getColumnQueries } from "metabase/querying/common/utils";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";

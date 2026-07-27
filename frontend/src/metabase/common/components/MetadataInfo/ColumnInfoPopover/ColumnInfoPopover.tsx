@@ -1,7 +1,7 @@
-import type { QueryColumnInfoProps } from "../ColumnInfo";
-import { QueryColumnInfo } from "../ColumnInfo";
 import type { PopoverProps } from "../Popover";
 import { Popover } from "../Popover";
+import type { QueryColumnInfoProps } from "../QueryColumnInfo";
+import { QueryColumnInfo } from "../QueryColumnInfo";
 
 export type QueryColumnInfoPopoverProps = QueryColumnInfoProps &
   Omit<PopoverProps, "content">;
