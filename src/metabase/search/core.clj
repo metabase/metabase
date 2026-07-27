@@ -265,17 +265,22 @@
                      [search-model ids])))
            (cascading-selectors instances)))))
 
-(defn purge-vanished-documents!
-  "Remove index entries for [[cascading-documents]] that no longer exist.
+(defn reconcile-cascading-documents!
+  "Settle the documents [[cascading-documents]] enumerated, now that the statement has run.
   Survival is decided per document, not by the relationship that found it: a row whose foreign key was nulled
-  rather than deleted still produces a document and keeps its entry."
+  rather than deleted still produces a document. Those survivors are re-derived — the relationship that
+  changed is usually indexed on them — and only the documents that stopped resolving are removed."
   [cascading]
   (when (and (seq cascading) (supports-index?))
     (doseq [[search-model ids] cascading
-            :let [gone (set/difference ids (search.ingestion/existing-doc-ids search-model ids))]
-            :when (seq gone)
-            e (search.engine/active-engines)]
-      (search.engine/delete! e search-model (into #{} (map str) gone)))))
+            :let [alive (search.ingestion/existing-doc-ids search-model ids)
+                  gone  (set/difference ids alive)]]
+      (when (seq alive)
+        (search.ingestion/ingest-maybe-async!
+         #{[search-model (search.ingestion/doc-id-selector search-model alive)]}))
+      (when (seq gone)
+        (doseq [e (search.engine/active-engines)]
+          (search.engine/delete! e search-model (into #{} (map str) gone)))))))
 
 (defn delete!
   "Given a model and a list of model's ids, remove corresponding search entries."

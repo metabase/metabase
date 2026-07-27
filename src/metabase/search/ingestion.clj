@@ -333,7 +333,11 @@
               [model id]
               nil))
 
-       :and (first (keep (partial extract-model-and-id model) values))))))
+       :and (first (keep (partial extract-model-and-id model) values))
+
+       ;; Any other operator names rows without naming a document, so there is nothing to purge. Returning nil
+       ;; rather than throwing lets callers enqueue re-derivations under selectors like `:in`.
+       nil))))
 
 (defn purgeable-selector?
   "Whether a hook's where-clause names a document [[bulk-ingest!]] could purge if it stopped resolving.
@@ -382,13 +386,18 @@
                   search-model max-enumerated-documents)
       (set ids))))
 
+(defn doc-id-selector
+  "A where-clause matching `search-model`'s documents by their own ids, whatever their relationships now are."
+  [search-model ids]
+  [:in (doc-id-expression (doc-id-select-item search-model)) (vec ids)])
+
 (defn existing-doc-ids
   "Which of `ids` `search-model` still produces a document for.
   Asks about the documents themselves rather than the relationship that found them: a row whose foreign key was
   nulled rather than deleted still has a document, and must not be purged."
   [search-model ids]
   (when (seq ids)
-    (doc-ids search-model [:in (doc-id-expression (doc-id-select-item search-model)) (vec ids)])))
+    (doc-ids search-model (doc-id-selector search-model ids))))
 
 (defn bulk-ingest!
   "Process the given search model updates."

@@ -133,11 +133,19 @@
                      :model/Action {action-id :id}  {:name "Reparented Action" :model_id from-card :type :query}]
         (let [cascading (search/cascading-documents [(t2/select-one :model/Card from-card)])]
           (is (contains? (set (keys cascading)) "action"))
-          ;; The action leaves the captured selector alive rather than dead, the shape a SET NULL foreign key
-          ;; produces. Deciding survival by selector rather than by document would delete it here.
-          (t2/update! :model/Action action-id {:model_id to-card})
-          (search/purge-vanished-documents! cascading)
-          (is (= 1 (t2/count (search.index/active-table) :model "action" :model_id (str action-id)))))))))
+          ;; Raw query, not t2/update!: a database-level SET NULL fires no toucan hook, so this has to leave the
+          ;; action outside the captured selector without any re-indexing of its own.
+          (t2/query {:update :action, :set {:model_id to-card}, :where [:= :id action-id]})
+          (search/reconcile-cascading-documents! cascading)
+          (testing "the document survived the reconcile"
+            (is (= 1 (t2/count (search.index/active-table) :model "action" :model_id (str action-id)))))
+          (testing "and was re-derived, so the relationship that moved is not left stale in the index"
+            (let [calls (atom [])]
+              (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
+                                          (fn [updates] (swap! calls conj updates))]
+                (search/reconcile-cascading-documents! cascading))
+              (is (= [#{["action" (search.ingestion/doc-id-selector "action" #{action-id})]}]
+                     (mapv set @calls))))))))))
 
 (deftest cascade-enumeration-ceiling-test
   (testing "a fan-out past the ceiling is skipped rather than materialized"
