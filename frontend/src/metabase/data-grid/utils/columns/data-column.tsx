@@ -108,7 +108,7 @@ export const getDataColumn = <TRow, TValue>(
   const columnDefinition: ColumnDef<TRow, TValue> = {
     accessorFn,
     id,
-    sortingFn,
+    ...(sortingFn != null ? { sortingFn } : {}),
     header:
       typeof header !== "string"
         ? memo(header ?? getDefaultHeaderTemplate(columnOptions))

@@ -253,7 +253,7 @@ describe("dashboard client-side sorting", () => {
     mockGetBoundingClientRect();
   });
 
-  it("sorts null and text values consistently in small datasets (#67756)", () => {
+  it("sorts numeric, null, and text values in small datasets (#67756)", () => {
     const series = [
       createMockSingleSeries(
         { display: "table" },
@@ -284,6 +284,19 @@ describe("dashboard client-side sorting", () => {
     renderWithProviders(
       <Visualization rawSeries={series} isDashboard width={600} height={400} />,
     );
+
+    const idHeader = screen.getByRole("columnheader", { name: "id" });
+    const idClickTarget = within(idHeader).getByTestId("cell-data");
+
+    fireEvent.mouseDown(idClickTarget, { clientX: 0, clientY: 0 });
+    fireEvent.mouseUp(idClickTarget, { clientX: 0, clientY: 0 });
+
+    expect(
+      screen
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => within(row).getAllByRole("gridcell")[0].textContent),
+    ).toEqual(["8", "7", "6", "5", "4", "3", "2", "1"]);
 
     const nameHeader = screen.getByRole("columnheader", { name: "name" });
     const clickTarget = within(nameHeader).getByTestId("cell-data");
