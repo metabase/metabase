@@ -78,14 +78,20 @@
    :is_data_analyst false})
 
 (defn user-local-settings
-  "Returns the user's settings (defaulting to an empty map) or `nil` if the user/user-id isn't set"
+  "Returns the user's settings (defaulting to an empty map) or `nil` if the user/user-id isn't set.
+
+  The `settings` column is encrypted JSON; if it can't be decrypted or parsed (e.g. a stale
+  `MB_ENCRYPTION_SECRET_KEY`), the column transform falls back to returning the raw, un-decoded
+  string instead of throwing (see `metabase.models.interface/encrypted-json-out`). Guard against
+  that here so callers always get a map instead of later crashing on e.g. `(assoc a-string ...)`."
   [user-or-user-id]
   (when user-or-user-id
-    (or
-     (if (integer? user-or-user-id)
-       (:settings (t2/select-one [:model/User :settings] :id user-or-user-id))
-       (:settings user-or-user-id))
-     {})))
+    (let [settings (if (integer? user-or-user-id)
+                     (:settings (t2/select-one [:model/User :settings] :id user-or-user-id))
+                     (:settings user-or-user-id))]
+      (if (map? settings)
+        settings
+        {}))))
 
 ;;; -------------------------------------------------- Validation Helpers --------------------------------------------------
 
