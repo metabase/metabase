@@ -79,6 +79,8 @@
 ;; Collection
 (api-scope/defscope agent-collection-create "agent:collection:create"
   (deferred-tru "Create collections"))
+(api-scope/defscope agent-collection-update "agent:collection:update"
+  (deferred-tru "Update collections"))
 
 ;; SQL execution (MCP execute_sql tool, distinct from execute_query)
 (api-scope/defscope agent-sql-execute "agent:sql:execute"

@@ -592,7 +592,8 @@
            metabase.collections.init
            metabase.collections.models.collection
            metabase.collections.models.collection.root
-           metabase.collections.schema}
+           metabase.collections.schema
+           metabase.collections.update}
    :uses #{api
            api-keys
            app-db
@@ -601,6 +602,7 @@
            events
            lib-be
            models
+           notification
            permissions
            premium-features
            queries
@@ -637,7 +639,6 @@
            eid-translation
            events
            models
-           notification
            permissions
            premium-features
            queries
