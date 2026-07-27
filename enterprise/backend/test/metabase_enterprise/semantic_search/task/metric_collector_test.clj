@@ -37,43 +37,46 @@
 (deftest pgvector-readiness-metrics-test
   (mt/with-prometheus-system! [_ system]
     (testing "an instance without any pgvector backend is explicitly not ready"
-      (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly false)
-                                  semantic.db.datasource/pgvector-mode (constantly :unavailable)
-                                  semantic.db.datasource/probe-dedicated-connection!
-                                  (fn [] (throw (ex-info "should not connect" {})))]
+      (mt/with-dynamic-fn-redefs
+        [semantic.db.datasource/dedicated-url-configured?   (constantly false)
+         semantic.db.datasource/pgvector-mode               (constantly :unavailable)
+         semantic.db.datasource/probe-dedicated-connection! #(throw (ex-info "should not connect" {}))]
         (@#'semantic.task.collector/collect-pgvector-readiness-metrics!)
         (is (=? {"external" {:available zero?, :connected zero?}
                  "app-db"   {:available zero?, :connected zero?}}
                 (readiness-gauges system)))))
     (testing "a connected external store is available and healthy"
-      (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly true)
-                                  semantic.db.datasource/probe-dedicated-connection! (constantly {:one 1})]
+      (mt/with-dynamic-fn-redefs
+        [semantic.db.datasource/dedicated-url-configured?   (constantly true)
+         semantic.db.datasource/probe-dedicated-connection! (constantly {:one 1})]
         (@#'semantic.task.collector/collect-pgvector-readiness-metrics!))
       (is (=? {"external" {:available #(== 1 %), :connected #(== 1 %), :last-success pos?}
                "app-db"   {:available zero?, :connected zero?}}
               (readiness-gauges system)))
       (let [last-success (get-in (readiness-gauges system) ["external" :last-success])]
         (testing "a later failure clears connected but preserves the last-success timestamp"
-          (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly true)
-                                      semantic.db.datasource/probe-dedicated-connection!
-                                      (fn [] (throw (ex-info "connection failed" {})))]
+          (mt/with-dynamic-fn-redefs
+            [semantic.db.datasource/dedicated-url-configured?   (constantly true)
+             semantic.db.datasource/probe-dedicated-connection! #(throw (ex-info "probe failed" {}))]
             (@#'semantic.task.collector/collect-pgvector-readiness-metrics!))
           (is (=? {"external" {:available #(== 1 %), :connected zero?, :last-success #(== last-success %)}}
                   (readiness-gauges system))))))
     (testing "a connected app-db pgvector store is available and healthy"
-      (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly false)
-                                  semantic.u/semantic-search-configured? (constantly true)
-                                  semantic.db.datasource/pgvector-mode (constantly :app-db)
-                                  semantic.db.datasource/probe-app-db-store! (constantly true)]
+      (mt/with-dynamic-fn-redefs
+        [semantic.db.datasource/dedicated-url-configured? (constantly false)
+         semantic.u/semantic-search-configured?           (constantly true)
+         semantic.db.datasource/pgvector-mode             (constantly :app-db)
+         semantic.db.datasource/probe-app-db-store!       (constantly true)]
         (@#'semantic.task.collector/collect-pgvector-readiness-metrics!))
       (is (=? {"external" {:available zero?, :connected zero?}
                "app-db"   {:available #(== 1 %), :connected #(== 1 %), :last-success pos?}}
               (readiness-gauges system))))
     (testing "an app-db store whose vector extension went away reads available but disconnected"
-      (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly false)
-                                  semantic.u/semantic-search-configured? (constantly true)
-                                  semantic.db.datasource/pgvector-mode (constantly :app-db)
-                                  semantic.db.datasource/probe-app-db-store! (constantly false)]
+      (mt/with-dynamic-fn-redefs
+        [semantic.db.datasource/dedicated-url-configured? (constantly false)
+         semantic.u/semantic-search-configured?           (constantly true)
+         semantic.db.datasource/pgvector-mode             (constantly :app-db)
+         semantic.db.datasource/probe-app-db-store!       (constantly false)]
         (@#'semantic.task.collector/collect-pgvector-readiness-metrics!))
       (is (=? {"app-db" {:available #(== 1 %), :connected zero?}}
               (readiness-gauges system))))))
@@ -82,9 +85,9 @@
   (testing "an unlicensed instance never resolves pgvector-mode, whose app-db arm probes the app db"
     (mt/with-premium-features #{}
       (mt/with-prometheus-system! [_ system]
-        (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly false)
-                                    semantic.db.datasource/pgvector-mode
-                                    (fn [] (throw (ex-info "must not probe the app db" {})))]
+        (mt/with-dynamic-fn-redefs
+          [semantic.db.datasource/dedicated-url-configured? (constantly false)
+           semantic.db.datasource/pgvector-mode             #(throw (ex-info "must not probe" {}))]
           (@#'semantic.task.collector/collect-pgvector-readiness-metrics!)
           (is (=? {"external" {:available zero?, :connected zero?}
                    "app-db"   {:available zero?, :connected zero?}}
@@ -115,8 +118,8 @@
       (reset! initialized? false)
       (reset! running? false)
       (mt/with-dynamic-fn-redefs
-        [semantic.db.datasource/dedicated-url-configured? (constantly true)
-         analytics/set-gauge!                            (fn [& args] (swap! gauge-calls conj (vec args)))
+        [semantic.db.datasource/dedicated-url-configured?            (constantly true)
+         analytics/set-gauge!                                        #(swap! gauge-calls conj (vec %&))
          semantic.task.collector/collect-pgvector-readiness-metrics! #(swap! refreshes inc)
          semantic.task.collector/submit-pgvector-readiness-refresh!  #(swap! submitted conj %)]
         ((:f collector))
@@ -184,8 +187,8 @@
 (deftest shared-index-metrics-survive-semantic-collector-failure-test
   (let [refreshes (atom 0)]
     (mt/with-dynamic-fn-redefs
-      [semantic.u/semantic-search-active?               (constantly true)
-       semantic.env/get-pgvector-datasource!            #(throw (ex-info "pgvector unavailable" {}))
+      [semantic.u/semantic-search-active?                (constantly true)
+       semantic.env/get-pgvector-datasource!             #(throw (ex-info "pgvector unavailable" {}))
        search.index-health/refresh-search-index-metrics! #(swap! refreshes inc)]
       (@#'semantic.task.collector/collect-metrics!)
       (is (= 1 @refreshes)))))
@@ -193,8 +196,8 @@
 (deftest interrupted-semantic-collector-skips-shared-refresh-test
   (let [refreshes (atom 0)]
     (mt/with-dynamic-fn-redefs
-      [semantic.u/semantic-search-active?               (constantly true)
-       semantic.env/get-pgvector-datasource!            #(throw (InterruptedException.))
+      [semantic.u/semantic-search-active?                (constantly true)
+       semantic.env/get-pgvector-datasource!             #(throw (InterruptedException.))
        search.index-health/refresh-search-index-metrics! #(swap! refreshes inc)]
       (is (thrown? InterruptedException (@#'semantic.task.collector/collect-metrics!)))
       (is (zero? @refreshes)))))
@@ -205,13 +208,14 @@
       (let [pgvector       (semantic.env/get-pgvector-datasource!)
             index-metadata (semantic.tu/unique-index-metadata)
             model semantic.tu/mock-embedding-model]
-        (mt/with-dynamic-fn-redefs [semantic.env/get-index-metadata (fn [] index-metadata)
-                                    semantic.env/get-configured-embedding-model (fn [] model)
-                                    ;; supported? requires a configured embedder for engine selection
-                                    semantic.embedding/get-configured-model (fn [] model)
-                                    ;; collect-metrics! only runs when semantic is the active engine; pin it so a
-                                    ;; sibling test leaking the search-engine setting can't make this read 0
-                                    semantic.u/semantic-search-active? (fn [] true)]
+        (mt/with-dynamic-fn-redefs
+          [semantic.env/get-index-metadata             (constantly index-metadata)
+           semantic.env/get-configured-embedding-model (constantly model)
+           ;; supported? requires a configured embedder for engine selection
+           semantic.embedding/get-configured-model     (constantly model)
+           ;; collect-metrics! only runs when semantic is the active engine; pin it so a sibling test
+           ;; leaking the search-engine setting can't make this read 0
+           semantic.u/semantic-search-active?          (constantly true)]
           (testing "Missing tables are handled gracefully"
             (let [result (try
                            (@#'semantic.task.collector/collect-metrics!)
