@@ -65,7 +65,8 @@
   (let [calls (atom [])
         live  (atom {})]
     (with-redefs [index-health/live-gauge-series live]
-      (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+      (mt/with-dynamic-fn-redefs [analytics/set-gauge!     (fn [& args] (swap! calls conj (vec args)))
+                                  analytics/remove-series! (fn [& args] (swap! calls conj (into [:removed] args)))]
         (testing "a collector result updates the gauge and returns the health row"
           (is (= {:health 75 :message "ok"}
                  (#'index-health/run-measure! {:gauge-key :metabase-search/index-coverage-ratio
@@ -74,15 +75,13 @@
                                                                        :health  75
                                                                        :message "ok"})})))
           (is (= [[:metabase-search/index-coverage-ratio {:index "semantic"} 0.75]] @calls)))
-        (testing "an inapplicable collector clears a live gauge and returns nil"
+        (testing "an inapplicable collector stops exporting a live gauge and returns nil"
           (reset! calls [])
           (is (nil? (#'index-health/run-measure! {:gauge-key :metabase-search/index-coverage-ratio
                                                   :index    :semantic
                                                   :collect   (constantly nil)})))
-          (is (= 1 (count @calls)))
-          (is (= [:metabase-search/index-coverage-ratio {:index "semantic"}] (butlast (first @calls))))
-          (is (Double/isNaN ^double (last (first @calls)))))
-        (testing "a throwing collector clears the gauge and returns a degraded row"
+          (is (= [[:removed :metabase-search/index-coverage-ratio {:index "semantic"}]] @calls)))
+        (testing "a throwing collector stops exporting the gauge and returns a degraded row"
           (#'index-health/run-measure! {:gauge-key :metabase-search/index-coverage-ratio
                                         :index    :throwing-collector-test
                                         :collect   (constantly {:value 0.9 :health 90 :message "was fine"})})
@@ -92,9 +91,8 @@
                                                 :index    :throwing-collector-test
                                                 :collect   (fn []
                                                              (throw (ex-info "collector boom" {})))})))
-          (is (= [:metabase-search/index-coverage-ratio {:index "throwing-collector-test"}]
-                 (butlast (first @calls))))
-          (is (Double/isNaN ^double (last (first @calls)))))))))
+          (is (= [[:removed :metabase-search/index-coverage-ratio {:index "throwing-collector-test"}]]
+                 @calls)))))))
 
 (deftest run-measure!-propagates-interruption-test
   (is (thrown? InterruptedException
@@ -113,20 +111,20 @@
 
 (deftest ^:sequential failed-first-write-does-not-mark-series-live-test
   (testing "a failed first gauge write does not make later clears create a NaN-only series"
-    (let [set-index-gauge! @#'index-health/set-index-gauge!
-          live             @#'index-health/live-gauge-series
-          index            :failed-write-test-engine
-          series           [:metabase-search/index-coverage-ratio {:index (name index)}]
-          calls            (atom [])]
+    (let [publish! index-health/publish-gauge!
+          live     @#'index-health/live-gauge-series
+          labels   {:index "failed-write-test-engine"}
+          series   [:metabase-search/index-coverage-ratio labels]
+          calls    (atom [])]
       (try
         (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& _]
                                                            (throw (ex-info "prometheus down" {})))]
-          (is (thrown? Exception (set-index-gauge! (first series) index 1.0)))
+          (is (thrown? Exception (publish! (first series) labels 1.0)))
           (is (not (contains? @live series))))
         (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
-          (set-index-gauge! (first series) index nil)
+          (publish! (first series) labels nil)
           (is (empty? @calls))
-          (set-index-gauge! (first series) index 0.5)
+          (publish! (first series) labels 0.5)
           (is (contains? @live series)))
         (finally
           (swap! live dissoc series))))))
@@ -144,20 +142,20 @@
                  :index     :refresh-isolation-test
                  :collect    (constantly {:value 1.0 :health 100 :message "ok"})}]
       (with-redefs [index-health/live-gauge-series live]
-        (mt/with-dynamic-fn-redefs [analytics/set-gauge!       (fn [& args] (swap! calls conj (vec args)))
+        (mt/with-dynamic-fn-redefs [analytics/set-gauge!      (fn [& args] (swap! calls conj (vec args)))
+                                    analytics/remove-series!  (fn [& args] (swap! calls conj (into [:removed] args)))
                                     health-inspector/enabled? (constantly false)]
           (#'index-health/run-measure! (assoc boom :collect
                                               (constantly {:value 5 :health 100 :message "was fine"})))
           (reset! calls [])
           (run! #'index-health/refresh-index-check! [boom ok])))
-      (is (=? [[:metabase-search/index-staleness-seconds {:index "refresh-isolation-test"}
-                (fn [v] (Double/isNaN ^double v))]
-               [:metabase-search/index-coverage-ratio {:index "refresh-isolation-test"} 1.0]]
-              @calls)))))
+      (is (= [[:removed :metabase-search/index-staleness-seconds {:index "refresh-isolation-test"}]
+              [:metabase-search/index-coverage-ratio {:index "refresh-isolation-test"} 1.0]]
+             @calls)))))
 
 (deftest ^:sequential pull-collector-refreshes-gauges-on-each-instance-test
   (let [measures  @#'index-health/index-measures
-        running?  @#'index-health/gauge-refresh-running?
+        in-flight @#'index-health/refreshes-in-flight
         before    @measures
         seen      (atom [])
         submitted (atom [])
@@ -166,7 +164,7 @@
         collector (analytics.core/pull-collector :metabase.search.index-health/index-health-gauges)]
     (try
       (reset! measures {:one one, :two two})
-      (reset! running? false)
+      (reset! in-flight #{})
       (mt/with-dynamic-fn-redefs
         [index-health/run-measure!          #(swap! seen conj %)
          index-health/submit-gauge-refresh! #(swap! submitted conj %)
@@ -178,25 +176,22 @@
         ((first @submitted)))
       (is (= 600 (:min-interval-s collector)))
       (is (= #{one two} (set @seen)))
-      (is (false? @running?))
+      (is (empty? @in-flight))
       (finally
-        (reset! running? false)
+        (reset! in-flight #{})
         (reset! measures before)))))
 
 (deftest ^:sequential background-gauge-refresh-isolates-write-failures-test
   (let [measures (atom {:one {:check-name :one}, :two {:check-name :two}})
-        running? (atom true)
         seen     (atom [])]
-    (with-redefs [index-health/index-measures         measures
-                  index-health/gauge-refresh-running? running?]
+    (with-redefs [index-health/index-measures measures]
       (mt/with-dynamic-fn-redefs
         [index-health/run-measure! (fn [{:keys [check-name]}]
                                      (swap! seen conj check-name)
                                      (when (= :one check-name)
                                        (throw (ex-info "prometheus down" {}))))]
         (#'index-health/refresh-search-index-gauges!)))
-    (is (= #{:one :two} (set @seen)))
-    (is (false? @running?)))
+    (is (= #{:one :two} (set @seen))))
   (testing "interruption still escapes the per-descriptor boundary"
     (is (thrown? InterruptedException
                  (#'index-health/refresh-index-gauge! {:check-name :interrupted
@@ -204,20 +199,19 @@
                                                        :index      :interrupted
                                                        :collect    #(throw (InterruptedException.))})))))
 
-(deftest ^:sequential expire-cluster-gauges!-test
+(deftest ^:sequential expire-stale-gauges!-test
   (let [calls (atom [])
         live  (atom {[:metabase-search/index-coverage-ratio {:index "fresh"}] ::fresh
                      [:metabase-search/index-coverage-ratio {:index "stale"}] ::stale})]
     ;; a map is a function of its keys, so this stands in for the timers' ages
     (with-redefs [index-health/live-gauge-series live
-                  u/since-ms                    {::fresh 1000, ::stale 60000}]
-      (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
-        (index-health/expire-cluster-gauges! 30000)
-        (testing "a reading this node stopped refreshing is retired, not left to drift"
-          (is (= [:metabase-search/index-coverage-ratio {:index "stale"}] (butlast (first @calls))))
-          (is (Double/isNaN ^double (last (first @calls))))
-          (is (= 1 (count @calls)) "the series it is still measuring is left alone"))
-        (testing "and only once -- a retired series is forgotten"
+                  u/since-ms                    {::fresh 1000, ::stale 3600000}]
+      (mt/with-dynamic-fn-redefs [analytics/remove-series! (fn [& args] (swap! calls conj (vec args)))]
+        (#'index-health/expire-stale-gauges!)
+        (testing "a series this node stopped refreshing stops being exported"
+          (is (= [[:metabase-search/index-coverage-ratio {:index "stale"}]] @calls))
+          (is (= #{[:metabase-search/index-coverage-ratio {:index "fresh"}]} (set (keys @live)))))
+        (testing "and only once"
           (reset! calls [])
-          (index-health/expire-cluster-gauges! 30000)
+          (#'index-health/expire-stale-gauges!)
           (is (empty? @calls)))))))

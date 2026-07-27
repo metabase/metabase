@@ -93,18 +93,27 @@
   ;; Keying by check name makes namespace reloads replace descriptors instead of duplicating collectors.
   (atom {}))
 
+(def ^:private gauge-refresh-interval-s
+  "How often a scrape may start a refresh of every registered measure."
+  600)
+
+(def ^:private stale-gauge-age-ms
+  "How long a series survives without a refresh. Three intervals, so a missed run doesn't drop it."
+  (* 3 gauge-refresh-interval-s 1000))
+
 (defonce ^:private live-gauge-series
-  ;; [gauge-key labels] -> a u/start-timer taken when this process last published a real value. Only series
-  ;; that held a real value are ever cleared; inactive indexes should not create NaN-only series.
+  ;; [gauge-key index] -> a u/start-timer from when this process last published a real value. Only series
+  ;; that held one are ever removed; an inactive index should never create one.
   (atom {}))
 
-(defn set-cluster-gauge!
-  "Publish `value` for a gauge this process measured on behalf of the whole cluster, or clear it when nil.
+(defn- retire-gauge!
+  [[gauge-key labels :as series]]
+  (analytics/remove-series! gauge-key labels)
+  (swap! live-gauge-series dissoc series))
 
-  These measurements describe the shared index, not this node, so exactly one node computes and exports
-  them -- whichever the clustered scheduler picked. Recording when we last published lets
-  [[expire-cluster-gauges!]] retire the series if this node stops being that one, rather than serving its
-  final reading forever."
+(defn publish-gauge!
+  "Publish `value` for a search gauge, or stop exporting that series when `value` is nil.
+  Removed rather than set to NaN: a NaN is still scraped, and poisons any `avg` or `sum` over the series."
   [gauge-key labels value]
   (let [series [gauge-key labels]]
     (if (some? value)
@@ -112,34 +121,54 @@
         (analytics/set-gauge! gauge-key labels value)
         (swap! live-gauge-series assoc series (u/start-timer)))
       (when (contains? @live-gauge-series series)
-        (analytics/set-gauge! gauge-key labels ##NaN)
-        (swap! live-gauge-series dissoc series)))))
+        (retire-gauge! series)))))
 
-(defn expire-cluster-gauges!
-  "Clear every [[set-cluster-gauge!]] series this process hasn't refreshed within `max-age-ms`.
+(defn- expire-stale-gauges!
+  "Stop exporting series this process hasn't refreshed within [[stale-gauge-age-ms]].
+  Every process measures its own series, so one goes stale only when this node's refresh stopped happening
+  -- and a reading nothing is renewing is worse than none."
+  []
+  (doseq [[series published] @live-gauge-series
+          :when (>= (u/since-ms published) stale-gauge-age-ms)]
+    (retire-gauge! series)))
 
-  A node that loses the scheduled job simply stops refreshing, so without this its last reading would
-  linger next to the new owner's and drift further from the truth with every scrape."
-  [max-age-ms]
-  (doseq [[[gauge-key labels :as series] published] @live-gauge-series
-          :when (>= (u/since-ms published) max-age-ms)]
-    (analytics/set-gauge! gauge-key labels ##NaN)
-    (swap! live-gauge-series dissoc series)))
-
-(def ^:private cluster-gauge-max-age-ms
-  "How long a node keeps exporting a measurement it made. Three times the collectors' ten-minute interval,
-  so an ordinary missed run doesn't blink the series."
-  (* 30 60 1000))
-
-;; Runs on every node, but only ever clears what this one published: whichever node the scheduler picks
-;; keeps exporting, and a node that loses the job drops its readings instead of freezing them.
-(defmethod analytics.core/pull-collector ::expire-cluster-gauges [_]
+(defmethod analytics.core/pull-collector ::expire-stale-gauges [_]
   {:min-interval-s 60
-   :f              #(expire-cluster-gauges! cluster-gauge-max-age-ms)})
+   :f              expire-stale-gauges!})
 
-(defn- set-index-gauge!
-  [gauge-key index value]
-  (set-cluster-gauge! gauge-key {:index (name index)} value))
+(defonce ^:private refreshes-in-flight
+  ;; ids of the background refreshes currently running here, so a burst of scrapes shares one of each
+  (atom #{}))
+
+(defn- submit-gauge-refresh! [f]
+  (future-call f))
+
+(defn- claim-refresh!
+  "Mark `id` in flight, returning false when it already was."
+  [id]
+  (let [[before _] (swap-vals! refreshes-in-flight conj id)]
+    (not (contains? before id))))
+
+(defn background-refresh-collector
+  "A [[metabase.analytics.core/pull-collector]] map running `refresh!` on a local single-flight background
+  thread, at most once per [[gauge-refresh-interval-s]].
+  Prometheus scrapes every process while the scheduled job runs on one member of a Quartz cluster, so each
+  process measures its own series this way instead of republishing another node's. The scrape itself never
+  waits on an index scan."
+  [id refresh!]
+  {:min-interval-s gauge-refresh-interval-s
+   :f              (fn []
+                     (when (claim-refresh! id)
+                       (try
+                         (submit-gauge-refresh! (fn []
+                                                  (try
+                                                    (refresh!)
+                                                    (finally
+                                                      (swap! refreshes-in-flight disj id)))))
+                         (catch Exception e
+                           (swap! refreshes-in-flight disj id)
+                           (log/error "Could not schedule a search gauge refresh" {:id id :error (ex-message e)}))))
+                     nil)})
 
 (defn- run-measure!
   "Run one collector and update its gauge. Returns nil for N/A or a health-inspector result."
@@ -152,7 +181,7 @@
           (catch Exception e
             (log/error "Search index metric collector errored" {:check check-name :error (ex-message e)})
             {:health 0, :message (str "Metric collector errored: " (ex-message e))}))]
-    (set-index-gauge! gauge-key index value)
+    (publish-gauge! gauge-key {:index (name index)} value)
     (when health
       {:health health, :message message})))
 
@@ -186,11 +215,6 @@
     (catch Exception e
       (log/error "Search index health-row persist errored" {:check check-name :error (ex-message e)}))))
 
-(defonce ^:private gauge-refresh-running? (atom false))
-
-(defn- submit-gauge-refresh! [f]
-  (future-call f))
-
 (defn- refresh-index-gauge! [{:keys [check-name] :as descriptor}]
   (try
     (run-measure! descriptor)
@@ -199,29 +223,14 @@
     (catch Exception e
       (log/error "Search index gauge refresh errored" {:check check-name :error (ex-message e)}))))
 
-(defn- refresh-search-index-gauges!
-  []
-  (try
-    (run! refresh-index-gauge! (vals @index-measures))
-    (finally
-      (reset! gauge-refresh-running? false))))
+(defn- refresh-search-index-gauges! []
+  (run! refresh-index-gauge! (vals @index-measures)))
 
-(defn- request-search-index-gauge-refresh!
-  []
-  (when (compare-and-set! gauge-refresh-running? false true)
-    (try
-      (submit-gauge-refresh! refresh-search-index-gauges!)
-      (catch Exception e
-        (reset! gauge-refresh-running? false)
-        (log/errorf "Could not schedule search index gauge refresh: %s" (ex-message e)))))
-  nil)
+(def ^:private index-gauge-collector
+  (background-refresh-collector ::index-health-gauges refresh-search-index-gauges!))
 
-;; Prometheus scrapes every Metabase process, whereas the scheduled metric job may run on only one member of
-;; a Quartz cluster. A scrape starts a local, single-flight background refresh so every process updates its
-;; series without putting index scans on the synchronous scrape path.
 (defmethod analytics.core/pull-collector ::index-health-gauges [_]
-  {:min-interval-s 600
-   :f              request-search-index-gauge-refresh!})
+  index-gauge-collector)
 
 (defn refresh-search-index-metrics!
   "Refresh every registered measure's gauge and, when enabled, its deduplicated health row."
