@@ -3321,3 +3321,104 @@
             "conversations without a blob are untouched")
         (is (thrown? Exception (t2/query "SELECT state FROM metabot_conversation"))
             "metabot_conversation.state is gone")))))
+
+(deftest backfill-table-user-settings-test
+  (testing "v64.2026-07-23T10:00:05: active tables get settings backfilled worst-case, defaults recorded as NULL"
+    (impl/test-migrations ["v64.2026-07-23T10:00:05" "v64.2026-07-23T10:00:05"] [migrate!]
+      (let [new-db!    (fn [name & {:as extra}]
+                         (t2/insert-returning-pk! :metabase_database
+                                                  (merge {:name       name
+                                                          :engine     "h2"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :details    "{}"}
+                                                         extra)))
+            db-id      (new-db! "Regular DB")
+            audit-db   (new-db! "Audit DB" :is_audit true)
+            coll-id    (t2/insert-returning-pk! :collection {:name      "Library Data"
+                                                             :slug      "library_data"
+                                                             :location  "/"
+                                                             :entity_id "tus-backfill-collectn"})
+            user-id    (t2/insert-returning-pk! :core_user {:first_name    "Table"
+                                                            :last_name     "Owner"
+                                                            :email         "table-owner@test.com"
+                                                            :date_joined   :%now
+                                                            :password      "password"
+                                                            :password_salt "salt"
+                                                            :entity_id     "tus-backfill-owner-u1"})
+            new-table! (fn [db-id name & {:as extra}]
+                         (t2/insert-returning-pk! :metabase_table
+                                                  (merge {:db_id      db-id
+                                                          :name       name
+                                                          :active     true
+                                                          :created_at :%now
+                                                          :updated_at :%now}
+                                                         extra)))
+            settings   (fn [table-id] (t2/select-one :metabase_table_user_settings :table_id table-id))
+            defaults   (new-table! db-id "orders"
+                                   :display_name "Orders"
+                                   :data_layer   "internal")
+            curated    (new-table! db-id "gold_customers"
+                                   :display_name            "Customers Curated"
+                                   :description             "Hand-written"
+                                   :caveats                 "Beware"
+                                   :points_of_interest      "Emails"
+                                   :visibility_type         "hidden"
+                                   :data_layer              "hidden"
+                                   :collection_id           coll-id
+                                   :is_published            true
+                                   :owner_email             "table-owner@test.com"
+                                   :owner_user_id           user-id
+                                   :data_authority          "authoritative"
+                                   :field_order             "custom"
+                                   :show_in_getting_started true)
+            inactive   (new-table! db-id "retired"
+                                   :display_name "Retired Renamed"
+                                   :description  "Curated but inactive"
+                                   :active       false)
+            audit-tbl  (new-table! audit-db "vw_users"
+                                   :display_name "Metabase Users")
+            edited     (new-table! db-id "already_edited"
+                                   :display_name "Sync Value")
+            _          (t2/insert! :metabase_table_user_settings {:table_id     edited
+                                                                  :display_name "User Value"})]
+        (migrate!)
+        (testing "unattributable values are copied as-is, columns still at their system default become NULL"
+          (is (=? {:display_name            "Orders"
+                   :description             nil
+                   :entity_type             nil
+                   :visibility_type         nil
+                   :data_layer              nil
+                   :collection_id           nil
+                   :is_published            nil
+                   :owner_email             nil
+                   :owner_user_id           nil
+                   :data_authority          nil
+                   :field_order             nil
+                   :show_in_getting_started nil
+                   :data_source             nil}
+                  (settings defaults))))
+        (testing "non-default values are recorded as user-authored"
+          (is (=? {:display_name            "Customers Curated"
+                   :description             "Hand-written"
+                   :caveats                 "Beware"
+                   :points_of_interest      "Emails"
+                   :visibility_type         "hidden"
+                   :data_layer              "hidden"
+                   :collection_id           coll-id
+                   :is_published            true
+                   :owner_email             "table-owner@test.com"
+                   :owner_user_id           user-id
+                   :data_authority          "authoritative"
+                   :field_order             "custom"
+                   :show_in_getting_started true
+                   :entity_type             nil
+                   :data_source             nil}
+                  (settings curated))))
+        (testing "inactive tables are ignored"
+          (is (nil? (settings inactive))))
+        (testing "audit database tables are excluded"
+          (is (nil? (settings audit-tbl))))
+        (testing "pre-existing settings rows are left untouched"
+          (is (=? {:display_name "User Value"}
+                  (settings edited))))))))
