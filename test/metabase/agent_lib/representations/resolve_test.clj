@@ -32,17 +32,26 @@
 ;;; Fixture metadata provider
 ;;; ============================================================
 
+(def ^:private mock-metadata
+  "Base warehouse shape shared by the fixture providers. Fixtures needing extra content
+  (cards, measures) `assoc` onto this and build their own flat provider — deliberately NOT
+  the 2-arity composing form of [[lib.tu/mock-metadata-provider]]: a composed provider
+  satisfies `cached-metadata-provider?`, which makes the resolver treat the application DB
+  as authoritative for table lookups. With this fixture's `db-id 1`, that resolves ORDERS
+  against whatever real database happens to have id 1 in the test-run's app DB instead of
+  the mock."
+  {:database {:id 1 :name "Sample" :dbms-version {:flavor "PostgreSQL"} :engine :postgres}
+   :tables   [{:id 10 :name "ORDERS"   :schema "PUBLIC" :db-id 1}
+              {:id 11 :name "PRODUCTS" :schema "PUBLIC" :db-id 1}]
+   :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+              {:id 101 :name "TOTAL"      :table-id 10 :base-type :type/Float}
+              {:id 102 :name "CREATED_AT" :table-id 10 :base-type :type/DateTime}
+              {:id 103 :name "PRODUCT_ID" :table-id 10 :base-type :type/Integer}
+              {:id 110 :name "ID"         :table-id 11 :base-type :type/Integer}
+              {:id 111 :name "CATEGORY"   :table-id 11 :base-type :type/Text}]})
+
 (def ^:private mp
-  (lib.tu/mock-metadata-provider
-   {:database {:id 1 :name "Sample" :dbms-version {:flavor "PostgreSQL"} :engine :postgres}
-    :tables   [{:id 10 :name "ORDERS"   :schema "PUBLIC" :db-id 1}
-               {:id 11 :name "PRODUCTS" :schema "PUBLIC" :db-id 1}]
-    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
-               {:id 101 :name "TOTAL"      :table-id 10 :base-type :type/Float}
-               {:id 102 :name "CREATED_AT" :table-id 10 :base-type :type/DateTime}
-               {:id 103 :name "PRODUCT_ID" :table-id 10 :base-type :type/Integer}
-               {:id 110 :name "ID"         :table-id 11 :base-type :type/Integer}
-               {:id 111 :name "CATEGORY"   :table-id 11 :base-type :type/Text}]}))
+  (lib.tu/mock-metadata-provider mock-metadata))
 
 (defn- schema-valid? [query]
   (nil? (mr/explain ::lib.schema/query query)))
@@ -404,35 +413,36 @@
       (lib/aggregate (lib/sum (lib.metadata/field mp 101)))))
 
 (def ^:private mp-with-metric
-  "The base fixture provider plus a metric card and a measure, both summing ORDERS.TOTAL."
+  "The base fixture warehouse plus a metric card and a measure, both summing ORDERS.TOTAL.
+  A flat provider (see [[mock-metadata]] for why not the composing form)."
   (lib.tu/mock-metadata-provider
-   mp
-   {:cards    [{:id            900
-                :name          "Revenue"
-                :database-id   1
-                :table-id      10
-                :type          :metric
-                :entity-id     metric-entity-id
-                :dataset-query revenue-definition}
-               {:id            901
-                :name          "No Aggregation"
-                :database-id   1
-                :table-id      10
-                :type          :metric
-                :dataset-query (lib/query mp (lib.metadata/table mp 10))}
-               {:id            902
-                :name          "Latest Order"
-                :database-id   1
-                :table-id      10
-                :type          :metric
-                :entity-id     datetime-metric-entity-id
-                :dataset-query (-> (lib/query mp (lib.metadata/table mp 10))
-                                   (lib/aggregate (lib/max (lib.metadata/field mp 102))))}]
-    :measures [{:lib/type   :metadata/measure
-                :id         77
-                :name       "Revenue measure"
-                :table-id   10
-                :definition revenue-definition}]}))
+   (assoc mock-metadata
+          :cards    [{:id            900
+                      :name          "Revenue"
+                      :database-id   1
+                      :table-id      10
+                      :type          :metric
+                      :entity-id     metric-entity-id
+                      :dataset-query revenue-definition}
+                     {:id            901
+                      :name          "No Aggregation"
+                      :database-id   1
+                      :table-id      10
+                      :type          :metric
+                      :dataset-query (lib/query mp (lib.metadata/table mp 10))}
+                     {:id            902
+                      :name          "Latest Order"
+                      :database-id   1
+                      :table-id      10
+                      :type          :metric
+                      :entity-id     datetime-metric-entity-id
+                      :dataset-query (-> (lib/query mp (lib.metadata/table mp 10))
+                                         (lib/aggregate (lib/max (lib.metadata/field mp 102))))}]
+          :measures [{:lib/type   :metadata/measure
+                      :id         77
+                      :name       "Revenue measure"
+                      :table-id   10
+                      :definition revenue-definition}])))
 
 (def ^:private metric-content-store
   (reify resolve.mp/ContentStore
