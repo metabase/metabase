@@ -20,7 +20,10 @@ env:
 
 jobs:
   be-tests-mariadb:
-    if: ${{ !inputs.skip }}
+    # master/release branches run all versions; others just run latest
+    if: ${{ !inputs.skip && (matrix.version.image == 'mariadb:latest' ||
+                             github.ref_name == 'master' ||
+                             startsWith(github.ref_name, 'release-x')) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -127,7 +130,10 @@ jobs:
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-mysql:
-    if: ${{ !inputs.skip }}
+    # master/release branches run all versions; others just run latest
+    if: ${{ !inputs.skip && (matrix.version.image == 'mariadb:latest' ||
+                             github.ref_name == 'master' ||
+                             startsWith(github.ref_name, 'release-x')) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
