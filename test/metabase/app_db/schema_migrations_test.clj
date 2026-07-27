@@ -3323,7 +3323,7 @@
             "metabot_conversation.state is gone")))))
 
 (deftest backfill-table-user-settings-test
-  (testing "v64.2026-07-23T10:00:05: published tables get settings backfilled worst-case, defaults recorded as NULL"
+  (testing "v64.2026-07-23T10:00:05: active tables get user-attributable settings backfilled, all-NULL rows omitted"
     (impl/test-migrations ["v64.2026-07-23T10:00:05" "v64.2026-07-23T10:00:05"] [migrate!]
       (let [new-db!    (fn [name & {:as extra}]
                          (t2/insert-returning-pk! :metabase_database
@@ -3359,18 +3359,18 @@
                                    :display_name "Orders"
                                    :data_layer   "internal"
                                    :is_published true)
-            unpub      (new-table! db-id "drafts"
+            untouched  (new-table! db-id "drafts"
                                    :display_name "Drafts Renamed"
-                                   :description  "Curated but unpublished")
+                                   :description  "Maybe a DB comment")
             curated    (new-table! db-id "gold_customers"
                                    :display_name            "Customers Curated"
                                    :description             "Hand-written"
+                                   :is_published            false
                                    :caveats                 "Beware"
                                    :points_of_interest      "Emails"
                                    :visibility_type         "hidden"
                                    :data_layer              "hidden"
                                    :collection_id           coll-id
-                                   :is_published            true
                                    :owner_email             "table-owner@test.com"
                                    :owner_user_id           user-id
                                    :data_authority          "authoritative"
@@ -3390,8 +3390,8 @@
             _          (t2/insert! :metabase_table_user_settings {:table_id     edited
                                                                   :display_name "User Value"})]
         (migrate!)
-        (testing "unattributable values are copied as-is, columns still at their system default become NULL"
-          (is (=? {:display_name            "Orders"
+        (testing "unattributable and default-valued columns are recorded as NULL"
+          (is (=? {:display_name            nil
                    :description             nil
                    :entity_type             nil
                    :visibility_type         nil
@@ -3405,15 +3405,15 @@
                    :show_in_getting_started nil
                    :data_source             nil}
                   (settings defaults))))
-        (testing "non-default values are recorded as user-authored"
-          (is (=? {:display_name            "Customers Curated"
-                   :description             "Hand-written"
+        (testing "non-default values are recorded as user-authored; display_name/description stay NULL"
+          (is (=? {:display_name            nil
+                   :description             nil
                    :caveats                 "Beware"
                    :points_of_interest      "Emails"
                    :visibility_type         "hidden"
                    :data_layer              "hidden"
                    :collection_id           coll-id
-                   :is_published            true
+                   :is_published            nil
                    :owner_email             "table-owner@test.com"
                    :owner_user_id           user-id
                    :data_authority          "authoritative"
@@ -3422,8 +3422,8 @@
                    :entity_type             nil
                    :data_source             nil}
                   (settings curated))))
-        (testing "unpublished tables get no row, even with curated-looking values"
-          (is (nil? (settings unpub))))
+        (testing "tables with only unattributable values (display_name/description) get no row"
+          (is (nil? (settings untouched))))
         (testing "inactive tables are ignored"
           (is (nil? (settings inactive))))
         (testing "audit database tables are excluded"
