@@ -28,7 +28,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [get-in]])
   (:import
-   (java.io InputStream)
    (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)
