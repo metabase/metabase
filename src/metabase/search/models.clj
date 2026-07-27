@@ -48,11 +48,20 @@
       (run)
       (future (run)))))
 
+;; A database-level cascade removes rows Toucan never sees, so documents reached through a join on anything
+;; but `:this.id` have to be enumerated while the delete's own rows are still there to point at them.
+(defmethod dml-capture/dependents :hook/search-index
+  [model rows]
+  (search/cascading-documents (mapv #(t2/instance model %) rows)))
+
 (defmethod dml-capture/captured! :hook/search-index
-  [model {:keys [op rows]}]
+  [model {:keys [op rows dependents]}]
   (when (= op :delete)
     ;; Capture rows are plain raw-value maps; search-models-to-update needs the model attached. Do not hand the
     ;; re-derivation off until the outer transaction commits; Metabase discards the callback on rollback.
     (let [instances (mapv #(t2/instance model %) rows)]
       (mdb/do-after-commit
-       #(submit-handoff! model op (fn [] (search/bulk-update! instances)))))))
+       #(submit-handoff! model op
+                         (fn []
+                           (search/bulk-update! instances)
+                           (search/purge-vanished-documents! dependents)))))))
