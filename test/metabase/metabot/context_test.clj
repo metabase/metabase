@@ -228,12 +228,6 @@
       (is (not (contains? (#'context/add-recent-views {:user_recently_viewed [{:id 1 :name "stale"}]} {})
                           :user_recently_viewed))))))
 
-(deftest recent-views-excluded-for-nlq-profile-test
-  (testing "The :nlq profile never gets recent views, and caller-supplied ones are stripped"
-    (is (not (contains? (#'context/add-recent-views {:user_recently_viewed [{:id 1 :name "stale"}]}
-                                                    {:profile-id :nlq})
-                        :user_recently_viewed)))))
-
 (deftest recent-views-excluded-for-slackbot-profile-test
   (testing "The :slackbot profile never gets recent views, and caller-supplied ones are stripped"
     (is (not (contains? (#'context/add-recent-views {:user_recently_viewed [{:id 1 :name "stale"}]}

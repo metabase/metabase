@@ -255,20 +255,20 @@ describe("metabot reducer", () => {
   });
 
   describe("the full-page `ask` conversation", () => {
-    it("exists in the initial state with the nlq profile", () => {
+    it("exists in the initial state on the default profile", () => {
       const state = getMetabotInitialState();
       expect(state.conversations.ask).toBeDefined();
       expect(state.conversations.ask?.profileOverride).toBe(
-        METABOT_PROFILE_OVERRIDES.NLQ,
+        METABOT_PROFILE_OVERRIDES.DEFAULT,
       );
     });
 
-    it("can be reset independently and keeps the nlq profile", () => {
+    it("can be reset independently and stays on the default profile", () => {
       const store = createTestStore();
       store.dispatch(metabotActions.resetConversation({ agentId: "ask" }));
       const convo = store.getState().metabot.conversations.ask;
       expect(convo).toBeDefined();
-      expect(convo?.profileOverride).toBe(METABOT_PROFILE_OVERRIDES.NLQ);
+      expect(convo?.profileOverride).toBe(METABOT_PROFILE_OVERRIDES.DEFAULT);
     });
   });
 

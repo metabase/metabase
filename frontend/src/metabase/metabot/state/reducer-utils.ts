@@ -270,9 +270,6 @@ const agentOverridesByAgentId: Partial<
   sql: {
     profileOverride: METABOT_PROFILE_OVERRIDES.SQL,
   },
-  ask: {
-    profileOverride: METABOT_PROFILE_OVERRIDES.NLQ,
-  },
 };
 
 export const createConversation = (

@@ -14,26 +14,6 @@
   [e]
   (:state e))
 
-(defn- message->reactions
-  [msg]
-  (let [message-reaction (when-let [message (not-empty (:content msg))]
-                           {:type :metabot.reaction/message
-                            :repl/message-color :green
-                            :repl/message-emoji "🤖"
-                            :message message})
-        navigate-reaction (when-let [nav-path (:navigate-to msg)]
-                            {:type :metabot.reaction/redirect
-                             :url nav-path})]
-    (remove nil? [message-reaction navigate-reaction])))
-
-(defn reactions
-  "Gets the reactions from the LLM."
-  [messages]
-  (into []
-        (comp (filter #(= (:role %) :assistant))
-              (mapcat message->reactions))
-        messages))
-
 (defn user-message
   "Create a user message structure with `msg` as content."
   [msg]

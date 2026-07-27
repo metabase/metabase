@@ -150,7 +150,7 @@ describe("MetabotAsk", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not show the conversation history control for a non-internal/nlq profile", async () => {
+  it("does not show the conversation history control for a non-default profile", async () => {
     const state = getMetabotInitialState();
     const ask = state.conversations.ask;
     if (!ask) {

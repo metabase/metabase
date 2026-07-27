@@ -109,6 +109,7 @@
   :max-iterations  10
   :temperature     0.3
   :tools           [#'tools/search-tool
+                    #'tools/retrieve-library-entities-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/read-resource-tool
                     #'tools/create-sql-query-tool
@@ -166,34 +167,6 @@
                         #'tools/edit-sql-query-tool
                         #'tools/replace-sql-query-tool
                         #'tools/ask-for-sql-clarification-tool]})
-
-;; :nlq and :nlq-fallback are a pair selected by the library index's health (see [[get-profile]]): when the
-;; library index can serve queries the agent discovers data through retrieve_library_entities; otherwise it
-;; falls back to the general nlq search. They differ only in the discovery tool and the prompt that explains
-;; it. The redirect keeps the external profile-id :nlq, so telemetry / recent-views / skills are unaffected.
-(register-profile!
- {:name            :nlq
-  :prompt-template "natural-language-querying-only.selmer"
-  :max-iterations  10
-  :temperature     0.3
-  :tools           [#'tools/retrieve-library-entities-tool
-                    #'tools/read-resource-tool
-                    #'tools/construct-notebook-query-tool
-                    #'tools/create-chart-tool
-                    #'tools/edit-chart-tool
-                    #'tools/save-entity-tool]})
-
-(register-profile!
- {:name            :nlq-fallback
-  :prompt-template "natural-language-querying-fallback.selmer"
-  :max-iterations  10
-  :temperature     0.3
-  :tools           [#'tools/nlq-search-tool
-                    #'tools/read-resource-tool
-                    #'tools/construct-notebook-query-tool
-                    #'tools/create-chart-tool
-                    #'tools/edit-chart-tool
-                    #'tools/save-entity-tool]})
 
 (register-profile!
  {:name            :document-generate-content
@@ -254,33 +227,33 @@
 
 ;;; API
 
-(defn- nlq-fallback?
-  "Whether a :nlq request should be served the general-search fallback: true when the library index
-  can't answer (not configured/licensed, or empty). Keeps data discovery working before the first reconcile
-  and on OSS / unlicensed instances."
-  [profile-id]
-  (and (= profile-id :nlq)
-       (not (entity-retrieval/entity-retrieval-available?))))
+(def retired-profile-aliases
+  "Retired profile ids mapped to the profile that absorbed them. They still arrive from tabs open
+  across a deploy and from pinned config, so they resolve rather than 400."
+  {:nlq          :internal
+   :nlq-fallback :internal})
+
+(defn- drop-unavailable-library-tool
+  "Remove the curated-library discovery tool when the library index can't answer (unconfigured,
+  unlicensed, or empty). `search` covers discovery either way."
+  [profile]
+  (if (entity-retrieval/entity-retrieval-available?)
+    profile
+    (update profile :tools
+            (fn [tool-vars]
+              (into [] (remove #{#'tools/retrieve-library-entities-tool}) tool-vars)))))
 
 (defn get-profile
   "Get profile configuration by profile-id keyword.
   The `:model` in the returned profile is resolved from the `llm-metabot-provider`
   setting at call time, so it always reflects the current admin configuration.
 
-  A :nlq request whose library index can't serve queries is transparently served the :nlq-fallback
-  profile's discovery tool and prompt (see [[nlq-fallback?]]); the profile's `:name` stays :nlq so
-  telemetry, recent-views, and skill matching are unaffected."
+  Retired profile ids resolve to the profile that absorbed them (see [[retired-profile-aliases]])."
   [profile-id]
-  (if-let [profile (get @*profiles profile-id)]
-    (let [profile (if (nlq-fallback? profile-id)
-                    (if-let [fb (get @*profiles :nlq-fallback)]
-                      (assoc profile :tools (:tools fb) :prompt-template (:prompt-template fb))
-                      ;; The redirect target should always be registered; if it isn't, serve :nlq
-                      ;; unredirected rather than a profile with nil tools/prompt.
-                      (do (log/warn "nlq-fallback profile is not registered; serving :nlq unredirected")
-                          profile))
-                    profile)]
-      (assoc profile :model (metabot.settings/llm-metabot-provider)))
+  (if-let [profile (get @*profiles (retired-profile-aliases profile-id profile-id))]
+    (-> profile
+        drop-unavailable-library-tool
+        (assoc :model (metabot.settings/llm-metabot-provider)))
     ;; An unregistered profile-id is a wiring bug; warn so it's diagnosable (callers handle the nil).
     (log/warnf "No metabot profile registered for %s" profile-id)))
 
@@ -288,8 +261,8 @@
   "Tool registry for an ALREADY-RESOLVED profile, filtered by capabilities and `*current-user-scope*`.
   Returns a map of tool-name -> tool-var.
   Takes the resolved profile (not an id) so callers that also need the profile's prompt resolve it once via
-  [[get-profile]] — its nlq availability redirect must be probed a single time, or the prompt and tools
-  could disagree. When the profile exposes any skills, `load_skill` is injected for on-demand loading."
+  [[get-profile]] — its library-index probe must happen a single time, or the prompt and tools could
+  disagree. When the profile exposes any skills, `load_skill` is injected for on-demand loading."
   [profile capabilities]
   (when profile
     (let [base     (-> profile

@@ -61,7 +61,7 @@ export const createMockMetabotGroupPermissions = (
 ): MetabotGroupPermission[] => {
   const defaults: Record<AIToolKey, "yes" | "no"> = {
     [AIToolKey.Metabot]: "yes",
-    [AIToolKey.ChatAndNLQ]: "yes",
+    [AIToolKey.QueryBuilding]: "yes",
     [AIToolKey.SQLGeneration]: "yes",
     [AIToolKey.OtherTools]: "yes",
     ...overrides,

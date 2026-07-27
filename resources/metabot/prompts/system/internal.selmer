@@ -26,6 +26,9 @@ Metabase is read-only: your SQL is always a `SELECT` (CTEs/`WITH` are fine for t
 {% endif %}
 
 {% include "metabot/prompts/shared/prompt_snippets/discovery.selmer" %}
+{% if has_library_retrieval %}
+{% include "metabot/prompts/shared/prompt_snippets/library-discovery.selmer" %}
+{% endif %}
 
 # Routing and capabilities
 {% if has_nlq %}

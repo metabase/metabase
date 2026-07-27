@@ -275,12 +275,9 @@
 (def ^:private profiles-excluding-recent-views
   "Profiles for which recent views are never injected.
 
-  The nlq profile discovers data through the curated library tool rather than general instance search, so arbitrary
-  recently-viewed items (which may not be curated) would undermine that guarantee. (A :nlq request served the
-  general-search fallback keeps the external profile-id :nlq, so this is reached via :nlq; :nlq-fallback is listed for
-  a direct request.)  The slackbot and document-generate-content profiles historically did not include recent views,
-  so we preserve that behavior."
-  #{:nlq :nlq-fallback :slackbot :document-generate-content})
+  The slackbot and document-generate-content profiles historically did not include recent views, so we
+  preserve that behavior."
+  #{:slackbot :document-generate-content})
 
 (defn- add-recent-views
   "Add user's recent views to the context since these have a higher likelihood of being relevant to a user's query.

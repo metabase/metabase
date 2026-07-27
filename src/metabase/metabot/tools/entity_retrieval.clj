@@ -165,10 +165,8 @@
                  :confidence         (if weak? "weak" "strong")))
         matches))
 
-;; No capability gate: this tool lives only in the :nlq profile, which [[metabase.metabot.agent.profiles/
-;; get-profile]] serves (the library variant, with this tool) only when entity-retrieval-available? — otherwise it
-;; redirects to :nlq-fallback (general search). That single probe is the sole gate, so prompt and tools can't
-;; disagree about index availability.
+;; No capability gate: [[metabase.metabot.agent.profiles/get-profile]] drops this tool when the library
+;; index can't answer. That single probe is the sole gate, so prompt and tools can't disagree.
 (mu/defn ^{:tool-name "retrieve_library_entities"
            :scope     scope/agent-search}
   retrieve-library-entities-tool

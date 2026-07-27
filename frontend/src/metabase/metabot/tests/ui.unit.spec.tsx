@@ -519,13 +519,9 @@ describe("metabot > ui", () => {
 
     it("filters conversations by the current agent's profile", async () => {
       const metabotInitialState = assocIn(
-        assocIn(
-          getMetabotInitialState(),
-          ["conversations", "omnibot", "visible"],
-          true,
-        ),
-        ["conversations", "omnibot", "profileOverride"],
-        "nlq",
+        getMetabotInitialState(),
+        ["conversations", "omnibot", "visible"],
+        true,
       );
 
       setup({ metabotInitialState });
@@ -542,7 +538,7 @@ describe("metabot > ui", () => {
       const { url } = fetchMock.callHistory.calls(
         "path:/api/metabot/conversations",
       )[0];
-      expect(url).toContain("profile_id=nlq");
+      expect(url).toContain("profile_id=internal");
     });
 
     const PAST_CONVERSATION_ID = "11111111-1111-1111-1111-111111111111";

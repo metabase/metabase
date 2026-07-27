@@ -47,7 +47,7 @@ export function useAiFeaturesTreeTableInstance(
         ),
       },
       ...[
-        { key: AIToolKey.ChatAndNLQ, label: t`Chat and NLQ` },
+        { key: AIToolKey.QueryBuilding, label: t`Query building` },
         { key: AIToolKey.SQLGeneration, label: t`SQL generation` },
         { key: AIToolKey.OtherTools, label: t`Other tools` },
       ].map<TreeTableColumnDef<AiFeatureAccessRow>>(({ key, label }) => ({
