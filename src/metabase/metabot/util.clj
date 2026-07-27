@@ -45,7 +45,7 @@
   [query]
   (or
    ;; Following should be ideally handled by lib functions. However we have test in place that checks this piece
-   ;; is able to handle not-normalized mblq5 with e.g. string value for type. Lib functions throw on such input.
+   ;; is able to handle not-normalized mbql5 with e.g. string value for type. Lib functions throw on such input.
    ;;
    ;; Try lib/query format (with stages)
    (get-in query [:stages 0 :native])

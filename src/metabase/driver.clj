@@ -921,7 +921,7 @@
     :parameters/table-reference
     ;;
     ;; Does this driver natively support pivot queries via a single `GROUP BY GROUPING SETS (...)` query, instead of
-    ;; the legacy multi-query path? Drivers that opt in must also derive from `:sql-mbql5` (which provides the
+    ;; the legacy multi-query path? Drivers that opt in must also derive from `:sql` (which provides the
     ;; `:pivot` clause compiler).
     :native-pivot-tables})
 
