@@ -137,6 +137,7 @@
         ;; Provisioner that fails on destroy! to simulate partial warehouse teardown
         ;; (e.g. BQ dataset deleted, SA delete throws).
         (let [failing-provisioner (reify provisioning/Provisioner
+                                    (details  [_ _ _ _]     (throw (ex-info "not used" {})))
                                     (init!    [_ _ _ _]     (throw (ex-info "not used" {})))
                                     (grant!   [_ _ _ _ _]   (throw (ex-info "not used" {})))
                                     (destroy! [_ _ _ _]     (throw (ex-info "warehouse teardown blew up" {}))))]

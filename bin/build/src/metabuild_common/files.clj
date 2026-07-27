@@ -169,7 +169,6 @@
        (doseq [^File file (file-seq source-path)
                :when (not (directory? file))
                :when
-               #_{:clj-kondo/ignore [:discouraged-var]}
                (or (str/ends-with? (str/lower-case file) "yaml")
                    (str/ends-with? (str/lower-case file) "yml"))]
          (when verbose (out/safe-println "Zipping file:" file))

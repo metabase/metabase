@@ -23,6 +23,7 @@
           (thunk)
           ;; global mode — must use with-redefs so Jetty handler threads (which don't inherit *local-redefs*)
           ;; see the updated premium features.
+          ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
           #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
           (with-redefs [token-check/*token-features* (constantly features)]
             (thunk)))))))

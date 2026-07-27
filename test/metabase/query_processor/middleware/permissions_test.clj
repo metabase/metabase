@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.permissions-test
+(ns ^:mb/driver-tests metabase.query-processor.middleware.permissions-test
   "Tests for the middleware that checks whether the current user has permissions to run a given query."
   {:clj-kondo/config '{:linters {:discouraged-var {metabase.test/with-temp {:level :off}}
                                  :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.permissions-test]}}}}}}
@@ -14,6 +14,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.pivot.test-util :as qp.pivot.tu]
    [metabase.query-processor.setup :as qp.setup]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
@@ -2304,82 +2305,87 @@
 (defmacro ^:private with-venues-only-access [& body]
   `(with-venues-only-access*! (fn [] ~@body)))
 
-(deftest pivot-query-does-not-bind-card-id-test
+(deftest ^:mb/driver-tests pivot-query-does-not-bind-card-id-test
   (testing "run-pivot-query should not bind *card-id* from :info, so permission checks use the
             full ad-hoc path even when :card-id is present in the query's :info map"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (with-venues-only-access
-        (mt/with-temp [:model/Collection collection {}
-                       :model/Card {card-id :id} {:collection_id (:id collection)
-                                                  :dataset_query (mt/mbql-query venues)}]
-          (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
-          ;; User cannot query people directly
-          (is (thrown-with-msg? ExceptionInfo perms-error-msg
-                                (qp/process-query
-                                 {:database (mt/id)
-                                  :type     :query
-                                  :query    {:source-table (mt/id :people)
-                                             :limit        1}})))
-          ;; Pivot path with :card-id in :info still routes through the ad-hoc permission path.
-          ;; The pivot path wraps queries as userland, so permission errors are returned as
-          ;; {:status :failed} results rather than thrown exceptions.
-          (testing "Pivot query uses the ad-hoc permission path when :card-id is in :info (source-table)"
-            (let [result (qp.pivot/run-pivot-query
-                          {:database    (mt/id)
-                           :type        :query
-                           :info        {:executed-by (mt/user->id :rasta)
-                                         :context     :ad-hoc
-                                         :card-id     card-id}
-                           :constraints {:max-results 10000 :max-results-bare-rows 2000}
-                           :query       {:source-table (mt/id :people)
-                                         :limit        1}})]
-              (is (= :failed (:status result)))
-              (is (re-find perms-error-msg (str (:error result))))))
-          ;; Pivot path with :card-id and a join still routes through the ad-hoc permission path
-          (testing "Pivot query uses the ad-hoc permission path when :card-id is in :info (join)"
-            (let [result (qp.pivot/run-pivot-query
-                          {:database    (mt/id)
-                           :type        :query
-                           :info        {:executed-by (mt/user->id :rasta)
-                                         :context     :ad-hoc
-                                         :card-id     card-id}
-                           :constraints {:max-results 10000 :max-results-bare-rows 2000}
-                           :query       {:source-table (format "card__%d" card-id)
-                                         :joins        [{:source-table (mt/id :people)
-                                                         :alias        "p"
-                                                         :condition    [:=
-                                                                        [:field (mt/id :venues :id)]
-                                                                        [:field (mt/id :people :id) {:join-alias "p"}]]
-                                                         :fields       :all}]
-                                         :limit        5}})]
-              (is (= :failed (:status result)))
-              (is (re-find perms-error-msg (str (:error result)))))))))))
+    (mt/test-drivers (conj (mt/normal-drivers-with-feature :native-pivot-tables) :h2)
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (with-venues-only-access
+          (mt/with-temp [:model/Collection collection {}
+                         :model/Card {card-id :id} {:collection_id (:id collection)
+                                                    :dataset_query (mt/mbql-query venues)}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            ;; User cannot query people directly
+            (is (thrown-with-msg? ExceptionInfo perms-error-msg
+                                  (qp/process-query
+                                   {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :people)
+                                               :limit        1}})))
+            ;; Pivot path with :card-id in :info still routes through the ad-hoc permission path.
+            ;; The pivot path wraps queries as userland, so permission errors are returned as
+            ;; {:status :failed} results rather than thrown exceptions.
+            (qp.pivot.tu/with-pivot-parity-check
+              (testing "Pivot query uses the ad-hoc permission path when :card-id is in :info (source-table)"
+                (let [result (qp.pivot/run-pivot-query
+                              {:database    (mt/id)
+                               :type        :query
+                               :info        {:executed-by (mt/user->id :rasta)
+                                             :context     :ad-hoc
+                                             :card-id     card-id}
+                               :constraints {:max-results 10000 :max-results-bare-rows 2000}
+                               :query       {:source-table (mt/id :people)
+                                             :limit        1}})]
+                  (is (= :failed (:status result)))
+                  (is (re-find perms-error-msg (str (:error result))))))
+              ;; Pivot path with :card-id and a join still routes through the ad-hoc permission path
+              (testing "Pivot query uses the ad-hoc permission path when :card-id is in :info (join)"
+                (let [result (qp.pivot/run-pivot-query
+                              {:database    (mt/id)
+                               :type        :query
+                               :info        {:executed-by (mt/user->id :rasta)
+                                             :context     :ad-hoc
+                                             :card-id     card-id}
+                               :constraints {:max-results 10000 :max-results-bare-rows 2000}
+                               :query       {:source-table (format "card__%d" card-id)
+                                             :joins        [{:source-table (mt/id :people)
+                                                             :alias        "p"
+                                                             :condition    [:=
+                                                                            [:field (mt/id :venues :id)]
+                                                                            [:field (mt/id :people :id) {:join-alias "p"}]]
+                                                             :fields       :all}]
+                                             :limit        5}})]
+                  (is (= :failed (:status result)))
+                  (is (re-find perms-error-msg (str (:error result)))))))))))))
 
-(deftest pivot-query-with-card-id-bound-externally-test
+(deftest ^:mb/driver-tests pivot-query-with-card-id-bound-externally-test
   (testing "When *card-id* is bound by the caller (e.g. card.clj), pivot queries should
             still work correctly with card-level permission checks"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (with-venues-only-access
-        (mt/with-temp [:model/Collection collection {}
-                       :model/Card {card-id :id} {:collection_id (:id collection)
-                                                  :dataset_query (mt/mbql-query venues
-                                                                   {:breakout    [$price]
-                                                                    :aggregation [[:count]]})}]
-          (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
-          ;; Simulates what card.clj does — binding *card-id* itself
-          (binding [qp.perms/*card-id* card-id]
-            (let [result (qp.pivot/run-pivot-query
-                          {:database    (mt/id)
-                           :type        :query
-                           :info        {:executed-by (mt/user->id :rasta)
-                                         :context     :ad-hoc
-                                         :card-id     card-id}
-                           :constraints {:max-results 10000 :max-results-bare-rows 2000}
-                           :query       {:source-table (format "card__%d" card-id)
-                                         :breakout     [[:field (mt/id :venues :price)]]
-                                         :aggregation  [[:count]]}})]
-              (is (=? {:status :completed} result)
-                  "Pivot query for an authorized card should succeed when *card-id* is bound by the caller"))))))))
+    (mt/test-drivers (conj (mt/normal-drivers-with-feature :native-pivot-tables) :h2)
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (with-venues-only-access
+          (mt/with-temp [:model/Collection collection {}
+                         :model/Card {card-id :id} {:collection_id (:id collection)
+                                                    :dataset_query (mt/mbql-query venues
+                                                                     {:breakout    [$price]
+                                                                      :aggregation [[:count]]})}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            ;; Simulates what card.clj does — binding *card-id* itself
+            (binding [qp.perms/*card-id* card-id]
+              ;; This test only asserts the permission gate passes.
+              (qp.pivot.tu/without-pivot-parity-check
+               (let [result (qp.pivot/run-pivot-query
+                             {:database    (mt/id)
+                              :type        :query
+                              :info        {:executed-by (mt/user->id :rasta)
+                                            :context     :ad-hoc
+                                            :card-id     card-id}
+                              :constraints {:max-results 10000 :max-results-bare-rows 2000}
+                              :query       {:source-table (format "card__%d" card-id)
+                                            :breakout     [[:field (mt/id :venues :price)]]
+                                            :aggregation  [[:count]]}})]
+                 (is (=? {:status :completed} result)
+                     "Pivot query for an authorized card should succeed when *card-id* is bound by the caller"))))))))))
 
 (deftest download-endpoint-replaces-info-test
   (testing "POST /api/dataset/:format replaces :info entirely rather than merging it with the query map"

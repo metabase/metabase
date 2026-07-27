@@ -8,7 +8,7 @@ import { checkNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
-import { PROGRESS_CHART_DEFINITION } from "./chart-definition";
+import { PROGRESS_CHART_DEFINITION } from "./definition";
 import {
   calculateProgressMetrics,
   extractProgressValue,

@@ -59,6 +59,7 @@
   enable-custom-viz?
   enable-data-complexity-score?
   enable-dashboard-subscription-filters?
+  enable-data-apps?
   enable-database-auth-providers?
   enable-database-routing?
   enable-library?

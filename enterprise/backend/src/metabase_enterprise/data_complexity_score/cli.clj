@@ -25,7 +25,7 @@
       java -jar metabase.jar --mode complexity-score \\
         --source representation -r path/to/fixture/
 
-  Patterned after [[metabase-enterprise.checker.cli]] — same `fail!` pattern, same arg style,
+  Same `fail!` pattern and arg style as the other standalone-mode CLIs,
   and the same bootstrap-dispatched [[entrypoint]] hook."
   (:require
    [clojure.java.io :as io]

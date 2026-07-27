@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { LocationDescriptorObject } from "history";
 import type { AnchorHTMLAttributes, HTMLAttributes, MouseEvent } from "react";
 import { forwardRef, useCallback } from "react";
 
@@ -7,6 +6,7 @@ import { Markdown } from "metabase/common/components/Markdown";
 import { trackSearchClick } from "metabase/common/search/analytics";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
+import type { LocationDescriptorObject } from "metabase/router";
 import { push } from "metabase/router";
 import type { AnchorProps, BoxProps, StackProps } from "metabase/ui";
 import {
@@ -244,7 +244,7 @@ export function SearchResult({
       </ResultNameSection>
       {isLoading && (
         <LoadingSection px="xs">
-          <Loader />
+          <Loader data-testid="search-result-sync-loading-indicator" />
         </LoadingSection>
       )}
       {showXRayButton && (

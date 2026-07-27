@@ -31,7 +31,7 @@ export function AdminAuthCard() {
   };
 
   return (
-    <SettingsSection>
+    <SettingsSection data-testid="mfa-setting">
       <SettingHeader
         id="mfa-enforcement"
         title={t`Two-factor authentication`}
@@ -47,7 +47,7 @@ export function AdminAuthCard() {
         size="sm"
       />
       {enabled && overview && !overview.encryption_key_set && (
-        <Alert color="warning">
+        <Alert size="compact" color="warning">
           {t`Make sure to set the MB_ENCRYPTION_SECRET_KEY environment variable to encrypt authenticator secrets.`}
         </Alert>
       )}

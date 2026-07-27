@@ -2,7 +2,7 @@ import { useLayoutEffect } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
+import { useHomepageDashboard } from "metabase/home/use-homepage-dashboard";
 import { useDispatch, useSelector } from "metabase/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { addUndo } from "metabase/redux/undo";

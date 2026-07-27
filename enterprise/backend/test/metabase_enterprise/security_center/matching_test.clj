@@ -31,7 +31,6 @@
       nil
       "")))
 
-#_:clj-kondo/ignore
 (deftest ^:parallel affected-by-version?-test
   (let [v            matching/parse-version
         in-range?    @#'matching/affected-by-version?

@@ -1,31 +1,35 @@
 import type { Row, SortingState, Updater } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 
+import { useScrollToTop } from "metabase/common/hooks";
 import {
   Card,
   TreeTable,
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
+import {
+  getNextOptionalSorting,
+  getSortingState,
+} from "metabase/utils/sorting";
 import type { DependencySortOptions } from "metabase-enterprise/dependencies/types";
 import { getNodeId } from "metabase-enterprise/dependencies/utils";
-import type { DependencyNode } from "metabase-types/api";
+import {
+  DEPENDENCY_SORT_COLUMNS,
+  type DependencyNode,
+} from "metabase-types/api";
 
 import { DiagnosticsEmptyState } from "../DiagnosticsEmptyState";
 import type { DependencyDiagnosticsMode } from "../types";
 
-import {
-  getColumnWidths,
-  getColumns,
-  getNotFoundMessage,
-  getSortingOptions,
-  getSortingState,
-} from "./utils";
+import { getColumnWidths, getColumns, getNotFoundMessage } from "./utils";
 
 type DiagnosticsTableProps = {
   nodes: DependencyNode[];
   mode: DependencyDiagnosticsMode;
+  page: number;
   sortOptions: DependencySortOptions | undefined;
+  isFetching?: boolean;
   isLoading?: boolean;
   onSelect: (node: DependencyNode) => void;
   onSortOptionsChange: (sortOptions: DependencySortOptions | undefined) => void;
@@ -34,7 +38,9 @@ type DiagnosticsTableProps = {
 export const DiagnosticsTable = function DiagnosticsTable({
   nodes,
   mode,
+  page,
   sortOptions,
+  isFetching = false,
   isLoading = false,
   onSelect,
   onSortOptionsChange,
@@ -54,7 +60,9 @@ export const DiagnosticsTable = function DiagnosticsTable({
     (updater: Updater<SortingState>) => {
       const newSortingState =
         typeof updater === "function" ? updater(sortingState) : updater;
-      onSortOptionsChange(getSortingOptions(newSortingState));
+      onSortOptionsChange(
+        getNextOptionalSorting(newSortingState, DEPENDENCY_SORT_COLUMNS),
+      );
     },
     [sortingState, onSortOptionsChange],
   );
@@ -67,6 +75,12 @@ export const DiagnosticsTable = function DiagnosticsTable({
     getNodeId: (node) => getNodeId(node.id, node.type),
     onRowActivate: handleRowActivate,
     onSortingChange: handleSortingChange,
+  });
+
+  useScrollToTop({
+    ref: treeTableInstance.containerRef,
+    keys: [page, sortOptions],
+    skip: isFetching,
   });
 
   return (

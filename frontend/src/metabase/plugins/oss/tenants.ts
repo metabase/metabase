@@ -99,13 +99,11 @@ const getDefaultPluginTenants = () => ({
   TenantCollectionList: PluginPlaceholder,
   // Unjustified type cast. FIXME
   CanAccessTenantSpecificRoute: PluginPlaceholder as React.ComponentType<{
-    children: React.ReactNode;
+    children?: React.ReactNode;
   }>,
   TenantUsersList: PluginPlaceholder,
   // Unjustified type cast. FIXME
-  TenantUsersPersonalCollectionList: PluginPlaceholder as React.ComponentType<{
-    params: { tenantId: string };
-  }>,
+  TenantUsersPersonalCollectionList: PluginPlaceholder as React.ComponentType,
   GroupDescription: (_props: { group: Group }) =>
     // Unjustified type cast. FIXME
     null as React.ReactElement | null,
@@ -189,12 +187,10 @@ export const PLUGIN_TENANTS: {
   }) => React.ReactElement | null;
   TenantCollectionList: React.ComponentType;
   CanAccessTenantSpecificRoute: React.ComponentType<{
-    children: React.ReactNode;
+    children?: React.ReactNode;
   }>;
   TenantUsersList: React.ComponentType;
-  TenantUsersPersonalCollectionList: React.ComponentType<{
-    params: { tenantId: string };
-  }>;
+  TenantUsersPersonalCollectionList: React.ComponentType;
   GroupDescription: (props: { group: Group }) => React.ReactElement | null;
   EditUserStrategyModal: (props: {
     onClose: () => void;

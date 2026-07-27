@@ -3,8 +3,9 @@
 Construct a Metabase MBQL 5 query as a JSON object describing the query shape. Metabase validates, repairs, and resolves it.
 
 Return:
-- `query`: a JSON **object** (never a quoted string). The target database is inferred from the first stage's `source-table` (or `source-card`) — use the **exact** database name reported by `entity_details` / metadata tools.
+- `query`: a JSON **object** (never a quoted string). The target database is inferred from the first stage's `source-table` (or `source-card`) — use the **exact** database name reported by search / `read_resource` / metadata tools.
 - `title`: required short, human-friendly title for the resulting chart, shown above it (e.g. `"Orders by month"`).
+- `description`: required concise one- or two-sentence description of what the chart shows (the metric, the grouping, and any notable filter); it is used as the saved question's description.
 - `visualization`: optional `{"chart_type": "bar"}` (sibling of `query`, never embedded inside it).
 
 ## Minimal example — count of orders by month
@@ -155,7 +156,7 @@ Reference a field on a related table directly — when the source has exactly on
 - If the FK column lives on a previous stage's output, write `{"source-field-name": "<col>"}` (not auto-filled).
 - If multiple explicit joins all expose the target FK, `:ambiguous-fk-via-join` lists them — set `{"source-field-join-alias": "<alias>"}` to pick one.
 
-**Tip:** discover FKs with `entity_details` / `read_resource metabase://table/<id>/fields`. FK columns are tagged `fk_target_fully_qualified_name="schema.table.field"` — always look for one before assuming a column lives on the current table.
+**Tip:** discover FKs with `read_resource metabase://table/<id>/fields`. FK columns are tagged `fk_target_fully_qualified_name="schema.table.field"` — always look for one before assuming a column lives on the current table.
 
 ## Multi-stage queries
 
@@ -199,7 +200,7 @@ Re-aggregate — average daily total by month:
 
 ## Saved questions and models (`source-card`)
 
-Instead of `source-table`, use `source-card` to query an existing question or model. The value is the card's **portable entity id** — a 21-char opaque string reported by `entity_details` and search tools as `portable_entity_id`.
+Instead of `source-table`, use `source-card` to query an existing question or model. The value is the card's **portable entity id** — a 21-char opaque string reported by search and `read_resource` as `portable_entity_id`.
 
 1. Get the `portable_entity_id` from a tool response. `search` and `read_resource` (`metabase://question/<id>`, `metabase://model/<id>`) include it on the result tag — reuse what's already in context, no extra call needed.
 2. Copy it **verbatim** into `source-card`. The id is opaque — never guess, construct, or abbreviate.
@@ -270,10 +271,10 @@ Before the shape rules: map the user's wording to the right clause. These mismat
 Shape rules:
 - **Always include `{}` options in every clause**, even when empty. `["count"]` is wrong — it must be `["count", {}]`.
 - **The query is a JSON object**, not a string. Send it directly as the `"query"` field of the call.
-- **Use the exact database name** reported by `entity_details` (e.g. `"Sample Database"`, not `"Sample"`) as the first element of every portable FK. Near-misses surface `Unknown database` instead of silently picking one. Cross-database queries are not supported.
+- **Use the exact database name** reported by search / `read_resource` (e.g. `"Sample Database"`, not `"Sample"`) as the first element of every portable FK. Near-misses surface `Unknown database` instead of silently picking one. Cross-database queries are not supported.
 - **Use portable FKs**, not numeric IDs. Schemaless databases use `null` in the schema slot. JSON-unfolded fields append path segments.
 - **Clause heads are lowercase, hyphenated**: `"count"`, `"sum-where"`, `"time-interval"`, `"get-day-of-week"`. Not underscores, not camelCase.
-- **Never invent a `source-card` entity_id.** It must be a 21-char string copied verbatim from `entity_details` / search — no patterns, no numeric ids, no `card__<id>`.
+- **Never invent a `source-card` entity_id.** It must be a 21-char string copied verbatim from search / `read_resource` — no patterns, no numeric ids, no `card__<id>`.
 - **`source-card` columns are referenced by output name** (string in slot 3), not portable FK.
 
 Anti-hallucination:

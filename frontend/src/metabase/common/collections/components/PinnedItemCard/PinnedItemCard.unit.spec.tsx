@@ -76,7 +76,7 @@ function setup({ item = defaultItem, collection = defaultCollection } = {}) {
   return renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <PinnedItemCard
           item={item}
           collection={collection}
@@ -85,7 +85,7 @@ function setup({ item = defaultItem, collection = defaultCollection } = {}) {
           createBookmark={jest.fn()}
           deleteBookmark={jest.fn()}
         />
-      )}
+      }
     />,
     { withRouter: true },
   );

@@ -93,6 +93,18 @@
                      [:coalesce :refresh_started_at lease-free-sentinel] [:< (ms-ago lease-ms)]}
                     {:refresh_started_at (t/offset-date-time)})))
 
+(defn delete-entry!
+  "Delete the cache entry for `query-hash`, if one exists. Deleting the row also releases any held refresh lease, so
+  after a refresh fails to save new results the outdated blob is neither served stale to lease losers nor treated as
+  fresh for the rest of its window. Never throws: this runs during query result reduction, and a failed cleanup
+  shouldn't fail a query that already ran successfully."
+  [^bytes query-hash]
+  (try
+    (t2/delete! (t2/table-name :model/QueryCache) :query_hash query-hash)
+    (catch Throwable e
+      (log/error e "Error deleting outdated cache entry")))
+  nil)
+
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."
   [max-age-seconds]
@@ -136,6 +148,9 @@
 
     (purge-old-entries! [_ max-age-seconds]
       (purge-old-cache-entries! max-age-seconds))
+
+    (delete-entry! [_ query-hash]
+      (delete-entry! query-hash))
 
     (try-acquire-refresh-lease! [_ query-hash lease-ms]
       (try-acquire-refresh-lease! query-hash lease-ms))))

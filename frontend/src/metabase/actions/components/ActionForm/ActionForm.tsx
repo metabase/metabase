@@ -7,8 +7,12 @@ import {
   getSubmitButtonColor,
   getSubmitButtonLabel,
 } from "metabase/actions/utils";
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+} from "metabase/forms";
 import { Button, Flex } from "metabase/ui";
 import type {
   ActionFormInitialValues,
@@ -90,7 +94,7 @@ function ActionForm({
           />
         </Flex>
 
-        <FormErrorMessage />
+        <FormErrorMessage mt="md" />
       </Form>
     </FormProvider>
   );

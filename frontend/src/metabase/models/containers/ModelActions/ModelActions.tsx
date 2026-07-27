@@ -1,4 +1,3 @@
-import type { LocationDescriptor } from "history";
 import { useEffect, useMemo, useState } from "react";
 import { useMount } from "react-use";
 
@@ -16,7 +15,8 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { fetchTableForeignKeys } from "metabase/redux/tables";
-import { replace } from "metabase/router";
+import type { LocationDescriptor } from "metabase/router";
+import { Outlet, replace, useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
@@ -24,11 +24,8 @@ import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { Card } from "metabase-types/api";
 
-type OwnProps = {
-  params: {
-    slug: string;
-  };
-  children: React.ReactNode;
+type ModelActionsParams = {
+  slug: string;
 };
 
 type EntityLoadersProps = {
@@ -41,7 +38,7 @@ type DispatchProps = {
   onChangeLocation: (location: LocationDescriptor) => void;
 };
 
-type Props = OwnProps & EntityLoadersProps & DispatchProps;
+type Props = EntityLoadersProps & DispatchProps;
 
 const mapDispatchToProps = {
   loadMetadataForCard,
@@ -51,7 +48,6 @@ const mapDispatchToProps = {
 
 function ModelActions({
   model,
-  children,
   loadMetadataForCard,
   fetchTableForeignKeys,
   onChangeLocation,
@@ -111,17 +107,14 @@ function ModelActions({
         model={model}
         shouldShowActionsUI={shouldShowActionsUI}
       />
-      {/* Required for rendering child `ModalRoute` elements */}
-      {children}
+      {/* Required for rendering child modal routes */}
+      <Outlet />
     </>
   );
 }
 
-function ModelActionsLoader({
-  params,
-  children,
-  ...dispatchProps
-}: OwnProps & DispatchProps) {
+function ModelActionsLoader(dispatchProps: DispatchProps) {
+  const params = useParams<ModelActionsParams>();
   const modelId = Urls.extractEntityId(params.slug);
   const { isLoading, error } = useGetCardQuery(
     modelId != null ? { id: modelId } : skipToken,
@@ -134,15 +127,11 @@ function ModelActionsLoader({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return (
-    <ModelActions model={model} params={params} {...dispatchProps}>
-      {children}
-    </ModelActions>
-  );
+  return <ModelActions model={model} {...dispatchProps} />;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect<null, DispatchProps, OwnProps, State>(
+export default connect<unknown, DispatchProps, unknown, State>(
   null,
   mapDispatchToProps,
 )(ModelActionsLoader);

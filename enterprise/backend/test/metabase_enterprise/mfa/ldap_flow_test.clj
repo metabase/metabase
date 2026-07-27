@@ -5,9 +5,11 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.management :as mfa.management]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase.session.api :as api.session]
+   [metabase.sso.core :as sso]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -72,6 +74,35 @@
                 "sanity: a real directory password still binds"))
           (testing "the enroll endpoint's schema also refuses a blank password"
             (mt/client session-key :post 400 "ee/mfa/enroll" {:password ""})))))))
+
+(deftest ldap-directory-unreachable-fails-closed-test
+  ;; Lockout-corner: the directory goes down while a user is enrolled. Re-auth (disable) must fail
+  ;; closed as a denied verification — not a 500 — and must not touch the enrollment. The recovery
+  ;; path that needs no directory, admin/remove, keeps working.
+  (mt/with-premium-features #{:multi-factor-auth}
+    (mt/with-temporary-setting-values [mfa-enforcement :optional]
+      (ldap.test/with-ldap-server!
+        (let [{session-key :id} (mt/client :post 200 "session" {:username sally-email
+                                                                :password sally-directory-password})
+              user-id           (t2/select-one-fn :id :model/User :email sally-email)
+              secret            (totp/generate-secret)]
+          (try
+            (t2/insert! :model/AuthIdentity {:user_id     user-id
+                                             :provider    "totp"
+                                             :confirmed_at (t/instant)
+                                             :credentials  {:secret secret}})
+            (with-redefs [sso/find-user (fn [& _] (throw (ex-info "connection refused" {})))]
+              (testing "enroll re-auth with the directory down is a 400, not a 500"
+                (is (=? {:errors {:password some?}}
+                        (mt/client session-key :post 400 "ee/mfa/enroll"
+                                   {:password sally-directory-password}))))
+              (testing "the enrollment is untouched"
+                (is (= :totp (enrollment/enrolled-method user-id))))
+              (testing "admin/remove needs no directory and still recovers the account"
+                (mt/user-http-request :crowberto :post 204 "ee/mfa/admin/remove" {:user_id user-id})
+                (is (nil? (enrollment/enrolled-method user-id)))))
+            (finally
+              (t2/delete! :model/AuthIdentity :user_id user-id :provider "totp"))))))))
 
 (deftest ldap-only-user-enrolls-with-directory-password-test
   (mt/with-premium-features #{:multi-factor-auth}

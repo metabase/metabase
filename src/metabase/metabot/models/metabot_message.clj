@@ -18,6 +18,7 @@
 (t2/deftransforms :model/MetabotMessage
   {:usage mi/transform-json
    :data  mi/transform-json
+   :state mi/transform-json
    :role  mi/transform-keyword})
 
 (defn- migrate-v1->v2-on-read

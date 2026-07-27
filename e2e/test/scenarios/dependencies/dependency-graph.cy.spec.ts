@@ -1100,7 +1100,6 @@ function createTableBasedSegment({ tableId }: { tableId: TableId }) {
   return H.createSegment({
     name: TABLE_BASED_SEGMENT_NAME,
     description: "Segment description",
-    table_id: tableId,
     definition: {
       "source-table": tableId,
       filter: ["=", 1, 1],
@@ -1118,7 +1117,6 @@ function createSegmentBasedSegment({
   return H.createSegment({
     name: SEGMENT_BASED_SEGMENT_NAME,
     description: "Segment description",
-    table_id: tableId,
     definition: {
       "source-table": tableId,
       filter: ["segment", segmentId],
@@ -1228,7 +1226,6 @@ function createDocumentWithTableBasedQuestion({
 function createTableBasedMeasure({ tableId }: { tableId: TableId }) {
   return H.createMeasure({
     name: TABLE_BASED_MEASURE_NAME,
-    table_id: tableId,
     definition: {
       "source-table": tableId,
       aggregation: [["count"]],
@@ -1245,7 +1242,6 @@ function createSegmentBaseMeasure({
 }) {
   return H.createMeasure({
     name: SEGMENT_BASED_MEASURE_NAME,
-    table_id: tableId,
     definition: {
       "source-table": tableId,
       aggregation: [["count-where", ["segment", segmentId]]],
@@ -1341,7 +1337,6 @@ function createMeasureBasedMeasure({
 }) {
   return H.createMeasure({
     name: MEASURE_BASED_MEASURE_NAME,
-    table_id: tableId,
     definition: {
       "source-table": tableId,
       aggregation: ["+", 1, ["measure", measureId]],

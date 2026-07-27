@@ -29,10 +29,8 @@ import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config"
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
-import {
-  sessionTokenHeaders,
-  setApiKeyHeader,
-} from "metabase/embedding/lib/embedding-request-auth";
+import { getSessionTokenHeaders } from "metabase/embedding/lib/auth/get-session-token-headers";
+import { setApiKeyHeader } from "metabase/embedding/lib/auth/set-api-key-header";
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
   isEmbeddingEajs,
@@ -74,7 +72,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
   // applies to the very request that triggered the refresh.
   const sessionTokenHandler = async () => {
     const session = await dispatch(getOrRefreshSession(authConfig)).unwrap();
-    return session?.id ? sessionTokenHeaders(session.id) : undefined;
+    return session?.id ? getSessionTokenHeaders(session.id) : undefined;
   };
 
   // Check if we can use the auth pre-fetched by the bootstrap chunk

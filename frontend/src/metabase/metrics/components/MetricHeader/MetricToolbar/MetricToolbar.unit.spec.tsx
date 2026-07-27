@@ -111,7 +111,7 @@ function setup({
   );
 
   renderWithProviders(
-    withModal ? <Route path="/" component={() => toolbar} /> : toolbar,
+    withModal ? <Route path="/" element={toolbar} /> : toolbar,
     withModal
       ? { storeInitialState: state, withRouter: true, initialRoute: "/" }
       : { storeInitialState: state },

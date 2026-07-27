@@ -93,10 +93,6 @@
     :id    (:identifier entity)
     :label (:identifier entity)}])
 
-(defmethod serdes/hash-fields :model/CustomVizPlugin
-  [_model]
-  [:identifier])
-
 (defmethod serdes/load-find-local "CustomVizPlugin" [path]
   (let [{:keys [id]} (last path)]
     (t2/select-one :model/CustomVizPlugin :identifier id)))

@@ -1,20 +1,25 @@
-import { IndexRoute, Route, type RouteComponent } from "metabase/router";
+import { Route, type RouteComponent, withRouteProps } from "metabase/router";
 
 import { AdminConnectionInfoPage } from "./pages/AdminConnectionInfoPage";
 import { WorkspaceIndexPage } from "./pages/WorkspaceIndexPage";
 
+const RoutedAdminConnectionInfoPage = withRouteProps(AdminConnectionInfoPage);
+
 export function getDataStudioRoutes() {
   return (
     <Route path="workspaces">
-      <IndexRoute component={WorkspaceIndexPage} />
+      <Route index element={<WorkspaceIndexPage />} />
     </Route>
   );
 }
 
 export function getWorkspaceDatabaseRoutes(IsAdmin: RouteComponent) {
   return (
-    <Route component={IsAdmin}>
-      <Route path=":databaseId/admin" component={AdminConnectionInfoPage} />
+    <Route element={<IsAdmin />}>
+      <Route
+        path=":databaseId/admin"
+        element={<RoutedAdminConnectionInfoPage />}
+      />
     </Route>
   );
 }

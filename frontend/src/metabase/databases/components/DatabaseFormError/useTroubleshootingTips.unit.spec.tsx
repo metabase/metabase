@@ -14,6 +14,18 @@ import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { useTroubleshootingTips } from "./useTroubleshootingTips";
 
+function TroubleshootingTipsList() {
+  const tips = useTroubleshootingTips(false, true);
+
+  return (
+    <>
+      {tips.map(({ body, key }) => (
+        <Fragment key={key}>{body}</Fragment>
+      ))}
+    </>
+  );
+}
+
 interface SetupOptions {
   isHostAndPortError: boolean;
   expanded: boolean;
@@ -83,20 +95,7 @@ describe("useTroubleshootingTips", () => {
 
       // This time we render inside a Route component to more easily assert links presence
       renderWithProviders(
-        <Route
-          path="*"
-          component={() => {
-            const tips = useTroubleshootingTips(false, true);
-
-            return (
-              <>
-                {tips.map(({ body, key }) => (
-                  <Fragment key={key}>{body}</Fragment>
-                ))}
-              </>
-            );
-          }}
-        />,
+        <Route path="*" element={<TroubleshootingTipsList />} />,
         {
           withRouter: true,
           storeInitialState,

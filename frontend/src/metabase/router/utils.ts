@@ -2,27 +2,34 @@ import type { Path, URLSearchParamsInit } from "./types";
 
 /**
  * Split a path string into `pathname`, `search`, and `hash`, mirroring
- * react-router v7's `parsePath`. Used when a string destination has to be
- * combined with history `state` into a v3 location descriptor.
+ * react-router v7's `parsePath`. A part that the string does not carry is left
+ * out rather than set to `""`, which is how `resolveTo` tells `"?x=1"` (keep
+ * the current pathname) apart from `"/"` (go to the root).
  */
-export function parsePath(path: string): Path {
-  let pathname = path;
-  let search = "";
-  let hash = "";
+export function parsePath(path: string): Partial<Path> {
+  const parsed: Partial<Path> = {};
 
-  const hashIndex = pathname.indexOf("#");
+  if (!path) {
+    return parsed;
+  }
+
+  const hashIndex = path.indexOf("#");
   if (hashIndex >= 0) {
-    hash = pathname.slice(hashIndex);
-    pathname = pathname.slice(0, hashIndex);
+    parsed.hash = path.slice(hashIndex);
+    path = path.slice(0, hashIndex);
   }
 
-  const searchIndex = pathname.indexOf("?");
+  const searchIndex = path.indexOf("?");
   if (searchIndex >= 0) {
-    search = pathname.slice(searchIndex);
-    pathname = pathname.slice(0, searchIndex);
+    parsed.search = path.slice(searchIndex);
+    path = path.slice(0, searchIndex);
   }
 
-  return { pathname, search, hash };
+  if (path) {
+    parsed.pathname = path;
+  }
+
+  return parsed;
 }
 
 /**

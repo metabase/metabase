@@ -404,6 +404,11 @@ describe(
         createTestTables();
         createSourceQuestion("Graph question").as("question");
 
+        // The replacement modal fetches the dependents of the source table
+        // exactly once when it opens; wait for the async dependency backfill
+        // so the question's dependency row exists by then.
+        H.waitForBackfillComplete();
+
         getTableId(SOURCE_TABLE).then((sourceTableId) => {
           cy.visit(`/data-studio/dependencies?id=${sourceTableId}&type=table`);
         });
@@ -821,6 +826,12 @@ function getTableId(tableName: string) {
 }
 
 function openReplacementModal(sourceTableLabel: string) {
+  // The modal fetches the dependents of the source table exactly once when it
+  // opens, and the card -> table dependency rows are written by an async
+  // backfill job. Wait for the backfill so the modal doesn't race it and show
+  // "Nothing uses this data source" for a table that does have dependents.
+  H.waitForBackfillComplete();
+
   H.DataModel.visitDataStudio();
 
   H.DataModel.TablePicker.getDatabase("Writable Postgres12").click();
@@ -1042,7 +1053,6 @@ function createHighAmountSegment() {
       (amountFieldId) =>
         H.createSegment({
           name: "High amount",
-          table_id: sourceTableId,
           definition: {
             type: "query",
             database: WRITABLE_DB_ID,
@@ -1062,7 +1072,6 @@ function createSourceTotalAmountMeasure() {
       (amountFieldId) =>
         H.createMeasure({
           name: "Total amount",
-          table_id: sourceTableId,
           definition: {
             "source-table": sourceTableId,
             aggregation: [["sum", ["field", amountFieldId, null]]],

@@ -6,13 +6,19 @@
    [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
+   [metabase-enterprise.semantic-search.embedding-health :as embedding-health]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.entity-retrieval.mirror :as mirror]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [next.jdbc :as jdbc]))
 
 (set! *warn-on-reflection* true)
+
+;; the dedicated-harness tests below hit the app db before any auto-initializing mt helper — on the
+;; appdb-mode CI job this namespace can be an early db touch in a fresh JVM
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- approx [target] #(< (abs (- (double %) (double target))) 1e-9))
 
@@ -34,7 +40,8 @@
 (deftest dispatch-without-pgvector-test
   (testing "with the feature enabled but pgvector unconfigured, the EE impls degrade gracefully"
     ;; Pin db-url to nil so the result is deterministic regardless of any ambient MB_PGVECTOR_DB_URL:
-    ;; available? is false, so search returns [] and the write-path nudge no-ops rather than throwing.
+    ;; entity retrieval is dedicated-only, so no URL means available? is false, search returns [] and the
+    ;; write-path nudge no-ops rather than throwing.
     (mt/with-premium-features #{:library :library-retrieval}
       (with-redefs [semantic.db.datasource/db-url nil]
         (is (= [] (mirror/search "anything" 10)))
@@ -134,9 +141,11 @@
               ":library without :library-retrieval does not entitle the tool"))
         (mt/with-premium-features #{:library :library-retrieval}
           (is (true? (entity-retrieval.core/available?)))))
-      ;; pgvector unconfigured -> unavailable regardless of license
+      ;; no URL -> unconfigured and unavailable regardless of license, even on a pgvector-capable
+      ;; Postgres app db: entity retrieval's tables aren't schema-isolated yet, so it stays dedicated-only
       (with-redefs [semantic.db.datasource/db-url nil]
         (mt/with-premium-features #{:library :library-retrieval}
+          (is (false? (entity-retrieval.core/pgvector-configured?)))
           (is (false? (entity-retrieval.core/available?))))))
     (testing "fully licensed + pgvector, but no way to compute embeddings -> unavailable"
       (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
@@ -144,6 +153,62 @@
           ;; an unrecognized provider hits embedding-supported?'s :default (false)
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model (constantly {:provider "no-embedder"})]
             (is (false? (entity-retrieval.core/available?)))))))))
+
+(deftest entity-retrieval-availability-requires-a-closed-breaker-test
+  (mt/with-premium-features #{:library-retrieval}
+    (let [recovery-requested? (atom false)]
+      (mt/with-dynamic-fn-redefs
+        [entity-retrieval.core/retrieval-status            (constantly {:index {:status :populated}})
+         semantic.embedding/embedder-circuit-untrusted?     (constantly true)
+         embedding-health/request-circuit-recovery!         #(reset! recovery-requested? true)]
+        (is (false? (entity-retrieval.core/entity-retrieval-available?)))
+        (is (true? @recovery-requested?) "an untrusted circuit starts recovery without offering the tool"))))
+  (mt/with-premium-features #{:library-retrieval}
+    (mt/with-dynamic-fn-redefs
+      [entity-retrieval.core/retrieval-status        (constantly {:index {:status :populated}})
+       semantic.embedding/embedder-circuit-untrusted? (constantly false)]
+      (is (true? (entity-retrieval.core/entity-retrieval-available?))))))
+
+(deftest entity-retrieval-availability-checks-readiness-before-breaker-test
+  (mt/with-premium-features #{:library-retrieval}
+    (mt/with-dynamic-fn-redefs
+      [entity-retrieval.core/retrieval-status         (constantly {:dependencies {:embedder false}})
+       semantic.embedding/embedder-circuit-untrusted? #(throw (ex-info "must not resolve an endpoint" {}))]
+      (is (false? (entity-retrieval.core/entity-retrieval-available?))))))
+
+(deftest retrieval-status-missing-table-reads-as-absence-test
+  (mt/with-premium-features #{:library :library-retrieval}
+    ;; db-url is read directly as a var, so with-redefs (not with-dynamic-fn-redefs) is required here.
+    (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
+      (mt/with-dynamic-fn-redefs
+        [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
+         semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)]
+        (let [deps {:store true, :embedder true, :licenses true}
+              status-when-probe-throws
+              (fn [e]
+                (mt/with-dynamic-fn-redefs [index-table/index-status (fn [& _] (throw e))]
+                  (entity-retrieval.core/retrieval-status)))]
+          (testing "42P01 (first build pending / manual drop) reads as a missing index, not a store fault"
+            (is (=? {:dependencies deps, :index {:status :missing}}
+                    (status-when-probe-throws
+                     (java.sql.SQLException. "relation \"library_entity_index_meta\" does not exist" "42P01")))))
+          (testing "a wrapped 42P01 is found through the cause chain"
+            (is (=? {:dependencies deps, :index {:status :missing}}
+                    (status-when-probe-throws
+                     (ex-info "probe failed" {}
+                              (java.sql.SQLException. "relation does not exist" "42P01"))))))
+          (testing "any other probe failure (a real connectivity fault) reads as :unreachable, carrying :error"
+            (is (=? {:dependencies deps, :index {:status :unreachable, :error "connection refused"}}
+                    (status-when-probe-throws
+                     (java.sql.SQLException. "connection refused" "08001")))))
+          (testing "interruption propagates instead of being reported as an unreachable index"
+            (is (thrown? InterruptedException
+                         (status-when-probe-throws (InterruptedException.)))))
+          (testing "compatible metadata without its vectors table reads as missing, including the metric probe"
+            (mt/with-dynamic-fn-redefs [index-table/index-status          (constantly :compatible)
+                                        index-table/vectors-table-exists? (constantly false)]
+              (is (=? {:dependencies deps, :index {:status :missing}}
+                      (entity-retrieval.core/retrieval-status false))))))))))
 
 (deftest ^:sequential entity-retrieval-available?-requires-a-populated-index-test
   (testing "the curated tool is offered only once the index has documents (else the nlq profile falls back)"

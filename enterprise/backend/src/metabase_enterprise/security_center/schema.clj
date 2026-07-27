@@ -24,6 +24,15 @@
 (mr/def ::affected-versions
   [:sequential ::version-range])
 
+(mr/def ::download-jar-url
+  "A downloadable JAR for a given fixed version."
+  [:map
+   [:version ::semver]
+   [:url     :string]])
+
+(mr/def ::download-jar-urls
+  [:sequential ::download-jar-url])
+
 (mr/def ::matching-query
   "HoneySQL query keyed by dialect. nil means affects all instances.
    Stored as EDN to preserve keywords that HoneySQL requires for identifiers/operators."

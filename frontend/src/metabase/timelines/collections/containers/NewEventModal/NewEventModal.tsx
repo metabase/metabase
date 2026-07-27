@@ -3,7 +3,7 @@ import {
   useCreateTimelineEventMutation,
   useGetTimelineQuery,
 } from "metabase/api";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";

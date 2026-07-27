@@ -1,6 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import { forwardRef } from "react";
 
+import { createMockMediaQueryList } from "__support__/ui";
 import resizeObserver from "metabase/utils/resize-observer";
 
 import { ExplicitSize } from "./ExplicitSize";
@@ -114,6 +115,7 @@ describe("ExplicitSize", () => {
 
   afterEach(() => {
     jest.useRealTimers();
+    jest.restoreAllMocks();
   });
 
   it("should pass the size from resize observer entries to the wrapped component", () => {
@@ -155,6 +157,26 @@ describe("ExplicitSize", () => {
     triggerResize(element, createEntry(element, 400, 868));
 
     expect(screen.getByTestId("sized")).toHaveTextContent("400x868");
+  });
+
+  it("should use untransformed layout dimensions while printing (#74181)", () => {
+    jest
+      .spyOn(window, "matchMedia")
+      .mockReturnValue(createMockMediaQueryList({ matches: true }));
+
+    render(<SizedComponent />);
+    const element = screen.getByTestId("sized");
+    Object.defineProperties(element, {
+      offsetWidth: { value: 400 },
+      offsetHeight: { value: 300 },
+    });
+    jest
+      .spyOn(element, "getBoundingClientRect")
+      .mockReturnValue(new DOMRect(0, 0, 200, 150));
+
+    triggerResize(element, { target: document.body });
+
+    expect(screen.getByTestId("sized")).toHaveTextContent("400x300");
   });
 
   it("should measure a child that renders content only after mount and pass it non-null dimensions (metabase#51926)", () => {

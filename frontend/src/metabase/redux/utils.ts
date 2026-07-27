@@ -21,11 +21,15 @@ export function createThunkAction<
   TArgs extends any[],
   TResult,
   TActionType extends string,
+  TState = State,
 >(
   actionType: TActionType,
   thunkCreator: (
     ...args: TArgs
-  ) => (dispatch: ThunkDispatch<any, any, any>, getState: GetState) => TResult,
+  ) => (
+    dispatch: ThunkDispatch<any, any, any>,
+    getState: () => TState,
+  ) => TResult,
 ): (
   ...args: TArgs
 ) => (

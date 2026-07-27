@@ -27,7 +27,7 @@ import type {
   UpdateDashboardRequest,
 } from "metabase-types/api";
 
-import { Api } from "./api";
+import { Api, type RtkCacheKeyed } from "./api";
 import {
   idTag,
   invalidateTags,
@@ -103,17 +103,9 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       getDashboardCardQuery: builder.query<
         Dataset,
-        DashboardCardQueryRequest & { _refetchDeps?: unknown }
+        DashboardCardQueryRequest & RtkCacheKeyed
       >({
-        // `_refetchDeps` is part of the RTK cache key (so imperative runners can
-        // force a unique key per call) but must not be sent to the server.
-        query: ({
-          dashboardId,
-          dashcardId,
-          cardId,
-          _refetchDeps,
-          ...body
-        }) => ({
+        query: ({ dashboardId, dashcardId, cardId, ...body }) => ({
           method: "POST",
           url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query`,
           body,
@@ -123,15 +115,9 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       getDashboardCardQueryPivot: builder.query<
         Dataset,
-        DashboardCardQueryRequest & { _refetchDeps?: unknown }
+        DashboardCardQueryRequest & RtkCacheKeyed
       >({
-        query: ({
-          dashboardId,
-          dashcardId,
-          cardId,
-          _refetchDeps,
-          ...body
-        }) => ({
+        query: ({ dashboardId, dashcardId, cardId, ...body }) => ({
           method: "POST",
           url: `/api/dashboard/pivot/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query`,
           body,

@@ -33,11 +33,14 @@ const setup = ({ isAdmin = true, tokenFeatures = {} }: SetupOpts = {}) => {
   });
 
   const path = "/transforms";
-  renderWithProviders(<Route path={path} component={EnableTransformsPage} />, {
-    storeInitialState: state,
-    withRouter: true,
-    initialRoute: path,
-  });
+  renderWithProviders(
+    <Route path={path} element={<EnableTransformsPage />} />,
+    {
+      storeInitialState: state,
+      withRouter: true,
+      initialRoute: path,
+    },
+  );
 };
 
 const ADMINS_ONLY_COPY = "Only Admins can create and run transforms";

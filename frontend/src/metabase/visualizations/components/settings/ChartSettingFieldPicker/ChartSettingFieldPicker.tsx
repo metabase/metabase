@@ -37,14 +37,14 @@ type ChartSettingFieldPickerProps = {
   fieldSettingWidget?: string | null;
   onChange?: (value: string) => void;
   onChangeSeriesColor?: (seriesKey: string, value: string) => void;
-  onRemove?: () => void;
+  onRemove?: (() => void) | null;
   onShowWidget?: (widget: MenuWidgetInfo, target: HTMLElement) => void;
   options?: Array<{ name: string; value: string }>;
   series?: Series;
   showColorPicker?: boolean;
   showColumnSetting?: boolean;
   showDragHandle?: boolean;
-  value?: string;
+  value?: string | null;
 };
 
 export const ChartSettingFieldPicker = ({

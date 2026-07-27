@@ -1,7 +1,6 @@
-import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { modalRoute } from "metabase/common/components/ModalRoute";
 
 import { UnsubscribeUserModal } from "./containers/UnsubscribeUserModal/UnsubscribeUserModal";
 
-export const getUserMenuRotes = () => (
-  <ModalRoute path="unsubscribe" modal={UnsubscribeUserModal} noWrap />
-);
+export const getUserMenuRotes = () =>
+  modalRoute("unsubscribe", UnsubscribeUserModal, { noWrap: true });

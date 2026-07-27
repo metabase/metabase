@@ -30,15 +30,10 @@ function setup(
 
   return renderWithProviders(
     <>
-      <Route
-        path="/internal-link"
-        component={() => <div>Internal link content</div>}
-      />
+      <Route path="/internal-link" element={<div>Internal link content</div>} />
       <Route
         path="/"
-        component={() => (
-          <UpsellBanner {...props}>{props.children}</UpsellBanner>
-        )}
+        element={<UpsellBanner {...props}>{props.children}</UpsellBanner>}
       />
     </>,
     {
@@ -145,7 +140,7 @@ describe("UpsellsBanner > Upsell Wrapper Dismissible", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => (
+        element={
           <UpsellBanner
             dismissible
             campaign="fresh-campaign"
@@ -156,7 +151,7 @@ describe("UpsellsBanner > Upsell Wrapper Dismissible", () => {
           >
             Banner content
           </UpsellBanner>
-        )}
+        }
       />,
       {
         storeInitialState: {

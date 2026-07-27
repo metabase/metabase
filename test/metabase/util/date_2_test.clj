@@ -178,19 +178,22 @@
                          :es-MX #{"2 de abril de 2021 02:42:09 PM (Hora de verano del Pacífico)"
                                   "2 de abril de 2021 14:42:09 (Hora de verano del Pacífico)"
                                   "2 de abril de 2021 14:42:09 (hora de verano del Pacífico)"
-                                  "2 de abril de 2021, 14:42:09 (Hora de verano del Pacífico)"}}
+                                  "2 de abril de 2021, 14:42:09 (Hora de verano del Pacífico)"
+                                  "2 de abril de 2021, 2:42:09 p.m. (hora de verano del Pacífico)"}}
 
                         #t "2021-04-02T14:42:09.524392-07:00" ; OffsetDateTime
                         {:en-US #{"April 2, 2021 2:42:09 PM (GMT-07:00)"
                                   "April 2, 2021, 2:42:09 PM (GMT-07:00)"}
                          :es-MX #{"2 de abril de 2021 02:42:09 PM (GMT-07:00)"
-                                  "2 de abril de 2021 14:42:09 (GMT-07:00)"}}
+                                  "2 de abril de 2021 14:42:09 (GMT-07:00)"
+                                  "2 de abril de 2021, 2:42:09 p.m. (GMT-07:00)"}}
 
                         #t "2021-04-02T14:42:09.524392" ; LocalDateTime
                         {:en-US #{"April 2, 2021 2:42:09 PM"
                                   "April 2, 2021, 2:42:09 PM"}
                          :es-MX #{"2 de abril de 2021 02:42:09 PM"
-                                  "2 de abril de 2021 14:42:09"}}
+                                  "2 de abril de 2021 14:42:09"
+                                  "2 de abril de 2021, 2:42:09 p.m."}}
 
                         #t "2021-04-02" ; LocalDate
                         {:en-US "April 2, 2021"
@@ -199,12 +202,14 @@
                         #t "14:42:09.524392-07:00" ; OffsetTime
                         {:en-US "2:42:09 PM (GMT-07:00)"
                          :es-MX #{"02:42:09 PM (GMT-07:00)"
-                                  "14:42:09 (GMT-07:00)"}}
+                                  "14:42:09 (GMT-07:00)"
+                                  "2:42:09 p.m. (GMT-07:00)"}}
 
                         #t "14:42:09.524392" ; LocalTime
                         {:en-US "2:42:09 PM"
                          :es-MX #{"02:42:09 PM"
-                                  "14:42:09"}}}
+                                  "14:42:09"
+                                  "2:42:09 p.m."}}}
           [locale expected] expected]
     (mt/with-user-locale locale
       (testing (format "%s %s" (.getCanonicalName (class t)) (pr-str t))

@@ -195,6 +195,28 @@
                                                                                    [:message :string]]])}}
                       (latest-task-history-entry "channel-send"))))))))))
 
+(deftest notification-send-inactive-channel-humanized-error-test
+  (notification.tu/with-notification-testing-setup!
+    (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
+      (let [n (models.notification/create-notification!
+               {:payload_type :notification/testing}
+               nil
+               [{:channel_type notification.tu/test-channel-type
+                 :channel_id   (:id chn)
+                 :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+        (testing "sending to a deactivated channel fails with a human-readable error, without retries (#76802)"
+          (t2/update! :model/Channel (:id chn) {:active false})
+          (let [send-count (atom 0)]
+            (with-redefs [channel/send! (fn [& _] (swap! send-count inc))]
+              (#'notification.send/send-notification-sync! n))
+            (testing "channel/send! is never invoked"
+              (is (zero? @send-count))))
+          (is (=? {:task         "channel-send"
+                   :status       :failed
+                   :task_details {:message           #"The channel this notification is set to send to no longer exists or is inactive\."
+                                  :attempted_retries 0}}
+                  (latest-task-history-entry "channel-send"))))))))
+
 (def ^:private fake-email-notification
   {:subject      "test-message"
    :recipients   ["whoever@example.com"]
@@ -470,6 +492,7 @@
                                         :timeout-ms  1000})]
       ;; dispatcher spawns its own worker threads that don't inherit *local-redefs* —
       ;; use with-redefs to swap the root so worker threads see the replacement.
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [notification.send/send-notification-sync! (fn [notification]
                                                                 ;; fake latency
@@ -507,7 +530,6 @@
             (reset! sent-notifications [])
             (let [error-thrown (atom false)]
               ;; dispatcher worker thread — see note above
-              #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
               (with-redefs [notification.send/send-notification-sync!
                             (fn [notification]
                               (if (= "F" (:test-value notification))
@@ -661,6 +683,7 @@
           queue-size (notification.settings/notification-thread-pool-size)]
       ;; notification thread pool workers don't inherit *local-redefs* — the root swap from
       ;; with-redefs is required so the patched fns are visible to the worker threads.
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [notification.payload/notification-payload (fn [& _]
                                                                 (assert false))
@@ -717,6 +740,7 @@
           dispatch-fn             (:dispatch-fn dispatcher)
           shutdown-fn             (:shutdown-fn dispatcher)]
       ;; dispatcher spawns worker threads without our dynamic binding
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [notification.send/send-notification-sync!
                     (fn [notification]

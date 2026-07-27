@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { Location } from "history";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
@@ -17,8 +16,7 @@ import {
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
-import { push } from "metabase/router";
-import { Link, type Route } from "metabase/router";
+import { Link, type Location, push, useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -47,10 +45,9 @@ import {
 
 type NewTransformPageProps = {
   initialSource: DraftTransformSource;
-  route: Route;
 };
 
-function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
+function NewTransformPage({ initialSource }: NewTransformPageProps) {
   const {
     transformsDatabases,
     isLoadingDatabases: isLoading,
@@ -89,7 +86,6 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
     <NewTransformPageBody
       initialSource={initialSource}
       databases={transformsDatabases}
-      route={route}
     />
   );
 }
@@ -97,13 +93,11 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
 type NewTransformPageBodyProps = {
   initialSource: DraftTransformSource;
   databases: Database[];
-  route: Route;
 };
 
 function NewTransformPageBody({
   initialSource,
   databases,
-  route,
 }: NewTransformPageBodyProps) {
   const {
     source,
@@ -227,7 +221,6 @@ function NewTransformPageBody({
         />
       )}
       <LeaveRouteConfirmModal
-        route={route}
         isEnabled={isDirty}
         isLocationAllowed={isLocationAllowed}
         onConfirm={rejectProposed}
@@ -237,46 +230,27 @@ function NewTransformPageBody({
   );
 }
 
-type NewQueryTransformPageProps = {
-  route: Route;
-};
-
-export function NewQueryTransformPage({ route }: NewQueryTransformPageProps) {
+export function NewQueryTransformPage() {
   const initialSource = useMemo(() => getInitialQuerySource(), []);
-  return <NewTransformPage initialSource={initialSource} route={route} />;
+  return <NewTransformPage initialSource={initialSource} />;
 }
 
-type NewNativeTransformPageProps = {
-  route: Route;
-};
-
-export function NewNativeTransformPage({ route }: NewNativeTransformPageProps) {
+export function NewNativeTransformPage() {
   const initialSource = useMemo(() => getInitialNativeSource(), []);
-  return <NewTransformPage initialSource={initialSource} route={route} />;
+  return <NewTransformPage initialSource={initialSource} />;
 }
 
-type NewPythonTransformPageProps = {
-  route: Route;
-};
-
-export function NewPythonTransformPage({ route }: NewPythonTransformPageProps) {
+export function NewPythonTransformPage() {
   const initialSource = useMemo(() => getInitialPythonSource(), []);
-  return <NewTransformPage initialSource={initialSource} route={route} />;
+  return <NewTransformPage initialSource={initialSource} />;
 }
 
 type NewCardTransformPageParams = {
   cardId: string;
 };
 
-type NewCardTransformPageProps = {
-  params: NewCardTransformPageParams;
-  route: Route;
-};
-
-export function NewCardTransformPage({
-  params,
-  route,
-}: NewCardTransformPageProps) {
+export function NewCardTransformPage() {
+  const params = useParams<NewCardTransformPageParams>();
   const cardId = Urls.extractEntityId(params.cardId);
   const {
     data: card,
@@ -297,5 +271,5 @@ export function NewCardTransformPage({
     );
   }
 
-  return <NewTransformPage initialSource={initialSource} route={route} />;
+  return <NewTransformPage initialSource={initialSource} />;
 }

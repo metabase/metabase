@@ -86,7 +86,7 @@ export const setup = async ({
   );
 
   renderWithProviders(
-    <Route path="*" component={TestQuestionSettingsSidebar} />,
+    <Route path="*" element={<TestQuestionSettingsSidebar />} />,
     {
       withRouter: true,
       storeInitialState: state,

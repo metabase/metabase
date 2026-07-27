@@ -441,6 +441,22 @@
   [a-query stage-number orderable direction]
   (lib.core/order-by a-query stage-number orderable (keyword direction)))
 
+(defn ^:export with-page
+  "Set (or, with a nil `a-page`, remove) the `:page` clause on `a-query` at `stage-number`. Returns
+  the updated query. `a-page` is a JS object `{page, items}` (`page` is 1-indexed). Drops `:limit`
+  if present, since it conflicts with `:page`.
+
+  > **Code health:** Healthy"
+  [a-query stage-number a-page]
+  (lib.core/with-page a-query stage-number (when a-page (js->clj a-page :keywordize-keys true))))
+
+(defn ^:export current-page
+  "Return the `:page` clause on `a-query` at `stage-number` as a JS object, or nil if there is none.
+
+  > **Code health:** Healthy"
+  [a-query stage-number]
+  (clj->js (lib.core/current-page a-query stage-number)))
+
 (defn ^:export order-bys
   "Get the `ORDER BY` clauses in `a-query` at `stage-number`, as a JS array of opaque values.
 
@@ -2000,37 +2016,48 @@
 (defn- remove-undefined-properties
   [obj]
   (cond-> obj
-    (object? obj) (gobject/filter (fn [e _ _] (not (undefined? e))))))
+    (object? obj) (gobject/filter (fn [v _k _object] (not (undefined? v))))))
 
 (defn- template-tags-js->cljs
-  [tags]
-  (-> tags
-      (gobject/map (fn [e _ _]
-                     (remove-undefined-properties e)))
-      js->clj
-      (update-vals (fn [tag]
-                     (-> tag
-                         (perf/update-keys keyword)
-                         (update :type keyword)
-                         (m/update-existing :widget-type #(some-> % keyword))
-                         (m/update-existing :dimension #(some-> % legacy-ref->mbql5)))))))
+  "Convert a JavaScript Object containing template `tags` to a ClojureScript sequence."
+  [tags-object]
+  (perf/mapv (fn [tag-name]
+               (let [tag-object (gobject/get tags-object tag-name)]
+                 (-> tag-object
+                     remove-undefined-properties
+                     js->clj
+                     ;; TODO (Cam 2026-07-09) why not just normalize template tags the same way we do everything else?
+                     ;; Not changing this now in case there's some sort of good reason for doing it manually
+                     (perf/update-keys keyword)
+                     (assoc :name tag-name) ; prefer the tag name used as a map key in case it's unset in the tag itself or differs
+                     (update :type keyword)
+                     (m/update-existing :widget-type #(some-> % keyword))
+                     (m/update-existing :dimension #(some-> % legacy-ref->mbql5)))))
+             (gobject/getKeys tags-object)))
+
+(defn- template-tag-cljs->js [tag]
+  (-> tag
+      (update :type name)
+      (m/update-existing :widget-type #(some-> % u/qualified-name))
+      (m/update-existing :dimension #(some-> % ref->legacy-ref))
+      (clj->js :keyword-fn u/qualified-name)))
 
 (defn- template-tags-cljs->js
+  "Convert a sequence of template `tags` to a JavaScript Object."
   [tags]
-  (-> tags
-      (update-vals (fn [tag]
-                     (-> tag
-                         (update :type name)
-                         (m/update-existing :widget-type #(some-> % u/qualified-name))
-                         (m/update-existing :dimension #(some-> % ref->legacy-ref)))))
-      (clj->js :keyword-fn u/qualified-name)))
+  (reduce
+   (fn [obj {tag-name :name, :as tag}]
+     (doto obj
+       (gobject/set (u/qualified-name tag-name) (template-tag-cljs->js tag))))
+   #js {}
+   tags))
 
 (defn ^:export with-template-tags
   "Updates the native first stage of `a-query`'s template tags to the provided `tags`.
 
   > **Code health:** Healthy"
-  [a-query tags]
-  (lib.core/with-template-tags a-query (template-tags-js->cljs tags)))
+  [a-query tags-object]
+  (lib.core/with-template-tags a-query (template-tags-js->cljs tags-object)))
 
 (defn ^:export raw-native-query
   "Returns the native query string for the native first stage of `a-query`.

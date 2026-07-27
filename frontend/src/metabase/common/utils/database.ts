@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   Card,
   Dashboard,
@@ -117,3 +118,15 @@ export const dashboardUsesRoutingEnabledDatabases = (
 export function hasTableEditingEnabled(database: Pick<Database, "settings">) {
   return Boolean(database.settings?.["database-enable-table-editing"]);
 }
+
+/**
+ * Match a database by exact (case-sensitive) name, ignoring the virtual
+ * "Saved Questions" database; on a name collision the lowest id wins.
+ */
+export const findDatabaseByName = (databases: Database[], name: string) =>
+  databases
+    .filter(
+      (database) =>
+        database.name === name && database.id !== SAVED_QUESTIONS_VIRTUAL_DB_ID,
+    )
+    .sort((a, b) => a.id - b.id)[0];

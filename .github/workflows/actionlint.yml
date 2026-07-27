@@ -1,0 +1,42 @@
+name: Actionlint
+
+on:
+  push:
+    branches:
+      - 'master'
+      - 'release-**'
+    paths:
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  actionlint:
+    name: Lint Github Actions Workflows
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Get changed Github actions
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+          list-files: shell
+      - name: Setup actionlint
+        id: download
+        shell: bash
+        run: |
+          if command -v actionlint; then
+            echo "executable=actionlint" >> "$GITHUB_OUTPUT"
+          else
+            # script sets executable output, for details see: https://github.com/rhysd/actionlint/blob/main/docs/usage.md#use-actionlint-on-github-actions
+            bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash)
+          fi
+      - name: Run actionlint
+        run: ${{ steps.download.outputs.executable }} --color --verbose ${{ steps.changes.outputs.actionlint_files }}

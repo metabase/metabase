@@ -85,17 +85,12 @@ async function setupCollectionContent(overrides = {}) {
   renderWithProviders(
     <Route
       path="/"
-      component={() => {
-        return (
-          <>
-            <CollectionContent
-              collectionId={firstCollectionId}
-              {...overrides}
-            />
-            <FileUploadStatus />
-          </>
-        );
-      }}
+      element={
+        <>
+          <CollectionContent collectionId={firstCollectionId} {...overrides} />
+          <FileUploadStatus />
+        </>
+      }
     />,
     {
       withRouter: true,

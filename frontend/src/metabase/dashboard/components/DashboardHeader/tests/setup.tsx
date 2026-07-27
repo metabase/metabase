@@ -116,7 +116,7 @@ export const setup = async ({
   renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <MockDashboardContext
           dashboardId={dashboard.id}
           dashboard={dashboard}
@@ -131,7 +131,7 @@ export const setup = async ({
         >
           <DashboardHeader />
         </MockDashboardContext>
-      )}
+      }
     />,
     {
       withRouter: true,

@@ -69,6 +69,28 @@
         (testing "non-superuser gets 403"
           (mt/user-http-request :rasta :get 403 "ee/security-center"))))))
 
+(deftest list-advisories-returns-download-jar-urls-test
+  (testing "GET /api/ee/security-center returns download_jar_urls"
+    (mt/with-premium-features #{:admin-security-center}
+      (mt/with-temp [:model/SecurityAdvisory _
+                     {:advisory_id       "SC-DL-001"
+                      :severity          "high"
+                      :title             "Advisory with download link"
+                      :description       "Test"
+                      :remediation       "Upgrade"
+                      :affected_versions [{"min" "1.58.0" "fixed" "1.58.11"}]
+                      :download_jar_urls [{"version" "1.58.11"
+                                           "url" "https://downloads.example.com/metabase.jar"}]
+                      :match_status      "active"
+                      :published_at      #t "2026-03-24T00:00:00Z"
+                      :updated_at        #t "2026-03-24T00:00:00Z"}]
+        (let [response  (mt/user-http-request :crowberto :get 200 "ee/security-center")
+              advisory  (->> response :advisories (some #(when (= "SC-DL-001" (:advisory_id %)) %)))]
+          (is (= [{:min "1.58.0" :fixed "1.58.11"}]
+                 (:affected_versions advisory)))
+          (is (= [{:version "1.58.11" :url "https://downloads.example.com/metabase.jar"}]
+                 (:download_jar_urls advisory))))))))
+
 (deftest trial-subscription-gate-test
   (testing "Security Center is not available on trial subscriptions"
     (mt/with-premium-features #{:admin-security-center}

@@ -13,13 +13,15 @@
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.spec-trace-test-util :as spec-trace]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.test :as mt]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [next.jdbc :as jdbc])
   (:import
    (org.postgresql.util PGobject)))
 
@@ -167,6 +169,40 @@
             (is (not (contains? (set (map first @analytics-calls))
                                 :metabase-search/semantic-vector-inner-ms)))))))))
 
+(deftest ^:parallel index-table-name?-test
+  (testing "recognizes every shape the naming code produces"
+    (are [table-name] (semantic.index/index-table-name? table-name)
+      ;; model-table-name for the current default and mock models
+      (semantic.index/model-table-name {:provider "ai-service" :model-name "text-embedding-3-small" :vector-dimensions 1536})
+      (semantic.index/model-table-name semantic.tu/mock-embedding-model)
+      "index_ollama_mxbai_lg_1024"
+      ;; force-reset suffix, as pgvector-api/fresh-index builds it
+      (str (semantic.index/model-table-name semantic.tu/mock-embedding-model) "_" (semantic.index/model-table-suffix))
+      "index_ollama_mxbai_lg_1024_1234567"
+      ;; hashed shape for names exceeding the pg identifier limit
+      (semantic.index/hash-identifier-if-exceeds-pg-limit (apply str "index_" (repeat 60 "x")))
+      (str "index_" (apply str (repeat 40 "a")))
+      ;; legacy pre-BOT-337 era: anything under the index_table_ prefix is reapable
+      "index_table_ollama_mxbai_lg_1024"
+      "index_table_stale"))
+  (testing "rejects the control-plane and other non-index tables"
+    (are [table-name] (not (semantic.index/index-table-name? table-name))
+      "index_metadata"
+      "index_control"
+      "index_gate"
+      "migration"
+      "dlq_1"
+      "repair_1751000000000_1"
+      ;; index_-prefixed but no trailing _<digits> and not the legacy index_table_ prefix
+      "index_tablex"
+      "index_table_"
+      ;; a valid shape as a substring must not match
+      "xindex_ollama_mxbai_lg_1024"
+      "index_ollama_mxbai_lg_1024 junk"
+      ;; wrong-length hex
+      (str "index_" (apply str (repeat 39 "a")))
+      (str "index_" (apply str (repeat 41 "a"))))))
+
 (defn- expected-index-defs
   "The index-DDL contract of [[semantic.index/create-index-table-if-not-exists!]] for `index`.
   Maps the name of each index it must create to a pattern its pg_indexes indexdef must match."
@@ -206,6 +242,20 @@
           (is (zero? (semantic.tu/index-count index)))
           (is (=? (expected-index-defs index) (semantic.tu/table-indexes table-name))))))))
 
+(deftest create-index-table!-extension-failure-test
+  (testing "a failed CREATE EXTENSION surfaces the actionable pgvector guidance, not the generic wrapper"
+    (mt/with-premium-features #{:semantic-search}
+      (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
+        ;; the extension is the first statement create! runs, so throwing here exercises the inner catch
+        (mt/with-dynamic-fn-redefs [jdbc/execute!
+                                    (fn [& _] (throw (RuntimeException. "permission denied to create extension")))]
+          (let [e (is (thrown? clojure.lang.ExceptionInfo
+                               (semantic.index/create-index-table-if-not-exists!
+                                (semantic.env/get-pgvector-datasource!) @index-ref)))]
+            (testing "the escaping error keeps the extension-install type and message, not \"Failed to create index table\""
+              (is (= ::semantic.index/extension-install-failed (:type (ex-data e))))
+              (is (re-find #"pgvector extension" (ex-message e))))))))))
+
 (deftest create-hnsw-index-if-not-exists!-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
@@ -221,17 +271,32 @@
               "relfilenode is unchanged, so the index was not dropped, rebuilt, or reindexed"))))))
 
 (deftest query-index-hnsw-without-index-throws-test
-  (testing "a query under any HNSW-index-backed strategy fails fast when no HNSW index exists, rather than silently scanning"
-    (mt/with-premium-features #{:semantic-search}
-      (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
+      (testing "a query under any HNSW-index-backed strategy fails fast when no usable HNSW index exists"
         (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref))))
         (doseq [strategy [:hnsw :hnsw-iterative-relaxed :hnsw-iterative-strict]]
           (testing strategy
             (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo #"no HNSW index exists"
+                 clojure.lang.ExceptionInfo #"no usable HNSW index exists"
                  (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
                                              @index-ref
-                                             {:search-string "puppy" :vector-search-strategy strategy})))))))))
+                                             {:search-string "puppy" :vector-search-strategy strategy}))))))
+      (testing "an active concurrent build temporarily uses the exact-scan path"
+        (let [query (atom nil)]
+          (mt/with-dynamic-fn-redefs
+            [semantic.util/index-state       (constantly :building)
+             semantic.index/reducible-search-query (fn [_ q]
+                                                     (reset! query q)
+                                                     [])]
+            (is (map? (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
+                                                  @index-ref
+                                                  {:search-string "puppy" :vector-search-strategy :hnsw}))))
+          (let [query-sql (first (sql/format @query :quoted true))]
+            (is (str/includes? query-sql "AS MATERIALIZED")
+                "a building HNSW index must use the materialized exact-scan query")
+            (is (not (re-find #"ORDER BY embedding <=>[^)]*LIMIT" query-sql))
+                "a building HNSW index must not use the approximate HNSW scan")))))))
 
 (deftest drop-index-table!-test
   (mt/with-premium-features #{:semantic-search}
@@ -366,13 +431,19 @@
           (testing "ensure upsert! and delete! don't realize the full reducible at once"
             (semantic.tu/check-index-has-no-mock-docs)
             (testing "upsert-index!"
-              (with-redefs [semantic.index/upsert-index-pooled! (only-first-call realized @#'semantic.index/upsert-index-pooled!)]
-                (is (= {"card" 2} (semantic.tu/upsert-index! mock-docs))))
+              (let [original-upsert-index-pooled! (mt/original-fn #'semantic.index/upsert-index-pooled!)]
+                (mt/with-dynamic-fn-redefs
+                  [semantic.index/upsert-index-pooled!
+                   (only-first-call realized original-upsert-index-pooled!)]
+                  (is (= {"card" 2} (semantic.tu/upsert-index! mock-docs)))))
               (semantic.tu/check-index-has-mock-card))
             (reset! realized 0)
             (testing "delete-from-index!"
-              (with-redefs [semantic.index/delete-from-index-batch-sql (only-first-call realized @#'semantic.index/delete-from-index-batch-sql)]
-                (is (= {"card" 2} (semantic.tu/delete-from-index! "card" (eduction (map :id) mock-docs)))))
+              (let [original-delete-from-index-batch-sql (mt/original-fn #'semantic.index/delete-from-index-batch-sql)]
+                (mt/with-dynamic-fn-redefs
+                  [semantic.index/delete-from-index-batch-sql
+                   (only-first-call realized original-delete-from-index-batch-sql)]
+                  (is (= {"card" 2} (semantic.tu/delete-from-index! "card" (eduction (map :id) mock-docs))))))
               (semantic.tu/check-index-has-no-mock-docs))))))))
 
 (defn- track-concurrency
@@ -395,6 +466,8 @@
                 update-fn      @#'semantic.index/upsert-index-batch!
                 docs          (take 100 (map-indexed (fn [i doc] (assoc doc :id (str i)))
                                                      (cycle (semantic.tu/mock-documents))))]
+            ;; This function is invoked by multiple index worker threads; dynamic redefs would not propagate to them.
+            #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
             (with-redefs [semantic.index/upsert-index-batch! (track-concurrency
                                                               max-concurrent
                                                               (fn [& args] (apply update-fn args)))]
@@ -477,6 +550,8 @@
     (binding [semantic.index/*batch-size* batch-size]
       (let [{:keys [calls proxy]} (semantic.tu/spy semantic.embedding/process-embeddings-streaming)
             inter-batch-cache-hit? (atom false)]
+        ;; These functions are invoked by the embedding worker; dynamic redefs would not propagate to it.
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [semantic.embedding/process-embeddings-streaming proxy
                       semantic.index/partition-existing-embeddings
                       (let [orig @#'semantic.index/partition-existing-embeddings]

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import type { Route } from "metabase/router";
 import type { Segment, Table } from "metabase-types/api";
 
 export type SegmentTabUrls = {
@@ -10,7 +9,6 @@ export type SegmentTabUrls = {
 };
 
 export type NewSegmentPageProps = {
-  route: Route;
   table: Table;
   breadcrumbs: ReactNode;
   getSuccessUrl: (segment: Segment) => string;
@@ -23,9 +21,7 @@ export type ExistingSegmentPageProps = {
   onRemove: () => Promise<void>;
 };
 
-export type SegmentDetailPageProps = ExistingSegmentPageProps & {
-  route: Route;
-};
+export type SegmentDetailPageProps = ExistingSegmentPageProps;
 
 export type SegmentRevisionHistoryPageProps = ExistingSegmentPageProps;
 

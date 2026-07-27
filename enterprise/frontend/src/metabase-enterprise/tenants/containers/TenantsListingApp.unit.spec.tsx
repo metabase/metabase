@@ -28,7 +28,7 @@ const setup = ({
 
   const currentUser = createMockUser({ is_superuser: isAdmin });
 
-  renderWithProviders(<TenantsListingApp>{null}</TenantsListingApp>, {
+  renderWithProviders(<TenantsListingApp />, {
     storeInitialState: createMockState({
       settings,
       currentUser,

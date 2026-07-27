@@ -46,7 +46,7 @@ jobs:
             const { buildMatrix } = require('${{ github.workspace }}/.github/scripts/build-e2e-matrix.js');
             const inputSpecs = "${{ inputs.specs }}";
             const inputChunks = Number(process.env.chunks);
-            const java = 21;
+            const java = 25;
             const defaultRunner = "${{ vars.DEFAULT_RUNNER_KEY }}";
             const options = {
               java,

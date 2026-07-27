@@ -1,138 +1,141 @@
-## Collapse redundant table-level data_permissions rows into db-level rows.
+## Retired collapse of redundant table-level data_permissions rows (#76077).
 ##
-## A bug in the new-table default-permissions path ("going granular") deleted a group's db-level row and
-## wrote one row per table even when the db-level row was already `blocked` and every table's new value was
-## `blocked`. On instances with many databases and groups this ballooned data_permissions into tens of
-## millions of rows encoding no information beyond their db-level equivalents, which in turn caused
-## OOMs in code paths that read a user's or the whole instance's permission rows (#76077).
+## A bug wrote one 'blocked' view-data row per table even when the db-level row was already 'blocked',
+## ballooning data_permissions into tens of millions of redundant rows on some instances. Two shipped
+## attempts to collapse those rows during the upgrade (v62.2026-07-07T*, then the v62.2026-07-14T*
+## rewrite) both timed out on the largest instances — the ones that needed the collapse most. The
+## collapse is an optimization, not a correctness fix (the redundant representation is understood by all
+## versions >= 49), so the changeSet below retires the whole migration rather than iterating on it again.
+## Instances that already ran it keep the collapsed form; everyone else keeps the redundant rows.
 ##
-## Two steps, both restricted to perms/view-data and semantically lossless:
-##   1. For each (group_id, db_id) with no db-level view-data row whose table-level view-data rows ALL
-##      carry the value 'blocked' — including rows referencing inactive tables, so collapsing never
-##      discards a value a reactivated table would otherwise pick back up — and cover every active table
-##      of the database: insert the equivalent db-level row.
-##   2. Drop every table-level view-data row whose (group_id, db_id, perm_value) matches a db-level
-##      row — such rows are redundant no matter how they came to be. Because that can be tens of millions
-##      of rows, this is done by staging the surviving rows, truncating the table, and reloading them,
-##      rather than a row-by-row DELETE (which scales super-linearly); see the second changeSet.
-##
-## Restricted to view-data / blocked because:
-##   - only the least-permissive value is safe to collapse at all: table-level rows are ignored for
-##     inactive tables (they read as least-permissive), while a db-level row applies to inactive tables
-##     too, so collapsing any other value would silently upgrade inactive tables;
-##   - the permissions graph API intentionally reports other perm types' table-level rows as granular
-##     even when uniform (#73520), so collapsing them would change what the admin UI displays;
-##   - the going-granular bug only ever produced view-data rows, so this still covers the explosion.
-##
-## Combos with partial table coverage, mixed values, or a uniform non-blocked value are intentionally
-## left untouched.
-##
-## Lives in 062 so the changeSet runs on upgrades to v62 and later (the fix is not backported earlier).
+## Operators who want the collapse can run the SQL at the end of this file manually.
 
 databaseChangeLog:
   - logicalFilePath: migrations/062_update_migrations.yaml
 
+  # Removes the stale changelog entries of every retired changeSet from instances that already ran them
+  # (fully or partially); nothing in this file re-runs any of that work.
   - changeSet:
-      id: v62.2026-07-07T00:00:00
+      id: v62.2026-07-15T00:00:00
       author: ranquild
-      comment: Insert db-level data_permissions rows for uniform full-coverage blocked table-level view-data permissions (#76077)
+      comment: Retire the timeout-prone collapse changeSets that previously lived in this file (#76077)
       changes:
         - sql:
             sql: >-
-              INSERT INTO data_permissions (group_id, perm_type, db_id, perm_value)
-              SELECT dp.group_id, dp.perm_type, dp.db_id, MIN(dp.perm_value)
-              FROM data_permissions dp
-              LEFT JOIN metabase_table mt ON mt.id = dp.table_id
-              JOIN (SELECT db_id, COUNT(*) AS n FROM metabase_table WHERE active = TRUE GROUP BY db_id) tc
-                ON tc.db_id = dp.db_id
-              WHERE dp.perm_type = 'perms/view-data'
-                AND dp.table_id IS NOT NULL
-                AND NOT EXISTS (
-                  SELECT 1 FROM data_permissions dbp
-                  WHERE dbp.group_id = dp.group_id
-                    AND dbp.db_id = dp.db_id
-                    AND dbp.perm_type = dp.perm_type
-                    AND dbp.table_id IS NULL)
-              GROUP BY dp.group_id, dp.db_id, dp.perm_type, tc.n
-              HAVING COUNT(DISTINCT dp.perm_value) = 1
-                 AND MIN(dp.perm_value) = 'blocked'
-                 AND COUNT(DISTINCT CASE WHEN mt.active = TRUE THEN dp.table_id END) = tc.n;
-      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
+              DELETE FROM DATABASECHANGELOG WHERE id IN (
+                'v62.2026-07-07T00:00:00',
+                'v62.2026-07-07T00:00:01',
+                'v62.2026-07-07T00:00:02',
+                'v62.2026-07-07T00:00:03',
+                'v62.2026-07-07T00:00:04',
+                'v62.2026-07-07T00:00:05',
+                'v62.2026-07-14T00:00:00',
+                'v62.2026-07-14T00:00:01',
+                'v62.2026-07-14T00:00:02',
+                'v62.2026-07-14T00:00:03',
+                'v62.2026-07-14T00:00:04',
+                'v62.2026-07-14T00:00:05');
+      rollback: # not necessary
 
-  # The rows to keep are every data_permissions row EXCEPT the table-level view-data rows that a db-level
-  # row of the same (group, db, value) has made redundant — the anti-join below. Deleting the redundant rows
-  # directly scales super-linearly on a table ballooned to tens of millions of rows (each delete maintains
-  # six index trees), so instead of a DELETE we stage the few thousand survivors, empty the table, and
-  # reload them. Migrations run before the instance serves traffic, so the brief window in which
-  # data_permissions is empty is never observed; the survivors persist in the staging table until the reload
-  # finishes (each step is its own changeSet, so a failure resumes from the incomplete step with the staging
-  # table still present), and because the table is only truncated — never dropped — its indexes and foreign
-  # keys stay in place. The steps are split into one changeSet each because the migration linter allows only
-  # a single change per changeSet.
-  - changeSet:
-      id: v62.2026-07-07T00:00:01
-      author: ranquild
-      comment: Create the staging table that will hold the surviving data_permissions rows (#76077)
-      changes:
-        # A createTable change (rather than a raw CREATE TABLE ... AS SELECT) so Liquibase renders it per
-        # engine and, on MySQL/MariaDB, appends the ENGINE/CHARACTER SET/COLLATE clause the app-db expects.
-        - createTable:
-            tableName: data_permissions_collapse_keep
-            remarks: Transient staging table holding the data_permissions rows to keep while the table is collapsed; dropped at the end of this migration
-            columns:
-              - column: {name: id, type: int, remarks: Copy of data_permissions.id}
-              - column: {name: group_id, type: int, remarks: Copy of data_permissions.group_id}
-              - column: {name: perm_type, type: varchar(64), remarks: Copy of data_permissions.perm_type}
-              - column: {name: db_id, type: int, remarks: Copy of data_permissions.db_id}
-              - column: {name: schema_name, type: varchar(254), remarks: Copy of data_permissions.schema_name}
-              - column: {name: table_id, type: int, remarks: Copy of data_permissions.table_id}
-              - column: {name: perm_value, type: varchar(64), remarks: Copy of data_permissions.perm_value}
-      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
-
-  - changeSet:
-      id: v62.2026-07-07T00:00:02
-      author: ranquild
-      comment: Stage the surviving data_permissions rows before collapsing the redundant ones (#76077)
-      changes:
-        - sql:
-            sql: >-
-              INSERT INTO data_permissions_collapse_keep (id, group_id, perm_type, db_id, schema_name, table_id, perm_value)
-              SELECT dp.id, dp.group_id, dp.perm_type, dp.db_id, dp.schema_name, dp.table_id, dp.perm_value
-              FROM data_permissions dp
-              LEFT JOIN data_permissions dbp
-                ON dp.perm_type = 'perms/view-data' AND dp.table_id IS NOT NULL
-               AND dbp.group_id = dp.group_id AND dbp.db_id = dp.db_id
-               AND dbp.perm_type = dp.perm_type AND dbp.perm_value = dp.perm_value
-               AND dbp.table_id IS NULL
-              WHERE dbp.id IS NULL;
-      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
-
-  - changeSet:
-      id: v62.2026-07-07T00:00:03
-      author: ranquild
-      comment: Empty data_permissions before reloading only the surviving rows (#76077)
-      changes:
-        - sql:
-            sql: TRUNCATE TABLE data_permissions;
-      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
-
-  - changeSet:
-      id: v62.2026-07-07T00:00:04
-      author: ranquild
-      comment: Reload the surviving data_permissions rows (#76077)
-      changes:
-        - sql:
-            sql: >-
-              INSERT INTO data_permissions (id, group_id, perm_type, db_id, schema_name, table_id, perm_value)
-              SELECT id, group_id, perm_type, db_id, schema_name, table_id, perm_value
-              FROM data_permissions_collapse_keep;
-      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
-
-  - changeSet:
-      id: v62.2026-07-07T00:00:05
-      author: ranquild
-      comment: Drop the staging table used to collapse data_permissions (#76077)
-      changes:
-        - sql:
-            sql: DROP TABLE data_permissions_collapse_keep;
-      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
+## Manual collapse (PostgreSQL). One statement, so it is atomic; it is also idempotent, safe to run (and
+## to cancel) while Metabase is up, and strictly semantics-preserving: for every (group, database) whose
+## table-level view-data rows are all 'blocked' and cover every active table, it inserts the equivalent
+## db-level row (unless any db-level view-data row already exists) and deletes the table-level rows it
+## makes redundant; it also deletes table-level view-data rows that duplicate the value of a pre-existing
+## db-level row. Everything else is left untouched. Run it from psql — there it is not subject to the
+## JDBC socket timeout that killed the migration; expect minutes on tens of millions of rows.
+##
+## 1. Current size of data_permissions:
+##
+##   SELECT COUNT(*) AS rows_now FROM data_permissions;
+##
+## 2. Dry run (read-only): what the row count would be after the collapse. The CTEs mirror the collapse
+##    statement below exactly.
+##
+##   WITH active_counts AS (
+##     SELECT db_id, COUNT(*) AS n
+##     FROM metabase_table
+##     WHERE active = TRUE
+##     GROUP BY db_id
+##   ),
+##   collapsible AS (
+##     SELECT dp.group_id, dp.db_id
+##     FROM data_permissions dp
+##     JOIN active_counts ac ON ac.db_id = dp.db_id
+##     LEFT JOIN metabase_table t ON t.id = dp.table_id AND t.active = TRUE
+##     WHERE dp.perm_type = 'perms/view-data'
+##       AND dp.table_id IS NOT NULL
+##     GROUP BY dp.group_id, dp.db_id, ac.n
+##     HAVING MIN(dp.perm_value) = 'blocked'
+##        AND MAX(dp.perm_value) = 'blocked'
+##        AND COUNT(DISTINCT t.id) = ac.n
+##   ),
+##   insertable AS (
+##     SELECT c.group_id, c.db_id
+##     FROM collapsible c
+##     WHERE NOT EXISTS (
+##       SELECT 1 FROM data_permissions dbp
+##       WHERE dbp.group_id = c.group_id
+##         AND dbp.db_id = c.db_id
+##         AND dbp.perm_type = 'perms/view-data'
+##         AND dbp.table_id IS NULL)
+##   ),
+##   deletable AS (
+##     SELECT dp.id
+##     FROM data_permissions dp
+##     WHERE dp.perm_type = 'perms/view-data'
+##       AND dp.table_id IS NOT NULL
+##       AND (dp.group_id, dp.db_id, dp.perm_value) IN (
+##         SELECT group_id, db_id, 'blocked' FROM insertable
+##         UNION ALL
+##         SELECT group_id, db_id, perm_value
+##         FROM data_permissions
+##         WHERE perm_type = 'perms/view-data'
+##           AND table_id IS NULL)
+##   )
+##   SELECT (SELECT COUNT(*) FROM data_permissions)
+##          + (SELECT COUNT(*) FROM insertable)
+##          - (SELECT COUNT(*) FROM deletable) AS rows_after_collapse;
+##
+## 3. The collapse itself:
+##
+##   WITH active_counts AS (
+##     SELECT db_id, COUNT(*) AS n
+##     FROM metabase_table
+##     WHERE active = TRUE
+##     GROUP BY db_id
+##   ),
+##   collapsible AS (
+##     SELECT dp.group_id, dp.db_id
+##     FROM data_permissions dp
+##     JOIN active_counts ac ON ac.db_id = dp.db_id
+##     LEFT JOIN metabase_table t ON t.id = dp.table_id AND t.active = TRUE
+##     WHERE dp.perm_type = 'perms/view-data'
+##       AND dp.table_id IS NOT NULL
+##     GROUP BY dp.group_id, dp.db_id, ac.n
+##     HAVING MIN(dp.perm_value) = 'blocked'
+##        AND MAX(dp.perm_value) = 'blocked'
+##        AND COUNT(DISTINCT t.id) = ac.n
+##   ),
+##   inserted AS (
+##     INSERT INTO data_permissions (group_id, perm_type, db_id, perm_value)
+##     SELECT c.group_id, 'perms/view-data', c.db_id, 'blocked'
+##     FROM collapsible c
+##     WHERE NOT EXISTS (
+##       SELECT 1 FROM data_permissions dbp
+##       WHERE dbp.group_id = c.group_id
+##         AND dbp.db_id = c.db_id
+##         AND dbp.perm_type = 'perms/view-data'
+##         AND dbp.table_id IS NULL)
+##     RETURNING group_id, db_id, perm_value
+##   )
+##   DELETE FROM data_permissions dp
+##   WHERE dp.perm_type = 'perms/view-data'
+##     AND dp.table_id IS NOT NULL
+##     AND (dp.group_id, dp.db_id, dp.perm_value) IN (
+##       SELECT group_id, db_id, perm_value FROM inserted
+##       UNION ALL
+##       SELECT group_id, db_id, perm_value
+##       FROM data_permissions
+##       WHERE perm_type = 'perms/view-data'
+##         AND table_id IS NULL);

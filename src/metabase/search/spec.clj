@@ -27,7 +27,7 @@
    "transform"
    ;; The following come last as they can be slow to index due to:
    ;; - cardinality (table, indexed-entity),
-   ;; - cost (e.g. computing has_temporal_dim for cards)
+   ;; - cost (e.g. large text payloads and native-query parsing for cards)
    "table"
    "metric"
    "card"
@@ -60,19 +60,12 @@
   [:union :boolean :keyword vector? :map
    [:map
     [:fn fn?]
-    [:fields {:optional true} [:vector :keyword]]
-    [:provides {:optional true} [:vector :keyword]]]])
+    [:fields {:optional true} [:vector :keyword]]]])
 
 (defn function-attr?
   "Attributes populate by clojure functions"
   [attr-def]
   (and (map? attr-def) (:fn attr-def)))
-
-(defn function-attr-provides
-  "Returns the attr keys that a function attr provides when it returns a map.
-  Used to determine which filters a function attr satisfies."
-  [attr-def]
-  (:provides attr-def []))
 
 (defn collect-fn-attr-req-fields
   "Return set of required appdb fields declared in a spec's function attrs"
@@ -117,9 +110,6 @@
    :updated-at              :timestamp
    :verified                :boolean
    :view-count              :int
-   :non-temporal-dim-ids    :text
-   :has-temporal-dim        :boolean
-   :temporal-info           nil
    :display-type            :text
    :is-published            :boolean
    :source-type             :text
@@ -152,7 +142,6 @@
          :verified                                          ;;  in addition to being a filter, this is also a ranker
          :view-count
          :updated-at
-         :temporal-info
          :is-published
          :source-type
          :collection-type                                   ;;  surfaced for downstream consumers (metabase.search.impl/serialize)
@@ -421,7 +410,8 @@
    Attribute value formats:
    - `true` - Use column with same name (snake_case)
    - `:column_name` - Use specified database column
-   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure function at index time with the given fields"
+   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure function at index time; its scalar
+     return value is written to the column named after the attr key (snake_case)."
   [search-model spec]
   `(do
      ;; Capture raw form before evaluation (symbols stay as symbols, not function objects)

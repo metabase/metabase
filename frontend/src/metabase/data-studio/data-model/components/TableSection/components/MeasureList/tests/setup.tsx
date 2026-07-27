@@ -66,7 +66,7 @@ export function setup({
   }
 
   renderWithProviders(
-    <Route path="/" component={() => <MeasureList table={mockTable} />} />,
+    <Route path="/" element={<MeasureList table={mockTable} />} />,
     {
       withRouter: true,
       storeInitialState: state,

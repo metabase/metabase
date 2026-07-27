@@ -109,11 +109,11 @@ export function deserializeCardFromUrl(serialized: string): Card {
 }
 
 /**
- * Converts a Metabot `navigate_to` path like `/question#<base64>` into a
+ * Converts a Metabot question path like `/question#<base64>` into a
  * Card suitable for `deserializedCard`.
  *
- * Sole producer is Metabot's `navigate_to` stream part, which always emits
- * `/question#<base64>`. Intentionally not guarded against other shapes.
+ * Sole producer is Metabot's `generated_entity` card stream part, whose path
+ * is always `/question#<base64>`. Intentionally not guarded against other shapes.
  */
 export function deserializeCardFromQuery(query: string): Card {
   const base64 = query.replace(/^\/question#/, "");

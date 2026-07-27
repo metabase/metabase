@@ -9,87 +9,93 @@ import { DataModelSegmentDependenciesPage } from "metabase/data-studio/segments/
 import { DataModelSegmentDetailPage } from "metabase/data-studio/segments/pages/DataModelSegmentDetailPage";
 import { DataModelSegmentRevisionHistoryPage } from "metabase/data-studio/segments/pages/DataModelSegmentRevisionHistoryPage";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { IndexRoute, Redirect, Route } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 
 import { DataModel } from "./pages/DataModel";
 
 export function getDataStudioMetadataRoutes(IsAdmin: ComponentType) {
   return (
     <>
-      <IndexRoute component={DataModel} />
-      <Route path="database" component={DataModel} />
-      <Route path="database/:databaseId" component={DataModel} />
+      <Route index element={<DataModel />} />
+      <Route path="database" element={<DataModel />} />
+      <Route path="database/:databaseId" element={<DataModel />} />
       <Route
         path="database/:databaseId/schema/:schemaId"
-        component={DataModel}
+        element={<DataModel />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId"
-        component={DataModel}
+        element={<DataModel />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/segments/new"
-        component={IsAdmin}
+        element={<IsAdmin />}
       >
-        <IndexRoute component={DataModelNewSegmentPage} />
+        <Route index element={<DataModelNewSegmentPage />} />
       </Route>
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId"
-        component={DataModelSegmentDetailPage}
+        element={<DataModelSegmentDetailPage />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/revisions"
-        component={DataModelSegmentRevisionHistoryPage}
+        element={<DataModelSegmentRevisionHistoryPage />}
       />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/dependencies"
-          component={DataModelSegmentDependenciesPage}
+          element={<DataModelSegmentDependenciesPage />}
         >
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/measures/new"
-        component={IsAdmin}
+        element={<IsAdmin />}
       >
-        <IndexRoute component={DataModelNewMeasurePage} />
+        <Route index element={<DataModelNewMeasurePage />} />
       </Route>
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId"
-        component={DataModelMeasureDetailPage}
+        element={<DataModelMeasureDetailPage />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/revisions"
-        component={DataModelMeasureRevisionHistoryPage}
+        element={<DataModelMeasureRevisionHistoryPage />}
       />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/dependencies"
-          component={DataModelMeasureDependenciesPage}
+          element={<DataModelMeasureDependenciesPage />}
         >
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
-      <Redirect
-        from="database/:databaseId/schema/:schemaId/table/:tableId"
-        to="database/:databaseId/schema/:schemaId/table/:tableId/details"
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId"
+        element={redirect(
+          "database/:databaseId/schema/:schemaId/table/:tableId/details",
+        )}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
-        component={DataModel}
+        element={<DataModel />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/:tab/:fieldId"
-        component={DataModel}
+        element={<DataModel />}
       />
-      <Redirect
-        from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-        to="database/:databaseId/schema/:schemaId/table/:tableId/details"
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId/settings"
+        element={redirect(
+          "database/:databaseId/schema/:schemaId/table/:tableId/details",
+        )}
       />
-      <Redirect
-        from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
-        to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
+        element={redirect(
+          "database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId",
+        )}
       />
     </>
   );

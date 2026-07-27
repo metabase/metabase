@@ -11,12 +11,6 @@ exports[`ai requests aiStreamingQuery should return full result of a successful 
       "type": "data-state",
     },
   ],
-  "history": [
-    {
-      "content": "You, but don't tell anyone.",
-      "role": "assistant",
-    },
-  ],
   "toolCalls": [],
 }
 `;

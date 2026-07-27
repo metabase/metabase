@@ -27,7 +27,7 @@ jest.mock("@mantine/hooks", () => ({
 // Unjustified type cast. FIXME
 const mockUseClipboard = useClipboard as jest.Mock;
 
-const PATHNAME = `${Urls.adminToolsTasksList()}/:taskId`;
+const PATHNAME = `${Urls.monitorTasksList()}/:taskId`;
 
 interface SetupOpts {
   task?: Task;
@@ -38,9 +38,9 @@ const setup = ({ task = createMockTask() }: SetupOpts = {}) => {
   setupTaskEndpoint(task);
 
   return renderWithProviders(
-    <Route path={PATHNAME} component={TaskDetailsPage} />,
+    <Route path={PATHNAME} element={<TaskDetailsPage />} />,
     {
-      initialRoute: Urls.adminToolsTaskDetails(task.id),
+      initialRoute: Urls.monitorTaskDetails(task.id),
       withRouter: true,
     },
   );
@@ -138,5 +138,25 @@ describe("TaskDetailsPage", () => {
     });
     await userEvent.click(endedAtCopyIcon);
     expect(copyMock).toHaveBeenCalledWith(endedAt);
+  });
+
+  it("shows a placeholder when the task has no captured logs", async () => {
+    setup({ task: createMockTask({ logs: null }) });
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByText("There are no captured logs")).toBeInTheDocument();
+    expect(screen.queryByTestId("task-logs")).not.toBeInTheDocument();
+  });
+
+  it("should show a link back to the tasks list", async () => {
+    setup();
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByRole("link", { name: /Back to Tasks/ })).toHaveAttribute(
+      "href",
+      Urls.monitorTasksList(),
+    );
   });
 });

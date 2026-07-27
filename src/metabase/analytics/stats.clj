@@ -133,13 +133,12 @@
    :sso_configured                       (setting/get :google-auth-enabled)
    :instance_started                     (analytics.settings/instance-creation)
    :has_sample_data                      (t2/exists? :model/Database, :is_sample true)
-   :enable_embedding                     #_{:clj-kondo/ignore [:deprecated-var]} (setting/get :enable-embedding)
+   :enable_embedding                     (setting/get :enable-embedding)
    :enable_embedding_sdk                 (setting/get :enable-embedding-sdk)
    :enable_embedding_simple              (setting/get :enable-embedding-simple)
    :enable_embedding_interactive         (setting/get :enable-embedding-interactive)
    :enable_embedding_static              (setting/get :enable-embedding-static)
    :embedding_app_origin_set             (boolean
-                                          #_{:clj-kondo/ignore [:deprecated-var]}
                                           (setting/get :embedding-app-origin))
    ;; We no longer add "localhost:*" as a default origin as of Metabase 56, as it is always allowed,
    ;; but we still filter it out in stats for compatibility with migrated instances.
@@ -885,7 +884,7 @@
                  false)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
-    :enabled   (some? (get env/env :mb-config-file-path))}
+    :enabled   (not (str/blank? (get env/env :mb-config-file-path)))}
    {:name      :content-translation
     :available (premium-features/enable-content-translation?)
     :enabled   (premium-features/enable-content-translation?)}

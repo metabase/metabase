@@ -308,6 +308,56 @@ export const SmartScalarUnicodeSubscript = {
   },
 };
 
+// metabase#77001 guard: html2canvas drops the arrow's currentColor on export — must be red, not black.
+export const SmartScalarDownload = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    card: createMockCard({
+      id: getNextId(),
+      display: "smartscalar",
+      visualization_settings: {
+        "graph.dimensions": ["timestamp"],
+        "graph.metrics": ["count"],
+      },
+    }),
+    result: createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createMockColumn(DateTimeColumn({ name: "Timestamp" })),
+          createMockColumn(NumberColumn({ name: "Count" })),
+        ],
+        insights: [
+          {
+            "previous-value": 220,
+            unit: "week",
+            offset: -199100,
+            "last-change": -0.3181818181818182,
+            col: "count",
+            slope: 10,
+            "last-value": 150,
+            "best-fit": ["+", -199100, ["*", 10, "x"]],
+          },
+        ],
+        rows: [
+          ["2024-07-21T00:00:00Z", 220],
+          ["2024-07-28T00:00:00Z", 150],
+        ],
+      }),
+    }),
+  },
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const asyncCallback = createAsyncCallback();
+    try {
+      await downloadQuestionAsPng(canvasElement);
+    } finally {
+      asyncCallback();
+    }
+  },
+};
+
 export const SmartScalarLightThemeTooltip = {
   parameters: {
     loki: { skip: true },

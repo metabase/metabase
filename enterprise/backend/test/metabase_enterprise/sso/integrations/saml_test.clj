@@ -10,6 +10,7 @@
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase-enterprise.tenants.auth-provider] ;; make sure the auth provider is actually registered
    [metabase.appearance.settings :as appearance.settings]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.premium-features.token-check :as token-check]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
@@ -614,6 +615,7 @@
              (t2/update! :model/User :%lower.email "newuser@metabase.com" {:is_active false})
              (testing "We can't reactivate the user if user provisioning is disabled."
                ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+               ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
                              appearance.settings/site-name (constantly "test")]
@@ -765,6 +767,7 @@
     (with-other-sso-types-disabled!
       (with-saml-default-setup!
         ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+        ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
         #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
                       appearance.settings/site-name (constantly "test")]
@@ -972,6 +975,7 @@
          (fn []
            ;; Mock the saml-response->attributes function to return mixed attribute types.
            ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
            #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
            (with-redefs [saml.p/saml-response->attributes
                          (fn [_]
@@ -1093,6 +1097,7 @@
                      (is (successful-login? response)))))
                (testing "an existing user also fails to log in"
                  ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                 ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]
@@ -1114,6 +1119,7 @@
                                                         :is_active false}
                          :model/User {existing-email :email} {:tenant_id tenant-id}]
             ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+            ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
             #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
             (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)]
               (do-with-some-validators-disabled!
@@ -1126,7 +1132,6 @@
                        (is (not (successful-login? response))))))
                  (testing "an existing user also fails to log in"
                    ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
-                   #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                    (with-redefs [saml.p/saml-response->attributes
                                  (fn [_]
                                    {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" existing-email
@@ -1151,6 +1156,7 @@
              (fn []
                (testing "tenant -> other tenant fails with correct error message"
                  ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                 ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]
@@ -1175,6 +1181,7 @@
                (fn []
                  ;; Use the regular new-user response which doesn't have tenant attribute.
                  ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                 ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]
@@ -1197,6 +1204,7 @@
               (do-with-some-validators-disabled!
                (fn []
                  ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                 ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]
@@ -1224,6 +1232,21 @@
                (is (seq body-nonce)))
              (testing "Header nonce matches body script nonce"
                (is (= header-nonce body-nonce))))))))))
+
+(deftest successful-saml-login-does-not-log-pii-test
+  (testing "Successful SAML authentication should not log user's first or last name"
+    (with-saml-default-setup!
+      (mt/with-model-cleanup [:model/User]
+        (mt/with-log-messages-for-level [log-messages [metabase-enterprise.sso.providers.saml :info]]
+          ;; Mock SAML validation to run in-thread so log capture works (real HTTP calls don't convey dynamic bindings)
+          (with-redefs [saml/validate-response (constantly ::mock-response)
+                        saml/assertions (constantly [{:attrs {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" ["john@example.com"]
+                                                              "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname" ["John"]
+                                                              "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname" ["Doe"]}}])]
+            (let [result (auth-identity/authenticate :provider/saml {:request-method :post})]
+              (is (:success? result) "Authentication should succeed")
+              (is (not-any? #(re-find #"John|Doe" (:message %)) (log-messages))
+                  "Log messages should not contain user's first or last name"))))))))
 
 (deftest popup-csp-nonce-per-request-unique-test
   (testing "Each `/auth/sso` popup response carries a freshly generated nonce (no static reuse)."

@@ -36,7 +36,7 @@ import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { createMockState } from "metabase/redux/store/mocks";
-import { IndexRoute, Route } from "metabase/router";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset, Timeline, UnsavedCard } from "metabase-types/api";
 import {
@@ -285,29 +285,29 @@ export const setup = async ({
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
   const { container, history, store } = renderWithProviders(
-    <div>
+    <>
       <Route>
-        <Route path="/" component={TestHome} />
+        <Route path="/" element={<TestHome />} />
         <Route path="/model">
-          <Route path="query" component={TestQueryBuilder} />
-          <Route path="columns" component={TestQueryBuilder} />
-          <Route path="metadata" component={TestQueryBuilder} />
-          <Route path="notebook" component={TestQueryBuilder} />
-          <Route path=":slug" component={TestQueryBuilder} />
-          <Route path=":slug/query" component={TestQueryBuilder} />
-          <Route path=":slug/columns" component={TestQueryBuilder} />
-          <Route path=":slug/metadata" component={TestQueryBuilder} />
-          <Route path=":slug/notebook" component={TestQueryBuilder} />
+          <Route path="query" element={<TestQueryBuilder />} />
+          <Route path="columns" element={<TestQueryBuilder />} />
+          <Route path="metadata" element={<TestQueryBuilder />} />
+          <Route path="notebook" element={<TestQueryBuilder />} />
+          <Route path=":slug" element={<TestQueryBuilder />} />
+          <Route path=":slug/query" element={<TestQueryBuilder />} />
+          <Route path=":slug/columns" element={<TestQueryBuilder />} />
+          <Route path=":slug/metadata" element={<TestQueryBuilder />} />
+          <Route path=":slug/notebook" element={<TestQueryBuilder />} />
         </Route>
         <Route path="/question">
-          <IndexRoute component={TestQueryBuilder} />
-          <Route path="notebook" component={TestQueryBuilder} />
-          <Route path=":slug" component={TestQueryBuilder} />
-          <Route path=":slug/notebook" component={TestQueryBuilder} />
+          <Route index element={<TestQueryBuilder />} />
+          <Route path="notebook" element={<TestQueryBuilder />} />
+          <Route path=":slug" element={<TestQueryBuilder />} />
+          <Route path=":slug/notebook" element={<TestQueryBuilder />} />
         </Route>
-        <Route path="/redirect" component={TestRedirect} />
+        <Route path="/redirect" element={<TestRedirect />} />
       </Route>
-    </div>,
+    </>,
     {
       withRouter: true,
       initialRoute,

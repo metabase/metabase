@@ -111,7 +111,10 @@ export async function setup(
   }
 
   renderWithProviders(
-    <Route path="public/question/:uuid" component={PublicOrEmbeddedQuestion} />,
+    <Route
+      path="public/question/:uuid"
+      element={<PublicOrEmbeddedQuestion />}
+    />,
     {
       storeInitialState: createMockState({ settings }),
       withRouter: true,

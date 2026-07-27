@@ -1,7 +1,7 @@
 import { addLocale, useLocale } from "ttag";
 
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Widget } from "metabase/visualizations/types";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 

@@ -4,7 +4,7 @@ description: |
 inputs:
   java-version:
     required: true
-    default: "21"
+    default: "25"
   clojure-version:
     required: true
     default: "1.12.0.1488"

@@ -31,6 +31,10 @@
 
 (def ^:private test-entity-ids (atom 0))
 
+(defmethod semantic-search/get-embeddings-batch ::dimension-translation-test
+  [embedding-model _texts & _opts]
+  [embedding-model])
+
 (defn- entity
   "Build a fake entity map for scoring tests. Uses a monotonically-increasing counter for `:id`
   so every test entity is distinct (and so test failures print stable, readable ids)."
@@ -326,10 +330,17 @@
        :model/Table    {hidden :id}    {:db_id plain-db  :name "hidden_table"
                                         :active true :visibility_type "hidden"}
        :model/Table    {technical :id} {:db_id plain-db  :name "technical_table"
-                                        :active true :visibility_type "technical"}
-       :model/Table    {routed :id}    {:db_id routed-db :name "routed_table"
-                                        :active true :visibility_type nil}]
-      (let [metabot-entities (:metabot (#'complexity/enumerate-catalogs nil))
+                                        :active true :visibility_type "technical"}]
+      ;; A table can't exist on a routed (destination) db in production (destinations aren't synced),
+      ;; so a normal `with-temp :model/Table` trips the destination-permission guard. Insert it
+      ;; directly to fabricate the routed table this exclusion test needs.
+      (let [routed           (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                      {:db_id      routed-db
+                                                       :name       "routed_table"
+                                                       :active     true
+                                                       :created_at :%now
+                                                       :updated_at :%now})
+            metabot-entities (:metabot (#'complexity/enumerate-catalogs nil))
             ids              (into #{} (comp (filter #(= :table (:kind %))) (map :id)) metabot-entities)]
         (testing "visible non-routed table is included"
           (is (contains? ids visible)))
@@ -736,6 +747,13 @@
                                     (repeat (count texts) [1.0]))]
         (embedder [{:id 1 :name "orders" :kind :table}])
         (is (false? (:record-tokens? @captured)))))))
+
+(deftest ^:parallel embeddings-client-translates-neutral-dimension-key-test
+  (let [[translated]
+        (embeddings/get-embeddings-batch
+         {:provider ::dimension-translation-test, :model-name "fake", :model-dimensions 384}
+         ["orders"])]
+    (is (= 384 (:vector-dimensions translated)))))
 
 (deftest ^:sequential provider-embedder-splits-names-before-calling-provider-test
   (testing "provider-embedder splits names on _, -, ., and camelCase before sending to get-embeddings-batch"
