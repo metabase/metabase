@@ -13,6 +13,7 @@
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.browse]
    [metabase.mcp.v2.tools.content]
+   [metabase.mcp.v2.tools.dashboard]
    [metabase.mcp.v2.tools.definitions]
    [metabase.mcp.v2.tools.parameters]
    [metabase.mcp.v2.tools.query]

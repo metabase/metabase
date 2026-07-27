@@ -704,8 +704,10 @@
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.models.dashboard-tab
            metabase.dashboards.schema
-           metabase.dashboards.settings}
-   :uses #{api
+           metabase.dashboards.settings
+           metabase.dashboards.write}
+   :uses #{analytics
+           api
            app-db
            audit-app
            collections
@@ -717,7 +719,9 @@
            parameters
            permissions
            public-sharing
+           pulse
            queries
+           query-permissions
            query-processor
            search
            settings
@@ -732,10 +736,12 @@
                     :model/Card
                     :model/Collection
                     :model/DashboardBookmark
+                    :model/Field
                     :model/ModerationReview
                     :model/Pulse
                     :model/PulseCard
                     :model/Revision
+                    :model/Table
                     :model/User}}
 
   dashboards-rest
@@ -757,9 +763,7 @@
            parameters
            permissions
            public-sharing
-           pulse
            queries
-           query-permissions
            query-processor
            request
            revisions
@@ -771,12 +775,7 @@
                     :model/DashboardCard
                     :model/DashboardTab
                     :model/Field
-                    :model/Pulse
-                    :model/PulseChannel
-                    :model/PulseChannelRecipient
-                    :model/Query
-                    :model/Table
-                    :model/User}}
+                    :model/Query}}
 
   data-studio
   {:team "Gadget"
@@ -1601,6 +1600,7 @@
            metabase.parameters.field
            metabase.parameters.field-values
            metabase.parameters.init
+           metabase.parameters.mapping-targets
            metabase.parameters.params
            metabase.parameters.schema
            metabase.parameters.shared}
@@ -1755,7 +1755,11 @@
 
   pulse
   {:team "Gadget"
+   ;; `metabase.pulse.broken-subscriptions` is exposed directly rather than re-exported from
+   ;; `metabase.pulse.core`: `core` is loaded by `queries.models.card`, so pulling the email
+   ;; sender in through it closes a namespace load cycle via `channel.render`.
    :api  #{metabase.pulse.api
+           metabase.pulse.broken-subscriptions
            metabase.pulse.core
            metabase.pulse.init}
    :uses #{api
