@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase.auth-identity.provider :as provider]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
@@ -44,10 +43,6 @@
   {:credentials {:in mi/encrypted-json-in
                  :out (comp parse-credentials-timestamps-out mi/encrypted-json-out)}
    :metadata mi/transform-json})
-
-(defmethod serdes/hash-fields :model/AuthIdentity
-  [_auth-identity]
-  [:user_id :provider :created_at])
 
 ;;; ------------------------------------------------ Password Hashing ------------------------------------------------
 

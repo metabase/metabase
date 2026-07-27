@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
@@ -7,6 +6,7 @@ import { useSyncSecurityAdvisoriesMutation } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
+import type { Location } from "metabase/router";
 import {
   Box,
   Button,

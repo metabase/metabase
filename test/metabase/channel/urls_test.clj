@@ -36,6 +36,11 @@
       (is (= "https://metabase.com/dashboard/1?%26=contains%3F"
              (urls/dashboard-url 1 [{:value "contains?", :slug "&"}]))))))
 
+(deftest tools-caching-details-url-test
+  (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+    (is (= "https://metabase.com/monitor/model-caching/42"
+           (urls/tools-caching-details-url 42)))))
+
 (deftest dashcard-url-test
   (mt/with-temporary-setting-values [site-url "https://metabase.com"]
     (testing "A valid dashcard URL can be generated without parameters"

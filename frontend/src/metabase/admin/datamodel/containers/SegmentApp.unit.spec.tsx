@@ -19,7 +19,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockCollection } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -27,8 +27,6 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { SegmentApp } from "./SegmentApp";
 
 const TestHome = () => <div />;
-
-const RoutedSegmentApp = withRouteProps(SegmentApp);
 
 const SEGMENTS_URL = "/admin/datamodel/segments";
 const FORM_URL = "/admin/datamodel/segment/create";
@@ -69,7 +67,7 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
     <>
       <Route path="/" element={<TestHome />} />
       <Route path={SEGMENTS_URL} element={<TestHome />} />
-      <Route path={FORM_URL} element={<RoutedSegmentApp />} />
+      <Route path={FORM_URL} element={<SegmentApp />} />
     </>,
     {
       initialRoute,

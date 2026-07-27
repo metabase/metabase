@@ -15,7 +15,6 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
-   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -181,8 +180,7 @@
   "ContentStore for agent query construction. Alias for
   [[shared.content-store/default-store]] — the chokepoint wrapper applies `api/read-check` to
   every lookup whenever `api/*current-user-id*` is bound, symmetrically across all five
-  ContentStore methods. The unchecked underlying store gates non-NanoID entity-id values to
-  avoid a full-table scan via `find-by-identity-hash`."
+  ContentStore methods. The unchecked underlying store rejects non-NanoID entity-id values."
   shared.content-store/default-store)
 
 (defn- check-first-stage-source-table-query-permissions!
@@ -482,14 +480,12 @@
                         "<instructions>\n" instruction-text "\n</instructions>")
            :data-parts        (when results-url
                                 [(streaming/viz-part
-                                  {:inline?     (shared/inline-viz-capable?)
-                                   :entity-id   (:chart-id chart-result)
+                                  {:entity-id   (:chart-id chart-result)
                                    :query-id    (:query-id structured)
                                    :query       (links/->legacy-mbql (:query structured))
                                    :display     chart-type
                                    :title       title
-                                   :description description
-                                   :link        results-url})])
+                                   :description description})])
            :structured-output full-structured
            :instructions      instruction-text})
         ;; query-result may already have :output (error) or only :structured-output

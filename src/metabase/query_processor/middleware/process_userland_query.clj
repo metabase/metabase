@@ -240,7 +240,7 @@
 
   3. Add extra info like `running_time` and `started_at` to the results
 
-  4. Submit a background job to analyze field usages"
+  4. Submit a background job to save execution info"
   [qp :- ::qp.schema/qp]
   (mu/fn [query :- ::qp.schema/any-query
           rff   :- ::qp.schema/rff]
@@ -257,8 +257,7 @@
         (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
               execution-info (query-execution-info query)]
           (letfn [(rff* [metadata]
-                    (let [;; we only need the preprocessed query to find field usages, so make sure we don't return it
-                          result         (rff (dissoc metadata :preprocessed_query))
+                    (let [result         (rff metadata)
                           execution-info (enrich-with-execution-context execution-info)]
                       (add-and-save-execution-metadata-xform! execution-info result)))]
             (try

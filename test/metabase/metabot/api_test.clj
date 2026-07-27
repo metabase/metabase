@@ -1435,7 +1435,7 @@
                assistant-msg-id
                [{:type :start :id "msg-1"}
                 {:type :text :text "Hi"}
-                {:type :data :data-type "navigate_to" :data "/question/1"}
+                {:type :data :data-type "generated_entity" :version 1 :data {:type "card" :id "c1" :title "Q" :query {:id "q1" :query {}}}}
                 {:type :data :data-type "todo_list" :version 1 :data [{:id "1" :content "x" :status "pending" :priority "low"}]}
                 {:type :data :data-type "code_edit" :version 1 :data {:buffer_id "b" :value "v"}}
                 {:type :data :data-type "transform_suggestion" :version 1 :data {}}
@@ -1450,7 +1450,7 @@
                     data-types (into #{}
                                      (keep #(when (str/starts-with? % "data-") (subs % 5)))
                                      part-types)]
-                (is (= #{"navigate_to" "todo_list" "code_edit" "transform_suggestion" "adhoc_viz" "static_viz"}
+                (is (= #{"generated_entity" "todo_list" "code_edit" "transform_suggestion" "adhoc_viz" "static_viz"}
                        data-types)
                     "all persistable data parts (not state) should be in :data")
                 (is (contains? part-types "text")
@@ -1477,7 +1477,7 @@
               :result {:output            "<result>XML</result>"
                        :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
                        :structured-output {:result-type :search :data [{:id 1}]}
-                       :data-parts        [{:type :data :data-type "navigate_to"}]}}])))))
+                       :data-parts        [{:type :data :data-type "generated_entity"}]}}])))))
 
 (deftest parts->storable-content-structured-output-subset-test
   (testing "keeps the query-related subset of structured output, canonicalized to :structured_output"

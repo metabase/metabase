@@ -1,4 +1,3 @@
-import type { Query } from "history";
 import { Priority, VisualState, useKBar, useRegisterActions } from "kbar";
 import { type PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "react-use";
@@ -12,6 +11,7 @@ import { useSetting } from "metabase/common/hooks";
 import { trackSearchClick } from "metabase/common/search/analytics";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";
+import type { Query } from "metabase/router";
 import { getDocsUrl, getSettings } from "metabase/selectors/settings";
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";

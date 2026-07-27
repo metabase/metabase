@@ -80,9 +80,9 @@
   "Add `object` (e.g. a result row or metadata) to the current cache entry."
   [object]
   (when *in-fn*
-    (*in-fn* (cond-> object
-               (map? object) (-> (m/update-existing :json_query lib/prepare-for-serialization)
-                                 (m/update-existing :preprocessed_query lib/prepare-for-serialization))))))
+    (*in-fn* (if (map? object)
+               (m/update-existing object :json_query lib/prepare-for-serialization)
+               object))))
 
 (def ^:private ^:dynamic *result-fn*
   "The `result-fn` provided by [[impl/do-with-serialization]]."

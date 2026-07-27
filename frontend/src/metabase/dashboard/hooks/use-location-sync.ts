@@ -1,9 +1,9 @@
-import type { Location } from "history";
 import { useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
 import { omit } from "underscore";
 
 import { useDispatch } from "metabase/redux";
+import type { Location } from "metabase/router";
 import { replace } from "metabase/router";
 import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
 import { isNullOrUndefined } from "metabase/utils/types";

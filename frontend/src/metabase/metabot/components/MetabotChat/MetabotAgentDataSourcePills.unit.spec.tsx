@@ -2,10 +2,13 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import type {
+  DatasetQuery,
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
+  StructuredQuery,
   TemplateTags,
 } from "metabase-types/api";
 import {
@@ -17,7 +20,7 @@ import {
 
 import {
   CodeEditTablePills,
-  NavigateToTablePills,
+  GeneratedCardTablePills,
 } from "./MetabotAgentDataSourcePills";
 
 const SOURCE_FEEDBACK_ENDPOINT = "path:/api/metabot/source-feedback";
@@ -52,22 +55,26 @@ const CODE_EDIT_BUFFER: MetabotCodeEditorBufferContext = {
   cursor: { line: 1, column: 1 },
 };
 
-const createQuestionPath = (datasetQuery: Record<string, unknown>) =>
-  `/question#${btoa(JSON.stringify({ dataset_query: datasetQuery }))}`;
+const createGeneratedCard = (datasetQuery: DatasetQuery): GeneratedCard => ({
+  type: "card",
+  id: "card-1",
+  title: "Generated",
+  query: { id: "query-1", query: datasetQuery },
+});
 
-const createMbqlPath = (query: Record<string, unknown>, database = 1) =>
-  createQuestionPath({
+const createMbqlCard = (query: StructuredQuery, database = 1) =>
+  createGeneratedCard({
     type: "query",
     database,
     query,
   });
 
-const createNativePath = (
+const createNativeCard = (
   sql = "SELECT * FROM ORDERS",
   database = 1,
   templateTags?: TemplateTags,
 ) =>
-  createQuestionPath({
+  createGeneratedCard({
     type: "native",
     database,
     native: {
@@ -121,10 +128,13 @@ const renderMbqlPills = ({
   query,
 }: {
   messageId?: string;
-  query: Record<string, unknown>;
+  query: StructuredQuery;
 }) =>
   renderWithProviders(
-    <NavigateToTablePills messageId={messageId} path={createMbqlPath(query)} />,
+    <GeneratedCardTablePills
+      messageId={messageId}
+      value={createMbqlCard(query)}
+    />,
   );
 
 describe("MetabotAgentDataSourcePills", () => {
@@ -252,9 +262,9 @@ describe("MetabotAgentDataSourcePills", () => {
     setupNativeEndpoints();
 
     renderWithProviders(
-      <NavigateToTablePills
+      <GeneratedCardTablePills
         messageId="message-5"
-        path={createNativePath(sql)}
+        value={createNativeCard(sql)}
       />,
     );
 
@@ -294,9 +304,9 @@ describe("MetabotAgentDataSourcePills", () => {
     fetchMock.post(SOURCE_FEEDBACK_ENDPOINT, 204);
 
     renderWithProviders(
-      <NavigateToTablePills
+      <GeneratedCardTablePills
         messageId="message-5-model"
-        path={createNativePath(sql, 1, templateTags)}
+        value={createNativeCard(sql, 1, templateTags)}
       />,
     );
 
@@ -361,7 +371,9 @@ describe("MetabotAgentDataSourcePills", () => {
     fetchMock.get("path:/api/database/1", DATABASE);
 
     renderWithProviders(
-      <NavigateToTablePills path={createNativePath(sql, 1, templateTags)} />,
+      <GeneratedCardTablePills
+        value={createNativeCard(sql, 1, templateTags)}
+      />,
     );
 
     expect(
@@ -375,7 +387,9 @@ describe("MetabotAgentDataSourcePills", () => {
     setupNativeEndpoints();
 
     renderWithProviders(
-      <NavigateToTablePills path={createNativePath("SELECT * FROM ORDERS")} />,
+      <GeneratedCardTablePills
+        value={createNativeCard("SELECT * FROM ORDERS")}
+      />,
     );
 
     const sourceLink = await screen.findByRole("link", { name: "Orders" });
@@ -451,9 +465,9 @@ describe("MetabotAgentDataSourcePills", () => {
     setupNativeEndpoints({ delay: 50 });
 
     renderWithProviders(
-      <NavigateToTablePills
+      <GeneratedCardTablePills
         messageId="message-9"
-        path={createNativePath("SELECT * FROM ORDERS")}
+        value={createNativeCard("SELECT * FROM ORDERS")}
       />,
     );
 

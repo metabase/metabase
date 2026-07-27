@@ -3,6 +3,7 @@
 import type { MetabaseEmbeddingSdkBundleExports } from "./types/sdk-bundle";
 
 import { MetabotSubscriber } from "./components/private/MetabotSubscriber/MetabotSubscriber";
+import { SdkThemeProvider } from "./components/private/SdkThemeProvider";
 import { CollectionBrowser } from "./components/public/CollectionBrowser";
 import { CreateDashboardModal } from "./components/public/CreateDashboardModal";
 import { CreateQuestion } from "./components/public/CreateQuestion";
@@ -67,6 +68,7 @@ export const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   useLogVersionInfo,
   validateFunctionSchema,
   MetabotSubscriber,
+  SdkThemeProvider,
   queryDataset,
   queryQuestion,
   dataAppRouting,

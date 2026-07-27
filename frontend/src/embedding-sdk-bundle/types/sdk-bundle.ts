@@ -1,6 +1,7 @@
 import type { JSXElementConstructor } from "react";
 
 import type { MetabotSubscriber } from "embedding-sdk-bundle/components/private/MetabotSubscriber/MetabotSubscriber";
+import type { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import type { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import type { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import type { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
@@ -127,4 +128,5 @@ type SchemaValidationUtils = {
 
 type InternalComponentExports = {
   MetabotSubscriber: typeof MetabotSubscriber;
+  SdkThemeProvider: typeof SdkThemeProvider;
 };

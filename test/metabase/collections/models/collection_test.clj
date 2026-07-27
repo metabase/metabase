@@ -1670,34 +1670,6 @@
            (clean (collection/collections->tree {:card #{1 5} :dataset #{3 4}}
                                                 collections))))))
 
-(deftest identity-hash-test
-  (testing "Collection hashes are composed of the name, namespace, and parent collection's hash"
-    (let [now #t "2022-09-01T12:34:56Z"]
-      (mt/with-temp [:model/Collection c1 {:name       "top level"
-                                           :created_at now
-                                           :namespace  "yolocorp"
-                                           :location   "/"}
-                     :model/Collection c2 {:name       "nested"
-                                           :created_at now
-                                           :namespace  "yolocorp"
-                                           :location   (format "/%s/" (:id c1))}
-                     :model/Collection c3 {:name       "grandchild"
-                                           :created_at now
-                                           :namespace  "yolocorp"
-                                           :location   (format "/%s/%s/" (:id c1) (:id c2))}]
-        (let [c1-hash (serdes/identity-hash c1)
-              c2-hash (serdes/identity-hash c2)]
-          (is (= "f2620cc6"
-                 (serdes/raw-hash ["top level" :yolocorp "ROOT" (:created_at c1)])
-                 c1-hash)
-              "Top-level collections should use a parent hash of 'ROOT'")
-          (is (= "a27aef0f"
-                 (serdes/raw-hash ["nested" :yolocorp c1-hash (:created_at c2)])
-                 c2-hash))
-          (is (= "e816af2d"
-                 (serdes/raw-hash ["grandchild" :yolocorp c2-hash (:created_at c3)])
-                 (serdes/identity-hash c3))))))))
-
 ;;; TODO -- does this belong here, or in the `audit-app` module?
 (deftest instance-analytics-collections-test
   (testing "Instance analytics and it's contents isn't writable, even for admins."
