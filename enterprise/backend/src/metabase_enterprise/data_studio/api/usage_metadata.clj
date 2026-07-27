@@ -10,8 +10,9 @@
    [metabase.request.core :as request]
    [metabase.segments.api :as segments.api]
    [metabase.usage-metadata.candidates :as candidates]
-   [metabase.usage-metadata.task.process :as usage-metadata.task.process]
    [metabase.util :as u]
+   [metabase.util.jvm :as u.jvm]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -19,6 +20,16 @@
 
 (def ^:private default-limit 50)
 (def ^:private max-limit 200)
+
+(defn- run-refresh-async!
+  "TEMPORARY: run a manual refresh without Quartz so it works when the scheduler is disabled."
+  [run]
+  (u.jvm/in-virtual-thread*
+   (try
+     (candidates/run-refresh! run)
+     (catch Exception e
+       (log/error e "Manual usage-metadata candidate refresh failed")
+       (throw e)))))
 
 (defn- paging
   []
@@ -498,7 +509,7 @@
   (api/check-superuser)
   (if-let [run (candidates/queue-refresh! :manual api/*current-user-id*)]
     (try
-      (usage-metadata.task.process/trigger-refresh!)
+      (run-refresh-async! run)
       {:status 202
        :headers {}
        :body {:run_id (:id run)}}
