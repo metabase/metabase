@@ -2,12 +2,15 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.queries.core :as card]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -15,6 +18,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -55,6 +59,187 @@
   (when new-collection-id
     (api/check-400 (t2/exists? :model/Collection :id new-collection-id :archived false))
     (api/write-check :model/Collection new-collection-id)))
+
+;;; ------------------------------------------------ Write orchestration -------------------------------------------
+
+(def CardCreateSchema
+  "Schema for creating a new card - simplified version to avoid circular dependencies"
+  [:map
+   [:name ms/NonBlankString]
+   [:dataset_query ms/Map]
+   [:entity_id {:optional true} [:maybe ms/NonBlankString]]
+   [:parameters {:optional true} [:maybe [:sequential ms/Map]]]
+   [:parameter_mappings {:optional true} [:maybe [:sequential ms/Map]]]
+   [:description {:optional true} [:maybe ms/NonBlankString]]
+   [:display ms/NonBlankString]
+   [:visualization_settings ms/Map]
+   [:result_metadata {:optional true} [:maybe [:sequential ms/Map]]]
+   [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]])
+
+(defn create-card!
+  "Checks that the query is runnable by the current user then saves"
+  [{query :dataset_query :as card} creator]
+  (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
+  (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
+
+(mu/defn update-cards-in-ast :- [:map [:document :any]
+                                 [:content_type :string]]
+  "Rewrite the card FK (`[:attrs :id]`) of every cardEmbed node found in `card-id-map`.
+  Touches nothing else on the node — in particular a node's `:_id` never changes here."
+  [document :- [:map
+                [:document :any]
+                [:content_type :string]]
+   card-id-map :- [:maybe [:map-of :int ms/PositiveInt]]]
+  (cond-> document
+    (map? document)
+    (prose-mirror/update-ast (fn match-card-to-update [{:keys [type attrs]}]
+                               (and (= type prose-mirror/card-embed-type)
+                                    (contains? card-id-map (:id attrs))))
+                             (fn update-card-id [embed]
+                               (update-in embed [:attrs :id] card-id-map)))))
+
+(mu/defn- create-cards-for-document! :- [:map-of ms/NegativeInt ms/PositiveInt]
+  "Creates cards for a document from the cards map.
+   Returns a mapping from the original negative integer keys to the newly created card IDs.
+
+   Args:
+   - cards-to-create: Map of negative-int -> CardCreateSchema data
+   - document-id: ID of the document these cards belong to
+   - document-collection-id: Collection ID of the document (for inheritance)
+   - creator: User creating the cards
+
+   Returns:
+   - Map of negative-int -> actual-card-id"
+  [cards-to-create :- [:map-of [:int {:max -1}] CardCreateSchema]
+   document-id :- ms/PositiveInt
+   document-collection-id :- [:or :nil ms/PositiveInt]
+   creator :- [:map [:id ms/PositiveInt]]]
+  (when (seq cards-to-create)
+    (reduce-kv
+     (fn [result-map original-key card-data]
+       (let [;; Merge document info into card data
+             ;; Cards inherit document's collection_id if not explicitly specified
+             merged-card-data (-> card-data
+                                  (assoc :document_id document-id)
+                                  (cond-> (nil? (:collection_id card-data))
+                                    (assoc :collection_id document-collection-id)))
+             ;; Create the card using the queries core function
+             new-card (create-card! merged-card-data creator)]
+         (assoc result-map original-key (:id new-card))))
+     {}
+     cards-to-create)))
+
+(mu/defn clone-cards-in-document! :- [:map-of ms/PositiveInt ms/PositiveInt]
+  "Finds all cards in the document that are not associated with the document and clones the cards.
+
+  Args:
+  - document: the document model to clone cards within
+
+  Returns:
+  - map of old-card-id -> cloned-card-id"
+  [{:keys [id collection_id] :as document}]
+  (let [card-ids (prose-mirror/collect-ast document #(when (and (= prose-mirror/card-embed-type (:type %))
+                                                                (pos? (-> % :attrs :id)))
+                                                       (-> % :attrs :id)))
+        to-clone (when (seq card-ids)
+                   (t2/select :model/Card {:where [:and [:in :id card-ids]
+                                                   [:or [:<> :document_id id]
+                                                    [:= :document_id nil]]]}))]
+    (reduce (fn [accum card]
+              (api/read-check card)
+              (assoc accum
+                     (:id card)
+                     (:id (create-card! (assoc card :document_id id :collection_id collection_id)
+                                        @api/*current-user*))))
+            {}
+            to-clone)))
+
+(defn get-document
+  "Get document by id checking if the current user has permission to access and if the document exists.
+  Pass `:log-view? false` to skip publishing the `:event/document-read` view event."
+  [id & {:keys [log-view?] :or {log-view? true}}]
+  (u/prog1 (api/check-404
+            (api/read-check
+             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore :is_remote_synced)))
+    (when log-view?
+      (events/publish-event! :event/document-read
+                             {:object-id id
+                              :user-id api/*current-user-id*}))))
+
+(defn create-document!
+  "Create a Document from already-validated inputs, clone any embedded cards the document
+  doesn't own, publish `:event/document-create`, and return the created document. Permission
+  checks (`api/create-check`) are the caller's job, run before this — the same split the REST
+  `POST /api/document/` handler uses."
+  [{:keys [name document collection_id collection_position cards]}]
+  (let [created-document (t2/with-transaction [_conn]
+                           (when collection_position
+                             (api/maybe-reconcile-collection-position! {:collection_id collection_id
+                                                                        :collection_position collection_position}))
+                           (let [document-id (t2/insert-returning-pk! :model/Document {:name name
+                                                                                       :collection_id collection_id
+                                                                                       :collection_position collection_position
+                                                                                       :document document
+                                                                                       :content_type prose-mirror/prose-mirror-content-type
+                                                                                       :creator_id api/*current-user-id*})
+                                 cards-to-update-in-ast (merge (clone-cards-in-document! {:id document-id
+                                                                                          :collection_id collection_id
+                                                                                          :document document
+                                                                                          :content_type prose-mirror/prose-mirror-content-type})
+                                                               (when-not (empty? cards)
+                                                                 (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
+                             (when (seq cards-to-update-in-ast)
+                               (t2/update! :model/Document :id document-id
+                                           (update-cards-in-ast
+                                            {:document document
+                                             :content_type prose-mirror/prose-mirror-content-type}
+                                            cards-to-update-in-ast)))
+                             (u/prog1 (get-document document-id)
+                               (when (collections/remote-synced-collection? (:collection_id <>))
+                                 (collections/check-non-remote-synced-dependencies <>)))))]
+    ;; Publish event after successful creation
+    (events/publish-event! :event/document-create
+                           {:object created-document
+                            :user-id api/*current-user-id*})
+    created-document))
+
+(defn update-document!
+  "Apply `body` (already-validated update options: any of `:name`, `:document`,
+  `:collection_id`, `:collection_position`, `:cards`, `:archived`) to `existing-document`,
+  clone any newly-embedded cards the document doesn't own, publish `:event/document-update`
+  (or `:event/document-delete` when archiving), and return the updated document. Permission
+  checks (write-check, archived state, collection-move) are the caller's job, run before
+  this — the same split the REST `PUT /api/document/:id` handler uses."
+  [existing-document {:keys [name document collection_id collection_position cards] :as body}]
+  (let [document-id (:id existing-document)
+        document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)]
+    (t2/with-transaction [_conn]
+      (when collection_position
+        (api/maybe-reconcile-collection-position! existing-document {:collection_id (if (contains? body :collection_id)
+                                                                                      collection_id
+                                                                                      (:collection_id existing-document))
+                                                                     :collection_position collection_position}))
+      (t2/update! :model/Document document-id
+                  (cond-> document-updates
+                    document (merge (update-cards-in-ast
+                                     {:document document
+                                      :content_type (:content_type existing-document)}
+                                     (merge
+                                      (clone-cards-in-document! (assoc existing-document :document document))
+                                      (when-not (empty? cards) (create-cards-for-document! cards document-id collection_id @api/*current-user*)))))
+                    name (assoc :name name)
+                    (contains? body :collection_id) (assoc :collection_id collection_id)))
+      (collections/check-for-remote-sync-update existing-document))
+    (let [updated-document (get-document document-id)]
+      ;; Publish appropriate events
+      (if (:archived document-updates)
+        (events/publish-event! :event/document-delete
+                               {:object updated-document
+                                :user-id api/*current-user-id*})
+        (events/publish-event! :event/document-update
+                               {:object updated-document
+                                :user-id api/*current-user-id*}))
+      updated-document)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :creator]
   "Hydrate the creator (user) of a document based on the creator_id."

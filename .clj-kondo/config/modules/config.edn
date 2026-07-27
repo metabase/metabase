@@ -647,8 +647,7 @@
 
   comments
   {:team "UX West"
-   :api  #{metabase.comments.api
-           metabase.comments.init}
+   :api  #{metabase.comments.api metabase.comments.core metabase.comments.init}
    :uses #{analytics
            api
            channel
@@ -825,6 +824,7 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/Database
                     :model/Table
                     :model/User}}
 
@@ -1267,6 +1267,7 @@
            app-db
            channel
            collections
+           comments
            config
            dashboards
            documents
