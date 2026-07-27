@@ -37,10 +37,11 @@ function DependencyDiagnosticsPage({ mode }: DependencyDiagnosticsPageProps) {
   });
 
   const params = useMemo(() => {
-    return isEmptyParams(location)
+    const searchParams = new URLSearchParams(location.search);
+    return isEmptyParams(searchParams)
       ? parseUserParams(rawLastUsedParams)
-      : parseUrlParams(location);
-  }, [location, rawLastUsedParams]);
+      : parseUrlParams(searchParams);
+  }, [location.search, rawLastUsedParams]);
 
   const handleParamsChange = (
     params: Urls.DependencyDiagnosticsParams,

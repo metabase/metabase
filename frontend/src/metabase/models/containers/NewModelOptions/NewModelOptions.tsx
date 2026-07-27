@@ -30,8 +30,7 @@ const NewModelOptions = () => {
   );
 
   const collectionId = Urls.extractEntityId(
-    // Unjustified type cast. FIXME
-    location.query.collectionId as string,
+    new URLSearchParams(location.search).get("collectionId") ?? undefined,
   );
 
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useRouter } from "metabase/router";
+import { useSearchParams } from "metabase/router";
 import { Stack } from "metabase/ui";
 import { getSchemaViewerParams } from "metabase/urls";
 import { useGetErdQuery } from "metabase-enterprise/api";
@@ -15,23 +15,22 @@ import { useSchemaPreferencesStore } from "../../components/SchemaViewer/hooks/u
 import { useRedirectToLastDatabase } from "./useRedirectToLastDatabase";
 
 export function SchemaViewerPage() {
-  const { location } = useRouter();
+  const [searchParams] = useSearchParams();
   usePageTitle(t`Schema viewer`);
 
-  const rawDatabaseId = location?.query?.["database-id"];
-  const rawTableIds = location?.query?.["table-ids"];
-  const schema = location?.query?.schema;
+  const rawDatabaseId = searchParams.get("database-id");
+  const schema = searchParams.get("schema") ?? undefined;
+  // Joined rather than kept as the array `getAll` returns, so the memo below has
+  // a stable dependency across renders.
+  const rawTableIds = searchParams.getAll("table-ids").join(",");
 
   const databaseId: DatabaseId | undefined =
     rawDatabaseId != null ? Number(rawDatabaseId) : undefined;
 
-  const tableIds: ConcreteTableId[] | undefined = useMemo(() => {
-    if (rawTableIds == null) {
-      return undefined;
-    }
-    const ids = Array.isArray(rawTableIds) ? rawTableIds : [rawTableIds];
-    return ids.map(Number);
-  }, [rawTableIds]);
+  const tableIds: ConcreteTableId[] | undefined = useMemo(
+    () => (rawTableIds === "" ? undefined : rawTableIds.split(",").map(Number)),
+    [rawTableIds],
+  );
 
   useRedirectToLastDatabase({ databaseId, schema });
 

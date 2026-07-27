@@ -288,7 +288,7 @@ describe("AISettingsPage", () => {
 
     expect(history?.getCurrentLocation()).toMatchObject({
       pathname: "/admin/metabot",
-      query: { metabot_id: String(FIXED_METABOT_IDS.EMBEDDED) },
+      search: `?metabot_id=${FIXED_METABOT_IDS.EMBEDDED}`,
       hash: "",
     });
   });

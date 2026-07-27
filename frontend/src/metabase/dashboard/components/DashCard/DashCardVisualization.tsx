@@ -24,6 +24,7 @@ import type { LocationDescriptorObject } from "metabase/router";
 import { push, searchToQuery } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { Flex, Group, type IconProps, Menu, Title } from "metabase/ui";
+import { parseSearchQuery } from "metabase/utils/browser";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
@@ -180,7 +181,9 @@ export function DashCardVisualization({
     (location: LocationDescriptorObject) => {
       dispatch(push(location));
       dispatch(
-        setParameterValuesFromQueryParams(searchToQuery(location.search ?? "")),
+        setParameterValuesFromQueryParams(
+          parseSearchQuery(location.search ?? ""),
+        ),
       );
     },
     [dispatch],
