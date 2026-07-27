@@ -110,6 +110,10 @@
    ;; ^/$ -> index.html
    (GET "/" [] index/index)
    (GET "/favicon.ico" [] (response/resource-response (appearance/application-favicon-url)))
+   ;; ^/robots.txt -> block search engines from indexing public-facing instances
+   (GET "/robots.txt" [] (response/content-type
+                          (response/response "User-agent: *\nDisallow: /\n")
+                          "text/plain"))
    ;; ^/api/health -> Health Check Endpoint
    (GET "/api/health" [] health-handler)
    ;; ^/readyz -> Readiness probe (same implementation as /api/health)
