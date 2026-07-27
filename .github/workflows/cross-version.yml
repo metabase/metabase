@@ -12,15 +12,15 @@ on:
         required: true
         type: string
 
-  pull_request:
-    paths:
-      - "cross-version/**"
-      - ".github/workflows/cross-version.yml"
-      - ".github/scripts/build-cross-version-matrix.js"
+  # pull_request:
+  #   paths:
+  #     - "cross-version/**"
+  #     - ".github/workflows/cross-version.yml"
+  #     - ".github/scripts/build-cross-version-matrix.js"
 
-  schedule:
-    # Run nightly at 3 AM UTC
-    - cron: "0 3 * * *"
+  # schedule:
+  #   # Run nightly at 3 AM UTC
+  #   - cron: "0 3 * * *"
 
 jobs:
   # Generate matrix for scheduled/PR runs
