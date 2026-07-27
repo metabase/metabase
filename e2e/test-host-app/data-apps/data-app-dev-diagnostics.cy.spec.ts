@@ -230,7 +230,9 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
           timeout: TIMEOUT_MS,
         })
         .should("be.visible");
-      devToolbarPanel().findByText(/https:\/\/added\.example/).should("exist");
+      devToolbarPanel()
+        .findByText(/https:\/\/added\.example/)
+        .should("exist");
 
       cy.writeFile(DATA_APP_DEV_MANIFEST_PATH, originalManifest);
       devToolbarPanel()
