@@ -103,7 +103,7 @@ function setup({
   });
 
   renderWithProviders(
-    <Route path="/data-studio/cleanup" component={CleanupPage} />,
+    <Route path="/data-studio/cleanup" element={<CleanupPage />} />,
     {
       withRouter: true,
       initialRoute: "/data-studio/cleanup",

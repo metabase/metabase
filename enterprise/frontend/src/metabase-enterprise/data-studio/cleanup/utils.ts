@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { t } from "ttag";
 
 import * as Urls from "metabase/urls";
@@ -17,27 +16,31 @@ const DIRECTIONS = ["asc", "desc"] as const;
 const QUEUES = ["recommended", "review", "all", "dismissed"] as const;
 
 export function parseCleanupParams(
-  location: Location,
+  searchParams: URLSearchParams,
 ): Urls.DataStudioCleanupParams {
   return {
-    page: Urls.parseNumberParam(location.query.page),
-    search: Urls.parseStringParam(location.query.search),
-    databaseId: Urls.parseNumberParam(location.query.database),
-    schema: Urls.parseStringParam(location.query.schema),
-    candidateType: Urls.parseEnumParam(location.query.type, CANDIDATE_TYPES),
+    page: Urls.parseNumberParam(searchParams.get("page")),
+    search: Urls.parseStringParam(searchParams.get("search")),
+    databaseId: Urls.parseNumberParam(searchParams.get("database")),
+    schema: Urls.parseStringParam(searchParams.get("schema")),
+    candidateType: Urls.parseEnumParam(
+      searchParams.get("type"),
+      CANDIDATE_TYPES,
+    ),
     modelingStatus: Urls.parseEnumParam(
-      location.query.status,
+      searchParams.get("status"),
       MODELING_STATUSES,
     ),
-    signal: Urls.parseEnumParam(location.query.signal, SIGNALS),
+    signal: Urls.parseEnumParam(searchParams.get("signal"), SIGNALS),
     dismissed:
-      Urls.parseEnumParam(location.query.dismissed, DISMISSED_FILTERS) ??
+      Urls.parseEnumParam(searchParams.get("dismissed"), DISMISSED_FILTERS) ??
       "exclude",
-    sort: Urls.parseEnumParam(location.query.sort, SORTS) ?? "priority",
+    sort: Urls.parseEnumParam(searchParams.get("sort"), SORTS) ?? "priority",
     direction:
-      Urls.parseEnumParam(location.query.direction, DIRECTIONS) ?? "asc",
-    queue: Urls.parseEnumParam(location.query.queue, QUEUES) ?? "recommended",
-    candidateId: Urls.parseNumberParam(location.query.candidate),
+      Urls.parseEnumParam(searchParams.get("direction"), DIRECTIONS) ?? "asc",
+    queue:
+      Urls.parseEnumParam(searchParams.get("queue"), QUEUES) ?? "recommended",
+    candidateId: Urls.parseNumberParam(searchParams.get("candidate")),
   };
 }
 
