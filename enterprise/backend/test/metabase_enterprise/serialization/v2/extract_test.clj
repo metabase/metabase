@@ -12,6 +12,7 @@
    [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
    [metabase.actions.models :as action]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.test-utils :refer [personal-collection]]
    [metabase.core.core :as mbc]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -67,13 +68,7 @@
                        {mark-id :id}
                        {:first_name "Mark"
                         :last_name  "Knopfler"
-                        :email      "mark@direstrai.ts"}
-                       :model/Collection
-                       {pc-id   :id
-                        pc-eid  :entity_id
-                        pc-slug :slug}
-                       {:name              "Mark's Personal Collection"
-                        :personal_owner_id mark-id}]
+                        :email      "mark@direstrai.ts"}]
       (testing "a top-level collection is extracted correctly"
         (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection :id coll-id))]
           (is (=? {:serdes/meta [{:model "Collection" :id coll-eid :label coll-slug}]}
@@ -91,8 +86,9 @@
           (is (not (contains? ser :location)))
           (is (not (contains? ser :id)))))
       (testing "personal collections are extracted with email as key"
-        (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection :id pc-id))]
-          (is (=? {:serdes/meta       [{:model "Collection" :id pc-eid :label pc-slug}]
+        (let [pc  (personal-collection mark-id)
+              ser (serdes/extract-one "Collection" {} pc)]
+          (is (=? {:serdes/meta       [{:model "Collection" :id (:entity_id pc) :label (:slug pc)}]
                    :personal_owner_id "mark@direstrai.ts"}
                   ser))
           (is (not (contains? ser :parent_id)))
@@ -103,7 +99,7 @@
           (is (= #{coll-eid child-eid}
                  (ids-by-model "Collection" (extract/extract nil)))))
         (testing "valid user specified"
-          (is (= #{coll-eid child-eid pc-eid}
+          (is (= #{coll-eid child-eid (:entity_id (personal-collection mark-id))}
                  (ids-by-model "Collection" (extract/extract {:user-id mark-id})))))
         (testing "invalid user specified"
           (is (= #{coll-eid child-eid}
@@ -126,15 +122,6 @@
                        {:first_name "David"
                         :last_name  "Knopfler"
                         :email      "david@direstrai.ts"}
-                       :model/Collection
-                       {mark-coll-eid :entity_id}
-                       {:name              "MK Personal"
-                        :personal_owner_id mark-id}
-                       :model/Collection
-                       {dave-coll-id  :id
-                        dave-coll-eid :entity_id}
-                       {:name              "DK Personal"
-                        :personal_owner_id dave-id}
                        :model/Database
                        {db-id :id}
                        {:name "My Database"}
@@ -261,14 +248,14 @@
                        {other-dash-id :id
                         other-dash    :entity_id}
                        {:name          "Dave's Dash"
-                        :collection_id dave-coll-id
+                        :collection_id (:id (personal-collection dave-id))
                         :creator_id    mark-id
                         :parameters    []}
                        :model/Dashboard
                        {param-dash-id :id
                         param-dash    :entity_id}
                        {:name          "Dave's Dash with parameters"
-                        :collection_id dave-coll-id
+                        :collection_id (:id (personal-collection dave-id))
                         :creator_id    mark-id
                         :parameters    [{:id                   "abc"
                                          :type                 "category"
@@ -432,7 +419,7 @@
             (is (= #{[{:model "Card" :id c2-eid}]
                      [{:model "Action" :id action-eid}]
                      [{:model "Database" :id "My Database"}]
-                     [{:model "Collection" :id dave-coll-eid}]}
+                     [{:model "Collection" :id (:entity_id (personal-collection dave-id))}]}
                    (set (serdes/deserialization-dependencies ser)))))))
       (testing "Dashboards with parameters where the source is a card"
         (let [ser (ts/extract-one "Dashboard" param-dash-id)]
@@ -446,7 +433,7 @@
                                                           nil]},
                      :values_source_type   :card}]}
                   ser))
-          (is (= #{[{:model "Collection" :id dave-coll-eid}]
+          (is (= #{[{:model "Collection" :id (:entity_id (personal-collection dave-id))}]
                    [{:model "Card" :id c1-eid}]
                    ;; the parameter's value_field references a Field, but only its Database is a dependency
                    [{:model "Database", :id "My Database"}]}
@@ -463,7 +450,7 @@
                                                           nil]},
                      :values_source_type   :card}]}
                   ser))
-          (is (= #{[{:model "Collection" :id dave-coll-eid}]
+          (is (= #{[{:model "Collection" :id (:entity_id (personal-collection dave-id))}]
                    [{:model "Card" :id c1-eid}]
                    ;; the parameter's value_field references a Field, but only its Database is a dependency
                    [{:model "Database", :id "My Database"}]}
@@ -475,11 +462,11 @@
                       (into [])
                       (map :name)))))
         (testing "unowned collections and the personal one with a user"
-          (is (= #{coll-eid mark-coll-eid}
+          (is (= #{coll-eid (:entity_id (personal-collection mark-id))}
                  (->> {:collection-set (#'extract/collection-set-for-user mark-id)}
                       (serdes/extract-all "Collection")
                       (ids-by-model "Collection"))))
-          (is (= #{coll-eid dave-coll-eid}
+          (is (= #{coll-eid (:entity_id (personal-collection dave-id))}
                  (->> {:collection-set (#'extract/collection-set-for-user dave-id)}
                       (serdes/extract-all "Collection")
                       (ids-by-model "Collection"))))))

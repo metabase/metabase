@@ -1277,12 +1277,12 @@
   (binding [collection/*allow-deleting-personal-collections* true]
     (mt/with-temp
       [:model/User       {user-id :id}               {}
-       :model/Collection {personal-coll :id}         {:personal_owner_id user-id}
-       :model/Collection {nested-personal-coll :id}  {:location          (format "/%d/" personal-coll)
+       :model/Collection {nested-personal-coll :id}  {:location          (format "/%d/" (u/the-id (collection/user->personal-collection user-id)))
                                                       :personal_owner_id nil}
        :model/Collection {top-level-coll :id}        {:location "/"}
        :model/Collection {nested-top-level-coll :id} {:location (format "/%d/" top-level-coll)}]
-      (let [check-is-personal (fn [id-or-ids]
+      (let [personal-coll     (u/the-id (collection/user->personal-collection user-id))
+            check-is-personal (fn [id-or-ids]
                                 (if (int? id-or-ids)
                                   (-> (t2/select-one :model/Collection id-or-ids)
                                       (t2/hydrate :is_personal)

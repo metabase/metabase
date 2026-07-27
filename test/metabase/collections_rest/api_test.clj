@@ -9,7 +9,7 @@
    [metabase.collections-rest.settings :as collections-rest.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
-   [metabase.collections.test-utils :refer [with-library-not-synced without-library]]
+   [metabase.collections.test-utils :refer [personal-collection with-library-not-synced without-library]]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -46,11 +46,10 @@
 (defn- do-with-french-user-and-personal-collection! [f]
   (binding [collection/*allow-deleting-personal-collections* true]
     (mt/with-mock-i18n-bundles! {"fr" {:messages {"{0} {1}''s Personal Collection" "Collection personnelle de {0} {1}"}}}
-      (mt/with-temp [:model/User       user       {:locale     "fr"
-                                                   :first_name "Taco"
-                                                   :last_name  "Bell"}
-                     :model/Collection collection {:personal_owner_id (:id user)}]
-        (f user collection)))))
+      (mt/with-temp [:model/User user {:locale     "fr"
+                                       :first_name "Taco"
+                                       :last_name  "Bell"}]
+        (f user (personal-collection user))))))
 
 (defmacro ^:private with-french-user-and-personal-collection!
   "Create a user with locale's fr and a collection associated with it"

@@ -775,6 +775,22 @@
                 (is (= [{:id (:id (perms-group/all-users))}]
                        (:user_group_memberships resp)))))))))))
 
+(deftest create-user-creates-personal-collection-test
+  (testing "POST /api/user"
+    (testing "creates the new User's Personal Collection as part of the request (#78430)"
+      (mt/with-model-cleanup [:model/User :model/Collection]
+        (mt/with-fake-inbox
+          (let [user-id (u/the-id (mt/user-http-request :crowberto :post 200 "user"
+                                                        {:first_name "Personal"
+                                                         :last_name  "Collection"
+                                                         :email      (mt/random-email)}))]
+            (testing "the Collection row exists without anything having hydrated :personal_collection_id"
+              (is (some? (t2/select-one :model/Collection :personal_owner_id user-id))))
+            (testing "so it is immediately visible to GET /api/collection?personal-only=true"
+              (is (contains? (into #{} (map :personal_owner_id)
+                                   (mt/user-http-request :crowberto :get 200 "collection" :personal-only true))
+                             user-id)))))))))
+
 (deftest ^:parallel create-user-non-superuser-test
   (testing "POST /api/user"
     (testing "Check that non-superusers are denied access"

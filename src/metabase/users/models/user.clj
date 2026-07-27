@@ -43,6 +43,8 @@
   (derive :hook/updated-at-timestamped?)
   (derive :hook/entity-id))
 
+(derive :event/user-create :metabase/event)
+
 (defn- stringify-keys-and-values
   "Given a map, convert all the keys and values to strings."
   [m]
@@ -264,7 +266,10 @@
         (perms/allow-changing-all-external-users-group-members
          (perms/without-is-superuser-sync-on-add-to-admin-group
           (perms/add-user-to-groups! user-id (map u/the-id groups))))))
-    (sync-password-to-auth-identity! user-id)))
+    (sync-password-to-auth-identity! user-id)
+    ;; Published last, once the group memberships above exist, since creating the User's Personal Collection touches
+    ;; permissions..
+    (events/publish-event! :event/user-create {:object <>})))
 
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]
