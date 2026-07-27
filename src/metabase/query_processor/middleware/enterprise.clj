@@ -77,7 +77,36 @@
   [query]
   query)
 
+(defenterprise apply-table-remapping
+  "**Table remapping, Phase 1 — preprocess.** Overrides cached MBQL table metadata so downstream middleware and
+  HoneySQL compilation see remapped identifiers. No-op unless remappings are bound via
+  `metabase-enterprise.table-remapping.core/with-table-remapping`. Native SQL is intentionally untouched here — Phase 2
+  ([[apply-table-sql-remapping]]) is the authoritative rewriter. See the EE impl namespace docstring for the design
+  rationale."
+  metabase-enterprise.table-remapping.middleware
+  [query]
+  query)
+
 ;;;; Execution middleware
+
+(defenterprise apply-table-sql-remapping
+  "**Table remapping, Phase 2 — execute (post-compilation).** The authoritative SQL rewriter. Runs after all
+  preprocess work — snippets, card refs, params, and MBQL compilation are complete — so the query is reduced to one
+  canonical SQL string. Parses it, rewrites every from-side table ref to its to-side counterpart, re-emits. No-op
+  unless remappings are bound via `metabase-enterprise.table-remapping.core/with-table-remapping`.
+
+  **Fails closed:** on parse failure throws `ex-info` with `:type qp.error-type/qp`. There is no fallback to running
+  the original SQL un-remapped."
+  metabase-enterprise.table-remapping.middleware
+  [qp]
+  qp)
+
+(defn apply-table-sql-remapping-middleware
+  "Helper middleware wrapper for [[apply-table-sql-remapping]] to make sure we do [[defenterprise]] dispatch correctly
+  on each QP run rather than just once when we combine all of the QP middleware."
+  [qp]
+  (fn [query rff]
+    ((apply-table-sql-remapping qp) query rff)))
 
 ;;; (f qp) => qp
 

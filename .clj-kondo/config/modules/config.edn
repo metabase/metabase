@@ -3673,6 +3673,16 @@
            util}
    :model-imports #{:model/AuthIdentity :model/Session :model/User}}
 
+  enterprise/table-remapping
+  {:team "Graphy"
+   :api  #{}
+   :uses #{driver
+           lib
+           premium-features
+           query-processor
+           sql-tools
+           util}}
+
   enterprise/tenants
   {:team "Admin Webapp"
    :api  #{metabase-enterprise.tenants.api metabase-enterprise.tenants.init}
