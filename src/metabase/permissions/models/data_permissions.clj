@@ -198,7 +198,24 @@
                  On instances with many databases these maps are typically identical across most of them, so
                  they are interned at load time: equal values share one instance. This keeps the cache size
                  proportional to the number of *distinct* permission profiles rather than `groups * databases`
-                 (see #76077 for how large the raw row count can get).
+                 (see #76077 for how large the raw row count can get). Concretely, on an instance where the
+                 user's groups have the same db-level grants almost everywhere plus one database with
+                 table-level rows:
+
+                     {1
+                      {:perms/view-data
+                       {10 {:groups {1 #{:unrestricted}, 2 #{:blocked}} :tables {}}  ; ─┐ interning makes
+                        11 {:groups {1 #{:unrestricted}, 2 #{:blocked}} :tables {}}  ;  ├ these :groups maps
+                        12 {:groups {1 #{:unrestricted}, 2 #{:blocked}} :tables {}}  ; ─┘ identical
+                        13 {:groups {1 #{:unrestricted}}
+                            :tables
+                            {100 {2 #{{:schema \"public\"    :value :blocked}}}  ; ─┬ identical, and their
+                             101 {2 #{{:schema \"public\"    :value :blocked}}}  ; ─┘ inner :schema/:value
+                             102 {2 #{{:schema \"reporting\" :value :blocked}}}}}}}}  ; maps also identical
+
+                 Each annotated group prints as N equal maps but is held as ONE shared instance plus N
+                 pointers — 1,000 databases with the same profile cost one :groups map, not 1,000. The sharing
+                 is established at construction by [[rows->cache-entry]] and is invisible to readers.
 
   When checking permissions, if a DB has not been fetched, it will be added to the cache before the check returns."
   (atom {:db-ids #{} :perms {}}))
@@ -213,7 +230,11 @@
 
 (defn- rows->cache-entry
   "Build the compact cache entry (see [[*permissions-for-user*]]) for one (perm-type, db-id) bucket of
-  data_permissions rows, deduping values through `interner`. Returns nil when there are no rows.
+  data_permissions rows. Returns nil when there are no rows.
+
+  The `interner` calls are a semantic no-op: they never change what any lookup returns, only object identity,
+  collapsing =-equal values to one shared instance so that the same profile repeated across many databases (or the
+  same :schema/:value map across many tables) is stored once — see the example on [[*permissions-for-user*]].
 
   Values accumulate into sets rather than a single value per key: data_permissions has no unique constraint on
   (group_id, perm_type, db_id, table_id), and its delete-then-insert write paths take different cluster locks, so
