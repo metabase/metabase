@@ -1,7 +1,6 @@
-import type { Location } from "history";
-
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import type { Location } from "metabase/router";
 import { push } from "metabase/router";
 import { getUser } from "metabase/selectors/user";
 

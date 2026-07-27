@@ -24,16 +24,40 @@ import { getBillingInfoId } from "../BillingInfo/utils";
 
 import { LicenseAndBillingSettings } from "./LicenseAndBillingSettings";
 
+const selfHostedBillingInfo: BillingInfo = {
+  version: "v1",
+  content: [
+    {
+      name: "Visit the Metabase store to manage your account and billing preferences.",
+      value: "Manage account",
+      format: "string",
+      display: "external-link",
+      link: "https://store.metabase.com/account/manage/plans",
+    },
+    {
+      name: "Cancel your Metabase Starter plan",
+      value: "Cancel subscription",
+      format: "string",
+      display: "external-link",
+      link: "https://store.metabase.com/account/cancel",
+    },
+  ],
+};
+
 const setup = async ({
   token = "token",
   is_env_setting = false,
   airgapEnabled = false,
   features = {},
+  billingInfo,
+  billingError = false,
 }: {
   token?: string | null;
   is_env_setting?: boolean;
   airgapEnabled?: boolean;
   features?: Partial<TokenFeatures> & { "metabase-store-managed"?: boolean };
+  billingInfo?: BillingInfo;
+  billingError?: boolean;
 }) => {
   const settings = createMockSettings({
     "airgap-enabled": airgapEnabled,
@@ -60,6 +84,14 @@ const setup = async ({
     features: Object.keys(features),
   });
   setupUpdateSettingEndpoint();
+
+  if (billingError) {
+    fetchMock.get("path:/api/ee/billing", 500);
+  } else if (billingInfo !== undefined) {
+    fetchMock.get("path:/api/ee/billing", billingInfo);
+  } else if (token && token !== "invalid") {
+    fetchMock.get("path:/api/ee/billing", selfHostedBillingInfo);
+  }
 
   renderWithProviders(<LicenseAndBillingSettings />, {
     storeInitialState: {
@@ -140,11 +172,10 @@ describe("LicenseAndBilling", () => {
         ],
       };
 
-      fetchMock.get("path:/api/ee/billing", mockData);
-
       await setup({
         token: "valid",
         features: { "metabase-store-managed": true },
+        billingInfo: mockData,
       });
 
       // test string format
@@ -226,11 +257,10 @@ describe("LicenseAndBilling", () => {
         version: "v1",
         content: [plan, unsupportedFormat, unsupportedDisplay, invalidValue],
       };
-      fetchMock.get("path:/api/ee/billing", mockData);
-
       await setup({
         token: "token",
         features: { "metabase-store-managed": true },
+        billingInfo: mockData,
       });
 
       // test unsupported display, unsupported format, and invalid items do not render
@@ -245,16 +275,77 @@ describe("LicenseAndBilling", () => {
   });
 
   it("renders error for billing info for store managed billing and info request fails", async () => {
-    fetchMock.get("path:/api/ee/billing", 500);
     await setup({
       token: "valid",
       features: { "metabase-store-managed": true },
+      billingError: true,
     });
 
     expect(await screen.findByTestId("billing-info-error")).toBeInTheDocument();
   });
 
-  it("renders settings for non-store-managed billing with a valid token", async () => {
+  it("renders billing links for store-managed self-hosted billing with a valid token", async () => {
+    const mockData = selfHostedBillingInfo;
+    const manageAccount = mockData.content?.[0];
+    const cancelSubscription = mockData.content?.[1];
+
+    await setup({
+      token: "valid",
+      features: { "metabase-store-managed": true },
+      billingInfo: mockData,
+    });
+
+    expect(
+      await screen.findByText(manageAccount?.name ?? ""),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(cancelSubscription?.name ?? ""),
+    ).toBeInTheDocument();
+
+    const manageAccountLink = await screen.findByTestId(
+      `billing-info-value-${getBillingInfoId(manageAccount!)}`,
+    );
+    expect(manageAccountLink).toHaveTextContent("Manage account");
+    expect(manageAccountLink).toHaveAttribute(
+      "href",
+      "https://store.metabase.com/account/manage/plans",
+    );
+
+    const cancelSubscriptionLink = await screen.findByTestId(
+      `billing-info-value-${getBillingInfoId(cancelSubscription!)}`,
+    );
+    expect(cancelSubscriptionLink).toHaveTextContent("Cancel subscription");
+    expect(cancelSubscriptionLink).toHaveAttribute(
+      "href",
+      "https://store.metabase.com/account/cancel",
+    );
+
+    expect(
+      screen.getByText(
+        "Your license is active until Dec 31, 2099! Hope you’re enjoying it.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders go-to-store for store-managed billing when billing info has no content", async () => {
+    await setup({
+      token: "valid",
+      features: { "metabase-store-managed": true },
+      billingInfo: { version: "v1" },
+    });
+
+    expect(
+      await screen.findByText(
+        "Manage your Cloud account, including billing preferences, in your Metabase Store account.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Go to the Metabase Store/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("billing-info-error")).not.toBeInTheDocument();
+  });
+
+  it("renders email fallback for non-store-managed billing with a valid token", async () => {
     await setup({ token: "valid" });
 
     expect(
@@ -275,7 +366,10 @@ describe("LicenseAndBilling", () => {
   });
 
   it("renders settings for airgapped token", async () => {
-    await setup({ token: "valid", airgapEnabled: true });
+    await setup({
+      token: "valid",
+      airgapEnabled: true,
+    });
 
     expect(
       await screen.findByText(

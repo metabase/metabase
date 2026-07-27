@@ -1,169 +1,120 @@
-import cx from "classnames";
+import type { Row } from "@tanstack/react-table";
 import dayjs from "dayjs";
-import { useCallback } from "react";
+import { type ReactNode, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import NoResults from "assets/img/no_results.svg";
 import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import {
-  useListPersistedInfoQuery,
+  useLazyListPersistedInfoQuery,
   useRefreshModelCacheMutation,
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
-import { EmptyState } from "metabase/common/components/EmptyState";
 import { Link } from "metabase/common/components/Link";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { usePagination } from "metabase/common/hooks/use-pagination";
-import AdminS from "metabase/css/admin.module.css";
-import CS from "metabase/css/core/index.css";
-import { Outlet } from "metabase/router";
-import { Icon, Tooltip } from "metabase/ui";
+import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
+import { useDispatch } from "metabase/redux";
+import { Outlet, push } from "metabase/router";
+import {
+  ActionIcon,
+  Card,
+  Center,
+  Ellipsified,
+  Flex,
+  Icon,
+  Text,
+  Tooltip,
+  TreeTable,
+  type TreeTableColumnDef,
+  TreeTableSkeleton,
+  useTreeTableInstance,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { capitalize } from "metabase/utils/formatting";
 import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
-import {
-  ErrorBox,
-  IconButtonContainer,
-  PaginationControlsContainer,
-} from "./ModelCacheRefreshJobs.styled";
-
-type JobTableItemProps = {
-  job: ModelCacheRefreshStatus;
-  onRefresh: () => void;
-};
-
-function JobTableItem({ job, onRefresh }: JobTableItemProps) {
-  const modelUrl = Urls.model({ id: job.card_id, name: job.card_name });
-  const collectionUrl = Urls.collection({
-    id: job.collection_id,
-    name: job.collection_name,
-  });
-
-  const lastRunAtLabel = capitalize(dayjs(job.refresh_begin).fromNow());
-
-  const renderStatus = useCallback(() => {
-    if (job.state === "off") {
-      return t`Off`;
-    }
-    if (job.state === "creating") {
-      return t`Queued`;
-    }
-    if (job.state === "refreshing") {
-      return t`Refreshing`;
-    }
-    if (job.state === "persisted") {
-      return t`Completed`;
-    }
-    if (job.state === "error") {
-      return (
-        <Link to={`/admin/tools/model-caching/${job.id}`}>
-          <ErrorBox>{job.error}</ErrorBox>
-        </Link>
-      );
-    }
-    return job.state;
-  }, [job]);
-
-  return (
-    <tr key={job.id}>
-      <td>
-        <span>
-          <Link variant="brand" to={modelUrl}>
-            {job.card_name}
-          </Link>{" "}
-          {t`in`}{" "}
-          <Link variant="brand" to={collectionUrl}>
-            {job.collection_name || t`Our analytics`}
-          </Link>
-        </span>
-      </td>
-      <td>{renderStatus()}</td>
-      <td>
-        <Tooltip label={<DateTime value={job.refresh_begin} />}>
-          <span>{lastRunAtLabel}</span>
-        </Tooltip>
-      </td>
-      <td>{job.creator?.common_name || t`Automatic`}</td>
-      <td>
-        {checkCanRefreshModelCache(job) && (
-          <Tooltip label={t`Refresh`}>
-            <IconButtonContainer onClick={onRefresh}>
-              <Icon name="refresh" />
-            </IconButtonContainer>
-          </Tooltip>
-        )}
-      </td>
-    </tr>
-  );
-}
-
 const PAGE_SIZE = 20;
 
+const COLUMN_WIDTHS = [0.22, 0.16, 0.28, 0.14, 0.14, 0.06];
+
 export function ModelCacheRefreshJobs() {
+  const dispatch = useDispatch();
   const [refreshModelCache] = useRefreshModelCacheMutation();
   const { page, handleNextPage, handlePreviousPage } = usePagination();
-  const { data, error, isFetching } = useListPersistedInfoQuery({
-    limit: PAGE_SIZE,
-    offset: PAGE_SIZE * page,
-  });
+
+  const { data, error, isLoading, isFetching } = useAbortableQuery(
+    useLazyListPersistedInfoQuery,
+    {
+      limit: PAGE_SIZE,
+      offset: PAGE_SIZE * page,
+    },
+  );
   const { data: persistedModels, total } = data ?? { data: [], total: 0 };
+
+  // "deletable" records are pending cleanup and aren't shown to the user
+  const jobs = useMemo(
+    () => persistedModels.filter((info) => info.state !== "deletable"),
+    [persistedModels],
+  );
   const hasPagination = total > PAGE_SIZE;
-  const modelCacheInfo = persistedModels.filter(
-    (cacheInfo) => cacheInfo.state !== "deletable",
+
+  const columns = useMemo(
+    () => getColumns((job) => refreshModelCache(job.card_id)),
+    [refreshModelCache],
   );
 
-  if (error || isFetching) {
-    return <LoadingAndErrorWrapper error={error} loading={isFetching} />;
-  }
+  const handleRowActivate = useCallback(
+    (row: Row<ModelCacheRefreshStatus>) => {
+      const { card_id, card_name } = row.original;
+      dispatch(push(Urls.model({ id: card_id, name: card_name })));
+    },
+    [dispatch],
+  );
 
-  if (modelCacheInfo.length === 0) {
+  const treeTableInstance = useTreeTableInstance<ModelCacheRefreshStatus>({
+    data: jobs,
+    columns,
+    getNodeId: (job) => String(job.id),
+    onRowActivate: handleRowActivate,
+  });
+
+  if (error != null) {
     return (
-      <div data-testid="model-cache-logs">
-        <EmptyState
-          title={t`No results`}
-          illustrationElement={<img src={NoResults} />}
-        />
-      </div>
+      <Center flex={1}>
+        <DelayedLoadingAndErrorWrapper loading={isFetching} error={error} />
+      </Center>
     );
   }
 
   return (
-    <div data-testid="model-cache-logs">
-      <table className={cx(AdminS.ContentTable, CS.borderBottom)}>
-        <colgroup>
-          <col style={{ width: "30%" }} />
-          <col style={{ width: "40%" }} />
-          <col />
-          <col />
-          <col style={{ width: "5%" }} />
-        </colgroup>
-        <thead>
-          <tr>
-            <th>{t`Model`}</th>
-            <th>{t`Status`}</th>
-            <th>{t`Last run at`}</th>
-            <th>{t`Created by`}</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {modelCacheInfo.map((job) => (
-            <JobTableItem
-              key={job.id}
-              job={job}
-              onRefresh={() => refreshModelCache(job.card_id)}
-            />
-          ))}
-        </tbody>
-      </table>
-      {hasPagination && (
-        <PaginationControlsContainer>
+    <>
+      <Card
+        flex="0 1 auto"
+        mih={0}
+        p={0}
+        withBorder
+        data-testid="model-cache-logs"
+      >
+        {isLoading ? (
+          <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
+        ) : (
+          <TreeTable
+            instance={treeTableInstance}
+            hierarchical={false}
+            ariaLabel={t`Model caching log`}
+            emptyState={<MonitorEmptyState label={t`No log entries`} />}
+            getRowProps={() => ({ "data-testid": "model-cache-log-row" })}
+            onRowClick={handleRowActivate}
+          />
+        )}
+      </Card>
+
+      {!isLoading && hasPagination && (
+        <Flex justify="end">
           <PaginationControls
             showTotal
             page={page}
@@ -173,19 +124,148 @@ export function ModelCacheRefreshJobs() {
             onNextPage={handleNextPage}
             onPreviousPage={handlePreviousPage}
           />
-        </PaginationControlsContainer>
+        </Flex>
       )}
-    </div>
+    </>
   );
 }
 
 export function ModelCachePage() {
   return (
-    <SettingsPageWrapper title={t`Model cache log`}>
-      <SettingsSection>
+    <Flex h="100%" wrap="nowrap">
+      <MonitorMain>
+        <MonitorHeaderTitle mb="sm">{t`Model caching log`}</MonitorHeaderTitle>
         <ModelCacheRefreshJobs />
-      </SettingsSection>
+      </MonitorMain>
       <Outlet /> {/* refresh modal */}
-    </SettingsPageWrapper>
+    </Flex>
   );
+}
+
+function getColumns(
+  onRefresh: (job: ModelCacheRefreshStatus) => void,
+): TreeTableColumnDef<ModelCacheRefreshStatus>[] {
+  return [
+    {
+      id: "model",
+      header: t`Model`,
+      minWidth: "auto",
+      maxAutoWidth: 300,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (job) => job.card_name,
+      cell: ({ row }) => <Ellipsified>{row.original.card_name}</Ellipsified>,
+    },
+    {
+      id: "collection",
+      header: t`Collection`,
+      minWidth: "auto",
+      maxAutoWidth: 240,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (job) => job.collection_name || t`Our analytics`,
+      cell: ({ row }) => {
+        const { collection_id, collection_name } = row.original;
+        return (
+          <Link
+            variant="brand"
+            to={Urls.collection({ id: collection_id, name: collection_name })}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Ellipsified>{collection_name || t`Our analytics`}</Ellipsified>
+          </Link>
+        );
+      },
+    },
+    {
+      id: "status",
+      header: t`Status`,
+      width: "auto",
+      minWidth: 120,
+      maxAutoWidth: 320,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (job) => job.state,
+      cell: ({ row }) => <ModelCacheStatus job={row.original} />,
+    },
+    {
+      id: "last_run_at",
+      header: t`Last run at`,
+      width: "auto",
+      minWidth: 130,
+      enableSorting: true,
+      sortDescFirst: true,
+      accessorFn: (job) => job.refresh_begin,
+      cell: ({ row }) => (
+        <Tooltip label={<DateTime value={row.original.refresh_begin} />}>
+          <Text span>
+            {capitalize(dayjs(row.original.refresh_begin).fromNow())}
+          </Text>
+        </Tooltip>
+      ),
+    },
+    {
+      id: "created_by",
+      header: t`Created by`,
+      width: "auto",
+      minWidth: 110,
+      maxAutoWidth: 200,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (job) => job.creator?.common_name || t`Automatic`,
+      cell: ({ row }) => row.original.creator?.common_name || t`Automatic`,
+    },
+    {
+      id: "actions",
+      header: "",
+      width: 60,
+      enableSorting: false,
+      cell: ({ row }) =>
+        checkCanRefreshModelCache(row.original) ? (
+          <Flex justify="flex-end" w="100%">
+            <Tooltip label={t`Refresh`}>
+              <ActionIcon
+                aria-label={t`Refresh`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onRefresh(row.original);
+                }}
+              >
+                <Icon name="refresh" />
+              </ActionIcon>
+            </Tooltip>
+          </Flex>
+        ) : null,
+    },
+  ];
+}
+
+function ModelCacheStatus({
+  job,
+}: {
+  job: ModelCacheRefreshStatus;
+}): ReactNode {
+  switch (job.state) {
+    case "off":
+      return t`Off`;
+    case "creating":
+      return t`Queued`;
+    case "refreshing":
+      return t`Refreshing`;
+    case "persisted":
+      return t`Completed`;
+    case "error":
+      return (
+        <Link
+          to={Urls.monitorModelCacheRefreshJob(job.id)}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Ellipsified ff="monospace" c="error">
+            {job.error}
+          </Ellipsified>
+        </Link>
+      );
+    default:
+      return job.state;
+  }
 }

@@ -1,5 +1,3 @@
-import type { Location } from "history";
-
 import {
   canResetFilter,
   createTabSlug,
@@ -16,6 +14,7 @@ import {
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
 import { createMockLocation } from "metabase/redux/store/mocks";
+import type { Location } from "metabase/router";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";

@@ -84,10 +84,6 @@
 
 (methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
 
-(defmethod serdes/hash-fields :model/Setting
-  [_setting]
-  [:key])
-
 (declare export?)
 
 (defmethod serdes/extract-all "Setting" [_model _opts]

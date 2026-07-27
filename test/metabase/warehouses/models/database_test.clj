@@ -715,14 +715,6 @@
       (is (= ::test
              (t2/select-one-fn :engine :model/Database :id db-id))))))
 
-(deftest identity-hash-test
-  (testing "Database hashes are composed of the name and engine"
-    (mt/with-temp [:model/Database db {:engine :mysql :name "hashmysql"}]
-      (is (= (Integer/toHexString (hash ["hashmysql" :mysql]))
-             (serdes/identity-hash db)))
-      (is (= "b6f1a9e8"
-             (serdes/identity-hash db))))))
-
 (deftest ^:parallel serdes-extract-is-stub-test
   (testing "serdes/extract-one preserves :is_stub true and elides it when false"
     (mt/with-temp [:model/Database stub     {:engine :h2 :name "stub" :is_stub true}

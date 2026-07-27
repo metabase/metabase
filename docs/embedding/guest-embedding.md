@@ -24,12 +24,12 @@ Toggle **Enable guest embeds**.
 
 ## Creating a guest embed
 
-![Sharing button to embed dashboard](./images/sharing-embed.png)
+![Share button to embed dashboard](./images/sharing-embed.png)
 
 To create a guest embed:
 
 1. Go to the item that you want to embed in your website. You can also open a command palette with Ctrl/Cmd+K and type "New embed".
-2. Click the **sharing icon**.
+2. Click the **Share** icon.
 3. Select **Embed**.
 4. Under **Authentication**, select **Guest**.
 5. Optional: [customize the appearance of the embed](./appearance.md)
@@ -130,7 +130,7 @@ Parameters are disabled by default, which also makes them hidden from end-users.
 To configure parameters:
 
 1. Go to your embedded question or dashboard.
-2. Click the **sharing icon** and select **Embed**.
+2. Click the **Share** icon and select **Embed**.
 3. Under **Parameters**, select the visibility option for each parameter, and optionally default value(s).
 4. Click **Publish**.
 
@@ -453,7 +453,7 @@ function paramsFor(user, customContext) {
 ## Disabling embedding for a question or dashboard
 
 1. Visit the embeddable question or dashboard.
-2. Click the **sharing icon** (square with an arrow pointing to the top right).
+2. Click the **Share** icon (square with an arrow pointing to the top right).
 3. Select **Embed**.
 4. Select **Guest embedding**
 5. Click **Unpublish**.

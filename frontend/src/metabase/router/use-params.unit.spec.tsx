@@ -41,7 +41,7 @@ describe("router/useParams", () => {
   });
 
   it("exposes the splat under v7's `*` key, not v3's `splat`", () => {
-    renderWithProviders(<Route path="files/**" element={<SplatProbe />} />, {
+    renderWithProviders(<Route path="files/*" element={<SplatProbe />} />, {
       withRouter: true,
       initialRoute: "/files/a/b",
     });

@@ -31,12 +31,14 @@ import type { MetabotCodeEdit } from "metabase-types/api";
 
 import {
   CodeEditTablePills,
+  GeneratedCardTablePills,
   NavigateToTablePills,
 } from "./MetabotAgentDataSourcePills";
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotInlineChart } from "./MetabotInlineChart";
+import { MetabotInlineDashboardLink } from "./MetabotInlineDashboardLink";
 
 type AgentDataPartMessageProps = {
   message: MetabotAgentDataPartMessage;
@@ -99,6 +101,19 @@ export const AgentDataPartMessage = ({
             readonly={readonly}
             conversationId={conversationId}
           />
+          <GeneratedCardTablePills
+            value={part.data}
+            messageId={readonly ? undefined : message.externalId}
+          />
+        </Stack>
+      ),
+    )
+    .with(
+      { part: { type: "data-generated_entity", data: { type: "dashboard" } } },
+      ({ part }) => (
+        <Stack gap="md">
+          {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+          <MetabotInlineDashboardLink value={part.data} />
         </Stack>
       ),
     )
@@ -207,6 +222,34 @@ const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
 
 const formatPartType = (type: string) => type.replace(/^data-/, "");
 
+const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
+  <Flex
+    direction="row"
+    align="center"
+    justify="space-between"
+    bd="1px solid var(--mb-color-border-neutral)"
+    bdrs="sm"
+    className={Styles.agentPartCard}
+    p="sm"
+    pl="md"
+  >
+    <Flex align="center">
+      <Icon name="document" c="text-secondary" mr="sm" />
+      <Text fw="bold">{formatPartType(type)}</Text>
+    </Flex>
+    <ActionIcon
+      component={ForwardRefLink}
+      to={path}
+      target="_blank"
+      h="sm"
+      aria-label={t`Visit`}
+      className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
+    >
+      <Icon name="external" size="1rem" />
+    </ActionIcon>
+  </Flex>
+);
+
 const DataPartJsonCard = ({
   type,
   value,
@@ -274,34 +317,6 @@ const DataPartJsonCard = ({
     </Box>
   );
 };
-
-const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
-  <Flex
-    direction="row"
-    align="center"
-    justify="space-between"
-    bd="1px solid var(--mb-color-border-neutral)"
-    bdrs="sm"
-    className={Styles.agentPartCard}
-    p="sm"
-    pl="md"
-  >
-    <Flex align="center">
-      <Icon name="document" c="text-secondary" mr="sm" />
-      <Text fw="bold">{formatPartType(type)}</Text>
-    </Flex>
-    <ActionIcon
-      component={ForwardRefLink}
-      to={path}
-      target="_blank"
-      h="sm"
-      aria-label={t`Visit`}
-      className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
-    >
-      <Icon name="external" size="1rem" />
-    </ActionIcon>
-  </Flex>
-);
 
 const CodeEditDataPart = ({
   type,

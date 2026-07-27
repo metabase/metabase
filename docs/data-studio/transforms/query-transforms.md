@@ -92,7 +92,7 @@ See [Run a transform](transforms-overview.md#run-a-transform). You'll see logs f
 
 ## Incremental query transforms
 
-By default, on every transform run after the first one, Metabase will process all the data in all input tables, then drop the existing target table, and create a new table with the processed data. You can tell Metabase to only write **new** data to your target table by marking your transform as incremental.
+By default, on every transform run after the first one, Metabase will process all the data in all input tables, then drop the existing target table, and create a new table with the processed data. You can tell Metabase to only process **new** data by marking your transform as incremental.
 
 ### Prerequisites for incremental transforms
 
@@ -101,6 +101,8 @@ Your data has to have certain structure for incremental transforms to work. See 
 ### How incremental query transforms work
 
 For a transform to run incrementally, you'll need to pick a column ("checkpoint") that Metabase needs to check for new values. Then, behind the scenes, Metabase will add a filter around your transform query that will filter the results of the query for values greater than the last written checkpoint value.
+
+If you set a [merge key](transforms-overview.md#add-merge-keys-to-upsert-rows), Metabase updates the target rows that match the key instead of adding new ones.
 
 ### Make a query transform incremental
 
@@ -152,7 +154,8 @@ To make a query transform incremental:
 
 1. Go to the transform's page in **Data studio > Transforms**.
 2. Switch to **Settings** tab.
-3. In **Column to check for new values**, select the column in one of the source tables that Metabase should check to determine which values are new. Only some columns are eligible. See [prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).
+3. In **Field to check for new values**, select the field in one of the source tables that Metabase should scan to determine which records are new or changed. Only some fields are eligible. See [prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).
+4. (Optional) To update matching rows instead of appending new ones, [add a merge key](./transforms-overview.md#add-merge-keys-to-upsert-rows).
 
 ## Convert models to transforms
 

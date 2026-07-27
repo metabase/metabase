@@ -1,33 +1,32 @@
-import * as React from "react";
 import { useMemo } from "react";
-import reactAnsiStyle from "react-ansi-style";
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { AnsiLogs } from "metabase/common/components/AnsiLogs";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import {
+  LogsViewer,
+  createLogFormatter,
+  getAllProcessUUIDs,
+} from "metabase/monitor/components/LogsViewer";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Link, Outlet, useRouter } from "metabase/router";
 import {
   Button,
+  Center,
   DefaultSelectItem,
+  FixedSizeIcon,
   Flex,
+  Group,
   Icon,
   Select,
   TextInput,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { openSaveDialog } from "metabase/utils/dom";
 
-import { LogsContainer, LogsContent } from "./Logs.styled";
 import { usePollingLogsQuery, useTailLogs } from "./hooks";
-import {
-  createLogFormatter,
-  filterLogs,
-  getAllProcessUUIDs,
-  urlStateConfig,
-} from "./utils";
+import { filterLogs, urlStateConfig } from "./utils";
 
 interface LogsProps {
   // NOTE: fetching logs could come back from any machine if there's multiple machines backing a MB instance
@@ -53,39 +52,33 @@ export const Logs = ({
     [logs, process, query, processUUIDs],
   );
   const hasAnyLogs = logs.length > 0;
+  const hasFilteredLogs = filteredLogs.length > 0;
   const { scrollRef, onScroll, refollow } = useTailLogs(filteredLogs);
-  const formatter = useMemo(
-    () => createLogFormatter(process, processUUIDs),
-    [process, processUUIDs],
-  );
-  const logText = useMemo(
-    () => filteredLogs.map(formatter).join("\n"),
-    [filteredLogs, formatter],
-  );
-
-  const displayLogs = useMemo(() => {
-    if (!logText) {
-      return hasAnyLogs
-        ? t`Nothing matches your filters.`
-        : t`There's nothing here, yet.`;
-    }
-
-    return reactAnsiStyle(React, logText);
-  }, [hasAnyLogs, logText]);
 
   const handleDownload = () => {
-    const blob = new Blob([logText], { type: "text/json" });
+    const formatLog = createLogFormatter(process, processUUIDs);
+    const logText = filteredLogs.flatMap(formatLog).join("\n");
+    const blob = new Blob([logText], { type: "text/plain" });
     openSaveDialog("logs.txt", blob);
   };
 
   return (
     <>
-      <SettingsPageWrapper title={t`Logs`}>
-        <SettingsSection>
-          <LogsContainer loading={!loaded} error={error}>
-            <Flex align="center" gap="md" justify="space-between" mb="md">
-              <Flex align="center" gap="md">
+      <Flex h="100%" wrap="nowrap">
+        <MonitorMain>
+          <MonitorHeaderTitle mb="sm">{t`Application logs`}</MonitorHeaderTitle>
+
+          {!loaded || error != null ? (
+            <Center flex={1}>
+              <DelayedLoadingAndErrorWrapper loading={!loaded} error={error} />
+            </Center>
+          ) : (
+            <>
+              <Group gap="md" align="center" wrap="nowrap">
                 <TextInput
+                  flex={1}
+                  miw="8rem"
+                  leftSection={<FixedSizeIcon name="search" />}
                   placeholder={t`Filter logs`}
                   rightSection={
                     query.length > 0 ? (
@@ -103,7 +96,6 @@ export const Logs = ({
                     ) : undefined
                   }
                   value={query}
-                  w={220} // set width to prevent CLS when the "Clear" button appears/disappears
                   onChange={(event) => {
                     patchUrlState({ query: event.target.value });
                     refollow();
@@ -142,36 +134,39 @@ export const Logs = ({
                     }}
                   />
                 )}
-              </Flex>
 
-              <Flex align="center" gap="md">
                 <Button
                   component={Link}
-                  to="/admin/tools/logs/levels"
+                  to={Urls.monitorLogLevels()}
                   leftSection={<Icon name="pulse" />}
                   variant="default"
                 >{t`Customize log levels`}</Button>
 
                 <Button
-                  disabled={logText.length === 0}
+                  disabled={!hasFilteredLogs}
                   leftSection={<Icon name="download" />}
                   variant="filled"
                   onClick={handleDownload}
                 >{t`Download`}</Button>
-              </Flex>
-            </Flex>
+              </Group>
 
-            <AnsiLogs
-              id="logs-content"
-              ref={scrollRef}
-              onScroll={onScroll}
-              component={LogsContent}
-            >
-              {displayLogs}
-            </AnsiLogs>
-          </LogsContainer>
-        </SettingsSection>
-      </SettingsPageWrapper>
+              <LogsViewer
+                ref={scrollRef}
+                logs={filteredLogs}
+                processUUID={process}
+                processUUIDs={processUUIDs}
+                emptyMessage={
+                  hasAnyLogs
+                    ? t`Nothing matches your filters.`
+                    : t`There's nothing here, yet.`
+                }
+                aria-label={t`Logs output`}
+                onScroll={onScroll}
+              />
+            </>
+          )}
+        </MonitorMain>
+      </Flex>
 
       {
         // render the outlet so that the modals show up

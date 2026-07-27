@@ -18,6 +18,15 @@ import {
 } from "metabase-types/api/mocks";
 
 import { AppSwitcher } from "./AppSwitcher";
+import type { CurrentApp } from "./useGetCurrentApp";
+
+jest.mock("metabase/common/monitor/analytics", () => ({
+  trackMonitorOpened: jest.fn(),
+}));
+
+const { trackMonitorOpened } = jest.requireMock(
+  "metabase/common/monitor/analytics",
+);
 
 const USER = createMockUser();
 
@@ -31,7 +40,7 @@ const REGULAR_ITEMS = [
 const ADMIN_ITEMS = [...REGULAR_ITEMS, "Main app", "Admin"];
 const HOSTED_ITEMS = [...ADMIN_ITEMS];
 
-const WITH_DATA_STUDIO = [...ADMIN_ITEMS, "Data studio"];
+const WITH_AREAS = [...ADMIN_ITEMS, "Data studio", "Monitor"];
 
 const adminNavItem = {
   name: `People`,
@@ -76,6 +85,7 @@ async function setup({
       <Route path="/" element={<AppSwitcher />} />
       <Route path="/admin" element={<AppSwitcher />} />
       <Route path="/data-studio" element={<AppSwitcher />} />
+      <Route path="/monitor" element={<AppSwitcher />} />
     </>,
     {
       withRouter: true,
@@ -161,6 +171,10 @@ describe("ProfileLink", () => {
       await openProfileLink();
       await assertActiveApp("data-studio");
 
+      await userEvent.click(await getMonitorMenuItem());
+      await openProfileLink();
+      await assertActiveApp("monitor");
+
       await userEvent.click(await getMainAppMenuItem());
       await openProfileLink();
       await assertActiveApp("main");
@@ -186,13 +200,22 @@ describe("ProfileLink", () => {
     });
   });
 
-  describe("with data studio", () => {
-    it("should show data studio app when apropriate", async () => {
+  describe("with areas", () => {
+    it("should show data studio and monitor apps when appropriate", async () => {
       await setup({ isAdmin: true });
 
-      WITH_DATA_STUDIO.forEach((title) => {
+      WITH_AREAS.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
+    });
+
+    it("tracks opening Monitor from the app switcher", async () => {
+      trackMonitorOpened.mockClear();
+      await setup({ isAdmin: true });
+
+      await userEvent.click(await getMonitorMenuItem());
+
+      expect(trackMonitorOpened).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -307,7 +330,7 @@ const openProfileLink = async () => {
 const openHelpSubmenu = async () =>
   await userEvent.click(await screen.findByRole("menuitem", { name: "Help" }));
 
-const assertActiveApp = async (current: "main" | "admin" | "data-studio") => {
+const assertActiveApp = async (current: CurrentApp) => {
   expect(
     await within(await getMainAppMenuItem()).findByRole("img", {
       name: current === "main" ? /check_filled/i : /dashboard/i,
@@ -323,6 +346,11 @@ const assertActiveApp = async (current: "main" | "admin" | "data-studio") => {
       name: current === "data-studio" ? /check_filled/i : /table/i,
     }),
   ).toBeInTheDocument();
+  expect(
+    await within(await getMonitorMenuItem()).findByRole("img", {
+      name: current === "monitor" ? /check_filled/i : /pulse/i,
+    }),
+  ).toBeInTheDocument();
 };
 
 const getMainAppMenuItem = () =>
@@ -331,3 +359,5 @@ const getAdminMenuItem = () =>
   screen.findByRole("menuitem", { name: /admin/i });
 const getDataStudioMenuItem = () =>
   screen.findByRole("menuitem", { name: /data studio/i });
+const getMonitorMenuItem = () =>
+  screen.findByRole("menuitem", { name: /monitor/i });
