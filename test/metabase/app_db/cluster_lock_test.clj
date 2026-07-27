@@ -93,6 +93,13 @@
         (future (Thread/sleep 500) (a/>!! fin-chan :done))
         (is (nil? (sut/with-cluster-lock ::test-lock (Thread/sleep 1))))))))
 
+(defn- do-with-lock-opts
+  "Route on the test-only :detached? key so every helper call site can exercise either entry point."
+  [lock-opts thunk]
+  (if (:detached? lock-opts)
+    (sut/do-with-detached-cluster-lock (dissoc lock-opts :detached?) thunk)
+    (sut/do-with-cluster-lock lock-opts thunk)))
+
 (defn- run-with-lock
   "Run `thunk` with the given lock opts on a future. Returns a map of
   `{:entered, :release, :done}` latches/promise the caller can use to
@@ -103,9 +110,10 @@
         done    (promise)]
     (future
       (try
-        (sut/with-cluster-lock lock-opts
-          (.countDown entered)
-          (.await release))
+        (do-with-lock-opts lock-opts
+                           (fn []
+                             (.countDown entered)
+                             (.await release)))
         (deliver done :ok)
         (catch Throwable e
           (deliver done [:err (ex-message e)]))))
@@ -117,8 +125,7 @@
   (let [entered  (promise)
         acquired (future
                    (try
-                     (sut/with-cluster-lock lock-opts
-                       (deliver entered :yes))
+                     (do-with-lock-opts lock-opts (fn [] (deliver entered :yes)))
                      (catch Throwable _
                        (deliver entered :err))))
         result   (deref entered timeout-ms :timeout)]
@@ -230,47 +237,43 @@
 
 (deftest detached-lock-basic-test
   (testing "returns the body's value and works non-concurrently"
-    (is (= :ok (sut/with-cluster-lock {:lock ::detached-basic :detached? true} :ok))))
-  (testing ":detached? and :retry-transient? are mutually exclusive"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"mutually exclusive"
-                          (sut/with-cluster-lock {:lock ::detached-basic :detached? true :retry-transient? true}
-                            :nope)))))
+    (is (= :ok (sut/with-detached-cluster-lock {:lock ::detached-basic} :ok)))))
 
 (deftest detached-lock-body-commits-incrementally-test
   (let [email (mt/random-email)]
     (try
       (testing "body work commits as it goes and survives a later throw in the body"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
-                              (sut/with-cluster-lock {:lock ::detached-commit :detached? true}
+                              (sut/with-detached-cluster-lock {:lock ::detached-commit}
                                 (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
                                 (throw (ex-info "boom" {})))))
         (is (t2/exists? :model/User :email email)))
       (finally
         (t2/delete! :model/User :email email)))))
 
-(deftest detached-lock-reentrant-test
-  (testing "re-acquiring a held detached lock is a no-op instead of a self-deadlock"
-    (is (= :ok (sut/with-cluster-lock {:lock ::detached-reentrant :detached? true}
-                 (sut/with-cluster-lock {:lock ::detached-reentrant :detached? true
-                                         :timeout-seconds 1 :retry-config {:max-retries 0}}
-                   :ok)))))
+(deftest detached-lock-reentry-throws-test
+  (testing "re-acquiring a held detached lock throws instead of self-deadlocking"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already held detached"
+                          (sut/with-detached-cluster-lock {:lock ::detached-reentry}
+                            (sut/with-detached-cluster-lock {:lock ::detached-reentry}
+                              :nope)))))
+  ;; the transactional-path guard lives in the row-lock impl; h2 takes its in-process reentrant lock
   (when (not= (mdb/db-type) :h2)
-    (testing "a transactional acquisition of a lock this thread holds detached is also a no-op"
-      (is (= :ok (sut/with-cluster-lock {:lock ::detached-reentrant :detached? true}
-                   (sut/with-cluster-lock {:lock ::detached-reentrant
-                                           :timeout-seconds 1 :retry-config {:max-retries 0}}
-                     :ok)))))
-    (testing "upgrading a held detached :share lock to :exclusive throws instead of self-deadlocking"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot upgrade"
-                            (sut/with-cluster-lock {:lock ::detached-reentrant :mode :share :detached? true}
-                              (sut/with-cluster-lock {:lock ::detached-reentrant :detached? true}
-                                :nope)))))))
+    (testing "a transactional acquisition of a lock this scope holds detached also throws"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already held detached"
+                            (sut/with-detached-cluster-lock {:lock ::detached-reentry}
+                              (sut/with-cluster-lock ::detached-reentry
+                                :nope)))))
+    (testing "taking a different lock inside a detached body works normally"
+      (is (= :ok (sut/with-detached-cluster-lock {:lock ::detached-reentry}
+                   (sut/with-cluster-lock ::detached-reentry-other
+                     :ok)))))))
 
 (deftest detached-lock-mutual-exclusion-test
-  ;; h2 uses the in-process rw-lock path where :detached? is a no-op; real row-lock semantics only.
+  ;; h2 uses the in-process rw-lock path; real row-lock semantics only.
   (when (not= (mdb/db-type) :h2)
     ;; warm up the row first so we're not racing on the initial INSERT
-    (sut/with-cluster-lock {:lock ::detached-mutex :detached? true} :warm)
+    (sut/with-detached-cluster-lock {:lock ::detached-mutex} :warm)
     (let [held (run-with-lock {:lock ::detached-mutex :detached? true})]
       (is (.await ^CountDownLatch (:entered held) 3 TimeUnit/SECONDS))
       (testing "a detached holder blocks another detached acquirer"
@@ -298,15 +301,15 @@
   ;; h2 takes an in-process lock and bypasses the retry path entirely, so this only exercises real row locks.
   (when (not= (mdb/db-type) :h2)
     ;; warm up the row first so we're not racing on the initial INSERT
-    (sut/with-cluster-lock {:lock ::detached-body-error :detached? true} :warm)
+    (sut/with-detached-cluster-lock {:lock ::detached-body-error} :warm)
     (let [attempts (atom 0)
           e        (is (thrown? Throwable
-                                (sut/with-cluster-lock {:lock ::detached-body-error :detached? true
-                                                        :retry-config {:max-retries 2 :delay-ms 1}}
+                                (sut/with-detached-cluster-lock {:lock ::detached-body-error
+                                                                 :retry-config {:max-retries 2 :delay-ms 1}}
                                   (swap! attempts inc)
                                   (throw (query-canceled-exception)))))]
       (testing "an acquisition-retryable error raised by the body must not re-run the body: its work commits
-                incrementally, so a re-run double-applies it (the hazard the :retry-transient? rejection closes)"
+                incrementally, so a re-run double-applies it"
         (is (= 1 @attempts)))
       (testing "a body error must not be rewrapped as an acquisition failure — the lock WAS obtained"
         (is (not (re-find #"Failed to obtain cluster lock" (str (ex-message e)))))))))
@@ -315,19 +318,19 @@
   ;; The audit-pipeline shape: a detached body that takes another cluster lock inside (serdes takes the
   ;; permissions lock when inserting a Database). When the inner acquisition times out, the canceled
   ;; SELECT stays in the cause chain of the inner "Failed to obtain cluster lock" wrapper, so the outer
-  ;; retry must not read it as a failure to acquire the OUTER lock: re-running the body double-applies
-  ;; its committed work, and attributing the error to the outer lock makes callers that treat outer-lock
-  ;; contention as benign (ensure-audit-db-installed!) swallow a genuine body failure.
+  ;; machinery must not read it as a failure to acquire the OUTER lock: re-running the body would
+  ;; double-apply its committed work, and attributing the error to the outer lock makes callers that
+  ;; treat outer-lock contention as benign (ensure-audit-db-installed!) swallow a genuine body failure.
   (when (not= (mdb/db-type) :h2)
     (sut/with-cluster-lock ::nested-timeout-inner :warm)
-    (sut/with-cluster-lock {:lock ::nested-timeout-outer :detached? true} :warm)
+    (sut/with-detached-cluster-lock {:lock ::nested-timeout-outer} :warm)
     (let [held (run-with-lock {:lock ::nested-timeout-inner})]
       (try
         (is (.await ^CountDownLatch (:entered held) 3 TimeUnit/SECONDS))
         (let [attempts (atom 0)
               e        (is (thrown? Throwable
-                                    (sut/with-cluster-lock {:lock ::nested-timeout-outer :detached? true
-                                                            :retry-config {:max-retries 2 :delay-ms 1}}
+                                    (sut/with-detached-cluster-lock {:lock ::nested-timeout-outer
+                                                                     :retry-config {:max-retries 2 :delay-ms 1}}
                                       (swap! attempts inc)
                                       (sut/with-cluster-lock {:lock ::nested-timeout-inner
                                                               :timeout-seconds 1 :retry-config {:max-retries 0}}
@@ -346,13 +349,13 @@
   ;; connection and the pool rolling back the unresolved transaction on check-in. If that ever
   ;; stopped happening (pool swap or misconfiguration), a boot-time audit failure would leave the
   ;; row lock held until the connection ages out, silently stalling other nodes' boots — the class
-  ;; of bug :detached? exists to fix. Release after *normal* completion is covered by
+  ;; of bug the detached lock exists to fix. Release after *normal* completion is covered by
   ;; detached-lock-mutual-exclusion-test; this pins the throw path.
   (when (not= (mdb/db-type) :h2)
     ;; warm up the row first so we're not racing on the initial INSERT
-    (sut/with-cluster-lock {:lock ::detached-throw-release :detached? true} :warm)
+    (sut/with-detached-cluster-lock {:lock ::detached-throw-release} :warm)
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
-                          (sut/with-cluster-lock {:lock ::detached-throw-release :detached? true}
+                          (sut/with-detached-cluster-lock {:lock ::detached-throw-release}
                             (throw (ex-info "boom" {})))))
     (testing "the row lock is released once the throwing body's connection is checked back in"
       (is (acquirable-within? {:lock ::detached-throw-release :detached? true

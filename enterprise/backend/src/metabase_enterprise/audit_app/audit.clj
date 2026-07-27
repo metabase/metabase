@@ -498,12 +498,11 @@
   ;; under the lock. If another node already holds the lock it is doing this same work, so we skip rather than fail
   ;; the boot.
   ;;
-  ;; :detached? keeps the pipeline off the lock's transaction — its work commits incrementally in small
-  ;; transactions (#78238). That is safe here because the pipeline self-heals: the checksum only advances
-  ;; on completion and reconcile runs every boot, so a crash mid-pipeline is repaired by the next boot.
+  ;; the detached lock keeps the pipeline off the lock's transaction — its work commits incrementally in
+  ;; small transactions (#78238). That is safe here because the pipeline self-heals: the checksum only
+  ;; advances on completion and reconcile runs every boot, so a crash mid-pipeline is repaired next boot.
   (try
-    (cluster-lock/with-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 5 :retry-config {:max-retries 2}
-                                     :detached? true}
+    (cluster-lock/with-detached-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 5 :retry-config {:max-retries 2}}
       (u/prog1 (maybe-install-audit-db!)
         (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
           ((sync-util/with-duplicate-ops-prevented
