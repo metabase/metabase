@@ -111,9 +111,15 @@
     :mysql    [:date_add :%now
                [:raw (format "INTERVAL -%d %s" amount (name unit))]]))
 
-(def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds])} session-with-id-query
+(premium-features/defenterprise mfa-required?
+  "Whether MFA is currently required for all users on the "
+  metabase-enterprise.mfa.core
+  []
+  false)
+
+(def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required])} session-with-id-query
   (memoize
-   (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds]
+   (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required]
      (first
       (t2.pipeline/compile*
        (cond-> {:select    [[:session.user_id :metabase-user-id]
@@ -133,11 +139,17 @@
                                   [:or [:= :session.id [:raw "?"]] [:= :session.key_hashed [:raw "?"]]]
                                   [:> :session.created_at (oldest-allowed-expr db-type max-age-minutes :minute)]
                                   [:= :session.anti_csrf_token (case session-type
-                                                                 :normal         nil
+                                                                 :normal nil
                                                                  :full-app-embed [:raw "?"])]]
-                                 (when session-timeout-seconds
-                                   [[:> [:coalesce :session.last_active_at :session.created_at]
-                                     (oldest-allowed-expr db-type session-timeout-seconds :second)]]))
+                                 cat
+                                 [(when mfa-required
+                                    (map (fn [mfa-supporting-provider]
+                                           [:not= :auth_identity.provider
+                                            [:raw (str "'" (name mfa-supporting-provider) "'")]])
+                                         (descendants :metabase.auth-identity.provider/supports-mfa)))
+                                  (when session-timeout-seconds
+                                    [[:> [:coalesce :session.last_active_at :session.created_at]
+                                      (oldest-allowed-expr db-type session-timeout-seconds :second)]])])
                 :limit     [:inline 1]}
          enable-advanced-permissions?
          (->
@@ -220,10 +232,11 @@
                                          (premium-features/enable-advanced-permissions?)
                                          (and (premium-features/enable-tenants?)
                                               (setting/get :use-tenants))
-                                         timeout)
-          params  (concat [session-key (session/hash-session-key session-key)]
-                          (when (seq anti-csrf-token)
-                            [anti-csrf-token]))]
+                                         timeout
+                                         (mfa-required?))
+          params  (clojure.core/concat [session-key (session/hash-session-key session-key)]
+                                       (when (seq anti-csrf-token)
+                                         [anti-csrf-token]))]
       (some-> (t2/query-one (cons sql params))
               ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
               (update :is-group-manager? boolean)))))

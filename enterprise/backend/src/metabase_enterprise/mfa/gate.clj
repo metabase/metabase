@@ -26,8 +26,9 @@
   (cond-> ["totp"]
     (channel.settings/email-configured?) (conj "email")))
 
-(def ^:private challenged-providers
-  #{:provider/password :provider/ldap})
+(defn- challenged-provider?
+  [provider]
+  (isa? provider :metabase.auth-identity.provider/supports-mfa))
 
 (def ^:private session-suppressed-providers
   #{:provider/emailed-secret-password-reset})
@@ -48,7 +49,7 @@
         (nil? method)
         login-result
 
-        (contains? challenged-providers provider)
+        (challenged-provider? provider)
         (assoc login-result
                :success?         :mfa-required
                :mfa/pending?     true
