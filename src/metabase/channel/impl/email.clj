@@ -280,25 +280,26 @@
   "Render the whole dashboard to a PDF email attachment, or `nil` if rendering fails. `parts` are the dashboard's
   already-executed parts, reused so the PDF generation doesn't re-run every query."
   [dashboard-id dashboard-name creator-id parameters parts]
-  (try
-    ;; TODO: (bshepherdson, 2026-07-02) This should not be hard-coding the paper size.
-    (let [pdf-bytes (channel.render/render-dashboard-to-pdf dashboard-id creator-id (vec parameters) :a4 parts)
-          temp-file (doto (File/createTempFile "metabase_dashboard_" ".pdf")
-                      (.deleteOnExit))]
-      (with-open [os (io/output-stream temp-file)]
-        (.write os ^bytes pdf-bytes))
-      {:type         :attachment
-       :content-type "application/pdf"
-       :file-name    (-> dashboard-name
-                         (some-> str/trim)
-                         not-empty
-                         (or "dashboard")
-                         (str ".pdf"))
-       :content      (.. temp-file toURI toURL)
-       :description  (format "PDF of dashboard '%s'" (or dashboard-name "dashboard"))})
-    (catch Throwable e
-      (log/error e "Error rendering dashboard subscription PDF; skipping PDF attachment")
-      nil)))
+  (js.common/with-js-call-summary (str "dashboard " dashboard-id " pdf render")
+    (try
+      ;; TODO: (bshepherdson, 2026-07-02) This should not be hard-coding the paper size.
+      (let [pdf-bytes (channel.render/render-dashboard-to-pdf dashboard-id creator-id (vec parameters) :a4 parts)
+            temp-file (doto (File/createTempFile "metabase_dashboard_" ".pdf")
+                        (.deleteOnExit))]
+        (with-open [os (io/output-stream temp-file)]
+          (.write os ^bytes pdf-bytes))
+        {:type         :attachment
+         :content-type "application/pdf"
+         :file-name    (-> dashboard-name
+                           (some-> str/trim)
+                           not-empty
+                           (or "dashboard")
+                           (str ".pdf"))
+         :content      (.. temp-file toURI toURL)
+         :description  (format "PDF of dashboard '%s'" (or dashboard-name "dashboard"))})
+      (catch Throwable e
+        (log/error e "Error rendering dashboard subscription PDF; skipping PDF attachment")
+        nil))))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload payload_type creator_id] :as notification-payload} {:keys [template recipients attachment_only include_pdf]}]
