@@ -1,5 +1,59 @@
 # Resume here
 
+**Last updated: 2026-07-22, end of the coverage + red-burndown + workers=1 session.**
+
+## ⇢ CURRENT STATE (read this first)
+
+- **Coverage complete: 422/422, `build-queue.mjs` reports 0 queued.** Working
+  tree clean, pushed to `origin/playwright-e2e-spike` at `b0dd6f4023d`.
+- **Snowplow (~60 files) and the @python tier are LIVE** — real assertions,
+  mutation-verified, python-runner provisioned in CI. See the dated sections
+  below and `project`-memory.
+- **CI is back to `--workers=1` (serial per shard)** as of `b0dd6f4023d`. The
+  w=2 A/B flushed out the real races (all fixed: s19 shared MySQL account, s20
+  cold sqlglot pool + fixture readiness race, s37 route-teardown, the s8/s27/s32
+  master-drift trio); its residual reds were 4vCPU CPU-contention timeouts, not
+  bugs, and count-based sharding reshuffled them every commit. w=1 removes that
+  (~1.07x Cypress wall-clock).
+- **Local jar is now the CI merge-commit jar** (`target/uberjar/metabase.jar`,
+  hash `1d91fb2`; the 07-18 jar is at
+  `<session-scratchpad>/metabase-jar-0718.jar.bak`). Lets CI-only master-drift
+  reproduce locally.
+
+### 🔴 THE ONE OPEN DECISION — s50 / FINDINGS #220 (needs a human call)
+
+`viz-charts-reproductions.spec.ts:484` "18061-3" is the last CI red. It is a
+**real product bug**, not a port defect: `PinMap.jsx:191` mutates
+`series[0].data.rows` during `render()`, so the "No results" empty state is only
+observed by a *subsequent* render — Cypress's pacing schedules one, Playwright's
+doesn't. ~3/5 idle, consistently red under CI load; `--workers=1` does NOT fix it
+(render race, not worker contention). The assertion is provably non-vacuous.
+**Decision pending** (I recommended option 1):
+1. `test.fixme` it citing #220 → clean green board, bug tracked in FINDINGS,
+   report to viz owners.
+2. Leave red → CI intermittently red forever.
+3. Report + hold red as pressure (the #224-initial play).
+Full mechanism + evidence: FINDINGS #220.
+
+### Human-action items (no code, can't be closed from here)
+- **Send `docs/custom-viz-sandbox-escape-note.md`** to the custom-viz owners.
+  The GDGT-2400 test was DELETED to match master; the sandbox escape (#224) is
+  still live on master. Briefing is written and ready.
+- **Dev `pro-self-hosted` token lags** (42/60 features, no `transforms-basic` /
+  `writable-connection`) BY DESIGN of the dev token — CI's staging token has
+  them. Local python-transform-create and database-writable-connection skip
+  locally as a result; the all-features token (54/60) is the local workhorse.
+  Update the dev token's store-side flags for local parity. See the "Tokens —
+  SETTLED" block below.
+
+### Watch items (single occurrences — do not chase unless they recur)
+- `remote-sync › can change branches` (s38, run 29885617640) — green 3/3 local.
+- `navbar › should close when opening a sql editor` (s32, run 29888489511) —
+  green 3/3 local.
+Both are logged in-place in the sections below.
+
+---
+
 **Last updated: 2026-07-22, after the snowplow graduation + python tier.**
 
 ## 2026-07-22: FINDINGS #222 fixed (impersonated cold-pool flake)
