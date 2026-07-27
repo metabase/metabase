@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { QueryColumnFingerprintInfo } from "../ColumnFingerprintInfo";
 import { Description, EmptyDescription } from "../MetadataInfo";
+import { QueryColumnFingerprintInfo } from "../QueryColumnFingerprintInfo";
 import { SemanticTypeLabel } from "../SemanticTypeLabel";
 
 import { InfoContainer, Small } from "./QueryColumnInfo.styled";
