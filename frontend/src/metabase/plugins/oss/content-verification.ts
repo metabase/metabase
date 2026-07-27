@@ -12,6 +12,15 @@ export type MetricFilterSettings = {
   verified: boolean;
 };
 
+// Stable references so the selectors below return the same object on every
+// call. A selector that returns a fresh object literal each time prevents
+// reselect/useSelector reference-equality checks from ever short-circuiting,
+// since `{ verified: false } !== { verified: false }` in JS -- that forced
+// an unnecessary re-render on every state change for any component
+// subscribed to these selectors.
+const defaultModelFilterSettings: ModelFilterSettings = { verified: false };
+const defaultMetricFilterSettings: MetricFilterSettings = { verified: false };
+
 const getDefaultPluginContentVerification = () => ({
   contentVerificationEnabled: false,
   // Unjustified type cast. FIXME
@@ -22,13 +31,11 @@ const getDefaultPluginContentVerification = () => ({
   ) => 0,
 
   ModelFilterControls: (_props: ModelFilterControlsProps) => null,
-  getDefaultModelFilters: (_state: State): ModelFilterSettings => ({
-    verified: false,
-  }),
+  getDefaultModelFilters: (_state: State): ModelFilterSettings =>
+    defaultModelFilterSettings,
 
-  getDefaultMetricFilters: (_state: State): MetricFilterSettings => ({
-    verified: false,
-  }),
+  getDefaultMetricFilters: (_state: State): MetricFilterSettings =>
+    defaultMetricFilterSettings,
   MetricFilterControls: (_props: MetricFilterControlsProps) => null,
 });
 

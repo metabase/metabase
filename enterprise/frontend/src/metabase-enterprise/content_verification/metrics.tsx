@@ -1,3 +1,4 @@
+import { createSelector } from "@reduxjs/toolkit";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -13,11 +14,12 @@ import { VerifiedToggle } from "./VerifiedFilter/VerifiedToggle";
 
 const USER_SETTING_KEY = "browse-filter-only-verified-metrics";
 
-export function getDefaultMetricFilters(state: State): MetricFilterSettings {
-  return {
-    verified: getSetting(state, USER_SETTING_KEY) ?? false,
-  };
-}
+// See the identical comment in ./models.tsx's getDefaultModelFilters.
+export const getDefaultMetricFilters: (state: State) => MetricFilterSettings =
+  createSelector(
+    (state: State) => getSetting(state, USER_SETTING_KEY),
+    (verified): MetricFilterSettings => ({ verified: verified ?? false }),
+  );
 
 /**
  * This was originally designed to support multiple filters but it currently

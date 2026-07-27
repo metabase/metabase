@@ -1,3 +1,4 @@
+import { createSelector } from "@reduxjs/toolkit";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -13,11 +14,16 @@ import { VerifiedToggle } from "./VerifiedFilter/VerifiedToggle";
 
 const USER_SETTING_KEY = "browse-filter-only-verified-models";
 
-export function getDefaultModelFilters(state: State): ModelFilterSettings {
-  return {
-    verified: getSetting(state, USER_SETTING_KEY) ?? false,
-  };
-}
+// createSelector so this returns the same object reference when the
+// underlying setting hasn't changed, instead of a new { verified } object
+// literal on every call -- which defeated reference-equality checks
+// (useSelector, downstream reselect memoization) on every unrelated state
+// change.
+export const getDefaultModelFilters: (state: State) => ModelFilterSettings =
+  createSelector(
+    (state: State) => getSetting(state, USER_SETTING_KEY),
+    (verified): ModelFilterSettings => ({ verified: verified ?? false }),
+  );
 
 /**
  * This was originally designed to support multiple filters but it currently
