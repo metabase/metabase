@@ -12,9 +12,10 @@
   :export?    false)
 
 (defsetting queue-backend
-  (deferred-tru "Which queue backend to use. Valid values: `quartz`, `memory`.")
+  (deferred-tru
+   (str "Which queue backend to use. Valid values: `quartz`, `memory`. When unset, defaults to `quartz`, "
+        "or to `memory` when the task scheduler is disabled (`MB_DISABLE_SCHEDULER`)."))
   :type       :string
-  :default    "quartz"
   :visibility :internal
   :encryption :no
   :export?    false)
