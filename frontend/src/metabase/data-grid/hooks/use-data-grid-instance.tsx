@@ -378,12 +378,15 @@ export const useDataGridInstance = <TData, TValue>({
       prevWrappedColumns.current != null &&
       !_.isEqual(wrappedColumnIds, prevWrappedColumns.current);
 
+    // Measuring rows can synchronously notify the virtualizer and re-render.
+    // Record the current state first so that re-entrant effects do not measure
+    // the same change indefinitely.
+    prevColumnSizing.current = columnSizingMap;
+    prevWrappedColumns.current = wrappedColumnIds;
+
     if (didColumnSizingChange || didColumnWrappingChange) {
       measureGrid();
     }
-
-    prevColumnSizing.current = columnSizingMap;
-    prevWrappedColumns.current = wrappedColumnIds;
   }, [columnSizingMap, measureGrid, wrappedColumnsOptions]);
 
   useEffect(() => {
