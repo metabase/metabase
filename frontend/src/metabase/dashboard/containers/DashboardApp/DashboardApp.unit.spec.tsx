@@ -25,8 +25,10 @@ import {
 } from "__support__/ui";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { useSelector } from "metabase/redux";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
+import { getErrorPage } from "metabase/selectors/app";
 import { checkNotNull } from "metabase/utils/types";
 import type { Dashboard } from "metabase-types/api";
 import {
@@ -56,11 +58,24 @@ const TEST_TABLE = createMockTable();
 
 const TestHome = () => <div />;
 
+const ErrorPageProbe = () => {
+  const errorPage = useSelector(getErrorPage);
+  return errorPage ? (
+    <div data-testid="error-page">status:{errorPage.status}</div>
+  ) : null;
+};
+
 interface Options {
   dashboard?: Partial<Dashboard>;
+  initialRoute?: string;
+  waitForLoader?: boolean;
 }
 
-async function setup({ dashboard }: Options = {}) {
+async function setup({
+  dashboard,
+  initialRoute,
+  waitForLoader = true,
+}: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
 
@@ -92,6 +107,7 @@ async function setup({ dashboard }: Options = {}) {
     return (
       <main>
         <link rel="icon" />
+        <ErrorPageProbe />
         <DashboardApp {...props} />
       </main>
     );
@@ -103,7 +119,7 @@ async function setup({ dashboard }: Options = {}) {
       <Route path="/dashboard/:slug" element={<DashboardAppContainer />} />
     </>,
     {
-      initialRoute: `/dashboard/${dashboardId}`,
+      initialRoute: initialRoute ?? `/dashboard/${dashboardId}`,
       withRouter: true,
       storeInitialState: {
         dashboard: createMockDashboardState(),
@@ -115,7 +131,9 @@ async function setup({ dashboard }: Options = {}) {
     },
   );
 
-  await waitForLoaderToBeRemoved();
+  if (waitForLoader) {
+    await waitForLoaderToBeRemoved();
+  }
 
   return {
     dashboardId,
@@ -274,6 +292,21 @@ describe("DashboardApp", () => {
     expect(queryMetadataSearchParams.get("dashboard_load_id")).toEqual(
       dashboardSearchParams.get("dashboard_load_id"),
     );
+  });
+
+  it("should show a 404 instead of loading forever for a non-numeric dashboard id (metabase#78725)", async () => {
+    await setup({
+      initialRoute: "/dashboard/thisisinvalid",
+      waitForLoader: false,
+    });
+
+    expect(await screen.findByTestId("error-page")).toHaveTextContent(
+      "status:404",
+    );
+    expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls("path:/api/dashboard/thisisinvalid"),
+    ).toHaveLength(0);
   });
 
   it("should not allow to enter a dashboard name longer than 254 characters", async () => {

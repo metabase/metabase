@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
@@ -35,7 +35,7 @@ import type { Location } from "metabase/router";
 import { Outlet, replace, useRouter } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
-import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
+import type { Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
 import { getDocumentTitle, getFavicon } from "../../selectors";
@@ -80,8 +80,7 @@ export const DashboardApp = () => {
   const [error, setError] = useState<string>();
 
   const parameterQueryParams = location.query;
-  // Unjustified type cast. FIXME
-  const dashboardId = Urls.extractEntityId(params.slug) as DashboardId;
+  const dashboardId = Urls.extractEntityId(params.slug);
 
   useRegisterDashboardMetabotContext();
   useDashboardUrlQuery(router, location);
@@ -115,7 +114,7 @@ export const DashboardApp = () => {
 
         dispatch(
           addCardToDashboard({
-            dashId: dashboardId,
+            dashId: dashboard.id,
             cardId: addCardOnLoad,
             tabId,
           }),
@@ -143,6 +142,19 @@ export const DashboardApp = () => {
 
   const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
     useAutoScrollToDashcard(location);
+
+  // A slug that can't be parsed to a numeric id (e.g. /dashboard/foo) can never
+  // resolve to a dashboard, so surface a 404 instead of silently rendering a
+  // perpetual loading spinner. metabase#78725
+  useEffect(() => {
+    if (dashboardId == null) {
+      dispatch(setErrorPage({ status: 404 }));
+    }
+  }, [dashboardId, dispatch]);
+
+  if (dashboardId == null) {
+    return null;
+  }
 
   // Prevent rendering the dashboard app if the route is out of sync
   // metabase#65500

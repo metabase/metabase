@@ -305,6 +305,13 @@ async function handleQBInit(
   const queryParams = location.query;
   const isTableRoute = location.pathname?.startsWith("/table");
   const slugEntityId = Urls.extractEntityId(params.slug);
+  // A slug that can't be parsed to a numeric id (e.g. /question/foo) can never
+  // resolve to an entity, so surface a 404 instead of silently opening a blank
+  // question. metabase#78725
+  if (params.slug != null && slugEntityId == null) {
+    dispatch(setErrorPage(NOT_FOUND_ERROR));
+    return;
+  }
   // On the /table/:slug route the slug identifies a table, not a saved card.
   const cardId = isTableRoute ? undefined : slugEntityId;
   const uiControls: UIControls = getQueryBuilderModeFromLocation(location);

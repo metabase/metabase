@@ -430,6 +430,22 @@ describe("QB Actions > initializeQB", () => {
     });
   });
 
+  describe("invalid slug", () => {
+    it("throws not found error for a non-numeric slug instead of opening a blank question (metabase#78725)", async () => {
+      const { dispatch, result } = await baseSetup({
+        location: { pathname: "/question/thisisinvalid" },
+        params: { slug: "thisisinvalid" },
+      });
+
+      expect(dispatch).toHaveBeenCalledWith(
+        setErrorPage(
+          expect.objectContaining({ data: { error_code: "not-found" } }),
+        ),
+      );
+      expect(result).toBeNull();
+    });
+  });
+
   describe("unsaved questions", () => {
     UNSAVED_QUESTION_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
