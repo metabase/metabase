@@ -2684,7 +2684,7 @@
         (migrate!)
         (is (= "zh_CN" (t2/select-one-fn :locale (t2/table-name :model/User) :id user-id)))))))
 
-(deftest migrate-password-auth-test
+(deftest ^:mb/old-migrations-test migrate-password-auth-test
   (testing "Migration v58.2025-11-04T23:10:03: Migrate password authentication to auth_identity table"
     (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:11"] [migrate!]
       ;; Insert users with password auth before migration
@@ -2712,7 +2712,7 @@
                 {:first_name "NoPassword" :provider nil}]
                results))))))
 
-(deftest migrate-ldap-auth-test-2
+(deftest ^:mb/old-migrations-test migrate-ldap-auth-test-2
   (testing "Migration v58.2025-11-04T23:10:04: Migrate LDAP authentication to auth_identity table"
     (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:12"] [migrate!]
       ;; Insert users with LDAP auth before migration (using sso_source='ldap' from current schema)
@@ -2739,7 +2739,7 @@
                 {:first_name "NoLDAP" :provider nil}]
                results))))))
 
-(deftest migrate-google-sso-auth-test
+(deftest ^:mb/old-migrations-test migrate-google-sso-auth-test
   (testing "Migration v58.2025-11-04T23:10:05: Migrate Google SSO authentication to auth_identity table"
     (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:13"] [migrate!]
       ;; Insert users with Google SSO before migration
@@ -2765,7 +2765,7 @@
                 {:first_name "NoSSO" :provider nil}]
                results))))))
 
-(deftest migrate-saml-jwt-auth-test
+(deftest ^:mb/old-migrations-test migrate-saml-jwt-auth-test
   (testing "Migration v58.2025-11-04T23:10:06: Migrate SAML and JWT authentication to auth_identity table"
     (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:14"] [migrate!]
       ;; Insert users with SAML and JWT before migration
@@ -2791,7 +2791,7 @@
                 {:first_name "JWT" :provider "jwt"}]
                results))))))
 
-(deftest workspace-input-normalization-migration-test
+(deftest ^:mb/old-migrations-test workspace-input-normalization-migration-test
   (testing "Migrations v60.2026-02-09T12:00:00 through v60.2026-02-09T12:00:14:
             Drop/recreate workspace_input with normalized schema and create workspace_input_transform"
     (impl/test-migrations ["v60.2026-02-09T12:00:00" "v60.2026-02-09T12:00:14"] [migrate!]
@@ -2853,7 +2853,7 @@
                                                   :created_at     :%now
                                                   :updated_at     :%now}))))))))
 
-(deftest dependency-status-segment-handles-missing-column-migration-test
+(deftest ^:mb/old-migrations-test dependency-status-segment-handles-missing-column-migration-test
   (testing "The whole 20260402_dependency_status changeset run survives a missing
             segment.dependency_analysis_version column (issue #74443). Every changeset that
             touches the column — the INSERT (T00:00:09) and the DROP COLUMN (T00:00:23) —
