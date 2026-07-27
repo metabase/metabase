@@ -663,12 +663,11 @@
    :val-formatters (create-formatters cell-styles cols val-indexes timezone settings format-rows?)})
 
 (defn- generate-styles
-  ([workbook viz-settings non-pivot-cols format-rows?]
-   (generate-styles workbook viz-settings non-pivot-cols format-rows? false))
-  ([workbook viz-settings non-pivot-cols format-rows? inline-currency?]
-   (let [data-format (. ^SXSSFWorkbook workbook createDataFormat)]
-     {:cell-styles (compute-column-cell-styles workbook data-format viz-settings non-pivot-cols format-rows? inline-currency?)
-      :typed-cell-styles (compute-typed-cell-styles workbook data-format format-rows?)})))
+  [workbook viz-settings non-pivot-cols format-rows? & {:keys [inline-currency?]}]
+  (let [data-format (. ^SXSSFWorkbook workbook createDataFormat)]
+    {:cell-styles (compute-column-cell-styles workbook data-format viz-settings non-pivot-cols format-rows?
+                                              inline-currency?)
+     :typed-cell-styles (compute-typed-cell-styles workbook data-format format-rows?)}))
 
 (defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
@@ -735,7 +734,7 @@
                 {:keys [pivot-rows pivot-cols pivot-measures]} pivot-export-options
 
                 {:keys [cell-styles typed-cell-styles]}
-                (generate-styles workbook settings non-pivot-cols format-rows? true)
+                (generate-styles workbook settings non-pivot-cols format-rows? :inline-currency? true)
 
                 formatters (make-formatters cell-styles
                                             non-pivot-cols
