@@ -41,6 +41,7 @@ export type ClauseStepProps<T> = {
   items: T[];
   initialAddText?: string;
   readOnly?: boolean;
+  isItemPopoverDisabled?: boolean;
   isLastOpened?: boolean;
   hasAddButton?: boolean;
   isAddButtonDisabled?: boolean;
@@ -57,6 +58,7 @@ export const ClauseStep = <T,>({
   items,
   initialAddText,
   readOnly = false,
+  isItemPopoverDisabled = readOnly,
   isLastOpened = false,
   hasAddButton = !readOnly,
   isAddButtonDisabled = false,
@@ -110,7 +112,7 @@ export const ClauseStep = <T,>({
         {items.map((item, index) => (
           <ClausePopover
             key={index}
-            disabled={readOnly}
+            disabled={isItemPopoverDisabled}
             renderItem={(onOpen, hasPopover) =>
               renderItem({ item, index, onOpen, hasPopover })
             }

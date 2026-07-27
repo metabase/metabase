@@ -84,6 +84,8 @@ function CandidateMeasureDefinition({ query }: { query: Lib.Query }) {
               query={conditionalMeasureQuery}
               onChange={() => undefined}
               readOnly
+              detailedFilterNames
+              inspectableFilters
             />
           </Stack>
         )}
@@ -117,6 +119,8 @@ export function CandidateDefinition({ candidate }: CandidateDefinitionProps) {
       query={query}
       description=""
       readOnly
+      detailedFilterNames
+      inspectableFilters
       onQueryChange={() => undefined}
       onDescriptionChange={() => undefined}
     />
