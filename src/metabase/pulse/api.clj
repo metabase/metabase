@@ -18,7 +18,8 @@
 
 (p/import-vars
  [metabase.pulse.api.pulse
-  create-pulse-with-perm-checks!])
+  create-pulse-with-perm-checks!
+  update-pulse-with-perm-checks!])
 
 (def ^{:arglists '([request respond raise])} pulse-routes
   "`/api/pulse` routes. `/api/pulse/unsubscribe/*` does not require authentication, so you can unsubscribe without being
