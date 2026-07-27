@@ -258,16 +258,21 @@ pattern in the repo and this was it.
 
 ## Stale `eslint-disable` comments
 
-`lint-boundaries` passes `--report-unused-disable-directives`, so a directive that
-suppresses nothing fails the build — the same guard master's ESLint had.
+`lint-oxlint` passes `--report-unused-disable-directives`, so a directive that
+suppresses nothing fails the build — the same guard master's ESLint had, on the ~8s
+job rather than the ~53s one.
 
-It lives on `lint-boundaries` rather than `lint-oxlint` on purpose.
-`.oxlintrc.boundaries.json` is a superset of the main config, so it is the only one
-that knows every rule. Run the check under the main config and it reports the
-`boundaries/element-types` suppression in `TreeTableRow.tsx` as unused, because that
-rule is not loaded there — deleting it on that advice would break the boundaries job.
-The trade-off is that stale directives surface in the ~53s job rather than the ~8s
-one.
+The one thing the main config does not load is the `boundaries/*` rules, so a
+directive suppressing one of those would be reported as unused here (the rule never
+fires to be suppressed). That is fine because there are none: boundary crossings are
+fixed or exempted in `frontend/lint/module-boundaries.mjs`, never with an inline
+`eslint-disable`. Keep it that way — an inline boundary suppression would fail this
+check, and the fix is to move the exception into the boundary config where it belongs.
+
+`custom-viz/src/templates/**` is excluded from linting in that package's own
+`.oxlintrc.json`: those files are raw scaffolding written verbatim into user projects
+(imported `?raw`, emitted by the `init` CLI), so their `eslint-disable` comments are
+for the downstream user's linter, not ours, and must not be checked or stripped here.
 
 Cleaning up to reach zero turned up two things worth knowing:
 
