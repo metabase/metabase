@@ -33,6 +33,12 @@
   [^Integer id]
   (format "/question/%d" id))
 
+(defn metric-path
+  "Relative frontend path for a metric `Card` with ID, e.g. \"/metric/10\" — metrics have their own
+   page, not the question query builder."
+  [^Integer id]
+  (format "/metric/%d" id))
+
 (defn dashboard-url
   "Return an appropriate URL for a `Dashboard` with ID.
 
