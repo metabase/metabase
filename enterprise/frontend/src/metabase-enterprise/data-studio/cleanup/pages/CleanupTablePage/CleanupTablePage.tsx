@@ -8,6 +8,7 @@ import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import {
+  trackDataStudioCleanupCandidateAction,
   trackDataStudioCleanupCandidateInspected,
   trackDataStudioCleanupPublicationStarted,
 } from "metabase/common/data-studio/analytics";
@@ -36,22 +37,23 @@ import {
 import * as Urls from "metabase/urls";
 import {
   usageMetadataApi,
+  useDismissUsageMetadataCandidateMutation,
   useGetUsageMetadataTableQuery,
   useListUsageMetadataCandidatesQuery,
+  useRestoreUsageMetadataCandidateMutation,
 } from "metabase-enterprise/api";
 import type { UsageMetadataCandidateSummary } from "metabase-types/api";
 
-import {
-  CandidateDefinition,
-  getCandidateIcon,
-} from "../../components/CandidateDefinition";
+import { getCandidateIcon } from "../../components/CandidateDefinition";
 import { CandidateDrawer } from "../../components/CandidateDrawer";
-import { CleanupFilters } from "../../components/CleanupFilters";
-import { ModelingStatusBadge } from "../../components/ModelingStatusBadge";
+import {
+  CleanupFilters,
+  CleanupQueueTabs,
+} from "../../components/CleanupFilters";
 import { useCleanupRefresh } from "../../hooks/useCleanupRefresh";
 import { parseCleanupParams } from "../../utils";
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 20;
 
 dayjs.extend(relativeTime);
 
@@ -66,12 +68,16 @@ export function CleanupTablePage({
 }: CleanupTablePageProps) {
   const tableId = Urls.extractEntityId(routeParams.tableId);
   const dispatch = useDispatch();
-  const { sendErrorToast } = useMetadataToasts();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const params = parseCleanupParams(location);
   const page = params.page ?? 0;
   const [showPublishModal, setShowPublishModal] = useState(false);
   const previousSnapshotId = useRef<number | null | undefined>(undefined);
   const refresh = useCleanupRefresh();
+  const [dismissCandidate, dismissState] =
+    useDismissUsageMetadataCandidateMutation();
+  const [restoreCandidate, restoreState] =
+    useRestoreUsageMetadataCandidateMutation();
   const tableQuery = useGetUsageMetadataTableQuery(tableId ?? 0, {
     skip: tableId == null,
   });
@@ -80,12 +86,10 @@ export function CleanupTablePage({
     {
       "table-id": tableId,
       "candidate-type": params.candidateType,
-      "modeling-status": params.modelingStatus,
-      signal: params.signal,
-      dismissed: params.dismissed,
+      queue: params.queue,
       search: params.search,
-      sort: params.sort,
-      direction: params.direction,
+      sort: "priority",
+      direction: "asc",
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
     },
@@ -121,6 +125,62 @@ export function CleanupTablePage({
     );
     tableQuery.refetch();
     candidatesQuery.refetch();
+  };
+
+  const restoreDismissedCandidate = async (
+    candidate: UsageMetadataCandidateSummary,
+  ) => {
+    try {
+      await restoreCandidate(candidate.id).unwrap();
+      trackDataStudioCleanupCandidateAction({
+        action: "restore",
+        candidateId: candidate.id,
+        candidateType: candidate.candidate_type,
+        result: "success",
+      });
+      sendSuccessToast(t`Suggestion restored`);
+    } catch (error) {
+      trackDataStudioCleanupCandidateAction({
+        action: "restore",
+        candidateId: candidate.id,
+        candidateType: candidate.candidate_type,
+        result: "failure",
+      });
+      if (getErrorStatus(error) === 409) {
+        handleStale();
+      } else {
+        sendErrorToast(t`The suggestion could not be restored`);
+      }
+    }
+  };
+
+  const handleDismiss = async (candidate: UsageMetadataCandidateSummary) => {
+    try {
+      await dismissCandidate({ id: candidate.id }).unwrap();
+      trackDataStudioCleanupCandidateAction({
+        action: "dismiss",
+        candidateId: candidate.id,
+        candidateType: candidate.candidate_type,
+        result: "success",
+      });
+      sendSuccessToast(
+        t`Suggestion dismissed`,
+        () => restoreDismissedCandidate(candidate),
+        t`Undo`,
+      );
+    } catch (error) {
+      trackDataStudioCleanupCandidateAction({
+        action: "dismiss",
+        candidateId: candidate.id,
+        candidateType: candidate.candidate_type,
+        result: "failure",
+      });
+      if (getErrorStatus(error) === 409) {
+        handleStale();
+      } else {
+        sendErrorToast(t`The suggestion could not be dismissed`);
+      }
+    }
   };
 
   useEffect(() => {
@@ -164,7 +224,9 @@ export function CleanupTablePage({
         <PaneHeader
           breadcrumbs={
             <DataStudioBreadcrumbs>
-              <Link to={Urls.dataStudioCleanup()}>{t`Cleanup`}</Link>
+              <Link to={Urls.dataStudioCleanup({ queue: params.queue })}>
+                {t`Cleanup`}
+              </Link>
               <span>{detail.table.display_name}</span>
             </DataStudioBreadcrumbs>
           }
@@ -195,25 +257,6 @@ export function CleanupTablePage({
           py={0}
         />
 
-        <Flex gap="xl" wrap="wrap">
-          <SummaryStat
-            label={t`Active candidates`}
-            value={detail.candidate_count}
-          />
-          <SummaryStat
-            label={t`Dismissed candidates`}
-            value={detail.dismissed_count}
-          />
-          <SummaryStat
-            label={t`Measures`}
-            value={sumCounts(detail.counts.measure)}
-          />
-          <SummaryStat
-            label={t`Segments`}
-            value={sumCounts(detail.counts.segment)}
-          />
-        </Flex>
-
         {refresh.isRefreshing && (
           <Card withBorder p="sm">
             <Group>
@@ -222,6 +265,8 @@ export function CleanupTablePage({
             </Group>
           </Card>
         )}
+
+        <CleanupQueueTabs params={params} onChange={updateParams} />
 
         <Tabs
           value={params.candidateType ?? "all"}
@@ -245,9 +290,29 @@ export function CleanupTablePage({
         <CleanupFilters
           params={params}
           onChange={updateParams}
-          showLocationFilters={false}
-          showSort
+          showDatabaseFilter={false}
+          searchPlaceholder={t`Search suggestions`}
         />
+
+        {!candidatesQuery.isLoading && candidatesQuery.data && (
+          <Group justify="space-between">
+            <Stack gap={0}>
+              <Text fw="bold">{getQueueHeading(params.queue)}</Text>
+              <Text c="text-secondary" size="sm">
+                {getQueueDescription(params.queue)}
+              </Text>
+            </Stack>
+            <Text c="text-secondary" size="sm">
+              {t`Showing ${Math.min(
+                candidatesQuery.data.total,
+                page * PAGE_SIZE + 1,
+              )}–${Math.min(
+                candidatesQuery.data.total,
+                (page + 1) * PAGE_SIZE,
+              )} of ${candidatesQuery.data.total}`}
+            </Text>
+          </Group>
+        )}
 
         {candidatesQuery.isLoading ? (
           <Center mih="16rem">
@@ -271,6 +336,7 @@ export function CleanupTablePage({
               <CandidateRow
                 key={candidate.id}
                 candidate={candidate}
+                isMutating={dismissState.isLoading || restoreState.isLoading}
                 onOpen={() => {
                   trackDataStudioCleanupCandidateInspected(
                     candidate.id,
@@ -278,6 +344,8 @@ export function CleanupTablePage({
                   );
                   updateParams({ ...params, candidateId: candidate.id });
                 }}
+                onDismiss={() => handleDismiss(candidate)}
+                onRestore={() => restoreDismissedCandidate(candidate)}
               />
             ))}
           </Stack>
@@ -329,10 +397,16 @@ export function CleanupTablePage({
 
 function CandidateRow({
   candidate,
+  isMutating,
   onOpen,
+  onDismiss,
+  onRestore,
 }: {
   candidate: UsageMetadataCandidateSummary;
+  isMutating: boolean;
   onOpen: () => void;
+  onDismiss: () => void;
+  onRestore: () => void;
 }) {
   const actionLabel =
     candidate.modeling_status === "modeled"
@@ -346,26 +420,41 @@ function CandidateRow({
             : t`Create Segment`;
 
   return (
-    <Card withBorder p="lg" data-testid={`cleanup-candidate-${candidate.id}`}>
+    <Card withBorder p="md" data-testid={`cleanup-candidate-${candidate.id}`}>
       <Flex gap="lg" align="center" wrap="nowrap">
-        <Icon name={getCandidateIcon(candidate)} size={24} />
+        <Icon
+          name={getCandidateIcon(candidate)}
+          c="text-secondary"
+          aria-label={
+            candidate.candidate_type === "measure" ? t`Measure` : t`Segment`
+          }
+        />
         <Stack gap="xs" flex={1} miw={0}>
-          <Group gap="sm">
-            <Text fw="bold">{candidate.suggested_name}</Text>
-            <ModelingStatusBadge status={candidate.modeling_status} />
-            {candidate.dismissed && (
-              <Badge color="neutral">{t`Dismissed`}</Badge>
-            )}
-          </Group>
-          <Text c="text-secondary" size="sm">
-            {candidate.suggested_description}
-          </Text>
-          <CandidateDefinition candidate={candidate} />
+          <Text fw="bold">{candidate.suggested_name}</Text>
           <Evidence candidate={candidate} />
         </Stack>
-        <Button variant="outline" onClick={onOpen}>
-          {candidate.dismissed ? t`Review dismissal` : actionLabel}
-        </Button>
+        <Group gap="xs" wrap="nowrap">
+          {candidate.dismissed ? (
+            <Button variant="outline" loading={isMutating} onClick={onRestore}>
+              {t`Restore`}
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={onOpen}>
+                {actionLabel}
+              </Button>
+              <Button
+                aria-label={t`Dismiss suggestion`}
+                variant="subtle"
+                leftSection={<Icon name="close" />}
+                disabled={isMutating}
+                onClick={onDismiss}
+              >
+                {t`Dismiss`}
+              </Button>
+            </>
+          )}
+        </Group>
       </Flex>
     </Card>
   );
@@ -391,21 +480,34 @@ function Evidence({ candidate }: { candidate: UsageMetadataCandidateSummary }) {
   );
 }
 
-function SummaryStat({ label, value }: { label: string; value: number }) {
-  return (
-    <Stack gap={0}>
-      <Text size="xl" fw="bold">
-        {value}
-      </Text>
-      <Text size="sm" c="text-secondary">
-        {label}
-      </Text>
-    </Stack>
-  );
+function getErrorStatus(error: unknown) {
+  return typeof error === "object" && error != null && "status" in error
+    ? error.status
+    : undefined;
 }
 
-function sumCounts(
-  counts: Record<"missing" | "partially-modeled" | "modeled", number>,
-) {
-  return counts.missing + counts["partially-modeled"] + counts.modeled;
+function getQueueHeading(queue: Urls.DataStudioCleanupParams["queue"]) {
+  switch (queue) {
+    case "review":
+      return t`Definitions to review`;
+    case "all":
+      return t`All suggestions`;
+    case "dismissed":
+      return t`Dismissed suggestions`;
+    default:
+      return t`Recommended next`;
+  }
+}
+
+function getQueueDescription(queue: Urls.DataStudioCleanupParams["queue"]) {
+  switch (queue) {
+    case "review":
+      return t`These definitions differ from related entities in the Library.`;
+    case "all":
+      return t`Browse the complete analysis for this table.`;
+    case "dismissed":
+      return t`Restore a suggestion if it should return to the cleanup queue.`;
+    default:
+      return t`Start with the most actionable, strongly supported suggestions.`;
+  }
 }

@@ -9,18 +9,15 @@ import {
   trackDataStudioCleanupPublicationStarted,
 } from "metabase/common/data-studio/analytics";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { ADMIN_NAVBAR_HEIGHT } from "metabase/nav/constants";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
-  Accordion,
   ActionIcon,
   Badge,
   Box,
   Button,
   Card,
-  Code,
   Divider,
   Drawer,
   Flex,
@@ -51,7 +48,7 @@ import { CreateCandidateModal } from "./CreateCandidateModal";
 import { DismissCandidateModal } from "./DismissCandidateModal";
 import { ModelingStatusBadge } from "./ModelingStatusBadge";
 
-const DRAWER_SIZE = "34rem";
+const DRAWER_SIZE = "min(48rem, 100vw)";
 
 function getErrorStatus(error: unknown) {
   return typeof error === "object" && error != null && "status" in error
@@ -205,12 +202,6 @@ export function CandidateDrawer({
         lockScroll={false}
         shadow="lg"
         zIndex={100}
-        styles={{
-          inner: {
-            top: ADMIN_NAVBAR_HEIGHT,
-            height: `calc(100vh - ${ADMIN_NAVBAR_HEIGHT})`,
-          },
-        }}
       >
         {candidateQuery.isLoading ? (
           <Flex h="100%" align="center" justify="center">
@@ -308,15 +299,7 @@ function CandidateDrawerBody({
       <Stack p="lg" gap="xl" style={{ overflowY: "auto" }}>
         <Stack gap="sm">
           <ModelingStatusBadge status={candidate.modeling_status} />
-          <Text c="text-secondary">{candidate.suggested_description}</Text>
           <CandidateDefinition candidate={candidate} />
-          <Text size="sm">
-            {candidate.modeling_status === "missing"
-              ? t`No related Library definition was found.`
-              : candidate.modeling_status === "partially-modeled"
-                ? t`Related Library definitions exist, but none is an exact match.`
-                : t`An exact Library definition exists, but saved content still uses raw MBQL.`}
-          </Text>
         </Stack>
 
         <EvidenceSection candidate={candidate} />
@@ -340,24 +323,6 @@ function CandidateDrawerBody({
             <SourceRow key={source.id} source={source} />
           ))}
         </Stack>
-
-        <Accordion>
-          <Accordion.Item value="technical-details">
-            <Accordion.Control>{t`Technical details`}</Accordion.Control>
-            <Accordion.Panel>
-              <Stack gap="sm">
-                <Text size="sm" fw="bold">{t`Semantic details`}</Text>
-                <Code block>
-                  {JSON.stringify(candidate.semantic_details, null, 2)}
-                </Code>
-                <Text size="sm" fw="bold">{t`Canonical definition`}</Text>
-                <Code block>
-                  {JSON.stringify(candidate.definition, null, 2)}
-                </Code>
-              </Stack>
-            </Accordion.Panel>
-          </Accordion.Item>
-        </Accordion>
 
         {candidate.creation_blockers.length > 0 && (
           <Stack gap="xs">
@@ -401,11 +366,9 @@ function CandidateDrawerBody({
               disabled={!hasHardBlocker}
             >
               <Button disabled={hasHardBlocker} onClick={onCreate}>
-                {candidate.modeling_status === "partially-modeled"
-                  ? t`Create separately`
-                  : candidate.candidate_type === "measure"
-                    ? t`Create Measure`
-                    : t`Create Segment`}
+                {candidate.candidate_type === "measure"
+                  ? t`Create Measure`
+                  : t`Create Segment`}
               </Button>
             </Tooltip>
           )}
@@ -426,18 +389,17 @@ function EvidenceSection({
       <Text fw="bold">{t`Evidence`}</Text>
       <Group gap="xs">
         {evidence.verified_source_count > 0 && (
-          <Badge>{t`Verified · ${evidence.verified_source_count}`}</Badge>
+          <Badge variant="light">{t`Verified`}</Badge>
         )}
         {evidence.official_source_count > 0 && (
-          <Badge>{t`Official · ${evidence.official_source_count}`}</Badge>
+          <Badge variant="light">{t`Official`}</Badge>
         )}
         {evidence.popular_source_count > 0 && (
-          <Badge>{t`Popular · ${evidence.popular_source_count}`}</Badge>
+          <Badge variant="light">{t`Popular`}</Badge>
         )}
-        <Badge variant="light">
-          {t`${evidence.distinct_source_count} sources`}
-        </Badge>
-        <Badge variant="light">{t`${evidence.total_view_count} views`}</Badge>
+        <Text size="sm" c="text-secondary">
+          {t`${evidence.distinct_source_count} sources · ${evidence.total_view_count} views`}
+        </Text>
       </Group>
     </Stack>
   );

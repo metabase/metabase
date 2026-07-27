@@ -123,6 +123,65 @@
                 (mt/user-http-request :crowberto :get 200
                                       "ee/data-studio/usage-metadata/candidates?candidate-type=measure&search=zulu")))))))
 
+(deftest candidate-queue-filtering-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
+                                                         :trigger           :manual
+                                                         :algorithm_version 1
+                                                         :source_config     {}
+                                                         :finished_at       (mi/now)}
+                   :model/UsageMetadataCandidate missing-candidate
+                   (candidate-row (:id run)
+                                  {:suggested_name "Missing"
+                                   :signature_hash (apply str (repeat 64 "1"))
+                                   :signature "[\"missing\"]"})
+                   :model/UsageMetadataCandidate review-candidate
+                   (candidate-row (:id run)
+                                  {:suggested_name "Review"
+                                   :modeling_status :partially-modeled
+                                   :signature_hash (apply str (repeat 64 "2"))
+                                   :signature "[\"review\"]"})
+                   :model/UsageMetadataCandidate _
+                   (candidate-row (:id run)
+                                  {:suggested_name "Modeled"
+                                   :modeling_status :modeled
+                                   :signature_hash (apply str (repeat 64 "3"))
+                                   :signature "[\"modeled\"]"})]
+      (testing "recommended suggestions are actionable and omit already modeled usage"
+        (is (=? {:total 0}
+                (mt/user-http-request :crowberto :get 200
+                                      "ee/data-studio/usage-metadata/candidates?queue=recommended")))
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true}
+          (is (=? {:total 2
+                   :data [{:id (:id review-candidate)}
+                          {:id (:id missing-candidate)}]}
+                  (mt/user-http-request :crowberto :get 200
+                                        "ee/data-studio/usage-metadata/candidates?queue=recommended")))
+          (is (=? {:total 1
+                   :data [{:table {:id (mt/id :orders)}
+                           :candidate_count 2
+                           :counts {:segment {:missing 1
+                                              :partially-modeled 1
+                                              :modeled 0}}}]}
+                  (mt/user-http-request :crowberto :get 200
+                                        "ee/data-studio/usage-metadata/tables?queue=recommended")))))
+      (testing "review and all queues select their corresponding work"
+        (is (=? {:total 1
+                 :data [{:id (:id review-candidate)}]}
+                (mt/user-http-request :crowberto :get 200
+                                      "ee/data-studio/usage-metadata/candidates?queue=review")))
+        (is (=? {:total 3}
+                (mt/user-http-request :crowberto :get 200
+                                      "ee/data-studio/usage-metadata/candidates?queue=all"))))
+      (testing "dismissed suggestions have a dedicated queue"
+        (mt/user-http-request :crowberto :post 200
+                              (str "ee/data-studio/usage-metadata/candidates/" (:id missing-candidate) "/dismiss")
+                              {})
+        (is (=? {:total 1
+                 :data [{:id (:id missing-candidate), :dismissed true}]}
+                (mt/user-http-request :crowberto :get 200
+                                      "ee/data-studio/usage-metadata/candidates?queue=dismissed")))))))
+
 (deftest create-candidate-is-idempotent-test
   (mt/with-premium-features #{:library}
     (mt/with-model-cleanup [:model/Measure :model/Segment]

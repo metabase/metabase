@@ -20,14 +20,21 @@
 
 (def ^:const algorithm-version
   "Version of persisted candidate materialization behavior."
-  1)
+  4)
 
 (def ^:const signature-version
   "Version of the canonical identity used by durable dismissals."
-  1)
+  2)
 (def ^:private retained-run-count 20)
 (def ^:private source-card-batch-size 100)
 (def ^:private conditional-measure-types #{:count-where :distinct-where :sum-where})
+(def ^:private candidate-cutoffs
+  "Fixed candidate-level evidence requirements applied after all source batches are aggregated."
+  {:verified {:minimum-total-view-count 10}
+   :official {:minimum-distinct-source-count 2
+              :minimum-total-view-count      10}
+   :general  {:minimum-distinct-source-count 3
+              :minimum-total-view-count      25}})
 
 (defn- sha256
   ^String [^String value]
@@ -76,7 +83,8 @@
                                   :requested_by      requested-by
                                   :algorithm_version algorithm-version
                                   :source_config     {:kind :qualified-cards
-                                                      :minimum-view-count 10}}))
+                                                      :minimum-view-count 10
+                                                      :candidate-cutoffs candidate-cutoffs}}))
 
 (defn queue-refresh!
   "Atomically queue a refresh unless one is already queued or running.
@@ -297,7 +305,7 @@
             :when table]
       (persist-observation! run-id observation table))))
 
-(defn- globally-eligible?
+(defn- semantically-eligible?
   [{:keys [candidate_type semantic_details complexity verified_source_count
            official_source_count distinct_source_count]}]
   (case candidate_type
@@ -313,14 +321,36 @@
     (or (= complexity 1)
         (pos? verified_source_count)
         (pos? official_source_count)
-        (>= distinct_source_count 2))))
+        (>= distinct_source_count 2))
+
+    false))
+
+(defn- evidence-eligible?
+  [{:keys [verified_source_count official_source_count distinct_source_count total_view_count]}]
+  (let [{verified-min-views :minimum-total-view-count}                     (:verified candidate-cutoffs)
+        {official-min-sources :minimum-distinct-source-count
+         official-min-views   :minimum-total-view-count}                   (:official candidate-cutoffs)
+        {general-min-sources :minimum-distinct-source-count
+         general-min-views   :minimum-total-view-count}                    (:general candidate-cutoffs)]
+    (or (and (pos? verified_source_count)
+             (>= total_view_count verified-min-views))
+        (and (pos? official_source_count)
+             (>= distinct_source_count official-min-sources)
+             (>= total_view_count official-min-views))
+        (and (>= distinct_source_count general-min-sources)
+             (>= total_view_count general-min-views)))))
+
+(defn- globally-eligible?
+  [candidate]
+  (and (semantically-eligible? candidate)
+       (evidence-eligible? candidate)))
 
 (defn- prune-ineligible-candidates!
   [run-id]
   (loop [last-id 0]
     (let [rows (t2/select [:model/UsageMetadataCandidate :id :candidate_type :semantic_details
                            :complexity :verified_source_count :official_source_count
-                           :distinct_source_count]
+                           :distinct_source_count :total_view_count]
                           :run_id run-id
                           :id [:> last-id]
                           {:order-by [[:id :asc]], :limit 200})]
