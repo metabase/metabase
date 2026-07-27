@@ -88,6 +88,10 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
       },
     ],
   },
+  mistral: {
+    value: "mistral/mistral-medium-3-5",
+    models: [{ id: "mistral-medium-3-5", display_name: "Mistral Medium 3.5" }],
+  },
   openai: {
     value: "openai/gpt-5.4",
     models: [
@@ -127,6 +131,7 @@ type MetabotSettingKey =
   | "llm-anthropic-api-key"
   | "llm-azure-api-key"
   | "llm-azure-api-base-url"
+  | "llm-mistral-api-key"
   | "llm-openai-api-key"
   | "llm-openrouter-api-key"
   | "llm-zai-api-key"
@@ -134,6 +139,16 @@ type MetabotSettingKey =
   | "llm-bedrock-secret-access-key"
   | "llm-bedrock-region"
   | "llm-bedrock-session-token";
+
+const API_KEY_SETTING_BY_PROVIDER: Partial<
+  Record<MetabotProvider, MetabotSettingKey>
+> = {
+  anthropic: "llm-anthropic-api-key",
+  mistral: "llm-mistral-api-key",
+  openai: "llm-openai-api-key",
+  openrouter: "llm-openrouter-api-key",
+  zai: "llm-zai-api-key",
+};
 
 type MetabotSettingDefinition = SettingDefinition<MetabotSettingKey>;
 type MetabotSettingsUpdateBody = {
@@ -221,6 +236,7 @@ async function setup({
     anthropic: "**********45",
     azure: null,
     bedrock: null,
+    mistral: null,
     openai: null,
     openrouter: null,
     zai: null,
@@ -277,6 +293,10 @@ async function setup({
       value: mergedApiKeyValues.azure
         ? "https://my-resource.services.ai.azure.com/anthropic"
         : undefined,
+    }),
+    "llm-mistral-api-key": createMockSettingDefinition({
+      key: "llm-mistral-api-key",
+      value: mergedApiKeyValues.mistral ?? undefined,
     }),
     "llm-openai-api-key": createMockSettingDefinition({
       key: "llm-openai-api-key",
@@ -386,15 +406,9 @@ async function setup({
       String(call.options?.body ?? "{}"),
     ) as MetabotSettingsUpdateBody;
 
-    if ("api-key" in body) {
-      const apiKeySettingKey =
-        body.provider === "anthropic"
-          ? "llm-anthropic-api-key"
-          : body.provider === "openai"
-            ? "llm-openai-api-key"
-            : body.provider === "zai"
-              ? "llm-zai-api-key"
-              : "llm-openrouter-api-key";
+    const apiKeySettingKey = API_KEY_SETTING_BY_PROVIDER[body.provider];
+
+    if ("api-key" in body && apiKeySettingKey) {
       const maskedApiKey = body["api-key"]
         ? `**********${String(body["api-key"]).slice(-2)}`
         : undefined;
@@ -618,6 +632,20 @@ describe("AIProviderSettingsSection", () => {
     });
     expect(openrouterOption).toBeInTheDocument();
     expect(openrouterOption).not.toHaveAttribute("data-combobox-disabled");
+
+    expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
+  });
+
+  it("shows Mistral as selectable in the provider dropdown", async () => {
+    await setup({ savedProviderValue: null, isConfigured: false });
+
+    await userEvent.click(screen.getByLabelText("Provider"));
+
+    const mistralOption = await screen.findByRole("option", {
+      name: /Mistral/,
+    });
+    expect(mistralOption).toBeInTheDocument();
+    expect(mistralOption).not.toHaveAttribute("data-combobox-disabled");
 
     expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
   });
@@ -1736,6 +1764,95 @@ describe("AIProviderSettingsSection", () => {
           body: {
             "llm-metabot-provider": null,
             "llm-openrouter-api-key": null,
+          },
+        }),
+      ).toBe(true);
+    });
+
+    expect(
+      await screen.findByText("Connect to an AI provider"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Provider")).toHaveValue("");
+  });
+
+  it("connects to Mistral by saving the API key and selecting a model", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { mistral: null },
+      updateResponse: {
+        value: "mistral/mistral-medium-3-5",
+        models: DEFAULT_RESPONSES.mistral.models,
+      },
+    });
+
+    await selectProvider("Mistral");
+    await userEvent.type(screen.getByLabelText("API key"), "mistral-key.test");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
+      ).toHaveLength(1);
+    });
+
+    expect(
+      fetchMock.callHistory.lastCall("path:/api/metabot/settings", {
+        method: "PUT",
+        body: {
+          provider: "mistral",
+          "api-key": "mistral-key.test",
+        },
+      }),
+    ).toBeDefined();
+
+    await screen.findByLabelText("Model");
+    await openModelSelector();
+    await userEvent.click(await screen.findByText("Mistral Medium 3.5"));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
+      ).toHaveLength(2);
+    });
+
+    expect(
+      fetchMock.callHistory.lastCall("path:/api/metabot/settings", {
+        method: "PUT",
+        body: {
+          provider: "mistral",
+          model: "mistral-medium-3-5",
+        },
+      }),
+    ).toBeDefined();
+
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disconnects Mistral by clearing both the provider and API key settings", async () => {
+    await setup({
+      savedProviderValue: "mistral/mistral-medium-3-5",
+      isConfigured: true,
+      apiKeyValues: { mistral: "**********st" },
+    });
+
+    await screen.findByText("Connected to Mistral");
+    await screen.findByLabelText("API key");
+    await confirmDisconnectProvider();
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/setting", {
+          method: "PUT",
+          body: {
+            "llm-metabot-provider": null,
+            "llm-mistral-api-key": null,
           },
         }),
       ).toBe(true);
