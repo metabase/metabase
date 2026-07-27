@@ -336,6 +336,21 @@
   :getter     #(llm-provider-configured? (llm-metabot-provider))
   :doc        false)
 
+(def ^:private metabot-llm-setting-keys
+  #{:metabot-enabled? :embedded-metabot-enabled? :llm-metabot-provider})
+
+(defn llm-configuration-setting?
+  "True when changing `setting-key` could change whether Metabot can reach an LLM — i.e. it
+  feeds [[llm-metabot-configured?]] or one of the Metabot enable settings.
+
+  Matches all of [[metabase.llm.settings]] rather than a hand-listed key set: being broad
+  costs a redundant re-check, while missing a key silently strands callers that wake on it."
+  [setting-key]
+  (boolean
+   (or (contains? metabot-llm-setting-keys setting-key)
+       (= 'metabase.llm.settings
+          (:namespace (get @setting/registered-settings setting-key))))))
+
 ;;; ------------------------------------------------- AI Data Retention ------------------------------------------------
 
 (def ^:private min-retention-days

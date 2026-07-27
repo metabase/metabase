@@ -65,14 +65,14 @@ const setup = async ({
   const { history } = renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <SearchResultsDropdown
           searchText={searchText}
           onSearchItemSelect={onSearchItemSelect}
           goToSearchApp={goToSearchApp}
           context="search-bar"
         />
-      )}
+      }
     />,
     {
       withRouter: true,

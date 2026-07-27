@@ -294,27 +294,13 @@ const ErrorAlert = ({
 
   return (
     <Alert
+      size="compact"
+      variant="light"
       icon={<Icon name="warning" c="feedback-negative" />}
-      variant="outline"
       title={t`Couldn't sync Google Sheets`}
       w="100%"
-      styles={{
-        root: {
-          backgroundColor: "transparent",
-          border: "1px solid var(--mb-color-border-neutral)",
-        },
-        wrapper: {
-          alignItems: "flex-start",
-        },
-        label: {
-          fontSize: "var(--mantine-font-size-md)",
-          color: "var(--mb-color-text-primary)",
-        },
-      }}
     >
-      <Text fz="sm" lh="lg">
-        {error}
-      </Text>
+      {error}
       {children}
     </Alert>
   );

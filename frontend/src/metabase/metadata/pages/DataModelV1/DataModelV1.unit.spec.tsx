@@ -216,22 +216,22 @@ async function setup({
 
   const { history } = renderWithProviders(
     <>
-      <Route path="notAdmin" component={OtherComponent} />
+      <Route path="notAdmin" element={<OtherComponent />} />
       <Route path="admin/datamodel">
-        <Route index component={redirect("database")} />
-        <Route path="database" component={DataModelV1} />
-        <Route path="database/:databaseId" component={DataModelV1} />
+        <Route index element={redirect("database")} />
+        <Route path="database" element={<DataModelV1 />} />
+        <Route path="database/:databaseId" element={<DataModelV1 />} />
         <Route
           path="database/:databaseId/schema/:schemaId"
-          component={DataModelV1}
+          element={<DataModelV1 />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId"
-          component={DataModelV1}
+          element={<DataModelV1 />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-          component={DataModelV1}
+          element={<DataModelV1 />}
         />
       </Route>
     </>,

@@ -56,18 +56,27 @@
   - metabase://transform/{id}/sources - tables/databases this transform reads from
   - metabase://transform/{id}/target - table this transform writes to
   - metabase://dashboard/{id} - dashboard details
-  - metabase://dashboard/{id}/items - cards on the dashboard"
+  - metabase://dashboard/{id}/items - cards on the dashboard
+  - metabase://document/{id} - document name + indexed outline of its top-level blocks
+
+  Conversation state (agent-memory charts/queries, e.g. pasted chart mentions):
+  - metabase://chart/{chart_id} - chart type + query of a conversation chart
+  - metabase://query/{query_id} - a query from this conversation's state"
   (:require
    [clojure.string :as str]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
+   [metabase.documents.core :as documents]
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
    [metabase.transforms.core :as transforms]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
@@ -176,7 +185,7 @@
 (defn- present-collection
   "Trim a collection row to an item map. `path-name` may be supplied if the caller pre-computed it."
   ([coll] (present-collection coll nil))
-  ([{:keys [id name location authority_level description personal_owner_id]} path-name]
+  ([{:keys [id name location authority_level description personal_owner_id] :as coll} path-name]
    {:type              "collection"
     :id                id
     :name              name
@@ -184,6 +193,7 @@
     :location          location
     :authority_level   authority_level
     :is_personal       (boolean personal_owner_id)
+    :can_write         (boolean (mi/can-write? coll))
     :description       description
     :uri               (llm-shape/metabase-uri :collection id)}))
 
@@ -216,13 +226,23 @@
      :uri           (llm-shape/metabase-uri (keyword model-type) id)}))
 
 (defn- present-dashboard
-  [{:keys [id name collection_id description]}]
+  [{:keys [id name collection_id description] :as dashboard}]
   {:type          "dashboard"
    :id            id
    :name          name
    :collection_id collection_id
+   :can_write     (boolean (mi/can-write? dashboard))
    :description   description
    :uri           (llm-shape/metabase-uri :dashboard id)})
+
+(defn- present-document
+  [{:keys [id name collection_id] :as document}]
+  {:type          "document"
+   :id            id
+   :name          name
+   :collection_id collection_id
+   :can_write     (boolean (mi/can-write? document))
+   :uri           (llm-shape/metabase-uri :document id)})
 
 (defn- present-transform
   [{:keys [id name description source_database_id]}]
@@ -405,6 +425,11 @@
                                        :archived      false
                                        {:order-by [[:%lower.name :asc]]})
                             (filter mi/can-read?))
+        documents      (->> (t2/select [:model/Document :id :name :collection_id]
+                                       :collection_id coll-id
+                                       :archived      false
+                                       {:order-by [[:%lower.name :asc]]})
+                            (filter mi/can-read?))
         subcollections (->> (t2/select [:model/Collection :id :name :location :authority_level
                                         :description :personal_owner_id]
                                        :location (str (:location coll) coll-id "/")
@@ -413,7 +438,8 @@
                             (filter mi/can-read?))
         items          (concat (map present-collection subcollections)
                                (map present-card cards)
-                               (map present-dashboard dashboards))]
+                               (map present-dashboard dashboards)
+                               (map present-document documents))]
     (list-result :collection-items items query-params)))
 
 (defn- fetch-collection-subcollections [id-str query-params]
@@ -605,9 +631,12 @@
 ;; ----- Dashboard -----
 
 (defn- fetch-dashboard [id-str]
-  (let [result (entity-details/get-dashboard-details {:dashboard-id (parse-long id-str)})]
+  (let [dashboard-id (parse-long id-str)
+        result       (entity-details/get-dashboard-details {:dashboard-id dashboard-id})]
     (if-let [dashboard (:structured-output result)]
-      {:structured-output (assoc dashboard :result-type :entity)}
+      {:structured-output (assoc dashboard
+                                 :result-type :entity
+                                 :can_write (boolean (mi/can-write? :model/Dashboard dashboard-id)))}
       {:status-code 404 :output (:output result)})))
 
 (defn- present-non-question-dashcard
@@ -682,7 +711,99 @@
     (cond-> (list-result :dashboard-items items query-params)
       (seq tabs) (update :structured-output assoc :tabs (mapv #(select-keys % [:id :name]) tabs)))))
 
+;; ----- Document -----
+
+(defn- document-block-line
+  "One outline line for a top-level document block: `[index] type`, plus the ids of any
+  embedded cards and a truncated text preview when the block has either."
+  [index block]
+  (let [card-ids (->> (tree-seq :content :content block)
+                      (keep #(when (= (:type %) prose-mirror/card-embed-type)
+                               (-> % :attrs :id))))
+        text     (prose-mirror/ast->text block)]
+    (str "[" index "] " (:type block)
+         (when (seq card-ids)
+           (str " (embeds card " (str/join ", " card-ids) ")"))
+         (when-not (str/blank? text)
+           (str ": " (u/truncate text 200))))))
+
+(defn- fetch-document
+  "Present a document as an indexed outline of its top-level blocks. The indices are the
+  `position` values the `save_entity` tool accepts when inserting a chart into the document."
+  [id-str]
+  (let [document (documents/get-document (parse-long id-str))
+        blocks   (get-in document [:document :content])]
+    (entity-result
+     {:type        "document"
+      :id          (:id document)
+      :name        (:name document)
+      :can_write   (boolean (:can_write document))
+      :description (if (seq blocks)
+                     (str "Top-level blocks, listed as `[index] type`. Inserting at `position` i "
+                          "places new content before the block currently at index i:\n"
+                          (str/join "\n" (map-indexed document-block-line blocks)))
+                     "The document is empty.")})))
+
+(defn- fetch-conversation-query
+  "Present a query stored in this conversation's agent state (created by tools or pasted
+  as a chart mention). Read-checks the query's database before exporting it with resolved
+  table/field names."
+  [query-id]
+  (if-let [query (get (shared/current-queries-state) query-id)]
+    (do
+      (when-let [database-id (and (map? query) (:database query))]
+        (api/read-check :model/Database database-id))
+      (entity-result
+       {:type        "conversation-query"
+        :id          query-id
+        :description (llm-shape/export-query-for-llm query)}))
+    {:status-code 404
+     :output (str "No chart or query with id '" query-id "' exists in this conversation. "
+                  "It may belong to another conversation; ask the user to paste or recreate it here.")}))
+
+(defn- fetch-conversation-chart
+  "Present a chart stored in this conversation's agent state (created by chart tools or
+  pasted as a mention). Falls back to the queries state when the id is actually a query id."
+  [chart-id]
+  (if-let [chart (get (shared/current-charts-state) chart-id)]
+    (let [query (or (first (:queries chart))
+                    (get (shared/current-queries-state) (:query_id chart)))]
+      (when-let [database-id (and (map? query) (:database query))]
+        (api/read-check :model/Database database-id))
+      (entity-result
+       {:type        "conversation-chart"
+        :id          chart-id
+        :description (str "Chart type: "
+                          (or (some-> (get-in chart [:visualization_settings :chart_type]) name)
+                              "table")
+                          "\nQuery:\n"
+                          (llm-shape/export-query-for-llm query))}))
+    (fetch-conversation-query chart-id)))
+
 ;; ----- Dispatch -----
+
+(def ^:private numeric-id-uri-types
+  "URI entity-type segments whose next segment must be a numeric id (see `dispatch`)."
+  #{"database" "collection" "table" "model" "question" "metric"
+    "measure" "segment" "transform" "dashboard"})
+
+(defn- check-numeric-id-segment!
+  "Entity URIs take numeric ids only. The common miss is the LLM pasting a 21-char entity id
+   where the numeric id belongs; without this check that fails downstream as a bare 404 the
+   LLM misreads as a permissions problem. Throw a directive error instead so it
+   self-corrects in one step."
+  [uri [type-seg id-seg]]
+  (when (and (numeric-id-uri-types type-seg)
+             (some? id-seg)
+             (nil? (parse-long id-seg)))
+    (throw (ex-info
+            (str "Invalid id `" id-seg "` in URI. read_resource URIs use the numeric entity "
+                 "id — copy the `uri` attribute from a search result, or build the URI from "
+                 "its numeric `id` attribute, e.g. metabase://" type-seg "/42.")
+            {:agent-error? true
+             :status-code  400
+             :uri          uri
+             :id-segment   id-seg}))))
 
 (defn- dispatch
   "Route a parsed URI to the right fetch handler. The match-one table is the canonical
@@ -692,6 +813,7 @@
    ones (with rest-binding) so the exact-length match wins for the no-extra-segments case."
   [uri]
   (let [{:keys [segments query-params]} (parse-uri uri)]
+    (check-numeric-id-segment! uri segments)
     (match/match-one segments
       ;; Navigation
       ["databases"]                                    (fetch-databases-list query-params)
@@ -739,6 +861,13 @@
       ;; Dashboard
       ["dashboard" id]                                 (fetch-dashboard id)
       ["dashboard" id "items"]                         (fetch-dashboard-items id query-params)
+
+      ;; Document
+      ["document" id]                                  (fetch-document id)
+
+      ;; Conversation state
+      ["chart" id]                                     (fetch-conversation-chart id)
+      ["query" id]                                     (fetch-conversation-query id)
 
       ;; Default — required to make match non-recursive
       _ (throw (ex-info (str "Unsupported URI: " uri)
@@ -831,8 +960,8 @@
            :scope     scope/agent-resource-read}
   read-resource-tool
   "Read detailed information about Metabase resources via URI patterns. Use this to navigate
-  the instance and drill into specific entities. URIs returned by `search` and other
-  read_resource calls can be fed directly back here.
+  the instance and drill into specific entities. URIs returned by `search` can be fed directly
+  back here. Only numeric IDs accepted, never alphanumeric entity-id's.
 
   Up to 5 URIs may be requested in one call. List responses are capped at 25 items per page.
   When :truncated is true, append ?page=N to fetch the next page (e.g. metabase://database/1/tables?page=2).
@@ -864,7 +993,14 @@
   - metabase://measure/{id}
   - metabase://segment/{id}
   - metabase://transform/{id}[/sources|/target]
-  - metabase://dashboard/{id}[/items]"
+  - metabase://dashboard/{id}[/items]
+  - metabase://document/{id} - name + indexed outline of the document's top-level blocks
+    (the indices are valid `position` values for `save_entity` document destinations)
+
+  CONVERSATION STATE (charts and queries generated in or pasted into this conversation,
+  e.g. referenced in a user message as [name](metabase://chart/{id})):
+  - metabase://chart/{chart_id} - the chart's type and its query
+  - metabase://query/{query_id} - the query definition"
   [{:keys [uris]} :- [:map {:closed true}
                       [:uris [:sequential [:string {:description "Metabase resource URIs to fetch"}]]]]]
   (try

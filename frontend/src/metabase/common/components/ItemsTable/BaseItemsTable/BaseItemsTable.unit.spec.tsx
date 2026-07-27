@@ -64,7 +64,7 @@ describe("BaseItemsTable", () => {
     return renderWithProviders(
       <Route
         path="/"
-        component={() => (
+        element={
           <BaseItemsTable
             items={items}
             sortingOptions={{
@@ -75,7 +75,7 @@ describe("BaseItemsTable", () => {
             visibleColumnsMap={VISIBLE_COLUMNS_MAP}
             {...props}
           />
-        )}
+        }
       />,
       { withDND: true, withRouter: true },
     );

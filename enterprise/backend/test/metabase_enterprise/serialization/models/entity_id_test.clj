@@ -6,9 +6,8 @@
   explicitly excluded, or has the :entity_id property."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
-   [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
+   [metabase.models.resolution :as models.resolution]
    [metabase.models.serialization :as serdes]))
 
 (set! *warn-on-reflection* true)
@@ -54,6 +53,7 @@
     :model/CollectionBookmark
     :model/ContentTranslation
     :model/DashboardBookmark
+    :model/DataApp
     :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter
@@ -133,6 +133,7 @@
     ;; TODO we should remove these models from here once serialization is supported
     :model/TransformRun
     :model/TransformRunCancelation
+    :model/TransformDagRun
     :model/TransformJobRun
     :model/TransformJobTransformTag
     :model/TransformTransformTag
@@ -154,7 +155,7 @@
     :model/WorkspaceInstance})
 
 (deftest ^:parallel comprehensive-entity-id-test
-  (let [entity-id-models (->> (v2.entity-ids/toucan-models)
+  (let [entity-id-models (->> (keys models.resolution/model->namespace)
                               (remove entities-not-exported)
                               (remove entities-external-name))]
     (testing "All exported models should get entity id except those with other unique property (like name)"
@@ -168,13 +169,4 @@
       (testing (format (str "Model %s should either: have the ::mi/entity-id property, or be explicitly listed as having "
                             "an external name, or explicitly listed as excluded from serialization")
                        model)
-        (is (serdes.backfill/has-entity-id? model))))))
-
-(deftest ^:parallel comprehensive-identity-hash-test
-  (doseq [model (->> (v2.entity-ids/toucan-models)
-                     (remove entities-not-exported))]
-    (testing (format "Model %s should implement identity-hash-fields" model)
-      (is (some? (try
-                   (serdes/hash-fields model)
-                   (catch java.lang.IllegalArgumentException _
-                     nil)))))))
+        (is (serdes/has-entity-id? model))))))

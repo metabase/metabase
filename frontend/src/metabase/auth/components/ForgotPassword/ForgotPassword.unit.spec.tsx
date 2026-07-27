@@ -28,7 +28,7 @@ const setup = ({ isEmailConfigured, isLdapEnabled }: SetupOpts) => {
   setupForgotPasswordEndpoint();
 
   renderWithProviders(
-    <Route path="/auth/forgot_password" component={ForgotPassword} />,
+    <Route path="/auth/forgot_password" element={<ForgotPassword />} />,
     {
       storeInitialState: state,
       withRouter: true,

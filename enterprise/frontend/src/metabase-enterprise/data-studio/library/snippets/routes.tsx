@@ -9,15 +9,15 @@ import { SnippetDependenciesPage } from "./pages/SnippetDependenciesPage";
 export function getDataStudioSnippetRoutes() {
   return (
     <>
-      <Route path="snippets/new" component={NewSnippetPage} />
-      <Route path="snippets/archived" component={ArchivedSnippetsPage} />
-      <Route path="snippets/:snippetId" component={EditSnippetPage} />
+      <Route path="snippets/new" element={<NewSnippetPage />} />
+      <Route path="snippets/archived" element={<ArchivedSnippetsPage />} />
+      <Route path="snippets/:snippetId" element={<EditSnippetPage />} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           path="snippets/:snippetId/dependencies"
-          component={SnippetDependenciesPage}
+          element={<SnippetDependenciesPage />}
         >
-          <Route index component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
     </>

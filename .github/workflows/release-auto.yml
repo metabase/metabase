@@ -34,6 +34,12 @@ jobs:
       commit: ${{ steps.compute.outputs.commit }}
       should_release: ${{ steps.compute.outputs.should_release }}
     steps:
+      - name: Check if running on a fork
+        run: |
+          if [ "${{ github.repository }}" != "metabase/metabase" ]; then
+            echo "This workflow should not run on forks."
+            exit 1
+          fi
       - uses: actions/checkout@v6
         with:
           sparse-checkout: |
@@ -125,7 +131,7 @@ jobs:
 
             core.setOutput('should_release', 'false');
       - name: Write job summary
-        if: always()
+        if: always() && github.repository == 'metabase/metabase'
         shell: bash
         run: |
           {
@@ -153,6 +159,15 @@ jobs:
       issues: write
       actions: read
     uses: ./.github/workflows/tag-for-release.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+      commit: ${{ needs.prepare.outputs.commit }}
+
+  auto-publish-release:
+    name: Auto-publish release ${{ inputs.version }}
+    needs: [prepare, trigger-release]
+    uses: ./.github/workflows/release.yml
     secrets: inherit
     with:
       version: ${{ needs.prepare.outputs.version }}

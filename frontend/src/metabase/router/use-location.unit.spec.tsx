@@ -18,7 +18,7 @@ function LocationProbe() {
 
 describe("router/useLocation", () => {
   it("exposes the current location in v7 shape", () => {
-    renderWithProviders(<Route path="foo/bar" component={LocationProbe} />, {
+    renderWithProviders(<Route path="foo/bar" element={<LocationProbe />} />, {
       withRouter: true,
       initialRoute: "/foo/bar?x=1&y=2#section",
     });
@@ -29,7 +29,7 @@ describe("router/useLocation", () => {
   });
 
   it("returns exactly the v7 Location fields, without v3's `query`", () => {
-    renderWithProviders(<Route path="foo/bar" component={LocationProbe} />, {
+    renderWithProviders(<Route path="foo/bar" element={<LocationProbe />} />, {
       withRouter: true,
       initialRoute: "/foo/bar?x=1",
     });
@@ -41,7 +41,7 @@ describe("router/useLocation", () => {
   });
 
   it("defaults state to null like v7 (not v3's undefined)", () => {
-    renderWithProviders(<Route path="foo/bar" component={LocationProbe} />, {
+    renderWithProviders(<Route path="foo/bar" element={<LocationProbe />} />, {
       withRouter: true,
       initialRoute: "/foo/bar",
     });

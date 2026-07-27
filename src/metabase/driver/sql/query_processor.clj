@@ -1621,10 +1621,12 @@
     ;; -> SELECT CASE WHEN ... > ... THEN 1 ELSE 0 END AS \"x\""
   [driver clause & _unique-name-fn]
   (let [{cast-type ::add-cast
-         wrap-in-case? ::wrap-in-case} (driver-api/field-options clause)
+         wrap-in-case? ::wrap-in-case} (driver-api/match-one clause
+                                         [_ (opts :guard :lib/uuid) _] opts ;; mbql5
+                                         [_ _ opts] opts)
         maybe-cast    #(cond-> %
-                         wrap-in-case? (as-> <> (vector ::wrap-in-case <>))
-                         cast-type     (as-> <> (vector ::cast <> cast-type)))
+                         wrap-in-case? (as-> <> (mbql-clause driver ::wrap-in-case <>))
+                         cast-type     (as-> <> (mbql-clause driver ::cast <> cast-type)))
         honeysql-form (->honeysql driver (maybe-cast clause))
         field-alias   (field-clause->alias driver clause)]
     (if field-alias
@@ -2043,7 +2045,6 @@
 
 (defmethod apply-top-level-clause [:sql :joins]
   [driver _ honeysql-form {:keys [joins]}]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (let [f apply-joins-honey-sql-2]
     (f driver honeysql-form joins)))
 

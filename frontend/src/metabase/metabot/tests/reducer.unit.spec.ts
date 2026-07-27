@@ -38,6 +38,23 @@ const createTestStore = (initialState?: Partial<MetabotState>) =>
     },
   });
 
+const requestAction = (
+  arg: Partial<{
+    agentId: "test_1";
+    conversation_id: string;
+    loadId: string;
+  }> = {},
+) => ({
+  meta: {
+    arg: {
+      agentId: "test_1" as const,
+      conversation_id: "matching-id",
+      loadId: "load-1",
+      ...arg,
+    },
+  },
+});
+
 describe("metabot reducer", () => {
   describe("transforms", () => {
     describe("addSuggestedTransform", () => {
@@ -258,13 +275,13 @@ describe("metabot reducer", () => {
   describe("getRequestConversation", () => {
     it("should return undefined if no matching convo", () => {
       const state = createDraft(getMetabotInitialState());
-      const action = {
-        meta: {
-          arg: { agentId: "test_1" as const, conversation_id: "some-id" },
-        },
-      };
 
-      expect(getRequestConversation(state, action)).toBeUndefined();
+      expect(
+        getRequestConversation(
+          state,
+          requestAction({ conversation_id: "some-id" }),
+        ),
+      ).toBeUndefined();
     });
 
     it("should return undefined if the conversation's conversation_id doesn't match the value in the store", () => {
@@ -272,28 +289,35 @@ describe("metabot reducer", () => {
       state.conversations.test_1 = createDraft(
         createConversation("test_1", { conversationId: "stored-id" }),
       );
-      const action = {
-        meta: {
-          arg: { agentId: "test_1" as const, conversation_id: "different-id" },
-        },
-      };
-
-      expect(getRequestConversation(state, action)).toBeUndefined();
+      expect(
+        getRequestConversation(
+          state,
+          requestAction({ conversation_id: "different-id" }),
+        ),
+      ).toBeUndefined();
     });
 
-    it("should return conversation if agentId and request conversation_id match", () => {
+    it("should return undefined if the conversation was reloaded since the request started", () => {
+      const state = createDraft(getMetabotInitialState());
+      state.conversations.test_1 = createDraft(
+        createConversation("test_1", {
+          conversationId: "matching-id",
+          loadId: "load-2",
+        }),
+      );
+      expect(getRequestConversation(state, requestAction())).toBeUndefined();
+    });
+
+    it("should return conversation if agentId, request conversation_id and loadId match", () => {
       const state = createDraft(getMetabotInitialState());
       const convo = createDraft(
-        createConversation("test_1", { conversationId: "matching-id" }),
+        createConversation("test_1", {
+          conversationId: "matching-id",
+          loadId: "load-1",
+        }),
       );
       state.conversations.test_1 = convo;
-      const action = {
-        meta: {
-          arg: { agentId: "test_1" as const, conversation_id: "matching-id" },
-        },
-      };
-
-      expect(getRequestConversation(state, action)).toBe(convo);
+      expect(getRequestConversation(state, requestAction())).toBe(convo);
     });
   });
 

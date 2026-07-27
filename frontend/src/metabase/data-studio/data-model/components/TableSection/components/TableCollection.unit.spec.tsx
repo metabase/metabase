@@ -38,7 +38,7 @@ function setup({
   });
 
   renderWithProviders(
-    <Route path="/" component={() => <TableCollection table={table} />} />,
+    <Route path="/" element={<TableCollection table={table} />} />,
     { withRouter: true },
   );
 }

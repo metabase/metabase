@@ -40,14 +40,14 @@ function setup({
   return renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <PinnedItemCard
           item={item}
           collection={collection}
           createBookmark={jest.fn()}
           deleteBookmark={jest.fn()}
         />
-      )}
+      }
     />,
     { withRouter: true, storeInitialState },
   );

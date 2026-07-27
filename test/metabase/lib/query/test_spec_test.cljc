@@ -113,6 +113,17 @@
       (is (=? [[:count {}]]
               (lib/aggregations query))))))
 
+(deftest ^:parallel test-query-with-metric-aggregation-test
+  (testing "test-query adds Metrics as aggregations"
+    (let [query (lib.query.test-spec/test-query
+                 lib.tu/metadata-provider-with-metric
+                 {:stages [{:source       {:type :table
+                                           :id   (meta/id :checkins)}
+                            :aggregations [{:type :metric
+                                            :id   1}]}]})]
+      (is (=? [[:metric {} 1]]
+              (lib/aggregations query))))))
+
 (deftest ^:parallel test-query-with-breakouts-test
   (testing "test-query adds breakouts to the query"
     (let [query (lib.query.test-spec/test-query
@@ -635,6 +646,17 @@
               (lib/breakouts query)))
       (let [query (lib.query.test-spec/test-query
                    meta/metadata-provider
+                   {:stages [{:source    {:type :table
+                                          :id   (meta/id :orders)}
+                              :breakouts [{:type            :column
+                                           :name            "CATEGORY"
+                                           :source-field-id (meta/id :orders :product-id)}]}]})]
+        (is (=? [[:field
+                  {:source-field (meta/id :orders :product-id)}
+                  (meta/id :products :category)]]
+                (lib/breakouts query))))
+      (let [query (lib.query.test-spec/test-query
+                   meta/metadata-provider
                    {:stages [{:source {:type :table
                                        :id   (meta/id :orders)}
                               :order-bys [{:type :column
@@ -826,7 +848,6 @@
       (is (empty? (lib/fields query 2)))
       (is (= 25 (lib/current-limit query 2))))))
 
-#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:parallel test-query-comprehensive-all-features-test-with-fields
   (testing "test-query exercises all functionality in a comprehensive multi-stage query, with fields clause"
     (let [query (lib.query.test-spec/test-query

@@ -205,6 +205,7 @@
       (mt/with-model-cleanup [:model/Pulse]
         (let [sent-channel-ids (atom #{})]
           ;; with-redefs (cross-thread): quartz scheduler threads don't inherit *local-redefs*
+          ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
           #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
           (with-redefs [;; run the job every second
                         u.cron/schedule-map->cron-string (constantly "* * * 1/1 * ? *")
@@ -241,6 +242,7 @@
                   original-send-pulse!* (mt/original-fn #'task.send-pulses/send-pulse!*)]
               ;; quartz scheduler threads don't inherit *local-redefs*, so we have to swap the
               ;; root — see dynamic-redefs.clj docstring
+              ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
               #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
               (with-redefs [;; run the job every second - must be before creating PulseChannel
                             u.cron/schedule-map->cron-string (constantly "* * * 1/1 * ? *")

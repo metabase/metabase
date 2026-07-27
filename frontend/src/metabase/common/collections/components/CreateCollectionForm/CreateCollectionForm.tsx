@@ -20,8 +20,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import type { WithRouterProps } from "metabase/router";
-import { withRouter } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { Button, Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, CollectionNamespace } from "metabase-types/api";
@@ -58,13 +57,11 @@ export interface CreateCollectionFormOwnProps {
   showAuthorityLevelPicker?: boolean;
 }
 
-type Props = CreateCollectionFormOwnProps & WithRouterProps;
+type Props = CreateCollectionFormOwnProps;
 
 function CreateCollectionForm({
   collectionId,
   initialCollectionId: explicitInitialCollectionId,
-  location,
-  params,
   onSubmit,
   onCancel,
   filterPersonalCollections,
@@ -73,6 +70,7 @@ function CreateCollectionForm({
   namespaces,
   showAuthorityLevelPicker = true,
 }: Props) {
+  const { location, params } = useRouter();
   const defaultInitialCollectionId = useInitialCollectionId({
     collectionId,
     location,
@@ -182,4 +180,4 @@ function CreateCollectionForm({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default withRouter(CreateCollectionForm);
+export default CreateCollectionForm;

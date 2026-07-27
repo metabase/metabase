@@ -39,7 +39,7 @@ const setup = ({
 
   const path = Urls.transformJob(job.id);
   renderWithProviders(
-    <Route path="/data-studio/transforms/jobs/:jobId" component={JobPage} />,
+    <Route path="/data-studio/transforms/jobs/:jobId" element={<JobPage />} />,
     { withRouter: true, initialRoute: path },
   );
 };

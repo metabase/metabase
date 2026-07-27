@@ -2,9 +2,12 @@ import type {
   CardDisplayType,
   CardId,
   CardType,
+  CreateCardRequest,
   DashboardId,
+  DatabaseId,
   DatasetQuery,
   DraftTransform,
+  PaginationRequest,
   PaginationResponse,
   RowValue,
   SuggestedTransform,
@@ -160,6 +163,29 @@ export type MetabotAgentRequest = {
 export type MetabotAgentResponse = {
   conversation_id: string;
   state?: MetabotStateContext;
+};
+
+export type MetabotConversation = {
+  conversation_id: string;
+  created_at: string;
+  title: string | null;
+  user_id: number | null;
+  profile_id: string | null;
+  message_count: number;
+  last_message_at: string | null;
+};
+
+export type MetabotConversationTitleResponse =
+  | { status: "ready"; title: string }
+  | { status: "pending"; title: null }
+  | { status: "missing"; title: null };
+
+export type ListMetabotConversationsRequest = PaginationRequest & {
+  profile_id?: string | null;
+};
+
+export type ListMetabotConversationsResponse = PaginationResponse & {
+  data: MetabotConversation[];
 };
 
 export type MetabotProvider =
@@ -335,9 +361,17 @@ export interface MetabotGenerateContentRequest {
 }
 
 export interface MetabotGenerateContentResponse {
-  draft_card: (UnsavedCard & { name?: string }) | null;
+  draft_card: (UnsavedCard & { name?: string; database_id: DatabaseId }) | null;
   description: string;
   error: string | null;
+}
+
+/* Metabot v3 - Conversations */
+
+export interface SaveMetabotEntityRequest {
+  conversation_id: string;
+  chart_id: string;
+  card: CreateCardRequest;
 }
 
 /* Metabot v3 - Data Part Types */

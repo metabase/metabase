@@ -75,14 +75,9 @@ async function setup({
   });
 
   renderWithProviders(
-    <Route
-      path="/public/action/:uuid"
-      component={(props) => (
-        <PublicApp {...props}>
-          <PublicAction {...props} />
-        </PublicApp>
-      )}
-    />,
+    <Route path="/public/action/:uuid" element={<PublicApp />}>
+      <Route index element={<PublicAction />} />
+    </Route>,
     {
       mode: "public",
       initialRoute: `/public/action/${TEST_PUBLIC_ID}`,

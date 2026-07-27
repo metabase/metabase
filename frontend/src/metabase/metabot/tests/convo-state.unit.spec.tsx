@@ -1,10 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import _ from "underscore";
 
-import { waitFor } from "__support__/ui";
+import { act, waitFor } from "__support__/ui";
 import {
   getMetabotConversation,
   getMetabotRequestState,
+  setConversationSnapshot,
 } from "metabase/metabot/state";
 
 import {
@@ -16,7 +17,7 @@ import {
   hideMetabot,
   lastReqBody,
   mockAgentEndpoint,
-  resetChatButton,
+  newConversationButton,
   setup,
   showMetabot,
   stopResponseButton,
@@ -124,6 +125,56 @@ describe("metabot > convo state", () => {
     expect(reqState).toEqual({ testing: 123 });
   });
 
+  it("should drop streamed output once the user has switched away, even after switching back", async () => {
+    const { store } = setup();
+    const { conversationId } = getMetabotConversation(
+      store.getState(),
+      "omnibot",
+    );
+
+    const [pause1] = createPauses(1);
+    mockAgentEndpoint({
+      stream: createMockSSEStream(
+        (async function* () {
+          yield { type: "text-start", id: "t1" };
+          yield { type: "text-delta", id: "t1", delta: "first half" };
+          await pause1.promise;
+          yield { type: "text-delta", id: "t1", delta: " second half" };
+          yield { type: "finish", finishReason: "stop" };
+        })(),
+      ),
+    });
+
+    await enterChatMessage("stream me");
+    await assertConversation([
+      ["user", "stream me"],
+      ["agent", "first half"],
+    ]);
+
+    const reload = (id: string) =>
+      store.dispatch(
+        setConversationSnapshot({
+          agentId: "omnibot",
+          conversationId: id,
+          messages: [
+            { id: "u1", role: "user", type: "text", message: "stream me" },
+          ],
+          activeToolCalls: [],
+        }),
+      );
+
+    act(() => {
+      reload("some-other-conversation");
+      reload(conversationId);
+    });
+
+    await act(async () => {
+      pause1.resolve();
+    });
+
+    await assertConversation([["user", "stream me"]]);
+  });
+
   it("should keep the conversation thread when metabot is hidden or opened", async () => {
     const { store } = setup();
     const agentSpy = mockAgentEndpoint({
@@ -166,7 +217,7 @@ describe("metabot > convo state", () => {
       message: "You, but don't tell anyone.",
     });
 
-    await userEvent.click(await resetChatButton());
+    await userEvent.click(await newConversationButton());
 
     const afterResetState = getState();
     expect(afterResetState.conversationId).not.toBe(

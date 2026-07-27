@@ -498,7 +498,10 @@ async function setup({
         },
       )
     : renderWithProviders(
-        <Route path="/admin/metabot*" component={AIProviderSettingsSection} />,
+        <Route
+          path="/admin/metabot*"
+          element={<AIProviderSettingsSection />}
+        />,
         {
           withRouter: true,
           initialRoute: "/admin/metabot",
@@ -2496,7 +2499,7 @@ function setupDivergentReadsBackend({
   });
 
   renderWithProviders(
-    <Route path="/admin/metabot*" component={AIProviderSettingsSection} />,
+    <Route path="/admin/metabot*" element={<AIProviderSettingsSection />} />,
     {
       withRouter: true,
       initialRoute: "/admin/metabot",

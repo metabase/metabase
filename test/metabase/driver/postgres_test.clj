@@ -2639,10 +2639,10 @@
                                            "GRANT %s TO CURRENT_USER; "
                                            "CREATE SCHEMA %s AUTHORIZATION %s;")
                                       qgrantor qgrantor qschema qgrantor)])
-              (let [init-result   (driver/init-workspace-isolation! :postgres (mt/db) workspace)
-                    iso-user      (-> init-result :database_details :user)
-                    qiso          (sql.u/quote-name :postgres :field iso-user)
-                    workspace+det (merge workspace init-result)]
+              (let [workspace+det (merge workspace (driver/workspace-isolation-details :postgres (mt/db) workspace))
+                    _             (driver/init-workspace-isolation! :postgres (mt/db) workspace+det)
+                    iso-user      (-> workspace+det :database_details :user)
+                    qiso          (sql.u/quote-name :postgres :field iso-user)]
                 (try
                   ;; Seed the foreign-grantor default-priv: set the grantor role and
                   ;; issue ALTER DEFAULT PRIVILEGES so the resulting pg_default_acl

@@ -33,6 +33,78 @@
     (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :legacy-no-self-service)))
     (is (data-perms/at-least-as-permissive? :perms/view-data :blocked :blocked))))
 
+(deftest destination-db-permissions-insert-throws-test
+  (testing "inserting a DataPermissions row for a destination database throws"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
+                   :model/Database         {router-db-id :id}  {}
+                   :model/Database         {destination-db-id :id} {:router_database_id router-db-id}]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"destination database"
+           (t2/insert! :model/DataPermissions {:db_id      destination-db-id
+                                               :group_id   group-id
+                                               :perm_type  :perms/view-data
+                                               :perm_value :unrestricted}))))))
+
+(deftest destination-db-permissions-batch-insert-throws-test
+  (testing "batch-insert-permissions! throws for a destination database row"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
+                   :model/Database         {router-db-id :id}  {}
+                   :model/Database         {destination-db-id :id} {:router_database_id router-db-id}]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"destination database"
+           (data-perms/batch-insert-permissions!
+            [{:db_id      destination-db-id
+              :group_id   group-id
+              :perm_type  :perms/view-data
+              :perm_value :unrestricted}]))))))
+
+(deftest assert-no-destination-db-permissions!-test
+  (mt/with-temp [:model/PermissionsGroup {group-id :id}          {}
+                 :model/Database         {normal-db-id :id}      {}
+                 :model/Database         {router-db-id :id}      {}
+                 :model/Database         {destination-db-id :id} {:router_database_id router-db-id}]
+    (let [dest-row   {:db_id destination-db-id :group_id group-id
+                      :perm_type :perms/view-data :perm_value :unrestricted}
+          normal-row {:db_id normal-db-id :group_id group-id
+                      :perm_type :perms/view-data :perm_value :unrestricted}]
+      (testing "a single destination-db row throws"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"destination database"
+             (data-perms/assert-no-destination-db-permissions! [dest-row]))))
+      (testing "a batch mixing a destination-db row with normal-db rows throws"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"destination database"
+             (data-perms/assert-no-destination-db-permissions! [normal-row dest-row]))))
+      (testing "an all-normal-db batch does not throw"
+        (is (nil? (data-perms/assert-no-destination-db-permissions! [normal-row normal-row]))))
+      (testing "an empty seq does not throw"
+        (is (nil? (data-perms/assert-no-destination-db-permissions! [])))))))
+
+(deftest destination-db-permissions-positive-control-test
+  (testing "inserting a perm row for a normal (non-destination) db still succeeds"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}     {}
+                   :model/Database         {normal-db-id :id} {}]
+      (mt/with-restored-data-perms-for-group! group-id
+        (testing "via raw t2/insert!"
+          (is (t2/insert! :model/DataPermissions {:db_id      normal-db-id
+                                                  :group_id   group-id
+                                                  :perm_type  :perms/view-data
+                                                  :perm_value :unrestricted})))
+        (testing "via batch-insert-permissions!"
+          (t2/delete! :model/DataPermissions :db_id normal-db-id :group_id group-id)
+          (is (nil? (data-perms/batch-insert-permissions!
+                     [{:db_id      normal-db-id
+                       :group_id   group-id
+                       :perm_type  :perms/view-data
+                       :perm_value :unrestricted}])))
+          (is (t2/exists? :model/DataPermissions
+                          :db_id normal-db-id :group_id group-id
+                          :perm_type :perms/view-data)))))))
+
 (deftest set-database-permission!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
                  :model/Database         {database-id :id} {}]

@@ -1,19 +1,29 @@
-import type { AnchorHTMLAttributes, ComponentPropsWithRef } from "react";
+import cx from "classnames";
+import type {
+  AnchorHTMLAttributes,
+  CSSProperties,
+  ComponentPropsWithRef,
+} from "react";
 import { useMemo } from "react";
-import type ReactMarkdown from "react-markdown";
-import { defaultUrlTransform } from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import type { ColorName } from "metabase/ui/colors/types";
+import { color } from "metabase/ui/utils/colors";
 import { DATA_IMAGE_URI_PATTERN } from "metabase/visualizations/lib/utils";
 
-import { MarkdownRoot } from "./Markdown.styled";
+import S from "./Markdown.module.css";
 
 const REMARK_PLUGINS = [remarkGfm];
 
 const MarkdownLink = (props: AnchorHTMLAttributes<HTMLAnchorElement>) => (
   <a {...props} target="_blank" rel="noopener noreferrer" />
 );
+
+type MarkdownCssVariables = CSSProperties & {
+  "--markdown-color"?: string;
+  "--markdown-line-clamp"?: number;
+};
 
 function urlTransform(url: string): string {
   if (url.startsWith("metabase://")) {
@@ -45,6 +55,7 @@ export const Markdown = ({
   disallowHeading = false,
   unstyleLinks = false,
   c,
+  lineClamp,
   components,
   ...rest
 }: MarkdownProps): JSX.Element => {
@@ -60,19 +71,27 @@ export const Markdown = ({
     [components],
   );
 
+  const style: MarkdownCssVariables = {
+    "--markdown-color": c ? color(c) : undefined,
+    "--markdown-line-clamp": lineClamp,
+  };
+
   return (
-    <MarkdownRoot
-      className={className}
-      dark={dark}
-      remarkPlugins={REMARK_PLUGINS}
-      urlTransform={urlTransform}
-      unstyleLinks={unstyleLinks}
-      c={c}
-      components={customizedComponents}
-      {...additionalOptions}
-      {...rest}
+    <div
+      className={cx(S.markdownRoot, { [S.lineClamp]: lineClamp }, className)}
+      style={style}
+      data-dark={dark || undefined}
+      data-unstyle-links={unstyleLinks || undefined}
     >
-      {children}
-    </MarkdownRoot>
+      <ReactMarkdown
+        remarkPlugins={REMARK_PLUGINS}
+        urlTransform={urlTransform}
+        components={customizedComponents}
+        {...additionalOptions}
+        {...rest}
+      >
+        {children}
+      </ReactMarkdown>
+    </div>
   );
 };

@@ -15,15 +15,15 @@ export const getRoutes = () => {
   };
   return (
     <Route path="/model/:slug/detail">
-      <Route path="actions" component={ModelActions}>
+      <Route path="actions" element={<ModelActions />}>
         {modalRoute("new", ActionCreatorModal, { modalProps })}
         {modalRoute(":actionId", ActionCreatorModal, { modalProps })}
       </Route>
-      <Route path=":rowId" component={ModelDetailPage} />
-      <Route index component={redirect("actions")} />
-      <Route path="usage" component={redirect("actions")} />
-      <Route path="schema" component={redirect("actions")} />
-      <Route path="*" component={redirect("actions")} />
+      <Route path=":rowId" element={<ModelDetailPage />} />
+      <Route index element={redirect("actions")} />
+      <Route path="usage" element={redirect("actions")} />
+      <Route path="schema" element={redirect("actions")} />
+      <Route path="*" element={redirect("actions")} />
     </Route>
   );
 };

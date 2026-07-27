@@ -224,6 +224,10 @@
 ;; events (see `:metabase.metabot.schema.v2/ui-message-chunk`), one per
 ;; `data: {json}` line, terminated by `data: [DONE]`.
 
+(def done-sse-line
+  "AI SDK stream terminator line."
+  "data: [DONE]\n")
+
 (defn format-sse-event
   "Format a payload map as an SSE event line: data: {JSON}\\n. The streaming
   writer appends another newline, forming the blank-line event boundary."
@@ -244,7 +248,7 @@
   [error-part]
   (str (format-error-line error-part) "\n"
        (format-sse-event {:type "finish" :finishReason "error"}) "\n"
-       "data: [DONE]\n\n"))
+       done-sse-line "\n"))
 
 (defn- ->message-metadata
   "Translate accumulated per-model usage into the `finish` event's message
@@ -359,7 +363,7 @@
                      (cond-> {:type         "finish"
                               :finishReason (if @error? "error" "stop")}
                        (seq metadata) (assoc :messageMetadata metadata))))
-                (rf "data: [DONE]\n")
+                (rf done-sse-line)
                 (rf))))
          ([result part]
           ;; Any non-text part implicitly closes the current text block before

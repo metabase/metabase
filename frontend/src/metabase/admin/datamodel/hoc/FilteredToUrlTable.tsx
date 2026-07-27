@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { Location } from "history";
 import { type ComponentType, type ReactNode, useState } from "react";
 import { t } from "ttag";
 
@@ -8,6 +7,7 @@ import { FieldSet } from "metabase/common/components/FieldSet";
 import CS from "metabase/css/core/index.css";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/querying/common/components/DataSelector";
 import { connect, useSelector } from "metabase/redux";
+import type { Location } from "metabase/router";
 import { push } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Icon } from "metabase/ui";

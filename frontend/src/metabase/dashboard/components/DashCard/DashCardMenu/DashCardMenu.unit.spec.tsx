@@ -148,7 +148,7 @@ const setup = ({
     <>
       <Route
         path="dashboard/:slug"
-        component={() => (
+        element={
           <MockDashboardContext
             dashboardId={mockDashboard.id}
             dashboard={mockDashboard}
@@ -162,10 +162,10 @@ const setup = ({
               onEditVisualization={onEditVisualization}
             />
           </MockDashboardContext>
-        )}
+        }
       />
-      <Route path="question/:slug" component={() => <div />} />
-      <Route path="question/:slug/notebook" component={() => <div />} />
+      <Route path="question/:slug" element={<div />} />
+      <Route path="question/:slug/notebook" element={<div />} />
     </>,
     {
       storeInitialState,

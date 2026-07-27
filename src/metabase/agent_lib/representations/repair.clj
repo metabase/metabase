@@ -1976,10 +1976,10 @@
               ;; Deliberately do NOT enumerate the candidate FK columns: the metadata provider
               ;; is un-sandboxed and any leaked `[db schema table field]` path could surface
               ;; bridge-table column names the caller is not permitted to see (`:agent-error?`
-              ;; relays the message verbatim to the user). The LLM can recover by calling
-              ;; `entity_details` on the source table to inspect available foreign-key columns.
+              ;; relays the message verbatim to the user). The LLM can recover by reading the
+              ;; source table's fields with `read_resource` to inspect available foreign-key columns.
               (let [src-name (display-source-table mp source-table-id)]
-                (throw (ex-info (tru "Field {0} can be reached from {1} via {2} foreign keys. Specify the `source-field` option on the field clause to disambiguate; call `entity_details` on the source table to list the available foreign-key columns."
+                (throw (ex-info (tru "Field {0} can be reached from {1} via {2} foreign keys. Specify the `source-field` option on the field clause to disambiguate; call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list the available foreign-key columns."
                                      (display-portable fk)
                                      (pr-str src-name)
                                      (count candidates))

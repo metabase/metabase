@@ -34,7 +34,7 @@ const setup = ({
   setupEnterprisePlugins();
 
   return renderWithProviders(
-    <Route path="/admin/metabot*" component={MetabotNavPane} />,
+    <Route path="/admin/metabot*" element={<MetabotNavPane />} />,
     {
       withRouter: true,
       initialRoute,

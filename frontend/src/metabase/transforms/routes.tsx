@@ -16,7 +16,9 @@ import {
   NewQueryTransformPage,
 } from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
+import { RunsPage } from "./pages/RunsPage";
 import { TransformDependenciesPage } from "./pages/TransformDependenciesPage";
+import { TransformGraphRunListPage } from "./pages/TransformGraphRunListPage";
 import { TransformIndexesPage } from "./pages/TransformIndexesPage";
 import { TransformListPage } from "./pages/TransformListPage";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
@@ -26,31 +28,34 @@ import { TransformsNotDisabled } from "./route-guards";
 
 export function getDataStudioTransformRoutes() {
   return (
-    <Route component={TransformsNotDisabled}>
-      <Route index component={TransformListPage} />
-      <Route path="runs" component={RunListPage} />
-      <Route path="jobs" component={JobSectionLayout}>
-        <Route index component={JobListPage} />
-        <Route path="new" component={NewJobPage} />
-        <Route path=":jobId" component={JobPage} />
-        <Route path=":jobId/runs" component={JobRunListPage} />
+    <Route element={<TransformsNotDisabled />}>
+      <Route index element={<TransformListPage />} />
+      <Route path="runs" element={<RunsPage />}>
+        <Route index element={<TransformGraphRunListPage />} />
+        <Route path="individual" element={<RunListPage />} />
+      </Route>
+      <Route path="jobs" element={<JobSectionLayout />}>
+        <Route index element={<JobListPage />} />
+        <Route path="new" element={<NewJobPage />} />
+        <Route path=":jobId" element={<JobPage />} />
+        <Route path=":jobId/runs" element={<JobRunListPage />} />
       </Route>
 
-      <Route path="new/query" component={NewQueryTransformPage} />
-      <Route path="new/native" component={NewNativeTransformPage} />
-      <Route path="new/card/:cardId" component={NewCardTransformPage} />
-      <Route path=":transformId" component={TransformQueryPage} />
-      <Route path=":transformId/edit" component={TransformQueryPage} />
-      <Route path=":transformId/run" component={TransformRunPage} />
-      <Route path=":transformId/settings" component={TransformSettingsPage} />
-      <Route path=":transformId/indexes" component={TransformIndexesPage} />
+      <Route path="new/query" element={<NewQueryTransformPage />} />
+      <Route path="new/native" element={<NewNativeTransformPage />} />
+      <Route path="new/card/:cardId" element={<NewCardTransformPage />} />
+      <Route path=":transformId" element={<TransformQueryPage />} />
+      <Route path=":transformId/edit" element={<TransformQueryPage />} />
+      <Route path=":transformId/run" element={<TransformRunPage />} />
+      <Route path=":transformId/settings" element={<TransformSettingsPage />} />
+      <Route path=":transformId/indexes" element={<TransformIndexesPage />} />
       {PLUGIN_TRANSFORMS_PYTHON.getInspectorRoutes()}
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           path=":transformId/dependencies"
-          component={TransformDependenciesPage}
+          element={<TransformDependenciesPage />}
         >
-          <Route index component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
       {PLUGIN_TRANSFORMS_PYTHON.getPythonTransformsRoutes()}

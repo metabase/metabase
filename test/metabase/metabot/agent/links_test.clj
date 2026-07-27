@@ -18,6 +18,26 @@
       u/decode-base64
       (json/decode+kw)))
 
+(deftest ^:parallel ->legacy-mbql-rehydrated-query-test
+  (testing "normalizes enum values stringified by JSON persistence before conversion"
+    (let [query      {:lib/type :mbql/query
+                      :database 1
+                      :stages   [{:lib/type    :mbql.stage/mbql
+                                  :source-table 6
+                                  :aggregation [[:count {}]]
+                                  :breakout    [[:field
+                                                 {:temporal-unit :day
+                                                  :base-type     :type/DateTime}
+                                                 31]]}]}
+          rehydrated (json/decode+kw (json/encode query))]
+      (is (= {:database 1
+              :type     :query
+              :query    {:source-table 6
+                         :aggregation [[:count]]
+                         :breakout    [[:field 31 {:temporal-unit :day
+                                                   :base-type     :type/DateTime}]]}}
+             (links/->legacy-mbql rehydrated))))))
+
 ;;; resolve-metabase-uri tests
 
 (deftest ^:parallel resolve-metabase-uri-query-links-test
@@ -53,6 +73,7 @@
     (is (= "/model/123" (links/resolve-metabase-uri "metabase://model/123" {} {})))
     (is (= "/metric/456" (links/resolve-metabase-uri "metabase://metric/456" {} {})))
     (is (= "/dashboard/789" (links/resolve-metabase-uri "metabase://dashboard/789" {} {})))
+    (is (= "/document/303" (links/resolve-metabase-uri "metabase://document/303" {} {})))
     (is (= "/question/101" (links/resolve-metabase-uri "metabase://question/101" {} {})))
     (is (= "/data-studio/transforms/202" (links/resolve-metabase-uri "metabase://transform/202" {} {})))))
 

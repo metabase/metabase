@@ -1,5 +1,3 @@
-import type { LocationDescriptorObject } from "history";
-
 import { cardApi, databaseApi, snippetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
@@ -22,6 +20,7 @@ import type {
   QueryBuilderUIControls,
 } from "metabase/redux/store";
 import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
+import type { LocationDescriptorObject } from "metabase/router";
 import { replace } from "metabase/router";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -33,7 +32,7 @@ import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
-import type { Card, SegmentId } from "metabase-types/api";
+import type { Card, SegmentId, UnsavedCard } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
 
@@ -197,7 +196,7 @@ export async function resolveCards({
 }: {
   cardId?: string | number;
   token?: EntityToken | null;
-  deserializedCard?: Card;
+  deserializedCard?: UnsavedCard;
   options: BlankQueryOptions;
   dispatch: Dispatch;
   getState: GetState;

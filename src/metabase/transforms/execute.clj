@@ -53,7 +53,6 @@
                                   (when on-start
                                     (on-start run-id)))})]
      (try
-       #_{:clj-kondo/ignore [:discouraged-var]}
        (transforms.i/execute! (resolve-target transform) opts)
        (catch Throwable t
          ;; so a caller awaiting the start isn't left hanging on a pre-start failure;

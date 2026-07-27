@@ -10,6 +10,7 @@ const config = {
     "typedoc-plugin-dt-links",
     "typedoc-plugin-redirect",
     "./typedoc-plugin-replace-text.js",
+    "./typedoc-plugin-not-exported.js",
   ],
   entryPoints: ["../resources/embedding-sdk/dist/index.d.ts"],
   router: "structure",

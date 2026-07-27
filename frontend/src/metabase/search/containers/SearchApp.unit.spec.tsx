@@ -96,7 +96,7 @@ const setup = async ({
   const initialRoute = searchParams ? `/search?${searchParams}` : `/search`;
 
   const { history } = renderWithProviders(
-    <Route path="search" component={SearchApp} />,
+    <Route path="search" element={<SearchApp />} />,
     {
       withRouter: true,
       initialRoute,

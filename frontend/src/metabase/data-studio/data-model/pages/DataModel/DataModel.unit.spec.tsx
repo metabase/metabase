@@ -254,28 +254,28 @@ async function setup({
 
   const { history } = renderWithProviders(
     <>
-      <Route path="notData" component={OtherComponent} />
+      <Route path="notData" element={<OtherComponent />} />
       <Route path="data-studio/data">
-        <Route index component={redirect("database")} />
-        <Route path="database" component={DataModel} />
-        <Route path="database/:databaseId" component={DataModel} />
+        <Route index element={redirect("database")} />
+        <Route path="database" element={<DataModel />} />
+        <Route path="database/:databaseId" element={<DataModel />} />
         <Route
           path="database/:databaseId/schema/:schemaId"
-          component={DataModel}
+          element={<DataModel />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId"
-          component={redirect(
+          element={redirect(
             "database/:databaseId/schema/:schemaId/table/:tableId/details",
           )}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
-          component={DataModel}
+          element={<DataModel />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/:tab/:fieldId"
-          component={DataModel}
+          element={<DataModel />}
         />
       </Route>
       <Route path="data-studio/library/segments/new" />

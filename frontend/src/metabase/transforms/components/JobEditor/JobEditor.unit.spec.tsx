@@ -17,14 +17,14 @@ function setup({
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <JobEditor
           job={job}
           onNameChange={jest.fn()}
           onScheduleChange={jest.fn()}
           onTagListChange={jest.fn()}
         />
-      )}
+      }
     />,
     { withRouter: true, initialRoute: "/" },
   );

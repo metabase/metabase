@@ -6,7 +6,7 @@ import { Route } from "./route";
 describe("router/Link", () => {
   it("re-exports the to-based Link", () => {
     const Host = () => <Link to="/foo">go</Link>;
-    renderWithProviders(<Route path="*" component={Host} />, {
+    renderWithProviders(<Route path="*" element={<Host />} />, {
       withRouter: true,
     });
 

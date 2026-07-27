@@ -11,8 +11,8 @@ import { LoadCurrentUser } from "./LoadCurrentUser";
 describe("LoadCurrentUser", () => {
   const setup = () =>
     renderWithProviders(
-      <Route component={LoadCurrentUser}>
-        <Route path="/" component={() => <div>app content</div>} />
+      <Route element={<LoadCurrentUser />}>
+        <Route path="/" element={<div>app content</div>} />
       </Route>,
       {
         storeInitialState: createMockState({ currentUser: undefined }),

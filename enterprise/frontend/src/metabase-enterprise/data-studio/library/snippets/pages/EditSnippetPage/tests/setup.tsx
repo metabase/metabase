@@ -54,7 +54,7 @@ export const setup = async ({
   }
 
   renderWithProviders(
-    <Route component={EditSnippetPage} path="/snippets/:snippetId" />,
+    <Route element={<EditSnippetPage />} path="/snippets/:snippetId" />,
     {
       initialRoute: `/snippets/${mockSnippet.id}`,
       storeInitialState: state,

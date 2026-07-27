@@ -186,18 +186,24 @@ describe("processChatResponse", () => {
     ).rejects.toBeTruthy();
   });
 
-  it("should forward each text delta to onTextPart", async () => {
+  it("should smooth text deltas word by word", async () => {
     const config = getMockedCallbacks();
-    const mockStream = createMockSSEStream([
-      { type: "text-start", id: "t1" },
-      { type: "text-delta", id: "t1", delta: "You, but " },
-      { type: "text-delta", id: "t1", delta: "don't tell anyone." },
-      { type: "text-end", id: "t1" },
-    ]);
+    await processChatResponse(
+      createMockSSEStream([
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "You, but don't tell anyone." },
+        { type: "text-end", id: "t1" },
+      ]),
+      config,
+    );
 
-    await processChatResponse(mockStream, config);
-    expect(config.onTextPart).toHaveBeenNthCalledWith(1, "You, but ");
-    expect(config.onTextPart).toHaveBeenNthCalledWith(2, "don't tell anyone.");
+    expect(config.onTextPart.mock.calls.map(([delta]) => delta)).toEqual([
+      "You, ",
+      "but ",
+      "don't ",
+      "tell ",
+      "anyone.",
+    ]);
   });
 
   it("should resolve with partial response for aborted requests", async () => {

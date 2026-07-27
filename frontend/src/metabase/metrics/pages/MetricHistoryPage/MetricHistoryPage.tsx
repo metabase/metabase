@@ -1,5 +1,9 @@
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import type { MetricPageProps } from "metabase/common/metrics/types";
+import type {
+  MetricPageParams,
+  MetricPageProps,
+} from "metabase/common/metrics/types";
+import { useParams } from "metabase/router";
 import { Box, Card } from "metabase/ui";
 
 import { MetricActivityTimeline } from "../../components/MetricActivityTimeline";
@@ -10,14 +14,15 @@ import { metricUrls as defaultUrls } from "../../urls";
 import S from "./MetricHistoryPage.module.css";
 
 export function MetricHistoryPage({
-  params,
   urls = defaultUrls,
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
 }: MetricPageProps) {
+  const { cardId } = useParams<MetricPageParams>();
+
   return (
-    <MetricPageCard cardId={params.cardId}>
+    <MetricPageCard cardId={cardId}>
       {(card) => (
         <PageContainer>
           <MetricPageShell

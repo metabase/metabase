@@ -220,11 +220,11 @@ describe("ParameterFieldWidget", () => {
       expect(input).toHaveValue("f");
       expect(await screen.findByText("foo")).toBeInTheDocument();
 
-      await userEvent.type(input, "{enter}");
+      await userEvent.type(input, "{enter}", { skipClick: true });
       expect(input).toHaveValue("foo");
       expect(setValue).not.toHaveBeenCalled();
 
-      await userEvent.type(input, "{enter}");
+      await userEvent.type(input, "{enter}", { skipClick: true });
       expect(setValue).toHaveBeenCalledWith(["foo"]);
     });
 

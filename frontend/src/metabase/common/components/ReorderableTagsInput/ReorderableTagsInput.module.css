@@ -22,14 +22,7 @@
 .pill {
   display: flex;
   flex: 0 0 auto;
-  padding-inline: 0.5rem;
-  height: 100%;
-  background: var(--mb-color-background_page-primary);
-  border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-xl);
   cursor: pointer;
-  color: var(--mb-color-text-primary);
-  font-weight: bold;
   min-width: 4rem;
   text-overflow: ellipsis;
   overflow: hidden;

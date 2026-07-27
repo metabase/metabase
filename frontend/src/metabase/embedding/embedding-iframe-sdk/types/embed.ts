@@ -188,7 +188,7 @@ export interface BrowserEmbedOptions {
   /** Which entities to show on the collection browser */
   collectionEntityTypes?: CollectionBrowserEntityTypes[];
 
-  /** Whether to show questions that belong to a dashboard in the collection browser. Defaults to true. */
+  /** Whether to show questions that belong to a dashboard in the collection browser. Defaults to false. */
   collectionShowDashboardQuestions?: boolean;
 
   /** Which entities to show on the question's data picker */

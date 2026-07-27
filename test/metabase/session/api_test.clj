@@ -592,7 +592,6 @@
         (t2/insert! :model/User (merge  (mt/with-temp-defaults :model/User) {:email "test@metabase.com" :is_active true}))
         (testing "Google auth works with remember me and rasta"
           ;; client-real-response hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
-          #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
           (with-redefs [http/post (constantly
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","

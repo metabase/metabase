@@ -1,7 +1,13 @@
-import type { Location } from "history";
 import { useCallback } from "react";
 
-import { Route, useNavigate } from "metabase/router";
+import type { Location } from "metabase/router";
+import {
+  Route,
+  useNavigate,
+  useParams,
+  useRoute,
+  useRouter,
+} from "metabase/router";
 import { Modal, type ModalProps } from "metabase/ui";
 
 type RouteParams = Record<string, string | undefined>;
@@ -44,11 +50,11 @@ export function modalRoute(
   ComposedModal: React.ComponentType<ModalComponentProps>,
   { noWrap = false, modalProps }: ModalRouteOptions = {},
 ) {
-  function ModalRouteComponent({
-    params,
-    location,
-    route,
-  }: RouteInjectedProps) {
+  function ModalRouteComponent() {
+    const params = useParams();
+    // The raw v3 location (with `query`), which some modals still read.
+    const { location } = useRouter();
+    const route = useRoute() ?? undefined;
     const navigate = useNavigate();
     const onClose = useCallback(
       () => navigate("..", { relative: "route" }),
@@ -87,15 +93,5 @@ export function modalRoute(
   }]`;
 
   // Keyed for the plugin route arrays, which React renders as a list.
-  return <Route key={path} path={path} component={ModalRouteComponent} />;
+  return <Route key={path} path={path} element={<ModalRouteComponent />} />;
 }
-
-/**
- * What react-router v3 injects into a route `component`. Replaced by the facade
- * hooks when the engine swaps.
- */
-type RouteInjectedProps = {
-  params: RouteParams;
-  location: Location;
-  route: Route;
-};

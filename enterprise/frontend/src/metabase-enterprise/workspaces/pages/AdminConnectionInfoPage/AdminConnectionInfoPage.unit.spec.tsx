@@ -16,13 +16,13 @@ function setup({ database }: { database: Database }) {
   renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <AdminConnectionInfoPage
           params={{ databaseId: String(database.id) }}
           // Unjustified type cast. FIXME
           route={{ path: "/" } as unknown as Route}
         />
-      )}
+      }
     />,
     {
       withRouter: true,

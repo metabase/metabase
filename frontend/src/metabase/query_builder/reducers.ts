@@ -639,80 +639,90 @@ type NestedCardPayloadAction = {
   };
 };
 
+const handleQueryCompleted = (
+  state: Card | null,
+  action: NestedCardPayloadAction,
+) => {
+  if (!state) {
+    return state;
+  }
+  return {
+    ...state,
+    display: action.payload.card.display,
+    result_metadata: action.payload.card.result_metadata,
+    visualization_settings: action.payload.card.visualization_settings,
+  };
+};
+
 // the card that is actively being worked on
+//
+// NOTE: the `.addCase` / `.addMatcher` calls below are written as separate
+// statements rather than a single fluent chain on purpose. The chained form
+// accumulates generic instantiation depth across every link, and the RTK
+// Query `matchFulfilled` matchers at the end push that past TypeScript's
+// "excessively deep" limit (TS2589) whenever the global API type graph grows.
+// Splitting into per-statement calls keeps each call's inference shallow.
 export const card = createReducer<Card | null>(null, (builder) => {
-  builder
-    .addCase(RESET_QB, () => null)
-    .addCase(CLOSE_QB, () => null)
-    .addCase<string, NestedCardPayloadAction>(INITIALIZE_QB, (state, action) =>
-      action.payload ? action.payload.card : null,
-    )
-    .addCase<string, CardPayloadAction>(
-      SOFT_RELOAD_CARD,
-      (state, action) => action.payload,
-    )
-    .addCase<string, CardPayloadAction>(
-      RELOAD_CARD,
-      (state, action) => action.payload,
-    )
-    .addCase<string, NestedCardPayloadAction>(
-      SET_CARD_AND_RUN,
-      (state, action) => action.payload.card,
-    )
-    .addCase<string, CardPayloadAction>(
-      API_CREATE_QUESTION,
-      (state, action) => action.payload,
-    )
-    .addCase<string, CardPayloadAction>(
-      API_UPDATE_QUESTION,
-      (state, action) => action.payload,
-    )
-    .addCase<string, NestedCardPayloadAction>(
-      CANCEL_QUESTION_CHANGES,
-      (state, action) => action.payload.card,
-    )
-    .addCase<string, NestedCardPayloadAction>(
-      UPDATE_QUESTION,
-      (state, action) => action.payload.card,
-    )
-    .addCase<string, NestedCardPayloadAction>(
-      QUERY_COMPLETED,
-      (state, action) => {
-        if (!state) {
-          return state;
-        }
-        return {
-          ...state,
-          display: action.payload.card.display,
-          result_metadata: action.payload.card.result_metadata,
-          visualization_settings: action.payload.card.visualization_settings,
-        };
-      },
-    );
+  builder.addCase(RESET_QB, () => null);
+  builder.addCase(CLOSE_QB, () => null);
+  builder.addCase<string, NestedCardPayloadAction>(
+    INITIALIZE_QB,
+    (state, action) => (action.payload ? action.payload.card : null),
+  );
+  builder.addCase<string, CardPayloadAction>(
+    SOFT_RELOAD_CARD,
+    (state, action) => action.payload,
+  );
+  builder.addCase<string, CardPayloadAction>(
+    RELOAD_CARD,
+    (state, action) => action.payload,
+  );
+  builder.addCase<string, NestedCardPayloadAction>(
+    SET_CARD_AND_RUN,
+    (state, action) => action.payload.card,
+  );
+  builder.addCase<string, CardPayloadAction>(
+    API_CREATE_QUESTION,
+    (state, action) => action.payload,
+  );
+  builder.addCase<string, CardPayloadAction>(
+    API_UPDATE_QUESTION,
+    (state, action) => action.payload,
+  );
+  builder.addCase<string, NestedCardPayloadAction>(
+    CANCEL_QUESTION_CHANGES,
+    (state, action) => action.payload.card,
+  );
+  builder.addCase<string, NestedCardPayloadAction>(
+    UPDATE_QUESTION,
+    (state, action) => action.payload.card,
+  );
+  builder.addCase<string, NestedCardPayloadAction>(
+    QUERY_COMPLETED,
+    handleQueryCompleted,
+  );
+  builder.addMatcher(createCardPublicLink.matchFulfilled, (state, action) => {
+    if (!state) {
+      return state;
+    }
+    return {
+      ...state,
+      public_uuid: action.payload.uuid,
+    };
+  });
+  builder.addMatcher(deleteCardPublicLink.matchFulfilled, (state) => {
+    if (!state) {
+      return state;
+    }
 
-  // a separate builder statement keeps the expression shallow enough for
-  // TypeScript's instantiation-depth limit (TS2589)
-  builder
-    .addMatcher(createCardPublicLink.matchFulfilled, (state, action) => {
-      if (!state) {
-        return state;
-      }
-      return {
-        ...state,
-        public_uuid: action.payload.uuid,
-      };
-    })
-    .addMatcher(deleteCardPublicLink.matchFulfilled, (state) => {
-      if (!state) {
-        return state;
-      }
-
-      return {
-        ...state,
-        public_uuid: null,
-      };
-    })
-    .addMatcher(updateCardEnableEmbedding.matchFulfilled, (state, action) => {
+    return {
+      ...state,
+      public_uuid: null,
+    };
+  });
+  builder.addMatcher(
+    updateCardEnableEmbedding.matchFulfilled,
+    (state, action) => {
       if (!state) {
         return state;
       }
@@ -720,8 +730,11 @@ export const card = createReducer<Card | null>(null, (builder) => {
         ...state,
         enable_embedding: action.payload.enable_embedding,
       };
-    })
-    .addMatcher(updateCardEmbeddingParams.matchFulfilled, (state, action) => {
+    },
+  );
+  builder.addMatcher(
+    updateCardEmbeddingParams.matchFulfilled,
+    (state, action) => {
       if (!state) {
         return state;
       }
@@ -731,5 +744,6 @@ export const card = createReducer<Card | null>(null, (builder) => {
         embedding_params: action.payload.embedding_params,
         initially_published_at: action.payload.initially_published_at,
       };
-    });
+    },
+  );
 });

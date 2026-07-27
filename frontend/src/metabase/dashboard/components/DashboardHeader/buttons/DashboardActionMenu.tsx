@@ -1,5 +1,4 @@
 import { type MouseEvent, forwardRef, useState } from "react";
-import type { WithRouterProps } from "react-router/lib/withRouter";
 import { c, t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
@@ -11,7 +10,7 @@ import { DashboardSubscriptionMenuItem } from "metabase/notifications/Notificati
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Link, type LinkProps, withRouter } from "metabase/router";
+import { Link, type LinkProps, useRouter } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
 
 type DashboardActionMenuProps = {
@@ -35,9 +34,9 @@ const DashboardActionMenuInner = ({
   canResetFilters,
   onResetFilters,
   canEdit,
-  location,
   openSettingsSidebar,
-}: DashboardActionMenuProps & WithRouterProps) => {
+}: DashboardActionMenuProps) => {
+  const { location } = useRouter();
   const { dashboard, isFullscreen, onFullscreenChange, onChangeLocation } =
     useDashboardContext();
   const [opened, setOpened] = useState(false);
@@ -164,4 +163,4 @@ const DashboardActionMenuInner = ({
   );
 };
 
-export const DashboardActionMenu = withRouter(DashboardActionMenuInner);
+export const DashboardActionMenu = DashboardActionMenuInner;

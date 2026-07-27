@@ -10,6 +10,7 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { NewModals } from "metabase/new/components/NewModals/NewModals";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import {
   createMockCollection,
@@ -51,11 +52,17 @@ async function setup({
   setupEnterprisePlugins();
 
   renderWithProviders(
-    <>
-      <NewItemMenu trigger={<button>New</button>} />
-      <NewModals />
-    </>,
+    <Route
+      path="/"
+      element={
+        <>
+          <NewItemMenu trigger={<button>New</button>} />
+          <NewModals />
+        </>
+      }
+    />,
     {
+      withRouter: true,
       storeInitialState: createMockState({
         settings,
         currentUser: createMockUser({

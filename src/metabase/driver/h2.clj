@@ -1,7 +1,6 @@
 (ns metabase.driver.h2
   (:refer-clojure :exclude [some every?])
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
    [java-time.api :as t]
@@ -749,54 +748,79 @@
   (let [[_file options] (connection-string->file+options connection-string)]
     (get options "USER")))
 
-(defmethod driver/init-workspace-isolation! :h2
+(defmethod driver/workspace-isolation-details :h2
   [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        username    (driver.u/workspace-isolation-user-name workspace)
+  ;; H2 embeds credentials in the :db connection string, so build a new one off the
+  ;; connection's (admin-overlay-resolved) string rather than returning :user/:password.
+  (let [username    (driver.u/workspace-isolation-user-name workspace)
         password    (driver.u/random-workspace-password)
-        ;; H2 embeds credentials in the :db connection string, so we need to build a new one
-        original-db (:db (driver.conn/effective-details database))
-        new-db      (replace-credentials original-db username password)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql [(format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username password)
-                     (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
-                     (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
-          (.addBatch ^Statement stmt ^String sql))
-        (try
-          (.executeBatch ^Statement stmt)
-          (catch Throwable t
-            (throw (driver.u/scrub-exceptions t [password]))))))
-    {:schema           schema-name
-     :database_details {:db new-db}}))
+        original-db (:db (driver.conn/effective-details database))]
+    {:schema           (driver.u/workspace-isolation-namespace-name workspace)
+     :database_details {:db (replace-credentials original-db username password)}}))
+
+(defmethod driver/init-workspace-isolation! :h2
+  [driver database workspace]
+  (let [schema-name (:schema workspace)
+        [_file {username "USER" password "PASSWORD"}]
+        (connection-string->file+options (-> workspace :database_details :db))
+        escaped-password (sql.u/escape-sql password :ansi)]
+    ;; No transaction: H2 DDL (CREATE USER/SCHEMA, GRANT) commits any open
+    ;; transaction, so a wrapper would be decorative. Failure recovery is
+    ;; compensation via the idempotent destroy, not rollback.
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver database {:write? true}
+     (fn [^Connection conn]
+       (with-open [^Statement stmt (.createStatement conn)]
+         (doseq [sql [(format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username escaped-password)
+                      ;; the user may survive a failed teardown; without this it would keep
+                      ;; its old password while the new one gets persisted
+                      (format "ALTER USER \"%s\" SET PASSWORD '%s'" username escaped-password)
+                      (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
+                      (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
+           (.addBatch ^Statement stmt ^String sql))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password escaped-password])))))))
+    nil))
 
 (defmethod driver/destroy-workspace-isolation! :h2
-  [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        username    (driver.u/workspace-isolation-user-name workspace)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql [;; CASCADE drops all objects (tables, etc.) in the schema
-                     (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)
-                     (format "DROP USER IF EXISTS \"%s\"" username)]]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
+  [driver database workspace]
+  (let [schema-name (:schema workspace)
+        username    (-> workspace :database_details :db get-user-from-connection-string)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver database {:write? true}
+     (fn [^Connection conn]
+       (with-open [^Statement stmt (.createStatement conn)]
+         (doseq [sql [;; CASCADE drops all objects (tables, etc.) in the schema
+                      (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)
+                      (format "DROP USER IF EXISTS \"%s\"" username)]]
+           (.addBatch ^Statement stmt ^String sql))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/batch-exception t)))))))))
 
 (defmethod driver/grant-workspace-read-access! :h2
-  [_driver database workspace schemas]
+  [driver database workspace schemas]
   (let [username (-> workspace :database_details :db get-user-from-connection-string)
         qu       (sql.u/quote-name :h2 :field username)
         schemas  (distinct schemas)]
     ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName.
     ;; Schema-wide grant covers existing + future tables. Per-table grants
     ;; are not emitted: workspace input shape is per-namespace, not per-table.
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [schema schemas]
-          (.addBatch ^Statement stmt
-                     ^String (format "GRANT SELECT ON SCHEMA %s TO %s"
-                                     (sql.u/quote-name :h2 :schema schema) qu)))
-        (.executeBatch ^Statement stmt)))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver database {:write? true}
+     (fn [^Connection conn]
+       (with-open [^Statement stmt (.createStatement conn)]
+         (doseq [schema schemas]
+           (.addBatch ^Statement stmt
+                      ^String (format "GRANT SELECT ON SCHEMA %s TO %s"
+                                      (sql.u/quote-name :h2 :schema schema) qu)))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/batch-exception t)))))))))
 
 (defmethod driver/llm-sql-dialect-resource :h2 [_]
   "metabot/prompts/dialects/h2.md")

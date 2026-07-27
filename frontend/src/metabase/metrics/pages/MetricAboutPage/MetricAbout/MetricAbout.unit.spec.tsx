@@ -77,10 +77,7 @@ function setup(card: Card, dataset: Dataset = SCALAR_DATASET) {
   setupMetricEndpoint(createMockMetric({ id: card.id, name: card.name }));
 
   renderWithProviders(
-    <Route
-      path="/"
-      component={() => <MetricAbout card={card} urls={mockUrls} />}
-    />,
+    <Route path="/" element={<MetricAbout card={card} urls={mockUrls} />} />,
     {
       storeInitialState: createMockState(),
       withRouter: true,

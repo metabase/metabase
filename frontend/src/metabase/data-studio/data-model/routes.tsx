@@ -16,84 +16,84 @@ import { DataModel } from "./pages/DataModel";
 export function getDataStudioMetadataRoutes(IsAdmin: ComponentType) {
   return (
     <>
-      <Route index component={DataModel} />
-      <Route path="database" component={DataModel} />
-      <Route path="database/:databaseId" component={DataModel} />
+      <Route index element={<DataModel />} />
+      <Route path="database" element={<DataModel />} />
+      <Route path="database/:databaseId" element={<DataModel />} />
       <Route
         path="database/:databaseId/schema/:schemaId"
-        component={DataModel}
+        element={<DataModel />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId"
-        component={DataModel}
+        element={<DataModel />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/segments/new"
         element={<IsAdmin />}
       >
-        <Route index component={DataModelNewSegmentPage} />
+        <Route index element={<DataModelNewSegmentPage />} />
       </Route>
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId"
-        component={DataModelSegmentDetailPage}
+        element={<DataModelSegmentDetailPage />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/revisions"
-        component={DataModelSegmentRevisionHistoryPage}
+        element={<DataModelSegmentRevisionHistoryPage />}
       />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/dependencies"
-          component={DataModelSegmentDependenciesPage}
+          element={<DataModelSegmentDependenciesPage />}
         >
-          <Route index component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/measures/new"
         element={<IsAdmin />}
       >
-        <Route index component={DataModelNewMeasurePage} />
+        <Route index element={<DataModelNewMeasurePage />} />
       </Route>
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId"
-        component={DataModelMeasureDetailPage}
+        element={<DataModelMeasureDetailPage />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/revisions"
-        component={DataModelMeasureRevisionHistoryPage}
+        element={<DataModelMeasureRevisionHistoryPage />}
       />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/dependencies"
-          component={DataModelMeasureDependenciesPage}
+          element={<DataModelMeasureDependenciesPage />}
         >
-          <Route index component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId"
-        component={redirect(
+        element={redirect(
           "database/:databaseId/schema/:schemaId/table/:tableId/details",
         )}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
-        component={DataModel}
+        element={<DataModel />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/:tab/:fieldId"
-        component={DataModel}
+        element={<DataModel />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-        component={redirect(
+        element={redirect(
           "database/:databaseId/schema/:schemaId/table/:tableId/details",
         )}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
-        component={redirect(
+        element={redirect(
           "database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId",
         )}
       />

@@ -24,7 +24,7 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Route, redirect } from "metabase/router";
+import { Route, redirect, withRouteProps } from "metabase/router";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Text } from "metabase/ui";
@@ -69,6 +69,13 @@ import {
   isTenantGroup,
 } from "./utils/utils";
 
+// Reads route params through `connect`'s `mapStateToProps`, so the hooks cannot
+// reach it. Migrating it means rewriting the connected container, tracked
+// separately.
+const RoutedTenantCollectionPermissionsPage = withRouteProps(
+  TenantCollectionPermissionsPage,
+);
+
 export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
     PLUGIN_TENANTS.isEnabled = true;
@@ -95,13 +102,13 @@ export function initializePlugin() {
       <>
         <Route
           path="tenant-collections"
-          component={TenantCollectionPermissionsPage}
+          element={<RoutedTenantCollectionPermissionsPage />}
         >
           <Route path=":collectionId" />
         </Route>
         <Route
           path="tenant-specific-collections"
-          component={TenantSpecificCollectionPermissionsPage}
+          element={<TenantSpecificCollectionPermissionsPage />}
         >
           <Route path=":collectionId" />
         </Route>
@@ -120,16 +127,16 @@ export function initializePlugin() {
 
     PLUGIN_TENANTS.tenantsRoutes = (
       <>
-        <Route index component={TenantsListingApp} />
-        <Route path="" component={TenantsListingApp}>
+        <Route index element={<TenantsListingApp />} />
+        <Route path="" element={<TenantsListingApp />}>
           {modalRoute("new", NewTenantModal, { noWrap: true })}
           {modalRoute("user-strategy", EditUserStrategyModal, { noWrap: true })}
         </Route>
         <Route path="groups">
-          <Route index component={ExternalGroupsListingApp} />
-          <Route path=":groupId" component={ExternalGroupDetailApp} />
+          <Route index element={<ExternalGroupsListingApp />} />
+          <Route path=":groupId" element={<ExternalGroupDetailApp />} />
         </Route>
-        <Route path="people" component={ExternalPeopleListingApp}>
+        <Route path="people" element={<ExternalPeopleListingApp />}>
           {modalRoute(
             "new",
             (props) => (
@@ -140,7 +147,7 @@ export function initializePlugin() {
             },
           )}
           <Route path=":userId">
-            <Route index component={redirect("/admin/people/tenants/people")} />
+            <Route index element={redirect("/admin/people/tenants/people")} />
             {modalRoute(
               "edit",
               (props) => (
@@ -157,13 +164,8 @@ export function initializePlugin() {
             ))}
           </Route>
         </Route>
-        <Route path=":tenantId" component={TenantsListingApp}>
-          {modalRoute(
-            "edit",
-            // @ts-expect-error - params prop can't be inferred
-            EditTenantModal,
-            { noWrap: true },
-          )}
+        <Route path=":tenantId" element={<TenantsListingApp />}>
+          {modalRoute("edit", EditTenantModal, { noWrap: true })}
           {modalRoute(
             "deactivate",
             // @ts-expect-error - params prop can't be inferred

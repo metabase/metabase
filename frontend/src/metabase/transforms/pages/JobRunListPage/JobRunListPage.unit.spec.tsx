@@ -66,7 +66,7 @@ function setup({
 
   const path = "/data-studio/transforms/jobs/:jobId/runs";
 
-  renderWithProviders(<Route path={path} component={JobRunListPage} />, {
+  renderWithProviders(<Route path={path} element={<JobRunListPage />} />, {
     withRouter: true,
     initialRoute,
   });
