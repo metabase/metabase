@@ -89,7 +89,7 @@
 
 ;;;; Execution middleware
 
-(defenterprise apply-table-sql-remapping
+(defenterprise apply-table-sql-remapping*
   "**Table remapping, Phase 2 — execute (post-compilation).** The authoritative SQL rewriter. Runs after all
   preprocess work — snippets, card refs, params, and MBQL compilation are complete — so the query is reduced to one
   canonical SQL string. Parses it, rewrites every from-side table ref to its to-side counterpart, re-emits. No-op
@@ -101,12 +101,12 @@
   [qp]
   qp)
 
-(defn apply-table-sql-remapping-middleware
-  "Helper middleware wrapper for [[apply-table-sql-remapping]] to make sure we do [[defenterprise]] dispatch correctly
+(defn apply-table-sql-remapping
+  "Helper middleware wrapper for [[apply-table-sql-remapping*]] to make sure we do [[defenterprise]] dispatch correctly
   on each QP run rather than just once when we combine all of the QP middleware."
   [qp]
   (fn [query rff]
-    ((apply-table-sql-remapping qp) query rff)))
+    ((apply-table-sql-remapping* qp) query rff)))
 
 ;;; (f qp) => qp
 

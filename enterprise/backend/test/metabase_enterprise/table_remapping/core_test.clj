@@ -72,7 +72,7 @@
                                               :to-schema   "WS"     :to-table   "VENUES_COPY"}]
         (let [captured (atom nil)
               mock-qp  (fn [query _rff] (reset! captured query) :ok)
-              wrapped  (table-remapping.middleware/apply-table-sql-remapping mock-qp)]
+              wrapped  (table-remapping.middleware/apply-table-sql-remapping* mock-qp)]
           (wrapped {:database    1
                     :qp/compiled {:query  "SELECT * FROM PUBLIC.VENUES WHERE id = ?"
                                   :params [42]}}
@@ -86,7 +86,7 @@
       (let [original-sql "SELECT * FROM PUBLIC.VENUES"
             captured     (atom nil)
             mock-qp      (fn [query _rff] (reset! captured query) :ok)
-            wrapped      (table-remapping.middleware/apply-table-sql-remapping mock-qp)]
+            wrapped      (table-remapping.middleware/apply-table-sql-remapping* mock-qp)]
         (wrapped {:database 1, :qp/compiled {:query original-sql}} identity)
         (is (= original-sql (get-in @captured [:qp/compiled :query])))))))
 
@@ -96,7 +96,7 @@
       (table-remapping/with-table-remapping [{:from-schema "PUBLIC" :from-table "VENUES"
                                               :to-schema   "WS"     :to-table   "VENUES_COPY"}]
         (let [mock-qp (fn [_query _rff] :ok)
-              wrapped (table-remapping.middleware/apply-table-sql-remapping mock-qp)]
+              wrapped (table-remapping.middleware/apply-table-sql-remapping* mock-qp)]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Table remapping failed: cannot parse SQL"

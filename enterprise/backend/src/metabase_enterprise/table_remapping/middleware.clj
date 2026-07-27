@@ -19,7 +19,7 @@
    identifiers directly. Native SQL is intentionally untouched here — at this stage it may
    still contain unresolved template tags that make it un-parseable.
 
-   ## Phase 2 — [[apply-table-sql-remapping]]  (execute; authoritative SQL rewrite)
+   ## Phase 2 — [[apply-table-sql-remapping*]]  (execute; authoritative SQL rewrite)
 
    Runs after every preprocess step — snippets expanded, card references resolved,
    parameters substituted, MBQL compiled to SQL — so the query is reduced to one canonical
@@ -171,7 +171,7 @@
                             joins)))))
         stages))
 
-(defenterprise apply-table-sql-remapping
+(defenterprise apply-table-sql-remapping*
   "**Phase 2 — execute (post-compilation).** The authoritative SQL rewriter.
 
    Runs in the execution middleware chain after every preprocess step, when the query is
