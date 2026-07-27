@@ -29,18 +29,24 @@
    "collection" [:model/Collection :model/CollectionBookmark :collection_id]
    "document" [:model/Document :model/DocumentBookmark :document_id]})
 
-(defn bookmarked?
+(defn- bookmarked?
   "Does `user-id` have a bookmark on (`model`, `id`)? `model` is one of [[Models]]."
   [model id user-id]
   (let [[_ bookmark-model item-key] (lookup model)]
     (t2/exists? bookmark-model item-key id :user_id user-id)))
 
 (defn create-bookmark!
-  "Insert `user-id`'s bookmark on (`model`, `id`) and return it. Does not read-check the item or
-  guard against a duplicate — callers do both."
+  "Insert `user-id`'s bookmark on (`model`, `id`) and return it, or return the existing bookmark
+  when there already is one. Does not read-check the item — callers do."
   [model id user-id]
   (let [[_ bookmark-model item-key] (lookup model)]
-    (first (t2/insert-returning-instances! bookmark-model {item-key id :user_id user-id}))))
+    (try
+      (first (t2/insert-returning-instances! bookmark-model {item-key id :user_id user-id}))
+      (catch Exception e
+        ;; Concurrent inserts race the (user_id, item) unique constraint. The loser reads the
+        ;; winner's row: the caller asked for a state that now holds, so there is nothing to fail.
+        (or (t2/select-one bookmark-model item-key id :user_id user-id)
+            (throw e))))))
 
 (defn delete-bookmark!
   "Delete `user-id`'s bookmark on (`model`, `id`). No-op when there is none."
