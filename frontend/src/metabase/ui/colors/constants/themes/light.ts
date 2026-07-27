@@ -38,10 +38,10 @@ const deprecatedColors = {
   error: baseColors.lobster[50],
   filter: baseColors.octopus[50],
   focus: baseColors.blue[20],
-  "icon-brand": "var(--mb-color-text-brand)",
-  "icon-primary": "var(--mb-color-text-primary)",
-  "icon-disabled": "var(--mb-color-text-disabled)",
-  "icon-secondary": "var(--mb-color-text-secondary)",
+  "icon-brand": baseColors.brand[50], // Matches text-brand
+  "icon-primary": baseColors.orionAlpha[80], // Matches text-primary
+  "icon-disabled": baseColors.orionAlpha[40], // Matches text-disabled
+  "icon-secondary": baseColors.orionAlpha[60], // Matches text-secondary
   "illustration-brand-secondary": baseColors.brand[10],
   "illustration-brand-tertiary": baseColors.brand[5],
   "metabase-brand": baseColors.blue[40],
@@ -71,10 +71,10 @@ const deprecatedColors = {
   "border-strong": baseColors.orionAlpha[30],
   "border-stronger": baseColors.orionAlpha[50],
   "border-subtle": baseColors.orionAlpha[10],
-  gold: "#FFD700",
+  gold: "hsla(50.6, 100%, 50%, 1)",
   "upsell-primary": baseColors.ocean[70],
   "upsell-secondary": baseColors.ocean[20],
-  "upsell-gem": "#00d4ff",
+  "upsell-gem": "hsla(190, 100%, 50%, 1)",
 };
 
 const actualColors = {
@@ -102,10 +102,9 @@ const actualColors = {
   "background_surface-error-subtle": baseColors.lobster[5],
   "background_surface-hover":
     "color-mix(in srgb, var(--mb-color-core-brand) 7%, transparent)",
-  "background_surface-primary": "var(--mb-color-background_page-primary)",
+  "background_surface-primary": baseColors.white, // Matches background_page-primary
   "background_surface-primary-hover": baseColors.orionAlpha[10],
-  "background_surface-primary-inverse":
-    "var(--mb-color-background_page-primary-inverse)",
+  "background_surface-primary-inverse": baseColors.orion[95], // Matches background_page-primary-inverse
   "background_surface-primary-inverse-hover": baseColors.orionAlphaInverse[20],
   "background_surface-primary-inverse-pressed":
     baseColors.orionAlphaInverse[10],
@@ -131,7 +130,7 @@ const actualColors = {
   "border-neutral-subtle": baseColors.orionAlpha[10],
   "core-blue-saturated": baseColors.ocean[60],
   "core-brand-hover": baseColors.brand[50],
-  "core-gold": "#FFD700",
+  "core-gold": "hsla(50.6, 100%, 50%, 1)",
   "core-green-saturated": baseColors.palm[60],
   "core-info": baseColors.orion[40],
   "core-metabase_brand": baseColors.blue[40],
@@ -139,7 +138,7 @@ const actualColors = {
   "core-purple-saturated": baseColors.octopus[60],
   "core-red-saturated": baseColors.lobster[60],
   "core-white": baseColors.white,
-  "core-white_constant": "white",
+  "core-white_constant": baseColors.white,
   "core-yellow-saturated": baseColors.dubloon[30],
   "feedback-negative": baseColors.lobster[50],
   "feedback-negative-strong": baseColors.lobster[60],
