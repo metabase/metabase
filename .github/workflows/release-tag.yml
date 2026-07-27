@@ -336,7 +336,7 @@ jobs:
           fs.writeFileSync('version-info.json', JSON.stringify(newVersionInfo));
 
           // currently we don't support patch versions as latest, or store them in version-info.json
-          if (!isPatchVersion(canonical_version)) {
+          if (!isPatchVersion(canonical_version) && edition === 'oss') {
             await github.rest.repos.createDispatchEvent({
               owner: context.repo.owner,
               repo: '${{ vars.WEBSITE_REPO }}',
