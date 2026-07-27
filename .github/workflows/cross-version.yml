@@ -12,6 +12,7 @@ on:
         required: true
         type: string
 
+  # NOTE: this workflow is temporarily disabled until the cross version tests are fixed.
   # pull_request:
   #   paths:
   #     - "cross-version/**"
