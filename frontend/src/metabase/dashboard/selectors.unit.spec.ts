@@ -9,6 +9,7 @@ import {
   getIsEditingParameter,
   getIsSharing,
   getParameters,
+  getSelectedTabId,
   getShowAddQuestionSidebar,
   getSidebar,
 } from "metabase/dashboard/selectors";
@@ -24,12 +25,14 @@ import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDashboardTab,
   createMockField,
   createMockHeadingDashboardCard,
   createMockNativeDatasetQuery,
   createMockParameter,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
+import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import { SIDEBAR_NAME } from "./constants";
 
@@ -461,5 +464,52 @@ describe("dashboard/selectors", () => {
       expect(cards[1].card.id).toBe(1);
       expect(cards[0].card.id).toBe(2);
     });
+  });
+});
+
+describe("getSelectedTabId", () => {
+  const ORIGINAL_URL = window.location.href;
+
+  afterEach(() => {
+    window.history.pushState({}, "", ORIGINAL_URL);
+  });
+
+  function setupTabParam(tab: string): State {
+    window.history.pushState({}, "", `/dashboard/1?tab=${tab}`);
+
+    return createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: 1,
+        selectedTabId: null,
+        dashboards: {
+          1: createMockStoreDashboard({
+            id: 1,
+            tabs: [
+              createMockDashboardTab({
+                id: 10,
+                entity_id: createMockEntityId("tabEntityId10________"),
+              }),
+              createMockDashboardTab({
+                id: 20,
+                entity_id: createMockEntityId("tabEntityId20________"),
+              }),
+            ],
+          }),
+        },
+      }),
+      settings: createMockSettingsState(),
+    });
+  }
+
+  it("selects the tab named by a numeric `<id>-<slug>` tab param", () => {
+    expect(getSelectedTabId(setupTabParam("20-portfolio"))).toBe(20);
+  });
+
+  it("selects the tab named by a tab entity_id param", () => {
+    expect(getSelectedTabId(setupTabParam("tabEntityId20________"))).toBe(20);
+  });
+
+  it("falls back to the first tab when the entity_id matches no tab", () => {
+    expect(getSelectedTabId(setupTabParam("unknownTabEid________"))).toBe(10);
   });
 });
