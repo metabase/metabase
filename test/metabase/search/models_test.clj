@@ -2,9 +2,11 @@
   "Pins the delete-capture wiring in [[metabase.search.models]]: deletes now enqueue re-derivation
   messages via the [[metabase.app-db.dml-capture]] seam instead of firing no hooks at all."
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.app-db.dml-capture :as dml-capture]
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
@@ -87,6 +89,41 @@
           (let [where [:and [:= "card" "card"] [:= card-id :this.id] [:= true true]]]
             (is (=? [#{["card" where] ["dataset" where] ["metric" where]}]
                     (mapv set @calls)))))))))
+
+(deftest ^:synchronized purge-cascaded-action-on-model-delete-test
+  (testing "deleting a model card purges the index entries for actions the database cascade removed with it"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {card-id :id}   {:name "Temp Action Model" :type :model}
+                     :model/Action {action-id :id} {:name     "Temp Cascaded Action"
+                                                    :model_id card-id
+                                                    :type     :query}]
+        (is (= 1 (t2/count (search.index/active-table) :model "action" :model_id (str action-id))))
+        ;; action.model_id carries ON DELETE CASCADE, so this removes the action with no toucan statement.
+        (t2/delete! :model/Card card-id)
+        (is (false? (t2/exists? :model/Action action-id)))
+        (is (= 0 (t2/count (search.index/active-table) :model "action" :model_id (str action-id))))))))
+
+(deftest ^:synchronized surviving-cascade-documents-are-not-purged-test
+  (testing "a cascade-fed document that still resolves after the delete keeps its index entry"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {keep-card :id}   {:name "Kept Action Model" :type :model}
+                     :model/Card   {drop-card :id}   {:name "Dropped Action Model" :type :model}
+                     :model/Action {keep-action :id} {:name "Surviving Action" :model_id keep-card :type :query}
+                     :model/Action {drop-action :id} {:name "Doomed Action" :model_id drop-card :type :query}]
+        (t2/delete! :model/Card drop-card)
+        (is (= 0 (t2/count (search.index/active-table) :model "action" :model_id (str drop-action))))
+        (testing "the untouched card's action is left alone"
+          (is (= 1 (t2/count (search.index/active-table) :model "action" :model_id (str keep-action)))))))))
+
+(deftest cascading-documents-only-covers-unpurgeable-selectors-test
+  (testing "only search-models ingestion cannot purge on its own are enumerated"
+    (mt/with-temp [:model/Card   {card-id :id} {:name "Selector Shape Card" :type :model}
+                   :model/Action {_ :id}       {:name "Shape Probe Action" :model_id card-id :type :query}]
+      (let [cascading (search/cascading-documents [(t2/select-one :model/Card card-id)])]
+        (testing "card/dataset/metric resolve from a :this.id selector, so ingestion already handles them"
+          (is (empty? (set/intersection #{"card" "dataset" "metric"} (set (keys cascading))))))
+        (testing "action is reached through :this.model_id, so its documents are enumerated up front"
+          (is (contains? (set (keys cascading)) "action")))))))
 
 (deftest rollback-discards-handoff-and-leaves-the-row-test
   (testing "a rolled-back delete discards its post-commit handoff, and the row survives"

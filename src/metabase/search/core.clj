@@ -1,6 +1,7 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [environ.core :as env]
    [metabase.analytics-interface.core :as analytics]
@@ -239,6 +240,40 @@
                             (remove (comp search.util/impossible-condition? second))
                             seq)]
       (search.ingestion/ingest-maybe-async! updates))))
+
+(defn- cascading-selectors
+  "Hook selectors for `instances` naming documents ingestion could not purge on its own, by search-model."
+  [instances]
+  (->> instances
+       (into #{} (mapcat #(search.spec/search-models-to-update % true)))
+       (remove (comp search.util/impossible-condition? second))
+       (remove (comp search.ingestion/purgeable-selector? second))
+       (u/group-by first second)))
+
+(defn cascading-documents
+  "Documents that `instances` feed which would become unpurgeable once those rows are gone, with the selector
+  that found them. Ingestion recovers a document id only from a `:this.id` selector, so anything reached
+  through a join on another column — or keyed by a compound id — has to be enumerated while it still exists.
+  Resolve this before the delete and hand the result to [[purge-vanished-documents!]] after it commits."
+  [instances]
+  (when (supports-index?)
+    (not-empty
+     (into {}
+           (keep (fn [[search-model selectors]]
+                   (let [where (into [:or] (distinct selectors))]
+                     (when-let [ids (not-empty (search.ingestion/doc-ids search-model where))]
+                       [search-model {:where where, :ids ids}]))))
+           (cascading-selectors instances)))))
+
+(defn purge-vanished-documents!
+  "Remove index entries for [[cascading-documents]] that no longer resolve, leaving survivors alone."
+  [cascading]
+  (when (and (seq cascading) (supports-index?))
+    (doseq [[search-model {:keys [where ids]}] cascading
+            :let [gone (set/difference ids (search.ingestion/doc-ids search-model where))]
+            :when (seq gone)
+            e (search.engine/active-engines)]
+      (search.engine/delete! e search-model gone))))
 
 (defn delete!
   "Given a model and a list of model's ids, remove corresponding search entries."

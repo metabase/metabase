@@ -335,6 +335,33 @@
 
        :and (first (keep (partial extract-model-and-id model) values))))))
 
+(defn purgeable-selector?
+  "Whether a hook's where-clause names a document [[bulk-ingest!]] could purge if it stopped resolving.
+  Only `:this.id` yields a document id, so a search-model reached through a join on another column, or one
+  whose `:id` attr is compound, has to have its documents enumerated before they are deleted."
+  [where-clause]
+  (try
+    (some? (extract-model-and-id ::probe where-clause))
+    (catch Exception _
+      ;; A selector shape extraction doesn't recognize is bulk-ingest!'s problem to hit, not this caller's:
+      ;; callers run before a delete, where throwing would take the delete down with it.
+      true)))
+
+(defn doc-ids
+  "The ids of the documents `search-model` currently produces under `where-clause`.
+  Narrows the spec's indexing query to its `:id` attr, so enumerating documents that are about to disappear
+  costs an id scan rather than a full document build."
+  [search-model where-clause]
+  (let [spec    (search.spec/spec search-model)
+        id-attr (-> spec :attrs :id)]
+    (into #{}
+          (map (comp str :id))
+          (mdb/streaming-reducible-query
+           (assoc (spec-index-query-where search-model where-clause)
+                  :select (search.spec/qualify-columns
+                           :this
+                           [(if (true? id-attr) :id [id-attr :id])]))))))
+
 (defn bulk-ingest!
   "Process the given search model updates."
   [updates]
