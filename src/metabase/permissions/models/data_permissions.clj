@@ -214,8 +214,18 @@
         (intern! v)))))
 
 (defn- conj-slot
-  "Add a value to a cache-entry slot: a slot holds its single value directly and is promoted to a set only when
-  constraint-violating duplicate rows disagree."
+  "Merge a row's value `v` into a cache-entry slot.
+
+  Slots exist because data_permissions has no unique constraint on (group_id, perm_type, db_id, table_id), and its
+  delete-then-insert write paths take different cluster locks, so racing writers can — and in production data do —
+  leave multiple rows for the same logical key. The raw rows fed every duplicate's value into the consumers'
+  coalescing logic, which resolved conflicts deterministically; a plain `{group-id value}` map would instead keep
+  whichever row the unordered SELECT returned last, making permission results flip with JDBC row order (e.g.
+  duplicate download-results rows {:no, :one-million-rows} granting downloads that coalescing would deny).
+
+  So: a slot holds its single value directly in the (overwhelmingly common) duplicate-free case, and is promoted to
+  a set of the conflicting values only when duplicate rows actually disagree — no value is silently dropped, and
+  [[slot-seq]] feeds them all to the same coalescing logic the raw rows reached."
   [slot v]
   (cond
     (nil? slot) v
@@ -224,7 +234,9 @@
     :else       (hash-set slot v)))
 
 (defn- slot-seq
-  "The values of a cache-entry slot as a collection."
+  "The values of a cache-entry slot as a collection: the single value in the common case, or all conflicting values
+  when duplicate rows disagreed (see [[conj-slot]] for why). Readers must union these into their coalescing sets
+  rather than treating a slot as one value."
   [slot]
   (if (set? slot) slot [slot]))
 
