@@ -199,8 +199,8 @@
    "socketTimeout"  "10"})
 
 (def ^:private probe-query-timeout-seconds
-  "Statement timeout for the readiness probe. Covers the pooled path too, where the socket outlives the
-  probe and the driver-level timeouts belong to whoever built the pool."
+  "Statement timeout for the readiness probe, backing up [[probe-timeout-params]] for a server that accepts
+  the query and never answers."
   10)
 
 (defn- probe-jdbc-url
@@ -217,13 +217,16 @@
       (seq added) (str (if (str/includes? url "?") "&" "?") (str/join "&" added)))))
 
 (defn probe-dedicated-connection!
-  "Test the dedicated pgvector database without initializing its connection pool.
-  Reuse the pool when a consuming feature has already initialized it; otherwise use a one-shot datasource so
-  readiness monitoring does not keep an idle server-side connection open before those features are enabled."
+  "Test the dedicated pgvector database without initializing or touching its connection pool.
+  Always a one-shot datasource, never [[data-source]], for two reasons: a pooled connection carries whatever
+  socket timeouts the pool was built with, and `Statement.setQueryTimeout` is not a network read deadline, so
+  a blackholed host could still wedge the probe indefinitely; and borrowing from a saturated pool would
+  report ordinary load as an unreachable store. The cost is one connection handshake per probe, which at the
+  readiness interval is nothing, and readiness monitoring keeps no idle server-side connection of its own."
   []
-  (let [datasource (or @data-source
-                       (jdbc/get-datasource {:jdbcUrl (probe-jdbc-url)}))]
-    (jdbc/execute-one! datasource ["SELECT 1 AS test"] {:timeout probe-query-timeout-seconds})))
+  (jdbc/execute-one! (jdbc/get-datasource {:jdbcUrl (probe-jdbc-url)})
+                     ["SELECT 1 AS test"]
+                     {:timeout probe-query-timeout-seconds}))
 
 (comment
   ;; docker-compose.yml

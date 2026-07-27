@@ -26,10 +26,16 @@
 (def ^:private collector-job-key (jobs/key "metabase.task.semantic-metric-collector.job"))
 (def ^:private collector-trigger-key (triggers/key "metabase.task.semantic-metric-collector.trigger"))
 
-(defonce ^:private ^{:doc "The most recent readiness probe as `{:storage :connected?}`, or nil before the
-  first one. Lets [[pgvector-store-health-check]] report the store without probing it a second time."}
+(defonce ^:private ^{:doc "The most recent readiness probe as `{:storage :connected? :at}`, or nil before
+  the first one. Lets [[pgvector-store-health-check]] report the store without probing it a second time."}
   last-readiness-probe
   (atom nil))
+
+(def ^:private readiness-refresh-interval-seconds
+  "How often the readiness probe runs. Readiness changes on deploy or operator action, not minute to minute,
+  and in app-db mode the probe is the one place a rolled-back CREATE EXTENSION reaches a customer's
+  application database."
+  (* 60 60))
 
 (defn- probe-connected?
   [mode]
@@ -75,18 +81,29 @@
       (analytics/set-gauge! :metabase-search/pgvector-store-connected
                             {:storage candidate}
                             (if (and (= candidate storage) connected?) 1 0)))
-    (reset! last-readiness-probe {:storage storage, :connected? connected?})
+    (reset! last-readiness-probe {:storage    storage
+                                  :connected? connected?
+                                  :at         (.getEpochSecond (Instant/now))})
     (when connected?
       (analytics/set-gauge! :metabase-search/pgvector-store-last-success-timestamp-seconds
                             {:storage storage}
                             (.getEpochSecond (Instant/now))))))
 
+(defn- readiness-probe-stale?
+  [{:keys [at]}]
+  (or (nil? at)
+      (> (- (.getEpochSecond (Instant/now)) ^long at)
+         (* 2 readiness-refresh-interval-seconds))))
+
 (defn- pgvector-store-health-check
-  "Health-inspector row for pgvector store reachability, reporting the last probe rather than running its
-  own. Nil (check omitted) until the first probe, and on an instance with no pgvector store to reach.
-  Reading the collector's result is what keeps this row and the gauges from ever disagreeing; the freshness
-  bound is the pull collector's interval, not the daily health-inspector report."
+  "Health-inspector row for pgvector store reachability. Nil (check omitted) on an instance with no pgvector
+  store to reach.
+  Shares the collector's result, so this row and the gauges cannot disagree. The probe is normally driven by
+  Prometheus scrapes; refreshing a stale one here is what keeps the row current on an instance that is not
+  scraped at all, and stops a scrape that stopped days ago from reading as a live result."
   []
+  (when (readiness-probe-stale? @last-readiness-probe)
+    (collect-pgvector-readiness-metrics!))
   (when-let [{:keys [storage connected?]} @last-readiness-probe]
     (when storage
       (if connected?
@@ -141,10 +158,8 @@
 ;; Prometheus scrapes every Metabase process, whereas a Quartz job runs on only one member of a cluster. Start
 ;; a local, single-flight background probe from the scrape path so every process refreshes its own gauge series
 ;; without putting database connection latency on the synchronous scrape.
-;; Hourly: readiness changes on deploy or operator action, not minute to minute, and in app-db mode the probe
-;; is the one place a rolled-back CREATE EXTENSION reaches a customer's application database.
 (defmethod analytics.core/pull-collector ::pgvector-readiness-gauges [_]
-  {:min-interval-s (* 60 60)
+  {:min-interval-s readiness-refresh-interval-seconds
    :f              request-pgvector-readiness-refresh!})
 
 (defn- row-count

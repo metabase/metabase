@@ -93,18 +93,30 @@
                    "app-db"   {:available zero?, :connected zero?}}
                   (readiness-gauges system))))))))
 
+(defn- fresh-probe
+  [m]
+  (assoc m :at (quot (t/to-millis-from-epoch (t/instant)) 1000)))
+
 (deftest pgvector-store-health-check-test
-  (let [check @#'semantic.task.collector/pgvector-store-health-check
-        probe @#'semantic.task.collector/last-readiness-probe]
-    (testing "the check reports the collector's last probe instead of running its own"
-      (reset! probe nil)
-      (is (nil? (check)) "omitted until the first probe")
-      (reset! probe {:storage nil, :connected? false})
-      (is (nil? (check)) "omitted when there is no store to reach")
-      (reset! probe {:storage "external", :connected? true})
-      (is (=? {:health 100, :message #"pgvector store \(external\) reachable\."} (check)))
-      (reset! probe {:storage "app-db", :connected? false})
-      (is (=? {:health 0, :message #"pgvector store \(app-db\) unreachable\."} (check))))))
+  (let [check    @#'semantic.task.collector/pgvector-store-health-check
+        probe    @#'semantic.task.collector/last-readiness-probe
+        collects (atom 0)]
+    (mt/with-dynamic-fn-redefs
+      [semantic.task.collector/collect-pgvector-readiness-metrics! #(swap! collects inc)]
+      (testing "a fresh probe is reported as-is, without running another"
+        (reset! probe (fresh-probe {:storage nil, :connected? false}))
+        (is (nil? (check)) "omitted when there is no store to reach")
+        (reset! probe (fresh-probe {:storage "external", :connected? true}))
+        (is (=? {:health 100, :message #"pgvector store \(external\) reachable\."} (check)))
+        (reset! probe (fresh-probe {:storage "app-db", :connected? false}))
+        (is (=? {:health 0, :message #"pgvector store \(app-db\) unreachable\."} (check)))
+        (is (zero? @collects)))
+      (testing "a missing or stale probe is refreshed, so an unscraped instance still reports"
+        (reset! probe nil)
+        (check)
+        (reset! probe {:storage "external", :connected? true, :at 0})
+        (check)
+        (is (= 2 @collects))))))
 
 (deftest ^:sequential pull-collector-refreshes-pgvector-metrics-on-each-instance-test
   (let [initialized? @#'semantic.task.collector/pgvector-readiness-metrics-initialized?
