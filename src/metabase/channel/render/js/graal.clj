@@ -18,6 +18,7 @@
    [clojure.java.io :as io]
    [metabase.channel.render.js.common :as common]
    [metabase.channel.render.js.protocol :as js.protocol]
+   [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
@@ -166,13 +167,18 @@
 
 (defn- generate-context!
   "Build a context on the shared engine and evaluate the bundle into it (creating the engine + parsing the
-  bundle if this is the first context)."
+  bundle if this is the first context); logged with timing, like [[generate-untrusted-context!]], so cold
+  costs of the trusted and untrusted paths can be compared from the logs."
   ^Context []
   (common/assert-tests-not-initializing!)
-  (let [{:keys [^Engine engine ^Source source]} (acquire-engine! shared-engine)]
+  (let [start (System/nanoTime)
+        {:keys [^Engine engine ^Source source]} (acquire-engine! shared-engine)]
     (try
-      (doto (create-context engine)
-        (eval-source source))
+      (let [context (doto (create-context engine)
+                      (eval-source source))]
+        (log/infof "static-viz: generated trusted in-process context (evaluated bundle) in %.0fms"
+                   (/ (- (System/nanoTime) start) 1e6))
+        context)
       (catch Throwable t
         (release-engine! shared-engine)
         (throw t)))))
@@ -312,28 +318,33 @@
 ;;; ------------------------------------------- untrusted context pool ------------------------------------
 
 (defn- destroy-untrusted-context!
-  "Close an untrusted isolate context reaped or disposed by the pool and drop its ref on the shared
-  untrusted engine (closing the engine — and freeing its isolate heap — with the last context)."
-  [^Context context]
-  (log/debug "custom-viz: disposing untrusted static-viz isolate context")
-  (try (.close context true) (catch Exception _))
-  (release-engine! shared-untrusted-plugin-engine))
+  "Close an untrusted isolate context reaped or disposed by the pool and drop its ref on `engine-ref`'s
+  shared untrusted engine (closing the engine — and freeing its isolate heap — with the last context).
+  The 1-arity is the plugin pool's destroy fn."
+  ([^Context context] (destroy-untrusted-context! shared-untrusted-plugin-engine context))
+  ([engine-ref ^Context context]
+   (log/debug "static-viz: disposing untrusted isolate context")
+   (try (.close context true) (catch Exception _))
+   (release-engine! engine-ref)))
 
 (defn- generate-untrusted-context!
-  "Cold-parse the slim custom-viz bundle into a fresh isolate context on the shared untrusted engine
+  "Cold-parse the bundle at `bundle-path` into a fresh isolate context on `engine-ref`'s shared engine
   (creating the engine with the first context); logged with timing because this is the dominant
-  per-context cost and explains slow first/regenerated renders."
+  per-context cost and explains slow first/regenerated renders. The 0/1-arities are the plugin pool's
+  slim-bundle path."
   (^Context [] (generate-untrusted-context! pool-max-cpu-time))
   (^Context [^String max-cpu-time]
+   (generate-untrusted-context! shared-untrusted-plugin-engine common/custom-viz-bundle-resource-path max-cpu-time))
+  (^Context [engine-ref ^String bundle-path ^String max-cpu-time]
    (common/assert-tests-not-initializing!)
    (let [start (System/nanoTime)
-         {:keys [^Engine engine]} (acquire-engine! shared-untrusted-plugin-engine)]
+         {:keys [^Engine engine]} (acquire-engine! engine-ref)]
      (try
        (let [context (untrusted-plugin-context engine max-cpu-time)]
          (try
-           (load-resource context common/custom-viz-bundle-resource-path)
-           (log/infof "custom-viz: generated untrusted static-viz isolate context (cold-parsed slim bundle) in %.0fms"
-                      (/ (- (System/nanoTime) start) 1e6))
+           (load-resource context bundle-path)
+           (log/infof "static-viz: generated untrusted isolate context (cold-parsed %s) in %.0fms"
+                      bundle-path (/ (- (System/nanoTime) start) 1e6))
            context
            (catch Throwable t
              ;; a bundle-load failure would otherwise leak the freshly-built isolate; close it and rethrow
@@ -341,7 +352,7 @@
              (try (.close context true) (catch Exception _))
              (throw t))))
        (catch Throwable t
-         (release-engine! shared-untrusted-plugin-engine)
+         (release-engine! engine-ref)
          (throw t))))))
 
 (def ^:private ^Pool untrusted-static-viz-context-pool
@@ -349,18 +360,18 @@
   [[static-viz-context-pool]] but for the isolate path."
   (u.pool/create-pool generate-untrusted-context! destroy-untrusted-context! {:max-size 1, :idle-minutes 10}))
 
-(defn do-with-untrusted-static-viz-context
-  "Acquire a pooled `SandboxPolicy/UNTRUSTED` isolate context"
-  [f]
+(defn- do-with-pooled-untrusted-context
+  "Call `f` with an UNTRUSTED isolate context from `pool` — or, in dev, with a throwaway context from
+  `generate-dev-context!` (so a fresh `bun run build-static-viz` is picked up without a REPL restart),
+  destroyed by `destroy-context!` after the call."
+  [^Pool pool generate-dev-context! destroy-context! f]
   (if config/is-dev?
-    ;; a throwaway context per call, like [[do-with-static-viz-context]]'s dev path — with the tighter
-    ;; single-render [[render-max-cpu-time]] budget
-    (let [^Context context (generate-untrusted-context! render-max-cpu-time)]
+    (let [^Context context (generate-dev-context!)]
       (try
         (f context)
         (finally
-          (destroy-untrusted-context! context))))
-    (let [^Context context (.acquire untrusted-static-viz-context-pool pool-key)
+          (destroy-context! context))))
+    (let [^Context context (.acquire pool pool-key)
           disposed?        (volatile! false)]
       (try
         (f context)
@@ -369,24 +380,77 @@
           ;; regenerates a fresh one rather than handing a dead context to the next render.
           (when (or (.isCancelled e) (.isResourceExhausted e))
             (vreset! disposed? true)
-            (log/warnf "custom-viz: untrusted static-viz context hit a sandbox limit (cancelled=%s resource-exhausted=%s); disposing and regenerating. %s"
+            (log/warnf "static-viz: untrusted isolate context hit a sandbox limit (cancelled=%s resource-exhausted=%s); disposing and regenerating. %s"
                        (.isCancelled e) (.isResourceExhausted e) (.getMessage e))
-            (.dispose untrusted-static-viz-context-pool pool-key context))
+            (.dispose pool pool-key context))
           (throw e))
         (finally
           (when-not @disposed?
-            (.release untrusted-static-viz-context-pool pool-key context)))))))
+            (.release pool pool-key context)))))))
+
+(defn do-with-untrusted-static-viz-context
+  "Acquire a pooled `SandboxPolicy/UNTRUSTED` isolate context (slim custom-viz bundle loaded)."
+  [f]
+  ;; the dev throwaway context gets the tighter single-render [[render-max-cpu-time]] budget
+  (do-with-pooled-untrusted-context untrusted-static-viz-context-pool
+                                    #(generate-untrusted-context! render-max-cpu-time)
+                                    destroy-untrusted-context!
+                                    f))
+
+;;; --------------------- experimental: built-in static viz on the untrusted isolate ----------------------
+;;;
+;;; Evaluation path for the [[channel.settings/static-viz-untrusted-rendering]] toggle: when it's on,
+;;; built-in renders ([[call-js]]) run on an UNTRUSTED isolate context loaded with the FULL static-viz
+;;; bundle — the exact sandbox config of the plugin isolate — instead of the in-process trusted pool.
+;;; Separate engine + pool so the experiment never competes with plugin rendering for one isolate's
+;;; `engine.MaxIsolateMemory` budget.
+
+(def ^:private shared-untrusted-builtin-engine
+  "Ref-counted isolate `Engine` for [[untrusted-builtin-context-pool]], same lifecycle as
+  [[shared-untrusted-plugin-engine]]."
+  (ref-counted-engine (fn [] {:engine (new-untrusted-plugin-engine)})))
+
+(def ^:private ^Pool untrusted-builtin-context-pool
+  "Pool of UNTRUSTED isolate contexts loaded with the full static-viz bundle, serving built-in renders
+  while [[channel.settings/static-viz-untrusted-rendering]] is on. Mirrors
+  [[untrusted-static-viz-context-pool]]."
+  (u.pool/create-pool #(generate-untrusted-context! shared-untrusted-builtin-engine common/bundle-resource-path pool-max-cpu-time)
+                      #(destroy-untrusted-context! shared-untrusted-builtin-engine %)
+                      {:max-size 1, :idle-minutes 10}))
+
+(defn- do-with-untrusted-builtin-context
+  "Acquire a pooled `SandboxPolicy/UNTRUSTED` isolate context with the full static-viz bundle loaded."
+  [f]
+  (do-with-pooled-untrusted-context untrusted-builtin-context-pool
+                                    #(generate-untrusted-context! shared-untrusted-builtin-engine
+                                                                  common/bundle-resource-path
+                                                                  render-max-cpu-time)
+                                    #(destroy-untrusted-context! shared-untrusted-builtin-engine %)
+                                    f))
 
 ;;; ------------------------------------------------ backend ----------------------------------------------
 
 (mu/defn- call-js :- :string
   "Execute static-viz bundle function `fn-name` (a `MetabaseStaticViz.*` global) with the already-JSON-encoded
-  string `args` on the pooled context."
+  string `args` on the pooled trusted context — or, while the experimental
+  [[channel.settings/static-viz-untrusted-rendering]] toggle is on, on the pooled untrusted full-bundle
+  isolate context."
   [fn-name :- :string
    args    :- [:sequential :string]]
-  (do-with-static-viz-context
-   (fn [^Context context]
-     (.asString ^Value (apply execute-fn-name context (str "MetabaseStaticViz." fn-name) args)))))
+  (let [untrusted?      (channel.settings/static-viz-untrusted-rendering)
+        engine          (if untrusted? :untrusted :trusted)
+        do-with-context (if untrusted?
+                          do-with-untrusted-builtin-context
+                          do-with-static-viz-context)
+        start           (System/nanoTime)
+        result          (do-with-context
+                         (fn [^Context context]
+                           (.asString ^Value (apply execute-fn-name context (str "MetabaseStaticViz." fn-name) args))))
+        duration-ms     (/ (- (System/nanoTime) start) 1e6)]
+    (common/record-js-call! engine duration-ms)
+    (log/infof "static-viz: %s engine executed %s in %.0fms (incl. context acquire/generation)"
+               (name engine) fn-name duration-ms)
+    result))
 
 (defn- chart-with-custom-viz*
   "Render `input` on a pooled `SandboxPolicy/UNTRUSTED` isolate context (slim custom-viz bundle already

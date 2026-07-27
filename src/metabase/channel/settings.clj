@@ -337,3 +337,15 @@
   :getter     (fn [] (boolean (slack-app-token)))
   :export?    false
   :setter     :none)
+
+(defsetting static-viz-untrusted-rendering
+  (deferred-tru
+   (str "Render built-in static visualizations (subscription emails, exports) in the sandboxed GraalVM "
+        "isolate used for custom visualizations, instead of the in-process engine. Experimental setting "
+        "for evaluating sandboxed rendering."))
+  :type       :boolean
+  :default    false
+  :visibility :admin
+  :export?    false
+  :doc        false
+  :audit      :getter)

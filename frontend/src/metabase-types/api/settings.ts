@@ -552,6 +552,7 @@ interface SettingsManagerSettings {
   "slack-app-token": string | null;
   "slack-bug-report-channel": string | null;
   "slack-token-valid?": boolean;
+  "static-viz-untrusted-rendering": boolean;
 }
 
 type PrivilegedSettings = AdminSettings & SettingsManagerSettings;

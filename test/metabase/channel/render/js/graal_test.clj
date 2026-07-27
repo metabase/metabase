@@ -83,3 +83,13 @@
          (is (some? ex) "expected the runaway allocation to be terminated, not to complete")
          (is (and ex (.isResourceExhausted ^PolyglotException ex))
              "termination should be resource exhaustion (heap limit), not some other error"))))))
+
+(deftest call-js-untrusted-rendering-toggle-routing-test
+  (testing "the static-viz-untrusted-rendering toggle picks the context pool for built-in renders"
+    (let [call-js @#'graal/call-js]
+      (mt/with-temporary-setting-values [static-viz-untrusted-rendering true]
+        (with-redefs [graal/do-with-untrusted-builtin-context (fn [_f] "untrusted")]
+          (is (= "untrusted" (call-js "renderChartJSON" ["{}"])))))
+      (mt/with-temporary-setting-values [static-viz-untrusted-rendering false]
+        (with-redefs [graal/do-with-static-viz-context (fn [_f] "trusted")]
+          (is (= "trusted" (call-js "renderChartJSON" ["{}"]))))))))

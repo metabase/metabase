@@ -90,6 +90,18 @@
        (is (= "undefined" (.asString (.eval ctx "js" "typeof MetabaseStaticViz.getCellBackgroundColorsJSON")))
            "the full static-viz bundle (getCellBackgroundColorsJSON present) leaked into the untrusted pool")))))
 
+(deftest untrusted-builtin-context-loads-full-bundle-test
+  (testing "the untrusted builtin path (static-viz-untrusted-rendering toggle) cold-parses the FULL bundle into an isolate"
+    (let [engine-ref @#'js.graal/shared-untrusted-builtin-engine
+          ^Context ctx (#'js.graal/generate-untrusted-context! engine-ref js.common/bundle-resource-path "60s")]
+      (try
+        ;; getCellBackgroundColorsJSON only exists in the full bundle — its presence proves the builtin
+        ;; pool's generator loads the full bundle, not the slim custom-viz one.
+        (is (= "function" (.asString (.eval ctx "js" "typeof MetabaseStaticViz.getCellBackgroundColorsJSON")))
+            "the untrusted builtin context should expose the full static-viz bundle")
+        (finally
+          (#'js.graal/destroy-untrusted-context! engine-ref ctx))))))
+
 (deftest untrusted-engine-ref-counted-lifecycle-test
   (testing "the shared untrusted isolate engine is ref-counted: created with the first context, closed with the last"
     (let [state   (:state @#'js.graal/shared-untrusted-plugin-engine)
