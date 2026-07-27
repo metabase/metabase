@@ -10,11 +10,13 @@
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase-enterprise.tenants.auth-provider] ;; make sure the auth provider is actually registered
    [metabase.appearance.settings :as appearance.settings]
+   [metabase.auth-identity.provider :as auth-identity.provider]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
@@ -1167,6 +1169,75 @@
                       (is (contains? (group-memberships (u/the-id user)) "Tenant Engineers")))
                     (testing "user is assigned to All tenant users (magic group for tenant users)"
                       (is (contains? (group-memberships (u/the-id user)) "All tenant users")))))))))))))
+
+(deftest jwt-with-valid-tenant-claim-must-never-create-wedged-internal-user-test
+  (testing (str "UXW-4898: if the tenant login step is missing from the login! method chain (as happens when "
+                "metabase-enterprise.tenants.auth-provider was never loaded — see metabase-enterprise.tenants.init), "
+                "a JWT carrying a valid @tenant plus a mapped tenant group must NOT succeed and silently create an "
+                "internal user, which would permanently wedge the account. It must fail loudly and leave no user row.")
+    (with-jwt-default-setup!
+      (mt/with-additional-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/Tenant _ {:slug "tenant-mctenantson"
+                                          :name "Tenant McTenantson"}
+                         :model/PermissionsGroup {tenant-group-id :id} {:name "Tenant Administrators"
+                                                                        :is_tenant_group true}]
+            (mt/with-temporary-setting-values
+              [jwt-group-sync true
+               jwt-group-mappings {"Tenant Administrators" [tenant-group-id]}
+               jwt-attribute-groups "groups"]
+              (mt/with-model-cleanup [:model/User]
+                (let [dispatch-val :metabase-enterprise.tenants.auth-provider/create-tenant-if-not-exists
+                      method       (methodical/primary-method auth-identity.provider/login! dispatch-val)]
+                  (is (some? method)
+                      "tenant login method should be registered at startup (see metabase-enterprise.tenants.init)")
+                  (try
+                    (alter-var-root #'auth-identity.provider/login! methodical/remove-primary-method dispatch-val)
+                    (let [response (client/client-real-response :get 400 "/auth/sso"
+                                                                {:request-options {:redirect-strategy :none}}
+                                                                :return_to default-redirect-uri
+                                                                :jwt
+                                                                (jwt/sign
+                                                                 {:email "wedgeduser@metabase.com"
+                                                                  :first_name "Wedged"
+                                                                  :last_name "User"
+                                                                  "@tenant" "tenant-mctenantson"
+                                                                  :groups ["Tenant Administrators"]}
+                                                                 default-jwt-secret))]
+                      (is (not (sso.test-setup/successful-login? response)))
+                      (testing "no half-provisioned user row is left behind"
+                        (is (nil? (t2/select-one :model/User :email "wedgeduser@metabase.com")))))
+                    (finally
+                      (alter-var-root #'auth-identity.provider/login!
+                                      methodical/add-primary-method dispatch-val method))))))))))))
+
+(deftest jwt-without-tenant-claim-mapped-to-tenant-group-fails-loudly-test
+  (testing (str "EMB-2118/#78009: a JWT with no @tenant claim whose groups map to a tenant group must not succeed "
+                "and silently create an internal user with a swallowed group-sync failure. The tenant-group "
+                "mismatch must fail the login and roll back user creation.")
+    (with-jwt-default-setup!
+      (mt/with-additional-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/PermissionsGroup {tenant-group-id :id} {:name "Tenant Administrators"
+                                                                        :is_tenant_group true}]
+            (mt/with-temporary-setting-values
+              [jwt-group-sync true
+               jwt-group-mappings {"Tenant Administrators" [tenant-group-id]}
+               jwt-attribute-groups "groups"]
+              (mt/with-model-cleanup [:model/User]
+                (let [response (client/client-real-response :get 400 "/auth/sso"
+                                                            {:request-options {:redirect-strategy :none}}
+                                                            :return_to default-redirect-uri
+                                                            :jwt
+                                                            (jwt/sign
+                                                             {:email "tenantless@metabase.com"
+                                                              :first_name "Tenantless"
+                                                              :last_name "User"
+                                                              :groups ["Tenant Administrators"]}
+                                                             default-jwt-secret))]
+                  (is (not (sso.test-setup/successful-login? response)))
+                  (testing "user creation is rolled back"
+                    (is (nil? (t2/select-one :model/User :email "tenantless@metabase.com")))))))))))))
 
 (deftest tenant-user-assigned-to-tenant-group-via-name-matching-test
   (testing "JWT user with tenant claim can be assigned to tenant user groups via group name matching (no explicit mappings)"
