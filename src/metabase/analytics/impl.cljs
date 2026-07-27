@@ -81,7 +81,6 @@
    (-clear! [_ metric]
      (buffer-event! {:op     :clear
                      :metric metric}))
-   (-remove-series! [_ metric labels]
-     (buffer-event! {:op     :remove-series
-                     :metric metric
-                     :labels labels}))))
+   ;; No-op: removal exists for gauges a backend process publishes about itself, and the buffered-event
+   ;; API takes no such op -- sending one would fail validation and lose the whole batch.
+   (-remove-series! [_ _metric _labels])))

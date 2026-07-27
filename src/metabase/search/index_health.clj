@@ -105,7 +105,8 @@
   ;; [gauge-key labels] -> a u/start-timer from when this process last published a real value. Only series
   ;; that held one are ever removed; an inactive index should never create one.
   ;; Named apart from the set this replaced, so a live upgrade starts from an empty map rather than
-  ;; inheriting a shape the code below can't read.
+  ;; inheriting a shape the code below can't read. Series the previous tracker held stay exported and
+  ;; untracked until something publishes them again, which the next refresh does.
   (atom {}))
 
 ;; Publishing and expiring race otherwise: a sweep can read a timer, watch a refresh replace it, and then
