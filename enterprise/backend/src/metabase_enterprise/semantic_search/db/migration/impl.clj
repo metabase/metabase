@@ -66,6 +66,11 @@
   (semantic.index-metadata/create-tables-if-not-exists! tx index-metadata)
   (semantic.index-metadata/ensure-control-row-exists! tx index-metadata))
 
+(defn ensure-schema-compatibility!
+  "Apply non-destructive additions that existing databases at the current schema version also need."
+  [tx {:keys [index-metadata]}]
+  (semantic.index-metadata/ensure-health-metric-columns! tx index-metadata))
+
 (def dynamic-schema-version
   "Code version of dynamic schema (the index_<provider>_<model>_<dims> index tables). If higher than what's found in
   db dynamic schema migration will be attempted."

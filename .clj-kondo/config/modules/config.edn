@@ -1100,6 +1100,7 @@
   health-inspector
   {:team "Querying Platform"
    :api #{metabase.health-inspector.api
+          metabase.health-inspector.core
           metabase.health-inspector.init}
    :uses #{api
            lib
@@ -2075,6 +2076,7 @@
            metabase.search.core
            metabase.search.engine
            metabase.search.in-place.scoring
+           metabase.search.index-health
            metabase.search.ingestion
            metabase.search.init
            metabase.search.scoring
@@ -2089,6 +2091,7 @@
            collections
            config
            events
+           health-inspector
            lib
            lib-be
            models
@@ -3318,7 +3321,9 @@
    :uses #{analytics-interface
            collections
            entity-retrieval
+           health-inspector
            premium-features
+           search
            task
            util
            enterprise/semantic-search}
@@ -3640,6 +3645,7 @@
            metabase-enterprise.semantic-search.core
            metabase-enterprise.semantic-search.db.datasource
            metabase-enterprise.semantic-search.embedding
+           metabase-enterprise.semantic-search.embedding-health
            metabase-enterprise.semantic-search.init}
    :uses #{activity-feed
            analytics
@@ -3650,6 +3656,7 @@
            config
            connection-pool
            events
+           health-inspector
            lib-be
            llm
            metabot
@@ -3748,7 +3755,7 @@
 
   enterprise/tenants
   {:team "Admin Webapp"
-   :api  #{metabase-enterprise.tenants.api}
+   :api  #{metabase-enterprise.tenants.api metabase-enterprise.tenants.init}
    :uses #{api
            audit-app
            auth-identity

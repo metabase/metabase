@@ -4,19 +4,19 @@ import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteD
 import { useDeleteDatabaseMutation, useGetDatabaseQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { push, useParams } from "metabase/router";
 import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-export const RemoveDestinationDatabaseModal = ({
-  params,
-}: {
-  params: { databaseId: string; destinationDatabaseId: string };
-}) => {
+export const RemoveDestinationDatabaseModal = () => {
+  const params = useParams<{
+    databaseId: string;
+    destinationDatabaseId: string;
+  }>();
   const dispatch = useDispatch();
 
-  const dbId = parseInt(params.databaseId, 10);
-  const destDbId = parseInt(params.destinationDatabaseId, 10);
+  const dbId = parseInt(params.databaseId ?? "", 10);
+  const destDbId = parseInt(params.destinationDatabaseId ?? "", 10);
 
   const { data: db, isLoading, error } = useGetDatabaseQuery({ id: destDbId });
   const [deleteDatabase] = useDeleteDatabaseMutation();

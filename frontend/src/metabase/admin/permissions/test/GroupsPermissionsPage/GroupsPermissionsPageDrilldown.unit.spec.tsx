@@ -15,7 +15,6 @@ import {
 import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import { GroupsPermissionsPage } from "metabase/admin/permissions/pages/GroupDataPermissionsPage/GroupsPermissionsPage";
 import { Route, withRouteProps } from "metabase/router";
-import type { RouterEngine } from "metabase/router/engine";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -42,7 +41,7 @@ const GROUPS_PERMISSIONS_PATHS = [
   "group/:groupId/database/:databaseId/schema/:schemaName",
 ];
 
-const setup = (routerEngine: RouterEngine) => {
+const setup = () => {
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
   setupGroupsEndpoint(TEST_GROUPS);
@@ -67,7 +66,6 @@ const setup = (routerEngine: RouterEngine) => {
     </Route>,
     {
       withRouter: true,
-      routerEngine,
       initialRoute: `/admin/permissions/data/group/2`,
     },
   );
@@ -79,22 +77,19 @@ const tableRowCount = () =>
 // Clicking a database name is a `<Link>` used as a button (onClick, no `to`).
 // On v7 the engine-aware link must not perform its own navigation, or it clobbers
 // the push the click handler dispatches and the drill-down never happens.
-describe.each<RouterEngine>(["v3", "v7"])(
-  "GroupsPermissionsPage drill-down on the %s engine",
-  (routerEngine) => {
-    it("shows the tables after drilling into a database", async () => {
-      setup(routerEngine);
-      await waitForLoaderToBeRemoved();
+describe("GroupsPermissionsPage drill-down", () => {
+  it("shows the tables after drilling into a database", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
 
-      // Database-level view: one row for Sample Database (plus header row).
-      const dbRow = await screen.findByText("Sample Database");
-      expect(tableRowCount()).toBe(2);
+    // Database-level view: one row for Sample Database (plus header row).
+    const dbRow = await screen.findByText("Sample Database");
+    expect(tableRowCount()).toBe(2);
 
-      await userEvent.click(dbRow);
+    await userEvent.click(dbRow);
 
-      // Table-level view: a row per table in the sample database.
-      expect(await screen.findByText("Orders")).toBeInTheDocument();
-      expect(tableRowCount()).toBe(TEST_TABLES.length + 1);
-    });
-  },
-);
+    // Table-level view: a row per table in the sample database.
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
+    expect(tableRowCount()).toBe(TEST_TABLES.length + 1);
+  });
+});

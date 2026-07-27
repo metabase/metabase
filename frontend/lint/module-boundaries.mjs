@@ -161,6 +161,7 @@ const elements = [
   createElement({ type: "shared", name: "questions" }),
   createElement({ type: "shared", name: "redux" }),
   createElement({ type: "shared", name: "rich_text_editing" }),
+  createElement({ type: "shared", name: "route-guards" }),
   createElement({ type: "shared", name: "router" }),
   createElement({
     type: "shared",
