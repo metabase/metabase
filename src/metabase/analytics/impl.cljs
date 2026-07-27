@@ -80,4 +80,8 @@
                      :amount amount}))
    (-clear! [_ metric]
      (buffer-event! {:op     :clear
-                     :metric metric}))))
+                     :metric metric}))
+   (-remove-series! [_ metric labels]
+     (buffer-event! {:op     :remove-series
+                     :metric metric
+                     :labels labels}))))

@@ -64,7 +64,7 @@
 (deftest ^:sequential run-measure!-test
   (let [calls (atom [])
         live  (atom {})]
-    (with-redefs [index-health/live-gauge-series live]
+    (with-redefs [index-health/live-gauge-timers live]
       (mt/with-dynamic-fn-redefs [analytics/set-gauge!     (fn [& args] (swap! calls conj (vec args)))
                                   analytics/remove-series! (fn [& args] (swap! calls conj (into [:removed] args)))]
         (testing "a collector result updates the gauge and returns the health row"
@@ -112,7 +112,7 @@
 (deftest ^:sequential failed-first-write-does-not-mark-series-live-test
   (testing "a failed first gauge write does not make later clears create a NaN-only series"
     (let [publish! index-health/publish-gauge!
-          live     @#'index-health/live-gauge-series
+          live     @#'index-health/live-gauge-timers
           labels   {:index "failed-write-test-engine"}
           series   [:metabase-search/index-coverage-ratio labels]
           calls    (atom [])]
@@ -141,7 +141,7 @@
                  :gauge-key  :metabase-search/index-coverage-ratio
                  :index     :refresh-isolation-test
                  :collect    (constantly {:value 1.0 :health 100 :message "ok"})}]
-      (with-redefs [index-health/live-gauge-series live]
+      (with-redefs [index-health/live-gauge-timers live]
         (mt/with-dynamic-fn-redefs [analytics/set-gauge!      (fn [& args] (swap! calls conj (vec args)))
                                     analytics/remove-series!  (fn [& args] (swap! calls conj (into [:removed] args)))
                                     health-inspector/enabled? (constantly false)]
@@ -204,7 +204,7 @@
         live  (atom {[:metabase-search/index-coverage-ratio {:index "fresh"}] ::fresh
                      [:metabase-search/index-coverage-ratio {:index "stale"}] ::stale})]
     ;; a map is a function of its keys, so this stands in for the timers' ages
-    (with-redefs [index-health/live-gauge-series live
+    (with-redefs [index-health/live-gauge-timers live
                   u/since-ms                    {::fresh 1000, ::stale 3600000}]
       (mt/with-dynamic-fn-redefs [analytics/remove-series! (fn [& args] (swap! calls conj (vec args)))]
         (#'index-health/expire-stale-gauges!)
