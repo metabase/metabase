@@ -100,7 +100,7 @@ export function HomepageSetting() {
           <Stack gap="xs">
             <Radio value="dashboard" label={t`Dashboard`} />
             {mode === "dashboard" && (
-              <Box pl="xl" data-testid="custom-homepage-dashboard-setting">
+              <Box ps="xl" data-testid="custom-homepage-dashboard-setting">
                 <DashboardSelector
                   value={customHomepageDashboardId ?? undefined}
                   onChange={handleDashboardChange}
@@ -119,7 +119,7 @@ export function HomepageSetting() {
                 label={PLUGIN_HOMEPAGE_SETTING.CustomUrlOption.label}
               />
               {mode === "url" && (
-                <Box pl="xl">
+                <Box ps="xl">
                   <PLUGIN_HOMEPAGE_SETTING.CustomUrlOption.Control />
                 </Box>
               )}

@@ -68,7 +68,7 @@ export const FieldPanel = ({
                 variant="stacked"
                 size="xs"
                 label={
-                  <Text fw={700} ml="0.375rem" lh="1rem">
+                  <Text fw={700} ms="0.375rem" lh="1rem">
                     {groupItem.isSelected ? t`Remove all` : t`Add all`}
                   </Text>
                 }
@@ -87,9 +87,9 @@ export const FieldPanel = ({
                 <Box mb="1rem" key={columnIndex}>
                   <Checkbox
                     label={
-                      <Flex ml="0.25rem" align="center">
+                      <Flex ms="0.25rem" align="center">
                         <Icon name={getColumnIcon(columnItem.column)} />
-                        <Text component="span" ml="0.5rem" lh="1rem" fw={400}>
+                        <Text component="span" ms="0.5rem" lh="1rem" fw={400}>
                           {columnItem.displayName}
                         </Text>
                       </Flex>

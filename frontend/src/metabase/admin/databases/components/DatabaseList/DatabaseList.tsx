@@ -84,7 +84,7 @@ export const DatabaseList = ({
                     <td>
                       <Flex align="center">
                         {!isSyncCompleted(database) && (
-                          <Loader size="xs" mr="sm" />
+                          <Loader size="xs" me="sm" />
                         )}
                         <Link
                           to={"/admin/databases/" + database.id}

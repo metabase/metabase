@@ -84,7 +84,7 @@ export const CustomMappingModal = ({
             <Box className={S.table} component="table" mt="md" w="100%">
               <thead>
                 <tr>
-                  <Box className={S.headerCell} component="td" p="md" pl="xl">
+                  <Box className={S.headerCell} component="td" p="md" ps="xl">
                     <Text fw="bold">{t`Original value`}</Text>
                   </Box>
 
@@ -92,7 +92,7 @@ export const CustomMappingModal = ({
                     className={S.headerCell}
                     component="td"
                     p="md"
-                    pr="xl"
+                    pe="xl"
                     w="30%"
                   >
                     <Text fw="bold">{t`Mapped value`}</Text>
@@ -107,11 +107,11 @@ export const CustomMappingModal = ({
                     component="tr"
                     key={index}
                   >
-                    <Box component="td" p="sm" pl="xl">
+                    <Box component="td" p="sm" ps="xl">
                       {original}
                     </Box>
 
-                    <Box component="td" p="sm" pr="xl">
+                    <Box component="td" p="sm" pe="xl">
                       <TextInput
                         placeholder={t`Enter value`}
                         value={mapped}

@@ -23,7 +23,7 @@ export const AnchorLinkMenu = forwardRef<HTMLDivElement, Props>(
         contentEditable={false}
         data-testid="anchor-link-menu"
         draggable={false}
-        pr="0.75rem"
+        pe="0.75rem"
         ref={ref}
         style={style}
       >

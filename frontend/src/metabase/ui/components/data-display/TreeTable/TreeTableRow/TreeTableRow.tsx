@@ -133,7 +133,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
       {showCheckboxes && (
         <Flex
           align="center"
-          pl="0.75rem"
+          ps="0.75rem"
           w={CHECKBOX_COLUMN_WIDTH}
           className={S.checkboxWrapper}
           onClick={handleCheckboxToggle}
@@ -167,9 +167,10 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
               gap="0.25rem"
               miw={0}
               py="0.75rem"
-              pr="0.5rem"
+              pe="0.5rem"
               style={{
-                paddingLeft: TREE_CELL_BASE_PADDING + indent,
+                // logical so nested rows indent from the leading edge in RTL too
+                paddingInlineStart: TREE_CELL_BASE_PADDING + indent,
                 ...getColumnStyle(columnWidths, cell.column.id, true),
                 ...styles?.treeCell,
               }}

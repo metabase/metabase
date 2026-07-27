@@ -60,7 +60,7 @@ const BrowseSchemasContainer = ({
             />
           ) : (
             <>
-              <Flex align="center" pt="md" pr="sm" pb="sm">
+              <Flex align="center" pt="md" pe="sm" pb="sm">
                 <BrowserCrumbs
                   crumbs={[
                     { title: t`Databases`, to: "/browse/databases" },

@@ -104,7 +104,7 @@ export function ColumnValue({
           <Icon
             name={rawValue === true ? "check" : "close"}
             size={12}
-            mr="xs"
+            me="xs"
           />
         }
       >
@@ -144,7 +144,7 @@ export function ColumnValue({
             color: "var(--mb-color-text-primary)",
           }}
           leftSection={
-            <Stack mr="0.25rem">
+            <Stack me="0.25rem">
               <Box
                 style={{
                   borderRadius: "50%",

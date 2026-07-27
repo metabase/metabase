@@ -96,7 +96,7 @@ export const AppBarLarge = ({
         >
           {detailView ? (
             <DetailViewNav
-              ml={DETAIL_VIEW_PADDING_LEFT - 125}
+              ms={DETAIL_VIEW_PADDING_LEFT - 125}
               rowName={detailView.rowName}
               table={detailView.table}
             />
@@ -122,7 +122,7 @@ export const AppBarLarge = ({
             (isEmbeddingIframe ? (
               <SearchBar onSearchItemSelect={onSearchItemSelect} />
             ) : (
-              <SearchButton mr="md" />
+              <SearchButton me="md" />
             ))}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {<MetabotAppBarButton />}

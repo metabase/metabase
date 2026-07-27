@@ -143,7 +143,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
         ) : (
           <div />
         )}
-        <Flex gap="md" ml="1.5rem">
+        <Flex gap="md" ms="1.5rem">
           <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
           <Button
             loading={isMutating}

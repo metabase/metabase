@@ -74,7 +74,7 @@ function ListItem({ node, getGraphUrl }: ListItemProps) {
           wrap="nowrap"
         >
           {location != null && (
-            <GraphBreadcrumbs links={location.links} ml="1rem" pl="sm" />
+            <GraphBreadcrumbs links={location.links} ms="1rem" ps="sm" />
           )}
           {link != null && viewCount != null && (
             <GraphExternalLink label={link.label} url={link.url} isCompact />

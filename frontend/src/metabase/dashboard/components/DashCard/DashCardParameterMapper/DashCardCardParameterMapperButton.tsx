@@ -163,7 +163,7 @@ export const DashCardCardParameterMapperButton = ({
             {buttonText && (
               <Box
                 className={S.TargetButtonText}
-                mr="sm"
+                me="sm"
                 ta="center"
                 component="span"
               >

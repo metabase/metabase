@@ -94,7 +94,7 @@ export function MetricsSegmentFilterPillPopover({
                     color="core-filter"
                     // override background from Badge.config.tsx
                     styles={{ root: { background: "var(--badge-bg)" } }}
-                    ml="xs"
+                    ms="xs"
                     variant="light"
                   >
                     {metricCount}

@@ -103,7 +103,7 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
         onDragEnd={handleDragEnd}
       >
         {dimension && (
-          <FunnelWellItem mr="md" id="dimension" onRemove={handleRemove}>
+          <FunnelWellItem me="md" id="dimension" onRemove={handleRemove}>
             <Text truncate>{dimension.display_name}</Text>
           </FunnelWellItem>
         )}

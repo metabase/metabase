@@ -41,7 +41,7 @@ export function AIProviderSettingsSection({ id }: { id?: string }) {
               <Badge
                 color={hasCredentialsError ? "negative" : "positive"}
                 indicator
-                mr="sm"
+                me="sm"
               />
             )}
             <div>

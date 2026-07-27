@@ -98,14 +98,14 @@ export const ColumnsList = (props: ColumnListProps) => {
                   name={isCollapsed ? "chevrondown" : "chevronup"}
                   aria-label={t`Expand`}
                   size={12}
-                  mr={6}
+                  me={6}
                   cursor="pointer"
                   onClick={() => toggleDataSource(source.id)}
                 />
               ) : (
-                <Loader size={12} mr={6} />
+                <Loader size={12} me={6} />
               )}
-              <Text truncate mr={4} flex={1}>
+              <Text truncate me={4} flex={1}>
                 {source.name}
               </Text>
               {!isLoading && isSingleDataSource && (
@@ -156,7 +156,7 @@ export const ColumnsList = (props: ColumnListProps) => {
                   style={{ flexShrink: 0 }}
                   className={S.ActionsButton}
                   name="close"
-                  ml="auto"
+                  ms="auto"
                   size={12}
                   aria-label={t`Remove`}
                   cursor="pointer"
@@ -168,7 +168,7 @@ export const ColumnsList = (props: ColumnListProps) => {
               )}
             </Flex>
             {!isCollapsed && dataset && dataset.data.cols && (
-              <Box ml={12} mt={2}>
+              <Box ms={12} mt={2}>
                 {dataset.data.cols.map((column) => {
                   if (isPivotGroupColumn(column)) {
                     return null;

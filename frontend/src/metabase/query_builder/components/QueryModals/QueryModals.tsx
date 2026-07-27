@@ -360,7 +360,7 @@ function getAddToDashboardToastProps(
   onOpenModal: (modalType: QueryModalType) => void,
 ): ToastArgs {
   return {
-    message: () => <Text c="inherit" fw="bold" mr="2.5rem">{t`Saved`}</Text>,
+    message: () => <Text c="inherit" fw="bold" me="2.5rem">{t`Saved`}</Text>,
     actionLabel: t`Add this to a dashboard`,
     action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
   };

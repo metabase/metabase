@@ -60,7 +60,7 @@ export function SortableFieldItem<T extends number | string>({
           w="100%"
           wrap="nowrap"
         >
-          <Icon className={S.icon} flex="0 0 auto" mr="sm" name={icon} />
+          <Icon className={S.icon} flex="0 0 auto" me="sm" name={icon} />
 
           {parent && (
             <Box
@@ -68,7 +68,7 @@ export function SortableFieldItem<T extends number | string>({
               flex="0 0 auto"
               lh="normal"
               maw="50%"
-              mr="xs"
+              me="xs"
             >
               <Ellipsified lines={1} tooltip={parent.display_name}>
                 {parent.display_name}
@@ -85,7 +85,7 @@ export function SortableFieldItem<T extends number | string>({
             <Icon
               className={S.grabber}
               flex="0 0 auto"
-              ml="sm"
+              ms="sm"
               name="grabber"
             />
           )}

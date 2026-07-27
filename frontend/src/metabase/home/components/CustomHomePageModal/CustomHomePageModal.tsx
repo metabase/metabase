@@ -41,7 +41,7 @@ export const CustomHomePageModal = ({
     await dispatch(
       addUndo({
         message: () => (
-          <Box ml="0.5rem" mr="2.5rem">
+          <Box ms="0.5rem" me="2.5rem">
             <Text
               span
               c="text-primary-inverse"

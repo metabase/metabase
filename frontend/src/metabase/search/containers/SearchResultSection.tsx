@@ -30,7 +30,7 @@ export const SearchResultSection = ({
   return (
     <Paper px="sm" py="md">
       <Stack gap="sm">
-        <Text tt="uppercase" fw={700} ml="sm" mb="sm">
+        <Text tt="uppercase" fw={700} ms="sm" mb="sm">
           {resultsLabel}
         </Text>
         {results.map((item, index) => {

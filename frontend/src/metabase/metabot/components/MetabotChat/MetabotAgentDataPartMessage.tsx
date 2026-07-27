@@ -231,10 +231,10 @@ const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
     bdrs="sm"
     className={Styles.agentPartCard}
     p="sm"
-    pl="md"
+    ps="md"
   >
     <Flex align="center">
-      <Icon name="document" c="text-secondary" mr="sm" />
+      <Icon name="document" c="text-secondary" me="sm" />
       <Text fw="bold">{formatPartType(type)}</Text>
     </Flex>
     <ActionIcon
@@ -280,7 +280,7 @@ const DataPartJsonCard = ({
         justify="space-between"
       >
         <Flex align="center">
-          <Icon name="document" c="text-secondary" mr="sm" />
+          <Icon name="document" c="text-secondary" me="sm" />
           <Text fw="bold">{formatPartType(type)}</Text>
         </Flex>
         <ActionIcon

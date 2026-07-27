@@ -88,7 +88,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
                   variant="subtle"
                 >
                   {t`Help is here`}
-                  <Icon name="chevronright" size={12} ml="xs" />
+                  <Icon name="chevronright" size={12} ms="xs" />
                 </Button>
               </Text>
             )}

@@ -24,7 +24,7 @@ export function AIAnalysisContentWrapper({
       <Group justify="space-between" align="center">
         <Flex align="center" gap="xs">
           <MetabotIcon />
-          <Text fz="1.17em" ml="xs" fw="bold">
+          <Text fz="1.17em" ms="xs" fw="bold">
             {title}
           </Text>
         </Flex>

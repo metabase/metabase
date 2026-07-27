@@ -125,7 +125,7 @@ export function ImageUploadWidget({
                   accept="image/jpeg,image/png,image/svg+xml"
                   multiple={false}
                 />
-                <Text ml="lg" truncate="end">
+                <Text ms="lg" truncate="end">
                   {isDefaultImage
                     ? t`No file chosen`
                     : fileName
@@ -137,7 +137,7 @@ export function ImageUploadWidget({
                     leftSection={<Icon name="close" />}
                     variant="subtle"
                     c="text-primary"
-                    ml="md"
+                    ms="md"
                     size="compact-md"
                     onClick={handleRemove}
                     aria-label={t`Remove custom illustration`}

@@ -23,3 +23,16 @@
 :global(.Icon-triangle_right:where(:dir(rtl))) {
   transform: scaleX(-1);
 }
+
+/*
+ * react-grid-layout (dashboard grid) positions each card with
+ * `transform: translate(x, y)` measured from the container's left edge, but it
+ * never sets `left`. An absolutely positioned element with no inset resolves to
+ * its static position, which in RTL is the *right* edge — so every dashcard gets
+ * pushed off-canvas and clipped. Pin the items to the physical left so the
+ * library's own math stays correct; card contents still inherit RTL.
+ */
+:global([dir="rtl"] .react-grid-item) {
+  left: 0;
+  right: auto;
+}

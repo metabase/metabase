@@ -185,7 +185,7 @@ const SourceItem = ({
               gap="0.25rem"
               maw="100%"
               miw={0}
-              pl="1.25rem"
+              ps="1.25rem"
               c="text-secondary"
             >
               {location.parts.map((part, index) => (
@@ -245,7 +245,7 @@ const SourceItemSkeleton = ({ hasFeedback }: { hasFeedback?: boolean }) => {
           <Skeleton w={12} h={12} radius="xs" />
           <Skeleton w="7rem" h="0.75rem" radius="xs" />
         </Flex>
-        <Flex pl="1.25rem">
+        <Flex ps="1.25rem">
           <Skeleton w="10rem" h="0.75rem" radius="xs" />
         </Flex>
       </Flex>

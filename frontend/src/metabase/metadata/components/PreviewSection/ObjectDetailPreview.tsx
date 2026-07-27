@@ -86,7 +86,7 @@ const ObjectDetailPreviewBase = ({
     <Stack gap={0} p="lg">
       {headerColumns.length > 0 && (
         <Box pb="md" pt="xs">
-          <Box ml={rem(-8)}>
+          <Box ms={rem(-8)}>
             <Header columns={columns} icon={icon} row={row} />
           </Box>
         </Box>

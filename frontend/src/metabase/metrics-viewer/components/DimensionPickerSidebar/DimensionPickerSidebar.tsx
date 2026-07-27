@@ -262,7 +262,7 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
       className={S.root}
       component="aside"
       data-testid="metrics-viewer-dimension-picker-sidebar"
-      pl="lg"
+      ps="lg"
     >
       <Flex align="center" justify="space-between" pt="xs" pb="md">
         <Flex align="center" gap="sm" miw={0}>

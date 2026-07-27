@@ -447,7 +447,7 @@ export function EmailAttachmentPicker({
                 <Icon
                   name="info"
                   c="text-secondary"
-                  ml="0.5rem"
+                  ms="0.5rem"
                   size={12}
                   tooltip={
                     !disabledReason
@@ -478,7 +478,7 @@ export function EmailAttachmentPicker({
               <Icon
                 name="info"
                 c="text-secondary"
-                ml="0.5rem"
+                ms="0.5rem"
                 size={12}
                 tooltip={t`When enabled, only file attachments will be sent (no email content).`}
               />
@@ -541,7 +541,7 @@ export function EmailAttachmentPicker({
                 <li key={getCardIdPair(card)}>
                   <Checkbox
                     mb="1rem"
-                    mr="0.5rem"
+                    me="0.5rem"
                     checked={selectedCardIds.has(getCardIdPair(card))}
                     label={card.name}
                     onChange={() => {

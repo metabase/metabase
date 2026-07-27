@@ -30,7 +30,7 @@ export function SimpleSingleDatePicker({
         onChange={handleDateChange}
       />
       <Box>
-        <TimeToggle pl={0} hasTime={hasTime} onClick={handleTimeToggle} />
+        <TimeToggle ps={0} hasTime={hasTime} onClick={handleTimeToggle} />
       </Box>
     </Stack>
   );

@@ -265,7 +265,7 @@ export const RemappingPicker = ({
 
       {isFkMapping && (
         <>
-          <Flex ml={rem(12)}>
+          <Flex ms={rem(12)}>
             <SubInputIllustration />
           </Flex>
 

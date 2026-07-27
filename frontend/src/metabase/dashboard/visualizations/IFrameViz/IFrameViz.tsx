@@ -94,7 +94,7 @@ export function IFrameViz({
             <Text fw="bold" truncate>
               {t`Paste your snippet here`}
             </Text>{" "}
-            <Box ml="auto">
+            <Box ms="auto">
               <Button
                 size="compact-md"
                 variant="filled"

@@ -57,7 +57,7 @@ export function AreaTab({
         {effectiveRightSection && (
           <Box
             className={showLabel ? undefined : S.badgeOverlay}
-            ml={showLabel ? "auto" : undefined}
+            ms={showLabel ? "auto" : undefined}
           >
             {effectiveRightSection}
           </Box>

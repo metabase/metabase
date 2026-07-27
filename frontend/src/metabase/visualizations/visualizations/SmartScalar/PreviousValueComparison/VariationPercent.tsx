@@ -28,7 +28,7 @@ export const VariationPercent = ({
         <Icon
           name={changeArrowIconName}
           size={iconSize}
-          mr="sm"
+          me="sm"
           className={S.variationIcon}
         />
       )}

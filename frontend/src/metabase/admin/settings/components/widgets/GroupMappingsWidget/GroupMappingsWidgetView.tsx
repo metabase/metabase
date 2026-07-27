@@ -183,7 +183,7 @@ export function GroupMappingsWidgetView({
             </Button>
           )}
           <Tooltip label={helpText(mappingSetting)} position="top" maw="20rem">
-            <Flex align="center" gap="sm" c="text-secondary" ml="auto">
+            <Flex align="center" gap="sm" c="text-secondary" ms="auto">
               <Icon name="info" />
               <span>{t`About mappings`}</span>
             </Flex>

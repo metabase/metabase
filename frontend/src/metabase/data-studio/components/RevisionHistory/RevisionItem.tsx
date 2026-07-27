@@ -44,7 +44,7 @@ export function RevisionItem({
 
   return (
     <Timeline.Item bullet={<UserAvatar user={revision.user} bg={userColor} />}>
-      <Stack gap="sm" ml="md">
+      <Stack gap="sm" ms="md">
         <Flex justify="space-between" align="flex-start" gap="md">
           <Stack gap={2}>
             <Text fw={600} size="md">
@@ -60,7 +60,7 @@ export function RevisionItem({
         </Flex>
 
         {revision.message && (
-          <Box pl="sm" className={S.messageAccent}>
+          <Box ps="sm" className={S.messageAccent}>
             <Text size="sm" c="text-secondary">
               {revision.message}
             </Text>

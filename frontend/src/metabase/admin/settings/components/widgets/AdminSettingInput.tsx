@@ -63,6 +63,12 @@ export type AdminSettingInputProps<S extends EnterpriseSettingKey> = {
   hidden?: boolean;
   disabled?: boolean;
   switchLabel?: React.ReactNode;
+  /**
+   * Writing direction for the input itself (not its label/description). Set to
+   * "ltr" for technical values such as URLs, hostnames or keys, which would
+   * otherwise be reordered by bidi when the UI language is RTL.
+   */
+  inputDir?: "ltr" | "rtl";
 } & InputDetails &
   BoxProps;
 
@@ -83,6 +89,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
   options,
   disabled,
   searchable,
+  inputDir,
   ...boxProps
 }: AdminSettingInputProps<SettingName>) {
   const {
@@ -126,6 +133,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
           switchLabel={switchLabel}
           searchable={searchable}
           disabled={disabled}
+          inputDir={inputDir}
         />
       )}
     </Box>
@@ -143,6 +151,7 @@ export function BasicAdminSettingInput({
   autoFocus,
   switchLabel,
   searchable,
+  inputDir,
 }: {
   name: EnterpriseSettingKey;
   value: any;
@@ -158,6 +167,7 @@ export function BasicAdminSettingInput({
     | RadioInputType
     | BooleanInputType;
   searchable?: boolean;
+  inputDir?: "ltr" | "rtl";
 }) {
   const [localValue, setLocalValue] = useState(value);
 
@@ -225,6 +235,7 @@ export function BasicAdminSettingInput({
           onChange={(e) => setLocalValue(e.target.value)}
           onBlur={() => onChange(localValue)}
           disabled={disabled}
+          dir={inputDir}
         />
       );
     case "number":
@@ -241,6 +252,7 @@ export function BasicAdminSettingInput({
           type={inputType ?? "text"}
           disabled={disabled}
           autoFocus={autoFocus}
+          dir={inputDir}
         />
       );
   }

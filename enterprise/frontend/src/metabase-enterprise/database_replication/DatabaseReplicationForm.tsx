@@ -264,7 +264,7 @@ export const DatabaseReplicationForm = ({
                         overflowY: "auto",
                       }}
                     >
-                      <List spacing="xs" size="sm" fz="md" ml="sm" my="md">
+                      <List spacing="xs" size="sm" fz="md" ms="sm" my="md">
                         {noSyncTables.map((table) => (
                           <List.Item
                             key={`${table.tableSchema}.${table.tableName}`}
@@ -359,7 +359,7 @@ export const DatabaseReplicationForm = ({
                         overflowY: "auto",
                       }}
                     >
-                      <List spacing="xs" size="sm" fz="md" ml="sm" my="md">
+                      <List spacing="xs" size="sm" fz="md" ms="sm" my="md">
                         {replicatedTables.map((table) => (
                           <List.Item
                             key={`${table.tableSchema}.${table.tableName}`}

@@ -34,8 +34,8 @@ export const Banner = ({
       bg={bg || "background_page-tertiary"}
       py="sm"
       justify="space-between"
-      pl="1.325rem"
-      pr="md"
+      ps="1.325rem"
+      pe="md"
       {...flexProps}
     >
       <Group gap="xs" {...contentGroupProps}>

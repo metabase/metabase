@@ -48,7 +48,7 @@ export const AddRow = ({
       onKeyDown={onKeyDown}
       onChange={onChange}
     />
-    <Button variant="subtle" bg="transparent" onClick={onCancel} mr="sm">
+    <Button variant="subtle" bg="transparent" onClick={onCancel} me="sm">
       {t`Cancel`}
     </Button>
     <Button

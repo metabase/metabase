@@ -93,7 +93,7 @@ export function DashboardTabs() {
           ) : (
             <>
               {t`This will also delete any questions saved in it. If you'd like to keep any of these, move them to a different tab, dashboard, or collection.`}
-              <List ml="md" mt="sm">
+              <List ms="md" mt="sm">
                 {uniq(tabDashboardQuestions, (dc) => dc.card.id).map(
                   (dashcard) => (
                     <List.Item key={dashcard.card.id}>

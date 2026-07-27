@@ -81,7 +81,7 @@ export const TopBar = forwardRef<HTMLDivElement, PropsWithChildren>(
           />
         )}
         {leftActions}
-        <Flex ml="auto" gap="lg" mr="lg" align="center" h="3rem" pl="md">
+        <Flex ms="auto" gap="lg" me="lg" align="center" h="3rem" ps="md">
           {rightActions}
         </Flex>
       </Flex>

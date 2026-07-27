@@ -58,7 +58,7 @@ export const AddHeadingOrTextButton = () => {
       </Menu.Target>
       <Menu.Dropdown miw="auto">
         {TEXT_OPTIONS.map(({ title, action }) => (
-          <Menu.Item key={title} pr="xl" fw="bold" onClick={action}>
+          <Menu.Item key={title} pe="xl" fw="bold" onClick={action}>
             {title}
           </Menu.Item>
         ))}

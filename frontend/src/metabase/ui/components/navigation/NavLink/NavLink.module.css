@@ -91,3 +91,13 @@
     margin-inline-start: var(--mantine-spacing-sm);
   }
 }
+
+/*
+ * Mantine renders its own chevron SVG (not a Metabase `Icon-*`), so the global
+ * RTL icon mirroring doesn't reach it. Flip it here so a collapsed section points
+ * toward the content in RTL. Mantine rotates the chevron itself when the section
+ * expands, and that inline transform keeps winning over this rule.
+ */
+.NavLinkChevron:where(:dir(rtl)) {
+  transform: scaleX(-1);
+}

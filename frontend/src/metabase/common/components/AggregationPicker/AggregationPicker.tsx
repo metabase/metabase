@@ -367,7 +367,7 @@ export function AggregationPicker({
       }
 
       return (
-        <Flex pr="sm" align="center">
+        <Flex pe="sm" align="center">
           <Popover
             position="right"
             content={

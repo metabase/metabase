@@ -38,7 +38,7 @@ export const PermissionsEditorSplitPermsMessage = () => {
       >
         {t`Your data permissions may look different, but the access hasn’t changed.`}
         <Anchor
-          ml="0.5rem"
+          ms="0.5rem"
           fw="bold"
           target="_blank"
           href={docsUrl}

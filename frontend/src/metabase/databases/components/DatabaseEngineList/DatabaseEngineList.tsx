@@ -225,7 +225,7 @@ const SampleDatabaseIndicator = () => {
     >
       <Flex align="center">
         <LogoIcon height={20} width={24} />
-        <Text ml="sm" mr="xs">
+        <Text ms="sm" me="xs">
           {t`Sample Database for testing`}
         </Text>
         {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- only shown to admins during setup */}

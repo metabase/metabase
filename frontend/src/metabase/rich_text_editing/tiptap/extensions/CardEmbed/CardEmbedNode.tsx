@@ -568,7 +568,7 @@ export const CardEmbedComponent = memo(
                   {!isEditingTitle &&
                     document &&
                     unresolvedCommentsCount > 0 && (
-                      <Box data-hide-on-print my="-sm" ml="auto">
+                      <Box data-hide-on-print my="-sm" ms="auto">
                         <CommentsButton
                           // don't use Link component here since it messes with tiptap's link handling
                           disabled={hasUnsavedChanges || !commentsPath}

@@ -127,7 +127,7 @@ export const ChartSettingFieldPicker = ({
     >
       <ChartSettingSelect
         variant="unstyled"
-        pl={hasLeftSection ? "sm" : 0}
+        ps={hasLeftSection ? "sm" : 0}
         w="100%"
         defaultDropdownOpened={autoOpenWhenUnset && value === undefined}
         options={options}
@@ -135,7 +135,7 @@ export const ChartSettingFieldPicker = ({
         onChange={(value) => onChange?.(String(value))}
         leftSection={
           hasLeftSection ? (
-            <Group wrap="nowrap" gap="xs" p="xs" ml="sm" mr="md" align="center">
+            <Group wrap="nowrap" gap="xs" p="xs" ms="sm" me="md" align="center">
               {showDragHandle && (
                 <Icon
                   // Unjustified type cast. FIXME

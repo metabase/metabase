@@ -135,7 +135,7 @@ export function ItemList({
                       }
                       filled
                       size={14}
-                      ml="0.5rem"
+                      ms="0.5rem"
                     />
                   </Flex>
                 }

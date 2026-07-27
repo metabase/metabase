@@ -89,7 +89,7 @@ export function TableSelector({
           <Tooltip label={t`Remove this table`}>
             <ActionIcon
               onClick={onRemove}
-              pr="sm"
+              pe="sm"
               aria-label={t`Remove this table`}
             >
               <Icon name="close" c="text-primary" />

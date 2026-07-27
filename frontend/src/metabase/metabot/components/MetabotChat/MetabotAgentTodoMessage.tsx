@@ -40,7 +40,7 @@ export const AgentTodoListMessage = ({
         data-testid="todo-list-header"
       >
         <Flex align="center" justify="center">
-          <Icon name="list" size=".75rem" mr="xs" c="core-brand" />
+          <Icon name="list" size=".75rem" me="xs" c="core-brand" />
           <Text size="sm" fw="bold" c="core-brand">{t`Todo List`}</Text>
         </Flex>
         <Flex align="center" justify="center" h="md">
@@ -70,7 +70,7 @@ export const AgentTodoListMessage = ({
                       className={cx(S.statusIndicator, S.pendingIndicator)}
                       align="center"
                       justify="center"
-                      mr="sm"
+                      me="sm"
                     />
                   ))
                   .with("completed", () => (
@@ -78,7 +78,7 @@ export const AgentTodoListMessage = ({
                       className={S.statusIndicator}
                       align="center"
                       justify="center"
-                      mr="sm"
+                      me="sm"
                     >
                       <Icon name="check" size=".7rem" c="core-white" />
                     </Flex>
@@ -88,7 +88,7 @@ export const AgentTodoListMessage = ({
                       className={S.statusIndicator}
                       align="center"
                       justify="center"
-                      mr="sm"
+                      me="sm"
                     >
                       <Icon name="arrow_right" size=".6rem" c="core-white" />
                     </Flex>
@@ -99,7 +99,7 @@ export const AgentTodoListMessage = ({
                       bg="core-brand"
                       align="center"
                       justify="center"
-                      mr="sm"
+                      me="sm"
                     >
                       <Icon name="close" size=".7rem" c="core-white" />
                     </Flex>

@@ -81,7 +81,7 @@ export function GlossaryRowEditor({
           ref={termRef}
         />
       </Box>
-      <Box component="td" valign="top" pr="0">
+      <Box component="td" valign="top" pe="0">
         {isDuplicate ? (
           <Group gap="xs" pt="sm" wrap="nowrap">
             <Icon c="text-secondary" name="info" />

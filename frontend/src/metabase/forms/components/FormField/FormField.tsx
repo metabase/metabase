@@ -61,26 +61,26 @@ export const FormField = forwardRef(function FormField(
                 c={"text-secondary"}
                 fw="900"
                 fz="sm"
-                ml="xs"
+                ms="xs"
               >{t`(optional)`}</Text>
             )}
             {(infoLabel || infoTooltip) && (
               <Tooltip multiline label={infoTooltip}>
                 {infoLabel ? (
-                  <Text c="text-secondary" mb="sm" fz="md" ml="auto">
+                  <Text c="text-secondary" mb="sm" fz="md" ms="auto">
                     {infoLabel}
                   </Text>
                 ) : (
                   <Icon
                     c="background_page-tertiary-inverse"
-                    ml="sm"
+                    ms="sm"
                     name="info"
                   />
                 )}
               </Tooltip>
             )}
             {actions && (
-              <Box ml="auto" fz="0.75rem" fw="900" c="text-secondary">
+              <Box ms="auto" fz="0.75rem" fw="900" c="text-secondary">
                 {actions}
               </Box>
             )}

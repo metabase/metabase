@@ -143,8 +143,8 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
           isHighlighted={false}
           variant="default"
           px={undefined}
-          pr="md"
-          rightSection={<Icon ml="xs" size={10} name="chevrondown" />}
+          pe="md"
+          rightSection={<Icon ms="xs" size={10} name="chevrondown" />}
           className={ToolbarButtonS.PrimaryToolbarButton}
           onClick={() => combobox.toggleDropdown()}
         />
