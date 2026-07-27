@@ -94,15 +94,24 @@
         (let [pgvector (semantic.env/get-pgvector-datasource!)]
           (jdbc/execute! pgvector ["CREATE SCHEMA cohabitant"])
           (jdbc/execute! pgvector ["CREATE TABLE cohabitant.precious (id int)"])
-          (jdbc/execute! pgvector ["CREATE TABLE index_doomed (id int)"])
+          ;; a real index table shape: index_<provider>_<model>_<dims>
+          (jdbc/execute! pgvector ["CREATE TABLE index_mock_model_4 (id int)"])
           ;; library retrieval shares a dedicated store, and used to keep its index unqualified here
           (jdbc/execute! pgvector ["CREATE TABLE library_entity_index (id int)"])
+          ;; a cohabitant is free to share our prefixes without matching any name we generate
+          (jdbc/execute! pgvector ["CREATE TABLE index_history (id int)"])
+          (jdbc/execute! pgvector ["CREATE TABLE dlq_backlog (id int)"])
+          (jdbc/execute! pgvector ["CREATE TABLE repair_log (id int)"])
           (semantic.db.connection/with-migrate-tx [tx]
             (semantic.db.migration/maybe-migrate! tx {:index-metadata semantic.index-metadata/default-index-metadata}))
           (is (true? (semantic.util/table-exists? pgvector "cohabitant.precious")))
           (is (true? (semantic.util/table-exists? pgvector "public.library_entity_index"))
               "another module's table in the same schema is not ours to drop")
-          (is (false? (semantic.util/table-exists? pgvector "public.index_doomed"))))))))
+          (testing "sharing a prefix is not enough — only names this module generates are dropped"
+            (is (true? (semantic.util/table-exists? pgvector "public.index_history")))
+            (is (true? (semantic.util/table-exists? pgvector "public.dlq_backlog")))
+            (is (true? (semantic.util/table-exists? pgvector "public.repair_log"))))
+          (is (false? (semantic.util/table-exists? pgvector "public.index_mock_model_4"))))))))
 
 (deftest dedicated-reset-refuses-app-db-test
   (mt/with-premium-features #{:semantic-search}

@@ -1,7 +1,7 @@
 (ns metabase-enterprise.semantic-search.db.migration.impl
   (:require
-   [clojure.string :as str]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.collections.curation :as collections.curation]
@@ -23,25 +23,35 @@
   Their presence in a to-be-wiped dedicated database means MB_PGVECTOR_DB_URL was pointed at an app db."
   #{"core_user" "metabase_database"})
 
-(def ^:private own-table-prefixes
-  "Every table this module creates in its store:
-  - `index_`  — `index_metadata`, `index_control`, `index_gate`, and `index_<provider>_<model>_<dims>`
-  - `dlq_`    — one dead-letter queue per index, `dlq_<index-id>`
-  - `repair_` — repair's scratch tables, `repair_<millis>_<id>`
+(def ^:private dlq-table-pattern
+  "One dead-letter queue per index, `dlq_<index-id>` (see [[semantic.dlq/dlq-table-name-kw]])."
+  #"\Adlq_\d+\z")
 
-  Used to scope the reset in a dedicated store, whose default schema we share with library retrieval."
-  ["index_" "dlq_" "repair_"])
+(def ^:private repair-table-pattern
+  "Repair's scratch tables, `repair_<millis>_<6 chars>` (see `semantic.repair/repair-table-name`)."
+  #"\Arepair_\d+_[a-z0-9]{6}\z")
 
 (defn- ours?
-  [{:keys [tablename]}]
-  (some #(str/starts-with? tablename %) own-table-prefixes))
+  "Whether a bare table name is one this module creates: a control table, an index table, a DLQ, or a
+  repair scratch table.
+  Name *shapes*, not prefixes — a dedicated store's default schema is shared, and a cohabitant is free to
+  call something `index_history`. [[semantic.index/index-table-name?]] is the same contract orphan
+  cleanup uses to decide what it may drop."
+  [index-metadata {:keys [tablename]}]
+  (boolean
+   (or (contains? (into #{} (map #(semantic.util/table-name-part (index-metadata %)))
+                        [:metadata-table-name :control-table-name :gate-table-name])
+                  tablename)
+       (semantic.index/index-table-name? tablename)
+       (re-matches dlq-table-pattern tablename)
+       (re-matches repair-table-pattern tablename))))
 
 (defn- drop-all-but-migration-table
   "Destructive: clears out semantic-search storage ahead of recreating it from scratch.
   When index-metadata carries a `:schema` (shared app-db mode) ONLY tables inside that schema may be
   dropped — the application's tables live in other schemas and must never be touched here.
   Without a `:schema` the database is assumed dedicated to semantic search and its default schema is
-  swept, but only for [[own-table-prefixes]] — library retrieval keeps its index there too. Refuses
+  swept, but only for tables [[ours?]] recognizes — library retrieval keeps its index there too. Refuses
   outright when the database looks like a Metabase app db (MB_PGVECTOR_DB_URL pointed at the application
   database would otherwise destroy it here, on first init)."
   [index-metadata tx]
@@ -72,7 +82,7 @@
                                              ;; the module's own schema holds nothing else, so a reset
                                              ;; there is free to clear leftovers from older naming
                                              ;; schemes. A dedicated store's default schema is shared.
-                                             (nil? schema) (filter ours?))]
+                                             (nil? schema) (filter (partial ours? index-metadata)))]
       (jdbc/execute! tx
                      (sql/format
                       {:drop-table [[[:raw (str (semantic.util/quote-ident schemaname) "."

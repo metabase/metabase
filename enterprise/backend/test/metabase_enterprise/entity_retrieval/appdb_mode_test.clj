@@ -92,6 +92,13 @@
               (let [ds            (semantic.db.datasource/ensure-initialized-data-source!)
                     public-before (tables-in-schema app-db "public")]
                 (is (identical? app-db ds) "app-db mode shares the application pool")
+                ;; an index built before the schema existed, standing in for an upgrading instance. Its
+                ;; rows must survive: rebuilding instead would re-embed the whole library.
+                (jdbc/execute! app-db ["CREATE TABLE library_entity_index
+                                        (doc_id text primary key, entity_type text, entity_local_id bigint,
+                                         doc_type text, doc_text text, doc_embedding vector(4))"])
+                (jdbc/execute! app-db ["INSERT INTO library_entity_index
+                                        VALUES ('legacy-doc', 'table', 1, 'name', 'legacy', '[0,0,0,0]')"])
                 (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
                                :model/Collection {data-id :id} {:type     "library-data"
                                                                 :location (str "/" lib-id "/")}
@@ -102,10 +109,22 @@
                                                                  :active       true
                                                                  :name         "dog_training_guide"
                                                                  :display_name "Dog Training Guide"}]
+                  (testing "adoption keeps the rows an upgrading instance already embedded"
+                    ;; asserted here rather than after the reconcile, which GCs any document the library
+                    ;; no longer implies -- including this synthetic one
+                    (index-table/ensure-tables! ds semantic.tu/mock-embedding-model)
+                    (is (= 1 (:count (jdbc/execute-one!
+                                      app-db
+                                      [(format "SELECT count(*) AS count FROM %s WHERE doc_id = 'legacy-doc'"
+                                               (index-table/vectors-table-sql))]
+                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+                        "moved, not recreated empty -- otherwise the whole library re-embeds"))
                   (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
                   (testing "both tables live inside the library_retrieval schema"
                     (is (= #{"library_entity_index" "library_entity_index_meta"}
                            (tables-in-schema app-db index-table/index-schema))))
+                  (testing "the pre-existing index was moved, not left behind"
+                    (is (not (contains? (tables-in-schema app-db "public") "library_entity_index"))))
                   (testing "the application schema is untouched"
                     (is (= public-before (tables-in-schema app-db "public"))))
                   (testing "retrieval round-trips through the app-db pool"
