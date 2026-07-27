@@ -1,10 +1,9 @@
-import type { Query } from "history";
 import { KBarPortal, VisualState, useKBar } from "kbar";
 import { useEffect, useRef } from "react";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { useSelector } from "metabase/redux";
-import { type PlainRoute, useRouter } from "metabase/router";
+import { type PlainRoute, type Query, useRouter } from "metabase/router";
 import { getUser } from "metabase/selectors/user";
 import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";

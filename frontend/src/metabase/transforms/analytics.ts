@@ -3,6 +3,7 @@ import type {
   IndexKind,
   InspectorCardId,
   InspectorLensId,
+  TransformDagDirection,
   TransformId,
   TransformJobId,
 } from "metabase-types/api";
@@ -21,6 +22,20 @@ export function trackTransformTriggerManualRun({
   });
 }
 
+export function trackTransformTriggerDagRun({
+  transformId,
+  direction,
+}: {
+  transformId: TransformId;
+  direction: TransformDagDirection;
+}) {
+  trackSimpleEvent({
+    event: "transform_trigger_dag_run",
+    target_id: transformId,
+    event_detail: direction,
+  });
+}
+
 export function trackTransformJobTriggerManualRun({
   jobId,
 }: {
@@ -29,6 +44,17 @@ export function trackTransformJobTriggerManualRun({
   trackSimpleEvent({
     event: "transform_job_trigger_manual_run",
     target_id: jobId,
+  });
+}
+
+export function trackTransformRunsViewToggled({
+  view,
+}: {
+  view: "detailed" | "grouped";
+}) {
+  trackSimpleEvent({
+    event: "transform_runs_view_toggled",
+    event_detail: view,
   });
 }
 

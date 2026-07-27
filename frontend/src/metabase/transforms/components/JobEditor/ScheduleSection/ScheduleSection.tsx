@@ -1,12 +1,18 @@
+import { useDisclosure } from "@mantine/hooks";
 import { c, t } from "ttag";
 
-import { useRunTransformJobMutation } from "metabase/api";
+import {
+  useCancelJobRunMutation,
+  useRunTransformJobMutation,
+} from "metabase/api";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Schedule } from "metabase/common/components/Schedule";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useSetting } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";
+import { isResourceNotFoundError } from "metabase/utils/errors";
 import type {
   ScheduleDisplayType,
   ScheduleSettings,
@@ -130,7 +136,12 @@ function RunButtonSection({
   isCheckingPermissions,
 }: RunButtonSectionProps) {
   const [runJob] = useRunTransformJobMutation();
+  const [cancelJobRun] = useCancelJobRunMutation();
   const { sendErrorToast } = useMetadataToasts();
+  const [
+    isCancelModalOpen,
+    { open: openCancelModal, close: closeCancelModal },
+  ] = useDisclosure(false);
   const isSaved = job.id != null;
   const hasTags = job.tag_ids?.length !== 0;
 
@@ -160,15 +171,44 @@ function RunButtonSection({
     }
   };
 
+  const handleCancel = async () => {
+    if (job.id == null || job.last_run?.id == null) {
+      return;
+    }
+    const { error } = await cancelJobRun({
+      jobId: job.id,
+      runId: job.last_run.id,
+    });
+    if (error && !isResourceNotFoundError(error)) {
+      sendErrorToast(t`Failed to cancel job`);
+    }
+  };
+
   return (
-    <Tooltip label={tooltipLabel} disabled={!tooltipLabel}>
-      <RunButton
-        id={job.id}
-        run={job.last_run}
-        isDisabled={!isSaved || !hasTags || readOnly}
-        isLoading={isCheckingPermissions}
-        onRun={handleRun}
+    <>
+      <Tooltip label={tooltipLabel} disabled={!tooltipLabel}>
+        <RunButton
+          id={job.id}
+          run={job.last_run}
+          isDisabled={!isSaved || !hasTags || readOnly}
+          isLoading={isCheckingPermissions}
+          allowCancellation
+          onRun={handleRun}
+          onCancel={openCancelModal}
+        />
+      </Tooltip>
+      <ConfirmModal
+        title={t`Cancel this run?`}
+        message={t`This stops the job run and requests cancellation of any transforms still in progress. Transforms that have already finished won't be reverted.`}
+        confirmButtonText={t`Cancel run`}
+        closeButtonText={t`Keep running`}
+        opened={isCancelModalOpen}
+        onClose={closeCancelModal}
+        onConfirm={() => {
+          void handleCancel();
+          closeCancelModal();
+        }}
       />
-    </Tooltip>
+    </>
   );
 }

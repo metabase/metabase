@@ -315,10 +315,9 @@
   `serdes/lookup-by-id`. Use this in production code paths that already have an app DB; pass a
   different store implementation when running without one (checker, isolated tests).
 
-  Gated on [[resolve/entity-id?]]: `serdes/lookup-by-id` falls through to a full-table scan via
-  `find-by-identity-hash` for non-NanoID strings. LLM-authored entity-id values are untrusted,
-  so anything that isn't a 21-char NanoID short-circuits to `nil` and the caller surfaces a
-  clear `:unknown-…` agent error."
+  Gated on [[resolve/entity-id?]]: LLM-authored entity-id values are untrusted, so anything that
+  isn't a 21-char NanoID short-circuits to `nil` and the caller surfaces a clear `:unknown-…`
+  agent error."
   (reify ContentStore
     (card-by-entity-id [_ entity-id]
       (when (resolve/entity-id? entity-id)

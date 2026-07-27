@@ -1,5 +1,4 @@
 import { act } from "@testing-library/react";
-import type { Location } from "history";
 
 import { renderHookWithProviders } from "__support__/ui";
 import { isEmbedPreview } from "metabase/embedding/config";
@@ -10,6 +9,7 @@ import {
   createMockState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
+import type { Location } from "metabase/router";
 import { push, replace } from "metabase/router";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";

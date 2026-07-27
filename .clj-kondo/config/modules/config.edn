@@ -1042,6 +1042,7 @@
   health-inspector
   {:team "Querying Platform"
    :api #{metabase.health-inspector.api
+          metabase.health-inspector.core
           metabase.health-inspector.init}
    :uses #{api
            lib
@@ -2052,6 +2053,7 @@
            metabase.search.core
            metabase.search.engine
            metabase.search.in-place.scoring
+           metabase.search.index-health
            metabase.search.ingestion
            metabase.search.init
            metabase.search.scoring
@@ -2066,6 +2068,7 @@
            collections
            config
            events
+           health-inspector
            lib
            lib-be
            models
@@ -2483,6 +2486,7 @@
    :friends #{models
               enterprise/transforms-python}
    :model-exports #{:model/Transform
+                    :model/TransformDagRun
                     :model/TransformJob
                     :model/TransformJobRun
                     :model/TransformJobTransformTag
@@ -2540,6 +2544,7 @@
            transforms-base
            util}
    :model-imports #{:model/Transform
+                    :model/TransformDagRun
                     :model/TransformJob
                     :model/TransformJobRun
                     :model/TransformJobTransformTag
@@ -2753,6 +2758,7 @@
            enterprise/advanced-permissions}
    :model-exports #{:model/Dimension
                     :model/Field
+                    :model/FieldUserSettings
                     :model/FieldValues
                     :model/Table}
    :model-imports #{:model/Card
@@ -3295,7 +3301,9 @@
    :uses #{analytics-interface
            collections
            entity-retrieval
+           health-inspector
            premium-features
+           search
            task
            util
            enterprise/semantic-search}
@@ -3491,6 +3499,7 @@
                     :model/Dashboard
                     :model/Document
                     :model/Field
+                    :model/FieldUserSettings
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/PythonLibrary
@@ -3575,8 +3584,7 @@
            settings
            system
            users
-           util
-           enterprise/serialization}
+           util}
    :model-imports #{:model/ApiKey
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
@@ -3617,6 +3625,7 @@
            metabase-enterprise.semantic-search.core
            metabase-enterprise.semantic-search.db.datasource
            metabase-enterprise.semantic-search.embedding
+           metabase-enterprise.semantic-search.embedding-health
            metabase-enterprise.semantic-search.init}
    :uses #{activity-feed
            analytics
@@ -3627,6 +3636,7 @@
            config
            connection-pool
            events
+           health-inspector
            lib-be
            llm
            metabot
@@ -3644,10 +3654,7 @@
 
   enterprise/serialization
   {:team "Graphy"
-   :api  #{metabase-enterprise.serialization.api
-           metabase-enterprise.serialization.cmd
-           metabase-enterprise.serialization.core
-           metabase-enterprise.serialization.v2.backfill-ids}
+   :api  #{metabase-enterprise.serialization.api metabase-enterprise.serialization.cmd metabase-enterprise.serialization.core}
    :friends #{enterprise/memoize-monitor}
    :uses #{analytics
            api
@@ -3728,7 +3735,7 @@
 
   enterprise/tenants
   {:team "Admin Webapp"
-   :api  #{metabase-enterprise.tenants.api}
+   :api  #{metabase-enterprise.tenants.api metabase-enterprise.tenants.init}
    :uses #{api
            audit-app
            auth-identity

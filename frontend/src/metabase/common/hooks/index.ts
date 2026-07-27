@@ -1,4 +1,5 @@
 export * from "./entity-framework";
+export * from "./use-abortable-query";
 export * from "./use-confirmation";
 export * from "./use-dnd-sensors";
 export * from "./use-docs-url";
@@ -6,8 +7,10 @@ export * from "./use-get-personal-collection";
 export * from "./use-has-token-feature";
 export * from "./use-locale";
 export * from "./use-notification-channels";
+export * from "./use-scroll-to-top";
 export * from "./use-set-collection-preview";
 export * from "./use-setting";
+export * from "./use-sorting-state-change";
 export * from "./use-temp-storage";
 export * from "./use-temporary-state";
 export * from "./use-toast";

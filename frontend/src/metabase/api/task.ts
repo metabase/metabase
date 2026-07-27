@@ -84,10 +84,13 @@ export const taskApi = Api.injectEndpoints({
 
 export const {
   useListTasksQuery,
+  useLazyListTasksQuery,
   useListUniqueTasksQuery,
   useGetTaskQuery,
   useGetTasksInfoQuery,
   useListTaskRunsQuery,
+  useLazyListTaskRunsQuery,
   useGetTaskRunQuery,
   useListTaskRunEntitiesQuery,
+  useLazyListTaskRunEntitiesQuery,
 } = taskApi;

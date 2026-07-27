@@ -1,7 +1,7 @@
-import type { LocationDescriptor } from "history";
 import type { Action, ActionImpl } from "kbar";
 import type React from "react";
 
+import type { LocationDescriptor } from "metabase/router";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName, ModerationReviewStatus } from "metabase-types/api";
 

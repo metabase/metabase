@@ -1,3 +1,5 @@
+import fetchMock from "fetch-mock";
+
 import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -9,10 +11,14 @@ import { useGetDefaultCollectionId } from "./hooks";
 
 const TestComponent = ({
   collectionId,
+  disabled,
 }: {
   collectionId: CollectionId | null;
+  disabled?: boolean;
 }) => {
-  const defaultCollectionId = useGetDefaultCollectionId(collectionId);
+  const defaultCollectionId = useGetDefaultCollectionId(collectionId, {
+    disabled,
+  });
 
   return <div>id: {JSON.stringify(defaultCollectionId)}</div>;
 };
@@ -44,10 +50,12 @@ const setup = ({
   collectionId,
   collections,
   hasRootAccess = true,
+  disabled,
 }: {
   collectionId: CollectionId | null;
   collections: Collection[];
   hasRootAccess?: boolean;
+  disabled?: boolean;
 }) => {
   const allCollections = [
     createMockCollection({
@@ -64,9 +72,12 @@ const setup = ({
   });
   const state = createMockState({ currentUser: user, entities: entitiesState });
 
-  renderWithProviders(<TestComponent collectionId={collectionId} />, {
-    storeInitialState: state,
-  });
+  renderWithProviders(
+    <TestComponent collectionId={collectionId} disabled={disabled} />,
+    {
+      storeInitialState: state,
+    },
+  );
 };
 
 describe("enterprise > useGetDefaultCollectionId", () => {
@@ -131,6 +142,20 @@ describe("enterprise > useGetDefaultCollectionId", () => {
       });
 
       expect(await screen.findByText("id: 301")).toBeInTheDocument();
+    });
+
+    it("should return null and skip the lookup when disabled (EMB-2107)", async () => {
+      setup({
+        collectionId: null,
+        hasRootAccess: true,
+        collections: defaultCollections,
+        disabled: true,
+      });
+
+      expect(await screen.findByText("id: null")).toBeInTheDocument();
+      expect(
+        fetchMock.callHistory.calls("path:/api/collection/root"),
+      ).toHaveLength(0);
     });
   });
 });

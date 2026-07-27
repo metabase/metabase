@@ -71,7 +71,14 @@ export type GeneratedCard = {
   display?: CardDisplayType;
 };
 
-export type GeneratedEntity = GeneratedCard;
+export type GeneratedDashboard = {
+  type: "dashboard";
+  id?: number;
+  title: string;
+  url: string;
+};
+
+export type GeneratedEntity = GeneratedCard | GeneratedDashboard;
 
 export type SavedEntityDestination =
   | { type: "collection"; id: number | null }

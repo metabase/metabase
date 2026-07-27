@@ -186,10 +186,6 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
-(defmethod serdes/hash-fields :model/Measure
-  [_measure]
-  [:name (serdes/hydrated-hash :table) :created_at])
-
 (defmethod serdes/deserialization-dependencies "Measure" [{:keys [definition]}]
   (serdes/mbql-deps false definition))
 

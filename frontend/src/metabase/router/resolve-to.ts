@@ -1,54 +1,18 @@
-import { type PlainRoute, matchPattern } from "./react-router";
-import type { Path, To } from "./types";
+import type { Path, PlainRoute, To } from "./types";
 import { parsePath } from "./utils";
 
 /**
- * The URL prefix each matched route accounts for, mirroring react-router v7's
- * `match.pathnameBase`. Resolving `".."` walks this list rather than the URL,
- * so a route whose path spans several segments (`pulse/:pulseId/archive`) is
- * left in a single step, and a pathless route is left in no steps at all.
+ * The URL prefix each matched route accounts for. v7 computes this per matched
+ * route as `match.pathname`, which `RouterBridge` stashes on each stub as
+ * `pathnameBase`, so read it directly rather than re-matching patterns.
  *
- * How much of the URL a route accounts for is measured with v3's own
- * `matchPattern` rather than by counting `/`. A v3 pattern segment does not map
- * to one URL segment: `database(/:databaseId)(/schema/:schemaName)` matches
- * anything from `database` to `database/1/schema/public`.
- *
- * A splat (`*`, `:entity_id(**)`) swallows the rest of the URL, so that route's
- * own entry covers the splat where v7's `pathnameBase` would stop before it.
- * `".."` reads the parent's entry rather than the route's own, so it still
- * climbs correctly out of a splat route.
+ * Resolving `".."` walks this list rather than the URL, so a route whose path
+ * spans several segments (`pulse/:pulseId/archive`) is left in a single step, a
+ * pathless route is left in no steps at all (v7 gives it its parent's pathname),
+ * and a splat route's entry covers the splat (v7's `match.pathname` includes it).
  */
-export function getRoutePathnames(
-  routes: PlainRoute[],
-  locationPathname: string,
-): string[] {
-  let matched = "";
-  let remaining = locationPathname;
-
-  return routes.map((route) => {
-    const path = route.path;
-    if (path) {
-      // v3 matches an absolute child path against the whole pathname rather
-      // than against what its parents left over.
-      if (path.startsWith("/")) {
-        matched = "";
-        remaining = locationPathname;
-      }
-
-      const match = matchPattern(path, remaining);
-      if (match) {
-        // `matchPattern` hands back the separator at the head of the remainder,
-        // so what it consumed is the rest of the string.
-        const consumed = remaining.slice(
-          0,
-          remaining.length - match.remainingPathname.length,
-        );
-        matched += consumed;
-        remaining = match.remainingPathname;
-      }
-    }
-    return withoutTrailingSlash(matched);
-  });
+export function getRoutePathnames(routes: PlainRoute[]): string[] {
+  return routes.map((route) => withoutTrailingSlash(route.pathnameBase ?? ""));
 }
 
 function withoutTrailingSlash(pathname: string): string {

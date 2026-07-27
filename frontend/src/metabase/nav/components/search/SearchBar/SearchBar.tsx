@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { LocationDescriptorObject } from "history";
 import { useKBar } from "kbar";
 import type {
   ChangeEvent,
@@ -22,6 +21,7 @@ import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { LocationDescriptorObject } from "metabase/router";
 import { push, useRouter } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Flex, Icon, UnstyledButton, rem } from "metabase/ui";
