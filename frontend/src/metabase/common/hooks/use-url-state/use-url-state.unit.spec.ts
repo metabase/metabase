@@ -137,7 +137,7 @@ describe("useUrlState", () => {
       patchUrlState({ score: 456 }, { immediate: true });
     });
 
-    // The immediate patch synced right away.
+    // The immediate patch is synced right away.
     expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=456");
 
     act(() => {
@@ -145,7 +145,7 @@ describe("useUrlState", () => {
       patchUrlState({ name: "xyz" });
     });
 
-    // The following default patch must still debounce — the bypass was one-shot.
+    // The following default patch must still debounce.
     expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=456");
     await waitFor(() => {
       expect(history?.getCurrentLocation().search).toEqual(

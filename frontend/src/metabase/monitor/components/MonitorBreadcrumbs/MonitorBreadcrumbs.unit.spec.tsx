@@ -1,6 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  mockTextOverflow,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui";
 import type { Crumb } from "metabase/common/components/Breadcrumbs";
 import { Route } from "metabase/router";
 
@@ -21,18 +26,17 @@ describe("MonitorBreadcrumbs", () => {
       "Jan 1, 2026",
     ]);
 
-    // Exposed as a labelled navigation landmark.
     const breadcrumbs = screen.getByRole("navigation", { name: "Breadcrumbs" });
 
     expect(within(breadcrumbs).getByText("Conversations")).toBeInTheDocument();
     expect(within(breadcrumbs).getByText("Jane Doe")).toBeInTheDocument();
     expect(within(breadcrumbs).getByText("Jan 1, 2026")).toBeInTheDocument();
 
-    // Separators are decorative: not announced as icons (no accessible label)...
+    // Separators are decorative: not announced as icons (no accessible label)
     expect(
       within(breadcrumbs).queryByLabelText("chevronright icon"),
     ).not.toBeInTheDocument();
-    // ...and hidden from the accessibility tree. 3 crumbs => 2 separators between them.
+    // and hidden from the accessibility tree. 3 crumbs => 2 separators between them.
     expect(
       within(breadcrumbs).getAllByRole("img", { hidden: true }),
     ).toHaveLength(2);
@@ -84,10 +88,16 @@ describe("MonitorBreadcrumbs", () => {
 
   it("ellipsifies long crumb text with a truncation tooltip", async () => {
     const longText = "A very long crumb title that should be truncated";
+    mockTextOverflow();
+
     setup([["Conversations", "/conversations"], longText]);
 
-    await userEvent.hover(screen.getByText(longText));
+    const text = screen.getByText(longText);
+    expect(text).toHaveAttribute("data-truncate", "end");
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
 
-    expect(await screen.findByText(longText)).toBeInTheDocument();
+    await userEvent.hover(text);
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(longText);
   });
 });

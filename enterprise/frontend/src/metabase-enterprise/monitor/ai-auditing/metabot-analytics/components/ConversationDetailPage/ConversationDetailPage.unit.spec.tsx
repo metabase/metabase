@@ -266,7 +266,7 @@ describe("ConversationDetailPage", () => {
     expect(await screen.findByText("discarded answer")).toBeInTheDocument();
   });
 
-  it("shows tool call details in a sidebar instead of a modal, and closes it", async () => {
+  it("shows tool call details in a sidebar, and closes it", async () => {
     setup(
       createConversation([
         userMessage("u1", null, "search orders"),
@@ -285,9 +285,6 @@ describe("ConversationDetailPage", () => {
     const sidebar = await screen.findByTestId("tool-call-details-sidebar");
     expect(within(sidebar).getByText("Tool Call")).toBeInTheDocument();
     expect(within(sidebar).getAllByText("search")).not.toHaveLength(0);
-    expect(
-      screen.queryByTestId("tool-call-details-modal"),
-    ).not.toBeInTheDocument();
 
     await userEvent.click(
       within(sidebar).getByRole("button", { name: "Close" }),

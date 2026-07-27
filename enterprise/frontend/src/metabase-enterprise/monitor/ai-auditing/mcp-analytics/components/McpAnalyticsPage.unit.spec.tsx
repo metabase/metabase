@@ -376,8 +376,6 @@ describe("McpAnalyticsPage", () => {
       screen.getByTestId("conversation-filters-date-select"),
     ).toBeInTheDocument();
 
-    // The empty state must render inside the active tab's panel, not as a bare sibling of the
-    // tab list — otherwise the selected tab's aria-controls points at nothing.
     const panel = screen.getByRole("tabpanel");
     expect(usageTab).toHaveAttribute("aria-controls", panel.id);
     expect(within(panel).getByText("No MCP activity")).toBeInTheDocument();

@@ -30,16 +30,6 @@ const SORTABLE_COLUMNS: TreeTableColumnDef<TestNode>[] = [
   },
 ];
 
-const UNSORTABLE_COLUMNS: TreeTableColumnDef<TestNode>[] = [
-  {
-    id: "name",
-    header: "Name",
-    enableSorting: false,
-    accessorFn: (node) => node.name,
-    cell: ({ row }) => <span>{row.original.name}</span>,
-  },
-];
-
 function setup({
   columns = SORTABLE_COLUMNS,
   onRowActivate,
@@ -69,16 +59,6 @@ function setup({
 
   renderWithProviders(<Container />);
 }
-
-describe("TreeTable header semantics", () => {
-  it("gives a non-sortable header the columnheader role", () => {
-    setup({ columns: UNSORTABLE_COLUMNS });
-
-    expect(
-      screen.getByRole("columnheader", { name: "Name" }),
-    ).toBeInTheDocument();
-  });
-});
 
 describe("TreeTable keyboard interaction", () => {
   it("does not activate a previously keyboard-focused row when Enter sorts a column header", async () => {

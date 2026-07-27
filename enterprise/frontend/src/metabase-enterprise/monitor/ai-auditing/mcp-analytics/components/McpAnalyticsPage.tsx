@@ -28,8 +28,7 @@ import { McpEventsTable } from "./McpEventsTable";
 /**
  * AI Auditing MCP analytics page. Renders live ad-hoc queries over the `v_mcp_tool_calls` audit view
  * across two tabs (Charts and a row-level Events table), sharing URL-state date/user/group
- * filters. The tabs and filters stay visible when the filtered view has no activity; only the
- * active tab's content is replaced with an empty state.
+ * filters.
  */
 export function McpAnalyticsPage({ location }: WithRouterProps) {
   const [

@@ -17,9 +17,6 @@ type EventsPageResult = {
  * Run the row-level events query for one page. Applies the MBQL `:page` clause (via
  * {@link paginateEventsQuery}) before execution so the backend returns only the requested page.
  * `page` is 0-indexed.
- *
- * Uses `useAbortableQuery` so switching pages before a request resolves
- * aborts the stale one instead of letting it complete in the background.
  */
 export function useMcpEventsQuery(
   query: Query | null,

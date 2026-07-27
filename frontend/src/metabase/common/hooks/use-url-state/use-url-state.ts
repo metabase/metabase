@@ -15,10 +15,7 @@ export type UrlStateConfig<State extends BaseState> = {
 
 type PatchUrlStateOptions = {
   /**
-   * Sync this patch to the URL right away instead of waiting out the debounce
-   * — use for direct clicks (pagination, sorting) where the URL should
-   * reflect the change immediately, as opposed to rapid-fire changes (e.g.
-   * typing into a filter) that should be batched into one URL update.
+   * Sync this patch to the URL right away instead of waiting out the debounce.
    */
   immediate?: boolean;
 };

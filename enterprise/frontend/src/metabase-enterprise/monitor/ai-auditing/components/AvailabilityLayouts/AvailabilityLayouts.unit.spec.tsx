@@ -69,7 +69,6 @@ describe("MetabotAnalyticsAvailabilityLayout", () => {
   it("shows the dashboard-bot illustration and secondary CTA for the AI-disabled state", () => {
     setup(<MetabotAnalyticsAvailabilityLayout />, { aiFeaturesEnabled: false });
 
-    // The decorative illustration has an empty alt, so assert on the raw element.
     expect(document.querySelector("img")).toBeInTheDocument();
     expect(
       screen
@@ -123,7 +122,6 @@ describe("McpAnalyticsAvailabilityLayout", () => {
   it("shows the dashboard-bot illustration and secondary CTA for the MCP-disabled state", () => {
     setup(<McpAnalyticsAvailabilityLayout />, { mcpEnabled: false });
 
-    // The decorative illustration has an empty alt, so assert on the raw element.
     expect(document.querySelector("img")).toBeInTheDocument();
     expect(
       screen

@@ -88,8 +88,6 @@ export function ConversationsTable({
     [],
   );
 
-  // Pointer navigation is handled by the row's link (getRowHref below), which also gives
-  // modified clicks (Cmd/Ctrl/Shift) their native new-tab/context-menu behavior for free.
   // This only covers keyboard activation (Enter on a keyboard-focused row).
   const handleRowActivate = useCallback(
     (row: Row<ConversationRow>) => {
@@ -248,8 +246,8 @@ function getColumns(): TreeTableColumnDef<ConversationRow>[] {
           />
         </Tooltip>
       ),
+      minWidth: 130,
       width: "auto",
-      minWidth: 110,
       enableSorting: true,
       sortDescFirst: false,
       accessorFn: (convo) => convo.cache_read_tokens,

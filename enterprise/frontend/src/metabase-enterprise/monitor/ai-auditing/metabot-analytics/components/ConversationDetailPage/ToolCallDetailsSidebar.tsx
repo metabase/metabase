@@ -19,8 +19,8 @@ export function ToolCallDetailsSidebar({
   const headingId = useId();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Move focus into the newly-opened panel (and again when a different tool call
-  // is selected) so keyboard/screen-reader users land on the details.
+  // Move focus into the newly-opened panel
+  // so keyboard/screen-reader users land on the details.
   useEffect(() => {
     closeButtonRef.current?.focus();
   }, [message.id]);
@@ -53,7 +53,7 @@ export function ToolCallDetailsSidebar({
           </Badge>
         </Flex>
       </Stack>
-      <ToolCallDetailsContent message={message} boxed />
+      <ToolCallDetailsContent message={message} />
     </Stack>
   );
 }

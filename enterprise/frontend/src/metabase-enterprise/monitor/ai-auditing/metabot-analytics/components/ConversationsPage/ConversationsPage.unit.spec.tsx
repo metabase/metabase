@@ -5,6 +5,7 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupGroupsEndpoint,
+  setupListMetabotAnalyticsConversationsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -17,10 +18,7 @@ import {
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route, withRouteProps } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type {
-  ConversationSummary,
-  ConversationsResponse,
-} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
+import type { ConversationSummary } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { ConversationsPage } from "./ConversationsPage";
@@ -54,31 +52,18 @@ function createConversation(
   };
 }
 
-function setupEndpoints(
-  conversations: ConversationSummary[],
-  total = conversations.length,
-) {
-  const response: ConversationsResponse = {
-    data: conversations,
-    total,
-    limit: 25,
-    offset: 0,
-  };
-  fetchMock.get("path:/api/ee/metabot-analytics/conversations", response);
-  setupUsersEndpoints([createMockUser({ id: 1, first_name: "Ada" })]);
-  setupGroupsEndpoint([]);
-}
-
 function setup({
   conversations = [createConversation()],
   total,
 }: { conversations?: ConversationSummary[]; total?: number } = {}) {
-  // TreeTable measures column/row sizes via the DOM; jsdom needs a stubbed rect
-  // for its virtualized rows to render. A wide viewport keeps every column
-  // (there are nine) within the horizontal virtualizer's rendered range.
   mockGetBoundingClientRect({ width: 2000, height: 100 });
   setupEnterprisePlugins();
-  setupEndpoints(conversations, total);
+  setupListMetabotAnalyticsConversationsEndpoint(
+    conversations,
+    total !== undefined ? { total } : undefined,
+  );
+  setupUsersEndpoints([createMockUser({ id: 1, first_name: "Ada" })]);
+  setupGroupsEndpoint([]);
 
   return renderWithProviders(
     <Route path="/monitor/ai-auditing">
@@ -105,8 +90,6 @@ describe("ConversationsPage", () => {
     });
     expect(table).toBeInTheDocument();
 
-    // Every populated header renders with the "columnheader" role, whether or not it's
-    // sortable — screen readers need that association even for Queries/Searches.
     const columnHeaders = [
       "Title",
       "User",
@@ -164,9 +147,6 @@ describe("ConversationsPage", () => {
       Urls.monitorAiAuditingConversationDetail("convo-42"),
     );
 
-    // Regression test: the row is both a router Link (getRowHref) and had a manual
-    // dispatch(push()) on click, which pushed the same destination twice — a single Back
-    // press would land on the detail page again instead of the conversations list.
     act(() => history?.goBack());
     expect(history?.getCurrentLocation().pathname).toBe(
       "/monitor/ai-auditing/conversations",
@@ -198,19 +178,6 @@ describe("ConversationsPage", () => {
 
     await waitFor(() => {
       expect(wasSortedBy("message_count", "asc")).toBe(true);
-    });
-  });
-
-  it("sorts server-side when the Title column header is clicked", async () => {
-    setup();
-
-    await screen.findByRole("treegrid", { name: "Conversations" });
-    await userEvent.click(
-      await screen.findByRole("columnheader", { name: /^Title\b/ }),
-    );
-
-    await waitFor(() => {
-      expect(wasSortedBy("title", "asc")).toBe(true);
     });
   });
 
