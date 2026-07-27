@@ -159,6 +159,37 @@ describe("CleanupPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("allows an active analysis to be retried after a server restart", async () => {
+    const activeStatus: UsageMetadataRefreshStatus = {
+      ...refreshStatus,
+      active: {
+        ...refreshStatus.snapshot!,
+        id: 8,
+        status: "running",
+        summary: null,
+        finished_at: null,
+      },
+    };
+    setupStartUsageMetadataRefreshEndpoint({ run_id: 9 });
+    setup({ status: activeStatus });
+
+    const refreshButton = await screen.findByRole("button", {
+      name: "Refresh analysis",
+    });
+    expect(refreshButton).toBeEnabled();
+
+    await userEvent.click(refreshButton);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called(
+          "path:/api/ee/data-studio/usage-metadata/refresh",
+          { method: "POST" },
+        ),
+      ).toBe(true);
+    });
+  });
+
   it("uses named queues instead of exposing modeling and evidence filters", async () => {
     setup();
 

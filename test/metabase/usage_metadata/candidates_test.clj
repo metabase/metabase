@@ -19,6 +19,7 @@
 (def ^:private globally-eligible? @#'candidates/globally-eligible?)
 (def ^:private prune-ineligible-candidates! @#'candidates/prune-ineligible-candidates!)
 (def ^:private source-provenance-index @#'candidates/source-provenance-index)
+(def ^:private locally-running-run-ids @#'candidates/locally-running-run-ids)
 (def ^:private non-closed-segment-candidate-ids
   @#'candidates/non-closed-segment-candidate-ids)
 
@@ -76,6 +77,37 @@
                                                        :source_config     {}}]
     (is (nil? (candidates/queue-refresh! :manual (mt/user->id :crowberto))))
     (is (= (:id run) (:id (candidates/active-run))))))
+
+(deftest refresh-queue-recovers-run-interrupted-by-server-restart-test
+  (mt/with-temp [:model/UsageMetadataCandidateRun interrupted-run {:status            :running
+                                                                   :trigger           :manual
+                                                                   :algorithm_version 1
+                                                                   :source_config     {}
+                                                                   :started_at        (mi/now)}]
+    (let [replacement-run (candidates/queue-refresh! :manual (mt/user->id :crowberto))
+          interrupted-run (t2/select-one :model/UsageMetadataCandidateRun :id (:id interrupted-run))]
+      (try
+        (is (= :failed (:status interrupted-run)))
+        (is (some? (:finished_at interrupted-run)))
+        (is (re-find #"interrupted" (:error interrupted-run)))
+        (is (= :queued (:status replacement-run)))
+        (is (= (:id replacement-run) (:id (candidates/active-run))))
+        (finally
+          (t2/delete! :model/UsageMetadataCandidateRun :id (:id replacement-run)))))))
+
+(deftest refresh-queue-does-not-recover-a-locally-running-run-test
+  (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :running
+                                                       :trigger           :manual
+                                                       :algorithm_version 1
+                                                       :source_config     {}
+                                                       :started_at        (mi/now)}]
+    (swap! locally-running-run-ids conj (:id run))
+    (try
+      (is (nil? (candidates/queue-refresh! :manual (mt/user->id :crowberto))))
+      (is (= :running
+             (t2/select-one-fn :status :model/UsageMetadataCandidateRun :id (:id run))))
+      (finally
+        (swap! locally-running-run-ids disj (:id run))))))
 
 (deftest successful-refresh-retains-run-history-but-prunes-old-snapshot-test
   (mt/with-temp [:model/UsageMetadataCandidateRun old-run {:status            :succeeded
