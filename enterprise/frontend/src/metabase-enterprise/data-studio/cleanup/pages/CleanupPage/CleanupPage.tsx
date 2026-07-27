@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
@@ -7,7 +6,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { trackDataStudioCleanupTableSelected } from "metabase/common/data-studio/analytics";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { useDispatch } from "metabase/redux";
-import { replace } from "metabase/router";
+import { replace, useSearchParams } from "metabase/router";
 import {
   Badge,
   Box,
@@ -34,13 +33,10 @@ import { hasActiveFilters, parseCleanupParams } from "../../utils";
 
 const PAGE_SIZE = 50;
 
-type CleanupPageProps = {
-  location: Location;
-};
-
-export function CleanupPage({ location }: CleanupPageProps) {
+export function CleanupPage() {
   const dispatch = useDispatch();
-  const params = parseCleanupParams(location);
+  const [searchParams] = useSearchParams();
+  const params = parseCleanupParams(searchParams);
   const page = params.page ?? 0;
   const refresh = useCleanupRefresh();
   const query = useListUsageMetadataTablesQuery({

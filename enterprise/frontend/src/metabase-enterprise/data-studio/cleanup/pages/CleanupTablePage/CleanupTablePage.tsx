@@ -1,6 +1,5 @@
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import type { Location } from "history";
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
@@ -20,7 +19,7 @@ import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
-import { replace } from "metabase/router";
+import { replace, useParams, useSearchParams } from "metabase/router";
 import {
   Badge,
   Button,
@@ -57,19 +56,17 @@ const PAGE_SIZE = 20;
 
 dayjs.extend(relativeTime);
 
-type CleanupTablePageProps = {
-  location: Location;
-  params: { tableId: string };
+type CleanupTablePageParams = {
+  tableId: string;
 };
 
-export function CleanupTablePage({
-  location,
-  params: routeParams,
-}: CleanupTablePageProps) {
+export function CleanupTablePage() {
+  const routeParams = useParams<CleanupTablePageParams>();
+  const [searchParams] = useSearchParams();
   const tableId = Urls.extractEntityId(routeParams.tableId);
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
-  const params = parseCleanupParams(location);
+  const params = parseCleanupParams(searchParams);
   const page = params.page ?? 0;
   const [showPublishModal, setShowPublishModal] = useState(false);
   const previousSnapshotId = useRef<number | null | undefined>(undefined);

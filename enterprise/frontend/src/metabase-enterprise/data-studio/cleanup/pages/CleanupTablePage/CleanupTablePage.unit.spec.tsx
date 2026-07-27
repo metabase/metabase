@@ -141,7 +141,7 @@ function setup() {
   renderWithProviders(
     <Route
       path="/data-studio/cleanup/tables/:tableId"
-      component={CleanupTablePage}
+      element={<CleanupTablePage />}
     />,
     {
       withRouter: true,
