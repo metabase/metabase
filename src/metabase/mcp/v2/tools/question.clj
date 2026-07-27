@@ -323,7 +323,9 @@
   {:name         "question_write"
    :scope        metabot.scope/agent-question-create
    :update-scope metabot.scope/agent-question-update
-   :annotations  {:readOnlyHint false :destructiveHint false}
+   ;; `archived: true` trashes the card, so this is not the additive-only update
+   ;; `destructiveHint false` would assert.
+   :annotations  {:readOnlyHint false :destructiveHint true}
    :args         question-write-args-schema}
   [args {:keys [token-scopes session-id]}]
   (let [[op a b] (common/dispatch-write

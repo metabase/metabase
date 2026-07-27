@@ -131,7 +131,9 @@
   {:name         "collection_write"
    :scope        metabot.scope/agent-collection-create
    :update-scope metabot.scope/agent-collection-update
-   :annotations  {:readOnlyHint false :destructiveHint false}
+   ;; `archived: true` trashes the collection and everything under it, so this is not the
+   ;; additive-only update `destructiveHint false` would assert.
+   :annotations  {:readOnlyHint false :destructiveHint true}
    :args         collection-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (common/dispatch-write collection-write-entry token-scopes args)

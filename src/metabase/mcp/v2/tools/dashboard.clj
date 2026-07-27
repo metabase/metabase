@@ -422,6 +422,10 @@
   {:name         "dashboard_write"
    :scope        metabot.scope/agent-dashboard-create
    :update-scope metabot.scope/agent-dashboard-update
+   ;; `archived: true` trashes the dashboard, and `remove`/`remove_tab`/`remove_parameter` drop
+   ;; cards, tabs, and subscriptions — not the additive-only update `destructiveHint false`
+   ;; would assert.
+   :annotations  {:readOnlyHint false :destructiveHint true}
    :args         dashboard-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [dispatched (common/dispatch-write dashboard-write-entry token-scopes args)]
