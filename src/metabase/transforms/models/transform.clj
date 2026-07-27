@@ -513,15 +513,18 @@
 
 (defmethod serdes/deserialization-dependencies "Transform"
   [{:keys [collection_id source tags source_database_id]}]
-  (set
-   (concat
-    (when collection_id
-      [[{:model "Collection" :id collection_id}]])
-    (when source_database_id
-      [[{:model "Database" :id source_database_id}]])
-    (for [{tag-id :tag_id} tags]
-      [{:model "TransformTag" :id tag-id}])
-    (serdes/mbql-deps false source))))
+  (let [checkpoint-field-ref (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])]
+    (set
+     (concat
+      (when collection_id
+        [[{:model "Collection" :id collection_id}]])
+      (when source_database_id
+        [[{:model "Database" :id source_database_id}]])
+      (for [{tag-id :tag_id} tags]
+        [{:model "TransformTag" :id tag-id}])
+      (when-not (pos-int? checkpoint-field-ref)
+        [(serdes/field->path checkpoint-field-ref)])
+      (serdes/mbql-deps false source)))))
 
 (defmethod serdes/storage-path "Transform" [transform ctx]
   (serdes/storage-default-collection-path transform ctx "transforms"))
