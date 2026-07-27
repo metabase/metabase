@@ -43,11 +43,14 @@
                                ["SELECT 1 FROM information_schema.schemata WHERE schema_name = ?" schema]
                                {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
 
-(defn- appdb-can-host-pgvector?
+(defn- appdb-can-host-library-index?
+  "The extension, plus this feature's own schema. Gating on semantic search's check instead would let the
+  harness pass where a role that can use `semantic_search` but not create ours fails in production."
   []
   (and (= :postgres (mdb/db-type))
        (try
-         (semantic.db.datasource/check-app-db-pgvector-support)
+         (and (semantic.db.datasource/check-app-db-pgvector-support)
+              (#'entity-retrieval.core/app-db-schema-usable?*))
          (catch Exception _ false))))
 
 (defn- opted-in?
@@ -60,8 +63,8 @@
     (testing "destructive round trip requires the MB_APPDB_PGVECTOR_MODE_TEST opt-in — skipping"
       (is true))
 
-    (not (appdb-can-host-pgvector?))
-    (testing "opted in, but the app db can't host pgvector — the CI service must be misconfigured"
+    (not (appdb-can-host-library-index?))
+    (testing "opted in, but the app db can't host the index — the CI service must be misconfigured"
       (is false "the appdb-mode job expects a pgvector-capable Postgres app db"))
 
     (schema-exists? (mdb/data-source) index-table/app-db-schema)
