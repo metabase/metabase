@@ -68,7 +68,7 @@ export function RouterBridge({
   // `route` changes, which closed it mid-interaction. Key on the matched branch.
   const matchesKey = matches
     .map((match) => {
-      // `handle` is typed `unknown`; we only ever put `{ path, props }` on it.
+      // `handle` is typed `unknown`; we only ever put `{ path }` on it.
       const handle = match.route.handle as { path?: string } | undefined;
       return `${match.pathname}|${handle?.path ?? ""}`;
     })
@@ -76,19 +76,11 @@ export function RouterBridge({
   const routes = useMemo<RouteStub[]>(
     () =>
       matches.map((match) => {
-        // `handle` is typed `unknown`; we only ever put `{ path, props }` on it.
-        const handle = match.route.handle as
-          | { path?: string; props?: PlainRoute["props"] }
-          | undefined;
+        // `handle` is typed `unknown`; we only ever put `{ path }` on it.
+        const handle = match.route.handle as { path?: string } | undefined;
         // The facade hooks read `route.path`; `pathnameBase` is the route's matched
         // pathname, which `setRouteLeaveHook` uses to scope its hook to this route.
-        // `props` carries the arbitrary route props v3 exposed (the command palette
-        // reads `route.props.disableCommandPalette`).
-        return {
-          path: handle?.path,
-          props: handle?.props,
-          pathnameBase: match.pathname,
-        };
+        return { path: handle?.path, pathnameBase: match.pathname };
       }),
     // Keyed on the matched branch, not the array identity, which changes each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
