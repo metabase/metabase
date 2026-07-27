@@ -8,6 +8,10 @@ import {
 import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
+  trackMetricDimensionSetDefault,
+  trackMetricDimensionUpdated,
+} from "metabase/metrics/analytics";
+import {
   Button,
   Group,
   Icon,
@@ -69,8 +73,10 @@ export function DimensionSettingsPanel({
         dimensionId: dimension.id,
         ...changes,
       }).unwrap();
+      trackMetricDimensionUpdated(metricId, dimension.id, "success");
       return true;
     } catch {
+      trackMetricDimensionUpdated(metricId, dimension.id, "failure");
       sendErrorToast(t`Couldn't update ${dimension.display_name}`);
       return false;
     }
@@ -104,7 +110,9 @@ export function DimensionSettingsPanel({
         metricId,
         dimension_id: dimension.id,
       }).unwrap();
+      trackMetricDimensionSetDefault(metricId, dimension.id, "success");
     } catch {
+      trackMetricDimensionSetDefault(metricId, dimension.id, "failure");
       sendErrorToast(t`Couldn't make ${dimension.display_name} the default`);
     }
   };

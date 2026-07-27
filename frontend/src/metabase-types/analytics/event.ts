@@ -61,6 +61,47 @@ export type InviteToViewOpenedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
+type MetricDimensionResult = "success" | "failure";
+
+export type MetricDimensionsTabViewedEvent = ValidateEvent<{
+  event: "metric_dimensions_tab_viewed";
+  target_id: number;
+}>;
+
+export type MetricDimensionAddedEvent = ValidateEvent<{
+  event: "metric_dimension_added";
+  target_id: number;
+  event_detail: string;
+  result: MetricDimensionResult;
+}>;
+
+export type MetricDimensionRemovedEvent = ValidateEvent<{
+  event: "metric_dimension_removed";
+  target_id: number;
+  event_detail: string;
+  result: MetricDimensionResult;
+}>;
+
+export type MetricDimensionSetDefaultEvent = ValidateEvent<{
+  event: "metric_dimension_set_default";
+  target_id: number;
+  event_detail: string;
+  result: MetricDimensionResult;
+}>;
+
+export type MetricDimensionUpdatedEvent = ValidateEvent<{
+  event: "metric_dimension_updated";
+  target_id: number;
+  event_detail: string;
+  result: MetricDimensionResult;
+}>;
+
+export type MetricDimensionsReorderedEvent = ValidateEvent<{
+  event: "metric_dimensions_reordered";
+  target_id: number;
+  result: MetricDimensionResult;
+}>;
+
 export type MonitorOpenedEvent = ValidateEvent<{
   event: "monitor_opened";
   triggered_from: "nav_menu";
