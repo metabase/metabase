@@ -129,7 +129,7 @@ const FormGroupsWidget = ({
         }
       />
       {showNoAccessWarning && (
-        <Alert color="warning" mt="sm">
+        <Alert color="warning" size="compact" mt="sm">
           {inviteTargetAccess?.warningMessage}
         </Alert>
       )}
