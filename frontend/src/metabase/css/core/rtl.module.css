@@ -23,7 +23,11 @@
 :global(:where([dir="rtl"]) .Icon-arrow_right:where(:not([dir="ltr"] *))),
 :global(:where([dir="rtl"]) .Icon-arrow_left_to_line:where(:not([dir="ltr"] *))),
 :global(:where([dir="rtl"]) .Icon-triangle_left:where(:not([dir="ltr"] *))),
-:global(:where([dir="rtl"]) .Icon-triangle_right:where(:not([dir="ltr"] *))) {
+:global(:where([dir="rtl"]) .Icon-triangle_right:where(:not([dir="ltr"] *))),
+/* `play` is only ever a run/execute affordance in Metabase (run query, run
+ * action, run job) — never a media transport control, which convention says to
+ * leave unmirrored — so it points along the reading direction. */
+:global(:where([dir="rtl"]) .Icon-play:where(:not([dir="ltr"] *))) {
   transform: scaleX(-1);
 }
 
