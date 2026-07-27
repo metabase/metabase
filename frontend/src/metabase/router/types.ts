@@ -1,3 +1,11 @@
+import type {
+  CSSProperties,
+  ComponentClass,
+  FunctionComponent,
+  HTMLProps,
+  ReactNode,
+} from "react";
+
 /**
  * The pathname, search, and hash values of a URL.
  *
@@ -178,3 +186,90 @@ export type SetURLSearchParams = (
     | ((prev: URLSearchParams) => URLSearchParamsInit),
   navigateOptions?: NavigateOptions,
 ) => void;
+
+/**
+ * A route's component. v3 accepted a class or function component; kept for the
+ * call sites that annotate the injected `route` / `routes` props.
+ */
+export type RouteComponent = ComponentClass<any> | FunctionComponent<any>;
+
+/**
+ * The `<Route>` configuration props, re-homed from v3's `RouteProps`. The
+ * lifecycle hooks (`onEnter` / `onChange` / `onLeave`) are intentionally absent:
+ * they have no v7 equivalent and the app does that work in components now.
+ */
+export interface RouteProps<Props = any> {
+  children?: ReactNode;
+  path?: string;
+  component?: RouteComponent;
+  props?: Props;
+}
+
+/**
+ * A route object as v3 exposed it on the injected `routes` branch. The v7
+ * `RouterBridge` republishes the matched branch in this shape, adding
+ * `pathnameBase`, the URL prefix the route accounts for (v7's `match.pathname`).
+ */
+export interface PlainRoute<Props = any> extends RouteProps<Props> {
+  childRoutes?: PlainRoute[];
+  indexRoute?: PlainRoute;
+  pathnameBase?: string;
+}
+
+/**
+ * A route-leave hook, v3's `setRouteLeaveHook` callback: it receives the
+ * attempted destination and returns `false` to cancel the navigation.
+ */
+export type RouteHook = (nextLocation?: Location) => unknown;
+
+/**
+ * v3's imperative router, the `router` prop the facade injects. The v7
+ * `RouterBridge` implements this shape over v7's `navigate`.
+ */
+export interface InjectedRouter {
+  push(location: LocationDescriptor): void;
+  replace(location: LocationDescriptor): void;
+  go(n: number): void;
+  goBack(): void;
+  goForward(): void;
+  // `route` is the route to scope the hook to. v3 typed it `any` (callers pass a
+  // route stub, a `<Route>`, or nothing); the shim reads its `pathnameBase`.
+  setRouteLeaveHook(route: any, hook: RouteHook): () => void;
+  createPath(location: LocationDescriptor): string;
+  createHref(location: LocationDescriptor): string;
+  isActive(location: LocationDescriptor, indexOnly?: boolean): boolean;
+}
+
+/**
+ * The router-injected props v3 passed to route components (`router`, `location`,
+ * `params`, `routes`). The `RouterBridge` republishes them from the v7 match;
+ * `withRouteProps` feeds them to legacy components.
+ *
+ * `params` defaults to v3's non-optional string map (not the facade's optional
+ * `Params`), because the legacy route-prop readers were written against that and
+ * treat matched params as always present. `Q` defaults to `any`, matching v3's
+ * `Location<any>`, so the legacy `location.query` readers keep their loose typing
+ * (tightened when the `state.routing` slice is thinned, DEV-2290).
+ */
+export interface WithRouterProps<P = Record<string, string>, Q = any> {
+  location: Location<Q>;
+  params: P;
+  router: InjectedRouter;
+  routes: PlainRoute[];
+}
+
+/**
+ * v3's function form of a `<Link to>`, kept because `RouterLink` still handles it.
+ */
+type ToLocationFunction = (location: Location) => LocationDescriptor;
+
+/**
+ * Props of the app's `<Link>`, re-homed from v3's `LinkProps`. `RouterLink` reads
+ * `to` (and the active-styling props) and forwards the rest to the anchor.
+ */
+export interface RouterLinkProps extends HTMLProps<any> {
+  to: LocationDescriptor | ToLocationFunction;
+  activeClassName?: string;
+  activeStyle?: CSSProperties;
+  onlyActiveOnIndex?: boolean;
+}
