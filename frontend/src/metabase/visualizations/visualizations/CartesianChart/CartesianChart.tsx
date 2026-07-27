@@ -13,6 +13,7 @@ import {
   useCartesianChartSeriesColorsClasses,
   useCloseTooltipOnScroll,
 } from "metabase/visualizations/echarts/tooltip";
+import { useTimelineEvents } from "metabase/visualizations/hooks/use-timeline-events";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
@@ -58,10 +59,14 @@ function CartesianChartInner(props: VisualizationProps) {
     canToggleSeriesVisibility,
     titleMenuItems,
     onOpenTimelines,
+  } = props;
+
+  const {
+    timelineEvents,
+    selectedTimelineEventIds,
     onSelectTimelineEvents,
     onDeselectTimelineEvents,
-    selectedTimelineEventIds,
-  } = props;
+  } = useTimelineEvents(props);
 
   const settings = useMemo(
     () =>
@@ -88,6 +93,8 @@ function CartesianChartInner(props: VisualizationProps) {
       height: chartSize.height,
       hiddenSeries,
       settings,
+      timelineEvents,
+      selectedTimelineEventIds,
     },
     containerRef,
   );
