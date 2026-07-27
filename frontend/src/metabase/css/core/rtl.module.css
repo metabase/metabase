@@ -7,20 +7,23 @@
  * vertical ones (chevronup/down) and icons whose shape carries a fixed meaning
  * (e.g. join_left_outer/join_right_outer) are intentionally left untouched.
  *
- * `:dir(rtl)` matches the element's *computed* direction rather than any RTL
- * ancestor, so an LTR-locale SDK embed inside an RTL host page (its wrapper sets
- * `dir="ltr"`) is not mirrored. It is wrapped in `:where()` so the selector keeps
- * single-class specificity: a component that statefully transforms one of these
- * icons (e.g. an expand caret rotated 90deg) still wins and keeps its transform.
- * Browsers without `:dir()` support simply leave the icons unmirrored.
+ * Note: `:dir(rtl)` would express this more directly, but it needs Chrome 120+
+ * and our build target (browserslist) is Chrome 89, so lightningcss strips those
+ * rules from the bundle entirely. We therefore match on a `[dir="rtl"]` ancestor
+ * and exclude anything inside a nested `dir="ltr"` subtree — which is how an
+ * LTR-locale SDK embed inside an RTL host page keeps its icons unmirrored.
+ *
+ * Everything is wrapped in `:where()` so the selector keeps the specificity of a
+ * single class: a component that statefully transforms one of these icons (e.g.
+ * an expand caret rotated 90deg) still wins and keeps its own transform.
  */
-:global(.Icon-chevronleft:where(:dir(rtl))),
-:global(.Icon-chevronright:where(:dir(rtl))),
-:global(.Icon-arrow_left:where(:dir(rtl))),
-:global(.Icon-arrow_right:where(:dir(rtl))),
-:global(.Icon-arrow_left_to_line:where(:dir(rtl))),
-:global(.Icon-triangle_left:where(:dir(rtl))),
-:global(.Icon-triangle_right:where(:dir(rtl))) {
+:global(:where([dir="rtl"]) .Icon-chevronleft:where(:not([dir="ltr"] *))),
+:global(:where([dir="rtl"]) .Icon-chevronright:where(:not([dir="ltr"] *))),
+:global(:where([dir="rtl"]) .Icon-arrow_left:where(:not([dir="ltr"] *))),
+:global(:where([dir="rtl"]) .Icon-arrow_right:where(:not([dir="ltr"] *))),
+:global(:where([dir="rtl"]) .Icon-arrow_left_to_line:where(:not([dir="ltr"] *))),
+:global(:where([dir="rtl"]) .Icon-triangle_left:where(:not([dir="ltr"] *))),
+:global(:where([dir="rtl"]) .Icon-triangle_right:where(:not([dir="ltr"] *))) {
   transform: scaleX(-1);
 }
 
