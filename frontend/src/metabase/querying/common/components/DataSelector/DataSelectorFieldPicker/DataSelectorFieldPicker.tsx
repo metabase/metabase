@@ -7,7 +7,7 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
 import CS from "metabase/css/core/index.css";
-import { getColumnQueries } from "metabase/querying/common/utils";
+import { getQueryAndColumns } from "metabase/querying/common/utils";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, DelayGroup, Icon } from "metabase/ui";
@@ -54,9 +54,9 @@ export const DataSelectorFieldPicker = ({
   hasInitialFocus,
 }: DataSelectorFieldPickerProps) => {
   const metadata = useSelector(getMetadata);
-  const columnQueries = useMemo(
+  const queryAndColumns = useMemo(
     () =>
-      getColumnQueries(
+      getQueryAndColumns(
         metadata,
         selectedTable,
         fields.map((field) => field.getPlainObject()),
@@ -84,13 +84,13 @@ export const DataSelectorFieldPicker = ({
     item.field && selectedField && item.field.id === selectedField.id;
 
   const renderItemIcon = (item: FieldWithName) => {
-    const columnQuery = columnQueries.get(item.field.getPlainObject());
+    const queryAndColumn = queryAndColumns.get(item.field.getPlainObject());
     return (
-      columnQuery && (
+      queryAndColumn && (
         <QueryColumnInfoIcon
-          query={columnQuery.query}
+          query={queryAndColumn.query}
           stageIndex={STAGE_INDEX}
-          column={columnQuery.column}
+          column={queryAndColumn.column}
           position="top-end"
           size={18}
           // Unjustified type cast. FIXME

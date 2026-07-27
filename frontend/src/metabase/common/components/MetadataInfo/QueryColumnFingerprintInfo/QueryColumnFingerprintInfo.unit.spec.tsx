@@ -6,14 +6,14 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
-import type { FieldFingerprint, FieldId } from "metabase-types/api";
+import type { FieldFingerprint } from "metabase-types/api";
 import {
   createMockDateTimeFieldFingerprint,
   createMockFingerprint,
+  createMockGlobalFieldFingerprint,
   createMockNumberFieldFingerprint,
 } from "metabase-types/api/mocks";
 import {
-  PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
@@ -21,12 +21,14 @@ import {
 
 import { QueryColumnFingerprintInfo } from "./QueryColumnFingerprintInfo";
 
+const STAGE_INDEX = -1;
+
 const NUMBER_FINGERPRINT = createMockFingerprint({
   type: {
     "type/Number": createMockNumberFieldFingerprint({
-      avg: 5000,
+      avg: 3.33333,
       min: 1,
-      max: 10000,
+      max: 5,
     }),
   },
 });
@@ -40,40 +42,41 @@ const DATE_TIME_FINGERPRINT = createMockFingerprint({
   },
 });
 
-const createFingerprintedState = (
-  fieldId: FieldId,
-  fingerprint: FieldFingerprint,
-) => {
-  const sampleDatabase = createSampleDatabase();
+const EMPTY_FINGERPRINT = createMockFingerprint({ type: {} });
 
-  return createMockState({
+const TIMEZONE = "America/Los_Angeles";
+
+interface SetupOpts {
+  columnName: string;
+  fingerprint?: FieldFingerprint | null;
+  timezone?: string;
+}
+
+const setup = ({ columnName, fingerprint, timezone }: SetupOpts) => {
+  setupFieldsValuesEndpoints([]);
+
+  const sampleDatabase = createSampleDatabase();
+  const state = createMockState({
     entities: createMockEntitiesState({
       databases: [
         {
           ...sampleDatabase,
-          tables: sampleDatabase.tables?.map((table) => ({
-            ...table,
-            fields: table.fields?.map((field) =>
-              field.id === fieldId ? { ...field, fingerprint } : field,
-            ),
-          })),
+          tables: sampleDatabase.tables?.map((table) =>
+            table.id === PRODUCTS_ID
+              ? {
+                  ...table,
+                  fields: table.fields?.map((field) =>
+                    field.name === columnName && fingerprint !== undefined
+                      ? { ...field, fingerprint }
+                      : field,
+                  ),
+                }
+              : table,
+          ),
         },
       ],
     }),
   });
-};
-
-const fingerprintedIdState = createFingerprintedState(
-  PRODUCTS.ID,
-  NUMBER_FINGERPRINT,
-);
-
-const setupLib = (
-  columnName: string,
-  state = fingerprintedIdState,
-  timezone?: string,
-) => {
-  setupFieldsValuesEndpoints([]);
 
   const provider = Lib.metadataProvider(SAMPLE_DB_ID, getMetadata(state));
   const tableMetadata = Lib.tableOrCardMetadata(provider, PRODUCTS_ID);
@@ -81,13 +84,16 @@ const setupLib = (
     provider,
     checkNotNull(tableMetadata),
   );
-  const findColumn = columnFinder(query, Lib.returnedColumns(query, -1));
+  const findColumn = columnFinder(
+    query,
+    Lib.returnedColumns(query, STAGE_INDEX),
+  );
 
-  return renderWithProviders(
+  renderWithProviders(
     <div data-testid="container">
       <QueryColumnFingerprintInfo
         query={query}
-        stageIndex={-1}
+        stageIndex={STAGE_INDEX}
         column={findColumn("PRODUCTS", columnName)}
         timezone={timezone}
       />
@@ -98,69 +104,112 @@ const setupLib = (
 
 describe("QueryColumnFingerprintInfo", () => {
   describe("numeric column", () => {
-    const state = createFingerprintedState(PRODUCTS.RATING, NUMBER_FINGERPRINT);
+    it("should render avg, min and max for a non-ID numeric column", () => {
+      setup({ columnName: "RATING", fingerprint: NUMBER_FINGERPRINT });
 
-    it("should render avg, min and max for a non-ID numeric column", async () => {
-      setupLib("RATING", state);
-
-      expect(await screen.findByText("Average")).toBeInTheDocument();
+      expect(screen.getByText("Average")).toBeInTheDocument();
       expect(screen.getByText("Min")).toBeInTheDocument();
       expect(screen.getByText("Max")).toBeInTheDocument();
-      expect(screen.getByText("5000")).toBeInTheDocument();
+      expect(screen.getByText("3.33")).toBeInTheDocument();
       expect(screen.getByText("1")).toBeInTheDocument();
-      expect(screen.getByText("10000")).toBeInTheDocument();
+      expect(screen.getByText("5")).toBeInTheDocument();
     });
 
-    it("should render nothing for an empty type/Number fingerprint", () => {
-      const emptyState = createFingerprintedState(
-        PRODUCTS.RATING,
-        createMockFingerprint({ type: { "type/Number": {} } }),
-      );
+    it("should render min and max when avg is missing", () => {
+      setup({
+        columnName: "RATING",
+        fingerprint: createMockFingerprint({
+          type: { "type/Number": { min: 1, max: 5 } },
+        }),
+      });
 
-      setupLib("RATING", emptyState);
+      expect(screen.queryByText("Average")).not.toBeInTheDocument();
+      expect(screen.getByText("1")).toBeInTheDocument();
+      expect(screen.getByText("5")).toBeInTheDocument();
+    });
+
+    it("should render nothing without a type/Number fingerprint", () => {
+      setup({ columnName: "RATING", fingerprint: EMPTY_FINGERPRINT });
 
       expect(screen.getByTestId("container")).toBeEmptyDOMElement();
     });
 
-    it("should not render the number fingerprint for a numeric ID column", () => {
-      setupLib("ID");
+    it("should render nothing for an empty type/Number fingerprint", () => {
+      setup({
+        columnName: "RATING",
+        fingerprint: createMockFingerprint({ type: { "type/Number": {} } }),
+      });
 
-      expect(screen.queryByText("Average")).not.toBeInTheDocument();
+      expect(screen.getByTestId("container")).toBeEmptyDOMElement();
+    });
+
+    it("should render nothing without a fingerprint", () => {
+      setup({ columnName: "RATING", fingerprint: null });
+
+      expect(screen.getByTestId("container")).toBeEmptyDOMElement();
     });
   });
 
   describe("temporal column", () => {
-    const state = createFingerprintedState(
-      PRODUCTS.CREATED_AT,
-      DATE_TIME_FINGERPRINT,
-    );
-    const timezone = "America/Los_Angeles";
-
     it("should show the timezone of the column", () => {
-      setupLib("CREATED_AT", state, timezone);
+      setup({
+        columnName: "CREATED_AT",
+        fingerprint: DATE_TIME_FINGERPRINT,
+        timezone: TIMEZONE,
+      });
 
-      expect(screen.getByText("America/Los_Angeles")).toBeVisible();
+      expect(screen.getByText(TIMEZONE)).toBeVisible();
     });
 
     it("should render formatted earliest time", () => {
-      setupLib("CREATED_AT", state, timezone);
+      setup({
+        columnName: "CREATED_AT",
+        fingerprint: DATE_TIME_FINGERPRINT,
+        timezone: TIMEZONE,
+      });
 
       expect(screen.getByText("November 9, 2021, 4:43 AM")).toBeVisible();
     });
 
     it("should render formatted latest time", () => {
-      setupLib("CREATED_AT", state, timezone);
+      setup({
+        columnName: "CREATED_AT",
+        fingerprint: DATE_TIME_FINGERPRINT,
+        timezone: TIMEZONE,
+      });
 
       expect(screen.getByText("December 9, 2021, 4:43 AM")).toBeVisible();
     });
 
     it("should render nothing without a type/DateTime fingerprint", () => {
-      const stateWithoutFingerprint = createFingerprintedState(
-        PRODUCTS.CREATED_AT,
-        createMockFingerprint({ type: {} }),
-      );
+      setup({ columnName: "CREATED_AT", fingerprint: EMPTY_FINGERPRINT });
 
-      setupLib("CREATED_AT", stateWithoutFingerprint);
+      expect(screen.getByTestId("container")).toBeEmptyDOMElement();
+    });
+
+    it("should render nothing without a fingerprint", () => {
+      setup({ columnName: "CREATED_AT", fingerprint: null });
+
+      expect(screen.getByTestId("container")).toBeEmptyDOMElement();
+    });
+  });
+
+  describe("ID column", () => {
+    it("should render the distinct count instead of the number fingerprint", () => {
+      setup({
+        columnName: "ID",
+        fingerprint: createMockFingerprint({
+          ...NUMBER_FINGERPRINT,
+          global: createMockGlobalFieldFingerprint({ "distinct-count": 123 }),
+        }),
+      });
+
+      expect(screen.getByText("123 distinct values")).toBeInTheDocument();
+      expect(screen.queryByText("Average")).not.toBeInTheDocument();
+    });
+
+    it("should render nothing without a fingerprint", () => {
+      setup({ columnName: "ID", fingerprint: null });
 
       expect(screen.getByTestId("container")).toBeEmptyDOMElement();
     });

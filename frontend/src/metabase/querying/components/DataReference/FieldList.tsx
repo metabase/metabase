@@ -5,7 +5,7 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
-import { getColumnQueries } from "metabase/querying/common/utils";
+import { getQueryAndColumns } from "metabase/querying/common/utils";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { DelayGroup } from "metabase/ui";
@@ -33,9 +33,9 @@ interface FieldListProps {
 
 export const FieldList = ({ table, fields, onFieldClick }: FieldListProps) => {
   const metadata = useSelector(getMetadata);
-  const columnQueries = useMemo(
+  const queryAndColumns = useMemo(
     () =>
-      getColumnQueries(
+      getQueryAndColumns(
         metadata,
         table,
         fields.map((field) => field.getPlainObject()),
@@ -60,9 +60,9 @@ export const FieldList = ({ table, fields, onFieldClick }: FieldListProps) => {
           // field.icon() cannot be annotated to return IconName
           // because metabase-lib cannot import from metabase.
           const iconName = field.icon() as IconName;
-          const columnQuery = columnQueries.get(field.getPlainObject());
+          const queryAndColumn = queryAndColumns.get(field.getPlainObject());
           return (
-            columnQuery && (
+            queryAndColumn && (
               <HoverParent
                 className={S.NodeListItem}
                 as="li"
@@ -71,9 +71,9 @@ export const FieldList = ({ table, fields, onFieldClick }: FieldListProps) => {
                 <NodeListItemLink onClick={() => onFieldClick(field)}>
                   <QueryColumnInfoIcon
                     className={S.nodeListInfoIcon}
-                    query={columnQuery.query}
+                    query={queryAndColumn.query}
                     stageIndex={STAGE_INDEX}
-                    column={columnQuery.column}
+                    column={queryAndColumn.column}
                     position="left"
                     icon={iconName}
                   />

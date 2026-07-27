@@ -22,15 +22,15 @@ export function getFieldOptions(fieldValues: FieldValue[]): ComboboxItem[] {
   return fieldValues.filter(([value]) => value != null).map(getFieldOption);
 }
 
-type ColumnQueryField = DatasetColumn | NormalizedField | Field;
+type LegacyColumn = DatasetColumn | NormalizedField | Field;
 
-type ColumnQuery = { query: Lib.Query; column: Lib.ColumnMetadata };
+type QueryAndColumn = { query: Lib.Query; column: Lib.ColumnMetadata };
 
-export const getColumnQueries = (
+export const getQueryAndColumns = (
   metadata: Metadata,
   table: Pick<Table, "id" | "db_id"> | undefined,
-  fields: ColumnQueryField[],
-): Map<ColumnQueryField, ColumnQuery> => {
+  fields: LegacyColumn[],
+): Map<LegacyColumn, QueryAndColumn> => {
   if (table === undefined) {
     return new Map();
   }
@@ -48,7 +48,7 @@ export const getColumnQueries = (
   );
 
   return new Map(
-    fields.map((field): [ColumnQueryField, ColumnQuery] => [
+    fields.map((field): [LegacyColumn, QueryAndColumn] => [
       field,
       { query, column: Lib.fromLegacyColumn(query, STAGE_INDEX, field) },
     ]),

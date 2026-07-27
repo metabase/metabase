@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import {
   skipToken,
@@ -9,7 +10,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { QueryColumnInfo } from "metabase/common/components/MetadataInfo/QueryColumnInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { getColumnQueries } from "metabase/querying/common/utils";
+import { getQueryAndColumns } from "metabase/querying/common/utils";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -30,8 +31,9 @@ export const FieldPane = ({
 }: DataReferencePaneProps<DataReferenceFieldItem>) => {
   const { field, table, isLoading, error } = useGetFieldAndTable(id);
   const metadata = useSelector(getMetadata);
-  const columnQueries = useMemo(
-    () => getColumnQueries(metadata, table, field !== undefined ? [field] : []),
+  const queryAndColumns = useMemo(
+    () =>
+      getQueryAndColumns(metadata, table, field !== undefined ? [field] : []),
     [metadata, table, field],
   );
 
@@ -39,9 +41,9 @@ export const FieldPane = ({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const columnQuery = columnQueries.get(field);
-  if (!columnQuery) {
-    return <LoadingAndErrorWrapper loading />;
+  const queryAndColumn = queryAndColumns.get(field);
+  if (!queryAndColumn) {
+    return <LoadingAndErrorWrapper error={t`Failed to load field metadata`} />;
   }
 
   return (
@@ -53,9 +55,9 @@ export const FieldPane = ({
     >
       <SidebarContent.Pane>
         <QueryColumnInfo
-          query={columnQuery.query}
+          query={queryAndColumn.query}
           stageIndex={STAGE_INDEX}
-          column={columnQuery.column}
+          column={queryAndColumn.column}
           timezone={table?.db?.timezone}
           showAllFieldValues
           showFingerprintInfo

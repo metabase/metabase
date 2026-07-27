@@ -8,32 +8,41 @@ import {
 
 import { QueryColumnInfo } from "./QueryColumnInfo";
 
-function setupLib(table: string, column: string) {
-  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
-  const columns = Lib.visibleColumns(query, 0);
-  const findColumn = columnFinder(query, columns);
-  const col = findColumn(table, column);
+const STAGE_INDEX = -1;
 
-  return renderWithProviders(
-    <QueryColumnInfo query={query} stageIndex={-1} column={col} />,
-  );
+interface SetupOpts {
+  tableName: string;
+  columnName: string;
 }
 
-describe("FieldInfo (Lib)", () => {
-  it("should show the given dimension's semantic type name", async () => {
-    setupLib("PRODUCTS", "CATEGORY");
+const setup = ({ tableName, columnName }: SetupOpts) => {
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+  const findColumn = columnFinder(query, Lib.visibleColumns(query, 0));
 
-    expect(await screen.findByText("Category")).toBeInTheDocument();
+  renderWithProviders(
+    <QueryColumnInfo
+      query={query}
+      stageIndex={STAGE_INDEX}
+      column={findColumn(tableName, columnName)}
+    />,
+  );
+};
+
+describe("QueryColumnInfo", () => {
+  it("should show the given dimension's semantic type name", () => {
+    setup({ tableName: "PRODUCTS", columnName: "CATEGORY" });
+
+    expect(screen.getByText("Category")).toBeInTheDocument();
   });
 
-  it("should display the given dimension's description", async () => {
-    setupLib("PRODUCTS", "CATEGORY");
+  it("should display the given dimension's description", () => {
+    setup({ tableName: "PRODUCTS", columnName: "CATEGORY" });
 
-    expect(await screen.findByText("The type of product.")).toBeInTheDocument();
+    expect(screen.getByText("The type of product.")).toBeInTheDocument();
   });
 
   it("should show a placeholder for a dimension with no description", () => {
-    setupLib("PRODUCTS", "CREATED_AT");
+    setup({ tableName: "PRODUCTS", columnName: "CREATED_AT" });
 
     expect(screen.getByText("No description")).toBeInTheDocument();
   });
