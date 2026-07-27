@@ -17,6 +17,7 @@
    [metabase.channel.models.channel :as models.channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.js.common :as js.common]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
@@ -279,25 +280,26 @@
   "Render the whole dashboard to a PDF email attachment, or `nil` if rendering fails. `parts` are the dashboard's
   already-executed parts, reused so the PDF generation doesn't re-run every query."
   [dashboard-id dashboard-name creator-id parameters parts]
-  (try
-    ;; TODO: (bshepherdson, 2026-07-02) This should not be hard-coding the paper size.
-    (let [pdf-bytes (channel.render/render-dashboard-to-pdf dashboard-id creator-id (vec parameters) :a4 parts)
-          temp-file (doto (File/createTempFile "metabase_dashboard_" ".pdf")
-                      (.deleteOnExit))]
-      (with-open [os (io/output-stream temp-file)]
-        (.write os ^bytes pdf-bytes))
-      {:type         :attachment
-       :content-type "application/pdf"
-       :file-name    (-> dashboard-name
-                         (some-> str/trim)
-                         not-empty
-                         (or "dashboard")
-                         (str ".pdf"))
-       :content      (.. temp-file toURI toURL)
-       :description  (format "PDF of dashboard '%s'" (or dashboard-name "dashboard"))})
-    (catch Throwable e
-      (log/error e "Error rendering dashboard subscription PDF; skipping PDF attachment")
-      nil)))
+  (js.common/with-js-call-summary (str "dashboard " dashboard-id " pdf render")
+    (try
+      ;; TODO: (bshepherdson, 2026-07-02) This should not be hard-coding the paper size.
+      (let [pdf-bytes (channel.render/render-dashboard-to-pdf dashboard-id creator-id (vec parameters) :a4 parts)
+            temp-file (doto (File/createTempFile "metabase_dashboard_" ".pdf")
+                        (.deleteOnExit))]
+        (with-open [os (io/output-stream temp-file)]
+          (.write os ^bytes pdf-bytes))
+        {:type         :attachment
+         :content-type "application/pdf"
+         :file-name    (-> dashboard-name
+                           (some-> str/trim)
+                           not-empty
+                           (or "dashboard")
+                           (str ".pdf"))
+         :content      (.. temp-file toURI toURL)
+         :description  (format "PDF of dashboard '%s'" (or dashboard-name "dashboard"))})
+      (catch Throwable e
+        (log/error e "Error rendering dashboard subscription PDF; skipping PDF attachment")
+        nil))))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload payload_type creator_id] :as notification-payload} {:keys [template recipients attachment_only include_pdf]}]
@@ -314,27 +316,28 @@
         ;; 3. Later, we combine all HTMLs using ordinary string mashing.
         [merged-attachments
          result-attachments
-         html-contents]     (reduce
-                             (fn [[merged-attachments result-attachments html-contents] part]
-                               ;; Isolate each part: realizing one part's Hiccup (here, via `html`) must not
-                               ;; abort the whole subscription. On failure, substitute the error placeholder so
-                               ;; the remaining cards still deliver (#74007).
-                               (try
-                                 (let [{:keys [attachments content]} (render-part timezone part {:channel.render/include-title? true
-                                                                                                 :channel.render/disable-links? (boolean (:disable_links dashboard_subscription))})
-                                       result-attachment             (email.result-attachment/result-attachment part creator_id)]
-                                   [(merge merged-attachments attachments)
-                                    (into result-attachments result-attachment)
-                                    (when-not attachment_only
-                                      (conj html-contents (html content)))])
-                                 (catch Throwable e
-                                   (log/error e "Error rendering dashboard subscription part; substituting error placeholder")
-                                   [merged-attachments
-                                    result-attachments
-                                    (when-not attachment_only
-                                      (conj html-contents (html (:content (channel.render/error-rendered-part)))))])))
-                             [{} [] []]
-                             (assoc-attachment-booleans (:dashboard_subscription_dashcards dashboard_subscription) dashboard_parts))
+         html-contents]     (js.common/with-js-call-summary (str "dashboard " (:id dashboard) " email render")
+                              (reduce
+                               (fn [[merged-attachments result-attachments html-contents] part]
+                                 ;; Isolate each part: realizing one part's Hiccup (here, via `html`) must not
+                                 ;; abort the whole subscription. On failure, substitute the error placeholder so
+                                 ;; the remaining cards still deliver (#74007).
+                                 (try
+                                   (let [{:keys [attachments content]} (render-part timezone part {:channel.render/include-title? true
+                                                                                                   :channel.render/disable-links? (boolean (:disable_links dashboard_subscription))})
+                                         result-attachment             (email.result-attachment/result-attachment part creator_id)]
+                                     [(merge merged-attachments attachments)
+                                      (into result-attachments result-attachment)
+                                      (when-not attachment_only
+                                        (conj html-contents (html content)))])
+                                   (catch Throwable e
+                                     (log/error e "Error rendering dashboard subscription part; substituting error placeholder")
+                                     [merged-attachments
+                                      result-attachments
+                                      (when-not attachment_only
+                                        (conj html-contents (html (:content (channel.render/error-rendered-part)))))])))
+                               [{} [] []]
+                               (assoc-attachment-booleans (:dashboard_subscription_dashcards dashboard_subscription) dashboard_parts)))
         icon-attachment     (make-message-attachment (first (icon-bundle :dashboard)))
         card-attachments    (map make-message-attachment merged-attachments)
         pdf-attachment      (when include_pdf

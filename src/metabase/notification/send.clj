@@ -176,10 +176,15 @@
                                        :channel_type (:channel_type handler)}
                       (try
                         (let [channel-type (:channel_type handler)
+                              render-timer (u/start-timer)
                               messages     (channel/render-notification
                                             channel-type
                                             notification-payload
                                             handler)]
+                          (log/infof "Rendered %d message(s) for channel %s in %.0fms"
+                                     (count messages)
+                                     (handler->channel-name handler)
+                                     (u/since-ms render-timer))
                           (log/debugf "Got %d messages for channel %s with template %d"
                                       (count messages)
                                       (handler->channel-name handler)
@@ -188,7 +193,7 @@
                             (channel-send-retrying! id payload_type handler message)))
                         (catch Exception e
                           (log/errorf e "Error sending to channel %s" (handler->channel-name handler))))))
-                  (log/info "Done processing notification")))
+                  (log/infof "Done processing notification in %.0fms" (duration-ms-fn))))
               (do-after-notification-sent hydrated-notification notification-payload (some? skip-reason))
               (analytics/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
         (catch Exception e

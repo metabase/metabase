@@ -135,6 +135,15 @@ export function GeneralSettingsPage() {
         </SettingsSection>
       )}
 
+      <SettingsSection title={t`Experimental`}>
+        <AdminSettingInput
+          name="static-viz-untrusted-rendering"
+          title={t`Render built-in charts in the untrusted sandbox`}
+          description={t`Render built-in static visualizations (subscription emails, exports) in the sandboxed GraalVM isolate used for custom visualizations, instead of the in-process engine.`}
+          inputType="boolean"
+        />
+      </SettingsSection>
+
       <UpsellDevInstances location="settings-general" />
     </SettingsPageWrapper>
   );
