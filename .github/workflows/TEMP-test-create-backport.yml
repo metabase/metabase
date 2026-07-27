@@ -1,0 +1,35 @@
+name: TEMP test create-backport
+
+# TEMPORARY — delete before merging, along with the TEMP lines in
+# .github/actions/create-backport/action.yml that force CONFLICTS=1.
+#
+# Opens a real backport PR against release-x.<CURRENT_VERSION>.x. Because the
+# action is forced down its conflict path, the PR is created as a draft and the
+# auto-approve / auto-merge steps are skipped — nothing can merge.
+#
+# Label-gated: this opens a real PR, so it must not fire on every push.
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  test:
+    if: github.event.label.name == 'test-backport'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Pick a commit to backport
+        id: commit
+        run: echo "sha=$(git rev-parse origin/master)" >> "$GITHUB_OUTPUT"
+
+      - uses: ./.github/actions/create-backport
+        with:
+          target-version: ${{ vars.CURRENT_VERSION }}
+          backport-commit: ${{ steps.commit.outputs.sha }}
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          github-token-2: ${{ secrets.GITHUB_TOKEN }}

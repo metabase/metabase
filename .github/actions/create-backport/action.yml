@@ -38,8 +38,9 @@ runs:
         CONFLICT_LIST=$(git ls-files -u)
 
         CONFLICTS=$(git ls-files -u | wc -l)
+        CONFLICTS=1 # TEMP(test branch): force the conflict path — revert before merge
         if [ "$CONFLICTS" -gt 0 ]; then
-          git cherry-pick --abort
+          git cherry-pick --abort || true # TEMP(test branch): abort fails when the cherry-pick was clean
 
           echo "Could not cherry pick because of a conflict"
           echo "has-conflicts=true" >> $GITHUB_OUTPUT
