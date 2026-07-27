@@ -300,6 +300,37 @@
         (run-after-commit-callbacks! callbacks))
       result)))
 
+;;;; Unshared connections
+;;;;
+;;;; A connection that holds fragile long-lived state -- a streaming result set (postgres portal), a row
+;;;; lock held while other work runs -- must not be picked up by ambient connection reuse: a borrower that
+;;;; inherits it via [[toucan2.connection/*current-connectable*]] and commits destroys that state (see
+;;;; #78238 and the revert of #76645). [[toucan2.connection/unshared-connection!]] makes toucan use such a
+;;;; connection only when passed it explicitly, and never advertise it ambiently -- ambient work inside
+;;;; `body` resolves to the default connectable and runs on other pooled connections.
+
+(defn do-with-unshared-connection
+  "Impl for [[with-unshared-connection]]."
+  [f]
+  (with-open [conn (.getConnection (data-source))]
+    (f (t2.conn/unshared-connection! conn))))
+
+(defmacro with-unshared-connection
+  "Execute `body` with `conn-binding` bound to a fresh app-db connection that ambient connection reuse can
+  never pick up: toucan runs queries and transactions on it when `body` passes it explicitly, but never
+  binds it as `*current-connectable*`, so toucan calls that resolve their connection ambiently -- including
+  mid-reduction of a long-running query on this connection -- run (and commit) on other pooled connections.
+
+  In every other respect this is an ordinary JDBC connection, configured by `body`: e.g. call
+  `.setAutoCommit false` for a streaming result set (postgres portal/cursor) or a held row lock. It is
+  closed when `body` ends; the pool resets its state (rolling back any unresolved transaction) on check-in.
+
+    (mdb/with-unshared-connection [conn]
+      (.setAutoCommit conn false)
+      (reduce rf init (t2/reducible-query conn a-huge-query)))"
+  [[conn-binding] & body]
+  `(do-with-unshared-connection (fn [~conn-binding] ~@body)))
+
 (methodical/defmethod t2.pipeline/transduce-query :before :default
   "Make sure application database calls are not done inside core.async dispatch pool threads. This is done relatively
   early in the pipeline so the stacktrace when this fails isn't super enormous."

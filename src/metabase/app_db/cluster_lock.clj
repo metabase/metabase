@@ -105,20 +105,72 @@
               result-set (.executeQuery stmt)]
     (when-not (.next result-set)
       ;; this record will not be visible until the tx commits, so there's no need to lock it
-      ;; we instead rely on concurrent threads having constraint violation trying to insert their own record
-      (t2/query-one {:insert-into [:metabase_cluster_lock]
-                     :columns [:lock_name]
-                     :values [[lock-name-str]]})))
+      ;; we instead rely on concurrent threads having constraint violation trying to insert their own record.
+      ;; the insert must go on `conn` explicitly: in detached mode there is no ambient transaction, and an
+      ;; insert on a pooled connection would commit immediately without us holding the row lock
+      (t2/query-one conn {:insert-into [:metabase_cluster_lock]
+                          :columns [:lock_name]
+                          :values [[lock-name-str]]})))
   (log/debugf "Obtained cluster lock: %s (%s)" lock-name-str mode))
+
+(def ^:private ^:dynamic *detached-locks-held*
+  "Map of lock-name-str -> mode for detached cluster locks held by the current thread. Used to make
+  re-acquisition of a held detached lock a no-op: a second acquisition would run on a second dedicated
+  connection and deadlock against our own row lock."
+  {})
+
+(defn- held-mode-covers?
+  "Whether an already-held detached lock in `held-mode` satisfies a request for `requested-mode`."
+  [held-mode requested-mode]
+  (or (= held-mode :exclusive)
+      (= held-mode requested-mode)))
+
+(defn- detached-held? [{:keys [lock-name-str mode]}]
+  (when-let [held-mode (*detached-locks-held* lock-name-str)]
+    (held-mode-covers? held-mode mode)))
 
 (defn- do-with-cluster-locks*
   "Acquire all `locks` (each a `{:lock-name-str, :mode}` map) inside a single
-  transaction, then run `thunk`."
+  transaction, then run `thunk`. Locks this thread already holds detached are skipped -- acquiring them
+  here would block against our own dedicated connection."
   [locks timeout-seconds thunk]
   (t2/with-transaction [conn]
-    (doseq [{:keys [lock-name-str mode]} locks]
+    (doseq [{:keys [lock-name-str mode] :as lock} locks
+            :when (not (detached-held? lock))]
       (acquire-lock-row! conn lock-name-str timeout-seconds mode))
     (thunk)))
+
+(defn- do-with-detached-cluster-locks*
+  "Like [[do-with-cluster-locks*]], but holds the lock rows on a dedicated unshared connection
+  (see [[metabase.app-db.connection/with-unshared-connection]]) while `thunk` runs on ordinary pooled
+  connections: `thunk`'s toucan work commits incrementally in its own short transactions instead of
+  riding one long transaction on the lock's connection. The locks are released when `thunk` completes
+  (commit) or throws (the pool rolls the dedicated connection back on check-in) -- but `thunk`'s own
+  already-committed work is NOT rolled back on a throw.
+
+  Requesting `:exclusive` while already holding the same lock detached in `:share` mode is not
+  supported (upgrading would self-deadlock) and throws."
+  [locks timeout-seconds thunk]
+  (let [needed (remove (fn [{:keys [lock-name-str mode] :as lock}]
+                         (when (and (contains? *detached-locks-held* lock-name-str)
+                                    (not (detached-held? lock)))
+                           (throw (ex-info "Cannot upgrade a held detached cluster lock from :share to :exclusive"
+                                           {:lock-name lock-name-str :held (*detached-locks-held* lock-name-str) :requested mode})))
+                         (detached-held? lock))
+                       locks)]
+    (if (empty? needed)
+      (thunk)
+      (mdb.connection/with-unshared-connection [conn]
+        (.setAutoCommit ^Connection conn false)
+        (doseq [{:keys [lock-name-str mode]} needed]
+          (acquire-lock-row! conn lock-name-str timeout-seconds mode))
+        (let [result (binding [*detached-locks-held* (into *detached-locks-held*
+                                                           (map (juxt :lock-name-str :mode))
+                                                           needed)]
+                       (thunk))]
+          ;; releases the row locks and persists any lock rows we inserted
+          (.commit ^Connection conn)
+          result)))))
 
 ;; ---------- h2 in-process rw locks ----------
 ;;
@@ -178,18 +230,24 @@
     {:locks [(normalize-lock-spec opts)]}
 
     (map? opts)
-    (let [{:keys [lock locks timeout-seconds retry-config retry-transient?]} opts]
+    (let [{:keys [lock locks timeout-seconds retry-config retry-transient? detached?]} opts]
       (when (and lock locks)
         (throw (ex-info "Cluster-lock opts must specify exactly one of :lock or :locks"
                         {:opts opts})))
       (when-not (or lock locks)
         (throw (ex-info "Cluster-lock opts must specify :lock or :locks" {:opts opts})))
+      (when (and detached? retry-transient?)
+        ;; :retry-transient? re-runs the body assuming a rollback undid its work; detached bodies commit
+        ;; incrementally, so a re-run would double-apply everything before the failure
+        (throw (ex-info "Cluster-lock opts :detached? and :retry-transient? are mutually exclusive"
+                        {:opts opts})))
       (cond-> {:locks            (if lock
                                    [(normalize-lock-spec (if (map? lock)
                                                            lock
                                                            {:lock lock :mode (or (:mode opts) :exclusive)}))]
                                    (mapv normalize-lock-spec locks))
-               :retry-transient? (boolean retry-transient?)}
+               :retry-transient? (boolean retry-transient?)
+               :detached?        (boolean detached?)}
         timeout-seconds (assoc :timeout-seconds timeout-seconds)
         retry-config    (assoc :retry-config retry-config)))
 
@@ -227,7 +285,16 @@
   replicated across nodes, so the lock can't serialize writers and the conflicting
   commit comes back as a deadlock. Only opt in when the body is safe to re-run from
   scratch — idempotent, with no side effects outside the appdb transaction (a
-  rolled-back deadlock undoes only the db writes, not external calls)."
+  rolled-back deadlock undoes only the db writes, not external calls).
+
+  `:detached?` (default false) holds the lock rows on a dedicated connection instead
+  of the caller's transaction: the body's toucan work then runs on ordinary pooled
+  connections in its own short transactions, committing incrementally, rather than
+  riding one long transaction that holds the lock. Use for long-running locked work
+  (e.g. the audit DB install/load/sync at boot) whose body is idempotent/self-healing —
+  a failure mid-body does NOT roll back its already-committed work. Re-acquiring a
+  lock this thread already holds detached is a no-op (in both detached and
+  transactional form). Mutually exclusive with `:retry-transient?`."
   [opts :- [:or
             :keyword
             [:map
@@ -240,22 +307,25 @@
              [:mode             {:optional true} [:enum :exclusive :share]]
              [:timeout-seconds  {:optional true} :int]
              [:retry-config     {:optional true} [:ref ::retry/retry-overrides]]
-             [:retry-transient? {:optional true} :boolean]]]
+             [:retry-transient? {:optional true} :boolean]
+             [:detached?        {:optional true} :boolean]]]
    thunk :- ifn?]
-  (let [{:keys [locks timeout-seconds retry-config retry-transient?]
+  (let [{:keys [locks timeout-seconds retry-config retry-transient? detached?]
          :or   {timeout-seconds cluster-lock-timeout-seconds}} (parse-opts opts)]
     (cond
       ;; h2 does not respect the query timeout when taking the lock and is not cross-process,
-      ;; so we fall back to an in-process ReentrantReadWriteLock per lock name.
+      ;; so we fall back to an in-process ReentrantReadWriteLock per lock name. The h2 locks never
+      ;; hold a transaction open, so :detached? is already the behavior and needs no special casing.
       (= (mdb.connection/db-type) :h2)
       (do-with-h2-cluster-locks* locks thunk)
 
       :else
       (let [config (assoc (merge default-retry-config retry-config)
-                          :retry-if (fn [_ e] (retry-if-error? retry-transient? e)))]
+                          :retry-if (fn [_ e] (retry-if-error? retry-transient? e)))
+            impl   (if detached? do-with-detached-cluster-locks* do-with-cluster-locks*)]
         (try
           (retry/with-retry config
-            (do-with-cluster-locks* locks timeout-seconds thunk))
+            (impl locks timeout-seconds thunk))
           (catch Throwable e
             ;; only a genuine lock-acquisition failure gets the "Failed to obtain cluster lock" wrapper;
             ;; an exhausted transient body error (e.g. deadlock) propagates raw so the message stays truthful.

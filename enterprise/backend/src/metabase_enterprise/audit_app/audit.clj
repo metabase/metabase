@@ -338,9 +338,7 @@
      - the `instance_analytics_views` SQL files have changed since the last successful sync,
        meaning a migration may have added a new view that isn't yet in `metabase_table`.
    The two triggers share one sync because they both want the same operation. Runs synchronously
-   (not in a background future) so it stays inside the caller's cross-node cluster lock and
-   transaction — a sync on another thread would escape the lock and, on a transactional appdb,
-   deadlock against the caller's uncommitted `metabase_table` writes."
+   (not in a background future) so it stays serialized under the caller's cross-node cluster lock."
   [audit-db engine-changed?]
   (let [current      (views-checksum)
         views-stale? (and current (not= current (audit-app.settings/last-analytics-views-checksum)))]
@@ -478,11 +476,19 @@
   ;; serialize install+adjust+load+sync+reconcile across nodes so a rolling upgrade can't run an adjust or sync
   ;; against a half-adjusted schema (`with-duplicate-ops-prevented` is per-process only). The install runs inside the
   ;; lock too, so a node that acquires it after the installer committed sees the DB already exists and falls through
-  ;; to a no-op rather than colliding on the audit DB primary key. The sync runs synchronously inside the lock so it
-  ;; stays in the lock's transaction. If another node already holds the lock it is doing this same work, so we skip
-  ;; rather than fail the boot.
+  ;; to a no-op rather than colliding on the audit DB primary key. The sync runs synchronously so it stays serialized
+  ;; under the lock. If another node already holds the lock it is doing this same work, so we skip rather than fail
+  ;; the boot.
+  ;;
+  ;; The lock is :detached? so the pipeline does NOT run as one long transaction on the lock's connection: the serdes
+  ;; load's per-entity transactions commit incrementally (restoring #74412's per-entity isolation) instead of piling
+  ;; up thousands of savepoints/subtransaction XIDs and holding every row lock until one big commit at the end —
+  ;; which stalled first boot for many minutes and blocked concurrent work (#78238). Safe because this whole pipeline
+  ;; is idempotent and self-healing: the checksum only advances on completion and reconcile runs every boot, so a
+  ;; crash mid-pipeline is repaired by the next boot.
   (try
-    (cluster-lock/with-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 5 :retry-config {:max-retries 2}}
+    (cluster-lock/with-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 5 :retry-config {:max-retries 2}
+                                     :detached? true}
       (u/prog1 (maybe-install-audit-db!)
         (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
           ((sync-util/with-duplicate-ops-prevented
