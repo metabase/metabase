@@ -28,6 +28,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [get-in]])
   (:import
+   (java.io InputStream)
    (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)
@@ -213,6 +214,37 @@
   (boolean (and updated-at
                 (not (t/before? (t/instant updated-at) (t/instant invalidated-at))))))
 
+(defn- fresh-duration-ms
+  "How long `strategy` keeps an entry fresh, in milliseconds, or nil when that isn't a fixed length of time."
+  [strategy]
+  (case (:type strategy)
+    :ttl      (when-let [avg-execution-ms (:avg-execution-ms strategy)]
+                (long (* (:multiplier strategy) avg-execution-ms)))
+    :duration (when (and (:duration strategy) (:unit strategy))
+                (t/as (t/duration (:duration strategy) (keyword (:unit strategy))) :millis))
+    nil))
+
+(defn- due-for-early-refresh?
+  "Whether an entry last written at `updated-at` is close enough to expiring - inside the last
+  [[cache/query-caching-early-refresh-ratio]] of its `window-ms` freshness window - that it should be refreshed now,
+  while it can still be served.
+
+  Refreshing only once an entry has expired means somebody always eats the recomputation, and every other request in
+  that moment is served an expired entry or waits. Starting one window-fraction early means the refresh usually lands
+  before anything goes stale. Exactly one request per window pays for it: the rest lose the lease and are served the
+  entry, which is still fresh.
+
+  A fraction rather than a fixed lead time so it scales with each strategy's own duration: a lead time longer than
+  the duration would put an entry in the refresh zone the moment it was written. Returns false when `window-ms` is
+  nil, since a strategy whose boundary doesn't slide (`:schedule`) has no \"about to expire\"."
+  [updated-at invalidated-at window-ms early-refresh-ratio]
+  (boolean (and updated-at
+                window-ms
+                ;; how much of the window is left: the boundary slides with the clock, so the distance from it to
+                ;; `updated-at` is the time until this entry falls behind it
+                (let [remaining-ms (.toMillis (t/duration (t/instant invalidated-at) (t/instant updated-at)))]
+                  (< remaining-ms (* early-refresh-ratio window-ms))))))
+
 (defn- not-too-stale?
   "Whether an entry last written at `updated-at` is close enough to `invalidated-at` (the strategy's freshness
   boundary) that serving it is still serving roughly what the caller asked for -- within
@@ -237,8 +269,8 @@
     - `[::stale result]` -- entry is expired but not too stale to stand in for a fresh one, and another process holds
                             the refresh lease; serve it while that process refreshes, so we don't stampede the data
                             warehouse.
-    - `[::miss nil]`     -- no entry; or it's expired and *this* process won the lease; or it's too stale to serve to
-                            anyone. The caller must recompute.
+    - `[::miss nil]`     -- no entry; or it's expired, or nearly so, and *this* process won the lease; or it's too
+                            stale to serve to anyone. The caller must recompute.
     - `[::canceled nil]` -- the request was canceled."
   [ignore-cache?
    query-hash :- bytes?
@@ -247,35 +279,49 @@
   (if ignore-cache?
     [::miss nil]
     (try
-      (or (i/with-cached-results *backend* query-hash [is updated-at]
-                                 (when is
-                                   (let [invalidated-at (backend.db/strategy->invalidated-at strategy)]
-                                     (cond
-                                       ;; can't determine freshness for this strategy -> don't serve from cache
-                                       (nil? invalidated-at)
-                                       nil
+      (or (i/cached-results
+           *backend*
+           query-hash
+           (fn [is updated-at]
+             (when is
+               (let [invalidated-at (backend.db/strategy->invalidated-at strategy)]
+                 (cond
+                   ;; can't determine freshness for this strategy -> don't serve from cache
+                   (nil? invalidated-at)
+                   nil
 
-                                       ;; within its TTL -> serve the fresh entry
-                                       (cache-fresh? updated-at invalidated-at)
-                                       (when-let [result (reduce-cached-stream is rff query-hash)]
-                                         [::fresh result])
+                   ;; still fresh, but about to expire, and we won the lease -> refresh it now
+                   ;; so it doesn't lapse into staleness for whoever asks next
+                   (and (cache-fresh? updated-at invalidated-at)
+                        (due-for-early-refresh?
+                         updated-at
+                         invalidated-at
+                         (fresh-duration-ms strategy)
+                         (cache/query-caching-early-refresh-ratio))
+                        (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*))
+                   nil
 
-                                       ;; expired, and we won the refresh lease -> recompute (don't serve stale)
-                                       (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*)
-                                       nil
+                   ;; within its TTL -> serve the fresh entry
+                   (cache-fresh? updated-at invalidated-at)
+                   (when-let [result (reduce-cached-stream is rff query-hash)]
+                     [::fresh result])
 
-                                       ;; another process is refreshing, and the entry is still close enough to what
-                                       ;; was asked for -> serve it stale rather than stampede the warehouse
-                                       (not-too-stale? updated-at invalidated-at)
-                                       (when-let [result (reduce-cached-stream is rff query-hash)]
-                                         (log/debugf "Serving stale cached results written at %s for hash '%s' while another process refreshes"
-                                                     updated-at (i/short-hex-hash query-hash))
-                                         [::stale result])
+                   ;; expired, and we won the refresh lease -> recompute (don't serve stale)
+                   (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*)
+                   nil
 
-                                       ;; the entry is too far past its window to answer with, whoever holds the
-                                       ;; lease -> recompute (#78339)
-                                       :else
-                                       nil))))
+                   ;; another process is refreshing, and the entry is still close enough to what
+                   ;; was asked for -> serve it stale rather than stampede the warehouse
+                   (not-too-stale? updated-at invalidated-at)
+                   (when-let [result (reduce-cached-stream is rff query-hash)]
+                     (log/debugf "Serving stale cached results written at %s for hash '%s' while another process refreshes"
+                                 updated-at (i/short-hex-hash query-hash))
+                     [::stale result])
+
+                   ;; the entry is too far past its window to answer with, whoever holds the
+                   ;; lease -> recompute (#78339)
+                   :else
+                   nil)))))
           [::miss nil])
       (catch EofException _
         (log/debug "Request is closed; no one to return cached results to")

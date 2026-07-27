@@ -341,6 +341,49 @@
         (is (= :cached
                (run-query :cache-strategy strategy)))))))
 
+(deftest early-refresh-test
+  ;; (ttl-strategy) TTL = :multiplier 60 * :avg-execution-ms 1000 = 60 seconds, so the default 10% ratio puts the
+  ;; refresh zone in the last 6 seconds
+  (let [t0 #t "2026-01-01T00:00:00Z[UTC]"]
+    (testing "an entry with most of its window left is served, not refreshed"
+      (with-mock-cache! [save-chan]
+        (mt/with-clock t0
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (mt/with-clock (t/plus t0 (t/seconds 30))
+          (is (= :cached
+                 (run-query))))))
+    (testing "an entry inside the last tenth of its window is refreshed before it can expire"
+      (with-mock-cache! [save-chan]
+        (mt/with-clock t0
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (mt/with-clock (t/plus t0 (t/seconds 57))
+          (is (= :not-cached
+                 (run-query))
+              "the request that wins the lease recomputes rather than serving an entry about to expire")
+          (mt/wait-for-result save-chan))))
+    (testing "a request that loses the early-refresh lease is still served the (fresh) entry"
+      (with-mock-cache! [save-chan]
+        (let [query-hash (qp.util/query-hash (test-query nil))]
+          (mt/with-clock t0
+            (run-query)
+            (mt/wait-for-result save-chan))
+          (mt/with-clock (t/plus t0 (t/seconds 57))
+            (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash (u/minutes->ms 5))))
+            (is (= :cached
+                   (run-query))
+                "only the lease winner pays for the early refresh")))))
+    (testing "early refreshing is off when the ratio is 0"
+      (with-mock-cache! [save-chan]
+        (mt/with-temporary-setting-values [query-caching-early-refresh-ratio 0.0]
+          (mt/with-clock t0
+            (run-query)
+            (mt/wait-for-result save-chan))
+          (mt/with-clock (t/plus t0 (t/seconds 57))
+            (is (= :cached
+                   (run-query)))))))))
+
 (deftest stale-while-revalidate-staleness-is-bounded-test
   (testing "a lease loser is not served an entry that expired long before the refresh holding the lease started; past
             that bound it recomputes instead (#78339)"
