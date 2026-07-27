@@ -119,15 +119,6 @@
   [:enum "table" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
    "scalar" "smartscalar" "gauge" "progress" "funnel" "map" "waterfall" "sankey"])
 
-(defn- frontend-url
-  "Prefix a `channel.urls` relative `path` with the configured site URL, returning it relative
-   when site-url is unset so the tool never emits an absolute URL with an empty host."
-  [path]
-  (let [base (channel.urls/site-url)]
-    (if (str/blank? base)
-      path
-      (str base path))))
-
 (defn- collection-path
   "Permission-filtered location breadcrumb of `collection-id`, e.g. \"Our analytics / Marketing
    / Q3\". Ancestors the caller can't read are omitted, matching the app breadcrumb. A `nil`
@@ -242,7 +233,7 @@
                   dashboard-id    (assoc :dashboard_id dashboard-id))
                 {:id api/*current-user-id*})]
       (assoc (card-response card)
-             :url (frontend-url (channel.urls/card-path (:id card)))))))
+             :url (common/frontend-url (channel.urls/card-path (:id card)))))))
 
 (defn- update-card-response
   "The update response: [[card-response]] plus `:archived`."

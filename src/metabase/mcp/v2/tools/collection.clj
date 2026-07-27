@@ -28,7 +28,7 @@
   ;; requires — so the registry is populated before any tool dispatch reaches here.
   (assoc (projections/project :collection :concise collection)
          :entity_id (:entity_id collection)
-         :url (channel.urls/collection-url (:id collection))))
+         :url (common/frontend-url (channel.urls/collection-path (:id collection)))))
 
 (defn- check-method-args!
   "Reject arguments that don't apply to the dispatched method, so a caller never believes an

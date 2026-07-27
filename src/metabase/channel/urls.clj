@@ -112,12 +112,17 @@
   []
   (str (site-url) "/unsubscribe"))
 
+(defn collection-path
+  "Relative frontend path for a `Collection` with ID, or nil for root, e.g. \"/collection/10\"."
+  [collection-id-or-nil]
+  (format "/collection/%s" (or collection-id-or-nil "root")))
+
 (defn collection-url
   "Return an appropriate URL for a `Collection` with ID or nil for root.
      (collection-url 10) -> \"http://localhost:3000/collection/10\"
      (collection-url nil) -> \"http://localhost:3000/collection/root\""
   [collection-id-or-nil]
-  (format "%s/collection/%s" (site-url) (or collection-id-or-nil "root")))
+  (str (site-url) (collection-path collection-id-or-nil)))
 
 (defn tools-caching-details-url
   "Return an appropriate URL for linking to caching log details."
