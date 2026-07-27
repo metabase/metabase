@@ -21,13 +21,17 @@
 (defn- write-result
   "The created/updated collection echoed to the caller: the concise read projection — so the echo
    and a concise get_content read carry the same fields by construction — plus `:entity_id` (a
-   portable id to update by) and `:url` (where the collection lives in the app)."
+   portable id to update by), `:url` (where the collection lives in the app), and the two write
+   args the concise projection omits, `:authority_level` and `:namespace`, so every field this
+   tool accepts is confirmed back rather than silently dropped."
   [collection]
   ;; The :collection projection is registered by metabase.mcp.v2.projections itself, which this ns
   ;; requires — so the registry is populated before any tool dispatch reaches here.
   (assoc (projections/project :collection :concise collection)
          :entity_id (:entity_id collection)
-         :url (common/frontend-url (channel.urls/collection-path (:id collection)))))
+         :url (common/frontend-url (channel.urls/collection-path (:id collection)))
+         :authority_level (:authority_level collection)
+         :namespace (:namespace collection)))
 
 (defn- check-method-args!
   "Reject arguments that don't apply to the dispatched method, so a caller never believes an
@@ -93,7 +97,8 @@
    [:name {:optional true}
     [:maybe [:string {:min 1 :description "Create only (editable on update): display name of the collection."}]]]
    [:description {:optional true}
-    [:maybe [:string {:min 1 :description "Optional human-readable description."}]]]
+    [:maybe [:string {:min 1 :description (str "Optional human-readable description. Can be set and rewritten but "
+                                               "not cleared through this tool.")}]]]
    [:parent_id {:optional true}
     [:maybe [:or {:description (str "The collection to nest under (create) or move into (update). Numeric id, "
                                     "21-character entity_id, or \"root\" for the top level. Omitted on create means "
@@ -126,8 +131,10 @@
   You need write access to the parent. archived: true moves the collection and everything in it to the trash, false
   restores it — there is no hard delete, and omitting archived leaves the trashed state alone. namespace is create-only
   (\"snippets\" for SQL snippet folders); collections cannot move between namespaces. authority_level \"official\"
-  marks the collection Official and needs an admin on an instance with that feature. Personal collections themselves
-  cannot be created or moved, but you can nest collections inside one by passing its id as parent_id."
+  marks the collection Official and needs an admin on an instance with that feature. description and authority_level
+  can be set and rewritten but not cleared — sending null to erase one is not supported. Personal collections
+  themselves cannot be created or moved, but you can nest collections inside one by passing its id as parent_id.
+  Returns the resulting collection, including authority_level and namespace, so no follow-up read is needed."
   {:name         "collection_write"
    :scope        metabot.scope/agent-collection-create
    :update-scope metabot.scope/agent-collection-update

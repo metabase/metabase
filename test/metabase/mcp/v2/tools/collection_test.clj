@@ -67,11 +67,20 @@
         (is (= "made by an agent" (:description coll)))
         (is (= "/" (:location coll)))
         (is (false? (:archived coll))))
-      (testing "the echo is the concise read projection plus entity_id and url"
-        (is (= #{:id :name :description :location :archived :entity_id :url}
+      (testing "the echo is the concise read projection plus entity_id, url, and the two write args
+                the concise projection omits"
+        (is (= #{:id :name :description :location :archived :entity_id :url :authority_level :namespace}
                (set (keys payload))))
         (is (= (:entity_id coll) (:entity_id payload)))
-        (is (str/ends-with? (:url payload) (str "/collection/" (:id coll))))))))
+        (is (str/ends-with? (:url payload) (str "/collection/" (:id coll)))))
+      (testing "a plain collection echoes both as null rather than omitting them"
+        (is (nil? (:authority_level payload)))
+        (is (nil? (:namespace payload)))))))
+
+(def ^:private echo-only-keys
+  "Echo fields that are deliberately not in the concise read projection, so a field-for-field
+   comparison against a concise read has to set them aside."
+  [:entity_id :url :authority_level :namespace])
 
 (deftest echo-matches-concise-read-test
   (testing "the write echo and a concise get_content read agree field-for-field, so an agent that
@@ -81,9 +90,9 @@
             read    (mt/with-current-user (mt/user->id :crowberto)
                       (-> (registry/call-tool nil nil "get_content"
                                               {:items [{:type "collection" :id (:id payload)}]})
-                          tool-result :results first))]
-        (is (= (dissoc payload :entity_id :url)
-               (select-keys read (keys (dissoc payload :entity_id :url)))))))))
+                          tool-result :results first))
+            shared  (apply dissoc payload echo-only-keys)]
+        (is (= shared (select-keys read (keys shared))))))))
 
 (deftest create-requires-name-test
   (is (re-find #"`name` is required when method is \"create\""
@@ -108,7 +117,9 @@
   (mt/with-model-cleanup [:model/Collection]
     (testing "namespace puts the collection in an independent hierarchy (snippet folders)"
       (let [payload (create! :crowberto {:name "Agent Snippet Folder" :namespace "snippets"})]
-        (is (= "snippets" (name (t2/select-one-fn :namespace :model/Collection :id (:id payload)))))))))
+        (is (= "snippets" (name (t2/select-one-fn :namespace :model/Collection :id (:id payload)))))
+        (testing "and the echo confirms it, so the agent needn't re-read to know it landed"
+          (is (= "snippets" (:namespace payload))))))))
 
 (deftest create-rejects-update-only-args-test
   (doseq [[k v] {:archived true :id 1}]
@@ -201,7 +212,9 @@
     (testing "an admin on an instance with the feature can create an official collection"
       (mt/with-premium-features #{:official-collections}
         (let [payload (create! :crowberto {:name "Official" :authority_level "official"})]
-          (is (= :official (t2/select-one-fn :authority_level :model/Collection :id (:id payload)))))))
+          (is (= :official (t2/select-one-fn :authority_level :model/Collection :id (:id payload))))
+          (testing "and the echo confirms it"
+            (is (= "official" (:authority_level payload)))))))
     (testing "without the feature it is refused"
       (mt/with-premium-features #{}
         (is (tool-error (call-tool! :crowberto {:method "create" :name "Not official"
@@ -217,8 +230,11 @@
   (testing "an admin on an instance with the feature can mark an existing collection official"
     (mt/with-temp [:model/Collection coll {:name "To be blessed"}]
       (mt/with-premium-features #{:official-collections}
-        (tool-result (call-tool! :crowberto {:method "update" :id (:id coll) :authority_level "official"}))
-        (is (= :official (t2/select-one-fn :authority_level :model/Collection :id (:id coll)))))))
+        (let [payload (tool-result (call-tool! :crowberto {:method "update" :id (:id coll)
+                                                           :authority_level "official"}))]
+          (is (= :official (t2/select-one-fn :authority_level :model/Collection :id (:id coll))))
+          (testing "and the echo confirms it"
+            (is (= "official" (:authority_level payload))))))))
   (testing "without the feature the change is refused"
     (mt/with-temp [:model/Collection coll {:name "Stays plain"}]
       (mt/with-premium-features #{}
