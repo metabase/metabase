@@ -8,6 +8,7 @@
    [metabase.driver.sql.normalize]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution]
+   [metabase.driver.sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
@@ -25,7 +26,9 @@
    [potemkin :as p]))
 
 (comment metabase.driver.sql.parameters.substitution/keep-me
-         metabase.driver.sql.normalize/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
+         metabase.driver.sql.normalize/keep-me
+         ;; loading `sql.pivot` registers the `[:sql :pivot]` GROUPING SETS emitter
+         metabase.driver.sql.pivot/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
 (driver/register! :sql, :abstract? true)
 
