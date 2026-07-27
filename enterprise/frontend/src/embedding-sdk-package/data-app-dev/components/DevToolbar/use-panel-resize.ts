@@ -19,13 +19,15 @@ export const usePanelResize = () => {
       const max = window.innerHeight - 20;
       setHeight(Math.min(Math.max(next, MIN_PANEL_HEIGHT), max));
     };
-    const onUp = () => {
+    const stopResize = () => {
       window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("mouseup", stopResize);
+      window.removeEventListener("blur", stopResize);
     };
 
     window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    window.addEventListener("mouseup", stopResize);
+    window.addEventListener("blur", stopResize);
   };
 
   return { height, startResize };
