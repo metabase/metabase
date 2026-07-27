@@ -18,6 +18,7 @@
    [metabase.dashboards-rest.api :as api.dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-test :as dashboard-test]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.driver :as driver]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
@@ -72,7 +73,7 @@
                            :COLUMN_4 [{:sourceId "not-a-card" :originalName "x" :name "COLUMN_4"}]
                            :COLUMN_5 [{:sourceId "card:abc" :originalName "invalid" :name "COLUMN_5"}]
                            :COLUMN_6 [{:name "No source ID"}]}
-          result (#'api.dashboard/update-colvalmap-setting col->val-source id->new-card)]
+          result (#'dashboards.write/update-colvalmap-setting col->val-source id->new-card)]
       (testing "should update valid card IDs that exist in the map"
         (is (= "card:456" (-> result :COLUMN_1 first :sourceId)))
         (is (= "card:987" (-> result :COLUMN_2 first :sourceId))))
@@ -1664,7 +1665,7 @@
         (is (= {:copy {1 {:id 1} 2 {:id 2} 3 {:id 3}}
                 :reference {}
                 :discard []}
-               (#'api.dashboard/cards-to-copy true dashcards))))))
+               (#'dashboards.write/cards-to-copy true dashcards))))))
   (testing "Identifies cards which cannot be copied"
     (testing "If they are in a series"
       (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
@@ -1673,7 +1674,7 @@
           (is (= {:copy {1 {:id 1} 3 {:id 3}}
                   :reference {}
                   :discard [{:id 2}]}
-                 (#'api.dashboard/cards-to-copy true dashcards))))))
+                 (#'dashboards.write/cards-to-copy true dashcards))))))
     (testing "When the base of a series lacks permissions"
       (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                        {:card_id 3 :card (card-model {:id 3})}]]
@@ -1681,7 +1682,7 @@
           (is (= {:copy {3 {:id 3}}
                   :reference {}
                   :discard [{:id 1} {:id 2}]}
-                 (#'api.dashboard/cards-to-copy true dashcards)))))))
+                 (#'dashboards.write/cards-to-copy true dashcards)))))))
   (testing "Identifies cards to be referenced"
     (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                      {:card_id 3 :card (card-model {:id 3})}]]
@@ -1691,7 +1692,7 @@
                             3 {:id 3}}
                 :copy {}
                 :discard []}
-               (#'api.dashboard/cards-to-copy false dashcards))))))
+               (#'dashboards.write/cards-to-copy false dashcards))))))
   (testing "Identifies cards that cannot be referenced"
     (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                      {:card_id 3 :card (card-model {:id 3})}]]
@@ -1700,14 +1701,14 @@
                             3 {:id 3}}
                 :copy {}
                 :discard [{:id 2}]}
-               (#'api.dashboard/cards-to-copy false dashcards)))))))
+               (#'dashboards.write/cards-to-copy false dashcards)))))))
 
 (deftest update-cards-for-copy-test
   (testing "Returns the original dashcards for referenced dashcards"
     (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2}]}
                      {:card_id 3 :card {:id 3}}]]
       (is (= dashcards
-             (api.dashboard/update-cards-for-copy dashcards
+             (dashboards.write/update-cards-for-copy dashcards
                                                   nil
                                                   {1 {:id 1}
                                                    2 {:id 2}
@@ -1716,7 +1717,7 @@
     (testing "with tab-ids updated if dashboard has tab"
       (is (= [{:card_id 1 :card {:id 1} :dashboard_tab_id 10}
               {:card_id 3 :card {:id 3} :dashboard_tab_id 20}]
-             (api.dashboard/update-cards-for-copy [{:card_id 1 :card {:id 1} :dashboard_tab_id 1}
+             (dashboards.write/update-cards-for-copy [{:card_id 1 :card {:id 1} :dashboard_tab_id 1}
                                                    {:card_id 3 :card {:id 3} :dashboard_tab_id 2}]
                                                   nil
                                                   {1 {:id 1}
@@ -1730,7 +1731,7 @@
     (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2} {:id 3}]}]]
       (testing "Can omit series cards"
         (is (= [{:card_id 5 :card {:id 5} :series [{:id 6}]}]
-               (api.dashboard/update-cards-for-copy dashcards
+               (dashboards.write/update-cards-for-copy dashcards
                                                     {1 {:id 5}
                                                      2 {:id 6}}
                                                     nil
@@ -1739,7 +1740,7 @@
       (let [dashcards [{:card_id 1 :card {} :series [{:id 2} {:id 3}]}
                        {:card_id 4 :card {} :series [{:id 5} {:id 6}]}]]
         (is (= [{:card_id 7 :card {:id 7} :series [{:id 8} {:id 9}]}]
-               (api.dashboard/update-cards-for-copy dashcards
+               (dashboards.write/update-cards-for-copy dashcards
                                                     {1 {:id 7}
                                                      2 {:id 8}
                                                      3 {:id 9}
@@ -1761,7 +1762,7 @@
                                        :card_id      2
                                        :target       [:dimension
                                                       [:field 63 nil]]}]}]
-               (api.dashboard/update-cards-for-copy dashcards
+               (dashboards.write/update-cards-for-copy dashcards
                                                     {1 {:id 2}}
                                                     nil
                                                     nil)))))
@@ -1773,7 +1774,7 @@
                                                  :text         "keep me!"}}
                        {:action_id 123}]]
         (is (= (butlast dashcards)
-               (api.dashboard/update-cards-for-copy dashcards
+               (dashboards.write/update-cards-for-copy dashcards
                                                     {1 {:id 1}}
                                                     nil
                                                     nil)))))
@@ -1783,7 +1784,7 @@
                         {:virtual_card {:display "iframe"}
                          :iframe "<iframe src=\"https://www.youtube.com/embed/dQw4w9WgXcQ\" />"}}]]
         (is (= dashcards
-               (api.dashboard/update-cards-for-copy dashcards
+               (dashboards.write/update-cards-for-copy dashcards
                                                     {1 {:id 1}}
                                                     nil
                                                     nil)))))))

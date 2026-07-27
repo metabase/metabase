@@ -748,7 +748,6 @@
   {:team "UX West"
    :api  #{metabase.dashboards-rest.api}
    :uses #{actions
-           analytics
            api
            app-db
            channel
@@ -773,7 +772,6 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
-                    :model/DashboardTab
                     :model/Field
                     :model/Query}}
 
