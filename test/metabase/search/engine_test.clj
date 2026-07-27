@@ -94,6 +94,18 @@
       (testing "the check runs as a startup validation so a throw aborts the boot"
         (is (contains? (methods startup/def-startup-validation!)
                        :metabase.search.core/check-for-removed-env-vars)))))
+  (testing "startup proceeds when the kill switch is absent"
+    (with-redefs [env/env {}]
+      (is (nil? (search/check-for-removed-env-vars!)))))
+  (testing "an explicitly empty value warns that the obsolete variable must be removed"
+    (with-redefs [env/env {:mb-semantic-search-enabled ""}]
+      (is (=? [{:level   :warn
+                :message "MB_SEMANTIC_SEARCH_ENABLED is no longer supported. Remove it from your configuration."}]
+              (mt/with-log-messages-for-level [messages :warn]
+                (search/check-for-removed-env-vars!)
+                (messages)))))))
+
+(deftest check-for-removed-env-vars-true-test
   (testing "startup proceeds with a warning when the kill switch is a double negative"
     (doseq [value ["true" "TRUE"]]
       (testing value
@@ -112,12 +124,34 @@
                       (mt/with-log-messages-for-level [messages :warn]
                         (search/check-for-removed-env-vars!)
                         (messages))))))))))
-  (testing "startup proceeds when the kill switch is absent"
-    (with-redefs [env/env {}]
-      (is (nil? (search/check-for-removed-env-vars!)))))
-  (testing "an empty value counts as unset, not a leftover"
-    (with-redefs [env/env {:mb-semantic-search-enabled ""}]
-      (is (nil? (search/check-for-removed-env-vars!))))))
+  (testing "a true kill switch warns when semantic is not active"
+    (with-redefs [env/env {:mb-semantic-search-enabled "true"}]
+      (testing "with instructions to activate a supported semantic engine"
+        (with-engines {:supported all-engines :configured :appdb}
+          (is (=? [{:level   :warn
+                    :message (str "MB_SEMANTIC_SEARCH_ENABLED is no longer supported. "
+                                  "To enable semantic search, set MB_SEARCH_ENGINE=semantic, then remove "
+                                  "MB_SEMANTIC_SEARCH_ENABLED.")}]
+                  (mt/with-log-messages-for-level [messages :warn]
+                    (search/check-for-removed-env-vars!)
+                    (messages))))))
+      (testing "without activation instructions when semantic is unsupported"
+        (with-engines {:supported #{:search.engine/appdb :search.engine/in-place}}
+          (is (=? [{:level   :warn
+                    :message (str "MB_SEMANTIC_SEARCH_ENABLED is no longer supported. "
+                                  "Semantic search is not supported by this instance; "
+                                  "remove MB_SEMANTIC_SEARCH_ENABLED.")}]
+                  (mt/with-log-messages-for-level [messages :warn]
+                    (search/check-for-removed-env-vars!)
+                    (messages)))))))))
+
+(deftest check-for-removed-env-vars-invalid-test
+  (testing "an unexpected value fails with the legacy boolean validation message"
+    (with-redefs [env/env {:mb-semantic-search-enabled "unsupported"}]
+      (is (thrown-with-msg?
+           Exception
+           #"Invalid value for string: must be either"
+           (search/check-for-removed-env-vars!))))))
 
 (deftest search-engine-setting-test
   (testing "the setting computes the resolved engine when no value is configured"
