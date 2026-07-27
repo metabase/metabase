@@ -316,15 +316,10 @@
   "The creator's effective-data-access token for `dataset-query` — the sandbox/impersonation/routing
   fingerprint the snapshot is computed under, stored on the `StoredResult` and compared against a
   viewer's token to gate cached reads. Must be called inside the creator's `with-current-user` (+
-  routing-on) binding. Best-effort: any failure yields nil, which the read gate treats as
-  creator+admin-only."
+  routing-on) binding."
   [dataset-query db-id]
-  (try
-    (perms/data-access-token {:database-id db-id
-                              :table-ids   (query-perms/query->resolved-source-table-ids dataset-query)})
-    (catch Throwable e
-      (log/warn e "Failed to compute data-access token for exploration query result")
-      nil)))
+  (perms/data-access-token {:database-id db-id
+                            :table-ids   (query-perms/query->resolved-source-table-ids dataset-query)}))
 
 (defn- compute-query-result
   "The slow half of running `row`: the warehouse query, its serialization, and the chart-config /

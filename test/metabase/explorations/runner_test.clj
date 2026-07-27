@@ -14,8 +14,10 @@
    [metabase.metabot.scope]
    [metabase.metabot.self.claude]
    [metabase.metabot.usage]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.core :as qp]
    [metabase.test :as mt]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -320,6 +322,26 @@
         (is (some? (:finished_at final)))
         (is (zero? (t2/count :model/ExplorationQueryResult
                              :exploration_query_id (:id row))))))))
+
+(deftest token-computation-failure-fails-the-query-test
+  (testing "a snapshot is NEVER persisted without a data_access_token: when capturing the creator's
+            lens throws (unexpected — the QP itself just ran under the same lens), the failure
+            propagates and the queue marks the query `error`, rather than degrading to a snapshot
+            the read gate can't adjudicate"
+    (mt/with-temp [:model/User u {:email "token-fail@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [thread (temp-thread! (:id u))
+            row    (pending-query! (:id thread) (:id card)
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
+            final  (dynamic-redefs/with-dynamic-fn-redefs
+                     [perms/data-access-token (fn [_] (throw (ex-info "lens capture failed" {})))]
+                     (drain-until-terminal! (:id row)))]
+        (is (= "error" (:status final)))
+        (is (some? (:error_message final)))
+        (is (zero? (t2/count :model/ExplorationQueryResult :exploration_query_id (:id row)))
+            "no result row — and therefore no snapshot — was written")))))
 
 (defn- deferred-query!
   "A pending row whose `dataset_query` the planner deferred to execution time (the shape

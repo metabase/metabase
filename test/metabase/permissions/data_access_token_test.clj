@@ -6,8 +6,8 @@
    [metabase.permissions.data-access-token :as data-access-token]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]))
 
-(def ^:private sandbox-ca {:sandbox {10 [:card 1 {"State" "CA"}]}})
-(def ^:private sandbox-ny {:sandbox {10 [:card 1 {"State" "NY"}]}})
+(def ^:private sandbox-ca {:sandbox {10 "d-ca"}})
+(def ^:private sandbox-ny {:sandbox {10 "d-ny"}})
 (def ^:private role-ro    {:impersonation {5 {:role "ro"}}})
 (def ^:private role-rw    {:impersonation {5 {:role "rw"}}})
 (def ^:private dest-a     {:routing {7 {:destination-db-id 100}}})
@@ -20,8 +20,10 @@
       (is (true? (compatible? sandbox-ca sandbox-ca))))
     (testing "viewer with a different sandbox cannot"
       (is (false? (compatible? sandbox-ca sandbox-ny))))
-    (testing "an unsandboxed viewer can see a sandboxed creator's blob (viewer is the superset)"
-      (is (true? (compatible? sandbox-ca unrestricted))))
+    (testing "an unsandboxed viewer cannot see a sandboxed creator's blob — a sandboxed creator's
+              snapshot is served only to viewers with the exact same sandbox, even though a filter
+              sandbox's rows are a subset of the raw table this viewer could query directly"
+      (is (false? (compatible? sandbox-ca unrestricted))))
     (testing "a sandboxed viewer cannot see an unsandboxed creator's (full-data) blob"
       (is (false? (compatible? unrestricted sandbox-ca))))))
 
@@ -30,8 +32,10 @@
     (testing "same role sees, different role does not"
       (is (true? (compatible? role-ro role-ro)))
       (is (false? (compatible? role-ro role-rw))))
-    (testing "an unimpersonated viewer sees an impersonated creator's blob; the reverse is blocked"
-      (is (true? (compatible? role-ro unrestricted)))
+    (testing "an unimpersonated viewer cannot see an impersonated creator's blob — a role's view is
+              not guaranteed to be a subset of the default connection's (role-scoped RLS can be
+              arbitrary). The reverse is blocked too. Superusers bypass the gate upstream"
+      (is (false? (compatible? role-ro unrestricted)))
       (is (false? (compatible? unrestricted role-ro))))))
 
 (deftest data-access-compatible?-routing-test
@@ -39,10 +43,14 @@
     (testing "same destination sees, different destination does not"
       (is (true? (compatible? dest-a dest-a)))
       (is (false? (compatible? dest-a dest-b))))
-    (testing "the router cohort (admins / __METABASE_ROUTER__, absent token) sees a routed creator's blob"
-      (is (true? (compatible? dest-a unrestricted))))
+    (testing "a router-cohort viewer (absent token: resolves to the router db) cannot see a routed
+              creator's blob — router and destination contents are unconstrained relative to each
+              other, so there is no containment to rely on. Superusers bypass the gate upstream"
+      (is (false? (compatible? dest-a unrestricted))))
     (testing "a routed viewer cannot see a router-cohort creator's blob"
-      (is (false? (compatible? unrestricted dest-a))))))
+      (is (false? (compatible? unrestricted dest-a))))
+    (testing "two router-cohort users (both absent) share the router db's rows"
+      (is (true? (compatible? unrestricted unrestricted))))))
 
 (deftest data-access-compatible?-combination-test
   (let [compatible? data-access-token/data-access-compatible?
@@ -50,24 +58,24 @@
         creator (merge sandbox-ca role-ro)]
     (testing "every active dimension must independently pass"
       (is (true?  (compatible? creator creator)))
-      ;; viewer unsandboxed (escape) but shares the role -> sees
-      (is (true?  (compatible? creator role-ro)))
+      ;; viewer shares the role but is unsandboxed -> blocked (the sandbox dimension is strict)
+      (is (false? (compatible? creator role-ro)))
       ;; viewer shares the sandbox but holds a different role -> blocked
       (is (false? (compatible? creator (merge sandbox-ca role-rw))))
-      ;; fully unrestricted viewer -> sees (superset on both)
-      (is (true?  (compatible? creator unrestricted))))))
+      ;; fully unrestricted viewer -> blocked
+      (is (false? (compatible? creator unrestricted))))))
 
 (deftest data-access-compatible?-multi-table-sandbox-test
   (let [compatible? data-access-token/data-access-compatible?
-        creator {:sandbox {10 [:card 1 {"State" "CA"}]
-                           20 [:card 2 {"Region" "West"}]}}]
-    (testing "viewer must match (or be absent on) EVERY touched table"
+        creator {:sandbox {10 "d-ca"
+                           20 "d-west"}}]
+    (testing "viewer must match on EVERY touched table"
       (is (true?  (compatible? creator creator)))
-      ;; matches table 10, unsandboxed on 20 -> sees
-      (is (true?  (compatible? creator {:sandbox {10 [:card 1 {"State" "CA"}]}})))
+      ;; matches table 10, unsandboxed on 20 -> blocked (no relaxation for absence)
+      (is (false? (compatible? creator {:sandbox {10 "d-ca"}})))
       ;; matches table 10 but a different sandbox on table 20 -> blocked
-      (is (false? (compatible? creator {:sandbox {10 [:card 1 {"State" "CA"}]
-                                                  20 [:card 2 {"Region" "East"}]}}))))))
+      (is (false? (compatible? creator {:sandbox {10 "d-ca"
+                                                  20 "d-east"}}))))))
 
 (deftest data-access-compatible?-oss-test
   (testing "two empty (OSS / unrestricted) tokens are always compatible -> no gating"
@@ -108,6 +116,8 @@
     (let [token (token-for ca-lens)]
       (is (= #{:sandbox :impersonation :routing} (set (keys token))))
       (is (= #{10} (set (keys (:sandbox token)))))
+      (testing "a sandbox entry is a bare digest, same shape as the other dimensions"
+        (is (string? (get-in token [:sandbox 10]))))
       (is (= #{5} (set (keys (:impersonation token)))))
       (is (= #{5} (set (keys (:routing token))))))))
 
@@ -117,9 +127,10 @@
     (is (= (token-for ca-lens) (token-for ca-lens))))
   (testing "map entry order must not change the digest (map iteration order is not part of the lens)"
     (is (= (token-for ca-lens)
-           (token-for (assoc ca-lens :sandbox [1 "2026-01-01T00:00Z" {"CustomerEmail" "person@example.com"
-                                                                      "State"         "CA"}])))))
-  (testing "any change in the underlying lens changes the digest"
+           (token-for (assoc ca-lens :sandbox
+                             [1 "2026-01-01T00:00Z" {"CustomerEmail" "person@example.com"
+                                                     "State"         "CA"}])))))
+  (testing "any change in the underlying lens changes the token"
     (are [changed] (not= (token-for ca-lens) (token-for changed))
       (assoc ca-lens :sandbox [1 "2026-01-01T00:00Z" {"State" "NY" "CustomerEmail" "person@example.com"}])
       (assoc ca-lens :sandbox [2 "2026-01-01T00:00Z" {"State" "CA" "CustomerEmail" "person@example.com"}])
@@ -135,9 +146,11 @@
       (testing "different sandbox attribute value -> blocked"
         (is (false? (data-access-token/data-access-compatible?
                      creator
-                     (token-for (assoc ca-lens :sandbox [1 "2026-01-01T00:00Z" {"State" "NY"}]))))))
-      (testing "unrestricted viewer -> compatible; restricted viewer over an unrestricted creator -> blocked"
-        (is (true?  (data-access-token/data-access-compatible? creator (token-for {}))))
+                     (token-for (assoc ca-lens :sandbox
+                                       [1 "2026-01-01T00:00Z" {"State" "NY"}]))))))
+      (testing "an unrestricted viewer is blocked by the creator's impersonation/routing dimensions
+                (strict), and a restricted viewer over an unrestricted creator is blocked too"
+        (is (false? (data-access-token/data-access-compatible? creator (token-for {}))))
         (is (false? (data-access-token/data-access-compatible? (token-for {}) creator)))))))
 
 (deftest data-access-token-is-edn-round-trippable-test
