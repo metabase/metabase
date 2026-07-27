@@ -147,6 +147,23 @@
             (is (str/includes? (indexed) "To Model"))
             (is (not (str/includes? (indexed) "From Model")))))))))
 
+(deftest reconcile-chunks-reindex-messages-test
+  (testing "surviving ids go out in bounded chunks, so one batch cannot blow the bind-parameter limit"
+    (mt/with-temp [:model/Card   {card-id :id} {:name "Chunking Model" :type :model}
+                   :model/Action {_a1 :id}     {:name "Chunk Action 1" :model_id card-id :type :query}
+                   :model/Action {_a2 :id}     {:name "Chunk Action 2" :model_id card-id :type :query}
+                   :model/Action {_a3 :id}     {:name "Chunk Action 3" :model_id card-id :type :query}]
+      (let [cascading (search/cascading-documents [(t2/select-one :model/Card card-id)])
+            calls     (atom [])]
+        (is (= 3 (count (get cascading "action"))))
+        (with-redefs [search/reindex-batch-size 2]
+          (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
+                                      (fn [updates] (swap! calls conj updates))]
+            (search/reconcile-cascading-documents! cascading)))
+        (let [selectors (mapcat identity @calls)]
+          (testing "three surviving documents split across two messages, neither over the limit"
+            (is (= [2 1] (sort > (map (fn [[_model [_in _id-expr ids]]] (count ids)) selectors))))))))))
+
 (deftest cascade-enumeration-ceiling-test
   (testing "a fan-out past the ceiling is skipped rather than materialized"
     (mt/with-temp [:model/Card   {card-id :id} {:name "Ceiling Model" :type :model}
