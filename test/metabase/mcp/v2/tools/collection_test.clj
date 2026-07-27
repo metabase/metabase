@@ -159,6 +159,37 @@
       (tool-result (call-tool! :crowberto {:method "update" :id (:id coll) :parent_id "root"}))
       (is (= "/" (t2/select-one-fn :location :model/Collection :id (:id coll)))))))
 
+(deftest update-move-requires-write-perms-on-new-parent-test
+  (testing "moving needs write access to the destination, not just to the collection being moved —
+            the create path checks this, and the move path checks it separately"
+    (mt/with-temp [:model/Collection coll {:name "Rasta's to move"
+                                           :location (str "/" (t2/select-one-fn
+                                                               :id :model/Collection
+                                                               :personal_owner_id (mt/user->id :rasta)) "/")}]
+      (let [crowbertos (t2/select-one-fn :id :model/Collection :personal_owner_id (mt/user->id :crowberto))]
+        ;; Assert on the permission message, not merely that something failed: rasta can read the
+        ;; collection being moved, so a not-found collapse here would mean the destination check
+        ;; had stopped running.
+        (is (re-find #"don't have permissions"
+                     (tool-error (call-tool! :rasta {:method "update" :id (:id coll) :parent_id crowbertos}))))
+        (testing "and the collection stays put"
+          (is (not= (str "/" crowbertos "/")
+                    (t2/select-one-fn :location :model/Collection :id (:id coll)))))))))
+
+(deftest update-restores-into-a-new-parent-test
+  (testing "archived: false with parent_id restores the collection somewhere new — the one path where
+            archive-or-unarchive-collection! consumes parent_id, rather than move-collection!"
+    (mt/with-temp [:model/Collection parent {:name "Somewhere else"}
+                   :model/Collection coll   {:name "Trashed then relocated"}]
+      (tool-result (call-tool! :crowberto {:method "update" :id (:id coll) :archived true}))
+      (is (true? (t2/select-one-fn :archived :model/Collection :id (:id coll))))
+      (let [payload (tool-result (call-tool! :crowberto {:method "update" :id (:id coll)
+                                                         :archived false :parent_id (:id parent)}))]
+        (is (false? (:archived payload)))
+        (is (false? (t2/select-one-fn :archived :model/Collection :id (:id coll))))
+        (is (= (str "/" (:id parent) "/")
+               (t2/select-one-fn :location :model/Collection :id (:id coll))))))))
+
 (deftest update-archives-and-restores-test
   (mt/with-temp [:model/Collection coll {:name "Trashable"}]
     (testing "archived: true trashes"
