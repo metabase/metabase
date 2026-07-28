@@ -16,6 +16,7 @@ import {
   getIsEditing,
   getSegment,
   getSegmentId,
+  getTable,
   getUser,
 } from "../selectors";
 
@@ -41,6 +42,8 @@ function SegmentFieldListContainer(props: SegmentFieldListContainerProps) {
   const segment = useSelector((state) => getSegment(state, { params }));
   const segmentId = useSelector((state) => getSegmentId(state, { params }));
   const isEditing = useSelector(getIsEditing);
+  // `SegmentFieldList` reads `table.db_id` but doesn't select the table itself.
+  const table = useSelector((state) => getTable(state, { params }));
 
   useMount(() => {
     actions.wrappedFetchSegmentFields(props, segmentId);
@@ -60,7 +63,7 @@ function SegmentFieldListContainer(props: SegmentFieldListContainerProps) {
       style={isEditing ? { paddingTop: "43px" } : {}}
       sidebar={<SegmentSidebar segment={segment} user={user} />}
     >
-      <SegmentFieldList params={params} />
+      <SegmentFieldList params={params} table={table} />
     </SidebarLayout>
   );
 }

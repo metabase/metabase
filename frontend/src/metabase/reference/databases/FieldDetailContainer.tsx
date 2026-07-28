@@ -9,6 +9,7 @@ import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import FieldDetail from "metabase/reference/databases/FieldDetail";
 import * as actions from "metabase/reference/reference";
 import { useLocation, useParams } from "metabase/router";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import type { ClearStateProps, FetchProps } from "../reference";
 import {
@@ -41,6 +42,8 @@ function FieldDetailContainer(props: FieldDetailContainerProps) {
   const field = useSelector((state) => getField(state, { params }));
   const databaseId = useSelector((state) => getDatabaseId(state, { params }));
   const isEditing = useSelector(getIsEditing);
+  // `FieldDetail` reads `metadata` but doesn't select it itself.
+  const metadata = useSelector(getMetadata);
 
   useMount(() => {
     actions.wrappedFetchDatabaseMetadata(props, databaseId);
@@ -60,7 +63,7 @@ function FieldDetailContainer(props: FieldDetailContainerProps) {
       style={isEditing ? { paddingTop: "43px" } : {}}
       sidebar={<FieldSidebar database={database} table={table} field={field} />}
     >
-      <FieldDetail params={params} />
+      <FieldDetail params={params} metadata={metadata} />
     </SidebarLayout>
   );
 }
