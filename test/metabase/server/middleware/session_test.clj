@@ -548,6 +548,7 @@
     (let [session (#'mw.session/current-user-info-for-session session-key nil)]
       session)))
 
+(require '[metabase-enterprise.mfa.settings])
 (deftest mfa-password-test
   (testing "password"
     (testing "With feature flag off, password works"
