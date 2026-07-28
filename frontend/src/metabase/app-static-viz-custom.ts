@@ -1,19 +1,14 @@
 import "metabase/static-viz/polyfill";
 
 import {
-  getCellBackgroundColors,
   initializeContext,
   registerCustomVizPlugin as registerCustomVizPluginImpl,
   renderChart,
-} from "metabase/static-viz";
+} from "metabase/static-viz/index-custom";
 import type { CustomVizPluginId } from "metabase-types/api";
 
 export function renderChartJSON(inputJSON: string): string {
   return JSON.stringify(renderChart(JSON.parse(inputJSON)));
-}
-
-export function getCellBackgroundColorsJSON(inputJSON: string): string {
-  return JSON.stringify(getCellBackgroundColors(JSON.parse(inputJSON)));
 }
 
 export function initializeContextJSON(optionsJSON: string): void {
@@ -37,7 +32,10 @@ export function registerCustomVizPlugin(
   };
   const factory = globals.__customVizPlugin__;
   globals.__customVizPlugin__ = undefined;
-  if (typeof factory === "function") {
-    registerCustomVizPluginImpl(factory, identifier, pluginId);
+  if (typeof factory !== "function") {
+    throw new Error(
+      `Custom viz plugin "${identifier}" did not assign a factory function to __customVizPlugin__ (got ${typeof factory}).`,
+    );
   }
+  registerCustomVizPluginImpl(factory, identifier, pluginId);
 }

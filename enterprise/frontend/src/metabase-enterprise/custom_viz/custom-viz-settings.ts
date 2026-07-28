@@ -13,6 +13,24 @@ import { isObject } from "metabase-types/guards";
 import { wrapPluginWidget } from "./widget-mount";
 
 /**
+ * Mint the opaque `CustomVisualizationSettingDefinition` brand.
+ *
+ * The brand is a type-level-only unique symbol (`SettingDefinitionSymbol` in
+ * the custom-viz package) that forces plugin authors to go through
+ * `defineSetting` instead of hand-crafting setting definitions. No runtime
+ * value can satisfy it, so the host mints the brand with this one deliberate
+ * cast; keep every brand-minting site going through this helper.
+ */
+export function brandSettingDefinition(
+  definition: unknown,
+): CustomVisualizationSettingDefinition<Record<string, unknown>> {
+  // The brand symbol exists only at the type level — see the doc comment.
+  return definition as CustomVisualizationSettingDefinition<
+    Record<string, unknown>
+  >;
+}
+
+/**
  * Walk a plugin's `vizDef.settings` and rewrite every Component-shaped
  * `widget` into a host-trusted `WidgetMount` whose body delegates to the
  * plugin's shared `mount` function (i.e., its sandbox-side `createRoot`
@@ -42,18 +60,16 @@ export function sanitizePluginSettings(
     }
 
     if ("widget" in value && typeof value.widget === "function") {
-      // Unjustified type cast. FIXME
+      // typeof narrowing only gets us to Function; a function-shaped widget is
+      // a React component by the plugin API contract.
       const Widget = value.widget as ComponentType<Record<string, unknown>>;
-      // Unjustified type cast. FIXME
-      sanitizedSettings[settingId] = {
+      sanitizedSettings[settingId] = brandSettingDefinition({
         ...value,
         widget: wrapPluginWidget(
           (container, initialProps) => mount(Widget, container, initialProps),
           pluginId,
         ),
-      } as unknown as CustomVisualizationSettingDefinition<
-        Record<string, unknown>
-      >;
+      });
     } else {
       sanitizedSettings[settingId] = value;
     }
