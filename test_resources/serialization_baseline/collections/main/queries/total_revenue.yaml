@@ -41,7 +41,7 @@ result_metadata:
   lib/source-column-alias: sum
 visualization_settings:
   column_settings: null
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: IW8kbqZVaMxdGtCM2F4U6
   label: total_revenue
