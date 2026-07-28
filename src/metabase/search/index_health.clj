@@ -142,10 +142,17 @@
   -- and a reading nothing is renewing is worse than none."
   []
   (locking live-gauge-series
-    (doseq [[[gauge-key labels :as series] published] @live-gauge-series
-            :when (>= (u/since-ms published) stale-gauge-age-ms)]
-      (analytics/remove-series! gauge-key labels)
-      (swap! live-gauge-series dissoc series))))
+    ;; The key is left packed until the guard has run: a refresh still on the pre-reload code can conj its
+    ;; own entry onto the migrated map, where it reads as a MapEntry and lands malformed, and destructuring
+    ;; that in the binding throws before any :when could skip it. The next publish tracks the series
+    ;; properly, so leaving one behind costs nothing.
+    (doseq [[series published] @live-gauge-series
+            :when (and (vector? series)
+                       (map? (second series))
+                       (>= (u/since-ms published) stale-gauge-age-ms))]
+      (let [[gauge-key labels] series]
+        (analytics/remove-series! gauge-key labels)
+        (swap! live-gauge-series dissoc series)))))
 
 (defmethod analytics.core/pull-collector ::expire-stale-gauges [_]
   {:min-interval-s 60

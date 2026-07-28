@@ -216,6 +216,21 @@
           (#'index-health/expire-stale-gauges!)
           (is (empty? @calls)))))))
 
+(deftest ^:sequential expiry-ignores-entries-it-did-not-write-test
+  (testing "a legacy refresh landing mid-reload leaves a malformed entry that must not break the sweep"
+    (let [calls (atom [])
+          stale [:metabase-search/index-coverage-ratio {:index "stale"}]
+          live  (atom {;; what (conj {} [gauge-key index]) leaves behind
+                       :metabase-search/index-garbage-count :semantic-search
+                       stale                                ::stale})]
+      (with-redefs [index-health/live-gauge-series live
+                    u/since-ms                    {::stale 3600000}]
+        (mt/with-dynamic-fn-redefs [analytics/remove-series! (fn [& args] (swap! calls conj (vec args)))]
+          (#'index-health/expire-stale-gauges!)
+          (is (= [stale] @calls) "the well-formed stale series is retired")
+          (is (= {:metabase-search/index-garbage-count :semantic-search} @live)
+              "the malformed entry is left alone rather than throwing"))))))
+
 (deftest ^:parallel migrate-legacy-tracker-test
   (testing "a reload's retained set becomes timed entries, so its series stay removable"
     (is (=? {[:metabase-search/index-coverage-ratio {:index "semantic-search"}] some?}
