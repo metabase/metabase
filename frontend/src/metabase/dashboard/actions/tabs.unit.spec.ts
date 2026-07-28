@@ -1,6 +1,14 @@
+import { createMockParameter } from "metabase-types/api/mocks";
+
 import { TEST_DASHBOARD_STATE } from "../components/DashboardTabs/test-utils";
 
-import { getIdFromSlug, moveTab, tabsReducer } from "./tabs";
+import {
+  deleteTab,
+  getIdFromSlug,
+  moveTab,
+  tabsReducer,
+  undoDeleteTab,
+} from "./tabs";
 
 /**
  * It's preferred to write tests in `DashboardTabs.unit.spec.tsx`,
@@ -15,6 +23,45 @@ describe("tabsReducer", () => {
     expect(newDashState.dashboards[1].tabs?.map((t) => t.id)).toEqual([
       2, 3, 1,
     ]);
+  });
+
+  it("should remove a tab's inline filters instead of leaving them as orphaned dashboard-level filters (metabase#78567)", () => {
+    const inlineParameter = createMockParameter({ id: "inline-param" });
+    const stateWithInlineParameter = {
+      ...TEST_DASHBOARD_STATE,
+      dashboards: {
+        ...TEST_DASHBOARD_STATE.dashboards,
+        1: {
+          ...TEST_DASHBOARD_STATE.dashboards[1],
+          parameters: [inlineParameter],
+        },
+      },
+      dashcards: {
+        ...TEST_DASHBOARD_STATE.dashcards,
+        2: {
+          ...TEST_DASHBOARD_STATE.dashcards[2],
+          inline_parameters: [inlineParameter.id],
+        },
+      },
+    };
+
+    const afterDelete = tabsReducer(
+      stateWithInlineParameter,
+      deleteTab({ tabId: 2, tabDeletionId: 1 }),
+    );
+
+    expect(afterDelete.dashboards[1].parameters).toEqual([]);
+    expect(afterDelete.tabDeletions[1].removedParameters).toEqual([
+      inlineParameter,
+    ]);
+
+    const afterUndo = tabsReducer(
+      afterDelete,
+      undoDeleteTab({ tabDeletionId: 1 }),
+    );
+
+    expect(afterUndo.dashboards[1].parameters).toEqual([inlineParameter]);
+    expect(afterUndo.tabDeletions[1]).toBeUndefined();
   });
 });
 

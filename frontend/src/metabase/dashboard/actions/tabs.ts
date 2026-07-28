@@ -417,11 +417,32 @@ export const tabsReducer = createReducer<DashboardState>(
           }
         });
 
-        // 4. Add deletion to history to allow undoing
+        // 4. Remove inline filters that lived on the removed dashcards, so
+        // they don't become orphaned and fall back to being shown as
+        // dashboard-level filters (metabase#78567)
+        const removedInlineParameterIds = new Set(
+          removedDashCardIds.flatMap((id) => {
+            const dashcard = state.dashcards[id];
+            return "inline_parameters" in dashcard
+              ? (dashcard.inline_parameters ?? [])
+              : [];
+          }),
+        );
+        const removedParameters = (prevDash.parameters ?? []).filter(
+          (parameter) => removedInlineParameterIds.has(parameter.id),
+        );
+        if (removedParameters.length > 0) {
+          prevDash.parameters = (prevDash.parameters ?? []).filter(
+            (parameter) => !removedInlineParameterIds.has(parameter.id),
+          );
+        }
+
+        // 5. Add deletion to history to allow undoing
         state.tabDeletions[tabDeletionId] = {
           id: tabDeletionId,
           tabId: tabToRemove.id,
           removedDashCardIds,
+          removedParameters,
         };
       },
     );
@@ -429,12 +450,13 @@ export const tabsReducer = createReducer<DashboardState>(
     builder.addCase(
       undoDeleteTab,
       (state, { type, payload: { tabDeletionId } }) => {
-        const { prevTabs } = getPrevDashAndTabs({ state });
-        const { tabId, removedDashCardIds } = state.tabDeletions[tabDeletionId];
+        const { prevDash, prevTabs } = getPrevDashAndTabs({ state });
+        const { tabId, removedDashCardIds, removedParameters } =
+          state.tabDeletions[tabDeletionId];
         const removedTab = prevTabs.find(({ id }) => id === tabId);
-        if (!removedTab) {
+        if (!prevDash || !removedTab) {
           throw new Error(
-            `UNDO_DELETE_TAB was dispatched but tab with id ${tabId} was not found`,
+            `UNDO_DELETE_TAB was dispatched but either prevDash (${prevDash}), or tab with id ${tabId} was not found`,
           );
         }
 
@@ -448,7 +470,15 @@ export const tabsReducer = createReducer<DashboardState>(
           (id) => (state.dashcards[id].isRemoved = false),
         );
 
-        // 3. Remove deletion from history
+        // 3. Restore inline filters that were removed along with the tab
+        if (removedParameters.length > 0) {
+          prevDash.parameters = [
+            ...(prevDash.parameters ?? []),
+            ...removedParameters,
+          ];
+        }
+
+        // 4. Remove deletion from history
         delete state.tabDeletions[tabDeletionId];
       },
     );
