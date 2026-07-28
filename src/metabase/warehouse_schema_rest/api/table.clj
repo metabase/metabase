@@ -365,8 +365,6 @@
   (when-let [field-ids (seq (t2/select-pks-set :model/Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
     (for [origin-field (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true)
           :let [origin-field (t2/hydrate origin-field [:table :db])]
-          ;; only expose origin tables the user can actually read -- the read-check above covers only the
-          ;; destination table
           :when (and (-> origin-field :table :active)
                      (mi/can-read? (:table origin-field)))
           :let [origin-field (update origin-field :table schema.table/present-table)]]

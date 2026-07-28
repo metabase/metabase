@@ -203,7 +203,6 @@
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
         {graph :dependencies} (transforms.core/transform-ordering #{id} (vals id->transform))
         dep-ids         (get graph id)
-        ;; the read-check above covers only the seed; don't return dependencies the caller can't read
         dependencies    (filter mi/can-read? (map id->transform dep-ids))]
     (->> (t2/hydrate dependencies :creator :owner :can_read :can_write :can_execute)
          transforms.u/add-source-readable)))

@@ -592,8 +592,6 @@
     (when-not row
       (throw (ex-info (format "%s %s not found" (name kind) id)
                       {:agent-error? true :status-code 404})))
-    ;; Read-check the Measure/Segment itself (today that delegates to its parent Table, but the entity is what we
-    ;; are exposing, and its read policy may diverge from the Table's).
     (api/read-check row)
     (let [table     (t2/select-one :model/Table :id (:table_id row))
           db-id     (:db_id table)

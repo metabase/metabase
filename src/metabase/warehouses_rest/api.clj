@@ -1515,8 +1515,6 @@
          hydrated-tables  (if (seq hydration-keys)
                             (apply t2/hydrate filtered-tables hydration-keys)
                             filtered-tables)]
-     ;; hydration is permission-free; gate the hydrated Measures with their own can-read? (the already-fetched
-     ;; parent table is passed along to avoid re-fetching it per row)
      (cond->> hydrated-tables
        include-measures? (mapv (fn [table]
                                  (update table :measures

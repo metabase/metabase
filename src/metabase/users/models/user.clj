@@ -571,23 +571,26 @@
                                                                  [:or
                                                                   :core_user.is_data_analyst
                                                                   :core_user.is_superuser
-                                                                  [:in :core_user.id
-                                                                   {:select-distinct [:pgm.user_id]
+                                                                  [:exists
+                                                                   {:select [[[:inline 1]]]
                                                                     :from [[:permissions_group_membership :pgm]]
                                                                     :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
                                                                     :where [:and
+                                                                            [:= :pgm.user_id :core_user.id]
                                                                             [:= :p.perm_type "perms/manage-table-metadata"]
                                                                             [:= :p.perm_value "yes"]]}]]
                                                                  [:and
                                                                   [:not :core_user.is_data_analyst]
                                                                   [:not :core_user.is_superuser]
-                                                                  [:not-in :core_user.id
-                                                                   {:select-distinct [:pgm.user_id]
-                                                                    :from [[:permissions_group_membership :pgm]]
-                                                                    :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
-                                                                    :where [:and
-                                                                            [:= :p.perm_type "perms/manage-table-metadata"]
-                                                                            [:= :p.perm_value "yes"]]}]]))
+                                                                  [:not
+                                                                   [:exists
+                                                                    {:select [[[:inline 1]]]
+                                                                     :from [[:permissions_group_membership :pgm]]
+                                                                     :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
+                                                                     :where [:and
+                                                                             [:= :pgm.user_id :core_user.id]
+                                                                             [:= :p.perm_type "perms/manage-table-metadata"]
+                                                                             [:= :p.perm_value "yes"]]}]]]))
     (some? group-ids)                       (sql.helpers/right-join
                                              :permissions_group_membership
                                              [:= :core_user.id :permissions_group_membership.user_id])

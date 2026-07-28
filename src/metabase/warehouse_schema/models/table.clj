@@ -321,14 +321,10 @@
    (mi/can-read? (t2/select-one :model/Table pk))))
 
 (defn visible-filter-clause
-  "HoneySQL predicate selecting Tables (by `id-column`) whose metadata the current user can read. The SQL
-  counterpart of `mi/can-read? :model/Table` above -- keep the two in sync: a table passing this clause must be
-  `can-read?`, and vice versa. Returns nil when no filtering is needed: superusers and data analysts can read
-  every table's metadata, and outside the request cycle (no user bound) permission filtering is the caller's
-  concern. HoneySQL drops a nil conjunct, so callers can unconditionally AND this into a WHERE clause. Compiles to
-  a correlated `EXISTS`, so `id-column` must be table-qualified whenever its bare name is also a `metabase_table`
-  column (`:id`, `:db_id`, `:collection_id`, ...). Mimics
-  [[metabase.collections.models.collection/visible-collection-filter-clause]]."
+  "HoneySQL predicate selecting Tables (by `id-column`) whose metadata the current user can read -- the SQL
+  counterpart of `mi/can-read? :model/Table` above; keep the two in sync. nil when no filtering is needed
+  (superusers, data analysts, no bound user). Compiles to a correlated EXISTS, so qualify `id-column` whenever its
+  bare name is also a `metabase_table` column."
   [id-column]
   (when-let [user-id api/*current-user-id*]
     (when-not (or api/*is-superuser?* api/*is-data-analyst?*)

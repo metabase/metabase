@@ -82,10 +82,9 @@
    (mi/can-read? (t2/select-one model pk))))
 
 (defn visible-filter-clause
-  "HoneySQL predicate selecting Segments (by `table-id-column`, default `:table_id`, qualified when the query joins
-  other tables) that the current user can read. The SQL counterpart of `mi/can-read? :model/Segment` above, which
-  delegates to the Segment's Table -- so this delegates to the Table clause the same way. Returns nil when no
-  filtering is needed; HoneySQL drops a nil conjunct, so callers can unconditionally AND this into a WHERE clause."
+  "HoneySQL predicate selecting Segments (by `table-id-column`, default `:table_id`) that the current user can
+  read -- the SQL counterpart of `mi/can-read? :model/Segment` above, delegating to the Table clause the same way.
+  nil when no filtering is needed."
   ([] (visible-filter-clause :table_id))
   ([table-id-column] (table/visible-filter-clause table-id-column)))
 

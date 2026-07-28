@@ -147,13 +147,10 @@
                active-only? (conj [:= :mt.active true])))})
 
 (mu/defn visible-table-exists-clause
-  "Correlated `EXISTS (SELECT 1 FROM metabase_table mt WHERE mt.id = <table-id-column> AND ...)` predicate: true
-  when `table-id-column` references a Table whose metadata the given user can read. SQL parity with
-  `mi/can-read? :model/Table`: view-data `:unrestricted` AND (create-queries `:query-builder` OR access via a
-  published collection), OR manage-table-metadata `:yes`. Callers are expected to short-circuit the superuser and
-  data-analyst fast paths (both can read every table) rather than generating this subquery. An EXISTS semi-join
-  rather than `IN (SELECT ...)`, which Postgres degrades to an O(n^2) subplan past work_mem (#78382);
-  `table-id-column` must be table-qualified whenever its bare name is also a `metabase_table` column."
+  "Correlated EXISTS predicate: true when `table-id-column` references a Table whose metadata the given user can
+  read. SQL parity with `mi/can-read? :model/Table`: view-data `:unrestricted` AND (create-queries `:query-builder`
+  OR published-via-collection), OR manage-table-metadata `:yes`. Callers short-circuit the superuser/data-analyst
+  fast paths; qualify `table-id-column` whenever its bare name is also a `metabase_table` column."
   [{:keys [user-id] :as user-info} :- UserInfo
    table-id-column :- [:or :keyword [:sequential :any]]]
   [:exists {:select [[[:inline 1]]]

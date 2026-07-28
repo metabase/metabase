@@ -23,11 +23,9 @@
    (api/is-data-analyst?)))
 
 (defn visible-filter-clause
-  "HoneySQL predicate selecting TransformTags that the current user can read. The SQL counterpart of
-  `mi/can-read? :model/TransformTag` above, whose result doesn't depend on the row: data analysts (and superusers)
-  can read every tag, nobody else can read any. Returns nil when no filtering is needed (also outside the request
-  cycle, where permission filtering is the caller's concern); HoneySQL drops a nil conjunct, so callers can
-  unconditionally AND this into a WHERE clause."
+  "HoneySQL predicate selecting TransformTags the current user can read -- the SQL counterpart of
+  `mi/can-read? :model/TransformTag` above. nil when no filtering is needed (data analysts, superusers, no bound
+  user)."
   []
   (when (and api/*current-user-id* (not (api/is-data-analyst?)))
     [:= [:inline 1] [:inline 0]]))

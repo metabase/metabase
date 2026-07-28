@@ -768,15 +768,11 @@
         (t2/delete! :model/DataPermissions :db_id db-id)
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
-        ;; readable via data access: view-data + create-queries
         (data-perms/set-table-permission! pg t-full :perms/view-data :unrestricted)
         (data-perms/set-table-permission! pg t-full :perms/create-queries :query-builder)
-        ;; view-data alone is not enough to read table metadata
         (data-perms/set-table-permission! pg t-view :perms/view-data :unrestricted)
-        ;; readable via manage-table-metadata alone
         (data-perms/set-table-permission! pg t-meta :perms/manage-table-metadata :yes)
         (let [table-ids        #{t-full t-view t-meta t-none}
-              ;; the column is qualified: a bare :id would correlate against the EXISTS subquery's own scope
               clause-visible   (fn []
                                  (set (t2/select-pks-set :model/Table
                                                          {:where [:and
