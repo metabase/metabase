@@ -209,11 +209,13 @@
       target-changed?
       (assoc :target_db_id target-db-id)
 
-      ;; Reset checkpoint when the incremental filter field changes
+      ;; Reset checkpoint when the incremental filter field changes. `sync_state` is cleared with it:
+      ;; both are watermarks for [[metabase.transforms-base.util/full-incremental-run?]], so leaving one
+      ;; behind would keep the next run on the append path while the source range restarts from scratch.
       (let [old-field-id (get-in (t2/original transform) [:source :source-incremental-strategy :checkpoint-filter-field-id])
             new-field-id (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id])]
         (and old-field-id (not= old-field-id new-field-id)))
-      (assoc :last_checkpoint_value nil)
+      (assoc :last_checkpoint_value nil, :sync_state nil)
 
       true
       resolve-merge-key-field-ids)))

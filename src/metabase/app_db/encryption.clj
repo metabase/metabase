@@ -9,7 +9,8 @@
 
 (set! *warn-on-reflection* true)
 
-;; All columns encrypted via `mi/transform-encrypted-json`. The on-disk format of such a column is
+;; All columns encrypted via `mi/transform-encrypted-json` (or, for write-only columns such as
+;; `transform.secrets`, via `mi/encrypted-json-in` alone). The on-disk format of such a column is
 ;; `encrypt(json-string)`, so rotating the key only requires decrypting the raw value with the current key and
 ;; re-encrypting the resulting string. We list raw table names (not models) so this also works for enterprise models
 ;; that aren't loaded in every edition.
@@ -20,7 +21,8 @@
    [:metabase_database :admin_details]
    [:core_user :settings]
    [:channel :details]
-   [:auth_identity :credentials]])
+   [:auth_identity :credentials]
+   [:transform :secrets]])
 
 ;; Older versions of dump-to-h2 and key rotation only processed `metabase_database.details` (plus settings and
 ;; secrets), skipping every other encrypted JSON column. A dump or rotation from such a version left the skipped
