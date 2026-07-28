@@ -1,11 +1,14 @@
 (ns metabase.channel.impl.email-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.impl.email :as email.impl]
+   [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.util :as render.util]
+   [metabase.channel.temp-file :as temp-file]
    [metabase.channel.urls :as urls]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -218,3 +221,16 @@
            (testing "branding link is hidden with whitelabel"
              (mt/with-premium-features #{:whitelabel}
                (is (not (str/includes? (render!) "Made with")))))))))))
+
+(deftest dashboard-pdf-attachment-cleans-up-temp-file-test
+  (testing "dashboard-pdf-attachment's temp PDF file is deleted once the tracked cleanup scope exits (#77153)"
+    (mt/with-dynamic-fn-redefs [channel.render/render-dashboard-to-pdf (fn [& _] (.getBytes "not a real pdf"))]
+      (let [pdf-file (atom nil)]
+        (temp-file/with-temp-file-cleanup
+          (let [attachment (#'email.impl/dashboard-pdf-attachment 1 "My Dashboard" (mt/user->id :crowberto) [] [])
+                file       (io/file (.toURI ^java.net.URL (:content attachment)))]
+            (reset! pdf-file file)
+            (testing "the temp file exists while the cleanup scope is still open"
+              (is (.exists file)))))
+        (testing "the temp file is deleted once the cleanup scope exits"
+          (is (not (.exists ^java.io.File @pdf-file))))))))

@@ -21,6 +21,7 @@
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.shared :as channel.shared]
+   [metabase.channel.temp-file :as temp-file]
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.channel.urls :as urls]
    [metabase.notification.models :as models.notification]
@@ -281,10 +282,9 @@
   [dashboard-id dashboard-name creator-id parameters parts]
   (try
     ;; TODO: (bshepherdson, 2026-07-02) This should not be hard-coding the paper size.
-    (let [pdf-bytes (channel.render/render-dashboard-to-pdf dashboard-id creator-id (vec parameters) :a4 parts)
-          temp-file (doto (File/createTempFile "metabase_dashboard_" ".pdf")
-                      (.deleteOnExit))]
-      (with-open [os (io/output-stream temp-file)]
+    (let [pdf-bytes     (channel.render/render-dashboard-to-pdf dashboard-id creator-id (vec parameters) :a4 parts)
+          pdf-temp-file (temp-file/track-temp-file! (File/createTempFile "metabase_dashboard_" ".pdf"))]
+      (with-open [os (io/output-stream pdf-temp-file)]
         (.write os ^bytes pdf-bytes))
       {:type         :attachment
        :content-type "application/pdf"
@@ -293,7 +293,7 @@
                          not-empty
                          (or "dashboard")
                          (str ".pdf"))
-       :content      (.. temp-file toURI toURL)
+       :content      (.. pdf-temp-file toURI toURL)
        :description  (format "PDF of dashboard '%s'" (or dashboard-name "dashboard"))})
     (catch Throwable e
       (log/error e "Error rendering dashboard subscription PDF; skipping PDF attachment")
