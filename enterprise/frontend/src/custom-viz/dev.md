@@ -75,6 +75,8 @@ Convention:
 
    `--no-git-tag-version` stops npm from making a commit or git tag — the release workflow creates the git tag after the version-bump PR lands. The package is bun-managed (no `package-lock.json`), so `npm version` only edits `package.json`.
 
+   For a stable release, add a section for the new version to [CHANGELOG.md](CHANGELOG.md) in the same PR. The changelog is maintained by hand. Canary releases don't get changelog sections.
+
 2. (Optional) Preview what the workflow will resolve, from the repo root:
 
    ```bash
