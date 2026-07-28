@@ -133,6 +133,11 @@
   []
   (try
     (collect-pgvector-readiness-metrics!)
+    (catch InterruptedException e
+      (throw e))
+    (catch Exception e
+      ;; Nothing derefs this future, so a throw here is otherwise silent.
+      (log/error e "Pgvector readiness metric refresh failed"))
     (finally
       (reset! pgvector-readiness-refresh-running? false))))
 
