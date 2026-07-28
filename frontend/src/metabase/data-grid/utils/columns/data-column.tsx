@@ -80,15 +80,26 @@ const getDefaultHeaderTemplate = <TRow, TValue>({
   };
 };
 
+export const getDataColumnHeader = <TRow, TValue>(
+  columnOptions: ColumnOptions<TRow, TValue>,
+) => {
+  const { header } = columnOptions;
+
+  return typeof header !== "string"
+    ? memo(header ?? getDefaultHeaderTemplate(columnOptions))
+    : header;
+};
+
 export const getDataColumn = <TRow, TValue>(
   columnOptions: ColumnOptions<TRow, TValue>,
+  header: ColumnDef<TRow, TValue>["header"],
   columnSizing: ColumnSizingState,
   measuredColumnSizing: ColumnSizingState,
   expandedColumns: ExpandedColumnsState,
   truncateWidth: number,
   onExpand: (columnName: string, content: React.ReactNode) => void,
 ): ColumnDef<TRow, TValue> => {
-  const { id, accessorFn, wrap, cell, header, headerClickTargetSelector } =
+  const { id, accessorFn, wrap, cell, headerClickTargetSelector } =
     columnOptions;
   const columnWidth = columnSizing[id] ?? 0;
   const measuredColumnWidth = measuredColumnSizing[id] ?? 0;
@@ -101,10 +112,7 @@ export const getDataColumn = <TRow, TValue>(
   const columnDefinition: ColumnDef<TRow, TValue> = {
     accessorFn,
     id,
-    header:
-      typeof header !== "string"
-        ? memo(header ?? getDefaultHeaderTemplate(columnOptions))
-        : header,
+    header,
     cell:
       typeof cell !== "string"
         ? memo(

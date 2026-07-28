@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 
 import { renderWithProviders } from "__support__/ui";
 
-import { getDataColumn } from "./data-column";
+import { getDataColumn, getDataColumnHeader } from "./data-column";
 
 const setup = ({
   columnSize,
@@ -18,13 +18,15 @@ const setup = ({
   columnWrap?: boolean;
 }) => {
   const onExpand = jest.fn();
+  const columnOptions = {
+    id: "test-column",
+    name: "Test Column",
+    accessorFn: (row: { value: string }) => row.value,
+    wrap: columnWrap,
+  };
   const column = getDataColumn(
-    {
-      id: "test-column",
-      name: "Test Column",
-      accessorFn: (row: { value: string }) => row.value,
-      wrap: columnWrap,
-    },
+    columnOptions,
+    getDataColumnHeader(columnOptions),
     { "test-column": columnSize },
     { "test-column": measuredColumnSize },
     { "test-column": expandColumn },

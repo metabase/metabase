@@ -40,7 +40,10 @@ import type {
   ExpandedColumnsState,
   ScrollToDestinations,
 } from "metabase/data-grid/types";
-import { getDataColumn } from "metabase/data-grid/utils/columns/data-column";
+import {
+  getDataColumn,
+  getDataColumnHeader,
+} from "metabase/data-grid/utils/columns/data-column";
 import { getRowIdColumn } from "metabase/data-grid/utils/columns/row-id-column";
 import { getScrollBarSize } from "metabase/utils/dom";
 import { isNotNull } from "metabase/utils/types";
@@ -176,11 +179,21 @@ export const useDataGridInstance = <TData, TValue>({
     ],
   );
 
+  const dataColumnOptionsWithHeaders = useMemo(
+    () =>
+      columnsOptions.map((options) => ({
+        options,
+        header: getDataColumnHeader(options),
+      })),
+    [columnsOptions],
+  );
+
   const dataColumns = useMemo(
     () =>
-      columnsOptions.map((options) =>
+      dataColumnOptionsWithHeaders.map(({ options, header }) =>
         getDataColumn<TData, TValue>(
           options,
+          header,
           columnSizingMap,
           measuredColumnSizingMap,
           expandedColumnsMap,
@@ -189,7 +202,7 @@ export const useDataGridInstance = <TData, TValue>({
         ),
       ),
     [
-      columnsOptions,
+      dataColumnOptionsWithHeaders,
       columnSizingMap,
       measuredColumnSizingMap,
       expandedColumnsMap,
