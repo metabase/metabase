@@ -447,26 +447,24 @@
     (testing "GHY-4155: a bearer token without the alert scope is refused before dispatch"
       (is (= "Insufficient scope to call tool: alert_write"
              (tool-error (call-tool! :crowberto #{"agent:search"} args)))))
-    (testing "GHY-4155: the create scope alone lists and calls the tool, but cannot update"
-      (is (re-find #"can create but not update"
-                   (tool-error (call-tool! :crowberto #{metabot.scope/agent-alert-create} args)))))
-    (testing "GHY-4155: holding both scopes reaches the id lookup"
+    (testing "GHY-4155: the write scope covers both methods — there is no create-only alert token"
       (is (re-find #"not found"
-                   (tool-error (call-tool! :crowberto #{metabot.scope/agent-alert-create
-                                                        metabot.scope/agent-alert-update}
-                                           args)))))
+                   (tool-error (call-tool! :crowberto #{metabot.scope/agent-alert-write} args)))))
+    (testing "GHY-4155: v1's agent:alert:create does not reach this tool — it gates the v1 tool only"
+      (is (= "Insufficient scope to call tool: alert_write"
+             (tool-error (call-tool! :crowberto #{metabot.scope/agent-alert-create} args)))))
     (testing "GHY-4155: the wildcard the metabot permission bucket grants passes too"
       (is (re-find #"not found" (tool-error (call-tool! :crowberto #{"agent:alert:*"} args)))))))
 
 (deftest ^:parallel scopes-grantable-test
-  (testing "GHY-4155: both scopes a tool checks must be grantable — advertised through registered-scopes"
-    (is (set/subset? #{"agent:alert:create" "agent:alert:update"} (registry/registered-scopes))))
-  (testing "GHY-4155: the metabot other-tools bucket covers them via its agent:alert:* wildcard"
+  (testing "GHY-4155: the scope the tool checks must be grantable — advertised through registered-scopes"
+    (is (set/subset? #{"agent:alert:write"} (registry/registered-scopes))))
+  (testing "GHY-4155: the metabot other-tools bucket covers it via its agent:alert:* wildcard"
     (let [scopes (metabot.scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})]
-      (is (mcp.scope/matches? scopes "agent:alert:create"))
-      (is (mcp.scope/matches? scopes "agent:alert:update")))))
+      (is (mcp.scope/matches? scopes "agent:alert:write")))))
 
 (deftest ^:parallel tools-list-visibility-test
-  (testing "GHY-4155: the tool is visible exactly to tokens carrying its create scope"
-    (is (some #(= "alert_write" (:name %)) (registry/list-tools #{"agent:alert:create"})))
+  (testing "GHY-4155: the tool is visible exactly to tokens carrying its write scope"
+    (is (some #(= "alert_write" (:name %)) (registry/list-tools #{"agent:alert:write"})))
+    (is (not (some #(= "alert_write" (:name %)) (registry/list-tools #{"agent:alert:create"}))))
     (is (not (some #(= "alert_write" (:name %)) (registry/list-tools #{"agent:search"}))))))

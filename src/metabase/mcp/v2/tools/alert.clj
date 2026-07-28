@@ -291,15 +291,13 @@
   alert's delivery; omit them all to leave it alone. active: false pauses an alert and true resumes it — alerts have no
   archived state, and this tool cannot delete one. An alert's question is fixed at creation. Alerts are for saved
   questions; use subscription_write to schedule a whole dashboard."
-  {:name         "alert_write"
-   :scope        metabot.scope/agent-alert-create
-   :update-scope metabot.scope/agent-alert-update
-   :annotations  {:readOnlyHint false :destructiveHint false}
-   :args         alert-write-args-schema}
+  {:name        "alert_write"
+   :scope       metabot.scope/agent-alert-write
+   :annotations {:readOnlyHint false :destructiveHint false}
+   :args        alert-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (common/dispatch-write
                   {:tool-name       "alert_write"
-                   :update-scope    metabot.scope/agent-alert-update
                    :create-required [:card_id :schedule]}
                   token-scopes args)]
     (common/success-content (case op
