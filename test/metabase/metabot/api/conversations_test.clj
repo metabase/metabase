@@ -561,6 +561,38 @@
                                 (str "metabot/conversations/" (random-uuid) "/fork")
                                 {:message_id a1}))))))
 
+(deftest fork-conversation-survives-trimmed-origin-test
+  (testing "deleting the origin conversation clears the fork link but keeps the fork"
+    (let [user-id (mt/user->id :rasta)
+          a1      (str (random-uuid))]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :title "Original chat"}
+                     :model/MetabotMessage _u {:conversation_id convo-id :user_id user-id :role "user"
+                                               :external_id (str (random-uuid)) :data [{:type "text" :text "hi"}]
+                                               :created_at (seconds-ago 60)}
+                     :model/MetabotMessage _a {:conversation_id convo-id :user_id user-id :role "assistant"
+                                               :external_id a1 :finished true
+                                               :data [{:type "text" :text "hello"}]
+                                               :created_at (seconds-ago 50)}]
+        (let [new-id (:conversation_id (mt/user-http-request :rasta :post 200
+                                                             (str "metabot/conversations/" convo-id "/fork")
+                                                             {:message_id a1}))]
+          (try
+            (is (= convo-id (t2/select-one-fn :forked_from_conversation_id
+                                              :model/MetabotConversation :id new-id)))
+            (t2/delete! :model/MetabotConversation :id convo-id)
+            (testing "the fork outlives its origin"
+              (is (some? (t2/select-one :model/MetabotConversation :id new-id)))
+              (is (= 2 (count (metabot.persistence/live-messages new-id)))))
+            (testing "the dangling origin link is nulled rather than left pointing at a deleted row"
+              (is (nil? (t2/select-one-fn :forked_from_conversation_id
+                                          :model/MetabotConversation :id new-id))))
+            (testing "copied messages stay marked as copies so analytics keeps excluding them"
+              (is (every? :forked_from_message_id
+                          (t2/select :model/MetabotMessage :conversation_id new-id))))
+            (finally
+              (t2/delete! :model/MetabotMessage :conversation_id new-id)
+              (t2/delete! :model/MetabotConversation :id new-id))))))))
+
 (deftest record-saved-entity-test
   (testing "POST /api/metabot/conversations/:id/saved-entity creates the card with its origin stamped"
     (let [user-id (mt/user->id :crowberto)]

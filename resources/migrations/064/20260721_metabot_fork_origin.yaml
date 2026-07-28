@@ -23,6 +23,31 @@ databaseChangeLog:
             columnName: forked_from_conversation_id
 
   - changeSet:
+      id: v64.14z77t
+      author: undrfined
+      comment: Add index for metabot_conversation.forked_from_conversation_id
+      changes:
+        - createIndex:
+            tableName: metabot_conversation
+            indexName: idx_metabot_conversation_forked_from_conversation_id
+            columns:
+              - column:
+                  name: forked_from_conversation_id
+
+  - changeSet:
+      id: v64.ibmrfz
+      author: undrfined
+      comment: Add foreign key on metabot_conversation(forked_from_conversation_id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_conversation
+            baseColumnNames: forked_from_conversation_id
+            referencedTableName: metabot_conversation
+            referencedColumnNames: id
+            constraintName: fk_metabot_conversation_forked_from_conversation_id
+            onDelete: SET NULL
+
+  - changeSet:
       id: v64.ssqh1b
       author: undrfined
       comment: Add metabot_message.forked_from_message_id
