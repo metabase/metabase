@@ -126,6 +126,11 @@
 (api-scope/defscope agent-notification-read "agent:notification:read"
   (deferred-tru "View alerts and dashboard subscriptions"))
 
+;; Subscription. One write scope per entity type, as with question/dashboard/segment/measure.
+;; `agent:dashboard:subscribe` stays above — MCP v1's subscription tools still use it.
+(api-scope/defscope agent-subscription-write "agent:subscription:write"
+  (deferred-tru "Create and edit dashboard subscriptions"))
+
 ;; Search
 (api-scope/defscope agent-search "agent:search"
   (deferred-tru "Search for content"))
@@ -227,6 +232,7 @@
                                         "agent:document:*"
                                         "agent:alert:*"
                                         "agent:notification:*"
+                                        "agent:subscription:*"
                                         "agent:bookmark:*"
                                         "agent:collection:*"
                                         "agent:content:*"}})
