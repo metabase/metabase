@@ -121,32 +121,25 @@
           {:schedule_type "monthly" :schedule_hour 8 :schedule_frame "last"
            :schedule_day "fri"}                                                 "0 0 8 ? * 6L *")))))
 
-(deftest schedule-hour-defaults-to-midnight-test
-  (testing "GHY-4155: an omitted schedule_hour means midnight, not every hour — a weekly alert with
-            no hour must fire once a week, not 24 times on that day"
-    (mt/with-model-cleanup [:model/Notification]
-      (mt/with-temp [:model/Card {card-id :id} {}]
-        (are [schedule cron] (= [cron]
-                                (mapv :cron_schedule (:subscriptions (create-alert! card-id {:schedule schedule}))))
-          {:schedule_type "daily"}                                              "0 0 0 * * ? *"
-          {:schedule_type "weekly" :schedule_day "mon"}                          "0 0 0 ? * 2 *"
-          {:schedule_type "monthly" :schedule_frame "first"}                     "0 0 0 1 * ? *"
-          {:schedule_type "monthly" :schedule_frame "last" :schedule_day "fri"}  "0 0 0 ? * 6L *")))))
-
-(deftest invalid-schedule-shapes-test
+(deftest incomplete-schedule-test
   (mt/with-temp [:model/Card {card-id :id} {}]
-    (testing "GHY-4155: the \"mid\" frame is a calendar day, so pairing it with a weekday is a teaching
-              error rather than the underlying util's opaque case mismatch"
-      (is (re-find #"\"mid\" monthly schedule falls on the 15th"
-                   (tool-error (call-tool! :crowberto nil
-                                           (wire {:method "create" :card_id card-id
-                                                  :schedule {:schedule_type "monthly" :schedule_frame "mid"
-                                                             :schedule_day "fri" :schedule_hour 8}}))))))
-    (testing "GHY-4155: a weekly schedule with no schedule_day names what is missing"
-      (is (re-find #"\"weekly\" needs schedule_day"
-                   (tool-error (call-tool! :crowberto nil
-                                           (wire {:method "create" :card_id card-id
-                                                  :schedule {:schedule_type "weekly" :schedule_hour 8}}))))))))
+    (letfn [(schedule-error [schedule]
+              (tool-error (call-tool! :crowberto nil
+                                      (wire {:method "create" :card_id card-id :schedule schedule}))))]
+      (testing "GHY-4155: an incomplete schedule names the field it is missing. schedule_hour is
+                required rather than defaulted, matching subscription_write — the cron util would
+                otherwise fill it with midnight, a send time the caller never chose"
+        (are [schedule pattern] (re-find pattern (schedule-error schedule))
+          {:schedule_type "daily"}                          #"A daily schedule needs schedule_hour"
+          {:schedule_type "weekly" :schedule_day "mon"}     #"A weekly schedule needs schedule_hour"
+          {:schedule_type "weekly" :schedule_hour 8}        #"A weekly schedule needs schedule_day"
+          {:schedule_type "monthly" :schedule_frame "first"} #"A monthly schedule needs schedule_hour"
+          {:schedule_type "monthly" :schedule_hour 8}       #"A monthly schedule needs schedule_frame"))
+      (testing "GHY-4155: the \"mid\" frame is the 15th, a calendar day, so pairing it with a weekday
+                is a teaching error rather than the underlying util's opaque case mismatch"
+        (is (re-find #"cannot also take a schedule_day"
+                     (schedule-error {:schedule_type "monthly" :schedule_frame "mid"
+                                      :schedule_day "fri" :schedule_hour 8})))))))
 
 (deftest condition-test
   (mt/with-model-cleanup [:model/Notification]

@@ -28,22 +28,40 @@
 
 ;;; -------------------------------------------------- schedule ----------------------------------------------------
 
+(defn- check-schedule!
+  "Reject an incomplete schedule by naming the field it is missing. The cron util would otherwise
+   fill an omitted hour with midnight, silently picking a send time the caller never asked for, and
+   fail the other shapes as an opaque error. Kept in step with `subscription_write`'s check of the
+   same vocabulary, so an agent that has learned one tool's schedule has learned the other's."
+  [{:keys [schedule_type schedule_hour schedule_day schedule_frame]}]
+  (letfn [(require! [v field explanation]
+            (when (nil? v)
+              (common/throw-teaching-error
+               (format "A %s schedule needs %s — %s." schedule_type field explanation))))]
+    (case schedule_type
+      "hourly"  nil
+      "daily"   (require! schedule_hour "schedule_hour" "the hour of the day to send, 0-23")
+      "weekly"  (do (require! schedule_hour "schedule_hour" "the hour of the day to send, 0-23")
+                    (require! schedule_day "schedule_day" "the day of the week, e.g. \"mon\""))
+      "monthly" (do (require! schedule_hour "schedule_hour" "the hour of the day to send, 0-23")
+                    (require! schedule_frame "schedule_frame" "\"first\", \"mid\", or \"last\"")
+                    (when (and (= "mid" schedule_frame) schedule_day)
+                      (common/throw-teaching-error
+                       (str "A monthly schedule with schedule_frame \"mid\" sends on the 15th, so it cannot also "
+                            "take a schedule_day — drop schedule_day, or use frame \"first\" or \"last\" to send "
+                            "on a particular weekday.")))))))
+
 (defn- schedule->cron
-  "Compile a ScheduleMap to the cron string the notification API stores. Shape errors from the
-   underlying util (e.g. a weekly schedule with no `schedule_day`) become teaching errors."
-  [{:keys [schedule_type schedule_frame schedule_day] :as schedule}]
-  ;; The util reads schedule_day as "the frame counts weekdays", which the mid frame has no form
-  ;; for — it would fail as an opaque case mismatch rather than as advice.
-  (when (and (= schedule_type "monthly") (= schedule_frame "mid") schedule_day)
-    (common/throw-teaching-error
-     (str "A \"mid\" monthly schedule falls on the 15th, so it takes no schedule_day — drop it, "
-          "or use the \"first\" or \"last\" frame to schedule a weekday like the first Monday.")))
+  "Compile a ScheduleMap to the cron string the notification API stores, once
+   [[check-schedule!]] has ruled out the shapes the util can't express."
+  [schedule]
+  (check-schedule! schedule)
   (try
     (u.cron/schedule-map->cron-string schedule)
     (catch Exception _
       (common/throw-teaching-error
-       (str "Invalid schedule — \"weekly\" needs schedule_day and \"monthly\" needs schedule_frame "
-            "(and schedule_day for a frame like \"first monday\"). schedule_hour defaults to midnight.")))))
+       (format "Metabase can't schedule %s — check schedule_type against the other schedule fields."
+               (pr-str schedule))))))
 
 (defn- cron-subscription
   [schedule]
@@ -252,7 +270,7 @@
              [:schedule_type [:enum "hourly" "daily" "weekly" "monthly"]]
              [:schedule_hour {:optional true} [:maybe [:int {:min 0 :max 23}]]]
              [:schedule_minute {:optional true} [:maybe [:int {:min 0 :max 59}]]]
-             [:schedule_day {:optional true} [:maybe [:enum "sun" "mon" "tue" "wed" "thu" "fri" "sat"]]]
+             [:schedule_day {:optional true} [:maybe [:enum "mon" "tue" "wed" "thu" "fri" "sat" "sun"]]]
              [:schedule_frame {:optional true} [:maybe [:enum "first" "mid" "last"]]]]]]
    [:channel {:optional true} [:maybe [:enum "email" "slack"]]]
    [:slack_channel {:optional true} [:maybe [:string {:min 1}]]]
@@ -263,9 +281,9 @@
   "Create or update an alert: a notification sent on a schedule when a saved question's results meet a condition.
   method: \"create\" requires card_id (the question) and schedule; method: \"update\" requires id and changes only the
   fields you pass. schedule is {schedule_type: \"hourly\" | \"daily\" | \"weekly\" | \"monthly\", schedule_hour?
-  (0-23, midnight by default), schedule_minute? (0-59), schedule_day? (\"sun\"…\"sat\", weekly and
-  monthly-by-weekday), schedule_frame? (\"first\" | \"mid\" | \"last\", monthly — \"mid\" is the 15th and takes no
-  schedule_day)} — never a cron string. condition is {type: \"has_result\" (default) |
+  (0-23, required for daily, weekly, and monthly), schedule_minute? (0-59), schedule_day? (\"mon\"…\"sun\", required
+  for weekly, and picks the weekday for a monthly \"first\" or \"last\" frame), schedule_frame? (\"first\" | \"mid\"
+  | \"last\", required for monthly — \"mid\" is the 15th and takes no schedule_day)} — never a cron string. condition is {type: \"has_result\" (default) |
   \"goal_above\" | \"goal_below\", send_once?: boolean} — the goal conditions need a goal line on the question's chart,
   and send_once deletes the alert after it fires. Delivery is one channel: \"email\" (default) with recipients, a list
   mixing user ids and email addresses that defaults to you, or \"slack\" with slack_channel, a channel name like
