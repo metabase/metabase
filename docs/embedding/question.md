@@ -7,7 +7,7 @@ redirect_from:
 
 # Embed a chart
 
-A question component embeds a single Metabase question (a chart, table, or other visualization) in your app. You can display a read-only chart, let people explore and drill through, or embed the query builder or SQL editor so people can build their own questions.
+A question component embeds a single Metabase question (a chart, table, or other visualization) in your app. You can display a read-only chart, an interative chart,the graphical query builder, or the SQL editor.
 
 - [View-only chart](#embed-a-view-only-chart)
 - [Interactive chart](#embed-an-interactive-chart)\*
@@ -22,7 +22,9 @@ For embedding an AI chat component, see [AI chat](./sdk/ai-chat.md).
 
 ![Static question](./images/static-question.png)
 
-A view-only (a.k.a. "static") chart displays results without letting people explore the data. Clicking the chart doesn't drill through, and people can't add filters or change locked filters. If you've added an editable filter, however, viewers can change that filter's value.
+A view-only (a.k.a. "static") chart displays results without letting people explore the data. You can add editable filters that viewers can use to filter the chart. You can also lock filters to filter rows, for example to filter rows by user ID. 
+
+With view-only charts, however, people won't be able to drill through the chart, or self-serve new queries.
 
 - [Web components](#view-only-charts-using-a-web-component)
 - [React SDK](#view-only-charts-using-the-react-sdk)
@@ -51,7 +53,7 @@ To keep an embed alive after its token expires, configure a token endpoint with 
 
 #### View-only chart example with web components
 
-Say you have a question written in SQL, with a field filter to filter orders by `user_id`. You want to embed the question, and filter the orders people see based on their user ID.
+Say you have a question written in SQL, with a field filter to filter orders by `user_id`. You want to embed the question, and filter the orders that people see based on their user ID.
 
 Here's the question.
 
@@ -146,13 +148,11 @@ const payload = {
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
-You can generate the above code using the in-app wizard. Set the `user_id` parameter to **Locked** in the question's embed settings and publish the question. Parameters are **Disabled** by default, and Metabase will reject a token that includes a value for a disabled parameter. See [Locked parameters](./guest-embedding.md#locked-parameters).
-
-#### `<metabase-question>` web component attributes
-
-For the full list of attributes, see [Question attributes](#question-attributes). Not every attribute works on a guest embed; the table notes which plans and embed types each one is available in.
+You can generate the above code using the in-app wizard. Set the `user_id` parameter to **Locked** in the question's embed settings and publish the question. Parameters are **Disabled** by default. Metabase will reject a token that includes a value for a disabled parameter. See [Locked parameters](./guest-embedding.md#locked-parameters).
 
 For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
+
+For the full list of attributes, see [Question attributes](#question-attributes).
 
 #### The "Powered by Metabase" banner
 
@@ -179,6 +179,9 @@ The component has a default height, which you can change with the `height` prop.
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
 An interactive chart lets people explore their data: they can drill through the chart, filter results, summarize and group them, and optionally save their changes. With SSO, people can self-serve their data (which means less work for you building bespoke charts).
+
+- [Web components](#interactive-charts-using-a-web-component)
+- [React SDK](#interactive-charts-using-the-react-sdk)
 
 ### Interactive charts using a web component
 
@@ -331,15 +334,7 @@ With the SDK:
 
 As with the query builder, saving is on by default in the SDK, but off in web components until you set `is-save-enabled="true"`.
 
-## Let people create charts with natural language
-
-The SDK's `MetabotQuestion` component creates questions from natural language prompts. For the full setup, including the `useMetabot` hook and custom chat UIs, see [AI chat](./sdk/ai-chat.md).
-
-```typescript
-{% include_file "{{ dirname }}/sdk/snippets/questions/ai-question.tsx" %}
-```
-
-## Filter results based on who's viewing the question
+## Filter results based on who's viewing the chart
 
 To show each person only their own data, you have two options, depending on how you authenticate.
 
@@ -403,16 +398,14 @@ You can let people set up [alerts](../questions/alerts.md) on a saved question b
 Metabase only shows the alerts button when all of these are true:
 
 - Your Metabase has [email set up](../configuring-metabase/email.md).
-- The embed is an authenticated (SSO) embed. Guest embeds don't support alerts.
-- The question is saved (not a new question).
-- The question isn't a model or a question in the Usage analytics collection.
+- The embed is an authenticated (SSO) embed. 
 - The person viewing the embed has permission to create subscriptions and alerts.
 
 Alerts created in an embedded context only send to the logged-in user and exclude links to Metabase items.
 
 ```tsx
 <MetabaseProvider authConfig={authConfig}>
-  <StaticQuestion questionId={42} withAlerts />
+  <InteractiveQuestion questionId={42} withAlerts />
 </MetabaseProvider>
 ```
 
@@ -420,7 +413,7 @@ Alerts created in an embedded context only send to the logged-in user and exclud
 
 {% include_file "{{ dirname }}/eajs/snippets/MetabaseQuestionAttributes.md" snippet="properties" %}
 
-## Customize appearance
+## Customize chart appearance
 
 You can theme an embedded question and toggle parts of its UI. For the full set of theming options, see [Appearance](./appearance.md).
 
