@@ -149,14 +149,11 @@
     [:details         DuplicatedDetails]]])
 
 (def ^:private ImbalancedFinding
-  "Response item for the `/imbalanced` umbrella - the stored `empty`/`sparse`/`crowded` finding types
-  share the count-vs-threshold schema, so one open map covers all three; the top-level `finding_type`
-  discriminates. `content_count` is the measured magnitude (0 on every `empty`); `details.threshold` is
-  the bound crossed (floor for sparse, ceiling for crowded, implicit 0 for empty) and `details.unit`
-  what was counted (`items` collection / `dashcards`|`tabs` dashboard / `cards` document / `rows`
-  card + transform). The two evidence-dated empties add `details.as_of`: card = the deciding run's
-  start, transform = the row-count estimate's sync time. `details.view_count` is the entity's live
-  usage counter, present for card/dashboard/document subjects (collection and transform have none)."
+  "Response item for the `/imbalanced` endpoint. `empty`/`sparse`/`crowded` share one count-vs-threshold
+  shape, discriminated by the top-level `finding_type`: `content_count` is the measured amount (0 for
+  `empty`), `details.threshold` the bound it crossed, `details.unit` what was counted. `details.as_of`
+  appears on the two evidence-dated empties (card and transform); `details.view_count` on the subjects
+  that track usage (card/dashboard/document)."
   [:map
    [:id                  :int]
    [:finding_type        :keyword]
@@ -190,20 +187,17 @@
   (assoc api.common/base-sort-column->field :duration-ms :duration_ms))
 
 (def ^:private imbalanced-sort-column->field
-  "Sortable imbalanced-list params → their native `content_diagnostics_finding` column. The shared base
-  plus the imbalanced-specific `content-count` magnitude column (never NULL within this endpoint -
-  every imbalanced finding stamps it)."
+  "Sortable imbalanced-list params → their native `content_diagnostics_finding` column: the shared base
+  plus `content-count` (always set on an imbalanced finding)."
   (assoc api.common/base-sort-column->field :content-count :content_count))
 
 (def ^:private imbalanced-finding-types
-  "The stored finding types the `/imbalanced` umbrella endpoint spans."
+  "The finding types the `/imbalanced` endpoint spans."
   #{:empty :sparse :crowded})
 
 (def ^:private imbalanced-entity-types
-  "Entity types the imbalanced finding types can emit - all five kinds. Deliberately this endpoint's own
-  enum (not a widened `api.common/covered-entity-types`): `collection` is an imbalanced-only subject,
-  and `card` participates in `empty` only (so `entity-types=card&finding-types=crowded` naturally
-  yields an empty set)."
+  "Entity types the imbalanced findings can emit. Its own enum rather than the shared
+  `covered-entity-types`: `collection` is imbalanced-only, and `card` only ever emits `empty`."
   #{:card :collection :dashboard :document :transform})
 
 (def ^:private duplicated-sort-column->field
@@ -232,8 +226,8 @@
    (when min-duration-ms [:>= :duration_ms min-duration-ms])))
 
 (defn- imbalanced-where-clause
-  "The shared finding-list WHERE over the umbrella's finding types (narrowed by the `finding-types`
-  param - the where-clause is the umbrella set intersected with the param)."
+  "The shared finding-list WHERE over the `empty`/`sparse`/`crowded` finding types, narrowed to the
+  `finding-types` param when it is given."
   [{:keys [finding-types] :as params}]
   (let [types (or (not-empty (u/one-or-many finding-types)) imbalanced-finding-types)]
     (api.common/findings-where (mapv name types) params)))
@@ -366,25 +360,15 @@
       [:offset       [:maybe :int]]
       [:last_scan_at [:maybe some?]]]
   "List **imbalanced** findings - the latest valid finding per (entity, finding-type) across the
-  `empty`/`sparse`/`crowded` umbrella, permission-filtered for the current user. The three types are
-  detected by independent checkers with no cross-type precedence, so one entity can surface once per
-  finding type (e.g. a collection whose many items are all empty is both `crowded` and `empty`);
-  rows are findings, not entities, and `total` counts findings.
-  Each item is a flat identity + a top-level `content_count` + a nested `details` (collection,
-  `description`, `owner`, `creator`, `threshold`, `unit`, and - card/transform `empty` only - `as_of`).
-  For a `collection` finding the breadcrumb is the **parent** collection (the root sentinel `{:id \"root\"}`
-  when the collection sits at root), `creator` is
-  always null (collections have none - under the `created-by` sort they land in the null group, and a
-  personal collection's owner is not a creator proxy), and `owner` is the owning user when the
-  collection is personal. Paginated via `limit`/`offset`; `total` is the full valid count.
+  `empty`/`sparse`/`crowded` checkers, permission-filtered for the current user. The checkers run
+  independently, so one entity can appear once per finding type (a collection whose items are all empty
+  is both `crowded` and `empty`) - rows are findings, not entities, and `total` counts findings. Each
+  item is a flat identity plus a top-level `content_count` and a nested `details` (collection breadcrumb,
+  description, owner, creator, the `threshold` crossed, and its `unit`). Paginated via `limit`/`offset`.
 
-  Params: `include-personal-collections` (default false) - when false, entities currently in (or, for a
-  collection subject, being) a personal collection are excluded. `entity-types` (repeatable;
-  `card`|`collection`|`dashboard`|`document`|`transform`, omitted = all; `card` emits `empty` only).
-  `finding-types` (repeatable; `empty`|`sparse`|`crowded`, omitted = all three) narrows within the
-  umbrella. `query` case-insensitively substring-matches the entity name. `sort-column`
-  (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`content-count`, default `detected-at`)
-  + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
+  Params: `include-personal-collections` (default false) excludes entities in personal collections.
+  `entity-types` and `finding-types` (both repeatable) narrow the results. `query` substring-matches the
+  entity name. `sort-column` (default `detected-at`) + `sort-direction` (default `asc`); `id` breaks ties."
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types finding-types query]
     :or   {include-personal-collections false

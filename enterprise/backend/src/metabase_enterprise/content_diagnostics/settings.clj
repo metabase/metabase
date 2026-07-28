@@ -30,9 +30,8 @@
   :export?    true
   :doc        false)
 
-;;; imbalanced (empty/sparse/crowded) thresholds. One setting per (finding-type, entity-type, unit) bound;
-;;; `empty` deliberately has none (0 is naturally empty). Comparison direction is part of the contract:
-;;; crowded is strictly *greater than*, sparse is strictly *fewer than*.
+;;; imbalanced (empty/sparse/crowded) thresholds - one setting per bound. `empty` has none (0 is
+;;; naturally empty). crowded flags strictly more than its threshold, sparse strictly fewer.
 
 (defsetting content-diagnostics-crowded-collection-threshold-items
   (deferred-tru "Collections holding more direct items than this are flagged crowded by Content Diagnostics.")

@@ -1,18 +1,17 @@
 (ns metabase-enterprise.content-diagnostics.checkers.imbalanced.crowded
-  "The `crowded` imbalanced checker - too much content, across collection, dashboard, and document.
-  Independent of `empty`/`sparse`: an entity flagged here can also be flagged by them (a many-tab
+  "The `crowded` imbalanced checker: too much content, across collections, dashboards, and documents.
+  Runs independently of `empty`/`sparse`, so an entity can be flagged by more than one (a many-tab
   dashboard with 0 dashcards is both `crowded` and `empty`).
 
-  - **Collection:** raw direct item count > bound.
-  - **Dashboard:** too many dashcards on one tab, or - only if that passes - too many tabs. This is a
-    WITHIN-type precedence (dashcards-per-tab before tabs), so an entity gets at most one `crowded`
-    finding; a tabless dashboard counts as one implicit tab. Per-tab counting is crowded-only (sparse
-    counts across tabs), so this checker runs its own grouped query rather than the shared total.
-  - **Document:** too many embedded cards.
+  What counts as crowded:
+  - Collection: more direct items than the limit.
+  - Dashboard: too many dashcards on a single tab, or - only if that passes - too many tabs. Checking
+    dashcards-per-tab first means a dashboard gets at most one `crowded` finding; a tabless dashboard
+    counts as one tab. (Per-tab counting is crowded-only, so this checker runs its own grouped query
+    rather than reusing the shared across-tabs total.)
+  - Document: more embedded cards than the limit.
 
-  Each finding stamps the measured magnitude in `content-count` and freezes `{:threshold, :unit}`;
-  thresholds are read once at the start. Set-based, app-db only; display attrs via
-  `common/attach-entity-attrs`."
+  Each finding records the measured amount and the limit it crossed. Set-based, reads only the app DB."
   (:require
    [metabase-enterprise.content-diagnostics.checkers.imbalanced.common :as shared]
    [metabase-enterprise.content-diagnostics.common :as common]
@@ -24,9 +23,9 @@
 (set! *warn-on-reflection* true)
 
 (defn checker
-  "Instance-wide `crowded` finding maps across collection, dashboard, and document. The dashboard rule
-  keeps its within-type precedence - dashcards-on-one-tab first, then tab count - so an entity gets at
-  most one `crowded` finding; a tabless dashboard counts as one implicit tab."
+  "Instance-wide `crowded` findings across collections, dashboards, and documents. A dashboard is checked
+  dashcards-per-tab first, then tab count, so it gets at most one `crowded` finding; a tabless dashboard
+  counts as one tab."
   []
   (let [crowded-collection-items  (cd.settings/content-diagnostics-crowded-collection-threshold-items)
         crowded-dashcards-per-tab (cd.settings/content-diagnostics-crowded-dashboard-threshold-dashcards-per-tab)

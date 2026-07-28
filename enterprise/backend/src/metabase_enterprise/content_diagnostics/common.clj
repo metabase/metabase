@@ -46,10 +46,9 @@
   bodies. Per type: `:context` = extra display cols `entity-context` selects beyond `[:id :collection_id]`;
   `:peer` / `:candidate` = extra cols the duplicate-entity hydrate / duplicated checker select beyond
   `[:id :name]`. Only card carries the `:card_schema` its after-select hook requires; transform has only
-  `:context` (its peer/candidate reads are explicit methods). `collection` is absent - it is not
-  column-resident (its breadcrumb anchor is parsed from `location`), so it carries its own `entity-context`
-  method rather than going through the shared column path, and it is not a duplicated subject (no peer/
-  candidate reads)."
+  `:context` (its peer/candidate reads are explicit methods). `collection` is absent: it isn't
+  column-resident (its breadcrumb comes from `location`, via its own `entity-context` method) and isn't
+  a duplicated subject (no peer/candidate reads)."
   {:card      {:context   [:description :view_count]
                :peer      [:view_count :type :card_schema]
                :candidate [:card_schema]}

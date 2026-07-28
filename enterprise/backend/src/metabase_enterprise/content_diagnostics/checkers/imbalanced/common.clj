@@ -1,14 +1,14 @@
 (ns metabase-enterprise.content-diagnostics.checkers.imbalanced.common
-  "Shared substrate for the three imbalanced checkers (`empty`/`sparse`/`crowded`, one per sibling
-  namespace). Holds the finding constructor and the app-db count/row helpers more than one of them
-  needs - notably `eligible-collections` (the single definition of what a collection *subject* is, so
-  the three checkers can never scan divergent collection sets). Each checker re-runs only the helpers
-  it needs; these are cheap app-db aggregates, so independence is favored over threading shared results.
+  "Shared helpers for the three imbalanced checkers (`empty`/`sparse`/`crowded`, one per sibling
+  namespace): the finding constructor and the app-db count/row helpers more than one of them needs -
+  notably `eligible-collections`, the single definition of what a collection subject is, so the checkers
+  never scan different collection sets. Each checker re-runs only the helpers it needs; these are cheap
+  app-db aggregates, so we favor independence over threading shared results.
 
-  Collection direct items = non-archived child collections + cards/dashboards/documents
-  (collection-items semantics: dashboard/document-internal cards live inside their container, not the
-  collection). Checker-specific probes (the card-run window, document AST predicates, per-tab dashcard
-  grouping) live in the checker namespaces, not here."
+  A collection's direct items are its non-archived child collections plus its cards, dashboards, and
+  documents (a card inside a dashboard or document lives in that container, not the collection).
+  Checker-specific probes - the card-run window, document parsing, per-tab dashcard grouping - live in
+  the checker namespaces."
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.util :as u]
@@ -17,8 +17,8 @@
 (set! *warn-on-reflection* true)
 
 (defn finding
-  "The shared imbalanced finding shape: measured magnitude in the top-level `:content-count`, the
-  crossed bound + its unit frozen in `details`."
+  "The shared imbalanced finding shape: the measured amount in `:content-count`, the crossed limit and
+  its unit in `:details`."
   [entity-type entity-id finding-type content-count details]
   {:entity-type   entity-type
    :entity-id     entity-id
@@ -58,9 +58,8 @@
   (t2/select [:model/Document :id :collection_id :document :content_type] :archived false))
 
 (defn dashboard-dashcard-totals
-  "`{dashboard-id -> primary dashcard count across all tabs}`; no row = 0. Primary dashcards only:
-  a series card layers onto one dashcard's visualization without occupying a layout slot (slow counts
-  series because they run queries on render - a different semantic)."
+  "`{dashboard-id -> primary dashcard count across all tabs}`; no row = 0. Counts primary dashcards
+  only - a series card layers onto another dashcard without taking a layout slot of its own."
   []
   (u/index-by :dashboard_id :cnt
               (t2/query {:select   [:dashboard_id [[:count :*] :cnt]]
@@ -68,10 +67,10 @@
                          :group-by [:dashboard_id]})))
 
 (defn eligible-collections
-  "Collection subjects (and the recursion substrate): non-archived, default-namespace only
-  (snippet/analytics-namespace collections are internal), never the Trash collection (that's
-  `trash-not-emptied`'s subject) and never instance-analytics collections. Personal collections ARE
-  included (the scan is permission-agnostic; serve-time filters handle exclusion)."
+  "The collections that count as subjects (and the substrate for the recursion): non-archived,
+  default-namespace only (snippet and analytics collections are internal), never the Trash or
+  instance-analytics collections. Personal collections are included here - the scan is
+  permission-agnostic, and serve-time filtering handles their exclusion."
   []
   (t2/select [:model/Collection :id :location]
              {:where [:and

@@ -1,15 +1,14 @@
 (ns metabase-enterprise.content-diagnostics.checkers.imbalanced.sparse
-  "The `sparse` imbalanced checker - a little content, not none, across collection and dashboard.
-  Independent of `empty`/`crowded`: the rule floors at 1 (`0 < n < bound`), so a zero-count subject is
-  the `empty` checker's alone, but a sparse entity can also be `crowded` on a different axis (a 6-tab
-  dashboard holding 2 dashcards is both).
+  "The `sparse` imbalanced checker: a little content, but not none, across collections and dashboards.
+  Runs independently of `empty`/`crowded`. The rule floors at 1 (`0 < n < limit`), so a zero-count
+  subject belongs to `empty` alone - though a sparse entity can still be `crowded` on another axis (a
+  6-tab dashboard with 2 dashcards is both).
 
-  - **Collection:** 0 < raw direct item count < bound (empty items still count).
-  - **Dashboard:** 0 < dashcards **total** across tabs < bound.
+  What counts as sparse:
+  - Collection: between 1 and the limit direct items (empty items still count).
+  - Dashboard: between 1 and the limit dashcards total across tabs.
 
-  Each finding stamps the measured count in `content-count` and freezes `{:threshold, :unit}`;
-  thresholds are read once at the start. Set-based, app-db only; display attrs via
-  `common/attach-entity-attrs`."
+  Each finding records the measured count and the limit. Set-based, reads only the app DB."
   (:require
    [metabase-enterprise.content-diagnostics.checkers.imbalanced.common :as shared]
    [metabase-enterprise.content-diagnostics.common :as common]
@@ -18,8 +17,8 @@
 (set! *warn-on-reflection* true)
 
 (defn checker
-  "Instance-wide `sparse` finding maps across collection and dashboard. Sparse means a little content,
-  not none: the rule floors at 1, so a zero-count subject is the `empty` checker's alone."
+  "Instance-wide `sparse` findings across collections and dashboards. Sparse means a little content, not
+  none: the rule floors at 1, so a zero-count subject belongs to `empty` alone."
   []
   (let [sparse-collection-items    (cd.settings/content-diagnostics-sparse-collection-threshold-items)
         sparse-dashboard-dashcards (cd.settings/content-diagnostics-sparse-dashboard-threshold-dashcards)

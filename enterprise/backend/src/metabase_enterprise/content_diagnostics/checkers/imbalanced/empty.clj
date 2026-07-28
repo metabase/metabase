@@ -1,23 +1,20 @@
 (ns metabase-enterprise.content-diagnostics.checkers.imbalanced.empty
-  "The `empty` imbalanced checker - content with nothing in it, across collection, card, dashboard,
-  document, and transform. Independent of `sparse`/`crowded`: an entity flagged here can also be
-  flagged by them (a collection whose many items are all empty is both `crowded` and `empty`).
+  "The `empty` imbalanced checker: content with nothing in it, across collections, cards, dashboards,
+  documents, and transforms. Runs independently of `sparse`/`crowded`, so an entity can be flagged by
+  more than one (a collection whose items are all empty is both `empty` and `crowded`).
 
-  - **Collection:** 0 non-empty items *recursively* - a cascade over this same pass's leaf verdicts,
-    so a collection holding only empty dashboards IS empty. An item counts as a non-empty leaf unless
-    this pass flagged it empty (a card with no run signal counts as non-empty).
-  - **Card:** the latest clean (unparameterized, unsandboxed, non-cache-hit, error-free) execution
-    returned 0 rows; never run cleanly -> skipped (unknown, not empty), and a newer run outside the
-    evidence set neither flags nor clears. `as_of` = the deciding run's start.
-  - **Dashboard:** 0 dashcards (a tabless dashboard and an all-empty-tabs dashboard both qualify).
-  - **Document:** no content of any kind - fail closed, an unknown node type counts as content.
-  - **Transform:** the target table's synced `estimated_row_count` is literally 0 and the table is
-    still active (a dropped target is inactive; nil estimate = unknown -> skipped). `as_of` = the
-    table row's `updated_at` (sync-freshness proxy). No live warehouse counting.
+  What counts as empty:
+  - Collection: no non-empty items, checked recursively - a collection holding only empty dashboards is
+    empty too.
+  - Card: its latest clean run (no parameters, sandbox, cache, or error) returned 0 rows; a card never
+    run cleanly is left alone. `as_of` is that run's start.
+  - Dashboard: no dashcards.
+  - Document: no text and no embedded content.
+  - Transform: the target table synced with a row-count estimate of 0 and is still active. `as_of` is
+    that sync's time. No live counting against the warehouse.
 
-  Every finding stamps `content-count` 0 and freezes `{:threshold 0, :unit}` (+ `as_of` on the two
-  evidence-dated empties). `empty` reads no thresholds (0 is definitional). Set-based, app-db only; the
-  denormalized display attrs are stamped by `common/attach-entity-attrs`."
+  Every finding records a count of 0 (there is no threshold - 0 is definitionally empty). Set-based,
+  reads only the app DB."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.content-diagnostics.checkers.imbalanced.common :as shared]
@@ -30,14 +27,12 @@
 (set! *warn-on-reflection* true)
 
 (defn- empty-card-id->as-of
-  "`{card-id -> started_at of the deciding run}` for every **non-archived** card whose latest clean
-  (unparameterized, unsandboxed, non-cache-hit, error-free) execution returned 0 rows. One windowed query
-  (executions are not serialized, so a grouped MAX can't pick the latest row). `parameterized = false`
-  strictly: a NULL (pre-column legacy row) is unknown, and unknown runs are outside the evidence set - as
-  are errored runs, whose rows also stamp `result_rows` 0 (a crashed run means \"broken\", not \"empty\"),
-  and sandboxed runs (the sandbox filters rows per-user, so their 0 rows is not instance-wide evidence).
-  `is_sandboxed` is nullable with no default; NULL counts as not sandboxed - the strict `parameterized`
-  check already fences the legacy rows that predate both columns."
+  "`{card-id -> started_at}` for every non-archived card whose latest clean run returned 0 rows. Clean
+  means unparameterized, unsandboxed, not a cache hit, and error-free - anything else is not
+  instance-wide evidence of emptiness (a sandbox filters rows per user, and an errored run means broken,
+  not empty). One windowed query picks each card's most recent run, then keeps it only if its row count
+  was 0. `parameterized` is matched strictly against `false`, so legacy rows predating these columns
+  (NULL) fall out; a NULL `is_sandboxed` is treated as not sandboxed."
   []
   (u/index-by :card_id :started_at
               (t2/query {:select [:card_id :started_at]
@@ -58,10 +53,10 @@
                          :where  [:and [:= :rn 1] [:= :result_rows 0]]})))
 
 (def ^:private structural-node-types
-  "Prose-mirror node types that are pure structure/layout - a document made only of these (with no
-  non-blank text or reference label) has no content. `text` is here because a text node's substance is
-  its `:text`, checked separately. Deliberately NOT exhaustive over future editor nodes: an unknown
-  type (e.g. an image) counts as content, so the emptiness predicate fails closed."
+  "Prose-mirror node types that are pure structure or layout - a document built only from these, with no
+  non-blank text or reference label, has no content. `text` is here because a text node's substance is
+  its `:text`, checked separately. The list is intentionally not exhaustive: an unknown node type (e.g.
+  an image) counts as content, so the check never wrongly calls a document empty."
   #{"doc" "paragraph" "heading" "text" "bulletList" "orderedList" "listItem" "blockquote"
     "codeBlock" "flexContainer" "resizeNode" "hardBreak"})
 
@@ -79,9 +74,9 @@
                node)))))
 
 (defn- transform-findings
-  "Leaf transform `empty` findings: the target table's synced row-count estimate is literally 0 and the
-  table is still active. A never-run/synced transform has no `target_table_id` and a nil estimate is
-  unknown - both naturally skipped. `as_of` = the table row's `updated_at` (sync-freshness proxy)."
+  "Leaf transform `empty` findings: the target table's synced row-count estimate is 0 and the table is
+  still active. A transform that hasn't run has no target table and a nil estimate, so it is skipped.
+  `as_of` is the table row's `updated_at`, a proxy for sync freshness."
   []
   (for [{:keys [id as_of]} (t2/query {:select [:t.id [:mt.updated_at :as_of]]
                                       :from   [[:transform :t]]
@@ -92,10 +87,10 @@
     (shared/finding :transform id :empty 0 {:threshold 0 :unit "rows" :as_of as_of})))
 
 (defn- non-empty-collection-ids
-  "Cascade the leaf emptiness verdicts up the tree: a collection is non-empty iff some collection in
-  its subtree (self included) directly holds a non-empty leaf item. Marks each leaf-holding collection
-  and all its ancestors (parsed from `location`); the guard drops leaves whose collection is outside
-  the eligible set (e.g. audit content), so they can't mark ancestors."
+  "Cascade the leaf emptiness verdicts up the tree: a collection is non-empty if any collection in its
+  subtree (itself included) directly holds a non-empty item. Marks each leaf-holding collection and its
+  ancestors (from `location`); a leaf in an ineligible collection (e.g. audit content) is dropped, so it
+  can't mark ancestors."
   [collections leaf-coll-ids]
   (let [id->location (u/index-by :id :location collections)]
     (into #{}
@@ -105,9 +100,9 @@
           leaf-coll-ids)))
 
 (defn checker
-  "Instance-wide `empty` finding maps across collection, card, dashboard, document, and transform. The
-  leaf verdicts (the card probe, 0-dashcard dashboards, no-content documents) feed the collection
-  cascade computed in the same pass."
+  "Instance-wide `empty` findings across collections, cards, dashboards, documents, and transforms. The
+  leaf verdicts (the card probe, empty dashboards, empty documents) feed the collection cascade computed
+  in the same pass."
   []
   (let [empty-card-as-of (empty-card-id->as-of)
         cards            (shared/collection-item-cards)

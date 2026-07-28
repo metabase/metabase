@@ -123,10 +123,9 @@
 
 (defn- collection-context
   "The `entity-context` arm for `:collection` subjects, which have no `collection_id`/`creator_id`
-  columns: `collection_id` (the breadcrumb anchor) is the **parent** parsed from `location` - consistent
-  \"where it lives\" semantics; the subject itself is already the finding's identity - and `owner` is the
-  owning user when the collection is personal (api-design: collection carries `owner` only when personal,
-  `creator` always null). Nil at root / for regular collections respectively."
+  columns. Its breadcrumb anchor is the **parent** collection parsed from `location` (nil at root - the
+  collection itself is already the finding's identity), and `owner` is the owning user when the collection
+  is personal (nil otherwise; a collection never has a `creator`)."
   [ids]
   (let [rows   (t2/select [:model/Collection :id :description :location :personal_owner_id]
                           :id [:in (set ids)])
