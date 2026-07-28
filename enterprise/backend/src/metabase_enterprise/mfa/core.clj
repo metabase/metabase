@@ -69,7 +69,7 @@
                         {:status-code 500}))))))
 
 (defenterprise mfa-required?
-  "Whether MFA is currently required for all users on the "
+  "Whether MFA is currently required for all users on the instance"
   :feature :multi-factor-auth
   []
   (metabase-enterprise.mfa.settings/mfa-required?))
