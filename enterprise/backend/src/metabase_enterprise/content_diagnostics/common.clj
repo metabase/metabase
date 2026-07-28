@@ -42,7 +42,7 @@
   extra cols the duplicate-entity hydrate / duplicated checker select beyond `[:id :name]`. Only card carries
   the `:card_schema` its after-select hook requires; transform has only `:context` (its peer/candidate reads
   are explicit methods)."
-  {:card      {:context   [:description :view_count]
+  {:card      {:context   [:description :view_count :type :card_schema]
                :peer      [:view_count :type :card_schema]
                :candidate [:card_schema]}
    :dashboard {:context   [:description :view_count]

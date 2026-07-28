@@ -394,6 +394,8 @@
                 (let [f (by-id ["card" slow-card])]
                   (is (some? f))
                   (is (= "Full Orders Export" (:entity_display_name f)))
+                  (testing "the flagged card carries its own type as a top-level card_type"
+                    (is (= "model" (:card_type f))))
                   (is (= 25000 (:duration_ms f)))
                   (is (= 10000 (get-in f [:details :threshold_ms])))
                   (is (= coll-id (get-in f [:details :collection :id])))
