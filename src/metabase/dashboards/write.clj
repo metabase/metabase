@@ -383,8 +383,9 @@
                             [:copy [:map-of ms/PositiveInt :any]]
                             [:reference [:map-of ms/PositiveInt :any]]]
   "Returns a map of which cards we need to copy, which cards we need to reference, and which are not to be copied. The
-  `:copy` and `:reference` keys are maps from id to card. The `:discard` key is a vector of cards which were not
-  copied due to permissions.
+  `:copy` and `:reference` keys are maps from id to card. The `:discard` key is a vector of cards left out because
+  the caller cannot read them (or their series' base card), or because they are archived; a card discarded for
+  unreadability is reduced to `{:id id}`.
 
   If we're making a deep copy, we copy all cards that we have necessary permissions on. Otherwise, we copy Dashboard
   Questions (questions stored 'in' the dashboard rather than a collection) and reference the rest (assuming
@@ -406,9 +407,13 @@
                            :copy
 
                            :else :reference))
+        ;; `:discard` rides out on the copy response as `:uncopied`, so a card kept out because the
+        ;; caller cannot read it must not be returned in full.
+        redact (fn [card] (if (readable? card) card (select-keys card [:id])))
         split-cards (fn [{:keys [card] :as db-card}]
                       (let [cards (card->cards db-card)]
-                        (group-by (partial card->decision card) cards)))]
+                        (-> (group-by (partial card->decision card) cards)
+                            (m/update-existing :discard #(mapv redact %)))))]
     (reduce (fn [acc db-card]
               (let [{:keys [discard copy reference]} (split-cards db-card)]
                 (-> acc
@@ -423,7 +428,8 @@
 (defn- maybe-duplicate-cards
   "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries as necessary.
 
-  Returns a map of {:copied {old-card-id duplicated-card} :uncopied [card]} so that the new dashboard can adjust accordingly.
+  Returns `{:copied {old-card-id duplicated-card} :referenced {old-card-id card} :discarded [card]}` so that the new
+  dashboard can adjust accordingly. `:discarded` carries [[cards-to-copy]]'s redaction.
 
   If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
   [deep-copy? new-dashboard old-dashboard dest-coll-id]
@@ -477,8 +483,8 @@
   "Update dashcards in a dashboard for copying.
   If the dashboard has tabs, fix up the tab ids in dashcards to point to the new tabs.
   Then if shallow copy, return the cards. If deep copy, replace ids with id from the newly-copied cards.
-  If there is no new id, it means user lacked curate permissions for the cards
-  collections and it is omitted."
+  A dashcard whose card was neither copied nor referenced is omitted — [[cards-to-copy]] discarded it as unreadable
+  or archived."
   [dashcards id->new-card id->referenced-card id->new-tab-id]
   (let [dashcards (if (seq id->new-tab-id)
                     (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))

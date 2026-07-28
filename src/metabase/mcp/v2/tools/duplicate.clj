@@ -21,17 +21,26 @@
 
 ;;; ------------------------------------------------- per-type copies ----------------------------------------------
 
-(def ^:private card-type->tool-type
-  {:question "question" :model "model" :metric "metric"})
+(defn- check-not-archived!
+  "Refuse a trashed source. Archived content keeps its real `collection_id` (the trash is
+   presentational), and neither copy path carries `:archived` over — so duplicating a trashed item
+   would resurrect it as a live copy in the collection it was trashed from. Runs after the read
+   check, so an unreadable source still collapses to not-found rather than admitting it exists."
+  [model item]
+  (when (:archived item)
+    (common/throw-teaching-error
+     (format "%s %s is in the trash — restore it before duplicating." (name model) (:id item))))
+  item)
 
 (defn- fetch-question
   [id-or-eid]
-  (let [card   (common/resolve-and-read :model/Card id-or-eid
-                                        (fn [id] (api/read-check (t2/select-one :model/Card :id id))))
-        actual (card-type->tool-type (:type card))]
-    (when (not= actual "question")
+  (let [card   (->> (common/resolve-and-read :model/Card id-or-eid
+                                             (fn [id] (api/read-check (t2/select-one :model/Card :id id))))
+                    (check-not-archived! :model/Card))]
+    (when (not= :question (:type card))
       (common/throw-teaching-error
-       (format "Card %s is a %s — duplicate_content supports type \"question\" only." (:id card) actual)))
+       (format "Card %s is a %s — duplicate_content supports type \"question\" only."
+               (:id card) (name (:type card)))))
     card))
 
 (defn- copy-question!
@@ -48,8 +57,9 @@
 
 (defn- fetch-dashboard
   [id-or-eid]
-  (common/resolve-and-read :model/Dashboard id-or-eid
-                           (fn [id] (api/read-check (t2/select-one :model/Dashboard :id id)))))
+  (->> (common/resolve-and-read :model/Dashboard id-or-eid
+                                (fn [id] (api/read-check (t2/select-one :model/Dashboard :id id))))
+       (check-not-archived! :model/Dashboard)))
 
 (defn- copy-dashboard!
   [dashboard collection-id new-name deep-copy?]
@@ -63,8 +73,12 @@
 
 (defn- fetch-document
   [id-or-eid]
-  (common/resolve-and-read :model/Document id-or-eid
-                           (fn [id] (api/read-check (t2/select-one :model/Document :id id :archived false)))))
+  ;; Selected without an `:archived false` filter so a trashed-but-readable document earns the
+  ;; teaching error below rather than the not-found collapse, which would wrongly imply the caller
+  ;; can't see it.
+  (->> (common/resolve-and-read :model/Document id-or-eid
+                                (fn [id] (api/read-check (t2/select-one :model/Document :id id))))
+       (check-not-archived! :model/Document)))
 
 (defn- copy-document!
   [document collection-id new-name]
@@ -120,13 +134,15 @@
     [:maybe [:boolean {:description "Dashboards only: also copy the dashboard's questions into the destination collection, instead of pointing the copy at the originals."}]]]])
 
 (registry/deftool duplicate-content
-  "Copy a question, dashboard, or document into a collection — cheaper and safer than reading the original and re-creating it, and it preserves everything the read projections leave out. Pass type, id (numeric or 21-char entity_id), and optionally collection_id (omit to copy into the source's own collection; \"root\" for the root collection) and new_name (defaults to \"Copy of <source name>\"). is_deep_copy is dashboards-only: false (the default) makes the copy point at the original's questions, true duplicates those questions into the destination collection as well — a dashboard that holds questions saved inside it can only be copied with is_deep_copy: true. A deep copy reports any cards it had to leave behind as `uncopied` (you can read the original but not copy it into the destination). Duplicating is creating: besides this tool's own scope, each type requires its own create scope, and you need curate permission on the destination collection."
-  {:name        "duplicate_content"
-   :scope       metabot.scope/agent-content-duplicate
-   :extra-scopes [metabot.scope/agent-question-create metabot.scope/agent-dashboard-create
-                  metabot.scope/agent-document-create]
-   :annotations {:readOnlyHint false :destructiveHint false}
-   :args        duplicate-content-args-schema}
+  "Copy a question, dashboard, or document into a collection — cheaper and safer than reading the original and re-creating it, and it preserves everything the read projections leave out. Pass type, id (numeric or 21-char entity_id), and optionally collection_id (omit to copy into the source's own collection; \"root\" for the root collection) and new_name (defaults to \"Copy of <source name>\"). is_deep_copy is dashboards-only: false (the default) makes the copy point at the original's questions, true duplicates those questions into the destination collection as well — a dashboard that holds questions saved inside it can only be copied with is_deep_copy: true. A deep copy reports any cards it had to leave behind as `uncopied` — cards you can't read (reported as an id alone) or that are in the trash; the copy simply omits them. Duplicating is creating: besides this tool's own scope, each type requires its own create scope, and you need curate permission on the destination collection."
+  {:name            "duplicate_content"
+   :scope           metabot.scope/agent-content-duplicate
+   ;; Mandatory, not opt-in: [[check-type-scope!]] hard-fails the call without the type's create
+   ;; scope, so these must reach the default grant or `type: "document"` is unreachable.
+   :required-scopes [metabot.scope/agent-question-create metabot.scope/agent-dashboard-create
+                     metabot.scope/agent-document-create]
+   :annotations     {:readOnlyHint false :destructiveHint false}
+   :args            duplicate-content-args-schema}
   [{:keys [type id new_name is_deep_copy] :as args} {:keys [token-scopes]}]
   (let [{:keys [fetch scope copy!]} (type->spec type)]
     (check-type-scope! token-scopes type scope)

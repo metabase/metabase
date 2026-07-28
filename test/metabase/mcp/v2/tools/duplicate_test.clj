@@ -111,6 +111,32 @@
       (is (= (format "Card %d is a model — duplicate_content supports type \"question\" only." card-id)
              (tool-error (call-tool! :crowberto {:type "question" :id card-id})))))))
 
+(deftest duplicate-archived-source-test
+  (testing "GHY-4151: a trashed source is refused for every type. Archived content keeps its real
+            collection_id (the trash is presentational) and neither copy path carries `:archived`
+            over, so duplicating would resurrect a live copy in the collection it was trashed from"
+    (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Document]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {card-id :id} {:name          "Trashed question"
+                                                :type          :question
+                                                :collection_id coll-id
+                                                :dataset_query (mt/mbql-query venues)}
+                     :model/Dashboard {dash-id :id} {:name "Trashed dashboard" :collection_id coll-id}
+                     :model/Document {doc-id :id} {:name          "Trashed document"
+                                                   :collection_id coll-id
+                                                   :document      (documents.tu/text->prose-mirror-ast "Gone.")}]
+        (doseq [[model id type] [[:model/Card card-id "question"]
+                                 [:model/Dashboard dash-id "dashboard"]
+                                 [:model/Document doc-id "document"]]]
+          (t2/update! model id {:archived true :archived_directly true})
+          (testing type
+            (is (= (format "%s %d is in the trash — restore it before duplicating." (name model) id)
+                   (tool-error (call-tool! :crowberto {:type type :id id}))))))
+        (testing "and nothing was written"
+          (is (= 1 (t2/count :model/Card :collection_id coll-id)))
+          (is (= 1 (t2/count :model/Dashboard :collection_id coll-id)))
+          (is (= 1 (t2/count :model/Document :collection_id coll-id))))))))
+
 ;;; ------------------------------------------------- dashboard ----------------------------------------------------
 
 (defn- copied-dashcards
@@ -157,6 +183,35 @@
           (testing "the duplicated card lands in the destination collection"
             (is (=? {:name "Revenue" :collection_id dest-coll}
                     (t2/select-one :model/Card :id (first new-cards))))))))))
+
+(deftest duplicate-dashboard-deep-uncopied-test
+  (testing "GHY-4151: a deep copy reports cards it left behind as `uncopied`, and an unreadable one
+            is reported by id alone — the tool must not hand the agent the name or query of a card
+            the caller cannot read"
+    (mt/with-model-cleanup [:model/Dashboard :model/Card]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Collection {secret-coll :id} {}
+                     :model/Card {secret-card :id} {:name          "Salaries"
+                                                    :type          :question
+                                                    :collection_id secret-coll
+                                                    :dataset_query (mt/mbql-query venues)}
+                     :model/Card {ok-card :id} {:name          "Revenue"
+                                                :type          :question
+                                                :collection_id coll-id
+                                                :dataset_query (mt/mbql-query venues)}
+                     :model/Dashboard {dash-id :id} {:name "Sales" :collection_id coll-id}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id secret-card}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id ok-card}]
+        (mt/with-non-admin-groups-no-collection-perms secret-coll
+          (let [result (tool-result (call-tool! :rasta {:type         "dashboard"
+                                                        :id           dash-id
+                                                        :is_deep_copy true}))]
+            (is (= [{:id secret-card}] (:uncopied result))
+                "the unreadable card must be reported by id alone — no name, no query")
+            (testing "the unreadable card is left out of the copy entirely"
+              (is (= 1 (count (copied-dashcards (:id result))))))
+            (testing "while the readable card is duplicated (same collection, so name-suffixed)"
+              (is (= 1 (t2/count :model/Card :name "Revenue - Duplicate"))))))))))
 
 (deftest duplicate-dashboard-shallow-with-dashboard-questions-test
   (testing "GHY-4151: a shallow copy of a dashboard holding dashboard questions is a teaching error

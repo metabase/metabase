@@ -1531,7 +1531,13 @@
                   ;; cards might be full cards or just a map {:id 1} due to permissions Any card with lack of
                   ;; permissions is just {:id 1}. Cards in a series which you have permissions for, but the base card
                   ;; you lack permissions for are also not copied, but you can see the whole card.
-                  (is (= 2 (->> resp :uncopied count))))))))))))
+                  (is (= 2 (->> resp :uncopied count)))
+                  (let [by-id (m/index-by :id (:uncopied resp))]
+                    (testing "an unreadable card reveals nothing but its id"
+                      (is (= [:id] (vec (keys (get by-id (u/the-id total-card)))))
+                          "must not leak the card's name, query, or entity_id"))
+                    (testing "a readable card kept out because its series base is unreadable is still whole"
+                      (is (contains? (get by-id (u/the-id avg-card)) :name)))))))))))))
 
 (deftest copy-dashboard-test-5
   (testing "Deep copy: POST /api/dashboard/:id/copy"
@@ -1709,22 +1715,22 @@
                      {:card_id 3 :card {:id 3}}]]
       (is (= dashcards
              (dashboards.write/update-cards-for-copy dashcards
-                                                  nil
-                                                  {1 {:id 1}
-                                                   2 {:id 2}
-                                                   3 {:id 3}}
-                                                  nil))))
+                                                     nil
+                                                     {1 {:id 1}
+                                                      2 {:id 2}
+                                                      3 {:id 3}}
+                                                     nil))))
     (testing "with tab-ids updated if dashboard has tab"
       (is (= [{:card_id 1 :card {:id 1} :dashboard_tab_id 10}
               {:card_id 3 :card {:id 3} :dashboard_tab_id 20}]
              (dashboards.write/update-cards-for-copy [{:card_id 1 :card {:id 1} :dashboard_tab_id 1}
-                                                   {:card_id 3 :card {:id 3} :dashboard_tab_id 2}]
-                                                  nil
-                                                  {1 {:id 1}
-                                                   2 {:id 2}
-                                                   3 {:id 3}}
-                                                  {1 10
-                                                   2 20}))))))
+                                                      {:card_id 3 :card {:id 3} :dashboard_tab_id 2}]
+                                                     nil
+                                                     {1 {:id 1}
+                                                      2 {:id 2}
+                                                      3 {:id 3}}
+                                                     {1 10
+                                                      2 20}))))))
 
 (deftest update-cards-for-copy-test-2
   (testing "When copy style is deep"
@@ -1732,23 +1738,23 @@
       (testing "Can omit series cards"
         (is (= [{:card_id 5 :card {:id 5} :series [{:id 6}]}]
                (dashboards.write/update-cards-for-copy dashcards
-                                                    {1 {:id 5}
-                                                     2 {:id 6}}
-                                                    nil
-                                                    nil)))))
+                                                       {1 {:id 5}
+                                                        2 {:id 6}}
+                                                       nil
+                                                       nil)))))
     (testing "Can omit whole card with series if not copied"
       (let [dashcards [{:card_id 1 :card {} :series [{:id 2} {:id 3}]}
                        {:card_id 4 :card {} :series [{:id 5} {:id 6}]}]]
         (is (= [{:card_id 7 :card {:id 7} :series [{:id 8} {:id 9}]}]
                (dashboards.write/update-cards-for-copy dashcards
-                                                    {1 {:id 7}
-                                                     2 {:id 8}
-                                                     3 {:id 9}
-                                                     ;; not copying id 4 which is the base of the following two
-                                                     5 {:id 10}
-                                                     6 {:id 11}}
-                                                    nil
-                                                    nil)))))
+                                                       {1 {:id 7}
+                                                        2 {:id 8}
+                                                        3 {:id 9}
+                                                        ;; not copying id 4 which is the base of the following two
+                                                        5 {:id 10}
+                                                        6 {:id 11}}
+                                                       nil
+                                                       nil)))))
     (testing "Updates parameter mappings to new card ids"
       (let [dashcards [{:card_id            1
                         :card               {:id 1}
@@ -1763,9 +1769,9 @@
                                        :target       [:dimension
                                                       [:field 63 nil]]}]}]
                (dashboards.write/update-cards-for-copy dashcards
-                                                    {1 {:id 2}}
-                                                    nil
-                                                    nil)))))
+                                                       {1 {:id 2}}
+                                                       nil
+                                                       nil)))))
     (testing "Does not think action cards are text cards"
       (let [dashcards [{:card_id 1 :card {:id 1}}
                        {:visualization_settings {:virtual_card {:display "text"}
@@ -1775,9 +1781,9 @@
                        {:action_id 123}]]
         (is (= (butlast dashcards)
                (dashboards.write/update-cards-for-copy dashcards
-                                                    {1 {:id 1}}
-                                                    nil
-                                                    nil)))))
+                                                       {1 {:id 1}}
+                                                       nil
+                                                       nil)))))
     (testing "Copies iframe cards"
       (let [dashcards [{:card_id 1 :card {:id 1}}
                        {:visualization_settings
@@ -1785,9 +1791,9 @@
                          :iframe "<iframe src=\"https://www.youtube.com/embed/dQw4w9WgXcQ\" />"}}]]
         (is (= dashcards
                (dashboards.write/update-cards-for-copy dashcards
-                                                    {1 {:id 1}}
-                                                    nil
-                                                    nil)))))))
+                                                       {1 {:id 1}}
+                                                       nil
+                                                       nil)))))))
 
 (deftest copy-dashboard-cards-test
   (testing "POST /api/dashboard/:id/copy"
