@@ -127,11 +127,7 @@ export const getRoutes = (store: AppStore) => {
     <Route element={<RoutedApp />}>
       {/* SETUP */}
       <Route element={<RedirectIfSetup />}>
-        <Route
-          path="/setup"
-          element={<Setup />}
-          props={{ disableCommandPalette: true }}
-        />
+        <Route path="/setup" element={<Setup />} />
       </Route>
 
       {/* For compatibility: use the standard setup for embedding */}
