@@ -25,7 +25,10 @@ export class DiagnosticsStore {
 
     const connectionChanged = this.applyConnection(message?.connection);
     const sessionChanged = this.applySession(message?.sessionId);
-    const entriesAdded = this.appendEntries(message?.entries, message?.sessionId);
+    const entriesAdded = this.appendEntries(
+      message?.entries,
+      message?.sessionId,
+    );
 
     // Returns whether a reader would now see something different.
     return connectionChanged || sessionChanged || entriesAdded;
