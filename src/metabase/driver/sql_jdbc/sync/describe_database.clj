@@ -79,8 +79,8 @@
     ;; attempting to execute the SQL statement will throw an Exception if we don't have permissions; otherwise it will
     ;; truthy whether or not it returns a ResultSet, but we can ignore that since we have enough info to proceed at
     ;; this point.
-    (u.connection/set-query-timeout! stmt *select-probe-query-timeout-seconds*)
-    (.execute stmt)))
+    (u.connection/do-with-query-timeout stmt *select-probe-query-timeout-seconds*
+                                        #(.execute stmt))))
 
 (defn- pr-table [table-schema table-name]
   (str (when table-schema

@@ -604,7 +604,10 @@
   feature flag (e.g. SparkSQL — calling it closes the Hive Thrift transport) skip the call entirely; for the rest,
   individual implementations that throw fall back to the c3p0 leak-detector via the `catch Throwable`.
   A MySQL 26 or newer warehouse also falls back, because there the driver would turn the timeout into MariaDB syntax
-  the server rejects, failing every query outright — the query is still bounded by the QP's own cancelation."
+  the server rejects, failing every query outright.
+  Those queries stay bounded all the same: [[metabase.query-processor.setup]] schedules a cancelation at the same
+  deadline, and that calls `Statement.cancel()` — the very method the driver's own client-side timer uses below
+  MySQL 26, so it stops any statement type, not just SELECTs."
   [driver ^Statement stmt]
   (when (driver/database-supports? driver :jdbc/set-query-timeout nil)
     (try

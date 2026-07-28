@@ -6,7 +6,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData Statement)))
+   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData Statement)
+   (java.util.concurrent ScheduledThreadPoolExecutor ThreadFactory TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -100,3 +101,40 @@
     (do
       (.setQueryTimeout stmt (int timeout-seconds))
       true)))
+
+(defonce ^:private cancel-executor
+  ;; one daemon thread for the whole JVM; the scheduled work is a single `Statement.cancel()`.
+  ;; `setRemoveOnCancelPolicy` makes cancelled tasks leave the queue immediately instead of at their deadline.
+  (delay
+    (doto (ScheduledThreadPoolExecutor. 1
+                                        (reify ThreadFactory
+                                          (newThread [_ r]
+                                            (doto (Thread. ^Runnable r "statement-timeout-scheduler")
+                                              (.setDaemon true)))))
+      (.setRemoveOnCancelPolicy true))))
+
+(defn do-with-query-timeout
+  "Run `f` with `stmt` bounded to `timeout-seconds`, whichever way this server supports.
+
+  Where the driver can carry the timeout it does. Where it cannot, a scheduled `Statement.cancel()` takes over, which
+  is the same `KILL QUERY` the driver's own client-side timer sends on MySQL below 26 — so every statement type is
+  bounded either way, not just the read-only SELECTs a server-side timeout would cover.
+
+  Queries running through the query processor already get this from `metabase.query-processor.setup`; this is for the
+  paths that do not."
+  [^Statement stmt timeout-seconds f]
+  (if (set-query-timeout! stmt timeout-seconds)
+    (f)
+    (let [task (.schedule ^ScheduledThreadPoolExecutor @cancel-executor
+                          ^Runnable (fn []
+                                      (try
+                                        (when-not (.isClosed stmt)
+                                          (.cancel stmt))
+                                        (catch Throwable e
+                                          (log/debug e "Could not cancel a statement that hit its timeout"))))
+                          (long timeout-seconds)
+                          TimeUnit/SECONDS)]
+      (try
+        (f)
+        (finally
+          (.cancel task false))))))

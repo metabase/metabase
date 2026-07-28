@@ -74,10 +74,12 @@
       (.setReadOnly conn true)
       (.setAutoCommit conn false)
       (try
-        (with-open [stmt (doto (sql-jdbc.execute/prepared-statement driver conn sql params)
-                           (u.connection/set-query-timeout! *query-timeout-seconds*))
-                    rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
-          (rs/datafiable-result-set rs conn {}))
+        (with-open [stmt (sql-jdbc.execute/prepared-statement driver conn sql params)]
+          (u.connection/do-with-query-timeout
+           stmt *query-timeout-seconds*
+           (fn []
+             (with-open [rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
+               (rs/datafiable-result-set rs conn {})))))
         (finally
           (.rollback conn))))))
 
