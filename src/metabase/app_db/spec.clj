@@ -65,18 +65,21 @@
     ;; `permitMysqlScheme` (`Driver.acceptsURL` never sees the Properties), so it must ride the subname
     :subname     (append-url-param (make-subname host (or port 3306) db) "permitMysqlScheme=true")}
    (when aws-iam
+     ;; the wrapper's `mariadb` protocol, not `mysql`: it resolves `mysql` to Connector/J (com.mysql.cj),
+     ;; which is not on our classpath, and its DriverManager fallback strips the query string, so
+     ;; `permitMysqlScheme` never reaches the mariadb driver. The `mariadb` protocol hands the driver a
+     ;; jdbc:mariadb: URL it accepts unconditionally.
+     ;;
+     ;; No :useSSL — mariadb 3.x's legacy-SSL handler escalates `useSSL` to verify-full, clobbering the
+     ;; :sslMode below (breaks hostname-mismatched endpoints like RDS Proxy custom endpoints); TRUST and
+     ;; VERIFY_CA say everything we mean. `trustServerCertificate` is likewise only read by that legacy
+     ;; handler, so the trust case must be spelled :sslMode "TRUST".
      (merge
-      (make-aws-iam-spec "mysql")
+      (dissoc (make-aws-iam-spec "mariadb") :useSSL)
       (cond
-        (= ssl-cert "trust")
-        {:trustServerCertificate true}
-
-        (and ssl-cert (not= ssl-cert "trust"))
-        {:sslMode       "VERIFY_CA"
-         :serverSslCert ssl-cert}
-
-        :else
-        {:sslMode "VERIFY_CA"})))
+        (= ssl-cert "trust") {:sslMode "TRUST"}
+        ssl-cert             {:sslMode "VERIFY_CA", :serverSslCert ssl-cert}
+        :else                {:sslMode "VERIFY_CA"})))
    (dissoc opts :host :port :db :aws-iam :ssl-cert)))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

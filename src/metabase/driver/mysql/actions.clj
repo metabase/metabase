@@ -184,15 +184,18 @@
   (thunk))
 
 (defn- primary-keys [driver jdbc-spec table-components]
-  (let [schema (when (next table-components) (first table-components))
-        table  (last table-components)]
+  ;; MySQL maps databases to JDBC *catalogs*; mariadb-java-client 3.x filters `getPrimaryKeys` by catalog
+  ;; (its default `useCatalogTerm`) and ignores the schema argument, so a qualifying component must be
+  ;; passed as the catalog or a multi-database connection resolves PKs against the wrong database
+  (let [catalog (when (next table-components) (first table-components))
+        table   (last table-components)]
     (sql-jdbc.execute/do-with-connection-with-options
      driver
      jdbc-spec
      nil
      (fn [^java.sql.Connection conn]
        (let [metadata (.getMetaData conn)]
-         (with-open [rset (.getPrimaryKeys metadata nil schema table)]
+         (with-open [rset (.getPrimaryKeys metadata catalog nil table)]
            (loop [acc []]
              (if-not (.next rset)
                acc
@@ -228,9 +231,10 @@
         ;; requires a non-nil table name in `getPrimaryKeys`, so we can no longer get away with handing
         ;; it nils (2.x treated them as wildcards and returned every table's PKs)
         insert-into      (:insert-into create-hsql)
-        table-components (h2x/identifier->components (if (h2x/identifier? insert-into)
-                                                       insert-into
-                                                       (first insert-into)))
+        table-components (cond
+                           (h2x/identifier? insert-into) (h2x/identifier->components insert-into)
+                           (keyword? insert-into)        [(name insert-into)]
+                           :else                         (h2x/identifier->components (first insert-into)))
         pks              (primary-keys driver jdbc-spec table-components)
         select-sql-args  (select-created-row-sql-args driver create-hsql pks insert_id)
         query-results    (jdbc/query jdbc-spec

@@ -148,8 +148,13 @@
                       (seq azure-managed-identity-client-id)) (assoc :azure-managed-identity-client-id
                                                                      azure-managed-identity-client-id))
          [s m] (if aws-iam
-                 [(str/replace s #"^jdbc:(postgresql|mysql):" "jdbc:aws-wrapper:$1:")
-                  (assoc m :wrapperPlugins "iam" :useSSL true)]
+                 ;; mysql routes through the wrapper's `mariadb` protocol and :sslMode -- see
+                 ;; [[metabase.app-db.spec]] for why (Connector/J absent; useSSL clobbers sslMode on 3.x)
+                 (if (str/starts-with? s "jdbc:mysql:")
+                   [(str/replace-first s #"^jdbc:mysql:" "jdbc:aws-wrapper:mariadb:")
+                    (assoc m :wrapperPlugins "iam" :sslMode "VERIFY_CA")]
+                   [(str/replace-first s #"^jdbc:postgresql:" "jdbc:aws-wrapper:postgresql:")
+                    (assoc m :wrapperPlugins "iam" :useSSL true)])
                  [s m])]
      (update-h2/update-if-needed! s)
      (->DataSource s (some-> (not-empty m) connection-pool/map->properties)))))
