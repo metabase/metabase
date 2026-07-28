@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { useSelector } from "metabase/redux";
-import { type PlainRoute, type Query, useRouter } from "metabase/router";
+import { type Query, useRouter } from "metabase/router";
 import { getUser } from "metabase/selectors/user";
 import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
@@ -15,26 +15,23 @@ import { HydratedKBarSearch } from "./HydratedKBarSearch";
 import S from "./Palette.module.css";
 import { PaletteResults } from "./PaletteResults";
 
-type CommandPaletteRouteProps = {
-  disableCommandPalette?: boolean;
-};
+// The setup flow runs before there is an instance to search or act on.
+const PALETTE_DISABLED_PATHS = ["/setup"];
 
 /** Command palette */
 export const Palette = () => {
   const routerProps = useRouter();
-  const { routes, location } = routerProps;
+  const { location } = routerProps;
   const isLoggedIn = useSelector((state) => !!getUser(state));
 
-  const disableCommandPaletteForRoute = routes.some(
-    (route: PlainRoute<CommandPaletteRouteProps>) =>
-      route.props?.disableCommandPalette,
+  const isDisabledForPath = PALETTE_DISABLED_PATHS.some((path) =>
+    location.pathname.startsWith(path),
   );
 
   useCommandPaletteBasicActions({ ...routerProps, isLoggedIn });
 
   const { query } = useKBar();
-  const disabled =
-    isWithinIframe() || !isLoggedIn || disableCommandPaletteForRoute;
+  const disabled = isWithinIframe() || !isLoggedIn || isDisabledForPath;
   useEffect(() => {
     query.disable(disabled);
   }, [disabled, query]);
