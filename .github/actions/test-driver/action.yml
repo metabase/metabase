@@ -73,12 +73,18 @@ runs:
     # that failed with nothing attributable to a var, uploads no artifact, and a
     # narrow set must not outlive it. Reading `attempt - 1` means "only what the
     # last attempt actually recorded" — anything else falls back to the full suite.
+    # Workflow expressions have no arithmetic, so the shell computes it.
+    - name: Resolve previous attempt
+      if: ${{ inputs.granular-rerun == 'true' && github.run_attempt != '1' }}
+      shell: bash
+      run: echo "RERUN_PREV_ATTEMPT=$((GITHUB_RUN_ATTEMPT - 1))" >> "$GITHUB_ENV"
+
     - name: Restore previously-failed tests
       if: ${{ inputs.granular-rerun == 'true' && github.run_attempt != '1' }}
       continue-on-error: true
       uses: actions/download-artifact@v8
       with:
-        name: failed-tests-${{ inputs.rerun-artifact-key || inputs.junit-name }}-attempt-${{ github.run_attempt - 1 }}
+        name: failed-tests-${{ inputs.rerun-artifact-key || inputs.junit-name }}-attempt-${{ env.RERUN_PREV_ATTEMPT }}
         path: target
 
     - name: Test database driver
