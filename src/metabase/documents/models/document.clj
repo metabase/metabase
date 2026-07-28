@@ -63,7 +63,8 @@
 ;;; ------------------------------------------------ Write orchestration -------------------------------------------
 
 (def CardCreateSchema
-  "Schema for creating a new card - simplified version to avoid circular dependencies"
+  "Schema for a card created inline with a document (the `cards` map on create/update). The
+  card fields are declared locally: the model layer doesn't depend on the REST card schema."
   [:map
    [:name ms/NonBlankString]
    [:dataset_query ms/Map]
@@ -166,12 +167,18 @@
                              {:object-id id
                               :user-id api/*current-user-id*}))))
 
-(defn create-document!
-  "Create a Document from already-validated inputs, clone any embedded cards the document
-  doesn't own, publish `:event/document-create`, and return the created document. Permission
-  checks (`api/create-check`) are the caller's job, run before this — the same split the REST
+(mu/defn create-document!
+  "Create a Document, clone any embedded cards the document doesn't own, publish
+  `:event/document-create`, and return the created document. Permission checks
+  (`api/create-check`) are the caller's job, run before this — the same split the REST
   `POST /api/document/` handler uses."
-  [{:keys [name document collection_id collection_position cards]}]
+  [{:keys [name document collection_id collection_position cards]}
+   :- [:map
+       [:name DocumentName]
+       [:document :any]
+       [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+       [:collection_position {:optional true} [:maybe ms/PositiveInt]]
+       [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]]]
   (let [created-document (t2/with-transaction [_conn]
                            (when collection_position
                              (api/maybe-reconcile-collection-position! {:collection_id collection_id
@@ -203,14 +210,22 @@
                             :user-id api/*current-user-id*})
     created-document))
 
-(defn update-document!
-  "Apply `body` (already-validated update options: any of `:name`, `:document`,
-  `:collection_id`, `:collection_position`, `:cards`, `:archived`) to `existing-document`,
-  clone any newly-embedded cards the document doesn't own, publish `:event/document-update`
-  (or `:event/document-delete` when archiving), and return the updated document. Permission
-  checks (write-check, archived state, collection-move) are the caller's job, run before
-  this — the same split the REST `PUT /api/document/:id` handler uses."
-  [existing-document {:keys [name document collection_id collection_position cards] :as body}]
+(mu/defn update-document!
+  "Apply `body` (any of `:name`, `:document`, `:collection_id`, `:collection_position`,
+  `:cards`, `:archived`) to `existing-document`, clone any newly-embedded cards the document
+  doesn't own, publish `:event/document-update` (or `:event/document-delete` when archiving),
+  and return the updated document. Permission checks (write-check, archived state,
+  collection-move) are the caller's job, run before this — the same split the REST
+  `PUT /api/document/:id` handler uses."
+  [existing-document :- [:map [:id ms/PositiveInt]]
+   {:keys [name document collection_id collection_position cards] :as body}
+   :- [:map
+       [:name {:optional true} DocumentName]
+       [:document {:optional true} :any]
+       [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+       [:collection_position {:optional true} [:maybe ms/PositiveInt]]
+       [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
+       [:archived {:optional true} [:maybe :boolean]]]]
   (let [document-id (:id existing-document)
         document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)]
     (t2/with-transaction [_conn]

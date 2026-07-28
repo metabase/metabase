@@ -67,6 +67,18 @@
                      (= "user" (-> % :attrs :model))))
        (mapv #(-> % :attrs :entityId))))
 
+(defn comments-for-document
+  "All live comments on a document, oldest first, with `:creator` hydrated. Read access to the
+  document is the caller's job to check first — the same check-the-target-once pattern the
+  comments REST endpoint uses."
+  [document-id]
+  (-> (t2/select :model/Comment
+                 :target_type "document"
+                 :target_id document-id
+                 :deleted_at nil
+                 {:order-by [[:created_at :asc] [:id :asc]]})
+      (t2/hydrate :creator)))
+
 (defn child-target-ids-for-document
   "Distinct non-nil `child_target_id` values (with a live comment count each) for a document's
   comment threads. Read access to the document is the caller's job to check first — the same

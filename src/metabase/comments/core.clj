@@ -12,4 +12,5 @@
  [api.comments
   notify-comment-id!]
  [models.comment
-  child-target-ids-for-document])
+  child-target-ids-for-document
+  comments-for-document])

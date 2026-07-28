@@ -17,6 +17,7 @@
    [clojure.string :as str]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
+   [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib-be.core :as lib-be]
@@ -37,6 +38,7 @@
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -199,13 +201,24 @@
 (defn- fetch-document
   [id-or-eid]
   (let [doc (common/resolve-and-read :model/Document id-or-eid
-                                     (fn [id] (documents/get-document id)))]
+                                     (fn [id] (documents/get-document id)))
+        ;; The Metabase-flavored Markdown body — the same text document_write's old_str edits
+        ;; match against — plus the node-id -> character-offset spans the comments include
+        ;; anchors threads with. A body the serializer can't render (e.g. an unrecognized node
+        ;; type) degrades to the flattened plain prose, with no spans, rather than failing the
+        ;; read.
+        ser (try
+              (documents/serialize (:document doc))
+              (catch Exception e
+                (log/warn e "Falling back to flattened text for document" (:id doc))
+                nil))]
     (-> (select-keys doc [:id :name :collection_id :archived :entity_id :creator_id
                           :created_at :updated_at])
-        ;; `ast->text` flattens the ProseMirror AST to plain prose (headings/lists/emphasis are
-        ;; not preserved) — the closest body rendering the codebase has today.
-        (assoc :markdown (prose-mirror/ast->text (:document doc))
-               ::document doc))))
+        (assoc :markdown (if ser
+                           (:markdown ser)
+                           (prose-mirror/ast->text (:document doc)))
+               ::document doc
+               ::spans (:spans ser)))))
 
 (defn- document-layout
   "Top-level node outline of the document's ProseMirror AST: one entry per block, with the
@@ -217,6 +230,60 @@
                                (get-in node [:attrs :id]))
                     :text    (not-empty (prose-mirror/ast->text node))}))
         (get-in row [::document :document :content])))
+
+(defn- comment-thread-row
+  [comment-row]
+  (compact {:id                (:id comment-row)
+            :parent_comment_id (:parent_comment_id comment-row)
+            :creator           (get-in comment-row [:creator :common_name])
+            :created_at        (:created_at comment-row)
+            :is_resolved       (:is_resolved comment-row)
+            :text              (prose-mirror/ast->text (:content comment-row))}))
+
+(defn- node-id->outermost-id
+  "Every `_id` in the document mapped to its top-level block's `_id`. Blocks nested inside
+   lists/blockquotes carry no span of their own (their text is re-rendered with line prefixes),
+   so a comment anchored to one resolves to the outermost block's span through this map."
+  [row]
+  (into {}
+        (mapcat (fn [top]
+                  (when-let [top-id (get-in top [:attrs :_id])]
+                    (for [node (tree-seq :content :content top)
+                          :let [id (get-in node [:attrs :_id])]
+                          :when id]
+                      [id top-id]))))
+        (get-in row [::document :document :content])))
+
+(defn- document-comments
+  "The `comments` include: the document's live comment threads, grouped by the block node id
+   (`child_target_id`) they anchor to, each with an `anchor` locating that block in the returned
+   `markdown` — the exact `[start, end)` slice of the anchored block, joined via the serializer's
+   node-id spans (a nested block rolls up to its outermost block's span). Threads whose anchor id
+   matches nothing (their block was rewritten or deleted) land in `orphaned_comments` instead. On
+   the serializer-fallback read there are no spans at all, so every thread is returned unanchored
+   under `comments` — absence of anchors there means \"unknown\", not \"orphaned\"."
+  [row]
+  (let [markdown   (:markdown row)
+        spans      (::spans row)
+        span-by-id (into {} (map (juxt :node-id identity)) spans)
+        outermost  (node-id->outermost-id row)
+        threads    (->> (comments/comments-for-document (:id row))
+                        (group-by :child_target_id)
+                        (sort-by (fn [[_ cs]] ((juxt :created_at :id) (first cs))))
+                        (mapv (fn [[child-id cs]]
+                                (compact
+                                 {:child_target_id child-id
+                                  :anchor          (when-let [{:keys [start end]} (or (span-by-id child-id)
+                                                                                      (span-by-id (outermost child-id)))]
+                                                     {:start start
+                                                      :end   end
+                                                      :text  (subs markdown start end)})
+                                  :thread          (mapv comment-thread-row cs)}))))]
+    (if (nil? spans)
+      {:comments threads}
+      (let [{anchored true orphaned false} (group-by (comp some? :anchor) threads)]
+        (cond-> {:comments (vec (sort-by #(get-in % [:anchor :start]) anchored))}
+          (seq orphaned) (assoc :orphaned_comments (vec orphaned)))))))
 
 ;;; --------------------------------------------------- dashboard --------------------------------------------------
 
@@ -511,7 +578,8 @@
                               "layout"     (fn [row] {:layout (dashboard-layout row)})}}
    "document"     {:fetch fetch-document
                    :scope metabot.scope/agent-document-read
-                   :includes {"layout" (fn [row] {:layout (document-layout row)})}}
+                   :includes {"layout"   (fn [row] {:layout (document-layout row)})
+                              "comments" document-comments}}
    "collection"   {:fetch fetch-collection}
    "snippet"      {:fetch fetch-snippet
                    :scope metabot.scope/agent-snippets-read}
@@ -610,14 +678,14 @@
              [:fields {:optional true}
               [:maybe [:sequential [:string {:min 1 :description "Dot-paths picked from this type's detailed projection (see the fields catalog resource), item-relative inside arrays. Mutually exclusive with response_format and include."}]]]]]]]
    [:include {:optional true}
-    [:maybe [:sequential [:enum {:description "Extra sections, each applied to every item whose type supports it and ignored for the rest — so a mixed-type batch can ask for several at once: definition (query-bearing types, returned in the external dialect the write/execute tools accept), fields (question/model column metadata), parameters (dashboard's full parameter array), layout (dashboard grid + tabs, document block outline), dimensions (metric/measure). A section no item in the batch supports is an error."}
-                          "definition" "fields" "parameters" "layout" "dimensions"]]]]
+    [:maybe [:sequential [:enum {:description "Extra sections, each applied to every item whose type supports it and ignored for the rest — so a mixed-type batch can ask for several at once: definition (query-bearing types, returned in the external dialect the write/execute tools accept), fields (question/model column metadata), parameters (dashboard's full parameter array), layout (dashboard grid + tabs, document block outline), dimensions (metric/measure), comments (document comment threads, each anchored into the returned markdown by {start, end, text} character offsets — the exact slice of the block the thread is attached to; comments attach to whole blocks, a block nested inside a list/blockquote anchors to its outermost block's span, and an empty block gives start == end; threads whose block no longer exists come back under orphaned_comments so they can be re-anchored by editing the right block, and if the document read fell back to flattened text no thread carries an anchor). A section no item in the batch supports is an error."}
+                          "definition" "fields" "parameters" "layout" "dimensions" "comments"]]]]
    [:response_format {:optional true}
     [:maybe [:enum {:description "concise (default) returns each type's essential shape; detailed adds entity_id, creator, timestamps, and other secondary columns."}
              "concise" "detailed"]]]])
 
 (registry/deftool get-content
-  "Fetch content by {type, id} — the generic typed read for anything discovered via search or browse_collection. Batch up to 10 items of mixed types in one call; each item is permission-checked independently and a bad item returns a per-item {type, id, error} object without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids accept numeric ids or 21-char entity_ids. Concise shapes are task-focused: a question carries its source (database/table/source card), display, one-line query summary, raw template tags, and its materialized parameters (the same tags viewed as parameters — not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters) rather than the raw REST dashcards; a document returns its body text; alerts and subscriptions return condition, schedule, channels, and recipients (redacted for non-admins); a transform returns source type, target, and its latest run. Use include for on-demand sections — definition returns the query in the same external dialect execute_query and the write tools accept, so read-modify-write round-trips. Reading alerts/subscriptions additionally requires the agent:notification:read scope, transforms agent:transforms:read, snippets agent:snippets:read, documents agent:document:read."
+  "Fetch content by {type, id} — the generic typed read for anything discovered via search or browse_collection. Batch up to 10 items of mixed types in one call; each item is permission-checked independently and a bad item returns a per-item {type, id, error} object without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids accept numeric ids or 21-char entity_ids. Concise shapes are task-focused: a question carries its source (database/table/source card), display, one-line query summary, raw template tags, and its materialized parameters (the same tags viewed as parameters — not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters) rather than the raw REST dashcards; a document returns its body text; alerts and subscriptions return condition, schedule, channels, and recipients (redacted for non-admins); a transform returns source type, target, and its latest run. Use include for on-demand sections — definition returns the query in the same external dialect execute_query and the write tools accept, so read-modify-write round-trips; comments returns a document's comment threads, each anchored to the exact character range of its block in the returned markdown. Reading alerts/subscriptions additionally requires the agent:notification:read scope, transforms agent:transforms:read, snippets agent:snippets:read, documents agent:document:read."
   {:name         "get_content"
    :scope        metabot.scope/agent-resource-read
    :extra-scopes [metabot.scope/agent-notification-read metabot.scope/agent-transforms-read

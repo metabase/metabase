@@ -20,6 +20,7 @@
   serialize
   splice]
  [metabase.documents.models.document
+  DocumentName
   clone-cards-in-document!
   create-document!
   get-document
