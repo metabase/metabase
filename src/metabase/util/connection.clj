@@ -75,13 +75,17 @@
   MariaDB Connector/J implements the timeout by prefixing the statement with `SET STATEMENT max_statement_time=N FOR`,
   and turns that on for any server reporting version 10.1.2 or newer.
   It never consults the MariaDB flag it already read from the handshake, so MySQL — below 10 until the
-  calendar-versioned 26.x releases — now clears the check and gets syntax only MariaDB understands."
+  calendar-versioned 26.x releases — now clears the check and gets syntax only MariaDB understands.
+
+  The product name is that same flag: the driver reports `MariaDB` or `MySQL` off `isServerMariaDb()`.
+  A connection carrying `useMysqlMetadata=true` makes a real MariaDB answer `MySQL`, which costs it the driver's
+  timeout and leaves it on the scheduled cancel instead."
   [^Connection conn]
   (boolean
    (try
      (let [md (.getMetaData conn)]
        (and (str/includes? (str (.getDriverName md)) "MariaDB")
-            (not (str/includes? (str (.getDatabaseProductVersion md)) "MariaDB"))
+            (= "MySQL" (.getDatabaseProductName md))
             (>= (.getDatabaseMajorVersion md) 10)))
      (catch Throwable e
        (log/debug e "Could not read server version; assuming statement timeouts work")
