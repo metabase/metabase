@@ -1,5 +1,5 @@
 import { useElementSize } from "@mantine/hooks";
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -52,7 +52,8 @@ export function ContentDiagnostics({
   const [selectedFindingId, setSelectedFindingId] = useState<number>();
 
   const { page = 0, query } = params;
-  const filterOptions = getFilterOptions(params);
+  const filterOptions = useMemo(() => getFilterOptions(params), [params]);
+  const sortOptions = useMemo(() => getSortOptions(params), [params]);
 
   const {
     data,
@@ -170,8 +171,8 @@ export function ContentDiagnostics({
         ) : (
           <ContentDiagnosticsTable
             findings={findings}
-            page={page}
-            sortOptions={getSortOptions(params)}
+            params={params}
+            sortOptions={sortOptions}
             isFetching={isFetching}
             isLoading={isLoading}
             onSelect={(finding) => setSelectedFindingId(finding.id)}

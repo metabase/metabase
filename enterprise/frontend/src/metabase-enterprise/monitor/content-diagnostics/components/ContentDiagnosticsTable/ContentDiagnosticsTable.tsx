@@ -9,6 +9,7 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
+import type * as Urls from "metabase/urls";
 import {
   type Sorting,
   getNextOptionalSorting,
@@ -26,7 +27,7 @@ import { COLUMN_WIDTHS, getColumns } from "./columns";
 
 type ContentDiagnosticsTableProps = {
   findings: ContentDiagnosticsFinding[];
-  page: number;
+  params: Urls.ContentDiagnosticsParams;
   sortOptions: Sorting<ContentDiagnosticsSortColumn> | undefined;
   isFetching?: boolean;
   isLoading?: boolean;
@@ -38,7 +39,7 @@ type ContentDiagnosticsTableProps = {
 
 export function ContentDiagnosticsTable({
   findings,
-  page,
+  params,
   sortOptions,
   isFetching = false,
   isLoading = false,
@@ -82,7 +83,7 @@ export function ContentDiagnosticsTable({
 
   useScrollToTop({
     ref: treeTableInstance.containerRef,
-    keys: [page, sortOptions],
+    keys: [params],
     skip: isFetching,
   });
 

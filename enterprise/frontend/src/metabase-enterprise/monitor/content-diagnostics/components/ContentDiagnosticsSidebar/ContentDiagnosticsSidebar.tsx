@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import CS from "metabase/css/core/index.css";
 import { Link } from "metabase/router";
 import {
   ActionIcon,
@@ -80,7 +79,7 @@ function SidebarHeader({ finding, onClose }: SidebarHeaderProps) {
     >
       <Group gap="sm" wrap="nowrap" align="center" miw={0}>
         <FixedSizeIcon name={getEntityIcon(finding)} />
-        <Box className={CS.textWrap} fz="h3" fw="bold" lh="h3">
+        <Box className={S.wrap} fz="h3" fw="bold" lh="h3">
           {getEntityName(finding)}
         </Box>
       </Group>
@@ -120,7 +119,7 @@ function LocationSection({ finding }: LocationSectionProps) {
           <Anchor
             key={link.id}
             component={Link}
-            className={CS.textWrap}
+            className={S.wrap}
             lh="1rem"
             to={link.url}
             target="_blank"
@@ -147,23 +146,23 @@ function InfoSection({ finding }: InfoSectionProps) {
   return (
     <Card p={0} shadow="none" withBorder role="region" aria-label={t`Info`}>
       <InfoSectionItem label={t`Type`}>
-        <Box className={CS.textWrap}>{getEntityTypeLabel(finding)}</Box>
+        <Box className={S.wrap}>{getEntityTypeLabel(finding)}</Box>
       </InfoSectionItem>
       <InfoSectionItem label={t`Description`}>
         {description != null && description.length > 0 ? (
-          <Box className={CS.textWrap}>{description}</Box>
+          <Box className={S.wrap}>{description}</Box>
         ) : (
           <Box c="text-secondary">{t`No description`}</Box>
         )}
       </InfoSectionItem>
       {creator != null && (
         <InfoSectionItem label={t`Created by`}>
-          <Box className={CS.textWrap}>{getUserName(creator)}</Box>
+          <Box className={S.wrap}>{getUserName(creator)}</Box>
         </InfoSectionItem>
       )}
       {owner != null && (
         <InfoSectionItem label={t`Owner`}>
-          <Box className={CS.textWrap}>{getUserName(owner)}</Box>
+          <Box className={S.wrap}>{getUserName(owner)}</Box>
         </InfoSectionItem>
       )}
       <InfoSectionItem label={t`Created at`}>
@@ -182,7 +181,7 @@ function InfoSection({ finding }: InfoSectionProps) {
       </InfoSectionItem>
       {view_count != null && (
         <InfoSectionItem label={t`Views`}>
-          <Box className={CS.textWrap}>{view_count}</Box>
+          <Box className={S.wrap}>{view_count}</Box>
         </InfoSectionItem>
       )}
     </Card>
@@ -197,7 +196,7 @@ type InfoSectionItemProps = {
 function InfoSectionItem({ label, children }: InfoSectionItemProps) {
   return (
     <Stack className={S.section} p="md" gap="xs">
-      <Box className={CS.textWrap} c="text-secondary" fz="sm" lh="h5">
+      <Box className={S.wrap} c="text-secondary" fz="sm" lh="h5">
         {label}
       </Box>
       <Group lh="h4" justify="space-between" wrap="nowrap">

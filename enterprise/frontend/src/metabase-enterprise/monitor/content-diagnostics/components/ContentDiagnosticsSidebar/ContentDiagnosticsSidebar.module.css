@@ -4,6 +4,12 @@
   border-left: 1px solid var(--mb-color-border-neutral);
 }
 
+.wrap {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
 .link {
   word-break: break-word;
 }

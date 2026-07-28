@@ -91,8 +91,6 @@ export function getEntityUrl(finding: ContentDiagnosticsFinding): string {
 
   return match(finding)
     .with({ entity_type: "card" }, (finding) =>
-      // Urls.card derives /question|/model|/metric from `type`; pass it so
-      // models/metrics link directly instead of via the /question/ redirect.
       Urls.card({ ...entity, type: finding.card_type ?? undefined }),
     )
     .with({ entity_type: "dashboard" }, () => Urls.dashboard(entity))
@@ -155,7 +153,7 @@ export function getUserName(user: ContentDiagnosticsUser | null): string {
 
 export function getFilterTypeLabel(type: ContentDiagnosticsFilterType): string {
   return match(type)
-    .with("card", () => t`Questions`)
+    .with("card", () => t`Cards`)
     .with("dashboard", () => t`Dashboards`)
     .with("document", () => t`Documents`)
     .with("transform", () => t`Transforms`)
@@ -259,10 +257,12 @@ export function getSortOptions({
   | Sorting<ContentDiagnosticsSortColumn>
   | undefined {
   return match({ sortColumn, sortDirection })
-    .with({ sortColumn: P.nullish }, () => undefined)
-    .with({ sortDirection: P.nullish }, () => undefined)
-    .otherwise(({ sortColumn, sortDirection }) => ({
-      column: sortColumn,
-      direction: sortDirection,
-    }));
+    .with(
+      { sortColumn: P.nonNullable, sortDirection: P.nonNullable },
+      ({ sortColumn, sortDirection }) => ({
+        column: sortColumn,
+        direction: sortDirection,
+      }),
+    )
+    .otherwise(() => undefined);
 }
