@@ -61,13 +61,6 @@ function CartesianChartInner(props: VisualizationProps) {
     onOpenTimelines,
   } = props;
 
-  const {
-    timelineEvents,
-    selectedTimelineEventIds,
-    onSelectTimelineEvents,
-    onDeselectTimelineEvents,
-  } = useTimelineEvents(props);
-
   const settings = useMemo(
     () =>
       autoAdjustSettings
@@ -79,6 +72,15 @@ function CartesianChartInner(props: VisualizationProps) {
         : originalSettings,
     [originalSettings, outerHeight, outerWidth, autoAdjustSettings],
   );
+
+  // Pass the dashboard-adjusted settings so that timeline events suppressed
+  // on small dashcards are neither fetched nor rendered.
+  const {
+    timelineEvents,
+    selectedTimelineEventIds,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+  } = useTimelineEvents({ ...props, settings });
 
   const {
     chartModel,

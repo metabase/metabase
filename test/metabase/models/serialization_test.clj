@@ -242,6 +242,71 @@
                                         {:source-field ["my-db" nil "orders" "subtotal"]}]]
                            :id        "[\"dimension\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],{\"source-field\":[\"my-db\",null,\"orders\",\"subtotal\"]}]]"}}}}}}})))))
 
+(deftest ^:parallel export-viz-timeline-ids-test
+  (binding [serdes/*export-fk* (fn [id model]
+                                 (when-not (= id 99)                ; 99 stands in for a deleted Timeline
+                                   (format "%s___%d" (name model) id)))]
+    (testing "selected timelines are exported as portable Timeline references"
+      (is (= {:timeline.selected_timeline_ids ["Timeline___1" "Timeline___2"]}
+             (-> (serdes/export-visualization-settings {:timeline.selected_timeline_ids [1 2]})
+                 (dissoc :column_settings)))))
+    (testing "a reference to a deleted Timeline is dropped rather than failing the export"
+      (is (= {:timeline.selected_timeline_ids ["Timeline___1"]}
+             (-> (serdes/export-visualization-settings {:timeline.selected_timeline_ids [1 99]})
+                 (dissoc :column_settings)))))
+    (testing "export is idempotent - already-portable references are left alone"
+      (is (= {:timeline.selected_timeline_ids ["Timeline___1"]}
+             (-> (serdes/export-visualization-settings {:timeline.selected_timeline_ids ["Timeline___1"]})
+                 (dissoc :column_settings)))))
+    (testing "excluded event ids are left as raw ids - TimelineEvent has no portable identity"
+      (is (= {:timeline.excluded_timeline_event_ids [7 8]}
+             (-> (serdes/export-visualization-settings {:timeline.excluded_timeline_event_ids [7 8]})
+                 (dissoc :column_settings)))))))
+
+(deftest ^:parallel import-viz-timeline-ids-test
+  (binding [serdes/*import-fk* (fn [eid model]
+                                 (is (= :model/Timeline model))
+                                 ({"aaaaaaaaaaaaaaaaaaaaa" 41
+                                   "bbbbbbbbbbbbbbbbbbbbb" 42} eid))]
+    (testing "portable Timeline references resolve back to appdb ids"
+      (is (= {:timeline.selected_timeline_ids [41 42]}
+             (-> (serdes/import-visualization-settings
+                  {:timeline.selected_timeline_ids ["aaaaaaaaaaaaaaaaaaaaa" "bbbbbbbbbbbbbbbbbbbbb"]})
+                 (dissoc :column_settings)))))
+    (testing "a reference that doesn't resolve is dropped rather than failing the import"
+      (is (= {:timeline.selected_timeline_ids [41]}
+             (-> (serdes/import-visualization-settings
+                  {:timeline.selected_timeline_ids ["aaaaaaaaaaaaaaaaaaaaa" "ccccccccccccccccccccc"]})
+                 (dissoc :column_settings)))))
+    (testing "excluded event ids are passed through untouched"
+      (is (= {:timeline.excluded_timeline_event_ids [7 8]}
+             (-> (serdes/import-visualization-settings {:timeline.excluded_timeline_event_ids [7 8]})
+                 (dissoc :column_settings)))))))
+
+(deftest ^:parallel viz-timeline-deps-test
+  (testing "raw appdb ids are export-time (serialization) deps"
+    (is (= #{[{:model "Timeline" :id 1}] [{:model "Timeline" :id 2}]}
+           (serdes/visualization-settings-deps true {:timeline.selected_timeline_ids [1 2]}))))
+  (testing "and are not mistaken for references when walking already-serialized settings"
+    (is (= #{}
+           (serdes/visualization-settings-deps false {:timeline.selected_timeline_ids [1 2]}))))
+  (testing "portable references are load-time (deserialization) deps"
+    (is (= #{[{:model "Timeline" :id "aaaaaaaaaaaaaaaaaaaaa"}]}
+           (serdes/visualization-settings-deps false {:timeline.selected_timeline_ids ["aaaaaaaaaaaaaaaaaaaaa"]}))))
+  (testing "excluded event ids are never deps"
+    (is (= #{}
+           (serdes/visualization-settings-deps true {:timeline.excluded_timeline_event_ids [7 8]})))))
+
+(deftest ^:parallel viz-timeline-descendants-test
+  (binding [serdes/*export-fk* (fn [id model]
+                                 (when-not (= id 99)
+                                   (format "%s___%d" (name model) id)))]
+    (testing "selected timelines are pulled into the export"
+      (is (= {["Timeline" 1] {"Card" 5}}
+             (into {} (serdes/visualization-settings-descendants {:timeline.selected_timeline_ids [1]} {"Card" 5})))))
+    (testing "a deleted Timeline is not a descendant"
+      (is (empty? (serdes/visualization-settings-descendants {:timeline.selected_timeline_ids [99]} {"Card" 5}))))))
+
 (deftest ^:parallel export-import-template-tag-table-id-test
   (testing "template tags of type :table serialize their :table-id as a portable tuple"
     (let [template-tags {"table" {:id           "abc"

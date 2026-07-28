@@ -61,6 +61,20 @@ describe("useTimelineEvents", () => {
     });
   });
 
+  it("should request only the selected timelines, in stable order", async () => {
+    const { result } = setup({
+      settings: { "timeline.selected_timeline_ids": [2, 1] },
+    });
+
+    await waitFor(() => {
+      expect(result.current.timelineEvents).toHaveLength(3);
+    });
+
+    const calls = fetchMock.callHistory.calls("path:/api/timeline");
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toContain("id=1&id=2");
+  });
+
   it("should filter out excluded events", async () => {
     const { result } = setup({
       settings: {

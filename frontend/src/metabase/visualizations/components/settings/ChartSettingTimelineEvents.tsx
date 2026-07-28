@@ -5,10 +5,10 @@ import { useListTimelinesQuery } from "metabase/api";
 import { Checkbox, Loader, Stack, Text } from "metabase/ui";
 import type { Timeline, TimelineId } from "metabase-types/api";
 
-interface ChartSettingTimelineEventsProps {
+export type ChartSettingTimelineEventsProps = {
   value: TimelineId[] | undefined;
   onChange: (value: TimelineId[]) => void;
-}
+};
 
 export const ChartSettingTimelineEvents = ({
   value,

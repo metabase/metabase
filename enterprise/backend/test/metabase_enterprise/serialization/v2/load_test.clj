@@ -1024,6 +1024,65 @@
                        (:name event2))
                     "existing event name should be updated")))))))))
 
+(deftest timeline-viz-settings-test
+  (testing "a Card's `timeline.selected_timeline_ids` round-trips through Timeline entity ids"
+    (let [serialized (atom nil)
+          coll1s     (atom nil)
+          user1s     (atom nil)
+          timeline1s (atom nil)
+          timeline2s (atom nil)
+          event1s    (atom nil)
+          card1s     (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (reset! user1s     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+          (reset! coll1s     (ts/create! :model/Collection :name "col1"))
+          (reset! timeline1s (ts/create! :model/Timeline :name "Releases" :creator_id (:id @user1s)
+                                         :collection_id (:id @coll1s)))
+          (reset! timeline2s (ts/create! :model/Timeline :name "Incidents" :creator_id (:id @user1s)
+                                         :collection_id (:id @coll1s)))
+          (reset! event1s    (ts/create! :model/TimelineEvent :name "First thing" :timeline_id (:id @timeline1s)
+                                         :creator_id (:id @user1s) :timezone "America/New_York"
+                                         :timestamp (t/local-date 2022 11 3)))
+          (reset! card1s     (ts/create! :model/Card :name "Chart with timelines" :creator_id (:id @user1s)
+                                         :collection_id (:id @coll1s)
+                                         :visualization_settings
+                                         {:timeline.selected_timeline_ids       [(:id @timeline1s) (:id @timeline2s)]
+                                          :timeline.excluded_timeline_event_ids [(:id @event1s)]}))
+          (reset! serialized (into [] (serdes.extract/extract {})))
+          (let [card (->> (by-model @serialized "Card")
+                          (filter #(= (:entity_id %) (:entity_id @card1s)))
+                          first)
+                viz  (:visualization_settings card)]
+            (testing "selected timelines are exported as entity ids"
+              (is (= [(:entity_id @timeline1s) (:entity_id @timeline2s)]
+                     (:timeline.selected_timeline_ids viz))))
+            (testing "excluded event ids are left as raw appdb ids - TimelineEvent has no portable identity"
+              (is (= [(:id @event1s)]
+                     (:timeline.excluded_timeline_event_ids viz))))
+            (testing "the Card depends on both Timelines, so they load first"
+              (let [deps (set (serdes/deserialization-dependencies card))]
+                (is (contains? deps [{:model "Timeline" :id (:entity_id @timeline1s)}]))
+                (is (contains? deps [{:model "Timeline" :id (:entity_id @timeline2s)}]))))))
+        (ts/with-db dest-db
+          (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          ;; Decoys, so the imported Timelines can't accidentally land on the same appdb ids they had in source-db.
+          (dotimes [n 3]
+            (ts/create! :model/Timeline :name (str "Decoy " n) :creator_id (:id @user1s)
+                        :collection_id (:id (ts/create! :model/Collection :name (str "decoy-col-" n)))))
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [timeline1d (t2/select-one :model/Timeline :entity_id (:entity_id @timeline1s))
+                timeline2d (t2/select-one :model/Timeline :entity_id (:entity_id @timeline2s))
+                viz        (t2/select-one-fn :visualization_settings :model/Card :entity_id (:entity_id @card1s))]
+            (testing "sanity check: the Timelines got different appdb ids on the target"
+              (is (not= (:id @timeline1s) (:id timeline1d))))
+            (testing "selected timelines resolve to the target's appdb ids"
+              (is (= [(:id timeline1d) (:id timeline2d)]
+                     (:timeline.selected_timeline_ids viz))))
+            (testing "excluded event ids are passed through untouched"
+              (is (= [(:id @event1s)]
+                     (:timeline.excluded_timeline_event_ids viz))))))))))
+
 (deftest users-test
   ;; Users are serialized as their email address. If a corresponding user is found during deserialization, its ID is
   ;; used. However, if no such user exists, a new one is created with mostly blank fields.

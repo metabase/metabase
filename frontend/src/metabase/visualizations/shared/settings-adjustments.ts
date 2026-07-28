@@ -4,6 +4,8 @@ const HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD = 360;
 const HIDE_X_AXIS_LABEL_HEIGHT_THRESHOLD = 200;
 const HIDE_Y_AXIS_HEIGHT_THRESHOLD = 150;
 const INTERPOLATE_LINE_THRESHOLD = 150;
+const HIDE_TIMELINE_EVENTS_HEIGHT_THRESHOLD = 200;
+const HIDE_TIMELINE_EVENTS_WIDTH_THRESHOLD = 240;
 
 type getAdjustedSettingsProps = {
   settings: ComputedVisualizationSettings;
@@ -35,6 +37,13 @@ export const getDashboardAdjustedSettings = ({
 
   if (height <= HIDE_Y_AXIS_HEIGHT_THRESHOLD) {
     adjusted["graph.y_axis.axis_enabled"] = false;
+  }
+
+  if (
+    height <= HIDE_TIMELINE_EVENTS_HEIGHT_THRESHOLD ||
+    width <= HIDE_TIMELINE_EVENTS_WIDTH_THRESHOLD
+  ) {
+    adjusted["timeline.selected_timeline_ids"] = [];
   }
 
   return adjusted;

@@ -105,3 +105,55 @@
                  (mt/user-http-request :rasta :get 403 "timeline/collection/root" :include "events")))))
       (testing "If we grant perms, then we can read the timelines"
         (mt/user-http-request :rasta :get 200 "timeline/collection/root" :include "events")))))
+
+(deftest list-timelines-id-filter-test
+  (testing "GET /api/timeline?id="
+    (mt/with-temp [:model/Collection coll-a {:name "Collection A"}
+                   :model/Collection coll-b {:name "Collection B"}
+                   :model/Timeline tl-a  {:name          "Timeline A"
+                                          :collection_id (u/the-id coll-a)}
+                   :model/Timeline tl-b  {:name          "Timeline B"
+                                          :collection_id (u/the-id coll-b)}
+                   :model/Timeline _tl-c {:name          "Timeline C"
+                                          :collection_id (u/the-id coll-b)}]
+      (testing "only the requested timelines are returned"
+        (is (= #{"Timeline A" "Timeline B"}
+               (timeline-names (mt/user-http-request :rasta :get 200 "timeline"
+                                                     :id [(u/the-id tl-a) (u/the-id tl-b)])))))
+      (testing "a single id can be passed"
+        (is (= #{"Timeline A"}
+               (timeline-names (mt/user-http-request :rasta :get 200 "timeline"
+                                                     :id (u/the-id tl-a))))))
+      (testing "requested timelines in unreadable collections are silently omitted"
+        (perms/revoke-collection-permissions! (perms-group/all-users) coll-b)
+        (is (= #{"Timeline A"}
+               (timeline-names (mt/user-http-request :rasta :get 200 "timeline"
+                                                     :id [(u/the-id tl-a) (u/the-id tl-b)]))))))))
+
+(deftest list-timelines-events-range-test
+  (testing "GET /api/timeline?include=events&start=TIME&end=TIME"
+    (mt/with-temp [:model/Collection coll {:name "Collection"}
+                   :model/Timeline tl {:name          "Timeline"
+                                       :collection_id (u/the-id coll)}
+                   ;; the temp defaults set {:time_matters true}
+                   :model/TimelineEvent _ {:name        "event-2020"
+                                           :timeline_id (u/the-id tl)
+                                           :timestamp   #t "2020-01-01T10:00:00.0Z"}
+                   :model/TimelineEvent _ {:name        "event-2021"
+                                           :timeline_id (u/the-id tl)
+                                           :timestamp   #t "2021-01-01T10:00:00.0Z"}
+                   :model/TimelineEvent _ {:name        "event-2022"
+                                           :timeline_id (u/the-id tl)
+                                           :timestamp   #t "2022-01-01T10:00:00.0Z"}]
+      (testing "start and end bound the hydrated events"
+        (is (= #{"event-2021"}
+               (event-names (mt/user-http-request :rasta :get 200 "timeline"
+                                                  :id (u/the-id tl)
+                                                  :include "events"
+                                                  :start "2020-06-01T00:00:00.0Z"
+                                                  :end   "2021-06-01T00:00:00.0Z")))))
+      (testing "without start/end all unarchived events are returned"
+        (is (= #{"event-2020" "event-2021" "event-2022"}
+               (event-names (mt/user-http-request :rasta :get 200 "timeline"
+                                                  :id (u/the-id tl)
+                                                  :include "events"))))))))

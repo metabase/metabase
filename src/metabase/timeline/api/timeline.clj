@@ -44,20 +44,30 @@
       (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*}))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
-  "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines."
+  "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines. Pass one or more `id`s to
+  fetch only those timelines; unreadable ids are silently omitted. When `include=events`, `start` and `end` bound the
+  hydrated events."
   [_route-params
-   {:keys [include], archived? :archived} :- [:map
-                                              [:include  {:optional true} ::include]
-                                              [:archived {:default false} ms/BooleanValue]]]
+   {:keys [include start end], archived? :archived, ids :id}
+   :- [:map
+       [:include  {:optional true} ::include]
+       [:archived {:default false} ms/BooleanValue]
+       [:id       {:optional true} (ms/QueryVectorOf ms/PositiveInt)]
+       [:start    {:optional true} ms/TemporalString]
+       [:end      {:optional true} ms/TemporalString]]]
   (let [timelines (->> (t2/select :model/Timeline
                                   {:where    [:and
                                               [:= :archived archived?]
+                                              (when (seq ids)
+                                                [:in :id ids])
                                               (collection/visible-collection-filter-clause)]
                                    :order-by [[:%lower.name :asc]]})
                        (map collection.root/hydrate-root-collection))]
-    (cond->> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)
+    (cond-> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)
       (= include :events)
-      (map #(timeline-event/include-events-singular % {:events/all? archived?})))))
+      (timeline-event/include-events {:events/all?  archived?
+                                      :events/start (when start (u.date/parse start))
+                                      :events/end   (when end (u.date/parse end))}))))
 
 (api.macros/defendpoint :get "/:id" :- ::Timeline
   "Fetch the `Timeline` with `id`. Include `include=events` to unarchived events included on the timeline. Add

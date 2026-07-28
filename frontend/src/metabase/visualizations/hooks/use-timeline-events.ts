@@ -42,11 +42,21 @@ export function useTimelineEvents({
     selectedTimelineIds != null &&
     selectedTimelineIds.length > 0;
 
+  // Sorted copy so that the same selection always produces the same cache key,
+  // letting dashcards with equal selections share one request.
+  const timelineIds = useMemo(
+    () =>
+      selectedTimelineIds ? [...selectedTimelineIds].sort((a, b) => a - b) : [],
+    [selectedTimelineIds],
+  );
+
   const {
     data: timelines = [],
     isLoading,
     isError,
-  } = useListTimelinesQuery(shouldFetch ? { include: "events" } : skipToken);
+  } = useListTimelinesQuery(
+    shouldFetch ? { id: timelineIds, include: "events" } : skipToken,
+  );
 
   const timelineEvents = useMemo(() => {
     if (timelineEventsProp) {
