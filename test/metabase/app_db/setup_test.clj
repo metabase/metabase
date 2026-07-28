@@ -7,6 +7,7 @@
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.test-util :as mdb.test-util]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -139,22 +140,139 @@
              (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false))))))
 
 (deftest downgrade-detection-test
+  ;; Simulates an existing instance that predates version tracking: it has no databasechangelog_version table, so
+  ;; downgrade detection lazily backfills the recorded version from the changeset ids. A fresh DB is used per version
+  ;; because `update-to-changelog-id` runs migrations without the recording listener -- the backfill snapshots the
+  ;; state at first read, so reusing one DB across versions would not reflect later migrations.
   (mt/test-drivers #{:h2 :mysql :postgres}
-    (mt/with-temp-empty-app-db [conn driver/*driver*]
-      ;; migrate to v45
+    (doseq [version [45 46]]
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (update-to-changelog-id (format "v%d.00-001" version) conn)
+        ;; pretend this binary is v0.44 -- older than the v45/v46 the DB was migrated to, so it must be a downgrade
+        (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.44.0")]
+          (is (thrown-with-msg?
+               Exception (re-pattern (format "You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version %d." version))
+               (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))))))
+
+(deftest downgrade-detection-recorded-version-test
+  (testing "downgrade detection goes off the recorded version of the last deployment; a synthetic (dev) version warns"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db             (.getDatabase liquibase)
+                versions-table liquibase/databasechangelog-versions-table
+                ;; an arbitrary released major to play "this binary's version" -- every recorded version below is
+                ;; fabricated relative to it (999 above it, 1000 the synthetic floor), so its exact value is irrelevant
+                binary-major   64]
+            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" binary-major))]
+              (testing "a recorded synthetic (development) version does NOT block a real binary -- it only warns"
+                (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = 'x.1000.0.0'" versions-table)])
+                (is (= "x.1000.0.0" (liquibase/last-deployment-version conn db)))
+                (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))
+                    "a dev build having touched the DB is the developer's problem, not a reason to refuse to boot"))
+              (testing "a recorded real version newer than this binary is a genuine downgrade and blocks"
+                (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = 'x.999.0'" versions-table)])
+                (is (= "x.999.0" (liquibase/last-deployment-version conn db)))
+                (is (thrown-with-msg?
+                     Exception #"migrate down` from version 999"
+                     (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
+              (testing "does not throw when the recorded version is not newer than this binary"
+                (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = 'x.%d.0'" versions-table binary-major)])
+                (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))))))))
+
+(deftest noop-boot-of-newer-binary-preserves-downgrade-test
+  (testing "a newer binary that boots without running any migrations must not block the previous binary from booting"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)
+        (liquibase/with-liquibase [_liquibase conn]
+          (let [versions-table liquibase/databasechangelog-versions-table
+                ;; an arbitrary released major playing the installing binary's version; the newer binaries below are
+                ;; fabricated relative to it, so its exact value is irrelevant
+                latest         64]
+            ;; make the recorded install version deterministic: this DB was installed by v0.<latest>
+            (jdbc/execute! {:connection conn}
+                           [(format "UPDATE %s SET metabase_version = 'x.%d.0'" versions-table latest)])
+            (testing "a no-op boot of the NEXT major is recorded as history, but does not move the schema's version"
+              (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" (inc latest)))]
+                (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))
+                (mdb.setup/migrate! (mdb.connection/data-source) :up))
+              (is (= 1 (count (jdbc/query {:connection conn}
+                                          [(format "SELECT 1 FROM %s WHERE metabase_version LIKE 'x.%d.%%'"
+                                                   versions-table (inc latest))])))
+                  "the newer major's boot is captured in history"))
+            (testing "the previous binary still boots"
+              (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" latest))]
+                (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))
+            (testing "even a much newer stamp on the deployment cannot mask the version that ran it: the earliest row wins"
+              (let [last-dep (:deployment_id (first (jdbc/query {:connection conn}
+                                                                [(format "SELECT deployment_id FROM %s LIMIT 1" versions-table)])))]
+                (jdbc/execute! {:connection conn}
+                               [(format "INSERT INTO %s (deployment_id, metabase_version, deployed_at) VALUES (?, ?, ?)" versions-table)
+                                last-dep
+                                (format "x.%d.0" (+ latest 2))
+                                (java.sql.Timestamp/from (.plus (java.time.Instant/now) (java.time.Duration/ofMinutes 5)))]))
+              (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" latest))]
+                (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))
+                    "the stamp does not block the binary whose major actually ran the deployment")))))))))
+
+(deftest downgrade-check-creates-persistent-version-table-test
+  (testing "the version table lazily created during downgrade detection persists (committed) for other connections"
+    ;; This guards the in-memory \"already created\" tracking in ensure-databasechangelog-versions-table!: if the
+    ;; CREATE ran on a pooled, autocommit-off connection and were rolled back on close, a later connection that trusts
+    ;; the in-memory flag would skip creation and then fail. Most relevant on Postgres (transactional DDL).
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        ;; simulate an existing instance (has changesets, no version table yet)
+        (update-to-changelog-id "v45.00-001" conn)
+        ;; latest-available >> 45, so this does NOT throw; it lazily creates + backfills the version table
+        (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))
+        (testing "version table exists and is populated when read from a separate connection"
+          (is (seq (jdbc/query {:datasource (mdb.connection/data-source)}
+                               [(format "SELECT deployment_id, metabase_version FROM %s"
+                                        liquibase/databasechangelog-versions-table)]))))))))
+
+(defn- versions-table-exists?*
+  "Whether `databasechangelog_version` exists, checked without creating it. Unquoted DDL identifiers are folded to
+  upper case by H2 and lower case by Postgres, so check both."
+  [conn]
+  (boolean (or (liquibase/table-exists? "databasechangelog_version" conn)
+               (liquibase/table-exists? "DATABASECHANGELOG_VERSION" conn))))
+
+(deftest migrations-sql-includes-version-tracking-test
+  (testing "the manual-upgrade SQL (`migrate print`) records the version bookkeeping"
+    ;; Regression: the version row and the vNN.legacy-version-tracking marker are written by the exec listener, which
+    ;; only runs when Metabase itself executes the migrations. A manual `migrate print` + apply-the-SQL upgrade left
+    ;; neither, silently disabling downgrade detection for both older binaries (which read the marker) and newer ones
+    ;; (which read databasechangelog_version).
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        ;; an existing pre-version-tracking install partway through history, with plenty of unrun changesets
+        (update-to-changelog-id "v45.00-001" conn)
+        (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.64.0")]
+          (liquibase/with-liquibase [liquibase conn]
+            (let [sql (liquibase/migrations-sql liquibase)]
+              (testing "backfills the pre-upgrade version for the existing install"
+                (is (re-find #"(?i)INSERT INTO databasechangelog_version[^;]+x\.45\.0\.0" sql)))
+              (testing "records the upgrading version"
+                (is (re-find #"(?i)INSERT INTO databasechangelog_version[^;]+x\.64\.0" sql)))
+              (testing "adds the legacy version-tracking marker so older binaries detect downgrades"
+                (is (re-find #"v64\.legacy-version-tracking" sql)))
+              (testing "the version table is created by the printed SQL, not on the live database"
+                (is (re-find #"(?i)CREATE TABLE IF NOT EXISTS databasechangelog_version" sql))
+                (is (false? (versions-table-exists?* conn))
+                    "`migrate print` must not mutate the database"))))))))
+  (testing "a dev build's SQL records its synthetic version but never a marker"
+    (mt/with-temp-empty-app-db [conn :h2]
       (update-to-changelog-id "v45.00-001" conn)
-      ;; the latest changeSet in `000_legacy_migrations.yaml` is `v44.00-044`. We can simulate a downgrade to that
-      ;; version by telling Liquibase that's the migrations file.
-      (mt/with-dynamic-fn-redefs [liquibase/decide-liquibase-file (fn [& _args] "liquibase_legacy_migrations.yaml")]
-        (is (thrown-with-msg?
-             Exception #"You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version 45."
-             (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
-      ;; check that the error correctly reports the version to run `downgrade` from
-      (update-to-changelog-id "v46.00-001" conn)
-      (mt/with-dynamic-fn-redefs [liquibase/decide-liquibase-file (fn [& _args] "liquibase_legacy_migrations.yaml")]
-        (is (thrown-with-msg?
-             Exception #"You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version 46."
-             (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))))
+      (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [sql (liquibase/migrations-sql liquibase)]
+            (is (re-find #"(?i)INSERT INTO databasechangelog_version" sql))
+            (is (not (re-find #"legacy-version-tracking" sql)))
+            (is (false? (versions-table-exists?* conn))
+                "computing the dev synthetic version on the print path must not create the table")))))))
 
 (deftest changesets-from-later-version-test
   (mt/test-drivers #{:h2 :mysql :postgres}
@@ -172,15 +290,33 @@
                                      VALUES (?, 'test', 'test.yaml', CURRENT_TIMESTAMP, ?, 'EXECUTED', 'fake')"
                                     table)
                             id (+ 99990 i)]))
+          ;; ... plus a version-less changeset applied by a later deployment: nothing in its id reveals its version,
+          ;; only its deployment's recorded ran-version does
+          (jdbc/execute! db-conn
+                         [(format "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, md5sum, deployment_id)
+                                   VALUES ('zz_versionless_cs', 'test', 'migrations/2026/test.yaml', CURRENT_TIMESTAMP, 99993, 'EXECUTED', 'fake', 'futuredep')"
+                                  table)])
+          ;; ... plus an OLD changeset that merely re-ran (RERAN) under that later deployment (an edited runOnChange
+          ;; changeset): it is not "from" the later version and must not be listed
+          (jdbc/execute! db-conn
+                         [(format "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, md5sum, deployment_id)
+                                   VALUES ('zz_reran_cs', 'test', 'migrations/2026/test.yaml', CURRENT_TIMESTAMP, 99994, 'RERAN', 'fake', 'futuredep')"
+                                  table)])
+          (liquibase/record-deployment-version! conn "futuredep" "x.999.1")
           (try
             (let [later (liquibase/changesets-from-later-version conn (.getDatabase liquibase) 997 999)]
-              (testing "returns exactly the fake changeset IDs in execution order"
-                (is (= fake-ids later))))
+              (testing "returns the versioned AND version-less changeset IDs in execution order"
+                (is (= (conj fake-ids "zz_versionless_cs") later)))
+              (testing "re-run (RERAN) rows of the later deployment are not listed"
+                (is (not (some #{"zz_reran_cs"} later)))))
             (finally
               ;; Clean up fake rows
-              (doseq [id fake-ids]
+              (doseq [id (conj fake-ids "zz_versionless_cs" "zz_reran_cs")]
                 (jdbc/execute! db-conn
-                               [(format "DELETE FROM %s WHERE id = ?" table) id])))))))))
+                               [(format "DELETE FROM %s WHERE id = ?" table) id]))
+              (jdbc/execute! db-conn
+                             [(format "DELETE FROM %s WHERE deployment_id = 'futuredep'"
+                                      liquibase/databasechangelog-versions-table)]))))))))
 
 ;; `delete!` below is ok in a parallel test since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}

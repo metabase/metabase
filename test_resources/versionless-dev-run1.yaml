@@ -1,0 +1,16 @@
+# Test changelog for metabase.app-db.liquibase-test/dev-consecutive-migration-runs-are-separate-deployments-test.
+# Simulates a dev instance's FIRST migration run. `versionless-dev-run2.yaml` is the same changelog after the
+# developer adds a second migration; a shared logicalFilePath keeps changeset identity stable across the two files.
+databaseChangeLog:
+  - logicalFilePath: migrations/2026/versionless_dev.yaml
+  - changeSet:
+      id: dev_run_a
+      author: test
+      comment: first dev migration run (scenario test)
+      changes:
+        - createTable:
+            tableName: dev_run_a_table
+            columns:
+              - column:
+                  name: id
+                  type: int
