@@ -38,6 +38,15 @@
   [table]
   (mi/can-read? table))
 
+(defn- filter-readable-table-children
+  "Remove hydrated `:segments` and `:measures` the current user cannot read. Their `can-read?` is their Table's, so
+  the already-fetched `table` is passed along to avoid re-fetching it per row."
+  [table]
+  (letfn [(readable [children] (filterv #(mi/can-read? (assoc % :table table)) children))]
+    (-> table
+        (update :segments readable)
+        (update :measures readable))))
+
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
@@ -52,6 +61,7 @@
     (-> table
         (update :collection nil-if-unreadable)
         (#(apply t2/hydrate % hydration-keys))
+        filter-readable-table-children
         (m/dissoc-in [:db :details])
         format-fields-for-response
         present-table
@@ -80,6 +90,7 @@
                                        (not include-sensitive-fields?) (conj :sensitive))]
        (for [table tables]
          (-> table
+             filter-readable-table-children
              (m/dissoc-in [:db :details])
              format-fields-for-response
              present-table

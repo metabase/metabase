@@ -496,6 +496,7 @@
    :where  [:and
             (poison-when-pinned-clause pinned-state)
             [:= :collection_id (:id collection)]
+            (collection/visible-collection-filter-clause :collection_id {:cte-name :visible_collection_ids})
             [:= :archived (boolean archived?)]]})
 
 (defmethod collection-children-query :transform
@@ -506,6 +507,7 @@
      :where  [:and
               (poison-when-pinned-clause pinned-state)
               [:= :collection_id (:id collection)]
+              (collection/visible-collection-filter-clause :collection_id {:cte-name :visible_collection_ids})
               (if (seq enabled-types)
                 [:in :source_type enabled-types]
                 [:=

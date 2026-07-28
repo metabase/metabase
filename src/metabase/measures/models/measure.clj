@@ -19,6 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.table :as table]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -59,6 +60,14 @@
      (mi/can-read? table)))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
+
+(defn visible-filter-clause
+  "HoneySQL predicate selecting Measures (by `table-id-column`, default `:table_id`, qualified when the query joins
+  other tables) that the current user can read. The SQL counterpart of `mi/can-read? :model/Measure` above, which
+  delegates to the Measure's Table -- so this delegates to the Table clause the same way. Returns nil when no
+  filtering is needed; HoneySQL drops a nil conjunct, so callers can unconditionally AND this into a WHERE clause."
+  ([] (visible-filter-clause :table_id))
+  ([table-id-column] (table/visible-filter-clause table-id-column)))
 
 ;; Measures can be written by superusers or data analysts with unrestricted view data permissions,
 ;; but only if the parent table is editable (not in a remote-synced collection in read-only mode).

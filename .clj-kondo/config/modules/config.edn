@@ -1286,7 +1286,8 @@
            permissions
            remote-sync
            search
-           util}
+           util
+           warehouse-schema}
    :model-exports #{:model/Measure}
    :model-imports #{:model/Collection :model/Table :model/User}}
 
@@ -2065,6 +2066,7 @@
            remote-sync
            search
            util
+           warehouse-schema
            xrays}
    :model-exports #{:model/Segment}
    :model-imports #{:model/Collection :model/Table :model/User}}
@@ -2411,6 +2413,7 @@
    :api  #{metabase.transforms.core
            metabase.transforms.feature-gating
            metabase.transforms.init
+           metabase.transforms.models.transform-tag
            metabase.transforms.schema
            metabase.transforms.util}
    :uses #{analytics-interface

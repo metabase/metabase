@@ -6,6 +6,7 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.measures.models.measure :as measure]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -99,7 +100,9 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
   []
-  (as-> (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}) measures
+  (as-> (t2/select :model/Measure
+                   {:where    [:and [:= :archived false] (measure/visible-filter-clause)]
+                    :order-by [[:%lower.name :asc]]}) measures
     (filter mi/can-read? measures)
     (t2/hydrate measures :creator :definition_description)))
 
