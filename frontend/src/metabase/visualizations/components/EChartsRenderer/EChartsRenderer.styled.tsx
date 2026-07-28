@@ -5,6 +5,16 @@ export const EChartsRendererRoot = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
+
+  /* Chart geometry is computed in physical pixels (axis margins, tick offsets,
+   * label gutters), but SVG text-anchor start/end resolves against the
+   * writing direction — so under dir="rtl" labels anchored with end extend
+   * the wrong way and land on top of the plot. Pin the rendering surface to LTR;
+   * bidi still shapes each text run, so Arabic/Hebrew labels read correctly. */
+  & svg,
+  & canvas {
+    direction: ltr;
+  }
   /* HACK: zrender adds user-select: none to the root svg element which prevents users from selecting text on charts */
   @media (hover: hover) {
     & svg {

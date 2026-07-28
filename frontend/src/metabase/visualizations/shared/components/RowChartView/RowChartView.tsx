@@ -126,7 +126,15 @@ const RowChartView = <TDatum,>({
   ]);
 
   return (
-    <svg width={width ?? undefined} height={height ?? undefined} style={style}>
+    // `direction: ltr` because the layout below is computed in physical pixels
+    // while SVG text-anchor start/end resolve against the writing direction: in
+    // RTL the y-axis labels would otherwise extend over the plot area. Bidi still
+    // shapes each label, so Arabic/Hebrew text reads correctly.
+    <svg
+      width={width ?? undefined}
+      height={height ?? undefined}
+      style={{ direction: "ltr", ...style }}
+    >
       <Group top={margin.top} left={margin.left}>
         <GridColumns
           // Unjustified type cast. FIXME
