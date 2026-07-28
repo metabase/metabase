@@ -10,20 +10,13 @@
        :metric-description <one-sentence metric description, model-generated>
        :reasoning          <one-sentence score justification, kept for debugging>}
 
-  - `:score` ranges match `metabase.interestingness.core/chart-interestingness` so the two
-    compose cleanly.
-  - `:chart-description` describes the metric+dimension combination as a single human
-    sentence (always generated, regardless of authored description).
-  - `:metric-description` is generated **only** when the caller did not pass
-    `card-description`; otherwise it's nil (we trust the user-authored text and don't
-    waste tokens rewriting it).
+  - `:score` is on the same scale as `metabase.interestingness.core/chart-interestingness`.
+  - `:chart-description` describes the metric+dimension combination, and is always generated.
+  - `:metric-description` is generated only when the caller passed no `card-description`;
+    otherwise it is nil.
 
   The LLM call, prompt construction, and response parsing live in
-  [[metabase.contextual-interestingness.llm]]; this namespace is the thin user-facing seam.
-
-  Lives in its own module (rather than inside `interestingness`) because `metabot` already
-  `:uses interestingness`; routing the LLM call back through `metabot.self` from inside
-  `interestingness` would form a module cycle."
+  [[metabase.contextual-interestingness.llm]]; this namespace is the thin user-facing seam."
   (:require
    [clojure.string :as str]
    [metabase.contextual-interestingness.llm :as llm]
@@ -43,27 +36,21 @@
 
       {:score :chart-description :metric-description :reasoning}
 
-  or nil when the call can't or shouldn't run (blank context, nil chart-config, or the shared
-  [[metabase.metabot.core/llm-call-available?]] gate is closed — Metabot disabled, provider
-  unconfigured, over usage limits, or the current user lacks permission) and on any failure
-  (malformed response, network error). Never throws.
+  or nil when the call can't or shouldn't run (blank context, nil chart-config, or a closed
+  [[metabase.metabot.core/llm-call-available?]] gate) and on any failure. Never throws.
 
   Inputs:
     `:chart-config`     — same shape as `chart-interestingness` consumes. Required.
     `:context-string`   — user's natural-language question. Required (blank → nil out).
     `:stats`            — optional already-computed `compute-chart-stats` result for
-                          `chart-config`. Pass it when you have one: it's what the prompt's
-                          chart block is rendered from, so supplying it skips recomputing the
-                          stats pipeline. Omitted → shallow stats are computed here.
-    `:card-description` — optional already-authored metric description. When present, the
-                          model is instructed not to regenerate it; `:metric-description`
-                          in the response is always nil.
-    `:chart-slicing`    — optional one-line description of how this chart slices its metric
-                          (segment filter, top-N + Other rollup, specific-values subset,
-                          per-value over-time view). The model is instructed to fold it into
-                          `:chart-description`. Nil-safe.
-    `:sql`              — optional compiled SQL string for the underlying query. Used as
-                          extra semantic context for description generation. Nil-safe."
+                          `chart-config`. Pass it when you have one; omitted → shallow stats
+                          are computed here.
+    `:card-description` — optional already-authored metric description. When present,
+                          `:metric-description` in the response is always nil.
+    `:chart-slicing`    — optional one-line description of how this chart slices its metric,
+                          folded into `:chart-description`. Nil-safe.
+    `:sql`              — optional compiled SQL for the underlying query, used as extra
+                          semantic context. Nil-safe."
   [{:keys [chart-config context-string] :as inputs}]
   (try
     (cond

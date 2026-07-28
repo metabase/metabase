@@ -82,10 +82,24 @@ either a bug, or it means callers must handle each case themselves — and
 in *that* case it is the *absence* of the property that must be
 documented. Document deviations from expectation, not conformance to it.
 
-Heuristic: if a sentence would still be true after a full rewrite of the
-body, it may belong in the docstring. If it describes *how the current
-body works*, it belongs in the body — as an inline comment, if it is
-non-obvious.
+Heuristic, in two parts — the second is the one that gets skipped:
+
+1. If a sentence describes *how the current body works*, it belongs in
+   the body, as an inline comment if it is non-obvious.
+2. If a sentence would survive a rewrite of this body **because it is
+   about someone else's code**, cut it. Surviving the rewrite is not the
+   test; *owning the fact* is. "Lib only offers binning strategies when
+   the column has a defined min/max" stays true no matter what you do
+   here — which is exactly the problem. You have written a claim about a
+   namespace you do not control, in a place no test or compiler checks,
+   and it will rot without anyone noticing. Name the callee and let its
+   docstring answer for it.
+
+Say each fact once. A namespace docstring that re-summarizes its own
+multimethods, a caller that re-explains its callee's gating, three
+sibling functions with the same paragraph about retries — these are the
+same defect as a stale comment, just pre-staged. Pick the one var that
+owns the fact and point the others at it.
 
 Multi-line docstrings are not banned — a genuinely non-obvious constraint
 the code had to deal with can be worth explaining. But be prudent; the

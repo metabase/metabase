@@ -722,16 +722,10 @@
        `created_at` stays reliable even after the creation revision ages out of the
        `revision/max-revisions` cap.
 
-  Membership is the inner join to the per-exploration MAX-timestamp aggregate (`agg`), so an
-  exploration appears iff the user produced at least one touch. The MAX is the sort key (no
-  `GREATEST`, whose NULL semantics differ across app DBs). `current_user_last_touched_at` is
-  therefore non-null for every row. `archived = false` and the read-permission visibility filter
-  on `collection_id` (which drops explorations moved into collections the user can no longer see)
-  keep the `COUNT(*) OVER ()` total honest. `limit`/`offset` are appended only when paged.
-
-  `my-touches` is embedded as a derived table inside `agg` rather than as a sibling CTE: a second
-  `:with` binding that selects from the first (`agg` reading `my_touches`) silently returns no
-  rows under our HoneySQL/H2 stack."
+  An exploration appears iff the user produced at least one touch, and `archived`/unreadable ones
+  are excluded — so the `COUNT(*) OVER ()` total matches what the caller sees.
+  `current_user_last_touched_at` is non-null on every row. `limit`/`offset` are appended only when
+  paged."
   [user-id limit offset]
   (let [my-touches {:union-all
                     [{:select [[:model_id :eid] [:timestamp :ts]]
@@ -740,6 +734,9 @@
                      {:select [[:id :eid] [:created_at :ts]]
                       :from   [:exploration]
                       :where  [:= :creator_id user-id]}]}
+        ;; MAX rather than GREATEST — the latter's NULL semantics differ across app DBs. And
+        ;; `my-touches` is a derived table here rather than a sibling CTE: a second `:with` binding
+        ;; that selects from the first silently returns no rows under our HoneySQL/H2 stack.
         agg        {:select   [:eid [[:max :ts] :max_ts]]
                     :from     [[my-touches :my_touches]]
                     :group-by [:eid]}]

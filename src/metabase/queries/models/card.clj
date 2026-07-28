@@ -838,18 +838,16 @@
 
 (def ^:private ^:dynamic *syncing-metric-dimensions*
   "Recursion guard — `sync-dimensions!` itself performs a Card update (to persist `:dimensions`)
-   which would otherwise re-enter the after-update hook. Tests may bind via `#'` to suppress
-   the auto-sync entirely."
+   which would otherwise re-enter the after-update hook. Bind to `true` to suppress the auto-sync."
   false)
 
 (defn- maybe-sync-metric-dimensions!
-  "If `card` is a metric, compute and persist its dimensions. Wrapped in try/catch so that
-   a sync failure never blocks the surrounding Card insert/update — UXW-4083."
+  "If `card` is a metric, compute and persist its dimensions. Failures will not block the surrounding Card insert/update."
   [card]
   (when (and (not *syncing-metric-dimensions*)
              (= :metric (:type card)))
     (binding [*syncing-metric-dimensions* true]
-      (try
+      (try ; UXW-4083
         (metrics/sync-dimensions! :metadata/metric (:id card))
         (catch Exception e
           (log/warnf e "Failed to sync dimensions for metric card %s" (:id card)))))))

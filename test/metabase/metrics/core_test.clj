@@ -69,6 +69,25 @@
           (is (some? (:dimension_mappings reloaded))
               "Dimension mappings should be persisted to database"))))))
 
+(deftest metric-sync-dimensions-is-idempotent-test
+  (testing "re-syncing an unchanged metric must not rewrite its dimensions. Every dimension carries
+            the id of the column group it came from, and `dimensions-changed?` compares that id, so
+            a group id generated afresh on each compute would make every sync — including the ones
+            on read paths — perform a write."
+    (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :venues)
+                                       :dataset_query (metric-query)}]
+      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (let [dimensions #(t2/select-one-fn :dimensions :model/Card :id (:id metric))
+            before     (dimensions)]
+        (is (seq before)
+            "Dimensions should be persisted by the first sync")
+        (metrics/sync-dimensions! :metadata/metric (:id metric))
+        (is (= before (dimensions))
+            "A second sync over an unchanged metric rewrote the stored dimensions")))))
+
 (deftest metric-sync-dimensions-preserves-user-modifications-test
   (testing "sync-dimensions! preserves user modifications like display-name for metrics"
     (mt/with-temp [:model/Card metric {:name "Test Metric"

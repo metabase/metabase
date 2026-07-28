@@ -28,8 +28,7 @@
 
 (defn type-isa?
   "Does `column`'s type derive from `parent`? Checks the effective type (falling back to the
-   base type) and the semantic type, mirroring the semantics of `metabase.lib.types.isa/isa?`
-   for the snake_case dimension shape."
+   base type) and the semantic type."
   [column parent]
   (clojure.core/boolean
    (or (clojure.core/isa? (column-type column) parent)

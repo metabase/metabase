@@ -1,17 +1,10 @@
 (ns metabase.explorations.query-plan.mechanical
   "Mechanical (deterministic) implementation of
-  `metabase.explorations.query-plan.planner/QueryPlanner`. For every
-  (metric, dimension) pair where the dimension resolves on the metric, emit
-  the eligible variants — `default`, `top-n-other`, `temporal-pattern-day`,
-  `temporal-pattern-hour`, `time-facet`. `default` and `top-n-other` are
-  cardinality-banded: known-low → default only; known-mid → both; known-high
-  or unknown → top-n-other only (the unbounded `default` shape must not be
-  emitted when cardinality might be high).
+  `metabase.explorations.query-plan.planner/QueryPlanner`. For each
+  (metric, dimension) pair, emit the query variants the dimension is eligible for.
 
-  Used as a fallback when the LLM isn't configured, and as the implementation
-  reachable by setting an explicit override. Always succeeds (outcome `:ok`
-  or `:skip-not-applicable`); there is no LLM to fail on and no validation
-  needed — every emitted item is well-formed by construction."
+  Always succeeds (outcome `:ok` or `:skip-not-applicable`); every emitted item
+  is well-formed by construction."
   (:require
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.explorations.query-plan.planner :as planner]))

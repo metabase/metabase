@@ -4,23 +4,10 @@
 
    Scorer contract: `(fn [field]) -> double-or-nil`
    - field:  map of field/dimension metadata (kebab-case keys)
-   - return: a double in [0.0, 1.0] where 0.0 = uninteresting, 1.0 = very interesting,
-             OR nil meaning \"this scorer has no signal for this field\" (e.g. a
-             text scorer applied to a numeric field, or any scorer applied to a
-             field without a fingerprint). [[score-only]] excludes nil-scoring
-             scorers from *both* the numerator and the denominator of the
-             weighted average — missing signals neither penalize nor reward the
-             field, they simply don't participate. If every scorer returns nil,
-             the result falls back to 0.5 (neutral baseline).
-
-   Score semantics:
-     nil         No signal (don't participate in the average)
-     0.0         Hard exclude (e.g. PK, hidden field)
-     0.01-0.29   Very low value, likely noise
-     0.30-0.49   Below average
-     0.50        Neutral
-     0.51-0.74   Decent, typical useful field
-     0.75-1.0    High value for exploration"
+   - return: a double in [0.0, 1.0], 0.0 = uninteresting and 1.0 = very interesting, where
+             0.0 is a hard exclude and 0.5 is neutral. Or nil, meaning this scorer has no
+             signal for this field (e.g. a text scorer applied to a numeric field). See
+             [[score-only]] for how nils are folded into the weighted average."
   (:require
    [clojure.set :as set]))
 
@@ -32,9 +19,8 @@
   "Hard-zero fields whose data values carry no exploratory meaning regardless of the
    role they're being scored for (dimension or measure):
    - `:type/PK`: opaque row identifiers
-   - numeric `:type/FK`: opaque row references — grouping by one gives a bar per id
-     value (the QP refuses to bin `:Relation/*` columns), and aggregating one is
-     meaningless. Non-numeric FKs (e.g. a country code referencing a lookup table)
+   - numeric `:type/FK`: opaque row references — neither groupable nor meaningfully
+     aggregatable. Non-numeric FKs (e.g. a country code referencing a lookup table)
      keep their data meaning and are not penalized.
    - `:type/Collection` / `:type/Structured`: structured blobs (JSON, XML, arrays,
      dictionaries, text-stored serialized JSON) — not groupable or aggregatable

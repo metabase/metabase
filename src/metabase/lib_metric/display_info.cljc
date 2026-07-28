@@ -29,11 +29,8 @@
 
 (defn default-display-info
   "Default implementation that extracts common fields from an entity.
-   Used as the base for type-specific implementations.
-
-   `:long-display-name` defaults to `:display-name`; type-specific methods that
-   compute a fancier name (e.g. the group-prefixed dimension name) or a fallback
-   `:display-name` are expected to override both keys together."
+   Used as the base for type-specific implementations. `:long-display-name` defaults
+   to `:display-name`."
   [_definition x]
   (let [display-name   (or (:display-name x) (:name x))
         effective-type (:effective-type x)
@@ -72,9 +69,10 @@
                          (:name metric))
         shown-name   (or display-name (i18n/tru "Metric"))]
     (merge (default-display-info definition metric)
-           ;; metrics have no group prefix, so the long display name is just the display name;
-           ;; override both so they stay consistent with the fallback (`default-display-info`
-           ;; wouldn't set either when the metric has no display name at all).
+           ;; Metrics have no group prefix, so the long display name is just the display name.
+           ;; Both keys are overridden together because this method supplies a fallback
+           ;; `:display-name` — `default-display-info` sets neither when the metric has no name
+           ;; at all, and they must not disagree.
            {:display-name      shown-name
             :long-display-name shown-name}
            (when-let [col-name (or (:result-column-name metric)
@@ -104,6 +102,8 @@
                          (:name dimension)
                          (i18n/tru "Dimension"))
         group        (:group dimension)
+        ;; the only display info whose :long-display-name diverges from :display-name — dimensions
+        ;; from a connected table are prefixed with the group name
         long-name    (if (and group (not= "main" (:type group)))
                        (str (:display-name group) " → " display-name)
                        display-name)]

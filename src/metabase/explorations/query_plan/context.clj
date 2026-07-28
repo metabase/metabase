@@ -279,13 +279,13 @@
       (nth ref-clause 2 nil))))
 
 (defn- explore-filter-dimension-target
-  "The `top-n-other` variant breaks out on a synthetic CASE expression named after its dimension
-  (`qp.variants/dataset-query \"top-n-other\"`: `expr-name = (or display_name dimension_id \"value\")`)
-  that lives only on the variant query, not the metric Card — so a click ref against it resolves to
-  no Card column and can't be labeled (Field-id lookup) or applied. Map that expression name back to
-  the dimension's real `:target` via the prebuilt `{dimension_id → target}` index, so the drilled
-  filter scopes the actual column. Returns the target ref, or nil when `field-ref` isn't such an
-  expression."
+  "Map a `top-n-other` bar's synthetic CASE-expression click ref back to its dimension's real
+  `:target`, so the drilled filter scopes the actual column. Returns `nil` when `field-ref` isn't such
+  an expression.
+
+  - `block-dimensions`: the block's dimension selections, with `:dimension-id` and `:display-name`
+                        (when set)
+  - `target-by-dim-id`: a map `{dimension-id target}`."
   [block-dimensions target-by-dim-id field-ref]
   (when-let [expr-name (expression-ref-name field-ref)]
     (some (fn [dim]

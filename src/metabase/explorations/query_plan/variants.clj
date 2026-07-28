@@ -1,28 +1,10 @@
 (ns metabase.explorations.query-plan.variants
-  "Variant builders for planned exploration queries.
+  "Variant builders for planned exploration queries, split across three multimethods.
 
-  Each variant is split into three single-responsibility multimethods:
-
-    - `plan-rows`     — eager. Emits one or more row *recipes* the
-                        orchestrator inserts as `ExplorationQuery` rows.
-                        Recipes carry `:query_type`, `:display`, `:segment_id`,
-                        and `:params` (a JSON-able map). They do NOT carry
-                        `:name` or `:dataset_query` — both are deferred.
-    - `query-name`    — runner-side. Returns the localized chart name. Pure
-                        for everything except `per-value-time-series`, which
-                        consults the discovery cache for the value at
-                        `:params.value_index`.
-    - `dataset-query` — runner-side. Returns the MBQL `:dataset_query`. Pure
-                        for default/temporal-pattern-*/time-facet/filtered-
-                        subset; runs (cached) discovery for `top-n-other` and
-                        `per-value-time-series`.
-
-  Discovery queries (`run-top-k-discovery`) for the two variants that need
-  them are deduplicated in-process via `discovery-cache`, a TTL cache. Both
-  `query-name` and `dataset-query` go through the cache, so a *successful* QP
-  call runs at most once per cache key while the entry stays warm and fresh;
-  a failed one isn't cached at all, so the next row retries it. The key
-  includes the user the discovery ran as — see `cached-discovery`."
+  [[plan-rows]] runs at plan time and emits the row recipes the orchestrator inserts as
+  `ExplorationQuery` rows. [[query-name]] and [[dataset-query]] run runner-side, once a row is
+  about to execute. Recipes carry no `:name` or `:dataset_query`: both are deferred so plan time
+  runs no warehouse queries."
   (:require
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]

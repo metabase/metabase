@@ -1,13 +1,12 @@
 (ns metabase.explorations.query-plan.mbql
-  "Pure MBQL helpers shared between the variant builders and the
-  `metabase.explorations.query-plan.context` namespace. Nothing here calls the
-  LLM or persists state — everything is a thin wrapper over `metabase.lib`
-  that the variant builders compose."
+  "Pure MBQL helpers, thin wrappers over `metabase.lib`. Nothing here calls the
+  LLM or persists state."
   (:require
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.metrics.core :as metrics]))
+   [metabase.metrics.core :as metrics]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,15 +34,10 @@
   snapshot type. Returns one of:
     `[:temporal unit]`  — apply via `lib/with-temporal-bucket`
     `[:binning binning]` — apply via `lib/with-binning`
-    `nil`               — no bucket; use a bare breakout.
-
-  Resolution order matters: DateTime first (it derives from both HasDate and
-  HasTime), then Date, then Time. Keys (PK/FK) are checked before the binning
-  branches — lib offers no binning strategies for `:Relation/*` columns (see
-  `metabase.lib.field`), so treating a numeric key as binnable would make the
-  planner assume a ≤20-bar chart the QP can't actually produce. Coordinates
-  come before generic numbers because Coordinate also derives from Number."
+    `nil`               — no bucket; use a bare breakout."
   [dim]
+  ;; Branch order is load-bearing: each type below derives from the one after it. DateTime
+  ;; derives from both Date and Time, keys from Number, and Coordinate from Number.
   (cond
     (dim-type-isa? dim :type/DateTime)   [:temporal :month]
     (dim-type-isa? dim :type/Date)       [:temporal :day]
@@ -55,25 +49,17 @@
 
 (def default-binning-max-bins
   "Upper bound on how many bars Metabase's `:default` binning strategy
-  produces on the chart. The actual number depends on the column's min/max
-  fingerprint and database-specific bin-width logic in
-  `metabase.query-processor.middleware.binning`, but it never exceeds this
-  cap. Using the cap (rather than a per-dim estimate) lets the planner
-  short-circuit cardinality checks for auto-binned dims: any variant whose
-  bar/series budget is `>=` this value is satisfied by construction."
+  produces on the chart. The actual number depends on
+  `metabase.query-processor.middleware.binning`, but it never exceeds this. Used
+  as a conservative cap so cardinality checks can short-circuit for auto-binned dims."
   20)
 
 (defn effective-cardinality
-  "Number of x-axis cells the dim will produce on a chart *after* the default
-  bucket/binning fires:
+  "Upper bound on the x-axis cells the dim will produce once bucketing is applied:
 
-  - Numeric dims with default binning → `default-binning-max-bins`. The real
-    count is usually lower, but the upper bound is what gates eligibility
-    decisions (chart-width, series-count budgets).
-  - Temporal dims → `nil`. Cardinality isn't the right axis to reason about
-    them on; callers should use the temporal unit.
-  - All other dims → raw `:fingerprint.global.distinct-count`, or `nil` if
-    the fingerprint is missing."
+  - binned dims → [[default-binning-max-bins]]
+  - temporal dims → `nil`. You should reason by temporal unit instead.
+  - otherwise → `:fingerprint.global.distinct-count` or `nil` (if missing)"
   [dim]
   (let [[kind] (default-bucket-for-dim dim)]
     (case kind
@@ -83,18 +69,13 @@
 
 (defn binnable-ref?
   "True if `ref-clause` can actually be binned on `query` — i.e. lib offers at least one
-  binning strategy for it. Lib only offers strategies when the column resolves to a real
-  Field whose fingerprint has a defined `:min`/`:max` range (and the database supports
-  binning); anything else would crash the QP's binning middleware at preprocess time."
+  binning strategy for it. Binning a ref that fails the check would crash the QP."
   [query ref-clause]
   (boolean (seq (lib/available-binning-strategies query -1 ref-clause))))
 
 (defn apply-default-bucket
-  "Apply a default temporal bucket / numeric binning to the breakout `ref-clause`,
-  chosen from the dim's snapshot effective/semantic type. Numeric binning is
-  gated on lib actually offering a binning strategy for the column (see
-  [[binnable-ref?]]) — without that the QP throws at preprocess time. Returns
-  the (possibly unchanged) ref."
+  "Return `ref-clause` with this dim's default temporal bucket or binning applied. Unchanged
+  when the dim has no default, or when the column can't be binned. See [[binnable-ref?]]"
   [query ref-clause dim]
   (let [[kind v] (default-bucket-for-dim dim)]
     (case kind
@@ -114,10 +95,11 @@
   target is missing, name-based, or not a `:field` ref."
   [target]
   (let [ref-clause (normalize-target-ref target)]
-    (when (and (vector? ref-clause) (= :field (first ref-clause)))
-      (let [id-or-name (nth ref-clause 2 nil)]
-        (when (pos-int? id-or-name)
-          id-or-name)))))
+    ;; targets are read back from JSON at rest and may not normalize into a well-formed ref at all.
+    ;; `lib/field-ref-id` is schema-instrumented and throws on anything that isn't a valid `:field`
+    ;; clause, so check before handing it over.
+    (when (mr/validate :mbql.clause/field ref-clause)
+      (lib/field-ref-id ref-clause))))
 
 (defn default-temporal-breakout-col
   "If `base-query` carries a temporal breakout (the metric's default temporal
@@ -127,7 +109,7 @@
   resolution throws. The raw unit may be `nil` if the metric breakout was unbucketed.
 
   Prefer this over [[extract-default-temporal-breakout-col]] when the caller already
-  holds the Lib query — building one is the expensive half."
+  holds the Lib query — building one is expensive."
   [base-query]
   (try
     (let [cols (lib/visible-columns base-query)]

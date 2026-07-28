@@ -376,27 +376,18 @@
   see [[report-token-usage-xf]]. Gating field:
     :required-permission - A `:permission/metabot-*` keyword the current user
                            must hold (as `:yes`) in addition to the base
-                           `:permission/metabot` (which is always checked).
-                           When the base perm or this perm is not granted,
-                           the reducible emits a single `:error` part with
-                           `:error-code \"permission_denied\"` instead of
-                           opening the provider stream. Callers that omit
-                           this field still get the base check, plus a
-                           log/warn pointing at their source/tag.
+                           `:permission/metabot`, which is always checked.
+                           Omitting it still gets the base check, plus a
+                           log/warn pointing at the caller's source/tag.
 
-  `llm-opts` is an optional map of provider-facing call options. Currently this
-  supports `:tool-choice`, used by profiles like `:sql` that must end in a tool
-  call instead of plain assistant text.
+  `llm-opts` is an optional map of provider-facing call options — see
+  [[parse-provider-model]]'s adapters for what each one honors.
 
-  Returns a reducible that, when consumed, traces the full LLM round-trip
-  (HTTP call + streaming response) as an OTel span. Retries transient errors
-  (429 rate limit, 529 overloaded, connection errors) up to 3 attempts with
-  exponential backoff, matching the Python ai-service retry behavior.
-
-  Before opening the stream, enforces global usage limits (via
-  [[metabase.metabot.usage/check-usage-limits!]]); on a hit, returns a
-  reducible that yields a single `:error` part with `:error-code
-  \"ai_usage_limit_reached\"`."
+  Returns a reducible that, when consumed, traces the full LLM round-trip as an
+  OTel span and retries transient errors with exponential backoff. Global usage
+  limits and the permission gate are enforced before the stream opens; either
+  one failing yields a reducible of a single `:error` part rather than throwing
+  (`\"ai_usage_limit_reached\"` and `\"permission_denied\"` respectively)."
   ([provider-and-model system-msg parts tools tracking-opts]
    (call-llm provider-and-model system-msg parts tools tracking-opts nil))
   ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice]}]
@@ -446,21 +437,15 @@
   structured tool call itself, and usage. Useful for debugging *why* the model
   produced what it did.
 
-  Before calling the provider, enforces global usage limits (via
-  [[metabase.metabot.usage/check-usage-limits!]]) and the caller's metabot
-  permissions (the base `:permission/metabot` is always checked; the optional
-  `:required-permission` adds a second perm). On a usage-limit hit, throws
-  an `ex-info` with `:type :metabot/usage-limit-reached`. On a permission
-  denial, throws an `ex-info` with `:type :metabot/permission-denied`.
-  Callers that want to fall back silently are expected to catch these
-  explicitly.
+  Unlike [[call-llm]], the usage-limit and permission gates THROW here rather than
+  yielding an `:error` part — `ex-info` with `:type :metabot/usage-limit-reached`
+  or `:metabot/permission-denied`. Callers wanting to fall back silently must
+  catch them.
 
   `opts` extends `tracking-opts` and may include:
     :required-permission  - A `:permission/metabot-*` keyword that the current
                             user must hold (as `:yes`) in addition to the base
-                            `:permission/metabot` (which is always checked).
-                            When nil, only the base check runs and a log/warn
-                            fires pointing at the caller's source/tag.
+                            `:permission/metabot`, which is always checked.
 
   A leading {:role \"system\" ...} message in `messages` is forwarded as the
   provider system prompt, keeping untrusted content in the user channel."
@@ -539,12 +524,8 @@
 
   Uses tool_choice to force the model to call a 'json' tool with the given schema,
   then collects the streamed response and extracts the parsed tool arguments.
-  Includes the same retry logic as [[call-llm]] for transient errors.
 
-  Inherits the usage-limit and permission gating from
-  [[call-llm-structured-with-trace]]: throws `:metabot/usage-limit-reached` /
-  `:metabot/permission-denied` ex-infos before the provider is called, and warns
-  when `:required-permission` is missing from `opts`.
+  Retry and gating behavior is [[call-llm-structured-with-trace]]'s.
 
   Args:
     model         - Model identifier (e.g. \"openrouter/anthropic/claude-haiku-4.5\")

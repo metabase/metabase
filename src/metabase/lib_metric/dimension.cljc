@@ -49,7 +49,7 @@
 
 (defn same-source?
   "True when two dimensions share at least one common source. Returns false if either dimension has
-   no sources. Mirrors `metabase.lib-metric.js/isSameSource` (which delegates here)."
+   no sources."
   [dim-a dim-b]
   (let [sources-a (:sources dim-a)
         sources-b (:sources dim-b)]
@@ -73,8 +73,9 @@
   "Groups dimensions that transitively share sources into equivalence classes via union-find.
    Returns a vector of vectors, where each inner vector contains dimensions that share at least
    one source (matching the semantics of [[same-source?]]). Dimensions with no sources are each
-   placed in their own singleton group. Dimensions with duplicate `:id` values within a group
-   are deduplicated."
+   placed in their own singleton group. Within a group, dimensions with duplicate `:id` values are
+   deduplicated by dropping all but the first — no reconciliation of the dropped copies is
+   attempted, so callers that care about the difference must dedupe before calling."
   [dimensions]
   (let [dims (vec dimensions)
         n    (count dims)]
