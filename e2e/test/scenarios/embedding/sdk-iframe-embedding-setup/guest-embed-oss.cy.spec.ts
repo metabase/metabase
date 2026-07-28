@@ -212,7 +212,7 @@ describe(
 
         H.getSimpleEmbedIframeContent()
           .findByTestId("question-download-widget-button")
-          .should("have.css", "background-color", "rgb(12, 28, 39)");
+          .should("have.css", "background-color", "rgb(7, 23, 34)");
 
         H.publishChanges("card");
         cy.button("Unpublish").should("be.visible");
