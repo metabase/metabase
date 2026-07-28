@@ -1,4 +1,4 @@
-(ns metabase.app-db.partitions
+(ns metabase.audit-app.task.partitions
   "The query_execution table is partitioned by date for performance.
   As time goes on, we need to ensure that new partitions are added and old ones
   get detached as they cycle out of the retention window.
@@ -8,8 +8,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [metabase.app-db.connection :as connection]
-   [metabase.app-db.env :as env]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit-app]
    [metabase.task.core :as task]
    [next.jdbc :as next.jdbc]))
@@ -21,7 +20,7 @@
 (defn- partition-for [date]
   (format "query_execution_%s_%02d" (t/year date) (.getValue (t/month date))))
 
-(defn- date-for-partition [partition]
+(defn- start-date-for-partition [partition]
   ;; partitions are named like "query_execution_2026_07"
   (let [[_ year month] (re-find #"query_execution_(\d+)_(\d+)" partition)]
     (t/local-date (parse-long year) (parse-long month))))
@@ -30,26 +29,28 @@
   "Given current partitions and the current time, what new partitions are needed?
   Returns a sequence of maps with :name, :from, and :to keys."
   [partitions now]
-  (let [latest-date (apply t/max (t/local-date 1970) (map date-for-partition partitions))]
+  (let [latest-date (apply t/max (t/local-date 1970)
+                           (map start-date-for-partition partitions))]
     (for [date [(t/adjust now :first-day-of-month)
                 (t/adjust now :first-day-of-next-month)]
           :let [name (partition-for date)]
           :when (t/after? date latest-date)]
       {:name name
-       :from (t/format "YYYY-MM-dd" date)
-       :to (t/format "YYYY-MM-dd" (t/adjust date :first-day-of-next-month))})))
+       :from (t/format "yyyy-MM-dd" date)
+       :to (t/format "yyyy-MM-dd" (t/adjust date :first-day-of-next-month))})))
 
-(defn- detach? [retention-cutoff partition]
-  (t/before? (date-for-partition partition) retention-cutoff))
+(defn- keep? [retention-earliest partition]
+  (let [end-date (t/adjust (start-date-for-partition partition)
+                           :first-day-of-next-month)]
+    (t/after? end-date retention-earliest)))
 
 (defn partitions-to-detach
   "Given current partitions, time and retention days, which are due to be detached?"
   [partitions now retention-days]
   (if (or (nil? retention-days) (zero? retention-days))
     []
-    (let [retention-cutoff (t/min (t/minus now (t/days retention-days))
-                                  (t/adjust now :first-day-of-month))]
-      (filter (partial detach? retention-cutoff) partitions))))
+    (let [retention-earliest (t/minus now (t/days retention-days))]
+      (remove (partial keep? retention-earliest) partitions))))
 
 ;;; and now for the side-effects...
 
@@ -85,9 +86,9 @@
 
 (task/defjob ^:private ^{org.quartz.DisallowConcurrentExecution true}
   ManagePartitions [_]
-  (when (= :postgres env/db-type) ; mysql/h2 don't have partitions
+  (when (= :postgres (mdb/db-type)) ; mysql/h2 don't have partitions
     (let [retention-days (audit-app/audit-max-retention-days)]
-      (with-open [conn (.getConnection (connection/data-source))]
+      (with-open [conn (.getConnection (mdb/data-source))]
         (manage-partitions conn (t/local-date) retention-days)))))
 
 (defmethod task/init! ::ManagePartitions [_]

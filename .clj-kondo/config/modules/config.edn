@@ -347,8 +347,7 @@
            metabase.app-db.init
            metabase.app-db.setup
            metabase.app-db.transient-error}
-   :uses #{audit-app
-           auth-provider
+   :uses #{auth-provider
            classloader
            config
            connection-pool

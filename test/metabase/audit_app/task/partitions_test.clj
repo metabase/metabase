@@ -1,10 +1,9 @@
-(ns metabase.app-db.partitions-test
+(ns metabase.audit-app.task.partitions-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.app-db.connection :as connection]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.partitions :as partitions]
+   [metabase.audit-app.task.partitions :as partitions]
    [next.jdbc :as next.jdbc]))
 
 (set! *warn-on-reflection* true)
@@ -31,7 +30,7 @@
 (deftest partitions-to-detach-test
   (let [existing (partitions-for-months 4 5 6 7)]
     (is (= [] (partitions/partitions-to-detach existing now 0)))
-    (is (= (partitions-for-months 4 5 6)
+    (is (= (partitions-for-months 4 5)
            (set (partitions/partitions-to-detach existing now 7))))
     (is (= (partitions-for-months 4 5 6)
            (set (partitions/partitions-to-detach existing mid-month 7))))
@@ -39,15 +38,15 @@
            (set (partitions/partitions-to-detach existing now 30))))
     (is (= [] (partitions/partitions-to-detach existing now 100)))
     (testing "future months"
-      (is (= (partitions-for-months 4 5 6 7)
+      (is (= (partitions-for-months 4 5 6)
              (set (partitions/partitions-to-detach existing next-month 7))))
-      (is (= (partitions-for-months 4 5 6 7)
+      (is (= (partitions-for-months 4 5 6)
              (set (partitions/partitions-to-detach existing next-month 30))))
       (is (= (partitions-for-months 4)
-             (set (partitions/partitions-to-detach existing next-month 100))))
+             (set (partitions/partitions-to-detach existing next-month 90))))
       (is (= (partitions-for-months 4 5 6 7)
              (set (partitions/partitions-to-detach existing nnext-month 30))))
-      (is (= (partitions-for-months 4 5)
+      (is (= (partitions-for-months 4)
              (set (partitions/partitions-to-detach existing nnext-month 100)))))))
 
 (defn drop-all-tables [conn]
@@ -59,7 +58,7 @@
 
 (deftest manage-partitions
   (when (= :postgres (mdb/db-type))
-    (with-open [conn (.getConnection (connection/data-source))]
+    (with-open [conn (.getConnection (mdb/data-source))]
       (try
         (testing "Normal progression of time"
           (drop-all-tables conn)
