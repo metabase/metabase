@@ -1,8 +1,7 @@
 (ns metabase.channel.render.js.graal-test
   (:require
    [clojure.test :refer :all]
-   [metabase.channel.render.js.graal :as graal]
-   [metabase.test :as mt])
+   [metabase.channel.render.js.graal :as graal])
   (:import
    (org.graalvm.polyglot Context Engine PolyglotException Value)))
 
@@ -11,9 +10,9 @@
 (defn- do-with-untrusted-context
   "Run `f` with an UNTRUSTED isolate context on its own throwaway engine, closing both afterwards."
   [f]
-  (let [^Engine engine (#'graal/new-untrusted-plugin-engine)]
+  (let [^Engine engine (#'graal/new-untrusted-engine)]
     (try
-      (let [^Context context (graal/untrusted-plugin-context engine)]
+      (let [^Context context (graal/untrusted-context engine)]
         (try
           (f context)
           (finally
@@ -21,28 +20,21 @@
       (finally
         (.close engine)))))
 
-(deftest make-context-test
-  (testing "can make a context that evaluates javascript"
-    (let [context (graal/create-context)]
-      (graal/load-js-string context "function plus (x, y) { return x + y }" "plus test")
-      (is (= 3 (.asLong (graal/execute-fn-name context "plus" 1 2))))))
-  (testing "can invoke closures return from that javascript"
-    (let [context (graal/create-context)]
-      (graal/load-js-string context "function curry_plus (x) { return function (y) { return x + y}}"
-                            "curried function test")
-      (let [curried (graal/execute-fn-name context "curry_plus" 1)]
-        (is (= 3 (.asLong (graal/execute-fn curried 2))))))))
+(deftest untrusted-context-evaluates-js-test
+  (testing "can evaluate javascript in the UNTRUSTED isolate"
+    (do-with-untrusted-context
+     (fn [^Context context]
+       (graal/load-js-string context "function plus (x, y) { return x + y }" "plus test")
+       (is (= 3 (.asLong (graal/execute-fn-name context "plus" 1 2)))))))
+  (testing "can invoke closures returned from that javascript"
+    (do-with-untrusted-context
+     (fn [^Context context]
+       (graal/load-js-string context "function curry_plus (x) { return function (y) { return x + y}}"
+                             "curried function test")
+       (let [curried (graal/execute-fn-name context "curry_plus" 1)]
+         (is (= 3 (.asLong (graal/execute-fn curried 2)))))))))
 
-(deftest concurrent-execution-with-locking-test
-  (testing "concurrent execution on a shared context is safe when callers hold its monitor"
-    (let [context (graal/create-context)]
-      (graal/load-js-string context "function plus (x, y) { return x + y }" "plus test")
-      (is (= (repeat 10 2)
-             (mt/repeat-concurrently 10
-                                     #(locking context
-                                        (.asLong (graal/execute-fn-name context "plus" 1 1)))))))))
-
-(deftest untrusted-plugin-context-denies-host-access-test
+(deftest untrusted-context-denies-host-access-test
   (testing "the SandboxPolicy/UNTRUSTED isolate runs untrusted plugin JS with no host interop"
     (do-with-untrusted-context
      (fn [^Context context]
@@ -54,7 +46,7 @@
          (is (thrown? PolyglotException
                       (graal/load-js-string context "Java.type('java.lang.System')" "escape.js"))))))))
 
-(deftest untrusted-plugin-context-load-resource-test
+(deftest untrusted-context-load-resource-test
   (testing "load-resource evals into the UNTRUSTED isolate (regression: a URL-backed Source fails to marshal
             across the native-isolate boundary from a jar: URL — SourceCopyMarshaller ShouldNotReachHere — so
             load-resource must build a literal Source from the resource content)"
@@ -65,7 +57,7 @@
        (graal/load-resource context "metabase/channel/render/js/engine_test_resource.js")
        (is (= 3 (.asLong (graal/execute-fn-name context "engine_test_plus" 1 2))))))))
 
-(deftest untrusted-plugin-context-enforces-heap-limit-test
+(deftest untrusted-context-enforces-heap-limit-test
   (testing "sandbox.MaxHeapMemory terminates a plugin that exhausts the isolate heap"
     (do-with-untrusted-context
      (fn [^Context context]
@@ -83,3 +75,15 @@
          (is (some? ex) "expected the runaway allocation to be terminated, not to complete")
          (is (and ex (.isResourceExhausted ^PolyglotException ex))
              "termination should be resource exhaustion (heap limit), not some other error"))))))
+
+(deftest builtin-context-soft-limit-recycles-test
+  (let [context-identity (fn []
+                           (graal/do-with-untrusted-builtin-context
+                            (fn [^Context context]
+                              (System/identityHashCode context))))]
+    (testing "under the soft CPU budget the pooled builtin context is reused across renders"
+      (is (= (context-identity) (context-identity))))
+    (testing "over the soft CPU budget the context is recycled once its render completes"
+      (with-redefs [graal/pool-cpu-soft-limit-ms 0]
+        (is (not= (context-identity) (context-identity))
+            "the render after blowing the soft budget should get a freshly generated context")))))
