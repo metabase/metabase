@@ -681,6 +681,17 @@
    :base-url (or (llm.settings/normalize-llm-base-url base-url)
                  (llm.settings/normalize-llm-base-url (llm.settings/llm-azure-api-base-url)))})
 
+(defn- effective-chat-completions-credentials
+  "The generic Chat Completions credentials a settings request resolves to.
+
+  Non-blank request fields are layered over the saved `llm-chat-completions-*` settings, so e.g. a
+  key-only rotation keeps the saved base URL. Mirrors [[effective-azure-credentials]]."
+  [{:keys [api-key base-url]}]
+  {:api-key  (or (non-blank-string api-key)
+                 (non-blank-string (llm.settings/llm-chat-completions-api-key)))
+   :base-url (or (llm.settings/normalize-llm-base-url base-url)
+                 (llm.settings/normalize-llm-base-url (llm.settings/llm-chat-completions-api-base-url)))})
+
 (defn- request-credentials
   "The credentials override carried by a `PUT /api/metabot/settings` request body as a provider credentials map.
 
@@ -724,6 +735,20 @@
                                                         [:api-key :base-url]))})))
           creds)))
 
+    "chat-completions"
+    (when (contains? body :credentials)
+      (if (nil? credentials)
+        {:api-key  nil
+         :base-url nil}
+        (let [creds (effective-chat-completions-credentials credentials)]
+          (when-not (metabot.settings/provider-credentials-complete? provider creds)
+            (throw (ex-info (tru "Chat Completions credentials are incomplete.")
+                            {:status-code  400
+                             :api-error    true
+                             :missing-keys (vec (remove #(non-blank-string (get creds %))
+                                                        [:api-key :base-url]))})))
+          creds)))
+
     (when (contains? body :api-key)
       {:api-key (non-blank-string api-key)})))
 
@@ -756,13 +781,21 @@
   (setting/set! :llm-azure-api-key api-key)
   (setting/set! :llm-azure-api-base-url base-url))
 
+(defn- save-chat-completions-credentials!
+  "Persist a generic Chat Completions credentials map resolved by [[request-credentials]]; nil values clear those
+  settings."
+  [{:keys [api-key base-url]}]
+  (setting/set! :llm-chat-completions-api-key api-key)
+  (setting/set! :llm-chat-completions-api-base-url base-url))
+
 (defn- save-credentials!
   "Persist the credentials override resolved by [[request-credentials]]; nil leaves the saved settings untouched."
   [provider credentials]
   (when credentials
     (case provider
-      "bedrock" (save-bedrock-credentials! credentials)
-      "azure"   (save-azure-credentials! credentials)
+      "bedrock"          (save-bedrock-credentials! credentials)
+      "azure"            (save-azure-credentials! credentials)
+      "chat-completions" (save-chat-completions-credentials! credentials)
       (setting/set! (provider-api-key-setting-key provider) (:api-key credentials)))))
 
 (defn- credential-setting-keys
@@ -773,9 +806,10 @@
   is guarded only then; the other fields are always written."
   [provider credentials]
   (case provider
-    "bedrock" (cond-> [:llm-bedrock-access-key-id :llm-bedrock-secret-access-key :llm-bedrock-session-token]
-                (contains? credentials :region) (conj :llm-bedrock-region))
-    "azure"   [:llm-azure-api-key :llm-azure-api-base-url]
+    "bedrock"          (cond-> [:llm-bedrock-access-key-id :llm-bedrock-secret-access-key :llm-bedrock-session-token]
+                         (contains? credentials :region) (conj :llm-bedrock-region))
+    "azure"            [:llm-azure-api-key :llm-azure-api-base-url]
+    "chat-completions" [:llm-chat-completions-api-key :llm-chat-completions-api-base-url]
     [(provider-api-key-setting-key provider)]))
 
 (api.macros/defendpoint :put "/settings"

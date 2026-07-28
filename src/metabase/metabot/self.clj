@@ -19,6 +19,7 @@
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai :as openai]
+   [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.usage :as usage]
    [metabase.util :as u]
@@ -30,22 +31,24 @@
 (defn- resolve-adapter [provider]
   ;; a `case` inside of function instead of a map so that with-redefs work well
   (case provider
-    "anthropic"  claude/claude
-    "azure"      azure/azure
-    "bedrock"    bedrock/bedrock
-    "openai"     openai/openai
-    "openrouter" openrouter/openrouter
+    "anthropic"        claude/claude
+    "azure"            azure/azure
+    "bedrock"          bedrock/bedrock
+    "chat-completions" chat-completions/chat-completions
+    "openai"           openai/openai
+    "openrouter"       openrouter/openrouter
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
 (defn- resolve-model-lister [provider]
   ;; a `case` inside of function instead of a map so that with-redefs work well
   (case provider
-    "anthropic"  claude/list-models
-    "azure"      azure/list-models
-    "bedrock"    bedrock/list-models
-    "openai"     openai/list-models
-    "openrouter" openrouter/list-models
+    "anthropic"        claude/list-models
+    "azure"            azure/list-models
+    "bedrock"          bedrock/list-models
+    "chat-completions" chat-completions/list-models
+    "openai"           openai/list-models
+    "openrouter"       openrouter/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 

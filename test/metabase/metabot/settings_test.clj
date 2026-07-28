@@ -341,6 +341,53 @@
                  {:base-url "https://my-resource.services.ai.azure.com/openai"})))
     (is (false? (metabot.settings/provider-credentials-complete? "azure" nil)))))
 
+(deftest validate-metabot-provider-accepts-valid-direct-chat-completions-test
+  (testing "accepts chat-completions provider strings with a free-text model name"
+    (mt/with-temporary-setting-values [llm-metabot-provider "chat-completions/my-model"]
+      (is (= "chat-completions/my-model" (metabot.settings/llm-metabot-provider))))
+    (mt/with-temporary-setting-values [llm-metabot-provider "chat-completions/vendor/some-model:free"]
+      (is (= "chat-completions/vendor/some-model:free" (metabot.settings/llm-metabot-provider))))))
+
+(deftest metabot-configured-with-chat-completions-credentials-test
+  (testing "returns true when chat-completions has both the API key and base URL set"
+    (mt/with-temporary-setting-values [llm-metabot-provider              "chat-completions/my-model"
+                                       llm-chat-completions-api-key      "secret-key"
+                                       llm-chat-completions-api-base-url "https://api.example.com/v1"]
+      (is (true? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest metabot-configured-with-partial-chat-completions-credentials-test
+  (testing "returns false when chat-completions has an API key but no base URL"
+    (mt/with-temporary-setting-values [llm-metabot-provider              "chat-completions/my-model"
+                                       llm-chat-completions-api-key      "secret-key"
+                                       llm-chat-completions-api-base-url nil]
+      (is (false? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest configured-provider-credentials-chat-completions-fully-configured-test
+  (testing "returns the api-key/base-url credentials map when chat-completions is fully configured"
+    (mt/with-temporary-setting-values [llm-chat-completions-api-key      "secret-key"
+                                       llm-chat-completions-api-base-url "https://api.example.com/v1"]
+      (is (= {:api-key  "secret-key"
+              :base-url "https://api.example.com/v1"}
+             (metabot.settings/configured-provider-credentials "chat-completions"))))))
+
+(deftest configured-provider-credentials-chat-completions-partial-credentials-test
+  (testing "returns nil when chat-completions has a base URL but no API key"
+    (mt/with-temporary-setting-values [llm-chat-completions-api-key      nil
+                                       llm-chat-completions-api-base-url "https://api.example.com/v1"]
+      (is (nil? (metabot.settings/configured-provider-credentials "chat-completions"))))))
+
+(deftest provider-credentials-complete?-chat-completions-test
+  (testing "chat-completions credentials are complete only with both a non-blank API key and base URL"
+    (is (true? (metabot.settings/provider-credentials-complete?
+                "chat-completions"
+                {:api-key "secret-key" :base-url "https://api.example.com/v1"})))
+    (is (false? (metabot.settings/provider-credentials-complete? "chat-completions" {:api-key "secret-key"})))
+    (is (false? (metabot.settings/provider-credentials-complete? "chat-completions" {:api-key "secret-key" :base-url "  "})))
+    (is (false? (metabot.settings/provider-credentials-complete?
+                 "chat-completions"
+                 {:base-url "https://api.example.com/v1"})))
+    (is (false? (metabot.settings/provider-credentials-complete? "chat-completions" nil)))))
+
 (deftest provider-credentials-complete?-api-key-provider-test
   (testing "API-key provider credentials are complete only with a non-blank :api-key"
     (is (true? (metabot.settings/provider-credentials-complete? "openai" {:api-key "sk-valid"})))
