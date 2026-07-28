@@ -87,3 +87,18 @@
       (with-redefs [graal/pool-cpu-soft-limit-ms 0]
         (is (not= (context-identity) (context-identity))
             "the render after blowing the soft budget should get a freshly generated context")))))
+
+(deftest rendering-is-globally-serialized-test
+  (testing "the global render-lock serializes all rendering: concurrent renders never overlap"
+    (let [active   (atom 0)
+          max-seen (atom 0)
+          render   (fn []
+                     (graal/do-with-untrusted-builtin-context
+                      (fn [^Context context]
+                        (swap! max-seen max (swap! active inc))
+                        (.eval context "js" "for (var i=0,x=0;i<1e6;i++) x+=i; x")
+                        (swap! active dec))))
+          futs     (doall (repeatedly 4 #(future (render))))]
+      (doseq [f futs] @f)
+      (is (= 1 @max-seen)
+          "at most one static-viz render should ever be in flight at once"))))
