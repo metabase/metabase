@@ -101,7 +101,9 @@
    [:owner_email {:optional true} [:maybe :string]]
    [:owner {:optional true} [:maybe OwnerResponse]]
    [:last_checkpoint_value {:optional true} [:maybe :string]]
-   ;; :secrets never appears: model selects strip it (see transform model after-select)
+   ;; :secrets never appears: model selects strip it (see transform model after-select).
+   ;; GET /:id carries the configured names as :secret_keys.
+   [:secret_keys {:optional true} [:sequential :string]]
    [:sync_state {:optional true} [:maybe :any]]
    [:can_read {:optional true} :boolean]
    [:can_write {:optional true} :boolean]
@@ -308,8 +310,9 @@
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]
-            ;; env-var map for python transforms; write-only (responses expose :secret_keys)
-            [:secrets {:optional true} [:maybe [:map-of ms/NonBlankString :string]]]]]
+            ;; env-var map for python transforms; write-only and merged per key: a nil value
+            ;; removes that secret, unmentioned keys are kept (responses expose :secret_keys)
+            [:secrets {:optional true} [:maybe [:map-of ms/NonBlankString [:maybe :string]]]]]]
   (api/write-check :model/Transform id)
   (transforms.core/update-transform! id body))
 

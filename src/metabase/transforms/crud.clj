@@ -151,6 +151,8 @@
         (u/update-some :last_run transforms-base.u/present-run)
         (assoc :table target-table)
         (assoc :requestable_indexes (requestable-indexes transform))
+        ;; names only — secret values never leave the server
+        (assoc :secret_keys (vec (sort (map name (keys (transform.model/secrets-for-run id))))))
         transforms.u/add-source-readable)))
 
 (defn create-transform!
@@ -213,7 +215,15 @@
                                            (transforms-base.u/target-table-exists? new)))
                                  403
                                  (deferred-tru "A table with that name already exists.")))
-                    (t2/update! :model/Transform id (dissoc body :tag_ids))
+                    ;; :secrets is a per-key merge (nil value = remove) so callers can edit
+                    ;; individual secrets without knowing the other values
+                    (t2/update! :model/Transform id
+                                (cond-> (dissoc body :tag_ids)
+                                  (contains? body :secrets)
+                                  (assoc :secrets (->> (merge (update-keys (transform.model/secrets-for-run id) name)
+                                                              (:secrets body))
+                                                       (into {} (remove (comp nil? val)))
+                                                       not-empty))))
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
