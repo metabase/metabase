@@ -10,6 +10,7 @@ SELECT
     COUNT(m.id)                                                       AS message_count,
     COUNT(CASE WHEN m.role = 'user' THEN 1 END)                       AS user_message_count,
     COUNT(CASE WHEN m.role = 'assistant' THEN 1 END)                  AS assistant_message_count,
+    COUNT(CASE WHEN m.forked_from_message_id IS NULL THEN 1 END)      AS new_message_count,
     COALESCE(MAX(a.total_tokens), 0)                                  AS total_tokens,
     COALESCE(MAX(a.prompt_tokens), 0)                                 AS prompt_tokens,
     COALESCE(MAX(a.completion_tokens), 0)                             AS completion_tokens,

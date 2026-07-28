@@ -18,7 +18,7 @@ orderBys: ["count desc"]"
 exports[`buildGroupBreakoutQuery by metric messages 1`] = `
 "filters: ["created_at is in the previous 30 days or today", "group_id is not 1"]
 joins: ["inner-join v_group_members on user_id = v_group_members.user_id"]
-aggregations: ["sum(message_count)"]
+aggregations: ["sum(new_message_count)"]
 breakouts: ["group_name"]
 orderBys: ["sum desc"]"
 `;
@@ -75,7 +75,7 @@ orderBys: ["count desc"]"
 
 exports[`buildSourceBreakoutQuery by metric messages 1`] = `
 "filters: ["created_at is in the previous 30 days or today"]
-aggregations: ["sum(message_count)"]
+aggregations: ["sum(new_message_count)"]
 breakouts: ["source_name"]
 orderBys: ["sum desc"]"
 `;
@@ -131,7 +131,7 @@ orderBys: ["count desc"]"
 
 exports[`buildTenantBreakoutQuery by metric messages 1`] = `
 "filters: ["created_at is in the previous 30 days or today", "tenant_id is not empty"]
-aggregations: ["sum(message_count)"]
+aggregations: ["sum(new_message_count)"]
 breakouts: ["tenant_id"]
 orderBys: ["sum desc"]"
 `;
@@ -163,7 +163,7 @@ breakouts: ["created_at: Day (bucket: day)"]"
 
 exports[`buildTimeseriesBreakoutQuery by metric messages 1`] = `
 "filters: ["created_at is in the previous 30 days or today"]
-aggregations: ["sum(message_count)"]
+aggregations: ["sum(new_message_count)"]
 breakouts: ["created_at: Day (bucket: day)"]"
 `;
 
