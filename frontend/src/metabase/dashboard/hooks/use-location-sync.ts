@@ -80,13 +80,13 @@ export const useLocationSync = <
           };
 
       const hashString = stringifyHashOptions(updatedOptions);
+      const hash = hashString ? "#" + hashString : "";
 
-      dispatch(
-        replace({
-          ...location,
-          hash: hashString ? "#" + hashString : "",
-        }),
-      );
+      // The effect reads `location` and replaces it, so a replace that lands on
+      // the same URL would re-enter it through the resulting location change.
+      if (hash !== location.hash) {
+        dispatch(replace({ ...location, hash }));
+      }
     }
   }, [
     dispatch,

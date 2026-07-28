@@ -109,7 +109,6 @@ export const RouterLink = forwardRef<HTMLAnchorElement, Props>(
           {...navRest}
           to={v7To}
           state={state}
-          replace={false}
           ref={linkRef}
           end={onlyActiveOnIndex}
           className={({ isActive }) =>
@@ -124,12 +123,6 @@ export const RouterLink = forwardRef<HTMLAnchorElement, Props>(
       );
     }
 
-    // v7's `<Link>` silently downgrades a click to a `replace` when the target
-    // equals the current URL. v3 always pushed, and call sites rely on it: the
-    // "New document" menu item links to `/document/new` from `/document/new`,
-    // and the unsaved-changes prompt keys off the new location. Push always.
-    return (
-      <V7Link {...rest} to={v7To} state={state} replace={false} ref={linkRef} />
-    );
+    return <V7Link {...rest} to={v7To} state={state} ref={linkRef} />;
   },
 );

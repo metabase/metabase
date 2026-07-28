@@ -28,23 +28,29 @@
       driver-api/add-alias-info
       :stages))
 
-(defn- add-source-query [driver prev-stage prev-hsql stage-hsql]
-  (let [table-alias (sql.qp/->honeysql driver (h2x/identifier :table-alias sql.qp/source-query-alias))
-        columns-metadata (get-in prev-stage [:lib/stage-metadata :columns])
-        desired-aliases (mapv :lib/desired-column-alias columns-metadata)
-        cur-hsql (cond-> (assoc stage-hsql :from [[prev-hsql [table-alias]]])
-                   (sql.qp/needs-cte-for-duplicate-cols? columns-metadata)
-                   (assoc :with [[[sql.qp/source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
-                                  prev-hsql]]
-                          :from [[table-alias]])
+(defn- desired-col-alias-ident [col]
+  (h2x/identifier :field (:lib/desired-column-alias col)))
 
-                   ;; Clear the default select if it's just :* so add-default-select can recompute it
-                   (= (:select stage-hsql) [[:*]])
-                   (dissoc :select))]
-    (#'sql.qp/add-default-select driver cur-hsql)))
+(defn- stage-source-form
+  [driver hsql stage]
+  (let [table-alias      (sql.qp/->honeysql driver (h2x/identifier :table-alias sql.qp/source-query-alias))
+        columns-metadata (get-in stage [:lib/stage-metadata :columns])]
+    (cond
+      (nil? hsql)
+      {}
 
-(defn- stage->honeysql [driver stage]
+      (sql.qp/needs-cte-for-duplicate-cols? columns-metadata)
+      {:with [[[sql.qp/source-query-alias {:columns (mapv desired-col-alias-ident columns-metadata)}]
+               hsql]]
+       :from [[table-alias]]}
+
+      :else
+      {:from [[hsql [table-alias]]]})))
+
+(defn- stage->honeysql [driver prev-from stage]
   (cond
+    ;; We don't add the source query if the stage is persisted, because the persisted query
+    ;; is already all of the previous stages materialized from the cached table
     (:persisted-info/native stage)
     (sql.qp/sql-source-query (:persisted-info/native stage) nil)
 
@@ -53,18 +59,14 @@
 
     :else
     (binding [sql.qp/*inner-query* stage]
-      (#'sql.qp/apply-top-level-clauses driver {} stage))))
+      (#'sql.qp/apply-top-level-clauses driver prev-from stage))))
 
 (defn- stages->honeysql [driver stages]
   (first
    (reduce
     (fn [[prev-hsql prev-stage] stage]
-      [(cond->> (stage->honeysql driver stage)
-         ;; We don't add the source query if the stage is persisted, because the persisted query
-         ;; is already all of the previous stages materialized from the cached table
-         (and prev-hsql (not (:persisted-info/native stage)))
-         (add-source-query driver prev-stage prev-hsql))
-       stage])
+      (let [prev-from (stage-source-form driver prev-hsql prev-stage)]
+        [(stage->honeysql driver prev-from stage) stage]))
     [nil nil]
     stages)))
 

@@ -445,6 +445,9 @@ jobs:
         uses: ./.github/actions/prepare-release-scripts
       - name: Publish draft release notes to github
         uses: actions/github-script@v9
+        env:
+          # required by getMilestoneIssues to configure GraphQL client
+          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           result-encoding: string

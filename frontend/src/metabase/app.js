@@ -49,7 +49,7 @@ import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import MetabaseSettings from "metabase/utils/settings";
 import { registerVisualizations } from "metabase/visualizations/register";
 
-import { RouterProvider } from "./router";
+import { RouterProvider, createLocationMirror } from "./router";
 import { getStore } from "./store";
 import { OverlayStackProvider } from "./ui/components/overlays/overlay-stack";
 
@@ -60,6 +60,7 @@ initializePlugins();
 function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, createV7Navigator());
   const routes = getRoutes(store);
+  const mirrorLocation = createLocationMirror(store.dispatch);
 
   createSnowplowTracker(() => getUserId(store.getState()));
   initMetaplow({
@@ -96,7 +97,9 @@ function _init(reducers, getRoutes, callback) {
               <GlobalStyles />
               {createPortal(<PortalContainer />, document.body)}
               <MetabotProvider>
-                <RouterProvider>{routes}</RouterProvider>
+                <RouterProvider onLocationChange={mirrorLocation}>
+                  {routes}
+                </RouterProvider>
               </MetabotProvider>
             </AppThemeProvider>
           </OverlayStackProvider>

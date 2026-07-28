@@ -8,7 +8,6 @@
    [metabase-enterprise.advanced-config.file.databases]
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
-   [metabase-enterprise.advanced-config.file.workspace]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.util.malli.schema :as ms]
@@ -18,12 +17,11 @@
   metabase-enterprise.advanced-config.file.api-keys/keep-me
   metabase-enterprise.advanced-config.file.databases/keep-me
   metabase-enterprise.advanced-config.file.settings/keep-me
-  metabase-enterprise.advanced-config.file.users/keep-me
-  metabase-enterprise.advanced-config.file.workspace/keep-me)
+  metabase-enterprise.advanced-config.file.users/keep-me)
 
 (api.macros/defendpoint :post "/" :- :nil
   "Apply an uploaded `config.yml` to this instance. Runs the same per-section
-  initializers (`settings`, `databases`, `users`, `api-keys`, `workspace`, ...)
+  initializers (`settings`, `databases`, `users`, `api-keys`, ...)
   the boot-time loader runs. Superuser-only.
 
   Unlike the boot-time loader, `{{env VAR}}` templates are NOT expanded — the
