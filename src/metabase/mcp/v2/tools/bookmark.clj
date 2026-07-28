@@ -75,6 +75,6 @@
         bookmark-model (get-in type->spec [type :bookmark-model])
         user-id        api/*current-user-id*]
     (if bookmarked
-      (bookmarks.api/create-bookmark! bookmark-model (:id row) user-id)
-      (bookmarks.api/delete-bookmark! bookmark-model (:id row) user-id))
+      (bookmarks.api/bookmark! bookmark-model (:id row) user-id)
+      (bookmarks.api/un-bookmark! bookmark-model (:id row) user-id))
     (common/success-content {:type type :id (:id row) :name (:name row) :bookmarked bookmarked})))

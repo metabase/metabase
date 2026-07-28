@@ -7,6 +7,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as app-db]
    [metabase.bookmarks.models.bookmark :as bookmark]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -35,20 +36,15 @@
   (let [[_ bookmark-model item-key] (lookup model)]
     (t2/exists? bookmark-model item-key id :user_id user-id)))
 
-(defn create-bookmark!
-  "Insert `user-id`'s bookmark on (`model`, `id`) and return it, or return the existing bookmark
-  when there already is one. Does not read-check the item — callers do."
+(defn bookmark!
+  "Give `user-id` a bookmark on (`model`, `id`) and return it — the existing one when there already
+  is one, so concurrent callers both get the state they asked for rather than one of them losing to
+  the (user_id, item) unique constraint. Does not read-check the item — callers do."
   [model id user-id]
   (let [[_ bookmark-model item-key] (lookup model)]
-    (try
-      (first (t2/insert-returning-instances! bookmark-model {item-key id :user_id user-id}))
-      (catch Exception e
-        ;; Concurrent inserts race the (user_id, item) unique constraint. The loser reads the
-        ;; winner's row: the caller asked for a state that now holds, so there is nothing to fail.
-        (or (t2/select-one bookmark-model item-key id :user_id user-id)
-            (throw e))))))
+    (app-db/select-or-insert! bookmark-model {item-key id :user_id user-id} (constantly {}))))
 
-(defn delete-bookmark!
+(defn un-bookmark!
   "Delete `user-id`'s bookmark on (`model`, `id`). No-op when there is none."
   [model id user-id]
   (let [[_ bookmark-model item-key] (lookup model)]
@@ -78,7 +74,7 @@
     (api/read-check item-model id)
     (api/check (not (bookmarked? model id api/*current-user-id*))
                [400 "Bookmark already exists"])
-    (create-bookmark! model id api/*current-user-id*)))
+    (bookmark! model id api/*current-user-id*)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -90,7 +86,7 @@
                           [:model Models]
                           [:id    ms/PositiveInt]]]
   ;; todo: allow admins to include an optional user id to delete for so they can delete other's bookmarks.
-  (delete-bookmark! model id api/*current-user-id*)
+  (un-bookmark! model id api/*current-user-id*)
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
