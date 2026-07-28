@@ -414,6 +414,8 @@ export const tabsReducer = createReducer<DashboardState>(
               (mapping) => ({
                 ...mapping,
                 parameter_id:
+                  // sourceToNewParameterIdMap has inline parameters only
+                  // so we need to fallback to the original mapping for dashboard level parameters
                   sourceToNewParameterIdMap[mapping.parameter_id] ??
                   mapping.parameter_id,
               }),

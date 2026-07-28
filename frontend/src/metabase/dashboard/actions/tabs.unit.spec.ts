@@ -106,7 +106,7 @@ describe("duplicateTab", () => {
     resetTempTabId();
   });
 
-  it("should duplicate header filters with new ids and remapped card mappings", () => {
+  it("should duplicate header filters with new ids and remapped card mappings (#77002)", () => {
     const headingDashcard = createMockHeadingDashboardCard({
       id: 1,
       dashboard_tab_id: 1,
