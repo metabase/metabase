@@ -9,6 +9,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-trun tru]]
    [metabase.util.log :as log]))
 
@@ -223,7 +224,13 @@
 (defmethod sql-jdbc.actions/select-created-row :mysql
   [driver create-hsql conn {:strs [insert_id]}]
   (let [jdbc-spec        {:connection conn}
-        table-components (-> create-hsql :insert-into :components)
+        ;; `:insert-into` is (possibly a vector wrapping) an h2x identifier; mariadb-java-client 3.x
+        ;; requires a non-nil table name in `getPrimaryKeys`, so we can no longer get away with handing
+        ;; it nils (2.x treated them as wildcards and returned every table's PKs)
+        insert-into      (:insert-into create-hsql)
+        table-components (h2x/identifier->components (if (h2x/identifier? insert-into)
+                                                       insert-into
+                                                       (first insert-into)))
         pks              (primary-keys driver jdbc-spec table-components)
         select-sql-args  (select-created-row-sql-args driver create-hsql pks insert_id)
         query-results    (jdbc/query jdbc-spec

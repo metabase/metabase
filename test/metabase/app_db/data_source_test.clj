@@ -66,7 +66,7 @@
 (deftest ^:parallel broken-out-details-test-4
   (testing :mysql
     (is (= (->DataSource
-            "jdbc:mysql://localhost:3306/metabase"
+            "jdbc:mysql://localhost:3306/metabase?permitMysqlScheme=true"
             {"user" "root"})
            (mdb.data-source/broken-out-details->DataSource :mysql {:host "localhost"
                                                                    :port 3306
@@ -104,7 +104,7 @@
   (testing :aws-iam
     (testing "MySQL with AWS IAM"
       (is (= (->DataSource
-              "jdbc:aws-wrapper:mysql://localhost:3306/metabase"
+              "jdbc:aws-wrapper:mysql://localhost:3306/metabase?permitMysqlScheme=true"
               {"user" "root"
                "wrapperPlugins" "iam"
                "useSSL" true
@@ -119,7 +119,7 @@
   (testing :aws-iam
     (testing "MySQL with AWS IAM and ssl-cert=trust"
       (is (= (->DataSource
-              "jdbc:aws-wrapper:mysql://localhost:3306/metabase"
+              "jdbc:aws-wrapper:mysql://localhost:3306/metabase?permitMysqlScheme=true"
               {"user" "root"
                "wrapperPlugins" "iam"
                "useSSL" true
@@ -135,7 +135,7 @@
   (testing :aws-iam
     (testing "MySQL with AWS IAM and ssl-cert path"
       (is (= (->DataSource
-              "jdbc:aws-wrapper:mysql://localhost:3306/metabase"
+              "jdbc:aws-wrapper:mysql://localhost:3306/metabase?permitMysqlScheme=true"
               {"user" "root"
                "wrapperPlugins" "iam"
                "sslMode" "VERIFY_CA"
@@ -173,25 +173,27 @@
 
 (deftest ^:parallel wonky-connection-string-test
   (testing "Should handle malformed user:password@host:port strings (#14678, #20121)"
-    (doseq [subprotocol ["postgresql" "mysql"]]
+    ;; mysql URLs get permitMysqlScheme appended (with the separator matching whether a query string exists)
+    (doseq [[subprotocol bare-suffix query-suffix] [["postgresql" "" ""]
+                                                    ["mysql" "?permitMysqlScheme=true" "&permitMysqlScheme=true"]]]
       (testing "user AND password"
         (is (= (->DataSource
-                (str "jdbc:" subprotocol "://localhost:5432/metabase")
+                (str "jdbc:" subprotocol "://localhost:5432/metabase" bare-suffix)
                 {"user" "cam", "password" "1234"})
                (mdb.data-source/raw-connection-string->DataSource (str subprotocol "://cam:1234@localhost:5432/metabase"))))
         (testing "no port"
           (is (= (->DataSource
-                  (str "jdbc:" subprotocol "://localhost/metabase")
+                  (str "jdbc:" subprotocol "://localhost/metabase" bare-suffix)
                   {"user" "cam", "password" "1234"})
                  (mdb.data-source/raw-connection-string->DataSource (str subprotocol "://cam:1234@localhost/metabase"))))))
       (testing "user only"
         (is (= (->DataSource
-                (str "jdbc:" subprotocol "://localhost:5432/metabase?password=1234")
+                (str "jdbc:" subprotocol "://localhost:5432/metabase?password=1234" query-suffix)
                 {"user" "cam"})
                (mdb.data-source/raw-connection-string->DataSource (str subprotocol "://cam@localhost:5432/metabase?password=1234"))))
         (testing "no port"
           (is (= (->DataSource
-                  (str "jdbc:" subprotocol "://localhost/metabase?password=1234")
+                  (str "jdbc:" subprotocol "://localhost/metabase?password=1234" query-suffix)
                   {"user" "cam"})
                  (mdb.data-source/raw-connection-string->DataSource (str subprotocol "://cam@localhost/metabase?password=1234")))))))))
 
@@ -245,7 +247,7 @@
 (deftest ^:parallel raw-connection-string-with-aws-iam-test-2
   (testing "Raw connection string with AWS IAM enabled for MySQL"
     (is (= (->DataSource
-            "jdbc:aws-wrapper:mysql://metabase"
+            "jdbc:aws-wrapper:mysql://metabase?permitMysqlScheme=true"
             {"user" "cam"
              "useSSL" true
              "wrapperPlugins" "iam"})

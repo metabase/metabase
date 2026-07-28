@@ -49,6 +49,11 @@
      (make-aws-iam-spec "postgresql"))
    (dissoc opts :host :port :db :aws-iam)))
 
+(defn- append-url-param
+  "Append a `param=value` pair to a connection subname/URL, using `&` when it already has a query string."
+  [url param]
+  (str url (if (str/includes? url "?") "&" "?") param))
+
 (defmethod spec :mysql
   [_ {:keys [host port db aws-iam ssl-cert]
       :or   {host "localhost", port 3306, db ""}
@@ -56,7 +61,9 @@
   (merge
    {:classname   "org.mariadb.jdbc.Driver"
     :subprotocol "mysql"
-    :subname     (make-subname host (or port 3306) db)}
+    ;; mariadb-java-client 3.x only claims `jdbc:mysql:` URLs when the URL string itself contains
+    ;; `permitMysqlScheme` (`Driver.acceptsURL` never sees the Properties), so it must ride the subname
+    :subname     (append-url-param (make-subname host (or port 3306) db) "permitMysqlScheme=true")}
    (when aws-iam
      (merge
       (make-aws-iam-spec "mysql")
