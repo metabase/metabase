@@ -127,18 +127,22 @@
 (deftest ^:parallel mcp-write-scopes-registered-test
   (testing "new MCP write-tool scopes are registered"
     (is (api-scope/registered-scope? "agent:question:update"))
+    (is (api-scope/registered-scope? "agent:question:write"))
     (is (api-scope/registered-scope? "agent:metric:create"))
     (is (api-scope/registered-scope? "agent:metric:update"))
     (is (api-scope/registered-scope? "agent:dashboard:update"))
+    (is (api-scope/registered-scope? "agent:dashboard:write"))
     (is (api-scope/registered-scope? "agent:collection:create"))
     (is (api-scope/registered-scope? "agent:sql:execute"))))
 
 (deftest ^:parallel mcp-write-scopes-defscope-vars-test
   (testing "new scope vars resolve to their string"
     (is (= "agent:question:update" scope/agent-question-update))
+    (is (= "agent:question:write" scope/agent-question-write))
     (is (= "agent:metric:create" scope/agent-metric-create))
     (is (= "agent:metric:update" scope/agent-metric-update))
     (is (= "agent:dashboard:update" scope/agent-dashboard-update))
+    (is (= "agent:dashboard:write" scope/agent-dashboard-write))
     (is (= "agent:collection:create" scope/agent-collection-create))
     (is (= "agent:sql:execute" scope/agent-sql-execute))))
 
@@ -146,6 +150,9 @@
   (testing "agent:question:update granted via metabot-nlq wildcard"
     (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
       (is (api-scope/scope-matches? scopes "agent:question:update"))))
+  (testing "agent:question:write granted via metabot-nlq wildcard"
+    (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
+      (is (api-scope/scope-matches? scopes "agent:question:write"))))
   (testing "agent:metric:create granted via metabot-nlq wildcard"
     (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
       (is (api-scope/scope-matches? scopes "agent:metric:create"))))
@@ -155,6 +162,9 @@
   (testing "agent:dashboard:update granted via metabot-other-tools wildcard"
     (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})]
       (is (api-scope/scope-matches? scopes "agent:dashboard:update"))))
+  (testing "agent:dashboard:write granted via metabot-other-tools wildcard"
+    (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})]
+      (is (api-scope/scope-matches? scopes "agent:dashboard:write"))))
   (testing "agent:collection:create granted via new agent:collection:* wildcard under metabot-other-tools"
     (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})]
       (is (contains? scopes "agent:collection:*"))
@@ -167,7 +177,9 @@
                                                     :permission/metabot-other-tools    :no
                                                     :permission/metabot-sql-generation :no})]
       (is (not (api-scope/scope-matches? scopes "agent:question:update")))
+      (is (not (api-scope/scope-matches? scopes "agent:question:write")))
       (is (not (api-scope/scope-matches? scopes "agent:dashboard:update")))
+      (is (not (api-scope/scope-matches? scopes "agent:dashboard:write")))
       (is (not (api-scope/scope-matches? scopes "agent:collection:create")))
       (is (not (api-scope/scope-matches? scopes "agent:sql:execute"))))))
 
