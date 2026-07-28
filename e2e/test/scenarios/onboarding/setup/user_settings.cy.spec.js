@@ -412,7 +412,7 @@ const assertLightMode = () =>
   cy.get("body").should("have.css", "background-color", "rgb(249, 249, 250)");
 
 const assertDarkMode = () =>
-  cy.get("body").should("have.css", "background-color", "rgb(7, 23, 34)");
+  cy.get("body").should("have.css", "background-color", "rgb(12, 28, 39)");
 
 /**
  * Stub the current user authentication method
