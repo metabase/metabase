@@ -598,68 +598,25 @@ describe("AIProviderSettingsSection", () => {
     expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
   });
 
-  it("shows Anthropic as selectable in the provider dropdown", async () => {
+  it("shows the providers as selectable in the provider dropdown", async () => {
     await setup({ savedProviderValue: null, isConfigured: false });
 
     await userEvent.click(screen.getByLabelText("Provider"));
 
-    const anthropicOption = await screen.findByRole("option", {
-      name: "Anthropic",
-    });
-    expect(anthropicOption).toBeInTheDocument();
-    expect(anthropicOption).not.toHaveAttribute("aria-disabled", "true");
-  });
-
-  it("shows OpenAI as selectable in the provider dropdown", async () => {
-    await setup({ savedProviderValue: null, isConfigured: false });
-
-    await userEvent.click(screen.getByLabelText("Provider"));
-
-    const openaiOption = await screen.findByRole("option", {
-      name: /OpenAI/,
-    });
-    expect(openaiOption).toBeInTheDocument();
-    expect(openaiOption).not.toHaveAttribute("data-combobox-disabled");
-  });
-
-  it("shows OpenRouter as selectable in the provider dropdown", async () => {
-    await setup({ savedProviderValue: null, isConfigured: false });
-
-    await userEvent.click(screen.getByLabelText("Provider"));
-
-    const openrouterOption = await screen.findByRole("option", {
-      name: /OpenRouter/,
-    });
-    expect(openrouterOption).toBeInTheDocument();
-    expect(openrouterOption).not.toHaveAttribute("data-combobox-disabled");
-
-    expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
-  });
-
-  it("shows Mistral as selectable in the provider dropdown", async () => {
-    await setup({ savedProviderValue: null, isConfigured: false });
-
-    await userEvent.click(screen.getByLabelText("Provider"));
-
-    const mistralOption = await screen.findByRole("option", {
-      name: /Mistral/,
-    });
-    expect(mistralOption).toBeInTheDocument();
-    expect(mistralOption).not.toHaveAttribute("data-combobox-disabled");
-
-    expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
-  });
-
-  it("shows Z.AI as selectable in the provider dropdown", async () => {
-    await setup({ savedProviderValue: null, isConfigured: false });
-
-    await userEvent.click(screen.getByLabelText("Provider"));
-
-    const zaiOption = await screen.findByRole("option", {
-      name: /Z\.AI/,
-    });
-    expect(zaiOption).toBeInTheDocument();
-    expect(zaiOption).not.toHaveAttribute("data-combobox-disabled");
+    for (const name of [
+      /Anthropic/,
+      /OpenAI/,
+      /OpenRouter/,
+      /Mistral/,
+      /Z\.AI/,
+      /Microsoft Azure/,
+      /Amazon Bedrock/,
+    ]) {
+      const option = await screen.findByRole("option", { name });
+      expect(option).toBeInTheDocument();
+      expect(option).not.toHaveAttribute("aria-disabled", "true");
+      expect(option).not.toHaveAttribute("data-combobox-disabled");
+    }
 
     expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
   });
@@ -2214,18 +2171,6 @@ describe("AIProviderSettingsSection", () => {
   });
 
   describe("Microsoft Azure", () => {
-    it("shows Microsoft Azure as selectable in the provider dropdown", async () => {
-      await setup({ savedProviderValue: null, isConfigured: false });
-
-      await userEvent.click(screen.getByLabelText("Provider"));
-
-      const azureOption = await screen.findByRole("option", {
-        name: "Microsoft Azure",
-      });
-      expect(azureOption).toBeInTheDocument();
-      expect(azureOption).not.toHaveAttribute("data-combobox-disabled");
-    });
-
     it("shows the Azure fields without a model dropdown when selected", async () => {
       await setup({ savedProviderValue: null, isConfigured: false });
 
@@ -2424,18 +2369,6 @@ describe("AIProviderSettingsSection", () => {
   });
 
   describe("Amazon Bedrock", () => {
-    it("shows Amazon Bedrock as selectable in the provider dropdown", async () => {
-      await setup({ savedProviderValue: null, isConfigured: false });
-
-      await userEvent.click(screen.getByLabelText("Provider"));
-
-      const bedrockOption = await screen.findByRole("option", {
-        name: "Amazon Bedrock",
-      });
-      expect(bedrockOption).toBeInTheDocument();
-      expect(bedrockOption).not.toHaveAttribute("data-combobox-disabled");
-    });
-
     it("shows the AWS credential fields when Amazon Bedrock is selected", async () => {
       await setup({ savedProviderValue: null, isConfigured: false });
 
