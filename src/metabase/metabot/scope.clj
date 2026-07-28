@@ -41,6 +41,8 @@
   (deferred-tru "Create saved questions"))
 (api-scope/defscope agent-question-update "agent:question:update"
   (deferred-tru "Update saved questions"))
+(api-scope/defscope agent-question-write "agent:question:write"
+  (deferred-tru "Create and edit saved questions"))
 (api-scope/defscope agent-question-execute "agent:question:execute"
   (deferred-tru "Run saved questions"))
 
@@ -75,6 +77,8 @@
   (deferred-tru "Create dashboards"))
 (api-scope/defscope agent-dashboard-update "agent:dashboard:update"
   (deferred-tru "Update dashboards"))
+(api-scope/defscope agent-dashboard-write "agent:dashboard:write"
+  (deferred-tru "Create and edit dashboards"))
 (api-scope/defscope agent-dashboard-subscribe "agent:dashboard:subscribe"
   (deferred-tru "Subscribe to dashboard alerts"))
 

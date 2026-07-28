@@ -310,8 +310,7 @@
                           "write. May reference other segments, but cycles are rejected.")}))
 
 (def ^:private segment-write-entry
-  {:tool-name       "segment_write"
-   :create-required [:table_id :name :definition]})
+  {:create-required [:table_id :name :definition]})
 
 (registry/deftool segment-write
   "Create or update a segment: a named, reusable MBQL filter attached to one table, referenced from other queries'
@@ -327,8 +326,8 @@
   {:name  "segment_write"
    :scope metabot.scope/agent-segment-write
    :args  segment-write-args-schema}
-  [args {:keys [token-scopes]}]
-  (let [dispatched (common/dispatch-write segment-write-entry token-scopes args)]
+  [args _]
+  (let [dispatched (common/dispatch-write segment-write-entry args)]
     (case (first dispatched)
       :create
       (let [[_ body]   dispatched
@@ -372,8 +371,7 @@
                           "rejected.")}))
 
 (def ^:private measure-write-entry
-  {:tool-name       "measure_write"
-   :create-required [:table_id :name :definition]})
+  {:create-required [:table_id :name :definition]})
 
 (registry/deftool measure-write
   "Create or update a measure: a named, reusable MBQL aggregation attached to one table, referenced inside another
@@ -391,8 +389,8 @@
   {:name  "measure_write"
    :scope metabot.scope/agent-measure-write
    :args  measure-write-args-schema}
-  [args {:keys [token-scopes]}]
-  (let [dispatched (common/dispatch-write measure-write-entry token-scopes args)]
+  [args _]
+  (let [dispatched (common/dispatch-write measure-write-entry args)]
     (case (first dispatched)
       :create
       (let [[_ body]   dispatched

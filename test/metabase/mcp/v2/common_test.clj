@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api.macros.scope :as scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.test :as mt]
@@ -219,36 +218,20 @@
       (is (contains? (set (projections/catalog :collection)) "name"))
       (is (contains? (set (projections/catalog :question)) "parameters.name")))))
 
-;; not ^:parallel: the kondo deftest lint treats the `!` suffix as destructive
-(deftest check-update-scope-test
-  (testing "a scoped token without the update scope is rejected with a teaching message"
-    (is (thrown-with-msg? Exception #"method: update"
-                          (common/check-update-scope! #{"agent:question:create"}
-                                                      "agent:question:update"
-                                                      "question_write"))))
-  (testing "cookie sessions (unrestricted sentinel) bypass"
-    (is (nil? (common/check-update-scope! #{::scope/unrestricted}
-                                          "agent:question:update"
-                                          "question_write")))))
-
 (deftest ^:parallel dispatch-write-test
-  (let [entry {:tool-name       "collection_write"
-               :update-scope    "agent:collection:update"
-               :create-required [:name]}]
+  (let [entry {:create-required [:name]}]
     (testing "create enforces (create)-required fields"
-      (is (= [:create {:name "X"}] (common/dispatch-write entry nil {:method "create" :name "X"})))
+      (is (= [:create {:name "X"}] (common/dispatch-write entry {:method "create" :name "X"})))
       (is (thrown-with-msg? Exception #"`name` is required"
-                            (common/dispatch-write entry nil {:method "create"}))))
-    (testing "update requires id and re-checks the update scope at runtime"
+                            (common/dispatch-write entry {:method "create"}))))
+    (testing "update requires id"
       (is (= [:update 3 {:name "Y"}]
-             (common/dispatch-write entry #{::scope/unrestricted} {:method "update" :id 3 :name "Y"})))
+             (common/dispatch-write entry {:method "update" :id 3 :name "Y"})))
       (is (thrown-with-msg? Exception #"`id` is required"
-                            (common/dispatch-write entry #{::scope/unrestricted} {:method "update"})))
-      (is (thrown-with-msg? Exception #"method: update"
-                            (common/dispatch-write entry #{"agent:collection:create"} {:method "update" :id 3}))))
+                            (common/dispatch-write entry {:method "update"}))))
     (testing "an unknown method is a teaching error"
       (is (thrown-with-msg? Exception #"create.*update"
-                            (common/dispatch-write entry nil {:method "delete"}))))))
+                            (common/dispatch-write entry {:method "delete"}))))))
 
 ;;; ------------------------------------------------ Query handles (GHY-4136) -------------------------------------
 

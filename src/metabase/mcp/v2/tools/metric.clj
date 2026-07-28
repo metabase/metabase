@@ -211,8 +211,7 @@
                                          "Archiving is the only removal path — there is no hard delete.")}]]]])
 
 (def ^:private metric-write-entry
-  {:tool-name       "metric_write"
-   :create-required [:name]})
+  {:create-required [:name]})
 
 (registry/deftool metric-write
   "Create or update a metric: a saved, reusable aggregation that lives in a collection and can be queried on its own
@@ -231,8 +230,8 @@
    :scope        metabot.scope/agent-metric-write
    :annotations  {:readOnlyHint false :destructiveHint false}
    :args         metric-write-args-schema}
-  [args {:keys [token-scopes session-id]}]
-  (let [dispatched (common/dispatch-write metric-write-entry token-scopes args)
+  [args {:keys [session-id]}]
+  (let [dispatched (common/dispatch-write metric-write-entry args)
         payload    (case (first dispatched)
                      :create
                      (let [[_ body] dispatched]
