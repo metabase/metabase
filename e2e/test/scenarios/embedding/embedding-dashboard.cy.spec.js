@@ -1385,7 +1385,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
             .first()
             .findAllByTestId("pivot-table-cell")
             .first()
-            .should("have.css", "background-color", "rgba(48, 61, 70, 0.1)");
+            .should("have.css", "background-color", "rgba(12, 28, 39, 0.1)");
 
           cy.log("pivot table cell color should be white");
           cy.findByText("Row totals")
