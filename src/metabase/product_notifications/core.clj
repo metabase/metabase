@@ -23,7 +23,7 @@
 (def ^:private UtcTemporalString
   [:and ms/TemporalString [:re #".*Z$"]])
 
-(def ^:private ConditionsV1
+(def ^:private EvaluationOptionsV1
   [:map {:closed true}
    [:audience [:enum "admins" "all_users"]]
    [:deployment [:enum "cloud" "self_hosted" "any"]]
@@ -40,7 +40,7 @@
    [:title ms/NonBlankString]
    [:content ms/NonBlankString]
    [:icon {:optional true} [:maybe ms/NonBlankString]]
-   [:conditions ConditionsV1]])
+   [:conditions EvaluationOptionsV1]])
 
 (def ^:private notification-schemas
   {schema-version-v1 NotificationV1})
@@ -65,51 +65,39 @@
            parsed-version))
 
 (defn- validate-version-range!
-  [{min-version :min_version, max-version :max_version, :as notification}]
+  [notification-id {min-version :min_version, max-version :max_version}]
   (let [^Semver minimum (parsed-version min-version)
         ^Semver maximum (parsed-version max-version)]
     (when (and min-version (nil? minimum))
       (throw (ex-info "Invalid minimum product notification version"
-                      {:id (:notification_id notification), :version min-version})))
+                      {:id notification-id, :version min-version})))
     (when (and max-version (nil? maximum))
       (throw (ex-info "Invalid maximum product notification version"
-                      {:id (:notification_id notification), :version max-version})))
+                      {:id notification-id, :version max-version})))
     (when (and minimum maximum (not (.isLowerThan minimum maximum)))
       (throw (ex-info "Product notification minimum version must be lower than its maximum version"
-                      {:id (:notification_id notification)
+                      {:id notification-id
                        :min-version min-version
-                       :max-version max-version}))))
-  notification)
+                       :max-version max-version})))))
 
 (defn- normalized-notification
   [schema position notification]
   (mu/validate-throw schema notification)
-  (let [conditions  (:conditions notification)
-        audience    (:audience conditions)
-        deployment  (:deployment conditions)
-        edition     (:edition conditions)
-        starts-at   (:starts_at conditions)
-        ends-at     (:ends_at conditions)
-        min-version (:min_version conditions)
-        max-version (:max_version conditions)
-        normalized
-        {:notification_id (:id notification)
-         :schema_version  (:schema_version notification)
-         :title           (:title notification)
-         :content         (:content notification)
-         :icon            (:icon notification)
-         :audience        (keyword audience)
-         :deployment      (keyword deployment)
-         :edition         (keyword edition)
-         :min_version     min-version
-         :max_version     max-version
-         :starts_at       (t/offset-date-time starts-at)
-         :ends_at         (t/offset-date-time ends-at)
-         :position        position}]
-    (when-not (t/before? (:starts_at normalized) (:ends_at normalized))
+  (let [notification-id (:id notification)
+        conditions      (:conditions notification)
+        starts-at       (t/offset-date-time (:starts_at conditions))
+        ends-at         (t/offset-date-time (:ends_at conditions))]
+    (when-not (t/before? starts-at ends-at)
       (throw (ex-info "Product notification start must be before its end"
-                      {:id (:notification_id normalized)})))
-    (validate-version-range! normalized)))
+                      {:id notification-id})))
+    (validate-version-range! notification-id conditions)
+    {:notification_id   notification-id
+     :schema_version    (:schema_version notification)
+     :title             (:title notification)
+     :content           (:content notification)
+     :icon              (:icon notification)
+     :evaluation_options conditions
+     :position          position}))
 
 (defn- valid-notification-id
   [notification]
@@ -178,8 +166,10 @@
 
 (defn- time-matches?
   [{starts-at :starts_at, ends-at :ends_at} now]
-  (and (not (t/before? now starts-at))
-       (t/before? now ends-at)))
+  (let [starts-at (t/offset-date-time starts-at)
+        ends-at   (t/offset-date-time ends-at)]
+    (and (not (t/before? now starts-at))
+         (t/before? now ends-at))))
 
 (defn- version-matches?
   [{min-version :min_version, max-version :max_version} version]
@@ -192,25 +182,32 @@
              (or (nil? maximum) (.isLowerThan current maximum)))))))
 
 (defn- eligible-v1?
-  [{:keys [active audience deployment edition] :as notification}
+  [{:keys [active evaluation_options]}
    {:keys [now superuser? hosted? enterprise? version]}]
-  (and active
-       (time-matches? notification now)
-       (or (= audience :all_users)
-           (and (= audience :admins) superuser?))
-       (or (= deployment :any)
-           (= deployment (if hosted? :cloud :self_hosted)))
-       (or (= edition :any)
-           (= edition (if enterprise? :ee :oss)))
-       (version-matches? notification version)))
+  (mu/validate-throw EvaluationOptionsV1 evaluation_options)
+  (let [{:keys [audience deployment edition]} evaluation_options]
+    (and active
+         (time-matches? evaluation_options now)
+         (or (= audience "all_users")
+             (and (= audience "admins") superuser?))
+         (or (= deployment "any")
+             (= deployment (if hosted? "cloud" "self_hosted")))
+         (or (= edition "any")
+             (= edition (if enterprise? "ee" "oss")))
+         (version-matches? evaluation_options version))))
 
 (def ^:private eligibility-evaluators
   {schema-version-v1 eligible-v1?})
 
 (mu/defn eligible? :- :boolean
-  "Whether a supported persisted product notification applies to the supplied instance and person."
+  "Whether a persisted product notification applies to the supplied instance and person.
+
+  Unsupported schemas and invalid evaluation options are ineligible."
   [notification :- :map
    context :- :map]
   (boolean
    (when-let [evaluator (eligibility-evaluators (:schema_version notification))]
-     (evaluator notification context))))
+     (try
+       (evaluator notification context)
+       (catch Exception _
+         false)))))

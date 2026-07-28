@@ -43,7 +43,11 @@
       (is (= [["first" 0] ["third" 2]]
              (t2/select-fn-vec (juxt :notification_id :position)
                                :model/ProductNotification
-                               {:order-by [[:position :asc]]}))))
+                               {:order-by [[:position :asc]]})))
+      (is (= (:conditions (feed-notification "first" "First"))
+             (t2/select-one-fn :evaluation_options
+                               :model/ProductNotification
+                               :notification_id "first"))))
     (testing "retires missing rows without deleting notification or dismissal state"
       (let [notification-id (t2/select-one-pk :model/ProductNotification :notification_id "first")]
         (t2/insert! :model/ProductNotificationDismissal

@@ -2973,15 +2973,26 @@
             [[false []]
              [true
               [{:notification_id "demo-product-notification-release"
-                :audience        "all_users"
+                :evaluation_options
+                {:audience   "all_users"
+                 :deployment "any"
+                 :edition    "any"
+                 :starts_at  "2026-01-01T00:00:00Z"
+                 :ends_at    "2099-01-01T00:00:00Z"}
                 :position        0}
                {:notification_id "demo-product-notification-admin"
-                :audience        "admins"
+                :evaluation_options
+                {:audience   "admins"
+                 :deployment "any"
+                 :edition    "any"
+                 :starts_at  "2026-01-01T00:00:00Z"
+                 :ends_at    "2099-01-01T00:00:00Z"}
                 :position        1}]]]]
       (impl/test-migrations "v64.product-notifications5" [migrate!]
         (binding [custom-migrations/*seed-product-notification-demo-data?* seed?]
           (migrate!))
         (is (= expected
-               (t2/query {:select   [:notification_id :audience :position]
-                          :from     [:product_notification]
-                          :order-by [[:position :asc]]})))))))
+               (mapv #(update % :evaluation_options json/decode+kw)
+                     (t2/query {:select   [:notification_id :evaluation_options :position]
+                                :from     [:product_notification]
+                                :order-by [[:position :asc]]}))))))))

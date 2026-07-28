@@ -14,6 +14,4 @@
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/ProductNotification
-  {:audience   mi/transform-keyword
-   :deployment mi/transform-keyword
-   :edition    mi/transform-keyword})
+  {:evaluation_options mi/transform-json})

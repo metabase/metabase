@@ -18,19 +18,11 @@
    :title
    :content
    :icon
-   :audience
-   :deployment
-   :edition
-   :min_version
-   :max_version
-   :starts_at
-   :ends_at])
+   :evaluation_options])
 
 (defn- immutable-view
   [notification]
-  (-> (select-keys notification immutable-fields)
-      (update :starts_at #(some-> % t/instant))
-      (update :ends_at #(some-> % t/instant))))
+  (select-keys notification immutable-fields))
 
 (defn- check-immutable!
   [existing incoming]

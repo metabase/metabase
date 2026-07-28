@@ -40,34 +40,8 @@ databaseChangeLog:
                   name: icon
                   type: varchar(255)
               - column:
-                  name: audience
-                  type: varchar(32)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: deployment
-                  type: varchar(32)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: edition
-                  type: varchar(32)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: min_version
-                  type: varchar(64)
-              - column:
-                  name: max_version
-                  type: varchar(64)
-              - column:
-                  name: starts_at
-                  type: ${timestamp_type}
-                  constraints:
-                    nullable: false
-              - column:
-                  name: ends_at
-                  type: ${timestamp_type}
+                  name: evaluation_options
+                  type: ${text.type}
                   constraints:
                     nullable: false
               - column:

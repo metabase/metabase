@@ -22,11 +22,12 @@
              :schema_version  1
              :title           (str "Title " notification-id)
              :content         (str "Content " notification-id)
-             :audience        :all_users
-             :deployment      :any
-             :edition         :any
-             :starts_at       (t/minus now (t/days 1))
-             :ends_at         (t/plus now (t/days 1))
+             :evaluation_options
+             {:audience   "all_users"
+              :deployment "any"
+              :edition    "any"
+              :starts_at  (str (t/minus now (t/days 1)))
+              :ends_at    (str (t/plus now (t/days 1)))}
              :position        position
              :active          true
              :last_seen_at    now}
@@ -36,7 +37,12 @@
   (mt/with-model-cleanup [:model/ProductNotificationDismissal :model/ProductNotification]
     (insert-notification! "second" 1 {:icon "star"})
     (insert-notification! "first" 0)
-    (insert-notification! "admins" 2 {:audience :admins})
+    (insert-notification! "admins" 2 {:evaluation_options
+                                      {:audience   "admins"
+                                       :deployment "any"
+                                       :edition    "any"
+                                       :starts_at  "2026-01-01T00:00:00Z"
+                                       :ends_at    "2099-01-01T00:00:00Z"}})
     (is (= [{:id      "first"
              :title   "Title first"
              :content "Content first"}
@@ -80,9 +86,19 @@
 (deftest ineligible-product-notification-cannot-be-dismissed-test
   (mt/with-model-cleanup [:model/ProductNotificationDismissal :model/ProductNotification]
     (let [now (t/offset-date-time)]
-      (insert-notification! "admins" 0 {:audience :admins})
+      (insert-notification! "admins" 0 {:evaluation_options
+                                        {:audience   "admins"
+                                         :deployment "any"
+                                         :edition    "any"
+                                         :starts_at  "2026-01-01T00:00:00Z"
+                                         :ends_at    "2099-01-01T00:00:00Z"}})
       (insert-notification! "inactive" 1 {:active false})
-      (insert-notification! "expired" 2 {:ends_at (t/minus now (t/days 1))})
+      (insert-notification! "expired" 2 {:evaluation_options
+                                         {:audience   "all_users"
+                                          :deployment "any"
+                                          :edition    "any"
+                                          :starts_at  "2026-01-01T00:00:00Z"
+                                          :ends_at    (str (t/minus now (t/days 1)))}})
       (doseq [notification-id ["missing" "admins" "inactive" "expired"]]
         (is (= "Not found."
                (mt/user-http-request :rasta :post 404
