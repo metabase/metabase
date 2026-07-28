@@ -601,6 +601,7 @@
            events
            lib-be
            models
+           notification
            permissions
            premium-features
            queries
@@ -637,7 +638,6 @@
            eid-translation
            events
            models
-           notification
            permissions
            premium-features
            queries
@@ -748,7 +748,6 @@
   {:team "UX West"
    :api  #{metabase.dashboards-rest.api}
    :uses #{actions
-           analytics
            api
            app-db
            channel
@@ -773,7 +772,6 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
-                    :model/DashboardTab
                     :model/Field
                     :model/Query}}
 
@@ -1265,6 +1263,7 @@
            ai-tracing
            api
            app-db
+           bookmarks
            channel
            collections
            config
@@ -1306,7 +1305,8 @@
                     :model/Pulse
                     :model/Segment
                     :model/Table
-                    :model/Transform}}
+                    :model/Transform
+                    :model/User}}
 
   measures
   {:team "Graphy"
@@ -1517,6 +1517,7 @@
   notification
   {:team "Gadget"
    :api  #{metabase.notification.api
+           metabase.notification.card
            metabase.notification.core
            metabase.notification.init
            metabase.notification.models
