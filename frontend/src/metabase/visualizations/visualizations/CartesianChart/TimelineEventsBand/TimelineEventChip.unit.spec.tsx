@@ -52,6 +52,7 @@ const setup = ({
   selectedEventIds = [],
   withCallbacks = true,
 }: SetupOpts = {}) => {
+  const onGroupHover = jest.fn();
   const onOpenTimelines = jest.fn();
   const onSelectTimelineEvents = jest.fn();
   const onDeselectTimelineEvents = jest.fn();
@@ -61,6 +62,7 @@ const setup = ({
       eventsGroup={eventsGroup}
       centerY={120}
       selectedEventIds={selectedEventIds}
+      onGroupHover={onGroupHover}
       onOpenTimelines={withCallbacks ? onOpenTimelines : undefined}
       onSelectTimelineEvents={
         withCallbacks ? onSelectTimelineEvents : undefined
@@ -71,7 +73,12 @@ const setup = ({
     />,
   );
 
-  return { onOpenTimelines, onSelectTimelineEvents, onDeselectTimelineEvents };
+  return {
+    onGroupHover,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+  };
 };
 
 describe("TimelineEventChip", () => {
@@ -86,6 +93,17 @@ describe("TimelineEventChip", () => {
       "data-selected",
       "true",
     );
+  });
+
+  it("reports the hovered group on mouse enter and null on leave", async () => {
+    const { onGroupHover } = setup({ eventsGroup: singleGroup });
+    const chip = screen.getByTestId("timeline-event-chip");
+
+    await userEvent.hover(chip);
+    expect(onGroupHover).toHaveBeenLastCalledWith(singleGroup.group);
+
+    await userEvent.unhover(chip);
+    expect(onGroupHover).toHaveBeenLastCalledWith(null);
   });
 
   it("opens a single-event popover on hover without a 'See all' link", async () => {
