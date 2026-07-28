@@ -76,8 +76,8 @@
  [metabase.permissions.models.data-permissions.sql
   UserInfo
   PermissionMapping
-  visible-table-exists-clause
   visible-database-filter-select
+  visible-table-exists-clause
   visible-table-filter-select
   visible-table-filter-with-cte
   select-tables-and-groups-granting-perm]

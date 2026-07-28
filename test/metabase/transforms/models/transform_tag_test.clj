@@ -25,3 +25,14 @@
                   {:name "default2"})
       (is (= "default2"
              (:name (t2/select-one :model/TransformTag (:id tag))))))))
+
+(deftest visible-filter-clause-test
+  (testing "data analysts and superusers get a nil clause (no filtering), matching can-read?"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (is (nil? (transform-tag/visible-filter-clause)))))
+  (testing "non-analysts get an always-false clause, matching can-read?"
+    (mt/with-current-user (mt/user->id :rasta)
+      (is (= [:= [:inline 1] [:inline 0]]
+             (transform-tag/visible-filter-clause)))))
+  (testing "no bound user -> nil clause; outside the request cycle filtering is the caller's concern"
+    (is (nil? (transform-tag/visible-filter-clause)))))

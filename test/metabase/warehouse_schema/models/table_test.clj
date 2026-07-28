@@ -754,3 +754,42 @@
         (is (=? {:data_layer :internal :data_authority :unconfigured}
                 (t2/select-one [:model/Table :data_layer :data_authority]
                                :name "raw-insert-probe" :db_id db-id)))))))
+
+(deftest table-visible-filter-clause-matches-can-read?-test
+  (testing "table/visible-filter-clause admits exactly the Tables mi/can-read? admits (the two must stay in sync)"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Database         {db-id :id}  {}
+                     :model/Table            {t-full :id} {:db_id db-id :name "TFullAccess"}
+                     :model/Table            {t-view :id} {:db_id db-id :name "TViewDataOnly"}
+                     :model/Table            {t-meta :id} {:db_id db-id :name "TMetadataOnly"}
+                     :model/Table            {t-none :id} {:db_id db-id :name "TNoAccess"}
+                     :model/PermissionsGroup pg           {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+        (t2/delete! :model/DataPermissions :db_id db-id)
+        (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+        ;; readable via data access: view-data + create-queries
+        (data-perms/set-table-permission! pg t-full :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! pg t-full :perms/create-queries :query-builder)
+        ;; view-data alone is not enough to read table metadata
+        (data-perms/set-table-permission! pg t-view :perms/view-data :unrestricted)
+        ;; readable via manage-table-metadata alone
+        (data-perms/set-table-permission! pg t-meta :perms/manage-table-metadata :yes)
+        (let [table-ids        #{t-full t-view t-meta t-none}
+              ;; the column is qualified: a bare :id would correlate against the EXISTS subquery's own scope
+              clause-visible   (fn []
+                                 (set (t2/select-pks-set :model/Table
+                                                         {:where [:and
+                                                                  [:in :metabase_table.id table-ids]
+                                                                  (table/visible-filter-clause :metabase_table.id)]})))
+              can-read-visible (fn []
+                                 (set (filter #(mi/can-read? (t2/select-one :model/Table :id %)) table-ids)))]
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (= #{t-full t-meta} (can-read-visible)))
+            (is (= (can-read-visible) (clause-visible))))
+          (testing "superusers get a nil clause (no filtering), matching can-read? on every table"
+            (mt/with-current-user (mt/user->id :crowberto)
+              (is (nil? (table/visible-filter-clause :metabase_table.id)))
+              (is (= table-ids (can-read-visible)))))
+          (testing "no bound user -> nil clause; outside the request cycle filtering is the caller's concern"
+            (is (nil? (table/visible-filter-clause :metabase_table.id)))))))))
