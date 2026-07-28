@@ -30,11 +30,6 @@ export const METABOT_PROFILES = {
       return t`Embedding`;
     },
   },
-  nlq: {
-    get label() {
-      return t`NLQ`;
-    },
-  },
   sql: {
     get label() {
       return t`SQL`;
@@ -61,6 +56,12 @@ export const METABOT_PROFILES = {
       return t`Documents`;
     },
   },
+  // retired profiles kept for historical reporting purposes
+  nlq: {
+    get label() {
+      return t`NLQ`;
+    },
+  },
 } as const;
 
 export type MetabotProfileId = keyof typeof METABOT_PROFILES;
@@ -79,13 +80,12 @@ export function renderMetabotProfileLabel(id: string): string {
 
 export const METABOT_PROFILE_OVERRIDES = {
   DEFAULT: undefined,
-  NLQ: "nlq",
   SQL: "sql",
   TRANSFORMS_CODEGEN: "transforms_codegen",
 } as const satisfies Record<string, MetabotProfileId | undefined>;
 
 export const isHistoryEnabledProfile = (profile: string | undefined) =>
-  profile === undefined || profile === "nlq";
+  profile === undefined;
 
 export const resolveMetabotProfileId = (
   profile: MetabotProfileId | undefined,

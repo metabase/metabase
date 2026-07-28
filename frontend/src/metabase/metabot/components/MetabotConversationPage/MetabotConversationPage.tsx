@@ -25,7 +25,7 @@ export const IN_PROGRESS_POLL_MS = 2500;
 export const MetabotConversationPage = () => {
   const { convoId: urlConvoId } = useParams<{ convoId: string }>();
   const dispatch = useDispatch();
-  const { canUseNlq, isLoading } = useUserMetabotPermissions();
+  const { canUseMetabot, isLoading } = useUserMetabotPermissions();
   const { conversationId } = useMetabotAgent("ask");
 
   const isSettingsLoading = useSelector(getSettingsLoading);
@@ -36,7 +36,7 @@ export const MetabotConversationPage = () => {
   const isConvoLoaded = conversationId === urlConvoId;
 
   const { currentData: conversation, isError } = useGetMetabotConversationQuery(
-    !urlConvoId || !canUseNlq || (isConvoLoaded && !isInProgress)
+    !urlConvoId || !canUseMetabot || (isConvoLoaded && !isInProgress)
       ? skipToken
       : urlConvoId,
     {
@@ -68,7 +68,7 @@ export const MetabotConversationPage = () => {
     return <ConversationLoader />;
   }
 
-  if (!canUseNlq) {
+  if (!canUseMetabot) {
     return <Navigate to={Urls.newQuestion({ mode: "ask" })} replace />;
   }
 

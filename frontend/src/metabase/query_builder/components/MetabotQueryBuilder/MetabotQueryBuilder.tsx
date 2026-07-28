@@ -10,12 +10,15 @@ import { useSelector } from "metabase/redux";
 import { getSettingsLoading } from "metabase/selectors/settings";
 
 /**
- * Routes /question/ask to either the Metabot NLQ prompt view or the regular QueryBuilder, depending on NLQ access.
+ * Routes /question/ask to either the Metabot prompt view or the regular QueryBuilder.
+ *
+ * Gated on Metabot access rather than query-building access: the assistant does more than build
+ * queries, so a user without query building still gets a useful full-page assistant.
  */
 export const MetabotQueryBuilder = (
   props: React.ComponentProps<typeof QueryBuilder>,
 ) => {
-  const { hasNlqAccess, isLoading } = useUserMetabotPermissions();
+  const { hasMetabotAccess, isLoading } = useUserMetabotPermissions();
   const areSettingsLoading = useSelector(getSettingsLoading);
   const { createNewConversation } = useMetabotAgent("ask");
 
@@ -28,7 +31,7 @@ export const MetabotQueryBuilder = (
     return null;
   }
 
-  if (!hasNlqAccess) {
+  if (!hasMetabotAccess) {
     return <QueryBuilder {...props} />;
   }
 

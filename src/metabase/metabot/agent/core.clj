@@ -151,7 +151,8 @@
   [:map-of :keyword :any])
 
 (mr/def ::profile-id
-  "Profile identifier keyword."
+  "Profile identifier keyword. `:nlq` is retired and resolves to `:internal`; it stays accepted so
+  requests already in flight from an older client still validate."
   [:enum :embedding_next :internal :transforms_codegen :sql :nlq :document-generate-content :slackbot])
 
 (mr/def ::tracking-opts
@@ -417,8 +418,8 @@
   [{:keys [messages state metabot-id profile-id context tracking-opts conversation-id]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
-        ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
-        ;; prompt and the tools so they can't disagree about whether the curated library tool is offered.
+        ;; Resolve the profile once (it probes the library index): reuse it for both the prompt and the
+        ;; tools so they can't disagree about whether the curated library tool is offered.
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
@@ -593,7 +594,6 @@
   "Map from profile-id to the metabot permission that must be `:yes` for a user
   to use that profile. Profiles not listed here have no profile-level permission gate."
   {:sql                       :permission/metabot-sql-generation
-   :nlq                       :permission/metabot-nlq
    :transforms_codegen        :permission/metabot-sql-generation
    :document-generate-content :permission/metabot-other-tools})
 

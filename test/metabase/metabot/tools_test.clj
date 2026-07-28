@@ -75,23 +75,19 @@
     (is (contains? tools "read_resource"))
     (is (contains? tools "ask_for_sql_clarification"))))
 
-(deftest get-tools-for-nlq-profile-test
-  (testing "nlq discovers data through the curated library tool when it can serve queries, else general search"
-    ;; Entity retrieval unavailable (no pgvector / OSS): the general `search` fallback is the discovery tool,
-    ;; so the agent is never left with zero ways to find data. The library tool is filtered out.
+(deftest get-tools-for-internal-profile-discovery-test
+  (testing "the library tool joins search only when the index can answer"
     (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly false)]
-      (let [tools (tools-for-profile :nlq)]
+      (let [tools (tools-for-profile :internal)]
         (is (map? tools))
         (is (contains? tools "search"))
         (is (contains? tools "construct_notebook_query"))
         (is (contains? tools "create_chart"))
         (is (not (contains? tools "retrieve_library_entities")))))
-    ;; Entity retrieval available (pgvector configured + library-retrieval licensed): the curated library tool
-    ;; replaces general search. Exactly one discovery tool survives capability filtering.
     (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
-      (let [tools (tools-for-profile :nlq)]
+      (let [tools (tools-for-profile :internal)]
         (is (contains? tools "retrieve_library_entities"))
-        (is (not (contains? tools "search")))))))
+        (is (contains? tools "search"))))))
 
 (deftest ^:parallel get-tools-for-document-generate-content-profile-test
   (let [tools (tools-for-profile :document-generate-content)]

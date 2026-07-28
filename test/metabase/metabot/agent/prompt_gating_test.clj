@@ -243,25 +243,14 @@
         (is (re-find #"Custom Instructions" rendered))
         (is (re-find #"Always respond in French" rendered))))))
 
-(deftest custom-nlq-instructions-injected-when-set-test
-  (mt/with-premium-features #{:ai-controls}
-    (mt/with-temporary-setting-values [metabot-nlq-system-prompt "Always respond in French."]
-      (let [rendered (render-template "natural-language-querying-only.selmer" all-yes-perms)]
-        (is (re-find #"Custom Instructions" rendered))
-        (is (re-find #"Always respond in French" rendered))))))
-
 (deftest custom-instructions-absent-when-empty-test
   (mt/with-temporary-setting-values [metabot-chat-system-prompt ""
-                                     metabot-nlq-system-prompt ""
                                      metabot-sql-system-prompt ""]
     (testing "internal template has no custom instructions section"
       (let [rendered (render-template "internal.selmer" all-yes-perms)]
         (is (not (re-find #"Custom Instructions" rendered)))))
     (testing "sql template has no custom instructions section"
       (let [rendered (render-template "sql-querying-only.selmer" all-yes-perms)]
-        (is (not (re-find #"Custom Instructions" rendered)))))
-    (testing "nlq template has no custom instructions section"
-      (let [rendered (render-template "natural-language-querying-only.selmer" all-yes-perms)]
         (is (not (re-find #"Custom Instructions" rendered)))))))
 
 (deftest custom-instructions-isolated-per-template-test
@@ -270,16 +259,11 @@
                                        metabot-sql-system-prompt ""]
       (let [rendered (render-template "sql-querying-only.selmer" all-yes-perms)]
         (is (not (re-find #"Chat only instruction" rendered))))))
-  (testing "sql prompt does not appear in nlq template"
+  (testing "sql prompt does not appear in chat template"
     (mt/with-temporary-setting-values [metabot-sql-system-prompt "SQL only instruction."
-                                       metabot-nlq-system-prompt ""]
-      (let [rendered (render-template "natural-language-querying-only.selmer" all-yes-perms)]
-        (is (not (re-find #"SQL only instruction" rendered))))))
-  (testing "nlq prompt does not appear in chat template"
-    (mt/with-temporary-setting-values [metabot-nlq-system-prompt "NLQ only instruction."
                                        metabot-chat-system-prompt ""]
       (let [rendered (render-template "internal.selmer" all-yes-perms)]
-        (is (not (re-find #"NLQ only instruction" rendered)))))))
+        (is (not (re-find #"SQL only instruction" rendered)))))))
 
 (deftest ^:parallel communication-guidance-gates-on-reasoning-ui-test
   (testing "surfaces with a reasoning timeline skip the narration guidance"

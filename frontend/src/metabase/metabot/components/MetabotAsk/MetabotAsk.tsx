@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import type { MetabotConfig } from "metabase/metabot/components/Metabot";
 import { MetabotChat } from "metabase/metabot/components/MetabotChat";
 import { MetabotConversationHistory } from "metabase/metabot/components/MetabotChat/MetabotConversationHistory";
-import { isHistoryEnabledProfile } from "metabase/metabot/constants";
 import {
   useIsAskPage,
   useMetabotAgent,
@@ -58,8 +57,7 @@ export const MetabotAsk = () => {
 
   const showGreeting = messages.length === 0 && !isDoingScience;
 
-  const showHistory = isConfigured && isHistoryEnabledProfile(askAgent.profile);
-  const historyAction = showHistory ? (
+  const historyAction = isConfigured ? (
     <MetabotConversationHistory
       profileId={askAgent.profile}
       activeConversationId={conversationId}

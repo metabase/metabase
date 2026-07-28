@@ -166,6 +166,7 @@
             has-sql?             (and (= :yes (:permission/metabot-sql-generation perms))
                                       (boolean (some sql-generation-tool-names (keys tools))))
             has-nlq?             (= :yes (:permission/metabot-nlq perms))
+            has-library?         (contains? (set (keys tools)) "retrieve_library_entities")
             template-context     {:metabot_name              (metabot.settings/metabot-name)
                                   :sql_dialect              sql-dialect
                                   :sql_dialect_loaded       (some? (skills/dialect-skill sql-dialect))
@@ -177,16 +178,12 @@
                                   :skill_always_on          (mapv :body always-on)
                                   :has_sql_generation       has-sql?
                                   :has_nlq                  has-nlq?
+                                  :has_library_retrieval    has-library?
                                   :has_query_tools          (or has-sql? has-nlq?)
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
                                   :shows_reasoning          (shows-reasoning? (:name profile))
                                   :custom_instructions      (not-empty
                                                              (case template-name
-                                                               ;; both nlq templates (curated + general-search
-                                                               ;; fallback) take the nlq custom instructions
-                                                               ("natural-language-querying-only.selmer"
-                                                                "natural-language-querying-fallback.selmer")
-                                                               (metabot.settings/metabot-nlq-system-prompt)
                                                                "sql-querying-only.selmer"
                                                                (metabot.settings/metabot-sql-system-prompt)
                                                                ;; default: internal.selmer and any other templates

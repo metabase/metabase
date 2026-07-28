@@ -11,6 +11,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
+   [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.schema :as metabot.schema]
@@ -152,10 +153,19 @@
   []
   [:greatest :c.created_at [:coalesce (last-live-message-at-subquery) :c.created_at]])
 
+(defn- history-profile-ids
+  "Stored `profile_id`s a history request for `profile-id` should match: the profile itself plus any
+  profile it absorbed, so conversations stamped with a retired id stay reachable."
+  [profile-id]
+  (into [profile-id]
+        (keep #(when (= (keyword profile-id) (val %)) (name (key %))))
+        profiles/retired-profile-aliases))
+
 (defn- list-where-clause
   [user-id profile-id]
   (cond-> [:and (participation-clause user-id)]
-    profile-id (conj [:= (last-live-message-profile-id-subquery) profile-id])))
+    profile-id (conj [:in (last-live-message-profile-id-subquery)
+                      (history-profile-ids profile-id)])))
 
 ;;; ---------------------------------------- Endpoints ----------------------------------------
 

@@ -44,7 +44,7 @@ function createDefaultPermissions(): MetabotGroupPermission[] {
     }),
     ...createMockMetabotGroupPermissions(marketingGroup.id, {
       [AIToolKey.Metabot]: "no",
-      [AIToolKey.ChatAndNLQ]: "no",
+      [AIToolKey.QueryBuilding]: "no",
       [AIToolKey.SQLGeneration]: "no",
       [AIToolKey.OtherTools]: "no",
     }),
@@ -121,7 +121,7 @@ describe("MetabotFeatureAccessPage", () => {
     await screen.findByTestId("ai-feature-access-table");
 
     expect(screen.getByText("AI features")).toBeInTheDocument();
-    expect(screen.getByText("Chat and NLQ")).toBeInTheDocument();
+    expect(screen.getByText("Query building")).toBeInTheDocument();
     expect(screen.getByText("SQL generation")).toBeInTheDocument();
     expect(screen.getByText("Other tools")).toBeInTheDocument();
   });
@@ -161,7 +161,7 @@ describe("MetabotFeatureAccessPage", () => {
     expect(sqlCheckbox).not.toBeChecked();
 
     const chatCheckbox = within(allUsersRow).getByRole("checkbox", {
-      name: /Chat and NLQ/,
+      name: /Query building/,
     });
     expect(chatCheckbox).toBeChecked();
   });
@@ -229,7 +229,7 @@ describe("MetabotFeatureAccessPage", () => {
     expect(metabotSwitch).not.toBeChecked();
 
     const chatCheckbox = within(marketingRow).getByRole("checkbox", {
-      name: /Chat and NLQ/,
+      name: /Query building/,
     });
     await userEvent.click(chatCheckbox);
 
@@ -253,7 +253,7 @@ describe("MetabotFeatureAccessPage", () => {
       }),
       ...createMockMetabotGroupPermissions(marketingGroup.id, {
         [AIToolKey.Metabot]: "no",
-        [AIToolKey.ChatAndNLQ]: "no",
+        [AIToolKey.QueryBuilding]: "no",
         [AIToolKey.SQLGeneration]: "no",
         [AIToolKey.OtherTools]: "no",
       }),
@@ -266,7 +266,7 @@ describe("MetabotFeatureAccessPage", () => {
     await waitFor(() => expect(metabotSwitch).toBeChecked());
 
     const chatCheckbox = within(allUsersRow).getByRole("checkbox", {
-      name: /Chat and NLQ/,
+      name: /Query building/,
     });
     await waitFor(() => expect(chatCheckbox).toBeChecked());
 
@@ -288,7 +288,7 @@ describe("MetabotFeatureAccessPage", () => {
       ...createMockMetabotGroupPermissions(allUsersGroup.id),
       ...createMockMetabotGroupPermissions(marketingGroup.id, {
         [AIToolKey.Metabot]: "no",
-        [AIToolKey.ChatAndNLQ]: "no",
+        [AIToolKey.QueryBuilding]: "no",
         [AIToolKey.SQLGeneration]: "no",
         [AIToolKey.OtherTools]: "no",
       }),
@@ -316,7 +316,7 @@ describe("MetabotFeatureAccessPage", () => {
     // in the previous (buggy) implementation that didn't filter by group_id
     const marketingRow = getPermissionRow("Marketing");
     await userEvent.click(
-      within(marketingRow).getByRole("checkbox", { name: /Chat and NLQ/ }),
+      within(marketingRow).getByRole("checkbox", { name: /Query building/ }),
     );
 
     // Sanity: the change landed on Marketing
@@ -331,7 +331,7 @@ describe("MetabotFeatureAccessPage", () => {
     // And the inverse leak: unchecking Marketing's last enabled tool would
     // previously disable Engineering's metabot via the shared cascade path
     await userEvent.click(
-      within(marketingRow).getByRole("checkbox", { name: /Chat and NLQ/ }),
+      within(marketingRow).getByRole("checkbox", { name: /Query building/ }),
     );
     expect(within(marketingRow).getByRole("switch")).not.toBeChecked();
     expect(engineeringSwitch).toBeChecked();
