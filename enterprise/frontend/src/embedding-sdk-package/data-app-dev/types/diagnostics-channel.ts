@@ -19,6 +19,8 @@ export interface DataAppDiagnosticEntry {
 
 export interface DataAppDiagnosticPayload extends DataAppDiagnosticEntry {
   eventId: number;
+  /** The page load that reported this entry (see `lib/dev-session`). */
+  sessionId: string;
 }
 
 export interface DataAppDiagnosticsMessage {
