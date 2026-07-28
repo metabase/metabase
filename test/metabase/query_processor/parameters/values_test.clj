@@ -107,10 +107,12 @@
 
 (deftest ^:parallel variable-value-test-10
   (testing "BigInteger value"
-    (is (= 9223372036854775808
-           (value-for-tag
-            {:name "id", :id test-uuid, :display-name "ID", :type :number}
-            [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])))))
+    (let [v (value-for-tag
+             {:name "id", :id test-uuid, :display-name "ID", :type :number}
+             [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])]
+      (is (= 9223372036854775808 v))
+      ;; `=` does not distinguish BigInteger from BigInt; drivers dispatch parameter binding on class.
+      (is (instance? java.math.BigInteger v)))))
 
 (deftest ^:parallel variable-multiple-values-test
   (testing "Allows multiple bindings of the same tag"

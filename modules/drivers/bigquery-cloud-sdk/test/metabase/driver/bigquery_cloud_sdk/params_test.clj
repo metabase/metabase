@@ -2,10 +2,21 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.bigquery-cloud-sdk.params-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.query-processor.test :as qp]
-   [metabase.test :as mt]))
+   [metabase.test :as mt])
+  (:import
+   (com.google.cloud.bigquery QueryParameterValue StandardSQLTypeName)))
 
 (set! *warn-on-reflection* true)
+
+(deftest ^:parallel integral-parameter-types-test
+  (testing "every integral representation is declared INT64"
+    (doseq [v [(int 100) (long 100) (short 100) (byte 100) (bigint 100) (biginteger 100)]]
+      (testing (.getCanonicalName (class v))
+        (let [^QueryParameterValue param (#'bigquery.params/->QueryParameterValue v)]
+          (is (= StandardSQLTypeName/INT64
+                 (.getType param))))))))
 
 (deftest ^:parallel set-parameters-test
   (mt/test-driver :bigquery-cloud-sdk
