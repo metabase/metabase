@@ -297,70 +297,93 @@
   accounting with it errs toward recycling early, which is safe: the pool regenerates off the render path."
   120000)
 
+(defn- do-with-throwaway-plugin-context
+  "Dev plugin path: build a throwaway plugin context per call — so a fresh `bun run build-static-viz` is
+  picked up without a REPL restart — with the tighter single-render [[render-max-cpu-time]] budget, run
+  `f`, and close it."
+  [f]
+  (let [^Context context (generate-untrusted-plugin-context! render-max-cpu-time)]
+    (try
+      (f context)
+      (finally
+        (destroy-untrusted-context! context)))))
+
+(defn- do-with-pooled-plugin-context
+  "Prod plugin path: borrow a context from [[untrusted-plugin-context-pool]] and run `f` with it,
+  disposing (rather than releasing) any context left permanently unusable by a sandbox-limit hit."
+  [f]
+  (let [^Context context (.acquire untrusted-plugin-context-pool pool-key)
+        disposed?        (volatile! false)]
+    (try
+      (f context)
+      (catch PolyglotException e
+        ;; A cancelled / resource-exhausted context is permanently unusable; dispose it so the pool
+        ;; regenerates a fresh one rather than handing a dead context to the next render.
+        (when (or (.isCancelled e) (.isResourceExhausted e))
+          (vreset! disposed? true)
+          (log/warnf "static-viz: untrusted plugin context hit a sandbox limit (cancelled=%s resource-exhausted=%s); disposing and regenerating. %s"
+                     (.isCancelled e) (.isResourceExhausted e) (.getMessage e))
+          (.dispose untrusted-plugin-context-pool pool-key context))
+        (throw e))
+      (finally
+        (when-not @disposed?
+          (.release untrusted-plugin-context-pool pool-key context))))))
+
 (defn do-with-untrusted-plugin-context
-  "Acquire a pooled plugin isolate context (slim custom-viz bundle) and call `f` with it, held exclusively
-  for the call (never let it — or a context-bound `Value` — escape)."
+  "Acquire a plugin isolate context (slim custom-viz bundle) and call `f` with it, held exclusively for
+  the call (never let it — or a context-bound `Value` — escape)."
   [f]
   (if config/is-dev?
-    ;; a throwaway context per call, so a fresh `bun run build-static-viz` is picked up without a REPL
-    ;; restart — with the tighter single-render [[render-max-cpu-time]] budget
-    (let [^Context context (generate-untrusted-plugin-context! render-max-cpu-time)]
-      (try
-        (f context)
-        (finally
-          (destroy-untrusted-context! context))))
-    (let [^Context context (.acquire untrusted-plugin-context-pool pool-key)
-          disposed?        (volatile! false)]
-      (try
-        (f context)
-        (catch PolyglotException e
-          ;; A cancelled / resource-exhausted context is permanently unusable; dispose it so the pool
-          ;; regenerates a fresh one rather than handing a dead context to the next render.
-          (when (or (.isCancelled e) (.isResourceExhausted e))
-            (vreset! disposed? true)
-            (log/warnf "static-viz: untrusted plugin context hit a sandbox limit (cancelled=%s resource-exhausted=%s); disposing and regenerating. %s"
-                       (.isCancelled e) (.isResourceExhausted e) (.getMessage e))
-            (.dispose untrusted-plugin-context-pool pool-key context))
-          (throw e))
-        (finally
-          (when-not @disposed?
-            (.release untrusted-plugin-context-pool pool-key context)))))))
+    (do-with-throwaway-plugin-context f)
+    (do-with-pooled-plugin-context f)))
+
+(defn- do-with-throwaway-builtin-context
+  "Dev builtin path: build a throwaway builtin context per call — so a fresh `bun run build-static-viz` is
+  picked up without a REPL restart — with the tighter single-render [[render-max-cpu-time]] budget, run
+  `f`, and close it."
+  [f]
+  (let [^Context context (generate-untrusted-builtin-context!* render-max-cpu-time)]
+    (try
+      (f context)
+      (finally
+        (destroy-untrusted-context! context)))))
+
+(defn- do-with-pooled-builtin-context
+  "Prod builtin path: borrow a wrapper from [[untrusted-builtin-context-pool]] and run `f` with its
+  context, disposing (rather than releasing) it when a sandbox-limit hit leaves it unusable or when its
+  renders' cumulative CPU crosses [[pool-cpu-soft-limit-ms]] — see that var for why recycling is proactive."
+  [f]
+  (let [{:keys [^Context context used-ms] :as wrapper} (.acquire untrusted-builtin-context-pool pool-key)
+        disposed? (volatile! false)
+        start     (System/nanoTime)]
+    (try
+      (f context)
+      (catch PolyglotException e
+        ;; A cancelled / resource-exhausted context is permanently unusable; dispose it so the pool
+        ;; regenerates a fresh one rather than handing a dead context to the next render.
+        (when (or (.isCancelled e) (.isResourceExhausted e))
+          (vreset! disposed? true)
+          (log/warnf "static-viz: untrusted builtin context hit a sandbox limit (cancelled=%s resource-exhausted=%s); disposing and regenerating. %s"
+                     (.isCancelled e) (.isResourceExhausted e) (.getMessage e))
+          (.dispose untrusted-builtin-context-pool pool-key wrapper))
+        (throw e))
+      (finally
+        (when-not @disposed?
+          (let [total (swap! used-ms + (quot (- (System/nanoTime) start) 1000000))]
+            (if (>= total pool-cpu-soft-limit-ms)
+              (do
+                (log/infof "static-viz: builtin isolate context spent ~%dms of its cumulative %s CPU budget; recycling it"
+                           total pool-max-cpu-time)
+                (.dispose untrusted-builtin-context-pool pool-key wrapper))
+              (.release untrusted-builtin-context-pool pool-key wrapper))))))))
 
 (defn do-with-untrusted-builtin-context
-  "Acquire a pooled builtin isolate context (full static-viz bundle) and call `f` with it, held exclusively
-  for the call (never let it — or a context-bound `Value` — escape)."
+  "Acquire a builtin isolate context (full static-viz bundle) and call `f` with it, held exclusively for
+  the call (never let it — or a context-bound `Value` — escape)."
   [f]
   (if config/is-dev?
-    ;; a throwaway context per call, so a fresh `bun run build-static-viz` is picked up without a REPL
-    ;; restart — with the tighter single-render [[render-max-cpu-time]] budget
-    (let [^Context context (generate-untrusted-builtin-context!* render-max-cpu-time)]
-      (try
-        (f context)
-        (finally
-          (destroy-untrusted-context! context))))
-    (let [{:keys [^Context context used-ms] :as wrapper} (.acquire untrusted-builtin-context-pool pool-key)
-          disposed? (volatile! false)
-          start     (System/nanoTime)]
-      (try
-        (f context)
-        (catch PolyglotException e
-          ;; A cancelled / resource-exhausted context is permanently unusable; dispose it so the pool
-          ;; regenerates a fresh one rather than handing a dead context to the next render.
-          (when (or (.isCancelled e) (.isResourceExhausted e))
-            (vreset! disposed? true)
-            (log/warnf "static-viz: untrusted builtin context hit a sandbox limit (cancelled=%s resource-exhausted=%s); disposing and regenerating. %s"
-                       (.isCancelled e) (.isResourceExhausted e) (.getMessage e))
-            (.dispose untrusted-builtin-context-pool pool-key wrapper))
-          (throw e))
-        (finally
-          (when-not @disposed?
-            (let [total (swap! used-ms + (quot (- (System/nanoTime) start) 1000000))]
-              (if (>= total pool-cpu-soft-limit-ms)
-                (do
-                  (log/infof "static-viz: builtin isolate context spent ~%dms of its cumulative %s CPU budget; recycling it"
-                             total pool-max-cpu-time)
-                  (.dispose untrusted-builtin-context-pool pool-key wrapper))
-                (.release untrusted-builtin-context-pool pool-key wrapper)))))))))
+    (do-with-throwaway-builtin-context f)
+    (do-with-pooled-builtin-context f)))
 
 ;;; ------------------------------------------------ backend ----------------------------------------------
 
