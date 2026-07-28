@@ -4,10 +4,9 @@ import "metabase-dev";
 
 import _ from "underscore";
 
-import { api } from "metabase/api/client";
+import { PLUGIN_API, api } from "metabase/api/client";
 import { init } from "metabase/app";
 import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
-import { PLUGIN_API } from "metabase/plugins";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
 import { clearCurrentUser } from "metabase/redux/user";
