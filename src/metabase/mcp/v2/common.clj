@@ -10,9 +10,12 @@
   (:require
    [clojure.string :as str]
    [metabase.agent-api.query-guards :as query-guards]
+   [metabase.channel.urls :as channel.urls]
    [metabase.eid-translation.core :as eid-translation]
+   [metabase.lib.core :as lib]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.projections :as projections]
+   [metabase.metabot.tools.construct :as metabot.construct]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log])
@@ -219,6 +222,20 @@
      :else
      (resolve-id-or-404 :model/Collection id-or-sentinel))))
 
+;;; ------------------------------------------------- Frontend URLs ------------------------------------------------
+
+(defn frontend-url
+  "Prefix a `channel.urls` relative `path` with the configured site URL, returning it relative
+   when site-url is unset so a tool never emits an absolute URL with an empty host. Always build
+   a tool's `:url` this way — `channel.urls`' own `*-url` fns interpolate site-url directly and
+   render `nil` as the literal string \"null\", which site-url is whenever it is unconfigured or
+   fails validation."
+  [path]
+  (let [base (channel.urls/site-url)]
+    (if (str/blank? base)
+      path
+      (str base path))))
+
 ;;; --------------------------------------------- response_format --------------------------------------------------
 
 (defn response-format
@@ -326,6 +343,45 @@
       [:update id (dissoc args :method :id)])
 
     (throw-teaching-error (format "Invalid method %s — use \"create\" or \"update\"." (pr-str method)))))
+
+;;; ------------------------------------------------ Portable queries ----------------------------------------------
+
+(defn ellipsize
+  "`s` truncated to `limit` characters, with an ellipsis marking the cut."
+  [s limit]
+  (let [s (str s)]
+    (if (> (count s) limit)
+      (str (subs s 0 limit) "…")
+      s)))
+
+(defn portable-query?
+  "True when `query` is a full query whose first stage names its source the way the portable
+   external dialect does — an FK path `[db schema table]` or a card entity_id — rather than a
+   numeric id. Those forms mean nothing to [[metabase.lib-be.core/normalize-query]]; they need
+   the representations pipeline."
+  [query]
+  (let [stage (first (:stages query))]
+    (or (vector? (:source-table stage))
+        (string? (:source-card stage)))))
+
+(defn resolve-external-query
+  "Resolve a full query in the portable external dialect through the same pipeline `execute_query`
+   runs a fresh `query` through — repair, portable-FK resolution, and the runnable/editor gates —
+   and return the serialized MBQL 5 query. Resolution only: the pipeline does not execute.
+
+   The pipeline's own agent-facing failures become a teaching error about the `definition`
+   argument, ending in `hint` (a sentence naming the shapes the calling tool accepts); permission
+   failures and anything unrecognized pass through."
+  [external-query hint]
+  (try
+    (-> (metabot.construct/execute-representations-query external-query)
+        (get-in [:structured-output :query])
+        lib/prepare-for-serialization)
+    (catch clojure.lang.ExceptionInfo e
+      (if (:agent-error? (ex-data e))
+        (throw-teaching-error
+         (format "`definition` could not be resolved: %s %s" (ellipsize (ex-message e) 300) hint))
+        (throw e)))))
 
 ;;; ------------------------------------------------ Query handles -------------------------------------------------
 

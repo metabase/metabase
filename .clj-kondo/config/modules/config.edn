@@ -601,6 +601,7 @@
            events
            lib-be
            models
+           notification
            permissions
            premium-features
            queries
@@ -637,7 +638,6 @@
            eid-translation
            events
            models
-           notification
            permissions
            premium-features
            queries
@@ -1515,6 +1515,7 @@
   notification
   {:team "Gadget"
    :api  #{metabase.notification.api
+           metabase.notification.card
            metabase.notification.core
            metabase.notification.init
            metabase.notification.models
