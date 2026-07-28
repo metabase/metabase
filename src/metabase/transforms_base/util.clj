@@ -111,7 +111,10 @@
   (if (contains? transform :full-incremental-run?)
     (:full-incremental-run? transform)
     (and (incremental-target? transform)
-         (or (nil? (:last_checkpoint_value transform))
+         ;; a present :sync_state plays the same role as a checkpoint watermark for
+         ;; ingestion-style python transforms: its absence means "never synced"
+         (or (and (nil? (:last_checkpoint_value transform))
+                  (nil? (:sync_state transform)))
              (table-index/pending-changes-for-transform? id)))))
 
 (defn full-create-run?
@@ -346,7 +349,11 @@
   native query without a table variable to inject the filter into, or no checkpoint field
   selected."
   [{:keys [source] :as transform}]
-  (when (incremental-target? transform)
+  (when (and (incremental-target? transform)
+             ;; source-less python transforms manage their own cursor via :sync_state,
+             ;; so no checkpoint field (or source range) is required
+             (not (and (python-transform? transform)
+                       (empty? (:source-tables source)))))
     (when (and (native-query-transform? transform)
                (not (some (fn [tag] (#{:table "table"} (:type tag)))
                           (lib/template-tags (:query source)))))

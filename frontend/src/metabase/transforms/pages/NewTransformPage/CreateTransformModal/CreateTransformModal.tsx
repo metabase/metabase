@@ -20,6 +20,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { IncrementalTransformSettings } from "metabase/transforms/components/IncrementalTransform/IncrementalTransformSettings";
+import { hasCodeManagedSyncCursor } from "metabase/transforms/utils";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import type {
   SchemaName,
@@ -102,8 +103,11 @@ export function CreateTransformModal({
   );
 
   const validationContext = useMemo(
-    () => ({ supportsSchemas: Boolean(supportsSchemas) }),
-    [supportsSchemas],
+    () => ({
+      supportsSchemas: Boolean(supportsSchemas),
+      hasCodeManagedSyncCursor: hasCodeManagedSyncCursor(source),
+    }),
+    [supportsSchemas, source],
   );
 
   if (isLoading || error != null) {

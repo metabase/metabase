@@ -172,7 +172,7 @@
                                             (or (:owner_user_id body) creator-id))
                             transform     (t2/insert-returning-instance!
                                            :model/Transform
-                                           (assoc (select-keys body [:name :description :source :target :run_trigger
+                                           (assoc (select-keys body [:name :description :source :target :run_trigger :secrets
                                                                      :collection_id :owner_email])
                                                   :creator_id creator-id
                                                   :owner_user_id owner-user-id))]

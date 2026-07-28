@@ -18,6 +18,7 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.core :as transforms.core]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.util :as u]
    [metabase.util.format :as u.format]
@@ -281,7 +282,10 @@
               :code           (:body source)
               :run-id         run-id
               :source-tables  resolved-source-tables
-              :shared-storage @shared-storage-ref})
+              :shared-storage @shared-storage-ref
+              ;; secrets are never on the instance; fetched explicitly for the run
+              :secrets        (some-> (:id transform) transforms.core/secrets-for-run)
+              :state          (:sync_state transform)})
 
             output-manifest (python-runner/read-output-manifest @shared-storage-ref)
             events          (python-runner/read-events @shared-storage-ref)]
@@ -313,6 +317,11 @@
                     (with-stage-timing-fn run-id [:import :file-to-dwh] do-transfer)
                     (do-transfer))
                   (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size rows-written)
+                  ;; Persist the connector cursor only after the data is durably in the target table,
+                  ;; so a failed transfer re-runs from the previous state.
+                  (when-some [new-state (:sync_state output-manifest)]
+                    (when-let [transform-id (:id transform)]
+                      (t2/update! :model/Transform transform-id {:sync_state new-state})))
                   (assoc response :rows-affected rows-written))
                 (finally
                   (.delete temp-file))))
