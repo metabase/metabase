@@ -58,6 +58,9 @@ export type Transform = {
 
   last_checkpoint_value?: string | null;
 
+  // names of configured secret env vars (values never leave the server)
+  secret_keys?: string[];
+
   // set by the job transforms endpoint on transforms pulled into the plan
   // only as dependencies (not tagged for the job); `scheduled` says whether
   // any active job's schedule covers them
@@ -309,6 +312,8 @@ export type UpdateTransformRequest = {
   collection_id?: number | null;
   owner_user_id?: UserId | null;
   owner_email?: string | null;
+  // write-only, per-key merge: string sets/replaces, null removes
+  secrets?: Record<string, string | null>;
 };
 
 export type CreateTransformJobRequest = {
