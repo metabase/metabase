@@ -1743,9 +1743,9 @@ The absolute maximum time to keep any cached query results, in seconds.
 ### `MB_QUEUE_BACKEND`
 
 - Type: string
-- Default: `quartz`
+- Default: `null`
 
-Which queue backend to use. Valid values: `quartz`, `memory`.
+Which queue backend to use. Valid values: `quartz`, `memory`. When unset, defaults to `quartz`, or to `memory` when the task scheduler is disabled (`MB_DISABLE_SCHEDULER`).
 
 ### `MB_QUEUE_MAX_RETRIES`
 

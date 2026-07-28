@@ -84,19 +84,19 @@
   `(when semantic.db.datasource/db-url
      (let [suffix# (System/nanoTime)
            ~ds-sym (semantic.db.datasource/ensure-initialized-data-source!)]
-       (binding [index-table/*vectors-table* (str "library_entity_index_test_" suffix#)
-                 index-table/*meta-table*    (str "library_entity_index_meta_test_" suffix#)]
+       (binding [index-table/*tables* {:vectors (str "library_entity_index_test_" suffix#)
+                                       :meta    (str "library_entity_index_meta_test_" suffix#)}]
          (try
            ~@body
            (finally
              (jdbc/execute! ~ds-sym [(str "DROP TABLE IF EXISTS "
-                                          index-table/*vectors-table* ", "
-                                          index-table/*meta-table*)])))))))
+                                          (index-table/vectors-table) ", "
+                                          (index-table/meta-table))])))))))
 
 (defn- index-rows [ds]
   (jdbc/execute! ds
                  [(format "SELECT doc_id, entity_type, entity_local_id, doc_type, doc_text FROM \"%s\""
-                          index-table/*vectors-table*)]
+                          (index-table/vectors-table))]
                  {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn- docs-for
@@ -107,7 +107,7 @@
 
 (defn- reconciled-at! [ds]
   (:reconciled_at (jdbc/execute-one! ds
-                                     [(format "SELECT reconciled_at FROM \"%s\" WHERE id = 1" index-table/*meta-table*)]
+                                     [(format "SELECT reconciled_at FROM \"%s\" WHERE id = 1" (index-table/meta-table))]
                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
 (deftest ^:sequential reconcile-lifecycle-test
@@ -210,7 +210,7 @@
               (is (seq (docs-for ds "table" table-id)))
               (testing "a schema-version mismatch alone also triggers the rebuild"
                 (jdbc/execute! ds [(format "UPDATE \"%s\" SET schema_version = schema_version - 1"
-                                           index-table/*meta-table*)])
+                                           (index-table/meta-table))])
                 (is (= :rebuilt (index-table/ensure-tables! ds new-model)))
                 (is (= [] (index-rows ds))))
               (testing "the rebuild heals the meta row, so it doesn't recur on the next sync"

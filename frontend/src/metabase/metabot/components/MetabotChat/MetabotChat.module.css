@@ -170,8 +170,15 @@
 }
 
 .textInputContainer {
-  padding: 0 1rem 1rem;
+  padding: 0 1rem;
   width: 100%;
   max-width: 48rem;
   margin-inline: auto;
+}
+
+.disclaimer {
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

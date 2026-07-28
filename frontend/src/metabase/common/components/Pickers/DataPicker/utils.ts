@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
 import * as Lib from "metabase-lib";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
@@ -74,3 +76,10 @@ export const shouldDisableItemNotInDb =
 
     return false;
   };
+
+export const getItemNotInDbTooltip =
+  (databaseId?: DatabaseId) =>
+  (item: OmniPickerItem): string | undefined =>
+    shouldDisableItemNotInDb(databaseId)(item)
+      ? t`You can't combine data from different databases.`
+      : undefined;

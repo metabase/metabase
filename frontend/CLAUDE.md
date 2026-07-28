@@ -12,7 +12,6 @@ This is a high-level guide. Use available search tools to discover the current s
 - API clients: `frontend/src/metabase/api`
 - Query building and data modeling: `frontend/src/metabase-lib`
 - Shared TypeScript types: `frontend/src/metabase-types`
-- Thin helpers reused across bundles: `frontend/src/metabase-shared`
 - Global and ambient type declarations: `frontend/src/types`
 - Embedding SDK OSS code: `frontend/src/embedding-sdk-bundle` and `frontend/src/embedding-sdk-shared`
 - Enterprise-only features: `enterprise/frontend/src/metabase-enterprise`

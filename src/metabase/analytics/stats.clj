@@ -794,7 +794,7 @@
 
 (defn- ee-snowplow-features-data'
   []
-  (let [features [:sso-jwt :sso-saml :scim :multi-factor-auth :sandboxes :email-allow-list :semantic-search :workspaces]]
+  (let [features [:sso-jwt :sso-saml :scim :multi-factor-auth :sandboxes :email-allow-list :semantic-search]]
     (map
      (fn [feature]
        {:name      feature

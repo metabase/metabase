@@ -44,7 +44,6 @@ import {
   PLUGIN_SECURITY_CENTER,
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
-  PLUGIN_WORKSPACES,
   PLUGIN_WRITABLE_CONNECTION,
   PerformanceTabId,
 } from "metabase/plugins";
@@ -87,7 +86,6 @@ export const getRoutes = (
           </Route>
           <Route path=":databaseId/edit" element={<DatabasePage />} />
           {PLUGIN_WRITABLE_CONNECTION.getWritableConnectionInfoRoutes(IsAdmin)}
-          {PLUGIN_WORKSPACES.getWorkspaceDatabaseRoutes(IsAdmin)}
           <Route path=":databaseId" element={<DatabaseEditApp />}>
             {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
           </Route>
