@@ -1785,6 +1785,7 @@ serdes/meta:
    (reify source.p/SourceSnapshot
      (version [_] version)
      (list-files [_] [])
+     (list-dir [_ _] [])
      (read-file [_ _] nil)
      (open-commit [_]
        (reify source.p/CommitBuilder

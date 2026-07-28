@@ -180,8 +180,7 @@
   "ContentStore for agent query construction. Alias for
   [[shared.content-store/default-store]] — the chokepoint wrapper applies `api/read-check` to
   every lookup whenever `api/*current-user-id*` is bound, symmetrically across all five
-  ContentStore methods. The unchecked underlying store gates non-NanoID entity-id values to
-  avoid a full-table scan via `find-by-identity-hash`."
+  ContentStore methods. The unchecked underlying store rejects non-NanoID entity-id values."
   shared.content-store/default-store)
 
 (defn- check-first-stage-source-table-query-permissions!

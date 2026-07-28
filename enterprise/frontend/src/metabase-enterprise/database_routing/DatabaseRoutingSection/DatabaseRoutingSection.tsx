@@ -167,8 +167,8 @@ export const DatabaseRoutingSection = ({
         <>
           <DatabaseInfoSectionDivider />
           <Alert
+            size="compact"
             variant="light"
-            color="info"
             icon={<Icon name="info" />}
             mb="md"
           >
@@ -183,8 +183,8 @@ export const DatabaseRoutingSection = ({
 
           {hasDbRoutingEnabled(database) && (
             <Alert
+              size="compact"
               variant="light"
-              color="info"
               icon={<Icon name="info" />}
               mb="md"
             >

@@ -1,4 +1,4 @@
-import type { Location as V7Location } from "react-router-v7";
+import type { Location as V7Location } from "react-router";
 
 import type { Location as HistoryLocation } from "../types";
 

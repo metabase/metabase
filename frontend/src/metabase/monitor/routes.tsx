@@ -20,18 +20,16 @@ import {
 import { PLUGIN_MONITOR, PLUGIN_MONITOR_TOOLS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import {
-  Navigate,
-  Route,
-  type RouteComponent,
-  redirect,
-  withRouteProps,
-} from "metabase/router";
+import { Navigate, Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { MonitorLayout } from "./components/MonitorLayout";
-
-const RoutedJobInfoApp = withRouteProps(JobInfoApp);
+import {
+  CanAccessAlertsManagement,
+  CanAccessMonitor,
+  CanAccessMonitorDiagnostics,
+  CanAccessMonitoringTools,
+} from "./route-guards";
 
 /** Lands on the first Monitor section the user can access. */
 function MonitorIndexRedirect() {
@@ -39,12 +37,7 @@ function MonitorIndexRedirect() {
   return <Navigate to={indexPath} replace />;
 }
 
-export function getMonitorRoutes(
-  CanAccessMonitor: RouteComponent,
-  CanAccessMonitorDiagnostics: RouteComponent,
-  CanAccessMonitoringTools: RouteComponent,
-  CanAccessAlertsManagement: RouteComponent,
-) {
+export function getMonitorRoutes() {
   return (
     <Route element={<CanAccessMonitor />}>
       <Route path="monitor" element={<MonitorLayout />}>
@@ -67,7 +60,7 @@ export function getMonitorRoutes(
 
         <Route element={<CanAccessMonitoringTools />}>
           <Route path="tasks">{getTasksRoutes()}</Route>
-          <Route path="jobs" element={<RoutedJobInfoApp />}>
+          <Route path="jobs" element={<JobInfoApp />}>
             <Route path=":jobKey" />
           </Route>
           <Route path="logs" element={<Logs />}>

@@ -92,8 +92,8 @@ export function ModelCachingControl({ database, disabled }: Props) {
       {disabled && (
         <Box>
           <Alert
+            size="compact"
             variant="light"
-            color="info"
             icon={<Icon name="info" />}
             mb="md"
           >

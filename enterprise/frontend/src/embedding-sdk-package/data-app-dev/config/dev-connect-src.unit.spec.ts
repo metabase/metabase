@@ -11,25 +11,25 @@ function directive(csp: string, name: string): string | undefined {
 }
 
 describe("buildDevCsp", () => {
-  it("blocks native submits and limits framing to 'self' when no allowed_hosts", () => {
+  it("blocks native submits and framing", () => {
     const csp = buildDevCsp([], undefined);
 
     expect(directive(csp, "connect-src")).toBe(
       "'self' ws://localhost:* wss://localhost:* ws://127.0.0.1:* wss://127.0.0.1:*",
     );
     expect(directive(csp, "form-action")).toBe("'none'");
-    expect(directive(csp, "frame-src")).toBe("'self'");
+    expect(directive(csp, "frame-src")).toBe("'none'");
   });
 
-  it("adds allowed_hosts to connect-src, form-action and frame-src", () => {
+  it("adds allowed_hosts to connect-src only, never to form-action or frame-src", () => {
     const hosts = ["https://api.example.com", "https://*.trusted.test"];
     const csp = buildDevCsp(hosts, undefined);
 
     for (const host of hosts) {
       expect(directive(csp, "connect-src")).toContain(host);
     }
-    expect(directive(csp, "form-action")).toBe(hosts.join(" "));
-    expect(directive(csp, "frame-src")).toBe(`'self' ${hosts.join(" ")}`);
+    expect(directive(csp, "form-action")).toBe("'none'");
+    expect(directive(csp, "frame-src")).toBe("'none'");
   });
 
   it("adds the Metabase instance origin to connect-src only, normalized to an origin", () => {
@@ -41,7 +41,7 @@ describe("buildDevCsp", () => {
     expect(csp).not.toContain("secret");
     // The instance origin is for fetch, not for submitting/framing.
     expect(directive(csp, "form-action")).toBe("'none'");
-    expect(directive(csp, "frame-src")).toBe("'self'");
+    expect(directive(csp, "frame-src")).toBe("'none'");
   });
 
   it("ignores an unparseable Metabase URL", () => {
