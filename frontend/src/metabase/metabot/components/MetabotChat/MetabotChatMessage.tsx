@@ -38,7 +38,10 @@ import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import { AgentDataPartMessage } from "./MetabotAgentDataPartMessage";
 import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
-import { MetabotChainOfThought } from "./MetabotChainOfThought";
+import {
+  MetabotChainOfThought,
+  MetabotToolProgress,
+} from "./MetabotChainOfThought";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
 
@@ -191,6 +194,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   onInternalLinkClick?: (link: string) => void;
   extraActions?: ReactNode;
   isStreaming?: boolean;
+  supportsReasoning?: boolean;
 }
 
 export const AgentMessage = ({
@@ -208,6 +212,7 @@ export const AgentMessage = ({
   hideActions,
   extraActions,
   isStreaming = false,
+  supportsReasoning = true,
   ...props
 }: AgentMessageProps) => {
   const messageId = "externalId" in message ? (message.externalId ?? "") : "";
@@ -239,9 +244,13 @@ export const AgentMessage = ({
         .with({ type: "tool_call" }, (m) => (
           <AgentToolCallMessage message={m} />
         ))
-        .with({ type: "chain_of_thought" }, (m) => (
-          <MetabotChainOfThought message={m} isStreaming={isStreaming} />
-        ))
+        .with({ type: "chain_of_thought" }, (m) =>
+          supportsReasoning ? (
+            <MetabotChainOfThought message={m} isStreaming={isStreaming} />
+          ) : (
+            <MetabotToolProgress message={m} isStreaming={isStreaming} />
+          ),
+        )
         .with({ type: "turn_aborted" }, (m) => (
           <AbortedTurnAlert messageId={m.id} debug={debug} onRetry={onRetry} />
         ))
@@ -474,6 +483,7 @@ export const Messages = ({
   onRetryMessage,
   onRefreshConversation,
   isDoingScience,
+  supportsReasoning = true,
   debug,
   readonly = false,
   conversationId,
@@ -484,6 +494,7 @@ export const Messages = ({
   onRetryMessage?: (messageId: string) => void;
   onRefreshConversation?: () => void;
   isDoingScience: boolean;
+  supportsReasoning?: boolean;
   debug: boolean;
   readonly?: boolean;
   conversationId: string;
@@ -576,6 +587,7 @@ export const Messages = ({
             }
             extraActions={getExtraActions?.(message.id)}
             onInternalLinkClick={onInternalLinkClick}
+            supportsReasoning={supportsReasoning}
             isStreaming={
               isChainOfThoughtMessage(message)
                 ? isDoingScience && !nextContent

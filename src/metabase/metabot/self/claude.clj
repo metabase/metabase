@@ -410,6 +410,11 @@
       (model-current-gen? model)          {:type "adaptive" :display "summarized"}
       (and major (= major 4) (= minor 6)) {:type "adaptive" :display "summarized"})))
 
+(defn reasoning-model?
+  "Whether `model` streams reasoning back to us."
+  [model]
+  (some? (model-thinking-config model)))
+
 (mu/defn claude-request-body
   "Build the Anthropic Messages API request body for an LLM request."
   [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning?]

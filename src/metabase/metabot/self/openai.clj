@@ -311,7 +311,7 @@
     (not (or (str/starts-with? model "gpt-5")
              (re-find #"^o\d" model)))))
 
-(defn- reasoning-model?
+(defn reasoning-model?
   "Whether `model` is a reasoning model that can emit reasoning summaries — the
   same GPT-5 / o-series set that rejects an explicit temperature."
   [model]
