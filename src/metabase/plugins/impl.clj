@@ -36,12 +36,12 @@
        ;; rather than failing to launch entirely. Log instructions for what should be done to fix the problem.
        (catch Throwable e
          (log/warn
-          e
           (format "Metabase cannot use the plugins directory %s" filename)
           "\n"
           "Please make sure the directory exists and that Metabase has permission to write to it."
           "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR."
-          "Falling back to a temporary directory for now.")
+          "Falling back to a temporary directory for now."
+          (str "Error: " (ex-message e)))
          ;; Check whether the fallback temporary directory is writable. If it's not, there's no way for us to
          ;; gracefully proceed here. Throw an Exception detailing the critical issues.
          (let [path (u.files/get-path (System/getProperty "java.io.tmpdir"))]
@@ -176,7 +176,7 @@
     (try
       (init-plugin! path)
       (catch Throwable e
-        (log/errorf e "Failed to initialize plugin %s" (.getFileName path))))))
+        (log/errorf "Failed to initialize plugin %s: %s" (.getFileName path) (ex-message e))))))
 
 (defn- load! []
   ;; Load any user-supplied plugin JARs from the plugins directory (e.g. Oracle JDBC driver).

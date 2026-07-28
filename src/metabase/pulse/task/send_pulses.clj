@@ -66,7 +66,7 @@
             :done))
         (log/debugf "Pulse %d not found, Skipping." pulse-id))
       (catch Throwable e
-        (log/errorf e "Error sending Pulse %d to channel ids: %s" pulse-id (str/join ", " channel-ids))))))
+        (log/errorf "Error sending Pulse %d to channel ids: %s: %s" pulse-id (str/join ", " channel-ids) (ex-message e))))))
 
 (defn- send-trigger-timezone
   []

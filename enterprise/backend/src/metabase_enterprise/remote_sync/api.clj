@@ -301,7 +301,7 @@
       (let [branch-list (source.p/branches source)]
         {:items branch-list})
       (catch Exception e
-        (log/errorf e "Failed to get branches from source: %s" (ex-message e))
+        (log/errorf "Failed to get branches from source: %s" (ex-message e))
         (let [error-msg (impl/source-error-message e)]
           (throw (ex-info error-msg {:status-code 400}
                           e)))))))

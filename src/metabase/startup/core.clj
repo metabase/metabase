@@ -28,4 +28,4 @@
       (log/infof "Running setup logic %s %s" (u/format-color 'green (name k)) (u/emoji "☑\uFE0F"))
       (f k)
       (catch Throwable e
-        (log/errorf e "Error initializing startup logic %s" k)))))
+        (log/errorf "Error initializing startup logic %s: %s" k (ex-message e))))))

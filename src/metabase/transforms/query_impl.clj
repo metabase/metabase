@@ -79,7 +79,7 @@
      (catch Throwable t
        (if (= :already-running (:error (ex-data t)))
          (log/warnf "Transform %d is already running" id)
-         (log/error t "Error executing transform"))
+         (log/errorf "Error executing transform: %s" (ex-message t)))
        (throw t)))))
 
 #_{:clj-kondo/ignore [:discouraged-var]}

@@ -16,7 +16,6 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
-   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import (java.time Instant)))
 
@@ -57,7 +56,7 @@
     (semantic.index/create-index-table-if-not-exists! tx index)
     (semantic.dlq/create-dlq-table-if-not-exists! tx index-metadata index-id)
     (when-not active
-      (log/infof "Configured model does not match active index, switching to new index %s" (u/pprint-to-str index))
+      (log/infof "Configured model does not match active index, switching to new index %s" (pr-str index))
       (semantic.index-metadata/activate-index! tx index-metadata index-id))
     index))
 

@@ -349,8 +349,8 @@
                                (insert-batch! conn embedding-model batch)
                                (catch Exception e
                                  (vswap! failed into (map entity-class batch))
-                                 (log/error e "library entity index: failed to insert batch of"
-                                            (count batch) "docs; will retry next run")
+                                 (log/error "library entity index: failed to insert batch of"
+                                            (count batch) "docs; will retry next run:" (ex-message e))
                                  0)))))
                      0
                      to-insert)
@@ -377,8 +377,8 @@
         inserted    (try
                       (if (seq to-insert) (insert-batch! conn embedding-model to-insert) 0)
                       (catch Exception e
-                        (log/error e "library entity index: failed to reconcile entity"
-                                   entity-type entity-local-id "; will retry next run")
+                        (log/error "library entity index: failed to reconcile entity"
+                                   entity-type entity-local-id "; will retry next run:" (ex-message e))
                         ::failed))
         failed?     (= ::failed inserted)
         to-delete   (if failed? [] orphans)]

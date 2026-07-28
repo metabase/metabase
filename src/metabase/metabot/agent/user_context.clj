@@ -44,7 +44,7 @@
       :else
       (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME (OffsetDateTime/now)))
     (catch Exception e
-      (log/error e "Error formatting current time")
+      (log/errorf "Error formatting current time: %s" (ex-message e))
       (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME (OffsetDateTime/now)))))
 
 ;;; SQL Dialect Extraction
@@ -137,7 +137,7 @@
         (te/lines preamble (format-fn structured-output))
         (format-simple-entity entity)))
     (catch Exception e
-      (log/error e "Error fetching entity details for viewing context" {:type (:type entity) :id (:id entity)})
+      (log/error "Error fetching entity details for viewing context" {:type (:type entity) :id (:id entity)} (ex-message e))
       (format-simple-entity entity))))
 
 (defmethod format-entity "table"
@@ -364,7 +364,7 @@
               (try
                 (format-entity item)
                 (catch Exception e
-                  (log/error e "Error formatting viewing context item:" (:type item))
+                  (log/error "Error formatting viewing context item:" (:type item) (ex-message e))
                   "")))))
 
 ;;; Recent Views Formatting
@@ -397,7 +397,7 @@
                             :email    email-address
                             :glossary glossary}))
     (catch Exception e
-      (log/error e "Error formatting current user info")
+      (log/errorf "Error formatting current user info: %s" (ex-message e))
       nil)))
 
 ;;; Context Enrichment

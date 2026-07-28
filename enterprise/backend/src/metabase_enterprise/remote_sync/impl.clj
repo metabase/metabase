@@ -294,7 +294,7 @@
                             :path         (or repo-path (:path fspec))
                             :content_hash (source/content-hash (:content fspec))})
                          (catch Exception e
-                           (log/warnf e "Skipping %s %s: failed to serialize for content hash" model-type (:id instance))
+                           (log/warnf "Skipping %s %s: failed to serialize for content hash: %s" model-type (:id instance) (ex-message e))
                            nil)))]
     ;; One transduction over the model groups: stream each model's extract-query through `serialize` via an
     ;; eduction — extract-one runs while the ResultSet is open, with no intermediate per-model sequence.
@@ -530,7 +530,7 @@
   (let [{:keys [conflicts merged summary]} (source/compute-merge (spec/extract-entities-for-export) snapshot base-snapshot task-id)]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
-        (log/infof "Pull merge conflict on %d entit(ies): %s" (count labels) (str/join ", " labels))
+        (log/infof "Pull merge conflict on %d entit(ies)" (count labels))
         {:status    :conflict
          :version   (source.p/version snapshot)
          :conflicts labels
@@ -684,7 +684,7 @@
         (if (:cancelled? (ex-data e))
           (log/info "Import from git repository was cancelled")
           (do
-            (log/errorf e "Failed to reload from git repository: %s" (ex-message e))
+            (log/errorf "Failed to reload from git repository: %s" (ex-message e))
             (analytics/inc! :metabase-remote-sync/imports-failed)
             {:status :error
              :message (source-error-message e)
@@ -730,7 +730,7 @@
         {:keys [merged conflicts summary]} (source/compute-merge models snapshot base-snapshot task-id)]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
-        (log/infof "Export merge conflict on %d entit(ies): %s" (count labels) (str/join ", " labels))
+        (log/infof "Export merge conflict on %d entit(ies)" (count labels))
         {:status        :conflict
          :version       (source.p/version snapshot)
          :conflicts     labels
@@ -1206,7 +1206,7 @@
       (catch Exception e
         ;; handle-task-result! records the failure on this result, and skips entirely when the task
         ;; was already cancelled (ended_at set) — so cancellation needs no special case here.
-        (log/errorf e "Failed to export to git repository: %s" (ex-message e))
+        (log/errorf "Failed to export to git repository: %s" (ex-message e))
         (analytics/inc! :metabase-remote-sync/exports-failed)
         {:status :error
          :message (format "Failed to export to git repository: %s" (ex-message e))})
@@ -1408,7 +1408,7 @@
        (let [result (try
                       (sync-fn task-id)
                       (catch Exception e
-                        (log/error e "Remote sync task failed")
+                        (log/errorf "Remote sync task failed: %s" (ex-message e))
                         {:status :error
                          :message (source-error-message e)}))]
          (handle-task-result! result task-id branch)
@@ -1416,7 +1416,7 @@
            (try
              (on-success task-id result)
              (catch Exception e
-               (log/error e "Remote sync task :on-success function failed")))))))
+               (log/errorf "Remote sync task :on-success function failed: %s" (ex-message e))))))))
     task))
 
 (defn async-import!

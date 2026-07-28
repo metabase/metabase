@@ -143,7 +143,7 @@
     "embedding-iframe-static"   (analytics/inc! :metabase-embedding-iframe-static/response {:status (str status)})
     "embedding-public"          (analytics/inc! :metabase-embedding-public/response {:status (str status)})
     "embedding-simple"          (analytics/inc! :metabase-embedding-simple/response {:status (str status)})
-    (log/infof "Unknown client. client: %s" sdk-client)))
+    (log/info "Unknown client.")))
 
 (defn embedding-context?
   "Should we track this request as being made by an embedding client?"

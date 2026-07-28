@@ -91,7 +91,7 @@
       (try
         (boolean (seq (query-read-only! query)))
         (catch Throwable e
-          (log/warnf e "Matching query failed: %s" (pr-str query))
+          (log/warnf "Matching query failed: %s" (ex-message e))
           :error))
       (do
         (log/warnf "No matching query for dialect %s or default" (name (mdb/db-type)))
@@ -160,7 +160,7 @@
              (try
                (evaluate-advisory! advisory instance-version)
                (catch Exception e
-                 (log/warnf e "Error evaluating advisory %s" (:advisory_id advisory))
+                 (log/warnf "Error evaluating advisory %s: %s" (:advisory_id advisory) (ex-message e))
                  (t2/update! :model/SecurityAdvisory (:id advisory)
                              {:match_status      :error
                               :last_evaluated_at (mi/now)}))))))))

@@ -156,7 +156,7 @@
       (run-transform! run-id run-method user-id started-run-id transform)
       {::status :succeeded ::transform transform}
       (catch Throwable t
-        (log/errorf t "Transform %s in run %s failed" (pr-str (:id transform)) (pr-str run-id))
+        (log/errorf "Transform %s in run %s failed: %s" (pr-str (:id transform)) (pr-str run-id) (ex-message t))
         {::status    :failed
          ::transform transform
          ::message   (or (ex-message t) (str t))
@@ -267,7 +267,7 @@
     (try
       (cancel-worker! worker)
       (catch Throwable t
-        (log/warnf t "Error canceling in-flight worker for transform %s" (pr-str id))))))
+        (log/warnf "Error canceling in-flight worker for transform %s: %s" (pr-str id) (ex-message t))))))
 
 (defonce ^:private active-runs
   ;; job-run-id -> promise, delivered once the run is found terminated externally (e.g. reaped)
@@ -492,7 +492,7 @@
                               (when (= :cron run-method)
                                 (notify-transform-failures job-id (::failures result)))
                               (catch Exception e
-                                (log/error e "Error when failing a transform run.")))))
+                                (log/errorf "Error when failing a transform run: %s" (ex-message e))))))
                 (catch Throwable t
                   ;; We don't expect a catastrophic failure, but neither did the Titanic.
                   (try
@@ -501,7 +501,7 @@
                                (= :cron run-method)) ;; Catastrophic job failures are included in the digest
                       (notify-transform-failures job-id (::failures (ex-data t))))
                     (catch Exception e
-                      (log/error e "Error when failing a transform job run.")))
+                      (log/errorf "Error when failing a transform job run: %s" (ex-message e))))
                   (throw t)))))
           run-id)))))
 

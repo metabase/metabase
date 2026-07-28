@@ -214,5 +214,5 @@
      (try
        (export-query metadata-provider pmbql-query content-store)
        (catch Exception e
-         (log/warn e "Failed to export pMBQL query to portable representations; omitting from LLM payload")
+         (log/warnf "Failed to export pMBQL query to portable representations; omitting from LLM payload: %s" (ex-message e))
          nil)))))

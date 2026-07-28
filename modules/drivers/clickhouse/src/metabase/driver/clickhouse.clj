@@ -178,7 +178,7 @@
              (when (.next rset)
                (.getBoolean rset 1))))))
       (catch Throwable e
-        (log/error e "An exception during ClickHouse connectivity check")
+        (log/errorf "An exception during ClickHouse connectivity check: %s" (ex-message e))
         false))
     ;; During normal usage, fall back to the default implementation
     (sql-jdbc.conn/can-connect? driver details)))

@@ -51,7 +51,7 @@
   `(try
      ~@body
      (catch Throwable e#
-       (log/errorf e# "Error while fetching metadata with '%s'" ~function-name)
+       (log/errorf "Error while fetching metadata with '%s': %s" ~function-name (ex-message e#))
        (throw e#))))
 
 (mu/defn db-metadata :- i/DatabaseMetadata
@@ -108,7 +108,7 @@
                    (mapv #(assoc % :table-schema (:schema table) :table-name (:name table))
                          table-fields))
                  (catch Throwable e
-                   (log/warn e (str "Could not fetch fields from table " table-id))
+                   (log/warn (str "Could not fetch fields from table " table-id ": " (ex-message e)))
                    nil))))
      table-ids)))
 

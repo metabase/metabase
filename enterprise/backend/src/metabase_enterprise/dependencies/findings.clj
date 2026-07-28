@@ -61,7 +61,7 @@
         (let [mp (lib-be/application-database-metadata-provider db-id)
               results (try (deps.analysis/check-entity mp entity-type instance-id)
                            (catch Exception e
-                             (log/error e "Error analyzing entity")
+                             (log/errorf "Error analyzing entity: %s" (ex-message e))
                              [(lib/validation-exception-error (.getMessage e))]))
               success (empty? results)]
           (deps.analysis-finding/upsert-analysis! entity-type instance-id success results))
@@ -78,8 +78,8 @@
   (doseq [instance instances]
     (try (upsert-analysis! instance)
          (catch Exception e
-           (log/errorf e "Analyzing entity %s %s failed"
-                       (t2/model instance) (:id instance))))))
+           (log/errorf "Analyzing entity %s %s failed: %s"
+                       (t2/model instance) (:id instance) (ex-message e))))))
 
 (def analyzable-entities
   "Entities for which we can compute analysis findings."
@@ -169,6 +169,6 @@
       (doseq [instance instances]
         (try (upsert-analysis! instance)
              (catch Exception e
-               (log/errorf e "Analyzing entity %s %s failed"
-                           (t2/model instance) (:id instance))))))
+               (log/errorf "Analyzing entity %s %s failed: %s"
+                           (t2/model instance) (:id instance) (ex-message e))))))
     (count instances)))
