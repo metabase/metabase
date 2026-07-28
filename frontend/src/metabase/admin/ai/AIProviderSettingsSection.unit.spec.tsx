@@ -665,7 +665,10 @@ describe("AIProviderSettingsSection", () => {
 
   it("shows Connect instead of Disconnect when the configured API key input is dirty", async () => {
     await setup();
-    await screen.findByLabelText("API key");
+    // Wait for the saved key from the setting-details
+    await waitFor(() =>
+      expect(screen.getByLabelText("API key")).not.toHaveValue(""),
+    );
 
     expect(
       screen.getByRole("button", { name: "Disconnect" }),
@@ -752,7 +755,10 @@ describe("AIProviderSettingsSection", () => {
       },
     });
 
-    expect(await screen.findByLabelText("API key")).toBeDisabled();
+    // Wait for the env-backed state from setting-details
+    await waitFor(() => {
+      expect(screen.getByLabelText("API key")).toBeDisabled();
+    });
     expect(
       await screen.findByText("Anthropic API key expired or invalid"),
     ).toBeInTheDocument();
@@ -2065,11 +2071,17 @@ describe("AIProviderSettingsSection", () => {
         apiKeyValues: { azure: "**********ey" },
       });
 
-      expect(await screen.findByLabelText("Model provider")).toHaveValue(
-        "Anthropic",
+      // The saved values hydrate from the async setting-details fetch, so
+      // wait for them rather than asserting synchronously.
+      await waitFor(() =>
+        expect(screen.getByLabelText("Model provider")).toHaveValue(
+          "Anthropic",
+        ),
       );
-      expect(screen.getByLabelText("Base URL")).toHaveValue(
-        "https://my-resource.services.ai.azure.com/anthropic",
+      await waitFor(() =>
+        expect(screen.getByLabelText("Base URL")).toHaveValue(
+          "https://my-resource.services.ai.azure.com/anthropic",
+        ),
       );
       expect(screen.getByLabelText("Deployment name")).toHaveValue(
         "claude-sonnet-4-5",
@@ -2091,6 +2103,11 @@ describe("AIProviderSettingsSection", () => {
       });
 
       const deploymentInput = await screen.findByLabelText("Deployment name");
+      // Wait for the saved deployment to hydrate before editing it — clearing
+      // the still-empty input is a no-op the arriving value then overwrites.
+      await waitFor(() =>
+        expect(deploymentInput).toHaveValue("claude-sonnet-4-5"),
+      );
       await userEvent.clear(deploymentInput);
       await userEvent.type(deploymentInput, "renamed-deployment");
 
@@ -2572,6 +2589,18 @@ describe("AIProviderSettingsSection with divergent settings reads", () => {
       expect(screen.getByLabelText("Model")).toHaveValue("Claude Sonnet 4.6");
     });
 
+    // Let the session-properties refetch land before arming the one-shot stale marker.
+    // Otherwise that in-flight refetch consumes it and the model-pick refetch below
+    // gets fresh data instead of stale.
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/session/properties"),
+      ).toHaveLength(2);
+    });
+    await act(async () => {
+      await fetchMock.callHistory.flush(true);
+    });
+
     markNextSessionPropertiesReadStale();
 
     await userEvent.click(screen.getByLabelText("Model"));
@@ -2583,8 +2612,10 @@ describe("AIProviderSettingsSection with divergent settings reads", () => {
       expect(backend.providerRow).toBe("anthropic/claude-sonnet-5");
     });
 
+    // Wait for the stale refetch to flip the section back to the setup layout
+    // then check the form kept the new selection instead of resetting to the stale snapshot.
+    expect(await screen.findByLabelText("Provider")).toHaveValue("Anthropic");
     expect(screen.getByLabelText("API key")).toBeInTheDocument();
     expect(screen.getByLabelText("Model")).toHaveValue("Claude Sonnet 5");
-    expect(screen.getByLabelText("Provider")).toHaveValue("Anthropic");
   });
 });

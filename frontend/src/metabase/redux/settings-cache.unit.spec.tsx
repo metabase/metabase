@@ -15,8 +15,6 @@ import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { getSetting } from "metabase/selectors/settings";
 import { createMockSettings } from "metabase-types/api/mocks";
 
-import { refreshSiteSettings } from "./settings";
-
 const TestGetComponent = () => {
   const siteNameFromSelector = useSelector((state: State) =>
     getSetting(state, "site-name"),
@@ -55,7 +53,12 @@ const TestComponentWithForceUpdateHook = () => {
 const TestUpdateComponent = () => {
   const [showHiddenComponent, setShowHiddenComponent] = useState(false);
   const dispatch = useDispatch();
-  const refresh = () => dispatch(refreshSiteSettings());
+  const refresh = () =>
+    dispatch(
+      sessionApi.endpoints.getSessionProperties.initiate(undefined, {
+        forceRefetch: true,
+      }),
+    );
   const invalidate = () =>
     dispatch(sessionApi.util.invalidateTags(["session-properties"]));
 
@@ -84,7 +87,7 @@ const setup = () => {
   });
 };
 
-describe("metabase/redux/settings", () => {
+describe("settings cache sync", () => {
   it("should load settings from initial store", () => {
     setup();
     // will be loading if called from the api
