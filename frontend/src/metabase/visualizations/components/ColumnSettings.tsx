@@ -35,7 +35,7 @@ type HasColumnSettingsWidgetsProps = CommonProps & {
   value?: ApiColumnSettings | null;
 };
 
-type ColumnSettingsProps = HasColumnSettingsWidgetsProps & {
+export type ColumnSettingsProps = HasColumnSettingsWidgetsProps & {
   style?: React.CSSProperties;
   variant?: ChartSettingsWidgetVariant;
 };
