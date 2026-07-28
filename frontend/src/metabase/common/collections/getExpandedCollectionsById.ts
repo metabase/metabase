@@ -118,7 +118,7 @@ function getExpandedCollectionsById(
     root.children = root.children.filter(
       (c) => c.id !== PERSONAL_COLLECTIONS.id,
     );
-    return _.omit(collectionsById, String(PERSONAL_COLLECTIONS.id));
+    return _.omit(collectionsById, PERSONAL_COLLECTIONS.id);
   }
 
   return collectionsById;
