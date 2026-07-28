@@ -118,8 +118,9 @@
              "official"]]]])
 
 (def ^:private collection-write-entry
+  ;; No `:update-scope`: one `agent:collection:write` scope covers both methods, as segment_write
+  ;; and measure_write do. `dispatch-write` skips the method-level gate when it's absent.
   {:tool-name       "collection_write"
-   :update-scope    metabot.scope/agent-collection-update
    :create-required [:name]})
 
 (registry/deftool collection-write
@@ -135,13 +136,12 @@
   can be set and rewritten but not cleared — sending null to erase one is not supported. Personal collections
   themselves cannot be created or moved, but you can nest collections inside one by passing its id as parent_id.
   Returns the resulting collection, including authority_level and namespace, so no follow-up read is needed."
-  {:name         "collection_write"
-   :scope        metabot.scope/agent-collection-create
-   :update-scope metabot.scope/agent-collection-update
+  {:name        "collection_write"
+   :scope       metabot.scope/agent-collection-write
    ;; `archived: true` trashes the collection and everything under it, so this is not the
    ;; additive-only update `destructiveHint false` would assert.
-   :annotations  {:readOnlyHint false :destructiveHint true}
-   :args         collection-write-args-schema}
+   :annotations {:readOnlyHint false :destructiveHint true}
+   :args        collection-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (common/dispatch-write collection-write-entry token-scopes args)
         payload  (case op

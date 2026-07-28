@@ -246,8 +246,10 @@
                                           "question_write")))))
 
 (deftest ^:parallel dispatch-write-test
-  (let [entry {:tool-name       "collection_write"
-               :update-scope    "agent:collection:update"
+  ;; question_write, not collection_write: the entry has to carry an `:update-scope` for the
+  ;; method-level gate below to mean anything, and collection_write is single-scope.
+  (let [entry {:tool-name       "question_write"
+               :update-scope    "agent:question:update"
                :create-required [:name]}]
     (testing "create enforces (create)-required fields"
       (is (= [:create {:name "X"}] (common/dispatch-write entry nil {:method "create" :name "X"})))
@@ -259,7 +261,7 @@
       (is (thrown-with-msg? Exception #"`id` is required"
                             (common/dispatch-write entry #{::scope/unrestricted} {:method "update"})))
       (is (thrown-with-msg? Exception #"method: update"
-                            (common/dispatch-write entry #{"agent:collection:create"} {:method "update" :id 3}))))
+                            (common/dispatch-write entry #{"agent:question:create"} {:method "update" :id 3}))))
     (testing "an unknown method is a teaching error"
       (is (thrown-with-msg? Exception #"create.*update"
                             (common/dispatch-write entry nil {:method "delete"}))))))

@@ -282,26 +282,27 @@
 
 (deftest scope-gating-test
   (mt/with-model-cleanup [:model/Collection]
-    (testing "a bearer token without the create scope cannot call the tool at all"
+    (testing "a bearer token without the write scope cannot call the tool at all"
       (is (= "Insufficient scope to call tool: collection_write"
              (tool-error (call-tool! :crowberto #{"agent:search"} {:method "create" :name "x"})))))
-    (testing "the create scope creates"
-      (is (int? (:id (tool-result (call-tool! :crowberto #{"agent:collection:create"}
+    (testing "the write scope creates"
+      (is (int? (:id (tool-result (call-tool! :crowberto #{"agent:collection:write"}
                                               {:method "create" :name "Scoped create"}))))))
-    (testing "the create scope alone cannot update — the method-level gate refuses it"
-      (is (re-find #"Insufficient scope to call collection_write with method: update"
-                   (tool-error (call-tool! :crowberto #{"agent:collection:create"}
-                                           {:method "update" :id 13371337 :name "x"})))))
-    (testing "the update scope passes the method gate — the identical call reaches the id lookup"
+    (testing "the same scope updates — one scope covers both methods, so there is no second gate
+              between them and the call reaches the id lookup"
       (is (re-find #"not found"
-                   (tool-error (call-tool! :crowberto #{"agent:collection:create" "agent:collection:update"}
+                   (tool-error (call-tool! :crowberto #{"agent:collection:write"}
                                            {:method "update" :id 13371337 :name "x"})))))
-    (testing "the wildcard the metabot permission bucket grants covers both"
+    (testing "the v1 create scope does not reach this tool — it gates POST /api/agent/v1/collection,
+              and collection_write is not that endpoint"
+      (is (= "Insufficient scope to call tool: collection_write"
+             (tool-error (call-tool! :crowberto #{"agent:collection:create"}
+                                     {:method "create" :name "x"})))))
+    (testing "the wildcard the metabot permission bucket grants covers it"
       (is (re-find #"not found"
                    (tool-error (call-tool! :crowberto #{"agent:collection:*"}
                                            {:method "update" :id 13371337 :name "x"})))))))
 
-(deftest write-scopes-grantable-test
-  (testing "GHY-4148: the scopes the tool checks are advertised, so a token can actually be granted them"
-    (is (every? (registry/registered-scopes)
-                #{"agent:collection:create" "agent:collection:update"}))))
+(deftest write-scope-grantable-test
+  (testing "GHY-4148: the scope the tool checks is advertised, so a token can actually be granted it"
+    (is (contains? (registry/registered-scopes) "agent:collection:write"))))
