@@ -7,7 +7,6 @@
    tool's own contract on top of them: the `definition` query sources, the shape gate's teaching
    errors, and the refusal to retype a question into a metric."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
@@ -68,8 +67,10 @@
   [x]
   (-> x json/encode json/decode+kw))
 
-(def ^:private create-scope #{"agent:metric:create"})
-(def ^:private write-scopes #{"agent:metric:create" "agent:metric:update"})
+(def ^:private write-scope
+  "The single scope metric_write is gated on, create and update alike — matching segment_write and
+   measure_write rather than question_write's create/update split."
+  #{"agent:metric:write"})
 
 ;;; ------------------------------------------------ Definitions ---------------------------------------------------
 
@@ -153,16 +154,16 @@
 (deftest ^:parallel create-required-args-test
   (testing "GHY-4146: `name` is enforced at create with a teaching error naming it"
     (is (= "`name` is required when method is \"create\"."
-           (tool-error (call-tool! :crowberto create-scope "metric_write"
+           (tool-error (call-tool! :crowberto write-scope "metric_write"
                                    {:method "create" :definition (count-definition)})))))
   (testing "GHY-4146: create with no query source names both sources"
-    (let [msg (tool-error (call-tool! :crowberto create-scope "metric_write"
+    (let [msg (tool-error (call-tool! :crowberto write-scope "metric_write"
                                       {:method "create" :name "metric-test no source"}))]
       (is (str/includes? msg "definition"))
       (is (str/includes? msg "query_handle"))))
   (testing "GHY-4146: create with both query sources is a teaching error, not a silent precedence rule"
     (is (re-find #"exactly one"
-                 (tool-error (call-tool! :crowberto create-scope "metric_write"
+                 (tool-error (call-tool! :crowberto write-scope "metric_write"
                                          {:method "create" :name "metric-test two sources"
                                           :definition (count-definition)
                                           :query_handle (str (random-uuid))}))))))
@@ -170,13 +171,13 @@
 (deftest ^:parallel update-required-args-test
   (testing "GHY-4146: update without id is a teaching error"
     (is (= "`id` is required when method is \"update\"."
-           (tool-error (call-tool! :crowberto write-scopes "metric_write" {:method "update" :name "x"})))))
+           (tool-error (call-tool! :crowberto write-scope "metric_write" {:method "update" :name "x"})))))
   (testing "GHY-4146: an id that is neither numeric nor a 21-char entity_id teaches the two accepted shapes"
     (is (= "Invalid id \"abc\" — pass a numeric id or a 21-character entity_id."
-           (tool-error (call-tool! :crowberto write-scopes "metric_write" {:method "update" :id "abc"})))))
+           (tool-error (call-tool! :crowberto write-scope "metric_write" {:method "update" :id "abc"})))))
   (testing "GHY-4146: create-only fields on update are rejected, so a caller never believes an ignored field took effect"
     (is (= "`archived` applies to method \"update\" only — remove it from this create call."
-           (tool-error (call-tool! :crowberto create-scope "metric_write"
+           (tool-error (call-tool! :crowberto write-scope "metric_write"
                                    {:method "create" :name "x" :archived true
                                     :definition (count-definition)}))))))
 
@@ -186,7 +187,7 @@
 (deftest metric-write-lifecycle-test
   (mt/with-model-cleanup [:model/Card]
     (mt/with-temp [:model/Collection {coll-id :id} {}]
-      (let [created (tool-result (call-tool! :crowberto create-scope "metric_write"
+      (let [created (tool-result (call-tool! :crowberto write-scope "metric_write"
                                              {:method "create"
                                               :name "metric-test lifecycle"
                                               :description "how many orders"
@@ -207,7 +208,7 @@
         (testing "GHY-4146: the row really is a metric card, not a question"
           (is (= :metric (t2/select-one-fn :type :model/Card :id (:id created)))))
         (testing "GHY-4146: update resolves an entity_id and applies only the fields passed"
-          (let [updated (tool-result (call-tool! :crowberto write-scopes "metric_write"
+          (let [updated (tool-result (call-tool! :crowberto write-scope "metric_write"
                                                  {:method "update" :id (:entity_id created)
                                                   :name "metric-test renamed"}))]
             (is (= (:id created) (:id updated)))
@@ -215,22 +216,22 @@
             (is (= "how many orders" (:description updated))
                 "an untouched field is not wiped by a partial update")))
         (testing "GHY-4146: the definition can be swapped for another valid metric shape"
-          (tool-result (call-tool! :crowberto write-scopes "metric_write"
+          (tool-result (call-tool! :crowberto write-scope "metric_write"
                                    {:method "update" :id (:id created)
                                     :definition (temporal-breakout-definition)}))
           (is (= 1 (count (get-in (t2/select-one-fn :dataset_query :model/Card :id (:id created))
                                   [:stages 0 :breakout])))))
         (testing "GHY-4146: archived true trashes and archived false restores — the only removal path"
-          (is (true? (:archived (tool-result (call-tool! :crowberto write-scopes "metric_write"
+          (is (true? (:archived (tool-result (call-tool! :crowberto write-scope "metric_write"
                                                          {:method "update" :id (:id created) :archived true})))))
-          (is (false? (:archived (tool-result (call-tool! :crowberto write-scopes "metric_write"
+          (is (false? (:archived (tool-result (call-tool! :crowberto write-scope "metric_write"
                                                           {:method "update" :id (:id created) :archived false}))))))))))
 
 ;; not ^:parallel: creates rows through the tool; with-model-cleanup's id watermark is not parallel-safe
 (deftest create-collection-target-test
   (mt/with-model-cleanup [:model/Card]
     (let [create! (fn [args]
-                    (tool-result (call-tool! :crowberto create-scope "metric_write"
+                    (tool-result (call-tool! :crowberto write-scope "metric_write"
                                              (merge {:method "create" :definition (count-definition)} args))))]
       (testing "GHY-4146: omitted collection_id saves to the caller's personal collection"
         (let [personal-id (:id (collection/user->personal-collection (mt/user->id :crowberto)))]
@@ -252,11 +253,11 @@
   (testing "GHY-4146: collection_id on update moves the metric"
     (mt/with-model-cleanup [:model/Card]
       (mt/with-temp [:model/Collection {coll-id :id} {}]
-        (let [created (tool-result (call-tool! :crowberto create-scope "metric_write"
+        (let [created (tool-result (call-tool! :crowberto write-scope "metric_write"
                                                {:method "create" :name "metric-test move"
                                                 :collection_id "root"
                                                 :definition (count-definition)}))]
-          (tool-result (call-tool! :crowberto write-scopes "metric_write"
+          (tool-result (call-tool! :crowberto write-scope "metric_write"
                                    {:method "update" :id (:id created) :collection_id coll-id}))
           (is (= coll-id (t2/select-one-fn :collection_id :model/Card :id (:id created)))))))))
 
@@ -282,7 +283,7 @@
                                                            :aggregation  [["count" {}]]}
                                                           {:lib/type "mbql.stage/mbql"}]})}]
       (testing label
-        (let [msg (tool-error (call-tool! :crowberto create-scope "metric_write"
+        (let [msg (tool-error (call-tool! :crowberto write-scope "metric_write"
                                           {:method "create" :name (str "metric-test " label)
                                            :definition definition}))]
           (is (re-find #"exactly one aggregation" msg))
@@ -293,12 +294,12 @@
 (deftest update-shape-gate-test
   (testing "GHY-4146: the shape gate runs on update too, and a rejected update leaves the metric untouched"
     (mt/with-model-cleanup [:model/Card]
-      (let [created (tool-result (call-tool! :crowberto create-scope "metric_write"
+      (let [created (tool-result (call-tool! :crowberto write-scope "metric_write"
                                              {:method "create" :name "metric-test update gate"
                                               :collection_id "root"
                                               :definition (count-definition)}))
             before  (t2/select-one-fn :dataset_query :model/Card :id (:id created))
-            msg     (tool-error (call-tool! :crowberto write-scopes "metric_write"
+            msg     (tool-error (call-tool! :crowberto write-scope "metric_write"
                                             {:method "update" :id (:id created)
                                              :definition (mbql5-definition
                                                           :aggregation [["count" {}] ["count" {}]])}))]
@@ -307,7 +308,7 @@
 
 (deftest ^:parallel invalid-definition-teaching-test
   (testing "GHY-4146: a definition that isn't a well-formed query is a teaching error, not an internal error"
-    (let [msg (tool-error (call-tool! :crowberto create-scope "metric_write"
+    (let [msg (tool-error (call-tool! :crowberto write-scope "metric_write"
                                       {:method "create" :name "metric-test garbage"
                                        :definition {:not "a query"}}))]
       (is (str/includes? msg "definition"))
@@ -324,7 +325,7 @@
                                   "the portable external dialect execute_query takes"
                                   (portable-count-definition)}]
         (testing label
-          (let [created (tool-result (call-tool! :crowberto create-scope "metric_write"
+          (let [created (tool-result (call-tool! :crowberto write-scope "metric_write"
                                                  {:method "create" :name (str "metric-test " label)
                                                   :collection_id "root"
                                                   :definition definition}))]
@@ -351,7 +352,7 @@
       (let [session-id (str (random-uuid))
             handle     (mint-handle! session-id (portable-count-definition))]
         (is (string? handle) "execute_query mints a handle on validate_only")
-        (let [created (tool-result (call-tool! :crowberto create-scope "metric_write"
+        (let [created (tool-result (call-tool! :crowberto write-scope "metric_write"
                                                {:method "create" :name "metric-test from handle"
                                                 :collection_id "root"
                                                 :query_handle handle}
@@ -361,13 +362,13 @@
 (deftest ^:parallel unknown-query-handle-test
   (testing "GHY-4146: an expired or unknown handle teaches the recovery, rather than failing opaquely"
     (is (re-find #"run the query again"
-                 (tool-error (call-tool! :crowberto create-scope "metric_write"
+                 (tool-error (call-tool! :crowberto write-scope "metric_write"
                                          {:method "create" :name "metric-test bad handle"
                                           :query_handle (str (random-uuid))}))))))
 
 (deftest ^:parallel native-definition-rejected-test
   (testing "GHY-4146: a native (SQL) query can't be a metric — the error names question_write as the way to save it"
-    (let [msg (tool-error (call-tool! :crowberto create-scope "metric_write"
+    (let [msg (tool-error (call-tool! :crowberto write-scope "metric_write"
                                       {:method "create" :name "metric-test native"
                                        :definition (wire {:lib/type "mbql/query"
                                                           :database (mt/id)
@@ -391,7 +392,7 @@
 (deftest definition-round-trip-test
   (testing "GHY-4146: get_content's `definition` feeds straight back into metric_write, as its description promises"
     (mt/with-model-cleanup [:model/Card]
-      (let [created   (tool-result (call-tool! :crowberto create-scope "metric_write"
+      (let [created   (tool-result (call-tool! :crowberto write-scope "metric_write"
                                                {:method "create" :name "metric-test round-trip"
                                                 :collection_id "root"
                                                 :definition (temporal-breakout-definition)}))
@@ -399,7 +400,7 @@
         (testing "the read is a full query in the portable dialect, not a bare clause"
           (is (map? read-back))
           (is (seq (:stages read-back))))
-        (tool-result (call-tool! :crowberto write-scopes "metric_write"
+        (tool-result (call-tool! :crowberto write-scope "metric_write"
                                  {:method "update" :id (:id created) :definition (wire read-back)}))
         (is (= 1 (count (get-in (t2/select-one-fn :dataset_query :model/Card :id (:id created))
                                 [:stages 0 :breakout])))
@@ -414,7 +415,7 @@
                                                 :name          "metric-test not a metric"
                                                 :dataset_query (orders-query)}]
         (testing (name card-type)
-          (let [msg (tool-error (call-tool! :crowberto write-scopes "metric_write"
+          (let [msg (tool-error (call-tool! :crowberto write-scope "metric_write"
                                             {:method "update" :id card-id :name "nope"}))]
             (is (str/includes? msg "question_write"))
             (is (str/includes? msg (name card-type)))
@@ -426,7 +427,7 @@
 (deftest ^:parallel update-not-found-test
   (testing "GHY-4146: an update against a nonexistent id is a not-found teaching error"
     (is (re-find #"not found"
-                 (tool-error (call-tool! :crowberto write-scopes "metric_write"
+                 (tool-error (call-tool! :crowberto write-scope "metric_write"
                                          {:method "update" :id 13371337 :name "x"}))))))
 
 ;; not ^:parallel: revokes the all-users group's permissions on the temp collection
@@ -438,43 +439,45 @@
     (perms/revoke-collection-permissions! (perms/all-users-group) coll-id)
     (let [norm (fn [msg] (str/replace msg #"\d+" "N"))]
       (testing "GHY-4146: an unreadable id and a nonexistent id must be indistinguishable — no existence oracle"
-        (is (= (norm (tool-error (call-tool! :rasta write-scopes "metric_write"
+        (is (= (norm (tool-error (call-tool! :rasta write-scope "metric_write"
                                              {:method "update" :id metric-id :name "x"})))
-               (norm (tool-error (call-tool! :rasta write-scopes "metric_write"
+               (norm (tool-error (call-tool! :rasta write-scope "metric_write"
                                              {:method "update" :id 13371337 :name "x"})))))))))
 
 ;;; ------------------------------------------------- Scopes -------------------------------------------------------
 
 (deftest ^:parallel scope-gating-test
-  (testing "GHY-4146: a bearer token without the create scope can't call the tool at all"
+  (testing "GHY-4146: a bearer token without the write scope can't call the tool at all"
     (is (= "Insufficient scope to call tool: metric_write"
            (tool-error (call-tool! :crowberto #{"agent:search"} "metric_write"
                                    {:method "update" :id 13371337 :name "x"})))))
-  (testing "GHY-4146: the create scope alone lists and calls the tool, but is refused on method: update"
-    (is (re-find #"method: update"
-                 (tool-error (call-tool! :crowberto create-scope "metric_write"
-                                         {:method "update" :id 13371337 :name "x"})))))
-  (testing "GHY-4146: with both scopes the identical call reaches the id lookup"
+  (testing "GHY-4146: the one write scope covers update as well as create — there is no second method-level gate"
     (is (re-find #"not found"
-                 (tool-error (call-tool! :crowberto write-scopes "metric_write"
+                 (tool-error (call-tool! :crowberto write-scope "metric_write"
                                          {:method "update" :id 13371337 :name "x"})))))
+  (testing "GHY-4146: v1's create/update scopes do not reach the v2 tool — agent:metric:write is its own leaf"
+    (is (= "Insufficient scope to call tool: metric_write"
+           (tool-error (call-tool! :crowberto #{"agent:metric:create" "agent:metric:update"} "metric_write"
+                                   {:method "update" :id 13371337 :name "x"})))))
   (testing "GHY-4146: the wildcard the metabot permission bucket grants passes too"
     (is (re-find #"not found"
                  (tool-error (call-tool! :crowberto #{"agent:metric:*"} "metric_write"
                                          {:method "update" :id 13371337 :name "x"}))))))
 
-(deftest ^:parallel metric-write-scopes-registered-test
-  (testing "GHY-4146: both scopes the tool checks are grantable — advertised through registered-scopes"
-    (is (set/subset? #{"agent:metric:create" "agent:metric:update"}
-                     (registry/registered-scopes))))
-  (testing "GHY-4146: the metabot NLQ permission bucket covers both"
-    (let [scopes (metabot.scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
-      (is (mcp.scope/matches? scopes "agent:metric:create"))
-      (is (mcp.scope/matches? scopes "agent:metric:update")))))
+(deftest ^:parallel metric-write-scope-registered-test
+  (testing "GHY-4146: the scope the tool checks is grantable — advertised through registered-scopes"
+    (is (contains? (registry/registered-scopes) "agent:metric:write")))
+  (testing "GHY-4146: the metabot NLQ permission bucket covers it via its agent:metric:* wildcard"
+    (is (mcp.scope/matches? (metabot.scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})
+                            "agent:metric:write")))
+  (testing "GHY-4146: and the sql-generation bucket does not"
+    (is (not (mcp.scope/matches? (metabot.scope/user-metabot-perms->scopes
+                                  {:permission/metabot-sql-generation :yes})
+                                 "agent:metric:write")))))
 
 (deftest ^:parallel tools-list-visibility-test
-  (testing "GHY-4146: the tool is visible exactly to tokens carrying its create scope"
-    (is (some #(= "metric_write" (:name %)) (registry/list-tools create-scope)))
+  (testing "GHY-4146: the tool is visible exactly to tokens carrying its write scope"
+    (is (some #(= "metric_write" (:name %)) (registry/list-tools write-scope)))
     (is (not (some #(= "metric_write" (:name %)) (registry/list-tools #{"agent:search"}))))))
 
 (deftest ^:parallel internal-caller-bypasses-scopes-test

@@ -49,6 +49,8 @@
   (deferred-tru "Create metrics"))
 (api-scope/defscope agent-metric-update "agent:metric:update"
   (deferred-tru "Update metrics"))
+(api-scope/defscope agent-metric-write "agent:metric:write"
+  (deferred-tru "Create and edit metrics"))
 
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"

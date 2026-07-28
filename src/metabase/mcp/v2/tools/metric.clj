@@ -212,7 +212,6 @@
 
 (def ^:private metric-write-entry
   {:tool-name       "metric_write"
-   :update-scope    metabot.scope/agent-metric-update
    :create-required [:name]})
 
 (registry/deftool metric-write
@@ -229,8 +228,7 @@
   question or a model is refused rather than retyping it. Requires write permission on the metric and curate
   permission on the target collection."
   {:name         "metric_write"
-   :scope        metabot.scope/agent-metric-create
-   :update-scope metabot.scope/agent-metric-update
+   :scope        metabot.scope/agent-metric-write
    :annotations  {:readOnlyHint false :destructiveHint false}
    :args         metric-write-args-schema}
   [args {:keys [token-scopes session-id]}]
