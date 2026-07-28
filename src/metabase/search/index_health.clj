@@ -126,7 +126,9 @@
   (into {} (keep tracked-entry) tracked))
 
 (defn- normalize-tracker!
-  "Bring anything a reload left behind into the current shape, so the callers below can trust their keys."
+  "Bring anything a reload left behind into the current shape and return it. Callers iterate what they get
+  back rather than dereferencing again: the pre-reload writer doesn't take the lock, so it can land another
+  malformed entry between the two."
   []
   (swap! live-gauge-series
          (fn [tracked]
@@ -160,8 +162,7 @@
   -- and a reading nothing is renewing is worse than none."
   []
   (locking live-gauge-series
-    (normalize-tracker!)
-    (doseq [[[gauge-key labels :as series] published] @live-gauge-series
+    (doseq [[[gauge-key labels :as series] published] (normalize-tracker!)
             :when (>= (u/since-ms published) stale-gauge-age-ms)]
       (analytics/remove-series! gauge-key labels)
       (swap! live-gauge-series dissoc series))))
