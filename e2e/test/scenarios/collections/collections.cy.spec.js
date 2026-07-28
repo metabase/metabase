@@ -512,6 +512,26 @@ describe("scenarios > collection defaults", () => {
       cy.findByText("Orders");
     });
 
+    it("should be able to drag an item into a sub-collection shown in the items table (metabase#37329)", () => {
+      visitRootCollection();
+
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Orders").as("dragSubject");
+        cy.findByText("First collection").as("dropTarget");
+      });
+
+      H.dragAndDrop("dragSubject", "dropTarget");
+
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Moved question");
+      cy.findByTestId("collection-table")
+        .findByText("Orders")
+        .should("not.exist");
+
+      H.visitCollection(FIRST_COLLECTION_ID);
+      cy.findByTestId("collection-table").findByText("Orders");
+    });
+
     describe("nested collections with revoked parent access", () => {
       const { first_name, last_name } = nocollection;
       const revokedUsersPersonalCollectionName = `${first_name} ${last_name}'s Personal Collection`;

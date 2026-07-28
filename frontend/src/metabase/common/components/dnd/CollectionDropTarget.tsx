@@ -1,4 +1,10 @@
-import type { DropTargetMonitor } from "react-dnd";
+import type { ComponentType, ReactElement } from "react";
+import { Component } from "react";
+import type {
+  ConnectDropTarget,
+  DropTargetConnector,
+  DropTargetMonitor,
+} from "react-dnd";
 import { DropTarget } from "react-dnd";
 
 import {
@@ -11,42 +17,105 @@ import { DropArea } from "./DropArea";
 
 import { MoveableDragTypes } from ".";
 
+export type DropTargetCollection = Pick<Collection, "id"> &
+  Partial<Pick<CollectionItem, "type" | "can_write">>;
+
 interface CollectionDropTargetOwnProps {
-  collection: Collection;
+  collection: DropTargetCollection;
+  selectedItems?: CollectionItem[];
 }
+
+export function canDropItemIntoCollection({
+  item,
+  collection,
+  selectedItems,
+}: CollectionDropTargetOwnProps & { item: CollectionItem }): boolean {
+  const isTrashCollection = isRootTrashCollection(collection);
+  if (!isTrashCollection && collection.can_write === false) {
+    return false;
+  }
+  const droppingToTrashFromTrash = isTrashCollection && item.archived;
+  const droppingToSameCollection =
+    canonicalCollectionId(item.collection_id) ===
+    canonicalCollectionId(collection.id);
+  // When multiple items are selected, all of them get moved on drop, so the
+  // target collection must not be part of the dragged selection.
+  const droppingIntoDraggedCollection = Boolean(
+    selectedItems?.some(
+      (selectedItem) =>
+        selectedItem.model === "collection" &&
+        selectedItem.id === collection.id,
+    ),
+  );
+  return (
+    item.model !== "collection" &&
+    !droppingToSameCollection &&
+    !droppingToTrashFromTrash &&
+    !droppingIntoDraggedCollection
+  );
+}
+
+const dropTargetSpec = {
+  drop(props: CollectionDropTargetOwnProps) {
+    return { collection: props.collection };
+  },
+  canDrop(props: CollectionDropTargetOwnProps, monitor: DropTargetMonitor) {
+    // react-dnd v4 types the drag payload as `any`; ItemDragSource.beginDrag
+    // always provides `{ item }`.
+    const { item } = monitor.getItem() as { item: CollectionItem };
+    return canDropItemIntoCollection({
+      item,
+      collection: props.collection,
+      selectedItems: props.selectedItems,
+    });
+  },
+};
+
+const collectDropTarget = (
+  connect: DropTargetConnector,
+  monitor: DropTargetMonitor,
+) => ({
+  highlighted: monitor.canDrop(),
+  hovered: monitor.isOver() && monitor.canDrop(),
+  connectDropTarget: connect.dropTarget(),
+});
 
 export const CollectionDropTarget = DropTarget(
   MoveableDragTypes,
-  {
-    drop(props: CollectionDropTargetOwnProps) {
-      return { collection: props.collection };
-    },
-    canDrop(props: CollectionDropTargetOwnProps, monitor: DropTargetMonitor) {
-      const { collection } = props;
-      // Unjustified type cast. FIXME
-      const { item } = monitor.getItem() as { item: CollectionItem };
-      if (
-        !isRootTrashCollection(collection) &&
-        collection.can_write === false
-      ) {
-        return false;
-      }
-      const droppingToTrashFromTrash =
-        isRootTrashCollection(collection) && item.archived;
-      const droppingToSameCollection =
-        canonicalCollectionId(item.collection_id) ===
-        canonicalCollectionId(collection.id);
-      return (
-        item.model !== "collection" &&
-        !droppingToSameCollection &&
-        !droppingToTrashFromTrash
-      );
-    },
-  },
-  (connect, monitor) => ({
-    highlighted: monitor.canDrop(),
-    hovered: monitor.isOver() && monitor.canDrop(),
-    connectDropTarget: connect.dropTarget(),
-  }),
-  // react-dnd v7 HOC types can't express the own/collected props split
+  dropTargetSpec,
+  collectDropTarget,
+  // react-dnd v4 HOC types can't express the own/collected props split
 )(DropArea as any);
+
+export interface CollectionDropTargetRenderProps {
+  connectDropTarget: ConnectDropTarget;
+  hovered: boolean;
+  highlighted: boolean;
+}
+
+interface CollectionRowDropTargetProps extends CollectionDropTargetOwnProps {
+  children: (props: CollectionDropTargetRenderProps) => ReactElement;
+}
+
+class CollectionRowDropTargetInner extends Component<
+  CollectionRowDropTargetProps & CollectionDropTargetRenderProps
+> {
+  render() {
+    const { children, connectDropTarget, hovered, highlighted } = this.props;
+    return children({ connectDropTarget, hovered, highlighted });
+  }
+}
+
+/**
+ * A collection drop target that, unlike `CollectionDropTarget`, renders no
+ * markup of its own: `children` receives `connectDropTarget` and must attach
+ * it to a native element. This makes it usable where `DropArea`'s wrapper
+ * `<div>` would be invalid markup, such as around a table `<tr>`.
+ */
+export const CollectionRowDropTarget: ComponentType<CollectionRowDropTargetProps> =
+  DropTarget(
+    MoveableDragTypes,
+    dropTargetSpec,
+    collectDropTarget,
+    // react-dnd v4 HOC types can't express the own/collected props split
+  )(CollectionRowDropTargetInner as any);

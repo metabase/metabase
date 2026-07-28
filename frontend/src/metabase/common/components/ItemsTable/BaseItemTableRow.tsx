@@ -1,9 +1,16 @@
+import cx from "classnames";
 import type { PropsWithChildren } from "react";
 
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
+import {
+  type CollectionDropTargetRenderProps,
+  CollectionRowDropTarget,
+} from "metabase/common/components/dnd/CollectionDropTarget";
 import { ItemDragSource } from "metabase/common/components/dnd/ItemDragSource";
 import type { CollectionItem } from "metabase-types/api";
+
+import S from "./BaseItemTableRow.module.css";
 
 type BaseItemTableRowProps = PropsWithChildren<
   {
@@ -90,17 +97,17 @@ export const ItemDragSourceTableRow = ({
   onDrop,
   visibleColumnsMap,
 }: BaseItemTableRowProps) => {
-  return (
-    <ItemDragSource
-      item={item}
-      collection={collection}
-      isSelected={isSelected}
-      selected={selectedItems}
-      onDrop={onDrop}
-      key={`item-drag-source-${itemKey}`}
-    >
-      {/* We can't use <TableRow> due to React DnD throwing an error: Only native element nodes can now be passed to React DnD connectors. */}
-      <tr key={itemKey} data-testid={testIdPrefix} style={{ height: 48 }}>
+  const renderDraggableRow = (
+    dropTargetProps?: CollectionDropTargetRenderProps,
+  ) => {
+    const row = (
+      // We can't use <TableRow> due to React DnD throwing an error: Only native element nodes can now be passed to React DnD connectors.
+      <tr
+        key={itemKey}
+        data-testid={testIdPrefix}
+        style={{ height: 48 }}
+        className={cx({ [S.dropTargetRow]: dropTargetProps?.hovered })}
+      >
         <ItemComponent
           testIdPrefix={testIdPrefix}
           item={item}
@@ -118,6 +125,32 @@ export const ItemDragSourceTableRow = ({
           visibleColumnsMap={visibleColumnsMap}
         />
       </tr>
-    </ItemDragSource>
+    );
+
+    return (
+      <ItemDragSource
+        item={item}
+        collection={collection}
+        isSelected={isSelected}
+        selected={selectedItems}
+        onDrop={onDrop}
+        key={`item-drag-source-${itemKey}`}
+      >
+        {dropTargetProps ? dropTargetProps.connectDropTarget(row) : row}
+      </ItemDragSource>
+    );
+  };
+
+  const isDroppableCollectionRow =
+    item.model === "collection" && !item.archived;
+
+  if (!isDroppableCollectionRow) {
+    return renderDraggableRow();
+  }
+
+  return (
+    <CollectionRowDropTarget collection={item} selectedItems={selectedItems}>
+      {renderDraggableRow}
+    </CollectionRowDropTarget>
   );
 };
