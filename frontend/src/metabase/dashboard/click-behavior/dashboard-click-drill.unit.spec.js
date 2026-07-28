@@ -109,4 +109,68 @@ describe("DashboardClickAction", () => {
 
     expect(actions).toHaveLength(0);
   });
+
+  describe("dashboard-filter action", () => {
+    const PARAMETER_ID = "param123";
+    const crossfilterClickBehavior = {
+      type: "crossfilter",
+      parameterMapping: {
+        [PARAMETER_ID]: {
+          id: PARAMETER_ID,
+          source: { type: "column", id: "CATEGORY", name: "CATEGORY" },
+          target: { type: "parameter", id: PARAMETER_ID },
+        },
+      },
+    };
+
+    function setup({ tableSettings = {} } = {}) {
+      const setOrUnsetParameterValues = jest.fn(() => () => {});
+      const setParameterValue = jest.fn((id, value) => ({ id, value }));
+      const [action] = DashboardClickAction({
+        question: {},
+        clicked: {
+          column: metricColumn,
+          dimensions: [{ column: dimensionColumn, value: "Gadget" }],
+          extraData: {
+            dashboard: {},
+            parameters: [],
+            setOrUnsetParameterValues,
+            setParameterValue,
+          },
+        },
+        settings: {
+          ...buildSettings({ columns: { count: crossfilterClickBehavior } }),
+          ...tableSettings,
+        },
+      });
+      return { action, setOrUnsetParameterValues, setParameterValue };
+    }
+
+    it("toggles the mapped parameter values on regular table clicks", () => {
+      const { action, setOrUnsetParameterValues, setParameterValue } = setup();
+
+      action.action();
+
+      expect(setOrUnsetParameterValues).toHaveBeenCalledWith([
+        [PARAMETER_ID, "Gadget"],
+      ]);
+      expect(setParameterValue).not.toHaveBeenCalled();
+    });
+
+    it("sets the mapped parameter values without toggling on pivoted table clicks (metabase#54560)", () => {
+      const { action, setOrUnsetParameterValues, setParameterValue } = setup({
+        tableSettings: { "table.pivot": true },
+      });
+      const dispatch = jest.fn();
+
+      action.action()(dispatch);
+
+      expect(setOrUnsetParameterValues).not.toHaveBeenCalled();
+      expect(setParameterValue).toHaveBeenCalledWith(PARAMETER_ID, "Gadget");
+      expect(dispatch).toHaveBeenCalledWith({
+        id: PARAMETER_ID,
+        value: "Gadget",
+      });
+    });
+  });
 });

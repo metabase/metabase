@@ -69,6 +69,19 @@ function getAction(
           const parameterIdValuePairs = getDashboardDrillParameters(
             clicked,
           ) as [string, ParameterValueOrArray | null][];
+
+          // In a pivoted table many different cells share the same row/column
+          // header value, so unsetting the filter when the clicked values match
+          // the current ones would clear it on clicks on other cells with the
+          // same header value (metabase#54560). Always set the values instead.
+          if (clicked.settings?.["table.pivot"]) {
+            return (dispatch: Dispatch) => {
+              parameterIdValuePairs
+                .map(([id, value]) => setParameterValue(id, value))
+                .forEach((action) => dispatch(action));
+            };
+          }
+
           return setOrUnsetParameterValues(parameterIdValuePairs);
         },
       };
