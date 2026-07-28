@@ -1,6 +1,5 @@
 (ns metabase.metrics.transforms
-  "Shared JSON transform functions for dimension and dimension-mapping columns
-   used by both Card and Measure models."
+  "Toucan JSON transforms for dimension and dimension-mapping columns."
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]))

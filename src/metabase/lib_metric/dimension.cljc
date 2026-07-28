@@ -141,10 +141,8 @@
    Any persisted dimensions and mappings are authoritative: each persisted dimension is kept as-is, except its
    `:status` is set to `:status/orphaned` (with a message) when its mapped target no longer appears among the computed
    columns, and back to `:status/active` if it reappears. Newly added columns are ignored, and mappings are returned
-   unchanged.
-
-   This is used once dimensions have been seeded, so curated edits and removals are never clobbered. Contrast with
-   [[reconcile-dimensions-and-mappings]], which is used only to seed when `:dimensions` are nil."
+   unchanged. Contrast with [[reconcile-dimensions-and-mappings]], which seeds a dimension set from
+   the computed columns."
   [computed-pairs     :- [:sequential ::lib-metric.schema/computed-pair]
    persisted-dims     :- [:sequential ::lib-metric.schema/persisted-dimension]
    persisted-mappings :- [:maybe [:sequential ::lib-metric.schema/dimension-mapping]]]
@@ -174,12 +172,12 @@
   (filterv :status dimensions))
 
 ;;; ---------------------------------------------- Dimension CRUD (pure) ----------------------------------------------
-;;; Pure transforms over the persisted dimension/mapping vectors, used by the dimension CRUD
-;;; endpoints. They never recompute from columns; the caller supplies computed pairs where needed.
+;;; Pure transforms over the persisted dimension/mapping vectors. They never recompute from columns;
+;;; computed pairs are passed in where needed.
 
 (defn main-group?
   "True when a computed dimension pair belongs to the entity's own (\"main\") table, as opposed to a
-   joined/FK-reachable table. Used to decide the default seed set."
+   joined/FK-reachable table."
   [pair]
   (= "main" (perf/get-in pair [:dimension :group :type])))
 
@@ -260,9 +258,8 @@
                                     persisted-mappings)}))
 
 (defn set-default-dimension
-  "Mark the dimension with `id` as the sole default, clearing `:default` from every other dimension,
-   so at most one dimension is ever the default. `id` is assumed to exist (the caller validates).
-   Returns the updated dimensions vector."
+  "Mark the dimension with `id` as the sole default, clearing `:default` from every other dimension.
+   Assumes `id` exists in `persisted-dims`. Returns the updated dimensions vector."
   [persisted-dims id]
   (perf/mapv (fn [dim]
                (if (= id (:id dim))
@@ -271,9 +268,8 @@
              persisted-dims))
 
 (defn reorder-dimensions
-  "Sort `persisted-dims` into the order given by `ids`. Dimensions not listed keep their relative
-   order after the listed ones (a permission-filtered client may not see every dimension).
-   Returns the reordered dimensions vector."
+  "Sort `persisted-dims` into the order given by `ids`. Dimensions not listed in `ids` keep their
+   relative order after the listed ones. Returns the reordered dimensions vector."
   [persisted-dims ids]
   (let [position (into {} (map-indexed (fn [i id] [id i])) ids)
         missing  (count ids)]

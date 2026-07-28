@@ -731,7 +731,7 @@
   card)
 
 ;; Schema upgrade: 23 to 24 ==========================================================================================
-;; Curated metric dimensions (UXW-4808). New metrics seed their own-table columns only, with joined/FK
+;; Curated metric dimensions. New metrics seed their own-table columns only, with joined/FK
 ;; columns available to add on demand. But metrics created before curated dimensions shipped implicitly
 ;; exposed EVERY breakoutable column (own-table + implicitly-joined), and existing dashboard filters may
 ;; be mapped to those joined columns. Modernize such a metric on read by backfilling the full

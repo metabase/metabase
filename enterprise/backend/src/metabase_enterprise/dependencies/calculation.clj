@@ -49,10 +49,7 @@
     (upstream-deps:mbql-query query)))
 
 (mu/defn- upstream-deps:dimension-mappings :- ::deps.schema/upstream-deps
-  "Dependencies contributed by a metric's curated dimension mappings. A dimension mapped to a table
-   column makes the metric depend on that column's table (dependencies are tracked at table
-   granularity, and each mapping records its column's `:table-id`). Non-metric cards have no
-   dimension mappings, so this yields nothing."
+  "Table dependencies of `dimension-mappings`, gathered from their `:table-id`s."
   [dimension-mappings]
   {:table (into #{} (keep :table-id) dimension-mappings)})
 

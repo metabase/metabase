@@ -102,10 +102,8 @@
    implicitly-joined (FK-reachable) column — in the persisted `{:dimensions ... :dimension-mappings ...}`
    shape (or `nil` when `query` is blank).
 
-   New metrics seed their own-table columns only (see [[seed-metric-dimensions!]]), but metrics that
-   predate curated dimensions implicitly exposed every breakoutable column. This reproduces that full
-   set, so such a metric keeps all of its historical dimensions when it is modernized on read (used by
-   the `:model/Card` schema upgrade for pre-curation metrics)."
+   Unlike the seeded default (own-table and explicitly-joined columns only), this includes every
+   FK-reachable column."
   [query]
   (when (seq query)
     (let [computed-pairs (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) query)
@@ -117,7 +115,7 @@
 
 (defn- seed-metric-dimensions!
   "First initialization of a v2 metric: seed dimensions from the entity's own columns and explicit
-   query joins. Implicitly joinable FK columns remain available via the dimension CRUD endpoints."
+   query joins, leaving implicitly-joinable FK columns out."
   [entity computed-pairs]
   (let [seed-pairs (filterv #(or (lib-metric/main-group? %)
                                  (= :source/joins (get-in % [:dimension :lib/source])))
@@ -146,13 +144,13 @@
 
    - `:metadata/measure` — fully synced on every load; see [[sync-measure-dimensions!]].
    - `:metadata/metric` (v2 Cards) — curated; seeded once via [[seed-metric-dimensions!]], then kept
-     authoritative via [[refresh-metric-dimensions!]]. Curation happens via the dimension CRUD endpoints.
+     authoritative via [[refresh-metric-dimensions!]].
 
    Arguments:
    - `metadata-type` - `:metadata/metric` or `:metadata/measure`
    - `id` - the entity ID
 
-   Only handles the side-effect of syncing to the database; callers fetch the entity separately."
+   Side-effecting only; does not return the updated entity."
   [metadata-type id]
   (when-let [entity (first (lib.metadata.protocols/metadatas
                             (lib-metric/metadata-provider)
@@ -188,9 +186,9 @@
                       (:dimension_mappings entity))))))
 
 ;;; ------------------------------------------------- Dimension CRUD -------------------------------------------------
-;;; Orchestration behind the dimension-editor endpoints. Each function loads the dimensionable entity
-;;; (measure / metric) by its metadata-type + id, mutates the curated dimension set, persists via
-;;; `save-dimensions!`, and returns API-shaped dimensions. Authorization is performed by the API layer.
+;;; Each function loads the dimensionable entity (measure / metric) by its metadata-type + id, mutates
+;;; the curated dimension set, persists via `save-dimensions!`, and returns API-shaped dimensions.
+;;; None of these functions performs authorization checks.
 
 (defn- dimension-entity
   "Fetch the dimensionable entity metadata (`:metadata/metric` or `:metadata/measure`) by id."
@@ -363,9 +361,9 @@
             metrics.dimension/->api-dimension)))
 
 (defn set-default-dimension!
-  "Mark `dimension-id` as the entity's sole default dimension, clearing any previous default. It is
-   legal for an entity to have no default (e.g. right after seeding, or once the default is removed);
-   this endpoint always leaves exactly one. Returns the updated `:added` list."
+  "Mark `dimension-id` as the entity's sole default dimension, clearing any previous default.
+   Throws a 404 when the dimension does not exist and a 400 when it is orphaned.
+   Returns the updated `:added` list."
   [metadata-type id dimension-id]
   (let [entity             (dimension-entity metadata-type id)
         persisted-dims     (or (lib-metric/get-persisted-dimensions entity) [])

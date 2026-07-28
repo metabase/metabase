@@ -327,7 +327,7 @@
    [:status-message  {:optional true} [:maybe :string]]
    [:sources         {:optional true} [:maybe [:sequential ::dimension-source]]]
    [:group           {:optional true} [:maybe ::dimension-group]]
-   ;; At most one dimension per entity may be the default; enforced by the set-default endpoint.
+   ;; At most one dimension per entity may be the default.
    [:default         {:optional true} [:maybe :boolean]]])
 
 (mr/def ::persisted-dimensions

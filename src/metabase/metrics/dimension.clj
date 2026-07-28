@@ -9,7 +9,7 @@
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------- API Shape -------------------------------------------------
-;;; Convert internal (kebab) dimensions to the snake_case shape the dimension-editor frontend expects.
+;;; Convert internal (kebab-case) dimensions to the snake_case API shape.
 
 (defn ->api-group
   "Convert an internal dimension group `{:id :type :display-name}` to the API shape."
@@ -40,7 +40,7 @@
     (:sources dim) (assoc :sources (mapv ->api-source (:sources dim)))))
 
 (defn ->api-addable-dimension
-  "Convert a computed dimension/mapping pair to the API shape used when adding dimensions."
+  "Convert a computed dimension/mapping pair to the API shape."
   [{:keys [dimension mapping]}]
   (assoc (->api-dimension dimension)
          :mapping_target (lib-metric/field-ref->key (:target mapping))))

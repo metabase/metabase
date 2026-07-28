@@ -81,8 +81,7 @@
         field-ids))
 
 (defn can-use-dimension-mapping?
-  "Whether the current user can use a dimension mapping as a query breakout. Metadata is resolved through the
-   database-scoped provider so callers can reuse its cache."
+  "Whether the current user can use a dimension mapping as a query breakout."
   [metadata-provider database-id {:keys [target]}]
   (let [[_ options]              target
         target-field-id         (target->field-id target)
