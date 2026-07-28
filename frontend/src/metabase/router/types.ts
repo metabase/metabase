@@ -233,8 +233,8 @@ export interface InjectedRouter {
 
 /**
  * The router-injected props v3 passed to route components (`router`, `location`,
- * `params`, `routes`). The `RouterBridge` republishes them from the v7 match;
- * `withRouteProps` feeds them to legacy components.
+ * `params`, `routes`). The `RouterBridge` republishes them from the v7 match,
+ * and the facade hooks read them from there.
  *
  * `params` defaults to v3's non-optional string map (not the facade's optional
  * `Params`), because the legacy route-prop readers were written against that and
