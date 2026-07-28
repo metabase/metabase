@@ -126,6 +126,35 @@
     (is (= [:classpath [:init (:init plugin)] :classpath [:init (:init plugin)]] @calls)
         "a failed load leaves the driver retryable; the retry re-runs classpath + init")))
 
+(deftest concurrent-plugin-loading-fails-fast-test
+  (let [plugin-a-name  (str "test concurrent plugin A " (random-uuid))
+        plugin-b-name  (str "test concurrent plugin B " (random-uuid))
+        plugin-a-start (promise)
+        finish-plugin-a (promise)
+        plugin         (fn [plugin-name marker]
+                         {:metabase-plugin-api-version initialize/plugin-api-version
+                          :info                       {:name plugin-name :version "1.0.0"}
+                          :init                       [{:step "test" :marker marker}]})]
+    (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied? (constantly true)
+                                deps/update-unsatisfied-deps!    (constantly [])
+                                init-steps/do-init-steps!        (fn [[{:keys [marker]}]]
+                                                                   (when (= marker :plugin-a)
+                                                                     (deliver plugin-a-start true)
+                                                                     @finish-plugin-a))]
+      (is (= :ok (initialize/register-plugin-with-info! (plugin plugin-a-name :plugin-a))))
+      (is (= :ok (initialize/register-plugin-with-info! (plugin plugin-b-name :plugin-b))))
+      (let [load-plugin-a (future (plugins/load-plugin! plugin-a-name))]
+        (try
+          (is (true? (deref plugin-a-start 2000 false)))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                #"concurrent plugin loading is not supported"
+                                (plugins/load-plugin! plugin-b-name)))
+          (finally
+            (deliver finish-plugin-a true)))
+        (is (= :ok (deref load-plugin-a 2000 ::timeout)))
+        (is (= :ok (plugins/load-plugin! plugin-b-name))
+            "a plugin can load after the active load releases its claim")))))
+
 (deftest load-plugin-requires-registered-plugin-test
   (let [plugin-name (str "test missing plugin " (random-uuid))]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo

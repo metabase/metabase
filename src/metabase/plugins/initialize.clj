@@ -2,7 +2,7 @@
   "Plugin discovery, registration, and lazy loading.
 
   Manifests are validated and registered at startup as soon as their dependencies are met. Plugin code is loaded only
-  when `load-plugin!` is called. Driver manifests use the same loader through their lazy driver placeholders."
+  when [[load-plugin!]] is called. Driver manifests use the same loader through their lazy driver placeholders."
   (:require
    [metabase.plugins.dependencies :as deps]
    [metabase.plugins.init-steps :as init-steps]
@@ -11,8 +11,11 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
+(set! *warn-on-reflection* true)
+
 (defonce ^:private registered-plugins (atom {}))
 (defonce ^:private loaded-plugin-names (atom #{}))
+(defonce ^:private active-plugin-load (atom nil))
 
 ;; `:info :name` predates generic plugins and is currently both the human-readable name and the identifier used by
 ;; `load-plugin!` and `dependencies: [{plugin: ...}]`. Plugin authors must therefore treat it as unique and stable.
@@ -41,6 +44,19 @@
 (defn- loaded? [plugin-name]
   (contains? @loaded-plugin-names plugin-name))
 
+(defn- claim-plugin-load! [plugin-name]
+  (let [claim {:plugin-name plugin-name
+               :thread      (.getName ^Thread (Thread/currentThread))}]
+    (loop []
+      (if-let [active-load @active-plugin-load]
+        (throw (ex-info (format "Cannot load plugin %s while plugin %s is loading; concurrent plugin loading is not supported."
+                                (pr-str plugin-name) (pr-str (:plugin-name active-load)))
+                        {:plugin-name        plugin-name
+                         :active-plugin-load active-load}))
+        (if (compare-and-set! active-plugin-load nil claim)
+          claim
+          (recur))))))
+
 (defn- load-plugin-info!
   [{:keys [add-to-classpath!], init-steps :init, {plugin-name :name} :info}]
   (when-not (loaded? plugin-name)
@@ -49,17 +65,21 @@
     ;;
     ;; We mark a plugin loaded only after every init step succeeds. A failed activation can therefore be retried, so
     ;; initialization steps should tolerate retry after a partially completed attempt.
-    (locking loaded-plugin-names
-      (when-not (loaded? plugin-name)
-        (when add-to-classpath!
-          (add-to-classpath!))
-        (init-steps/do-init-steps! init-steps)
-        (swap! loaded-plugin-names conj plugin-name))))
+    (let [claim (claim-plugin-load! plugin-name)]
+      (try
+        ;; A competing call can finish after the fast-path check but before this call claims the loader.
+        (when-not (loaded? plugin-name)
+          (when add-to-classpath!
+            (add-to-classpath!))
+          (init-steps/do-init-steps! init-steps)
+          (swap! loaded-plugin-names conj plugin-name))
+        (finally
+          (compare-and-set! active-plugin-load claim nil)))))
   :ok)
 
 (defn load-plugin!
   "Load a registered plugin by name, adding its JAR to the classpath and running its manifest initialization steps.
-  Loading is idempotent.
+  Loading is idempotent. Callers must serialize plugin activation; concurrent plugin loading is not supported.
 
   Discovery does not call this automatically. The code that owns a plugin type is responsible for calling it at the
   point where a configured plugin is first needed; calling it during startup would defeat lazy loading."
