@@ -35,19 +35,6 @@ const setEmbeddedHeader: OnBeforeRequestHandler = async () => {
 
 /**
  * The api client's request-extension slots.
- *
- * The slots are owned by the api client (which composes them, in a fixed
- * order, in `middleware.ts`) rather than by `metabase/plugins`, so that the
- * client never has to import the plugin graph — the plugin graph reaches into
- * app modules that themselves import `metabase/api`, which would be a circular
- * import. Feature code (embedding flows, SDK auth, EE plugins) installs
- * behavior by assigning to the named slots; the aggregate plugin
- * `reinitialize` resets them through `reinitializeRequestHandlers` below.
- *
- * This is a mutable global because the client itself is a module-scope
- * singleton; it is the pre-existing extension mechanism contained in its
- * owning module, not a pattern to copy. New extension points should prefer
- * passing behavior in at construction.
  */
 const getDefaultPluginApi = () => ({
   onBeforeRequestHandlers: {
@@ -91,10 +78,8 @@ const getDefaultPluginApi = () => ({
 export const PLUGIN_API = getDefaultPluginApi();
 
 /**
- * Reset every request-handler slot to its default. The handler bag is mutated
- * in place: installers and the middleware hold references to the exact
- * objects, so swapping in fresh ones would strand those references on stale
- * bags. Called by the aggregate plugin `reinitialize` in `metabase/plugins`.
+ * Reset every request-handler slot to its default.
+ * Mutate so that existing references stay up-to-date.
  */
 export function reinitializeRequestHandlers() {
   Object.assign(
