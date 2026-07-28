@@ -5,6 +5,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.documents.test-util :as documents.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.duplicate :as tools.duplicate]
@@ -16,6 +18,13 @@
 (set! *warn-on-reflection* true)
 
 (comment tools.duplicate/keep-me)
+
+(defn- venues-query
+  "A Lib query over VENUES — a runnable `:dataset_query` for fixtures that only need the card to
+   have one."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
 
 (defn- call-tool!
   ([user args] (call-tool! user nil args))
@@ -47,7 +56,7 @@
                                                 :type          :question
                                                 :display       :bar
                                                 :collection_id coll-id
-                                                :dataset_query (mt/mbql-query venues)}]
+                                                :dataset_query (venues-query)}]
         (let [result (tool-result (call-tool! :crowberto {:type "question" :id card-id}))
               copy   (t2/select-one :model/Card :id (:id result))]
           (is (=? {:type "question" :name "Copy of Revenue by region" :collection_id coll-id}
@@ -68,7 +77,7 @@
                      :model/Card {card-id :id} {:name          "Revenue by region"
                                                 :type          :question
                                                 :collection_id source-coll
-                                                :dataset_query (mt/mbql-query venues)}]
+                                                :dataset_query (venues-query)}]
         (let [result (tool-result (call-tool! :crowberto {:type          "question"
                                                           :id            card-id
                                                           :new_name      "Revenue by region (EMEA)"
@@ -83,7 +92,7 @@
       (mt/with-temp [:model/Collection {coll-id :id} {}
                      :model/Card {card-id :id} {:type          :question
                                                 :collection_id coll-id
-                                                :dataset_query (mt/mbql-query venues)}]
+                                                :dataset_query (venues-query)}]
         (let [result (tool-result (call-tool! :crowberto {:type "question" :id card-id :collection_id "root"}))]
           (is (nil? (:collection_id result)))
           (is (nil? (:collection_id (t2/select-one :model/Card :id (:id result))))))))))
@@ -98,7 +107,7 @@
                                                 :type          :question
                                                 :collection_id coll-id
                                                 :dashboard_id  dash-id
-                                                :dataset_query (mt/mbql-query venues)}]
+                                                :dataset_query (venues-query)}]
         (let [result (tool-result (call-tool! :crowberto {:type "question" :id card-id :collection_id coll-id}))
               copy   (t2/select-one :model/Card :id (:id result))]
           (is (nil? (:dashboard_id copy)))
@@ -107,7 +116,7 @@
 (deftest duplicate-card-flavor-mismatch-test
   (testing "GHY-4151: a model or metric passed as a question is a teaching error saying so, rather than
             silently copying it as a question — the other card flavors aren't supported yet"
-    (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (mt/mbql-query venues)}]
+    (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (venues-query)}]
       (is (= (format "Card %d is a model — duplicate_content supports type \"question\" only." card-id)
              (tool-error (call-tool! :crowberto {:type "question" :id card-id})))))))
 
@@ -120,7 +129,7 @@
                      :model/Card {card-id :id} {:name          "Trashed question"
                                                 :type          :question
                                                 :collection_id coll-id
-                                                :dataset_query (mt/mbql-query venues)}
+                                                :dataset_query (venues-query)}
                      :model/Dashboard {dash-id :id} {:name "Trashed dashboard" :collection_id coll-id}
                      :model/Document {doc-id :id} {:name          "Trashed document"
                                                    :collection_id coll-id
@@ -150,7 +159,7 @@
                      :model/Card {card-id :id} {:name          "Revenue"
                                                 :type          :question
                                                 :collection_id coll-id
-                                                :dataset_query (mt/mbql-query venues)}
+                                                :dataset_query (venues-query)}
                      :model/Dashboard {dash-id :id} {:name "Sales" :collection_id coll-id}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
         (let [result (tool-result (call-tool! :crowberto {:type "dashboard" :id dash-id}))]
@@ -169,7 +178,7 @@
                      :model/Card {card-id :id} {:name          "Revenue"
                                                 :type          :question
                                                 :collection_id source-coll
-                                                :dataset_query (mt/mbql-query venues)}
+                                                :dataset_query (venues-query)}
                      :model/Dashboard {dash-id :id} {:name "Sales" :collection_id source-coll}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
         (let [result    (tool-result (call-tool! :crowberto {:type          "dashboard"
@@ -194,11 +203,11 @@
                      :model/Card {secret-card :id} {:name          "Salaries"
                                                     :type          :question
                                                     :collection_id secret-coll
-                                                    :dataset_query (mt/mbql-query venues)}
+                                                    :dataset_query (venues-query)}
                      :model/Card {ok-card :id} {:name          "Revenue"
                                                 :type          :question
                                                 :collection_id coll-id
-                                                :dataset_query (mt/mbql-query venues)}
+                                                :dataset_query (venues-query)}
                      :model/Dashboard {dash-id :id} {:name "Sales" :collection_id coll-id}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id secret-card}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id ok-card}]
@@ -222,14 +231,14 @@
                                   :type          :question
                                   :collection_id coll-id
                                   :dashboard_id  dash-id
-                                  :dataset_query (mt/mbql-query venues)}]
+                                  :dataset_query (venues-query)}]
       (let [message (tool-error (call-tool! :crowberto {:type "dashboard" :id dash-id}))]
         (is (re-find #"is_deep_copy" message))
         (is (re-find #"questions saved inside it" message))))))
 
 (deftest duplicate-deep-copy-wrong-type-test
   (testing "GHY-4151: is_deep_copy is dashboards-only and says so"
-    (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query (mt/mbql-query venues)}]
+    (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query (venues-query)}]
       (is (= "`is_deep_copy` applies to dashboards only — omit it when duplicating a question."
              (tool-error (call-tool! :crowberto {:type "question" :id card-id :is_deep_copy true})))))))
 
@@ -261,7 +270,7 @@
                                     :type          :question
                                     :collection_id source-coll
                                     :document_id   doc-id
-                                    :dataset_query (mt/mbql-query venues)}]
+                                    :dataset_query (venues-query)}]
         (let [result (tool-result (call-tool! :crowberto {:type          "document"
                                                           :id            doc-id
                                                           :collection_id dest-coll}))]
@@ -292,7 +301,7 @@
       (mt/with-temp [:model/Collection {coll-id :id} {}
                      :model/Card {card-id :id} {:type          :question
                                                 :collection_id coll-id
-                                                :dataset_query (mt/mbql-query venues)}
+                                                :dataset_query (venues-query)}
                      :model/Dashboard {dash-id :id} {:collection_id coll-id}]
         (is (= (format "Card %d not found — it may not exist, or you may not have access to it." card-id)
                (tool-error (call-tool! :rasta {:type "question" :id card-id}))))
@@ -306,7 +315,7 @@
                    :model/Card {card-id :id} {:name          "Revenue"
                                               :type          :question
                                               :collection_id source-coll
-                                              :dataset_query (mt/mbql-query venues)}]
+                                              :dataset_query (venues-query)}]
       (mt/with-non-admin-groups-no-collection-perms dest-coll
         (is (:isError (call-tool! :rasta {:type "question" :id card-id :collection_id dest-coll})))
         (is (= 1 (t2/count :model/Card :name "Revenue")))))))
