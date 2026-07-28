@@ -117,18 +117,6 @@ export const getMajorVersionFromRef = (ref: string) => {
   return getMajorVersionNumberFromReleaseBranch(ref.replace("refs/heads/", ""));
 };
 
-const SDK_TAG_REGEXP = /embedding-sdk-(0\.\d+\.\d+(-\w+)?)$/;
-
-export const getSdkVersionFromReleaseTagName = (tagName: string) => {
-  const match = SDK_TAG_REGEXP.exec(tagName);
-
-  if (!match) {
-    throw new Error(`Invalid sdk release tag: ${tagName}`);
-  }
-
-  return match[1];
-};
-
 // creates tag in format: `v<oss|ee>.<major>-lts`, for example: v0.58-lts
 const getLtsTag = (version: string) => {
   const pieces = version.replace(/-.+/, "").split("."); // ignore any -suffixes

@@ -454,18 +454,14 @@ describe("version-info", () => {
       expect(await isLtsVersion({ version: "v0.55.0-RC1" })).toEqual(true);
     });
 
-    it("throws when major_version_support is missing", async () => {
+    it("returns false when major_version_support is missing", async () => {
       mockVersionInfo(undefined);
-      await expect(isLtsVersion({ version: "v0.55.0" })).rejects.toThrow(
-        /no `major_version_support`/,
-      );
+      expect(await isLtsVersion({ version: "v0.55.0" })).toEqual(false);
     });
 
-    it("throws when major_version_support is empty", async () => {
+    it("returns false when major_version_support is empty", async () => {
       mockVersionInfo([]);
-      await expect(isLtsVersion({ version: "v0.55.0" })).rejects.toThrow(
-        /no `major_version_support`/,
-      );
+      expect(await isLtsVersion({ version: "v0.55.0" })).toEqual(false);
     });
   });
 

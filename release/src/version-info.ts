@@ -201,9 +201,7 @@ export async function isLtsVersion({
 
   const majorVersions = versionInfo?.major_version_support;
   if (!majorVersions || majorVersions.length === 0) {
-    throw new Error(
-      "version-info.json has no `major_version_support`, cannot determine if this version is part of an LTS version",
-    );
+    return false;
   }
 
   const versionMajor = getMajorVersion(version);
