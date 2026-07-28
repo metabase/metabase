@@ -3,6 +3,7 @@
   lookup."
   (:require
    [clojure.core :as core]
+   [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -84,8 +85,10 @@
           ;; Use `simple-insert!` because we do *not* want to trigger pre-insert behavior, such as encrypting `:value`
           (t2/insert! (t2/table-name (t2/resolve-model :model/Setting)) :key settings-last-updated-key, :value current-timestamp-as-string-honeysql)
           (catch java.sql.SQLException e
-            ;; go ahead and log the Exception anyway on the off chance that it *wasn't* just a race condition issue
-            (log/errorf "Error updating Settings last updated value: %s" (ex-message e))))))
+            ;; go ahead and log the whole SQLException message chain anyway on the off chance that it *wasn't* just a
+            ;; race condition issue
+            (log/errorf "Error updating Settings last updated value: %s"
+                        (str/join "; " (keep ex-message (take-while some? (iterate #(.getNextException ^java.sql.SQLException %) e)))))))))
   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
   ;; changes
   (swap! (cache*) assoc settings-last-updated-key (t2/select-one-fn :value :model/Setting :key settings-last-updated-key)))

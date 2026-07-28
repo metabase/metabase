@@ -735,15 +735,16 @@
 
 (def ^:private auth-error-statuses
   "Statuses whose upstream body may carry provider-side auth/account detail
-  (raw API keys, org/account names, tenant IDs). The full body still hits the
-  warn log; we just don't splice it into the message the caller sees."
+  (raw API keys, org/account names, tenant IDs). For these we don't splice a
+  body preview into the message the caller sees."
   #{401 403})
 
 (defn rethrow-api-error!
   "Rethrow a provider HTTP exception with a translated, user-facing message.
   `res->message` receives the decoded response map and returns the provider-specific message.
   A body preview is appended to the message except on 401/403 (see [[auth-error-statuses]]),
-  where the body may carry sensitive auth/account detail; the full body is still logged.
+  where the body may carry sensitive auth/account detail. The warn log carries provider and
+  status only — response bodies are never logged; the full body travels on the thrown ex-data.
   ex-data is an explicit allow-list of `:status`, `:reason-phrase`, `:headers`, `:body`, plus provider tags.
   Exceptions already tagged `:api-error true` are rethrown unchanged."
   [provider res->message ^Throwable e]

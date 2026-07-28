@@ -98,9 +98,7 @@
         [:segment _opts (id :guard pos-int?)]
         (let [legacy-segment (get id->legacy-segment id)
               filter-clauses (legacy-macro-filters legacy-segment)]
-          (log/debugf "Expanding legacy Segment macro for Segment %d" id)
-          (doseq [_filter-clause filter-clauses]
-            (log/tracef "Adding filter clause for legacy Segment %d" id))
+          (log/debugf "Expanding legacy Segment macro for Segment %d (%d filter clauses)" id (count filter-clauses))
           ;; replace a single segment with a single filter, wrapping them in `:and` if needed... we will unwrap once
           ;; we've expanded all of the :segment refs.
           (if (> (count filter-clauses) 1)
