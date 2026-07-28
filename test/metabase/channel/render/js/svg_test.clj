@@ -110,7 +110,7 @@
 
 (deftest untrusted-engine-ref-counted-lifecycle-test
   (testing "the shared untrusted isolate engine is ref-counted: created with the first context, closed with the last"
-    (let [state          (:state @#'js.graal/shared-untrusted-engine)
+    (let [state          @#'js.graal/shared-untrusted-engine
           refs           #(get @state :refs 0)
           before         (refs)
           plugin-context (#'js.graal/generate-untrusted-plugin-context!)]

@@ -1,12 +1,11 @@
 (ns metabase.channel.render.js.graal
-  "The GraalVM [[metabase.channel.render.js.protocol/StaticVizRenderer]]: runs all static-viz JS inside a
+  "The GraalVM metabase.channel.render.js.protocol/StaticVizRenderer runs all static-viz JS inside a
   GraalVM native-image isolate (separate VM, separate heap) under `SandboxPolicy/UNTRUSTED`, so CPU/heap
   limits and speculative-execution mitigations are enforced by the VM. Requires the `js-isolate-community`
-  artifact on the classpath; on platforms without a working isolate (e.g. arm64 Alpine, Intel Macs) engine
-  creation throws and static rendering fails per card.
+  artifact on the classpath.
 
-  One ref-counted isolate `Engine` (see [[ref-counted-engine]]) is shared by two context pools that never
-  mix taints:
+  One ref-counted isolate `Engine` (see [[shared-untrusted-engine]]) is shared by two context pools that
+  never mix taints:
 
   - the *builtin* pool (up to 3 contexts, full static-viz bundle) renders built-in charts and only ever
     evaluates our own bundle;
@@ -14,10 +13,7 @@
     custom-viz plugin JS runs.
 
   Contexts on a shared engine have isolated global scopes (a plugin can't see another context's globals)
-  while sharing the engine's parsed-source code cache. We run the JS interpreted (no Graal compiler on a
-  stock JDK). A context is held exclusively per render (so renders serialize per context); when idle the
-  pools shrink to 0 and the last destroyed context closes the engine, freeing the isolate's native heap
-  (GraalVM reclaims neither context nor engine on GC). The first render after an idle gap rebuilds them."
+  while sharing the engine's parsed-source code cache. A context is held exclusively per render."
   (:require
    [clojure.java.io :as io]
    [metabase.channel.render.js.common :as common]
@@ -28,7 +24,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.pool :as u.pool])
   (:import
    (io.aleph.dirigiste Pool)
@@ -66,56 +61,6 @@
   ^Value [^Value fn-ref & args]
   (assert (.canExecute fn-ref) "cannot execute function reference")
   (.execute fn-ref (object-array args)))
-
-;;; ------------------------------------- ref-counted engine holder ---------------------------------------
-;;;
-;;; Generic lifecycle tool: a lazily-created `Engine` shared by pooled contexts, closed again when the last
-;;; context is destroyed. Used by the shared untrusted-isolate engine below.
-
-(def ^:private CreateEngineState
-  "Schema for a [[ref-counted-engine]] `create` fn: builds the shared state"
-  [:=> [:cat] [:map [:engine (ms/InstanceOfClass Engine)]]])
-
-(def ^:private EngineState
-  "What lives inside a [[RefCountedEngine]]'s `:state` atom while the engine is live: the map its `create`
-  returned plus `:refs`, the count of live contexts holding the engine open. nil when no engine is live."
-  [:map
-   [:engine (ms/InstanceOfClass Engine)]
-   [:refs   pos-int?]])
-
-(def ^:private RefCountedEngine
-  "Schema for the holder built by [[ref-counted-engine]]. `:state` holds [[EngineState]] or nil."
-  [:map
-   [:lock   some?]
-   [:state  (ms/InstanceOfClass clojure.lang.Atom)]
-   [:create CreateEngineState]])
-
-(mu/defn- ref-counted-engine :- RefCountedEngine
-  "A ref-counted holder for an `Engine` shared by pooled contexts, plus any extra state `create` returns
-  alongside it (e.g. a parsed `Source`). `create` runs under the first [[acquire-engine!]]; the engine is
-  closed by the [[release-engine!]] that drops the last ref. Needed because GraalVM reclaims neither
-  engines nor contexts on GC — an idle-shrunk pool must close its engine explicitly to get the memory back."
-  [create :- CreateEngineState]
-  {:lock (Object.), :state (atom nil), :create create})
-
-(mu/defn- acquire-engine! :- EngineState
-  "Return `engine-ref`'s shared state (`{:engine <Engine>}` plus whatever its `create` returned), creating
-  it with the first acquire. Bumps the ref count."
-  [{:keys [lock state create]} :- RefCountedEngine]
-  (locking lock
-    (let [current (update (or @state (assoc (create) :refs 0)) :refs inc)]
-      (reset! state current)
-      current)))
-
-(mu/defn- release-engine!
-  "Drop a ref on `engine-ref`'s shared engine, closing it once the last ref is gone."
-  [{:keys [lock state]} :- RefCountedEngine]
-  (locking lock
-    (let [{:keys [^Engine engine refs]} @state]
-      (if (<= refs 1)
-        (do (try (.close engine) (catch Exception _))
-            (reset! state nil))
-        (swap! state update :refs dec)))))
 
 ;;; ------------------------------------- untrusted isolate engine ----------------------------------------
 
@@ -162,14 +107,36 @@
       (err discarding-output-stream)
       (build)))
 
+(def ^:private engine-lock (Object.))
+
 (def ^:private shared-untrusted-engine
-  "Ref-counted GraalVM isolate `Engine` shared by every untrusted context from both pools: created with
-  the first context ([[generate-untrusted-context!*]]) and closed with the last
-  ([[destroy-untrusted-context!]]) — from either pool — so idle-shrunk pools free the isolate's native
-  heap (up to [[max-isolate-memory]]) instead of pinning it for the process lifetime. Contexts on a shared
-  engine still get isolated global scopes (builtin contexts and plugin contexts can't see each other's
-  globals), while sharing the isolate's parsed-source cache."
-  (ref-counted-engine (fn [] {:engine (new-untrusted-engine)})))
+  "Atom holding `{:engine <Engine>, :refs <live context count>}`, or nil when no context is live. Guarded
+  by [[engine-lock]]. The single UNTRUSTED isolate `Engine` is shared by every context from both pools:
+  created with the first context ([[acquire-untrusted-engine!]]) and closed with the last
+  ([[release-untrusted-engine!]]) — from either pool — so idle-shrunk pools free the isolate's native heap
+  (up to [[max-isolate-memory]]) instead of pinning it for the process lifetime. Contexts on the shared
+  engine still get isolated global scopes (builtin and plugin contexts can't see each other's globals),
+  while sharing the isolate's parsed-source cache. GraalVM reclaims neither engine nor contexts on GC, so
+  the last release must close the engine explicitly to get the memory back."
+  (atom nil))
+
+(defn- acquire-untrusted-engine!
+  "Return the shared UNTRUSTED isolate `Engine`, creating it with the first context. Bumps the ref count."
+  ^Engine []
+  (locking engine-lock
+    (let [state (or @shared-untrusted-engine {:engine (new-untrusted-engine), :refs 0})]
+      (reset! shared-untrusted-engine (update state :refs inc))
+      (:engine state))))
+
+(defn- release-untrusted-engine!
+  "Drop a ref on the shared engine, closing it once the last context is gone."
+  []
+  (locking engine-lock
+    (let [{:keys [^Engine engine refs]} @shared-untrusted-engine]
+      (if (<= refs 1)
+        (do (try (.close engine) (catch Exception _))
+            (reset! shared-untrusted-engine nil))
+        (swap! shared-untrusted-engine update :refs dec)))))
 
 (def ^:private render-max-cpu-time
   "`sandbox.MaxCPUTime` for a *non-pooled* untrusted context (the dev fresh-context path). Covers a cold parse
@@ -224,7 +191,7 @@
   [^Context context]
   (log/debug "static-viz: disposing untrusted isolate context")
   (try (.close context true) (catch Exception _))
-  (release-engine! shared-untrusted-engine))
+  (release-untrusted-engine!))
 
 (defn- generate-untrusted-context!*
   "Cold-parse the bundle at `bundle-path` into a fresh isolate context on the shared untrusted engine
@@ -232,8 +199,8 @@
   per-context cost and explains slow first/regenerated renders."
   ^Context [^String bundle-path ^String max-cpu-time bundle-label]
   (common/assert-tests-not-initializing!)
-  (let [start (System/nanoTime)
-        {:keys [^Engine engine]} (acquire-engine! shared-untrusted-engine)]
+  (let [start          (System/nanoTime)
+        ^Engine engine (acquire-untrusted-engine!)]
     (try
       (let [context (untrusted-context engine max-cpu-time)]
         (try
@@ -247,7 +214,7 @@
             (try (.close context true) (catch Exception _))
             (throw t))))
       (catch Throwable t
-        (release-engine! shared-untrusted-engine)
+        (release-untrusted-engine!)
         (throw t)))))
 
 (defn- generate-untrusted-plugin-context!
