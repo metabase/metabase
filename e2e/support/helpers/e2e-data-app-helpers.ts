@@ -137,8 +137,29 @@ export function dataAppIframe(displayName: string) {
   return getIframeBody(`iframe[title="${displayName}"]`);
 }
 
-const DATA_APP_DEV_ENV_PATH =
-  "e2e/embedding-sdk-host-apps/vite-6-data-app-host-app/.env.local";
+const DATA_APP_DEV_HOST_APP_DIR =
+  "e2e/embedding-sdk-host-apps/vite-6-data-app-host-app";
+
+const DATA_APP_DEV_ENV_PATH = `${DATA_APP_DEV_HOST_APP_DIR}/.env.local`;
+
+/** The dev host app's manifest — the live manifest-validation suite edits it. */
+export const DATA_APP_DEV_MANIFEST_PATH = `${DATA_APP_DEV_HOST_APP_DIR}/data_app.yaml`;
+
+/** The dev host app's source entry — the soft-reload suite edits it. */
+export const DATA_APP_DEV_APP_SRC_PATH = `${DATA_APP_DEV_HOST_APP_DIR}/src/App.tsx`;
+
+const DATA_APP_DEV_CONTENT_TIMEOUT_MS = 40000;
+
+/**
+ * Visit the dev host app and wait for the sandboxed bundle to render — the
+ * point at which the dev entry has booted (toolbar mounted, probes fired).
+ */
+export function visitDataAppDevApp(clientHost: string) {
+  cy.visit(clientHost);
+  cy.findByTestId("dev-app-content", {
+    timeout: DATA_APP_DEV_CONTENT_TIMEOUT_MS,
+  }).should("exist");
+}
 
 /**
  * Provision auth for the data-app dev-server host app: create an API key and
@@ -151,6 +172,9 @@ export function setUpDataAppDevServer(clientHost: string) {
     throw new Error("baseUrl must be set for the data-app dev-server suite");
   }
 
+  cy.exec(`rm -f ${DATA_APP_DEV_ENV_PATH}`);
+  waitForDataAppDevServerEnv(clientHost, mbUrl, { expectPresent: false });
+
   cy.request("POST", "/api/api-key", {
     name: `data-app-dev-e2e-${Date.now()}`,
     group_id: USER_GROUPS.ADMIN_GROUP,
@@ -161,18 +185,19 @@ export function setUpDataAppDevServer(clientHost: string) {
     );
   });
 
-  waitForDataAppDevServerEnv(clientHost, mbUrl);
+  waitForDataAppDevServerEnv(clientHost, mbUrl, { expectPresent: true });
 }
 
 export function tearDownDataAppDevServer() {
   cy.exec(`rm -f ${DATA_APP_DEV_ENV_PATH}`);
 }
 
-// `DATA_APP_MB_URL` shows up in the served CSP once Vite has restarted onto the
-// new env — poll that before visiting.
+// `DATA_APP_MB_URL` shows up in (or drops out of) the served CSP once Vite has
+// restarted onto the changed env — poll for the expected state before visiting.
 function waitForDataAppDevServerEnv(
   clientHost: string,
   mbUrl: string,
+  { expectPresent }: { expectPresent: boolean },
   attempt = 0,
 ) {
   const MAX_ATTEMPTS = 40;
@@ -185,17 +210,22 @@ function waitForDataAppDevServerEnv(
   }).then((res) => {
     const csp = String(res.headers["content-security-policy"] ?? "");
 
-    if (csp.includes(origin)) {
+    if (csp.includes(origin) === expectPresent) {
       return;
     }
 
     if (attempt >= MAX_ATTEMPTS) {
       throw new Error(
-        `Dev server never picked up DATA_APP_MB_URL (${origin}) in its CSP; last CSP: "${csp}"`,
+        `Dev server never restarted onto DATA_APP_MB_URL ${expectPresent ? "present" : "absent"} (${origin}); last CSP: "${csp}"`,
       );
     }
 
     cy.wait(1000);
-    waitForDataAppDevServerEnv(clientHost, mbUrl, attempt + 1);
+    waitForDataAppDevServerEnv(
+      clientHost,
+      mbUrl,
+      { expectPresent },
+      attempt + 1,
+    );
   });
 }

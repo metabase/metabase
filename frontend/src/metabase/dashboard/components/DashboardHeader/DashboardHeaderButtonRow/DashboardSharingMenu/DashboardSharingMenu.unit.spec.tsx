@@ -258,9 +258,8 @@ describe("DashboardSharingMenu", () => {
             "http://localhost:3000/dashboard/1-my-cool-dashboard",
           ),
         );
-        expect(
-          await screen.findByText("Link copied to clipboard"),
-        ).toBeInTheDocument();
+        expect(await screen.findByText("Copied")).toBeInTheDocument();
+        expect(screen.queryByText("Copy link")).not.toBeInTheDocument();
       });
 
       it("should copy the public link when clicking 'Copy public link'", async () => {
@@ -355,6 +354,7 @@ describe("DashboardSharingMenu", () => {
   describe("invite to view", () => {
     const inviteAndGetRequestBody = async (dashboard: Partial<Dashboard>) => {
       fetchMock.get("path:/api/permissions/group", []);
+      fetchMock.get("path:/api/permissions/invite-group-ids", []);
       fetchMock.post("path:/api/user", createMockUser({ id: 99 }));
       setupDashboardSharingMenu({
         isAdmin: true,
@@ -402,6 +402,7 @@ describe("DashboardSharingMenu", () => {
 
     it("opens the invite modal for the dashboard", async () => {
       fetchMock.get("path:/api/permissions/group", []);
+      fetchMock.get("path:/api/permissions/invite-group-ids", []);
       setupDashboardSharingMenu({ isAdmin: true });
       await openMenu();
       await userEvent.click(screen.getByText("Invite someone to view this"));

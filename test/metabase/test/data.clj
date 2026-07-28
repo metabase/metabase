@@ -301,6 +301,9 @@
       (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-magic-group-type)
                     perms-group/admin     (#'perms-group/magic-group perms-group/admin-magic-group-type)]
         (mdb/setup-db! :create-sample-content? false)
+        ;; setup-db! writes through the encrypting transforms, so with MB_ENCRYPTION_SECRET_KEY set the dump would
+        ;; carry rows only that key can read. A test that binds a key of its own then sees rows it cannot decrypt.
+        (mdb/decrypt-db :h2 (mdb/data-source))
         (let [f (java.io.File/createTempFile "db-export" ".sql")]
           (next.jdbc/execute! conn ["SCRIPT TO ?" (str f)])
           f)))))

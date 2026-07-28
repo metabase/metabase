@@ -39,6 +39,51 @@
     (is (re-find #"pg_has_role\(c\.relowner, 'USAGE'\)" @query)
         "a NOINHERIT member cannot use the owner role's ALTER privilege without SET ROLE")))
 
+(deftest table-names-are-schema-qualified-test
+  (testing "both stores put the index in its own schema, out of reach of a semantic-search wipe"
+    (is (= {:schema  "library_retrieval"
+            :vectors "library_retrieval.library_entity_index"
+            :meta    "library_retrieval.library_entity_index_meta"}
+           (index-table/tables))))
+  (testing "rendered as separate identifiers"
+    ;; interpolating the qualified name into "%s" would read as one identifier containing a dot
+    (is (= "\"library_retrieval\".\"library_entity_index\"" (index-table/vectors-table-sql)))
+    (is (= "\"library_retrieval\".\"library_entity_index_meta\"" (index-table/meta-table-sql)))))
+
+(deftest schema-is-provisioned-test
+  (let [statements (atom [])]
+    (with-redefs-fn {#'jdbc/execute! (fn [_ sql] (swap! statements conj (first sql)) nil)}
+      #(#'index-table/ensure-schema! ::tx))
+    (is (= ["CREATE SCHEMA IF NOT EXISTS \"library_retrieval\""] @statements)
+        "nothing else creates it: semantic search provisions its own, and we run without semantic search")))
+
+(deftest legacy-tables-are-moved-not-rebuilt-test
+  (let [statements (atom [])
+        exists     (atom #{"library_entity_index" "library_entity_index_meta"})]
+    (with-redefs-fn {#'index-table/table-exists? (fn [_ table] (contains? @exists table))
+                     #'jdbc/execute!             (fn [_ sql] (swap! statements conj (first sql)) nil)}
+      (fn []
+        (testing "an index built before the schema existed is moved, keeping its rows"
+          (#'index-table/adopt-legacy-tables! ::tx)
+          (is (= ["ALTER TABLE \"library_entity_index\" SET SCHEMA \"library_retrieval\""
+                  "ALTER TABLE \"library_entity_index_meta\" SET SCHEMA \"library_retrieval\""]
+                 @statements)))
+        (testing "and left alone once moved"
+          (reset! statements [])
+          (reset! exists #{"library_retrieval.library_entity_index"
+                           "library_retrieval.library_entity_index_meta"})
+          (#'index-table/adopt-legacy-tables! ::tx)
+          (is (empty? @statements)))
+        (testing "a qualified table standing beside a leftover legacy one keeps its rows"
+          (reset! statements [])
+          (reset! exists #{"library_entity_index"
+                           "library_entity_index_meta"
+                           "library_retrieval.library_entity_index"
+                           "library_retrieval.library_entity_index_meta"})
+          (#'index-table/adopt-legacy-tables! ::tx)
+          (is (empty? @statements)
+              "SET SCHEMA onto an occupied name errors, aborting the whole ensure-tables! transaction"))))))
+
 (deftest reconcile-watermark-precedes-appdb-read-test
   (let [events (atom [])]
     (mt/with-dynamic-fn-redefs [reconcile/capture-reconcile-watermark (fn [_]

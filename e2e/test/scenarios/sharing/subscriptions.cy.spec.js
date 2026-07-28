@@ -51,7 +51,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       openDashboardSubscriptions();
 
       // The sidebar starts open after the method there, so test that clicking the icon closes it
-      H.openDashboardMenu("Subscriptions");
+      H.toggleDashboardSubscriptionsSidebar();
       H.sidebar().should("not.exist");
     });
   });
@@ -358,10 +358,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       });
       cy.reload();
 
-      H.dashboardHeader()
-        .findByLabelText("[zz] Move, trash, and more…")
-        .click();
-      H.popover().findByText("[zz] Subscriptions").click();
+      H.toggleDashboardSubscriptionsSidebar();
       H.sidebar()
         .findByText(/\[zz\] hourly/)
         .click();
@@ -597,8 +594,8 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should allow non-admin users to create subscriptions", () => {
       cy.signInAsNormalUser();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openDashboardMenu();
-      H.popover().findByText("Subscriptions").should("be.visible");
+      H.toggleDashboardSubscriptionsSidebar();
+      H.sidebar().should("be.visible");
     });
 
     it("should persist the immutable Slack channel_id alongside the channel name", () => {
@@ -909,7 +906,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
 
         H.openSharingMenu();
-        H.sharingMenu().findByRole("menuitem", { name: "Embed" }).click();
+        H.sharingMenu().findByRole("button", { name: "Embed" }).click();
         cy.findByLabelText("Metabase account (SSO)").click();
         embedModalEnableEmbedding();
         cy.findByLabelText("Allow subscriptions").check().should("be.checked");
@@ -935,7 +932,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 function openDashboardSubscriptions(dashboard_id = ORDERS_DASHBOARD_ID) {
   // Orders in a dashboard
   H.visitDashboard(dashboard_id);
-  H.openDashboardMenu("Subscriptions");
+  H.toggleDashboardSubscriptionsSidebar();
 }
 
 function assignRecipient({

@@ -100,7 +100,7 @@
   (entity-class-set
    (map (juxt :entity_type :entity_local_id)
         (jdbc/execute! ds
-                       [(format "SELECT DISTINCT entity_type, entity_local_id FROM \"%s\"" index-table/*vectors-table*)]
+                       [(format "SELECT DISTINCT entity_type, entity_local_id FROM %s" (index-table/vectors-table-sql))]
                        {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
 
 (defn- library-and-indexed-classes*
@@ -136,8 +136,8 @@
     (try
       (let [sql (format (str "WITH observed AS (SELECT clock_timestamp() AS at) "
                              "SELECT EXTRACT(EPOCH FROM ((SELECT at FROM observed) - reconciled_at)) AS age "
-                             "FROM \"%s\" WHERE id = 1")
-                        index-table/*meta-table*)
+                             "FROM %s WHERE id = 1")
+                        (index-table/meta-table-sql))
             {:keys [age]} (jdbc/execute-one! ds [sql] {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
         (cond
           (nil? age)
