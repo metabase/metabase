@@ -1,7 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useAdminSetting } from "metabase/api/utils";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
@@ -36,12 +35,11 @@ export function AdminAuthCard() {
   };
 
   return (
-    <SettingsSection data-testid="mfa-setting">
-      <SettingHeader
-        id="mfa-enforcement"
-        title={t`Two-factor authentication`}
-        description={t`Let users secure their account with an authenticator app.`}
-      />
+    <SettingsSection
+      data-testid="mfa-setting"
+      title={t`Two-factor authentication`}
+      description={t`Let users secure their account with an authenticator app.`}
+    >
       <Switch
         id="mfa-enforcement"
         checked={enabled}
