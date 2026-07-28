@@ -18,7 +18,8 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.memoize :as u.memo]
    [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize])
   (:import
    (clojure.lang PersistentVector)))
 
@@ -146,20 +147,27 @@
 ;;; ---------------------------------------- Caching ------------------------------------------------------------------
 
 (defn- relevant-permissions-for-user-and-dbs
-  "Returns all relevant rows for permissions for the user, excluding permissions for deactivated tables for the given sequence of database ids."
+  "Returns a reducible of all relevant permission rows for the user, excluding permissions for deactivated tables, for
+  the given sequence of database ids. Reducing it folds rows one at a time instead of realizing the full result set
+  (see [[prime-db-cache]]). Rows are raw realized maps, not model instances, so `:perm_type` and `:perm_value` are
+  strings rather than keywords. The per-row [[t2.realize/realize]] is a performance requirement, not a convenience:
+  key access on unrealized result-set rows goes through toucan2's deferred-row machinery on every lookup, which
+  benchmarked ~15x slower than realizing each row once and reading plain map keys."
   [user-id db-ids]
-  (t2/select :model/DataPermissions
-             {:select [:p.group_id :p.perm_type :p.db_id :p.table_id :p.schema_name :p.perm_value]
-              :from [[:permissions_group_membership :pgm]]
-              :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                     [:data_permissions :p] [:= :p.group_id :pg.id]]
-              :left-join [[:metabase_table :mt] [:= :mt.id :p.table_id]]
-              :where [:and
-                      [:= :pgm.user_id user-id]
-                      [:in :p.db_id db-ids]
-                      [:or
-                       [:= :p.table_id nil]
-                       [:= :mt.active true]]]}))
+  (eduction
+   (map t2.realize/realize)
+   (t2/reducible-query
+    {:select [:p.group_id :p.perm_type :p.db_id :p.table_id :p.schema_name :p.perm_value]
+     :from [[:permissions_group_membership :pgm]]
+     :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
+            [:data_permissions :p] [:= :p.group_id :pg.id]]
+     :left-join [[:metabase_table :mt] [:= :mt.id :p.table_id]]
+     :where [:and
+             [:= :pgm.user_id user-id]
+             [:in :p.db_id db-ids]
+             [:or
+              [:= :p.table_id nil]
+              [:= :mt.active true]]]})))
 
 (defn- relevant-permissions-for-user-perm-and-db
   "Returns all relevant rows for a given user, permission type, and db_id, excluding permissions for deactivated
@@ -228,6 +236,23 @@
       (when (some? v)
         (intern! v)))))
 
+(defn- add-row-to-cache-entry
+  "Fold a single data_permissions row into an in-progress cache entry (see [[rows->cache-entry]] for the semantics).
+  `perm_value` may be a raw result-set string or an already-transformed keyword depending on the fetch path;
+  `keyword` normalizes both."
+  [interner entry {:keys [table_id schema_name group_id perm_value]}]
+  (let [perm-value (keyword perm_value)]
+    (if table_id
+      (update-in entry [:tables table_id group_id] (fnil conj #{})
+                 (interner {:schema schema_name :value perm-value}))
+      (update-in entry [:groups group_id] (fnil conj #{}) perm-value))))
+
+(defn- finalize-cache-entry
+  "Intern the shareable pieces of a folded cache entry: the whole :groups map, and each table's group-id->values map."
+  [interner {:keys [groups tables] :or {groups {} tables {}}}]
+  {:groups (interner groups)
+   :tables (update-vals tables interner)})
+
 (defn- rows->cache-entry
   "Build the compact cache entry (see [[*permissions-for-user*]]) for one (perm-type, db-id) bucket of
   data_permissions rows. Returns nil when there are no rows.
@@ -245,23 +270,7 @@
   coalescing would deny)."
   [interner rows]
   (when (seq rows)
-    (let [groups (reduce (fn [m {:keys [table_id group_id perm_value]}]
-                           (if table_id
-                             m
-                             (update m group_id (fnil conj #{}) perm_value)))
-                         {}
-                         rows)
-          tables (reduce (fn [m {:keys [table_id schema_name group_id perm_value]}]
-                           (if table_id
-                             (update m table_id
-                                     (fn [group-id->values]
-                                       (update group-id->values group_id (fnil conj #{})
-                                               (interner {:schema schema_name :value perm_value}))))
-                             m))
-                         {}
-                         rows)]
-      {:groups (interner groups)
-       :tables (update-vals tables interner)})))
+    (finalize-cache-entry interner (reduce (partial add-row-to-cache-entry interner) {} rows))))
 
 (defn prime-db-cache
   "Prime the permissions cache for a given user and database IDs.
@@ -270,13 +279,16 @@
   (let [{cached-db-ids :db-ids interner :intern perms :perms} @*permissions-for-user*
         filtered-ids (remove cached-db-ids db-ids)]
     (when (seq filtered-ids)
-      (let [user-id           api/*current-user-id*
-            fetched-perm-rows (relevant-permissions-for-user-and-dbs user-id filtered-ids)
-            interner          (or interner (cache-interner))
-            new-by-type       (reduce-kv (fn [m [perm-type db-id] bucket]
-                                           (assoc-in m [perm-type db-id] (rows->cache-entry interner bucket)))
-                                         {}
-                                         (group-by (juxt :perm_type :db_id) fetched-perm-rows))]
+      (let [user-id     api/*current-user-id*
+            interner    (or interner (cache-interner))
+            folded      (reduce (fn [m {:keys [perm_type db_id] :as row}]
+                                  (update-in m [(keyword perm_type) db_id]
+                                             (fnil #(add-row-to-cache-entry interner % row) {})))
+                                {}
+                                (relevant-permissions-for-user-and-dbs user-id filtered-ids))
+            new-by-type (update-vals folded
+                                     (fn [db-id->entry]
+                                       (update-vals db-id->entry #(finalize-cache-entry interner %))))]
         (reset! *permissions-for-user*
                 {:db-ids (into cached-db-ids db-ids)
                  :intern interner
