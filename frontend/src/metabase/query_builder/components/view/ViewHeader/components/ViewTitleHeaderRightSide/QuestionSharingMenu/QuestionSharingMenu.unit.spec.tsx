@@ -171,9 +171,8 @@ describe("QuestionSharingMenu", () => {
             "http://localhost:3000/question/1-my-cool-question",
           ),
         );
-        expect(
-          await screen.findByText("Link copied to clipboard"),
-        ).toBeInTheDocument();
+        expect(await screen.findByText("Copied")).toBeInTheDocument();
+        expect(screen.queryByText("Copy link")).not.toBeInTheDocument();
       });
 
       it("should copy the public link from the menu", async () => {
