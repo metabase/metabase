@@ -1,5 +1,5 @@
 import type { AxisScale } from "@visx/axis";
-import { AxisBottom, AxisLeft } from "@visx/axis";
+import { AxisBottom, AxisLeft, AxisRight } from "@visx/axis";
 import { GridColumns } from "@visx/grid";
 import { Group } from "@visx/group";
 import type { NumberLike, StringLike } from "@visx/scale";
@@ -49,6 +49,7 @@ export interface RowChartViewProps<TDatum> {
   hasXAxis?: boolean;
   hasYAxis?: boolean;
   isStacked?: boolean;
+  isRtl?: boolean;
   style?: React.CSSProperties;
   hoveredData?: HoveredData | null;
   measureTextWidth?: TextWidthMeasurer;
@@ -65,6 +66,10 @@ export interface RowChartViewProps<TDatum> {
 const RowChartView = <TDatum,>({
   width,
   height,
+  // NOTE: keep this destructured even if it looks unused — `innerWidth` is also a
+  // DOM global, so omitting it makes references silently read `window.innerWidth`
+  // instead of the prop, with no type error.
+  innerWidth,
   innerHeight,
   xScale,
   yScale,
@@ -82,6 +87,7 @@ const RowChartView = <TDatum,>({
   hasXAxis = true,
   hasYAxis = true,
   isStacked,
+  isRtl = false,
   style,
   hoveredData,
   measureTextWidth,
@@ -95,7 +101,27 @@ const RowChartView = <TDatum,>({
         range: [0, yScale.bandwidth()],
       });
 
-  const goalLineX = xScale(goal?.value ?? 0);
+  // Everything upstream — tick selection, side padding for overflowing ticks and
+  // data labels, the goal label's side — is computed against a left-to-right
+  // `xScale`. Reversing only its *output range* here mirrors the plot for RTL
+  // without touching any of that math: value → pixel now grows leftwards.
+  const plotXScale = React.useMemo(() => {
+    if (!isRtl) {
+      return xScale;
+    }
+    const [rangeStart, rangeEnd] = xScale.range();
+    return xScale.copy().range([rangeEnd, rangeStart]);
+  }, [isRtl, xScale]);
+
+  const goalLineX = plotXScale(goal?.value ?? 0);
+
+  // `margin.left` is the gutter sized to hold the category labels; under RTL
+  // that gutter sits on the physical right, so the plot starts at `margin.right`.
+  const plotLeft = isRtl ? margin.right : margin.left;
+
+  // Picking the component rather than passing `orientation` to a generic `Axis`
+  // keeps visx's `visx-axis-left` class, which tests and e2e specs select on.
+  const CategoryAxis = isRtl ? AxisRight : AxisLeft;
 
   const ellipsifiedYTickFormatter = React.useMemo(() => {
     if (!measureTextWidth || !width) {
@@ -135,10 +161,10 @@ const RowChartView = <TDatum,>({
       height={height ?? undefined}
       style={{ direction: "ltr", ...style }}
     >
-      <Group top={margin.top} left={margin.left}>
+      <Group top={margin.top} left={plotLeft}>
         <GridColumns
           // Unjustified type cast. FIXME
-          scale={xScale as AxisScale<number>}
+          scale={plotXScale as AxisScale<number>}
           height={innerHeight}
           stroke={theme.grid.color}
           tickValues={xTicks}
@@ -156,8 +182,12 @@ const RowChartView = <TDatum,>({
 
             y += innerBarScale?.(seriesIndex) ?? 0;
 
-            const x = xScale(xStartValue);
-            const width = Math.abs(xScale(xEndValue) - x);
+            // A mirrored scale maps the bar's start to its *right* edge, so take
+            // the smaller coordinate rather than assuming the start is leftmost.
+            const barStart = plotXScale(xStartValue);
+            const barEnd = plotXScale(xEndValue);
+            const x = Math.min(barStart, barEnd);
+            const width = Math.abs(barEnd - barStart);
 
             const hasSeriesHover = hoveredData != null;
             const isSeriesHovered = hoveredData?.seriesIndex === seriesIndex;
@@ -180,6 +210,10 @@ const RowChartView = <TDatum,>({
               isStacked,
               labelledSeries,
             );
+
+            // The label sits just past the bar's growing end, which the mirrored
+            // scale puts on the opposite physical side.
+            const isLabelBeforeBar = isNegative !== isRtl;
 
             const height = innerBarScale?.bandwidth() ?? yScale.bandwidth();
             const value = isNegative ? xStartValue : xEndValue;
@@ -209,12 +243,12 @@ const RowChartView = <TDatum,>({
                   <Text
                     data-testid="data-label"
                     id={ariaLabelledBy}
-                    textAnchor={isNegative ? "end" : "start"}
+                    textAnchor={isLabelBeforeBar ? "end" : "start"}
                     fontSize={theme.dataLabels.size}
                     fill={theme.dataLabels.color}
                     fontWeight={theme.dataLabels.weight}
-                    dx={(isNegative ? "-" : "") + DATA_LABEL_OFFSET}
-                    x={xScale(value)}
+                    dx={(isLabelBeforeBar ? "-" : "") + DATA_LABEL_OFFSET}
+                    x={plotXScale(value)}
                     y={y + height / 2}
                     verticalAnchor="middle"
                   >
@@ -236,7 +270,8 @@ const RowChartView = <TDatum,>({
           />
         )}
 
-        <AxisLeft
+        <CategoryAxis
+          left={isRtl ? innerWidth : 0}
           label={yLabel ?? ""}
           labelProps={{
             fill: theme.axis.label.color,
@@ -245,6 +280,7 @@ const RowChartView = <TDatum,>({
             fontWeight: theme.axis.label.weight,
             textAnchor: "middle",
             verticalAnchor: "start",
+            ...(isRtl ? { style: { direction: "rtl" as const } } : null),
           }}
           labelOffset={margin.left - theme.axis.label.size}
           tickFormat={ellipsifiedYTickFormatter}
@@ -260,6 +296,13 @@ const RowChartView = <TDatum,>({
             fontFamily: theme.dataLabels.family,
             fontSize: theme.axis.ticks.size,
             fontWeight: theme.axis.ticks.weight,
+            // Category names are the only prose in the chart, so they opt back
+            // into RTL text semantics (see the `direction: ltr` note on the svg):
+            // that puts a truncation ellipsis and any Latin/numeric runs at the
+            // reading end. `text-anchor` resolves against that direction, so
+            // "end" is the *left* edge here — which is the one touching a
+            // right-hand axis, leaving the label to read outwards into the gutter.
+            ...(isRtl ? { style: { direction: "rtl" as const } } : null),
             textAnchor: "end",
             dy: "0.33em",
           })}
@@ -273,6 +316,7 @@ const RowChartView = <TDatum,>({
             fontWeight: theme.axis.label.weight,
             textAnchor: "middle",
             dy: hasXAxis ? undefined : "-1em",
+            ...(isRtl ? { style: { direction: "rtl" as const } } : null),
           }}
           hideAxisLine={!hasXAxis}
           hideTicks
@@ -280,7 +324,7 @@ const RowChartView = <TDatum,>({
           tickFormat={xTickFormatter}
           top={innerHeight}
           // Unjustified type cast. FIXME
-          scale={xScale as AxisScale<number>}
+          scale={plotXScale as AxisScale<number>}
           stroke={theme.axis.color}
           tickStroke={theme.axis.color}
           tickLabelProps={() => ({

@@ -80,6 +80,12 @@ export interface RenderingContext {
   fontFamily: string;
   /** Defaults to "light" when not provided. */
   colorScheme?: "light" | "dark";
+  /**
+   * Writing direction of the surrounding UI. Charts mirror in "rtl": the value
+   * axis moves to the right and the dimension axis runs right-to-left.
+   * Defaults to "ltr" when not provided.
+   */
+  direction?: "ltr" | "rtl";
 
   theme: VisualizationTheme;
 }

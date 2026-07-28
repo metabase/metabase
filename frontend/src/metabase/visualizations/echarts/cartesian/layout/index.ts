@@ -691,14 +691,22 @@ export const getChartPadding = (
 
   const yAxisNameTotalWidth = axisNameFontSize + CHART_STYLE.axisNameMargin;
 
-  padding.left += ticksDimensions.yTicksWidthLeft;
+  // `leftAxisModel`/`rightAxisModel` name the *series grouping* (which axis a
+  // series is assigned to), not a physical side: under RTL `buildMetricAxes`
+  // renders the left model on the right and vice versa, so reserve each one's
+  // gutter on the side it is actually drawn.
+  const isRtl = renderingContext.direction === "rtl";
+  const leftModelSide = isRtl ? "right" : "left";
+  const rightModelSide = isRtl ? "left" : "right";
+
+  padding[leftModelSide] += ticksDimensions.yTicksWidthLeft;
   if (leftAxisModel?.label) {
-    padding.left += yAxisNameTotalWidth;
+    padding[leftModelSide] += yAxisNameTotalWidth;
   }
 
-  padding.right += ticksDimensions.yTicksWidthRight;
+  padding[rightModelSide] += ticksDimensions.yTicksWidthRight;
   if (rightAxisModel?.label) {
-    padding.right += yAxisNameTotalWidth;
+    padding[rightModelSide] += yAxisNameTotalWidth;
   }
 
   const { firstTickOverflow, lastTickOverflow } = getTicksOverflow(
@@ -721,12 +729,18 @@ export const getChartBounds = (
   height: number,
   padding: Padding,
   ticksDimensions: TicksDimensions,
+  isRtl = false,
 ): ChartBoundsCoords => {
+  // Mirrors the side each y-axis model was given in `getChartPadding`.
+  const [startTicksWidth, endTicksWidth] = isRtl
+    ? [ticksDimensions.yTicksWidthRight, ticksDimensions.yTicksWidthLeft]
+    : [ticksDimensions.yTicksWidthLeft, ticksDimensions.yTicksWidthRight];
+
   return {
     top: padding.top,
     bottom: height - padding.bottom - ticksDimensions.xTicksHeight,
-    left: padding.left + ticksDimensions.yTicksWidthLeft,
-    right: width - padding.right - ticksDimensions.yTicksWidthRight,
+    left: padding.left + startTicksWidth,
+    right: width - padding.right - endTicksWidth,
   };
 };
 
@@ -918,7 +932,13 @@ export const getChartLayout = (
     width,
     renderingContext,
   );
-  const bounds = getChartBounds(width, height, padding, ticksDimensions);
+  const bounds = getChartBounds(
+    width,
+    height,
+    padding,
+    ticksDimensions,
+    renderingContext.direction === "rtl",
+  );
 
   const boundaryWidth =
     width -
@@ -1004,7 +1024,13 @@ const computeSplitPanelLayout = (
     renderingContext,
   );
 
-  const bounds = getChartBounds(width, height, padding, ticksDimensions);
+  const bounds = getChartBounds(
+    width,
+    height,
+    padding,
+    ticksDimensions,
+    renderingContext.direction === "rtl",
+  );
 
   const boundaryWidth =
     width -

@@ -94,6 +94,7 @@ export const getRowChartGoal = (
   style: GoalStyle,
   measureTextWidth: TextWidthMeasurer,
   xScale: ScaleContinuousNumeric<number, number, never>,
+  isRtl = false,
 ) => {
   if (!goal) {
     return null;
@@ -102,11 +103,12 @@ export const getRowChartGoal = (
   const labelWidth = measureTextWidth(goal.label, style.label);
   const goalX = xScale(goal.value);
   const xMax = xScale.range()[1];
-  const availableRightSideSpace = xMax - goalX;
+  const availableEndSideSpace = xMax - goalX;
+  const fitsOnEndSide = labelWidth <= availableEndSideSpace;
+  // `xScale` always runs left-to-right — the RTL chart mirrors it at render time
+  // — so the side the label fits on is the physical opposite one under RTL.
   const position =
-    labelWidth > availableRightSideSpace
-      ? ("left" as const)
-      : ("right" as const);
+    fitsOnEndSide !== isRtl ? ("right" as const) : ("left" as const);
 
   return {
     ...goal,

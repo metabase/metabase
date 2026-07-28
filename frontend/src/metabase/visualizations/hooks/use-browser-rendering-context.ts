@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { useIsRtl } from "metabase/common/hooks/use-is-rtl";
 import { usePalette } from "metabase/common/hooks/use-palette";
 import { useMantineTheme } from "metabase/ui";
 import { color } from "metabase/ui/colors";
@@ -24,6 +25,7 @@ export const useBrowserRenderingContext = (
 
   const palette = usePalette();
   const theme = useMantineTheme();
+  const direction = useIsRtl() ? "rtl" : "ltr";
 
   return useMemo(() => {
     const style = getVisualizationTheme({
@@ -37,7 +39,8 @@ export const useBrowserRenderingContext = (
       measureTextHeight,
       fontFamily: getFontFamilyValue(fontFamily),
       colorScheme: theme.other?.colorScheme ?? "light",
+      direction,
       theme: style,
     };
-  }, [fontFamily, palette, theme, isDashboard]);
+  }, [fontFamily, palette, theme, isDashboard, direction]);
 };
