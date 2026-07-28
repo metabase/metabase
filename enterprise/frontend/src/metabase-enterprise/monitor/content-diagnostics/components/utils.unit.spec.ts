@@ -36,50 +36,96 @@ describe("content-diagnostics utils", () => {
 
   describe("getEntityIcon", () => {
     it("maps entity and card types to icons", () => {
-      expect(getEntityIcon(finding({ entity_type: "card", card_type: "question" }))).toBe("table2");
-      expect(getEntityIcon(finding({ entity_type: "card", card_type: "model" }))).toBe("model");
-      expect(getEntityIcon(finding({ entity_type: "card", card_type: "metric" }))).toBe("metric");
-      expect(getEntityIcon(finding({ entity_type: "dashboard" }))).toBe("dashboard");
-      expect(getEntityIcon(finding({ entity_type: "document" }))).toBe("document");
-      expect(getEntityIcon(finding({ entity_type: "transform" }))).toBe("transform");
+      expect(
+        getEntityIcon(finding({ entity_type: "card", card_type: "question" })),
+      ).toBe("table2");
+      expect(
+        getEntityIcon(finding({ entity_type: "card", card_type: "model" })),
+      ).toBe("model");
+      expect(
+        getEntityIcon(finding({ entity_type: "card", card_type: "metric" })),
+      ).toBe("metric");
+      expect(getEntityIcon(finding({ entity_type: "dashboard" }))).toBe(
+        "dashboard",
+      );
+      expect(getEntityIcon(finding({ entity_type: "document" }))).toBe(
+        "document",
+      );
+      expect(getEntityIcon(finding({ entity_type: "transform" }))).toBe(
+        "transform",
+      );
     });
 
     it("falls back to the card icon when card_type is absent", () => {
-      expect(getEntityIcon(finding({ entity_type: "card", card_type: null }))).toBe("table2");
+      expect(
+        getEntityIcon(finding({ entity_type: "card", card_type: null })),
+      ).toBe("table2");
     });
   });
 
   describe("getEntityTypeLabel", () => {
     it("distinguishes card subtypes and labels other types", () => {
-      expect(getEntityTypeLabel(finding({ entity_type: "card", card_type: "question" }))).toBe("Question");
-      expect(getEntityTypeLabel(finding({ entity_type: "card", card_type: "model" }))).toBe("Model");
-      expect(getEntityTypeLabel(finding({ entity_type: "card", card_type: "metric" }))).toBe("Metric");
-      expect(getEntityTypeLabel(finding({ entity_type: "dashboard" }))).toBe("Dashboard");
-      expect(getEntityTypeLabel(finding({ entity_type: "document" }))).toBe("Document");
-      expect(getEntityTypeLabel(finding({ entity_type: "transform" }))).toBe("Transform");
+      expect(
+        getEntityTypeLabel(
+          finding({ entity_type: "card", card_type: "question" }),
+        ),
+      ).toBe("Question");
+      expect(
+        getEntityTypeLabel(
+          finding({ entity_type: "card", card_type: "model" }),
+        ),
+      ).toBe("Model");
+      expect(
+        getEntityTypeLabel(
+          finding({ entity_type: "card", card_type: "metric" }),
+        ),
+      ).toBe("Metric");
+      expect(getEntityTypeLabel(finding({ entity_type: "dashboard" }))).toBe(
+        "Dashboard",
+      );
+      expect(getEntityTypeLabel(finding({ entity_type: "document" }))).toBe(
+        "Document",
+      );
+      expect(getEntityTypeLabel(finding({ entity_type: "transform" }))).toBe(
+        "Transform",
+      );
     });
 
     it("falls back to Question when card_type is absent", () => {
-      expect(getEntityTypeLabel(finding({ entity_type: "card", card_type: null }))).toBe("Question");
+      expect(
+        getEntityTypeLabel(finding({ entity_type: "card", card_type: null })),
+      ).toBe("Question");
     });
   });
 
   describe("getEntityUrl", () => {
     it("links cards to the correct route per card type", () => {
       expect(
-        getEntityUrl(finding({ entity_type: "card", card_type: "question", entity_id: 10 })),
+        getEntityUrl(
+          finding({
+            entity_type: "card",
+            card_type: "question",
+            entity_id: 10,
+          }),
+        ),
       ).toContain("/question/10");
       expect(
-        getEntityUrl(finding({ entity_type: "card", card_type: "model", entity_id: 11 })),
+        getEntityUrl(
+          finding({ entity_type: "card", card_type: "model", entity_id: 11 }),
+        ),
       ).toContain("/model/11");
       expect(
-        getEntityUrl(finding({ entity_type: "card", card_type: "metric", entity_id: 12 })),
+        getEntityUrl(
+          finding({ entity_type: "card", card_type: "metric", entity_id: 12 }),
+        ),
       ).toContain("/metric/12");
     });
 
     it("links a card with no card_type to /question/", () => {
       expect(
-        getEntityUrl(finding({ entity_type: "card", card_type: null, entity_id: 13 })),
+        getEntityUrl(
+          finding({ entity_type: "card", card_type: null, entity_id: 13 }),
+        ),
       ).toContain("/question/13");
     });
   });

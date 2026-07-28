@@ -147,9 +147,7 @@ function InfoSection({ finding }: InfoSectionProps) {
   return (
     <Card p={0} shadow="none" withBorder role="region" aria-label={t`Info`}>
       <InfoSectionItem label={t`Type`}>
-        <Box className={CS.textWrap}>
-          {getEntityTypeLabel(finding)}
-        </Box>
+        <Box className={CS.textWrap}>{getEntityTypeLabel(finding)}</Box>
       </InfoSectionItem>
       <InfoSectionItem label={t`Description`}>
         {description != null && description.length > 0 ? (
