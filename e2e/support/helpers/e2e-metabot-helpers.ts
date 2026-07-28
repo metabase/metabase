@@ -8,6 +8,46 @@ import type {
 
 import { appBar } from "./e2e-ui-elements-helpers";
 
+type LlmProviderConnectionInput = {
+  key: string;
+  type?: string;
+  name?: string;
+  config?: Record<string, string>;
+};
+
+/**
+ * Write the `llm-providers` connection list directly. `POST /api/llm/providers`
+ * verifies credentials against the real provider, which a fake key cannot pass,
+ * so tests configure the setting instead.
+ */
+export function setLlmProviders(connections: LlmProviderConnectionInput[]) {
+  return cy.request("PUT", "/api/setting/llm-providers", {
+    value: connections.map(({ key, type = key, name = key, config = {} }) => ({
+      key,
+      type,
+      name,
+      config,
+    })),
+  });
+}
+
+/** Connect a fake Anthropic provider so Metabot reads as configured. */
+export function setupAnthropicLlmProvider(apiKey = "sk-ant-test-key") {
+  return setLlmProviders([
+    {
+      key: "anthropic",
+      type: "anthropic",
+      name: "Anthropic",
+      config: { "api-key": apiKey },
+    },
+  ]);
+}
+
+/** Remove every provider connection so Metabot reads as unconfigured. */
+export function clearLlmProviders() {
+  return setLlmProviders([]);
+}
+
 export function metabotChatSidebar() {
   return cy.findByTestId("metabot-chat");
 }

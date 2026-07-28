@@ -13,7 +13,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
-   [metabase.metabot.provider-util :as provider-util]
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.azure :as azure]
    [metabase.metabot.self.bedrock :as bedrock]
@@ -27,6 +27,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]]))
 
@@ -60,12 +61,23 @@
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
-(defn- parse-provider-model [s]
-  (let [provider (provider-util/provider-and-model->provider s)]
-    {:provider   provider
-     :stream-fn  (resolve-adapter provider)
-     :model      (provider-util/provider-and-model->model s)
-     :ai-proxy?  (provider-util/metabase-provider? s)}))
+(defn- parse-provider-model
+  "Resolve a `connection-key/model` string into the adapter, model, and credentials needed to serve it.
+  Throws a 400 when the string names a connection that is not configured, so a stale
+  `llm-metabot-provider` surfaces as a clear error rather than an unauthenticated request."
+  [s]
+  (let [{:keys [type model credentials ai-proxy?]}
+        (or (llm.provider/resolve-model-ref s)
+            (throw (ex-info (tru "No LLM provider connection named {0} is configured."
+                                 (pr-str (llm.provider/model-ref->connection-key s)))
+                            {:status-code 400
+                             :api-error   true
+                             :model-ref   s})))]
+    {:provider    type
+     :stream-fn   (resolve-adapter type)
+     :model       model
+     :credentials credentials
+     :ai-proxy?   ai-proxy?}))
 
 (defn list-models
   "List available models for a provider using its configured credentials, or `:credentials` in `opts`.
@@ -406,11 +418,12 @@
          (error-reducible limit-msg "ai_usage_limit_reached"))
        (when-let [missing (missing-required-permission (:required-permission tracking-opts))]
          (error-reducible (format "Permission denied: %s required" missing) "permission_denied"))
-       (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)]
+       (let [{:keys [provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)]
          (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
                                   :tool-choice tool-choice :ai-proxy? ai-proxy?})
          (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
-               streaming-opts (cond-> {:model model :input parts :tools (vals tools) :ai-proxy? ai-proxy?}
+               streaming-opts (cond-> {:model       model :input parts :tools (vals tools)
+                                       :credentials credentials :ai-proxy? ai-proxy?}
                                 system-msg                    (assoc :system system-msg)
                                 (and (seq tools)
                                      tool-choice)             (assoc :tool_choice tool-choice)
@@ -469,7 +482,7 @@
                      :error-code "ai_usage_limit_reached"
                      :message    limit-msg})))
   (check-permission! (:required-permission opts))
-  (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)
+  (let [{:keys [provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)
         [system-msg input] (if (= "system" (some-> messages first :role name))
                              [(:content (first messages)) (vec (rest messages))]
                              [nil messages])
@@ -485,6 +498,7 @@
                                 :schema      json-schema
                                 :temperature temperature
                                 :max-tokens  max-tokens
+                                :credentials credentials
                                 :ai-proxy?   ai-proxy?}
                          system-msg                  (assoc :system system-msg)
                          (contains? opts :cache?)    (assoc :cache? (:cache? opts))

@@ -88,7 +88,7 @@
     (let [auth (core/resolve-auth "openrouter" "OpenRouter"
                                   (when-let [k (or (not-empty (:api-key credentials))
                                                    (not-empty (llm/llm-openrouter-api-key)))]
-                                    {:url     (llm/llm-openrouter-api-base-url)
+                                    {:url     (or (not-empty (:base-url credentials)) (llm/llm-openrouter-api-base-url))
                                      :headers {"Authorization" (str "Bearer " k)}})
                                   ai-proxy?)
           res  (core/request auth {:method  :get
@@ -149,8 +149,10 @@
 
   Works with OpenRouter, or any OpenAI-compatible endpoint that supports
   `/v1/chat/completions` (e.g. vLLM, Ollama, Together, etc.).
+  Opts map supports `:credentials` (`{:api-key ... :base-url ...}`); the configured OpenRouter settings are used
+  for whatever it doesn't carry.
   `:ai-proxy?` is not supported for OpenRouter and throws when true."
-  [{:keys [model tools ai-proxy?] :as opts
+  [{:keys [model tools credentials ai-proxy?] :as opts
     :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
@@ -161,10 +163,12 @@
                       :msg-count  (count (:messages req))
                       :tool-count (count (or tools []))}
       (try
-        (let [api-key  (not-empty (llm/llm-openrouter-api-key))
+        (let [api-key  (or (not-empty (:api-key credentials))
+                           (not-empty (llm/llm-openrouter-api-key)))
               auth     (core/resolve-auth "openrouter" "OpenRouter"
                                           (when api-key
-                                            {:url     (llm/llm-openrouter-api-base-url)
+                                            {:url     (or (not-empty (:base-url credentials))
+                                                          (llm/llm-openrouter-api-base-url))
                                              :headers {"Authorization" (str "Bearer " api-key)}})
                                           ai-proxy?)
               response (core/request auth

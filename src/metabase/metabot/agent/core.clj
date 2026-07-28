@@ -8,12 +8,12 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
-   [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
@@ -494,7 +494,7 @@
   whether the request was routed through the AI proxy.
   Non-usage parts pass through unchanged."
   [usage-atom provider-and-model]
-  (let [model (or (some-> provider-and-model provider-util/strip-metabase-prefix)
+  (let [model (or (some-> provider-and-model llm.provider/strip-managed-prefix)
                   "unknown")]
     (map (fn [part]
            (if (= (:type part) :usage)

@@ -32,3 +32,68 @@ export interface ExtractSourcesResponse {
   tables: ExtractSourcesTable[];
   card_ids: number[];
 }
+
+export type LlmProviderFieldType = "text" | "password" | "select";
+
+export interface LlmProviderField {
+  key: string;
+  label: string;
+  type: LlmProviderFieldType;
+  required: boolean;
+  placeholder?: string | null;
+  default?: string | null;
+  help?: string | null;
+  "docs-url"?: string | null;
+  options?: { value: string; label: string }[] | null;
+}
+
+export interface LlmProviderType {
+  type: string;
+  label: string;
+  managed: boolean;
+  available: boolean;
+  "default-model": string | null;
+  fields: LlmProviderField[];
+}
+
+export type LlmProviderConfig = Record<string, string | null>;
+
+export type LlmProviderSource = "db" | "env";
+
+export interface LlmProviderConnection {
+  key: string;
+  type: string;
+  name: string;
+  source: LlmProviderSource;
+  usable: boolean;
+  config: LlmProviderConfig;
+}
+
+export interface LlmModel {
+  id: string;
+  display_name: string;
+  group?: string | null;
+}
+
+export interface LlmConnectionModels {
+  key: string;
+  name: string;
+  type: string;
+  models: LlmModel[];
+  error?: string | null;
+}
+
+export interface CreateLlmProviderRequest {
+  type: string;
+  name?: string;
+  key?: string;
+  config?: LlmProviderConfig;
+  model?: string;
+}
+
+export interface UpdateLlmProviderRequest {
+  key: string;
+  name?: string;
+  config?: LlmProviderConfig;
+  model?: string;
+}

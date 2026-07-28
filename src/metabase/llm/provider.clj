@@ -1,0 +1,421 @@
+(ns metabase.llm.provider
+  "LLM provider types and provider connections.
+
+  A *provider type* describes a kind of LLM connection: its label, the credential fields it needs, and its default
+  model. The registry below is pure data, so adding a provider type does not mean editing a `case` in every
+  namespace that touches credentials, and the admin UI can render a connection form without knowing the type.
+
+  A *connection* is one configured instance of a provider type. Connections live in the [[llm-providers]] setting as
+  a list of maps, so an instance can hold several connections of the same type with different credentials:
+
+    {:key \"anthropic-eval\" :type \"anthropic\" :name \"Anthropic (evals)\" :config {:api-key \"sk-ant-...\"}}
+
+  `:key` is a URL-safe slug that identifies the connection. It is what the first segment of a
+  `llm-metabot-provider` string refers to, and it defaults to the provider type, so a single-connection instance
+  reads exactly as it did when there was one connection per type.
+
+  A *model reference* is the `connection-key/model` string stored in `llm-metabot-provider` and friends;
+  [[resolve-model-ref]] turns one into the provider type, model, and credentials an adapter needs."
+  (:require
+   [clojure.string :as str]
+   [metabase.llm.settings :as llm.settings]
+   [metabase.settings.core :as setting]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru tru]]))
+
+(set! *warn-on-reflection* true)
+
+;;; ------------------------------------------------ Provider types ------------------------------------------------
+
+(def ^:private aws-region-options
+  (mapv (fn [region] {:value region :label region})
+        (sort llm.settings/known-aws-regions)))
+
+(def ^:private provider-type-registry
+  "Every provider type Metabase can connect to, in the order the admin UI offers them.
+
+  `:fields` describes the credential inputs for a connection's `:config` map. A `:password` field is treated as
+  secret everywhere: it is masked on the way out of the API and preserved when a client echoes the mask back."
+  [{:type          "anthropic"
+    :label         (deferred-tru "Anthropic")
+    :default-model "claude-sonnet-4-6"
+    :fields        [{:key         :api-key
+                     :label       (deferred-tru "API key")
+                     :type        :password
+                     :required?   true
+                     :placeholder "sk-ant-api03-..."
+                     :prefix      "sk-ant-"
+                     :docs-url    "https://console.anthropic.com/settings/keys"}
+                    {:key     :base-url
+                     :label   (deferred-tru "API base URL")
+                     :type    :text
+                     :default "https://api.anthropic.com"}]}
+   {:type          "openai"
+    :label         (deferred-tru "OpenAI")
+    :default-model "gpt-5.4"
+    :fields        [{:key         :api-key
+                     :label       (deferred-tru "API key")
+                     :type        :password
+                     :required?   true
+                     :placeholder "sk-proj-..."
+                     :prefix      "sk-"
+                     :docs-url    "https://platform.openai.com/api-keys"}
+                    {:key     :base-url
+                     :label   (deferred-tru "API base URL")
+                     :type    :text
+                     :default "https://api.openai.com"}]}
+   {:type          "openrouter"
+    :label         (deferred-tru "OpenRouter")
+    :default-model "anthropic/claude-sonnet-4.6"
+    :fields        [{:key         :api-key
+                     :label       (deferred-tru "API key")
+                     :type        :password
+                     :required?   true
+                     :placeholder "sk-or-v1-..."
+                     :prefix      "sk-or-v1-"
+                     :docs-url    "https://openrouter.ai/keys"}
+                    {:key     :base-url
+                     :label   (deferred-tru "API base URL")
+                     :type    :text
+                     :default "https://openrouter.ai/api"}]}
+   {:type          "azure"
+    :label         (deferred-tru "Microsoft Azure")
+    :default-model nil
+    :fields        [{:key         :api-key
+                     :label       (deferred-tru "API key")
+                     :type        :password
+                     :required?   true
+                     :placeholder (deferred-tru "Enter your Azure API key")
+                     :docs-url    "https://ai.azure.com"}
+                    {:key         :base-url
+                     :label       (deferred-tru "API base URL")
+                     :type        :text
+                     :required?   true
+                     :placeholder "https://<resource>.services.ai.azure.com/openai"}]}
+   {:type          "bedrock"
+    :label         (deferred-tru "Amazon Bedrock")
+    :default-model "anthropic.claude-opus-4-8"
+    :fields        [{:key         :access-key-id
+                     :label       (deferred-tru "Access key ID")
+                     :type        :password
+                     :required?   true
+                     :placeholder "AKIA..."
+                     :docs-url    "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html"}
+                    {:key       :secret-access-key
+                     :label     (deferred-tru "Secret access key")
+                     :type      :password
+                     :required? true}
+                    {:key     :region
+                     :label   (deferred-tru "Region")
+                     :type    :select
+                     :options aws-region-options
+                     :default "us-east-1"}
+                    {:key   :session-token
+                     :label (deferred-tru "Session token")
+                     :type  :password
+                     :help  (deferred-tru "Only needed for temporary credentials.")}]}
+   {:type          "metabase"
+    :label         (deferred-tru "Metabase")
+    :managed?      true
+    :default-model "anthropic/claude-sonnet-4-6"
+    :fields        []}])
+
+(def ^:private provider-type-by-name
+  (into {} (map (juxt :type identity)) provider-type-registry))
+
+(defn provider-type
+  "The registry entry for `type-name`, or nil when it is not a known provider type."
+  [type-name]
+  (get provider-type-by-name type-name))
+
+(defn provider-types
+  "Every registered provider type."
+  []
+  provider-type-registry)
+
+(defn managed-type?
+  "Whether `type-name` is the Metabase-managed provider, which authenticates with the instance token through the LLM
+  proxy instead of with credentials of its own."
+  [type-name]
+  (boolean (:managed? (provider-type type-name))))
+
+(defn type-available?
+  "Whether a connection of this type can currently be created. The managed provider needs the LLM proxy configured;
+  everything else is always available."
+  [type-name]
+  (if (managed-type? type-name)
+    (some? (llm.settings/llm-proxy-base-url))
+    (some? (provider-type type-name))))
+
+(defn secret-field-keys
+  "The `:config` keys of `type-name` that hold secrets."
+  [type-name]
+  (into #{}
+        (comp (filter #(= :password (:type %))) (map :key))
+        (:fields (provider-type type-name))))
+
+(defn default-model
+  "The model a new connection of `type-name` starts on, or nil when the type has no sensible default (Azure, whose
+  models are deployment names the admin chooses)."
+  [type-name]
+  (:default-model (provider-type type-name)))
+
+;;; -------------------------------------------------- Validation --------------------------------------------------
+
+(defn- non-blank
+  [value]
+  (when (string? value)
+    (not-empty (str/trim value))))
+
+(defn- validate-field!
+  [type-name {:keys [key label required? prefix]} config]
+  (let [value (non-blank (get config key))]
+    (when (and required? (not value))
+      (throw (ex-info (tru "{0} is required for {1}." (str label) type-name)
+                      {:status-code 400 :field key})))
+    (when (and value prefix (not (str/starts-with? value prefix)))
+      (throw (ex-info (tru "Invalid {0} for {1}. It must start with ''{2}''." (str label) type-name prefix)
+                      {:status-code 400 :field key})))))
+
+(defn validate-config!
+  "Check a connection's `:config` against its provider type's field descriptors: required fields are present, and
+  fields that declare a `:prefix` start with it. Throws a 400 on the first problem."
+  [type-name config]
+  (when-not (provider-type type-name)
+    (throw (ex-info (tru "Unknown provider type {0}." (pr-str type-name))
+                    {:status-code 400 :type type-name})))
+  (doseq [field (:fields (provider-type type-name))]
+    (validate-field! type-name field config)))
+
+(defn config-complete?
+  "Whether `config` carries every required field for `type-name`, i.e. whether the connection can make requests."
+  [type-name config]
+  (if (managed-type? type-name)
+    (some? (llm.settings/llm-proxy-base-url))
+    (every? (fn [{:keys [key required?]}]
+              (or (not required?) (non-blank (get config key))))
+            (:fields (provider-type type-name)))))
+
+;;; ---------------------------------------- Connections configured by env var ------------------------------------
+
+(def ^:private legacy-env-connections
+  "The per-type credential settings that predate [[llm-providers]], keyed by the connection they configure.
+
+  These stay supported so that an instance that sets `MB_LLM_ANTHROPIC_API_KEY` keeps working, and so that
+  configuring a single provider by environment variable does not require writing JSON. `:settings` maps a
+  `:config` key to the setting that supplies it; a connection is synthesized only when at least one of the
+  settings marked `:credential?` is set by an env var."
+  {"anthropic"  {:type     "anthropic"
+                 :settings {:api-key  {:setting :llm-anthropic-api-key :credential? true}
+                            :base-url {:setting :llm-anthropic-api-base-url}}}
+   "openai"     {:type     "openai"
+                 :settings {:api-key  {:setting :llm-openai-api-key :credential? true}
+                            :base-url {:setting :llm-openai-api-base-url}}}
+   "openrouter" {:type     "openrouter"
+                 :settings {:api-key  {:setting :llm-openrouter-api-key :credential? true}
+                            :base-url {:setting :llm-openrouter-api-base-url}}}
+   "azure"      {:type     "azure"
+                 :settings {:api-key  {:setting :llm-azure-api-key :credential? true}
+                            :base-url {:setting :llm-azure-api-base-url :credential? true}}}
+   "bedrock"    {:type     "bedrock"
+                 :settings {:access-key-id     {:setting :llm-bedrock-access-key-id :credential? true}
+                            :secret-access-key {:setting :llm-bedrock-secret-access-key :credential? true}
+                            :session-token     {:setting :llm-bedrock-session-token}
+                            :region            {:setting :llm-bedrock-region}}}})
+
+(defn- legacy-setting-values
+  [settings value-fn]
+  (into {}
+        (keep (fn [[config-key {:keys [setting]}]]
+                (when-let [value (non-blank (value-fn setting))]
+                  [config-key value])))
+        settings))
+
+(defn- env-configured-connection
+  [conn-key {:keys [type settings]}]
+  (let [env-set? (fn [config-key]
+                   (some? (setting/env-var-value (get-in settings [config-key :setting]))))]
+    (when (some (fn [[config-key {:keys [credential?]}]]
+                  (and credential? (env-set? config-key)))
+                settings)
+      {:key    conn-key
+       :type   type
+       :name   (str (:label (provider-type type)))
+       :source :env
+       :config (legacy-setting-values settings #(setting/get-value-of-type :string %))})))
+
+(defn- env-connections
+  "Connections synthesized from the single-provider `MB_LLM_*` environment variables."
+  []
+  (into []
+        (keep (fn [[conn-key spec]] (env-configured-connection conn-key spec)))
+        legacy-env-connections))
+
+(defn db-stored-legacy-connections
+  "Connections implied by legacy credential settings that are stored in the application database rather than set by
+  an env var. Used once, at startup, to migrate an instance onto [[llm-providers]]."
+  []
+  (into []
+        (keep (fn [[conn-key {:keys [type settings]}]]
+                (let [config (legacy-setting-values settings #(setting/db-stored-value %))]
+                  (when (config-complete? type config)
+                    {:key    conn-key
+                     :type   type
+                     :name   (str (:label (provider-type type)))
+                     :config config}))))
+        legacy-env-connections))
+
+;;; --------------------------------------------------- Connections -------------------------------------------------
+
+(defn- stored-connections
+  []
+  (let [source (if (some? (setting/env-var-value :llm-providers)) :env :db)]
+    (into [] (map #(assoc % :source source)) (llm.settings/llm-providers))))
+
+(defn connections
+  "Every connection this instance can use, in admin-facing order.
+
+  Connections stored in [[llm-providers]] come first, then any synthesized from the single-provider environment
+  variables. Each carries a `:source` of `:db` or `:env`; `:env` connections are read-only, because a write to an
+  env-shadowed setting would be silently ignored on the next read.
+
+  On a key collision the environment wins and replaces the stored connection in place, matching how the settings
+  system resolves an env var over an app-DB value. Letting the stored one win would mean an admin edit silently
+  shadowed the environment while the credentials in use came from somewhere the UI never showed."
+  []
+  (let [from-env (env-connections)
+        by-key   (into {} (map (juxt :key identity)) from-env)
+        stored   (map (fn [conn] (get by-key (:key conn) conn)) (stored-connections))
+        taken    (into #{} (map :key) stored)]
+    (into (vec stored) (remove #(contains? taken (:key %)) from-env))))
+
+(defn connection
+  "The connection identified by `conn-key`, or nil."
+  [conn-key]
+  (u/find-first-map (connections) [:key] conn-key))
+
+(defn credentials
+  "The `:config` map to authenticate `conn-key`'s requests with, or nil when there is no such connection."
+  [conn-key]
+  (:config (connection conn-key)))
+
+(defn connection-usable?
+  "Whether `conn-key` names a connection with everything it needs to make requests."
+  [conn-key]
+  (boolean
+   (when-let [{:keys [type config]} (connection conn-key)]
+     (config-complete? type config))))
+
+(defn set-connections!
+  "Persist `conns` as the stored connection list, dropping the derived `:source` key."
+  [conns]
+  (llm.settings/llm-providers! (mapv #(dissoc % :source) conns)))
+
+;;; --------------------------------------------------- Slugs ------------------------------------------------------
+
+(defn- ->slug
+  "Lowercase `s` and collapse anything that is not a letter or digit into single hyphens, so the result satisfies
+  [[metabase.util/valid-slug?]]. Returns nil when nothing usable is left."
+  [s]
+  (-> (u/lower-case-en (str s))
+      (str/replace #"[^a-z0-9]+" "-")
+      (str/replace #"^-+|-+$" "")
+      not-empty))
+
+(defn unique-key
+  "A URL-safe connection key derived from `desired`, suffixed until it does not collide with an existing connection.
+
+  New connections default to their provider type, so the first Anthropic connection is `anthropic` and reads the
+  same way the old single-provider setting did."
+  [desired]
+  (let [base (or (->slug desired) "provider")
+        used (into #{} (map :key) (connections))]
+    (if-not (contains? used base)
+      base
+      (first (remove #(contains? used %)
+                     (map #(str base "-" %) (iterate inc 2)))))))
+
+;;; ----------------------------------------------- Model references ------------------------------------------------
+
+(def managed-connection-key
+  "The connection key reserved for the Metabase-managed provider. Requests for it are routed through the LLM proxy
+  and authenticated with the instance token."
+  "metabase")
+
+(defn managed-model-ref?
+  "Whether `model-ref` names the Metabase-managed connection."
+  [model-ref]
+  (boolean (some-> model-ref (str/starts-with? (str managed-connection-key "/")))))
+
+(defn model-ref->connection-key
+  "The connection key of a `connection-key/model` string."
+  [model-ref]
+  (when model-ref
+    (first (str/split model-ref #"/" 2))))
+
+(defn model-ref->model
+  "The model part of a `connection-key/model` string — everything after the first segment."
+  [model-ref]
+  (when model-ref
+    (second (str/split model-ref #"/" 2))))
+
+(defn strip-managed-prefix
+  "Drop the `metabase/` routing prefix from a model reference, leaving the `provider/model` pair the proxy forwards.
+  Returns `model-ref` unchanged when it has no such prefix."
+  [model-ref]
+  (if (managed-model-ref? model-ref)
+    (str/replace-first model-ref (str managed-connection-key "/") "")
+    model-ref))
+
+(defn resolve-model-ref
+  "Resolve a `connection-key/model` string against the configured connections.
+
+  Returns `{:connection-key :type :model :credentials :ai-proxy?}`, or nil when no such connection exists. `:type`
+  is the provider type whose adapter should serve the request: for the managed connection that is the wire family
+  named by the model's own first segment (`metabase/anthropic/claude-...` is served by the Anthropic adapter over
+  the proxy), and `:model` is what remains."
+  [model-ref]
+  (let [conn-key (model-ref->connection-key model-ref)
+        model    (model-ref->model model-ref)]
+    (when-let [{:keys [type config]} (connection conn-key)]
+      (if (managed-type? type)
+        {:connection-key conn-key
+         :type           (model-ref->connection-key model)
+         :model          (model-ref->model model)
+         :credentials    nil
+         :ai-proxy?      true}
+        {:connection-key conn-key
+         :type           type
+         :model          model
+         :credentials    config
+         :ai-proxy?      false}))))
+
+(defn proxied-model-ref?
+  "Whether requests for `model-ref` are routed through the Metabase AI proxy."
+  [model-ref]
+  (boolean (:ai-proxy? (resolve-model-ref model-ref))))
+
+;;; -------------------------------------------------- Redaction ----------------------------------------------------
+
+(defn redact
+  "Mask a connection's secret fields so it can be returned over the API."
+  [{:keys [type] :as conn}]
+  (update conn :config
+          (fn [config]
+            (reduce (fn [config field-key]
+                      (cond-> config
+                        (non-blank (get config field-key))
+                        (update field-key setting/obfuscate-value)))
+                    (or config {})
+                    (secret-field-keys type)))))
+
+(defn merge-config
+  "Layer a client-supplied `config` over the `existing` one, keeping the stored secret whenever the client echoed
+  back the mask [[redact]] handed it. Sending an explicitly blank value still clears the field."
+  [type-name existing config]
+  (reduce (fn [merged field-key]
+            (cond-> merged
+              (setting/obfuscated-value? (get config field-key))
+              (assoc field-key (get existing field-key))))
+          (merge existing config)
+          (secret-field-keys type-name)))

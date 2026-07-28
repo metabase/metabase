@@ -1390,7 +1390,7 @@ Maximum tokens for LLM responses.
 - Default: `anthropic/claude-sonnet-4-6`
 - [Configuration file name](./config-file.md): `llm-metabot-provider`
 
-The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`.
+The AI provider connection and model for Metabot. Format: connection-key/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`. The connection key names an entry in the `llm-providers` setting and defaults to the provider type.
 
 ### `MB_LLM_MISTRAL_API_BASE_URL`
 
@@ -1447,6 +1447,18 @@ The OpenRouter API base URL used for Chat Completions.
 - [Configuration file name](./config-file.md): `llm-openrouter-api-key`
 
 The OpenRouter API Key.
+
+### `MB_LLM_PROVIDERS`
+
+- Type: json
+- Default: `[]`
+- [Configuration file name](./config-file.md): `llm-providers`
+
+JSON array of configured LLM provider connections. Each entry has a `key` (a URL-safe slug identifying the connection), a `type` (the provider type, e.g. `anthropic`), a display `name`, and a `config` map of that provider type's credential fields.
+
+Connections are normally managed from the admin AI settings page. Setting this environment variable puts the whole list under environment control and makes it read-only in the UI.
+
+The single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) keep working, and each configures one read-only connection whose key is the provider type.
 
 ### `MB_LLM_RATE_LIMIT_PER_IP`
 

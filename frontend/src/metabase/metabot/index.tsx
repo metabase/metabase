@@ -1,8 +1,5 @@
 export * from "./context";
 export {
   AIProviderConfigurationForm,
-  getProviderOptions,
-  parseProviderAndModel,
-  useAIProviderConfigurationContext,
+  LlmModelPicker,
 } from "./components/AIProviderConfigurationForm";
-export type { MetabotApiKeyProvider } from "./components/AIProviderConfigurationForm";

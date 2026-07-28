@@ -49,6 +49,9 @@
     :max-tokens       - Maximum tokens in the response
     :schema           - JSON Schema map for structured output; each provider forces a
                         tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
+    :credentials      - Credentials of the provider connection serving this request, in that provider
+                        type's `:config` shape (e.g. `{:api-key ...}`). When absent, the adapter falls
+                        back to its per-provider settings.
     :ai-proxy?        - When true, skip provider auth and use the Metabase AI proxy
     :reasoning?       - When false, don't request thinking/reasoning and strip
                         :reasoning parts from the replayed input (defaults true)
@@ -63,6 +66,7 @@
    [:temperature      {:optional true} [:maybe number?]]
    [:max-tokens       {:optional true} [:maybe :int]]
    [:schema           {:optional true} :any]
+   [:credentials      {:optional true} [:maybe :map]]
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])

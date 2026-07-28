@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupCreateLlmProviderEndpoint,
   setupMetabaseManagedAiEndpoints,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
@@ -13,6 +14,7 @@ import { createMockState } from "metabase/redux/store/mocks";
 import type { MetabotUsageResponse } from "metabase-enterprise/api";
 import type { TokenStatusFeature } from "metabase-types/api";
 import {
+  createMockLlmProviderConnection,
   createMockSettings,
   createMockTokenFeatures,
   createMockTokenStatus,
@@ -42,6 +44,7 @@ type SetupOptions = {
   metabasePricePerUnit?: number;
   pauseAddOnsResponse?: boolean;
   metabotUsageQuota?: MetabotUsageQuota | null;
+  onConnect?: () => void;
 };
 
 function setup({
@@ -53,6 +56,7 @@ function setup({
   metabasePricePerUnit = 3.0,
   pauseAddOnsResponse = false,
   metabotUsageQuota = null,
+  onConnect,
 }: SetupOptions = {}) {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
@@ -109,6 +113,14 @@ function setup({
     () => sessionProperties["token-status"],
   );
 
+  setupCreateLlmProviderEndpoint(
+    createMockLlmProviderConnection({
+      key: "metabase",
+      type: "metabase",
+      name: "Metabase AI",
+    }),
+  );
+
   const storeInitialState = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings(sessionProperties),
@@ -116,9 +128,12 @@ function setup({
 
   setupEnterpriseOnlyPlugin("metabot");
 
-  return renderWithProviders(<MetabaseAIProviderSetup />, {
-    storeInitialState,
-  });
+  return renderWithProviders(
+    <MetabaseAIProviderSetup onConnect={onConnect} />,
+    {
+      storeInitialState,
+    },
+  );
 }
 
 const PRICING: MetabaseManagedAiPricing = {
@@ -238,6 +253,74 @@ describe("MetabaseAIProviderSetup", () => {
         }),
       ).not.toBeInTheDocument();
       expect(screen.queryByText(/legacy tiered AI/i)).not.toBeInTheDocument();
+    });
+
+    it("creates a managed provider connection when the managed AI feature is already enabled", async () => {
+      const onConnect = jest.fn();
+      setup({ hasManagedAi: true, onConnect });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Connect" }),
+      );
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/llm/providers", {
+            method: "POST",
+            body: { type: "metabase" },
+          }),
+        ).toBe(true);
+      });
+
+      expect(
+        fetchMock.callHistory.called(
+          "path:/api/ee/cloud-add-ons/metabase-ai-managed",
+          { method: "POST" },
+        ),
+      ).toBe(false);
+      await waitFor(() => {
+        expect(onConnect).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it("purchases the add-on before creating the connection when terms are accepted", async () => {
+      setup();
+
+      await userEvent.click(
+        await screen.findByRole("checkbox", {
+          name: /I agree with the Metabase AI Service/i,
+        }),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/llm/providers", {
+            method: "POST",
+            body: { type: "metabase" },
+          }),
+        ).toBe(true);
+      });
+
+      expect(
+        fetchMock.callHistory.called(
+          "path:/api/ee/cloud-add-ons/metabase-ai-managed",
+          { method: "POST", body: { terms_of_service: true } },
+        ),
+      ).toBe(true);
+    });
+
+    it("does not offer a Connect button to non-admin users who must accept terms", async () => {
+      setup({ isAdmin: false });
+
+      expect(
+        await screen.findByText(
+          "Please ask an Admin user to enable this for you.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Connect" }),
+      ).not.toBeInTheDocument();
     });
 
     it("asks non-admin users to contact an admin instead of showing the Terms checkbox", async () => {
