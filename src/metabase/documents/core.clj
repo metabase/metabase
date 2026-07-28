@@ -9,6 +9,7 @@
 (comment
   metabase.documents.api.document/keep-me
   metabase.documents.models.document/keep-me
+  metabase.documents.prose-mirror/keep-me
   metabase.documents.recent-views/keep-me)
 
 (p/import-vars
@@ -18,4 +19,5 @@
  [metabase.documents.models.document
   register-doc-content-visibility-fn!]
  [metabase.documents.prose-mirror
+  insert-card-embed
   prose-mirror-content-type])

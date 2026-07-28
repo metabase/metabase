@@ -48,14 +48,23 @@
 
 ;;;
 
+(defn- page-id-child-target?
+  "Whether `child_target_id` identifies an exploration page (decimal integer string) rather than
+  a Summary prose-mirror node `_id` (uuid)."
+  [child]
+  (boolean (and child (re-matches #"\d+" (str child)))))
+
 (defn- exploration-comment-url
-  "Build URL for an exploration comment using child_target_id (page ID) and context (JSON map with timeline etc.)."
+  "Build URL for an exploration comment. Integer `child_target_id` values deep-link to the
+  page; anything else (Summary block uuids) deep-links to the Summary view."
   [exploration-id comment]
   (let [base    (channel.urls/exploration-path exploration-id)
         child   (:child_target_id comment)
         context (:context comment)]
     (if child
-      (let [path      (str base "/page/" (codec/url-encode (str child)))
+      (let [path      (if (page-id-child-target? child)
+                        (str base "/page/" (codec/url-encode (str child)))
+                        (str base "/summary"))
             params    (cond-> {:comments "true"}
                         (:timeline_id context) (assoc :timeline (:timeline_id context)))
             query-str (->> params

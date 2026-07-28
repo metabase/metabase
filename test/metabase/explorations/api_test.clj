@@ -9,6 +9,7 @@
    [metabase.explorations.api]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.derived-perms :as derived-perms]
+   [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.explorations.query-plan :as query-plan]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.variants :as qp.variants]
@@ -18,6 +19,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.core :as qp.core]
@@ -1634,6 +1636,133 @@
                                             :content [{:type "paragraph"
                                                        :content [{:type "text" :text "curated"}]}]}})
           (is (false? (t2/select-one-fn :is_placeholder :model/Document :id (:id doc)))))))))
+
+(def ^:private append-display+viz
+  "Required display + visualization_settings for summary/append requests."
+  {:display                "bar"
+   :visualization_settings {:graph.dimensions ["x"] :graph.metrics ["y"]}})
+
+(deftest exploration-append-records-stored-result-use-test
+  (testing "Appending a static cardEmbed records a stored_result_use row tying the snapshot to the new Card"
+    (mt/with-temp [:model/User u {:email "append-use@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp   (create-exploration! u
+                                        {:name "append-use"
+                                         :metrics [{:card_id (:id metric)
+                                                    :dimension_mappings [{:dimension_id (duid "d1") :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}]}]
+                                         :dimensions [{:dimension_id (duid "d1") :display_name "Price" :effective_type "type/Number"}]})
+            eid    (:id resp)
+            qid    (-> resp :threads first :queries first :id)
+            qp-out {:status :completed
+                    :data   {:cols [{:name "x" :source :breakout}
+                                    {:name "y" :source :aggregation}]
+                             :rows [["a" 3] ["b" 1]]}
+                    :row_count 2}]
+        (store-fake-result! qid qp-out)
+        (mark-done! qid)
+        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (let [sr-id  (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                       :exploration_query_id qid)
+              before (t2/select :model/StoredResultUse :stored_result_id sr-id)
+              doc    (mt/user-http-request u :post 200
+                                           (format "exploration/%d/summary/append" eid)
+                                           (assoc append-display+viz :exploration_query_ids [qid]))
+              card-id (-> (t2/select-one-fn :document :model/Document :id (:id doc))
+                          :content last :content first :attrs :id)
+              use-row (t2/select-one :model/StoredResultUse :stored_result_id sr-id :card_id card-id)
+              attrs   (-> (t2/select-one-fn :document :model/Document :id (:id doc))
+                          :content last :content first :attrs)]
+          (is (empty? before)
+              "no card-use row exists before the append")
+          (is (some? use-row)
+              "appending records a stored_result_use row for the source snapshot")
+          (is (nil? (:exploration_id use-row))
+              "the card-use row has no exploration_id")
+          (is (= sr-id (:stored_result_id attrs)))
+          (is (string? (:chart_href attrs)))
+          (is (some? (:exploration_page_id attrs)))
+          (is (uuid? (parse-uuid (str (:_id attrs))))
+              "_id is stamped for comment targeting (string after JSON round-trip)")
+          (is (false? (:is_placeholder doc))
+              "first append clears is_placeholder"))))))
+
+(deftest exploration-append-rolls-back-on-failure-test
+  (testing "When a write fails partway through, the composite StoredResult / Card / use rows all roll back — no orphans"
+    (mt/with-temp [:model/User u {:email "append-rollback@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp   (create-exploration! u
+                                        {:name "append-rollback"
+                                         :metrics [{:card_id (:id metric)
+                                                    :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                         :dimensions [{:dimension_id (duid "d1")}]})
+            qid    (-> resp :threads first :queries first :id)
+            doc-id (-> resp :document :id)
+            qp-out {:status :completed
+                    :data   {:cols [{:name "x" :source :breakout}
+                                    {:name "y" :source :aggregation}]
+                             :rows [["a" 3] ["b" 1]]}
+                    :row_count 2}]
+        (store-fake-result! qid qp-out)
+        (mark-done! qid)
+        (let [doc (t2/select-one :model/Document :id doc-id)]
+          ;; Stub the perms check (the EQ has no inline dataset_query here) and force `create-card!`
+          ;; to blow up *after* the composite StoredResult has been inserted, exercising the rollback.
+          (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
+                        queries/create-card!                        (fn [& _] (throw (ex-info "boom" {})))]
+            (is (thrown? Throwable
+                         (eqr/create-ephemeral-card-for-exploration-queries!
+                          [qid] doc-id (:collection_id doc) u
+                          {:display "bar" :visualization-settings {}}))))
+          (is (= 1 (t2/count :model/StoredResult :creator_id (:id u)))
+              "only the source snapshot remains — no composite StoredResult leaks from the rolled-back append")
+          (is (zero? (t2/count :model/Card :document_id doc-id))
+              "no ephemeral Card leaks from the rolled-back append")
+          (is (zero? (t2/count :model/StoredResultUse :stored_result_id
+                               (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                                 :exploration_query_id qid)))
+              "no stored_result_use rows leak from the rolled-back append"))))))
+
+(deftest exploration-append-single-query-reuses-source-snapshot-test
+  (testing "A single-query append reuses the source stored_result instead of duplicating its bytes into a fresh row"
+    (mt/with-temp [:model/User u {:email "append-single@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp   (create-exploration! u
+                                        {:name "append-single"
+                                         :metrics [{:card_id (:id metric)
+                                                    :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                         :dimensions [{:dimension_id (duid "d1")}]})
+            qid    (-> resp :threads first :queries first :id)
+            doc-id (-> resp :document :id)
+            qp-out {:status :completed
+                    :data   {:cols [{:name "x" :source :breakout}
+                                    {:name "y" :source :aggregation}]
+                             :rows [["a" 3] ["b" 1]]}
+                    :row_count 2}]
+        (store-fake-result! qid qp-out)
+        (mark-done! qid)
+        ;; Give the EQ a real dataset_query so create-card! has a database_id to inherit.
+        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (let [src-sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                          :exploration_query_id qid)
+              doc       (t2/select-one :model/Document :id doc-id)
+              ;; Stub the perms check (the synthetic EQ has no inline dataset_query) so we exercise
+              ;; the real create-card! / stored_result write path.
+              result    (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+                          (eqr/create-ephemeral-card-for-exploration-queries!
+                           [qid] doc-id (:collection_id doc) u
+                           {:display "bar" :visualization-settings {}}))
+              use-rows  (t2/select :model/StoredResultUse :card_id (:card-id result))]
+          (is (= src-sr-id (:stored-result-id result))
+              "the embed points back at the source stored_result rather than a fresh copy")
+          (is (= 1 (t2/count :model/StoredResult :creator_id (:id u)))
+              "only the reused source snapshot exists — no duplicate composite StoredResult is created for a single-query embed")
+          (is (= [src-sr-id] (mapv :stored_result_id use-rows))
+              "exactly one stored_result_use row, pointing at the source snapshot"))))))
+
+(deftest ^:parallel page-url-test
+  (testing "page-url builds a research deep link to a page by id"
+    (is (= "/question/research/7/page/42"
+           (explorations.blocks/page-url 7 42)))))
 
 (deftest exploration-put-cascades-collection-id-to-documents-test
   (testing "Moving an exploration rewrites :collection_id on its Summary document."

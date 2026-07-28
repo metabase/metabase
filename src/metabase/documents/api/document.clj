@@ -163,13 +163,24 @@
   document with `document-id` and persist it. `position` is a 0-based index among the document's
   top-level blocks; `nil` appends the embed at the end and out-of-range indexes are clamped.
 
-  The caller is responsible for write-checking the document first. The document is re-read inside
-  the transaction so a concurrent edit cannot be overwritten. Returns the updated document."
-  [document-id card-id position]
+  Optional kwargs:
+  - `:extra-attrs` — map merged onto the `cardEmbed` attrs (e.g. `:stored_result_id`,
+    `:chart_href`, `:exploration_page_id`).
+  - `:replace?` — when true, discard the existing body and insert the embed into an empty doc
+    (used when materialising the first chart into a placeholder Summary).
+
+  Adding a card clears `:is_placeholder` when it was set. The caller is responsible for
+  write-checking the document first. The document is re-read inside the transaction so a
+  concurrent edit cannot be overwritten. Returns the updated document."
+  [document-id card-id position & {:keys [extra-attrs replace?]}]
   (t2/with-transaction [_conn]
-    (let [document (api/check-404 (t2/select-one :model/Document :id document-id))]
-      (t2/update! :model/Document document-id
-                  (select-keys (prose-mirror/insert-card-embed document card-id position) [:document]))
+    (let [document (api/check-404 (t2/select-one :model/Document :id document-id))
+          doc-for-insert (cond-> document
+                           replace? (assoc :document {:type "doc" :content []}))
+          updated  (prose-mirror/insert-card-embed doc-for-insert card-id position extra-attrs)
+          updates  (cond-> (select-keys updated [:document])
+                     (:is_placeholder document) (assoc :is_placeholder false))]
+      (t2/update! :model/Document document-id updates)
       (collections/check-for-remote-sync-update document)))
   (get-document document-id :log-view? false))
 

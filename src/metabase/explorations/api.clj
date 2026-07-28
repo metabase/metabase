@@ -8,6 +8,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.core :as documents]
    [metabase.events.core :as events]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.core :as explorations]
@@ -53,6 +54,49 @@
       (if new-coll
         (api/write-check :model/Collection new-coll)
         (api/write-check collection/root-collection)))))
+
+(def ^:private summary-document-name
+  "Name for the auto-created Summary document on each exploration."
+  "Summary")
+
+(defn- cascade-collection-id-to-documents!
+  "Propagate an Exploration's new `collection_id` to its Summary document.
+  Mirrors the dashboard-question cascade in `dashboards_rest/api.clj`."
+  [exploration-id new-coll-id]
+  (t2/update! :model/Document
+              :exploration_id exploration-id
+              {:collection_id new-coll-id}))
+
+(defn- cascade-archived-to-documents!
+  "Propagate an Exploration's archive flip to its Summary document.
+  Mirrors `dashboards_rest/api.clj` (parent-archive cascade for dashboard questions):
+  on archive, flip every doc that wasn't already archived directly; on unarchive,
+  flip every doc that was cascade-archived. Docs with `archived_directly=true`
+  (user-archived) are never touched."
+  [exploration-id new-archived?]
+  (if new-archived?
+    (t2/update! :model/Document
+                :exploration_id exploration-id
+                :archived       false
+                {:archived true :archived_directly false})
+    (t2/update! :model/Document
+                :exploration_id      exploration-id
+                :archived            true
+                :archived_directly   false
+                {:archived false})))
+
+(defn- insert-summary-document!
+  "Insert the auto-created Summary document for a newly created exploration. Explore-further
+  must not call this — there is one Summary per exploration."
+  [exploration-id coll-id]
+  (t2/insert! :model/Document
+              {:name            summary-document-name
+               :document        {:type "doc" :content []}
+               :content_type    documents/prose-mirror-content-type
+               :creator_id      api/*current-user-id*
+               :collection_id   coll-id
+               :exploration_id  exploration-id
+               :is_placeholder  true}))
 
 (defn- exploration-query-dim-label
   "Display label for a dimension inside an ExplorationQuery `name`. When `ambiguous?` and the dim
@@ -222,7 +266,7 @@
 
 (defn- hydrate-exploration [exploration]
   (-> exploration
-      (t2/hydrate :creator :can_write :collection
+      (t2/hydrate :creator :can_write :collection :document
                   [:threads :queries :timelines])
       (update :threads
               #(some->> %
@@ -439,6 +483,19 @@
     [:maybe [:sequential ExploreFilterSpec]]]
    [:pages           [:sequential ::ExplorationPageNode]]])
 
+(mr/def ::ExplorationDocument
+  "Schema for the Summary document attached to an exploration."
+  [:map
+   [:id               ms/PositiveInt]
+   [:name             :string]
+   [:exploration_id   ms/PositiveInt]
+   [:creator_id       ms/PositiveInt]
+   [:content_type     :string]
+   [:is_placeholder   :boolean]
+   [:created_at       ms/TemporalInstant]
+   [:updated_at       ms/TemporalInstant]
+   [:archived         {:optional true} :boolean]])
+
 (mr/def ::HydratedThread
   "Schema for an Exploration thread with hydrated selections and queries."
   [:map
@@ -484,6 +541,7 @@
    [:creator       {:optional true} [:maybe :map]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:archived      {:optional true} :boolean]
+   [:document      {:optional true} [:maybe ::ExplorationDocument]]
    [:threads       {:optional true} [:maybe [:sequential ::HydratedThread]]]
    [:created_at    {:optional true} [:maybe :any]]
    [:updated_at    {:optional true} [:maybe :any]]])
@@ -609,9 +667,10 @@
 
 (api.macros/defendpoint :post "/" :- ::HydratedExploration
   "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,
-  and timelines, and stamp the thread as started. Actual planning is async; this endpoint returns
-  immediately with an empty queries list. Clients should poll `GET /:id` until the queries appear
-  and reach a terminal status.
+  and timelines, and stamp the thread as started. Also auto-creates a placeholder Summary
+  document in the same collection. Actual planning is async; this endpoint returns immediately
+  with an empty queries list. Clients should poll `GET /:id` until the queries appear and reach
+  a terminal status.
 
   Accepts the per-area `:blocks` payload (one entry per Research-plan block), persisted
   verbatim, plus a thread-scoped `:timeline_ids`."
@@ -646,6 +705,7 @@
                 tid         (:id thread)]
             (insert-blocks! tid blocks)
             (insert-thread-timelines! tid timeline_ids)
+            (insert-summary-document! (:id exploration) collection_id)
             (explorations.queues/start-thread! tid)
             (t2/select-one :model/Exploration :id (:id exploration))))]
     ;; Published after the transaction commits (matching PUT) so listeners can never observe an
@@ -764,10 +824,12 @@
 
 (defn- my-explorations-honeysql
   "HoneySQL for the explorations `user-id` created or edited, ordered by that user's most-recent
-  touch (descending). \"Touch\" is the union of two streams, all attributed to the user:
+  touch (descending). \"Touch\" is the union of three streams, all attributed to the user:
 
     1. the user's `Exploration` revisions (metadata / structure edits),
-    2. `exploration.created_at` for explorations the user created — creation is a touch, and
+    2. the user's `Document` revisions for the exploration's Summary document
+       (mapped back via `document.exploration_id`),
+    3. `exploration.created_at` for explorations the user created — creation is a touch, and
        `created_at` stays reliable even after the creation revision ages out of the
        `revision/max-revisions` cap.
 
@@ -780,6 +842,13 @@
                     [{:select [[:model_id :eid] [:timestamp :ts]]
                       :from   [:revision]
                       :where  [:and [:= :model "Exploration"] [:= :user_id user-id]]}
+                     {:select [[:d.exploration_id :eid] [:dr.timestamp :ts]]
+                      :from   [[:revision :dr]]
+                      :join   [[:document :d] [:= :d.id :dr.model_id]]
+                      :where  [:and
+                               [:= :dr.model "Document"]
+                               [:= :dr.user_id user-id]
+                               [:not= :d.exploration_id nil]]}
                      {:select [[:id :eid] [:created_at :ts]]
                       :from   [:exploration]
                       :where  [:= :creator_id user-id]}]}
@@ -806,10 +875,10 @@
 (api.macros/defendpoint :get "/mine" :- ::MineResponse
   "Explorations the current user created or edited, most-recently-touched first, paginated.
 
-  \"Touched\" composes the user's own edits to the exploration and its creation — see
-  [[my-explorations-honeysql]]. Explorations that were moved into a collection the user can no
-  longer read are excluded, as are archived ones. Returns the collection-items envelope:
-  `{:total :limit :offset :data}`."
+  \"Touched\" composes the user's own edits to the exploration, to its Summary document, and its
+  creation — see [[my-explorations-honeysql]]. Explorations that were moved into a collection the
+  user can no longer read are excluded, as are archived ones. Returns the collection-items
+  envelope: `{:total :limit :offset :data}`."
   []
   (let [limit  (request/limit)
         offset (request/offset)
@@ -831,7 +900,10 @@
 
   When `collection_id` changes, the caller must have write perms on the destination collection
   (or the root collection when `collection_id` is nil). Source perms are enforced by
-  `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`."
+  `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`.
+  Moving an exploration cascades the new `collection_id` onto its Summary document; flipping
+  `archived` cascades to the same document (skipping any that were directly user-archived,
+  mirroring the dashboard / dashboard-question cascade)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    updates :- UpdateExploration]
@@ -842,7 +914,11 @@
     (check-destination-collection-perms! existing updates')
     (t2/with-transaction [_]
       (when (seq updates')
-        (t2/update! :model/Exploration id updates')))
+        (t2/update! :model/Exploration id updates')
+        (when (contains? updates' :collection_id)
+          (cascade-collection-id-to-documents! id (:collection_id updates')))
+        (when (contains? updates' :archived)
+          (cascade-archived-to-documents! id (:archived updates')))))
     (let [updated (t2/select-one :model/Exploration :id id)]
       (when (seq updates')
         (events/publish-event! :event/exploration-update
@@ -852,8 +928,8 @@
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Hard-delete an exploration. Soft delete is `PUT /api/exploration/:id {archived: true}`.
 
-  Cascades to every `exploration_thread` and `exploration_query` via the on-delete-cascade
-  FKs configured in the explorations migration."
+  Cascades to every `exploration_thread`, `exploration_query`, and attached Summary `document`
+  via the on-delete-cascade FKs configured in the explorations migration."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [existing (get-exploration-or-404 id)]
     (api/write-check existing)
@@ -1015,6 +1091,82 @@
   (when (seq page_ids)
     (t2/update! :model/ExplorationPage :id [:in page_ids] {:hidden hidden}))
   nil)
+
+(defn- summary-document-or-404
+  "The non-archived Summary document for `exploration-id`, or 404."
+  [exploration-id]
+  (api/check-404 (t2/select-one :model/Document
+                                :exploration_id exploration-id
+                                :archived false)))
+
+(defn- exploration-query-ids-belong-to-exploration?
+  "True when every id in `eq-ids` refers to an `ExplorationQuery` whose thread belongs to
+  `exploration-id`. Duplicate ids in the input still only need one matching row."
+  [exploration-id eq-ids]
+  (let [distinct-ids (distinct eq-ids)]
+    (= (count distinct-ids)
+       (t2/count :model/ExplorationQuery
+                 {:where [:and
+                          [:in :id distinct-ids]
+                          [:in :exploration_thread_id
+                           {:select [:id]
+                            :from   [:exploration_thread]
+                            :where  [:= :exploration_id exploration-id]}]]}))))
+
+(defn- document-summary
+  "Project a Document onto the `::ExplorationDocument` wire shape."
+  [doc-id]
+  (t2/select-one [:model/Document
+                  :id :name :exploration_id :creator_id :content_type
+                  :created_at :updated_at :archived :is_placeholder]
+                 :id doc-id))
+
+(api.macros/defendpoint :post "/:id/summary/append" :- ::ExplorationDocument
+  "Append a static `cardEmbed` representing a *composite chart* — built from one or more
+  `ExplorationQuery` snapshots combined into a single qp-result — to the exploration's
+  Summary document.
+
+  The body `:exploration_query_ids` is the FE-rendered SeriesGroup's full set (one entry
+  for single-query charts; multiple for combined cartesian / heat-map charts). The BE
+  combines those source snapshots (`metabase.explorations.composite/combine`) into one
+  ephemeral `stored_result` and materialises one ephemeral `report_card` referencing it.
+  The cardEmbed node remains single-card.
+
+  - `chart_href` / `exploration_page_id` are written onto the node so the FE can deep-link
+    the embed title back to the source page and share that page's comment stream.
+  - `display` / `visualization_settings` are required FE-computed render settings (from
+    `buildSeries` / `getDisplay`); the BE bakes them onto the ephemeral card.
+
+  All source EQs must belong to a thread of this exploration. When the Summary is still a
+  placeholder, its body is replaced with just this embed and `is_placeholder` is cleared;
+  otherwise the embed is appended."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [exploration_query_ids display visualization_settings]}
+   :- [:map
+       [:exploration_query_ids  [:sequential {:min 1} ms/PositiveInt]]
+       [:display                :string]
+       [:visualization_settings :map]]]
+  (api/write-check (get-exploration-or-404 id))
+  (let [doc (summary-document-or-404 id)]
+    (api/check-404 (exploration-query-ids-belong-to-exploration? id exploration_query_ids))
+    (t2/with-transaction [_conn]
+      (let [{:keys [card-id stored-result-id primary-eq]}
+            (eqr/create-ephemeral-card-for-exploration-queries!
+             exploration_query_ids (:id doc) (:collection_id doc)
+             @api/*current-user*
+             {:display                display
+              :visualization-settings visualization_settings})
+            page-id     (:page_id primary-eq)
+            chart-href  (explorations.blocks/page-url id page-id)
+            extra-attrs {:stored_result_id    stored-result-id
+                         :chart_href          chart-href
+                         :exploration_page_id page-id}]
+        (documents/add-card-to-document!
+         (:id doc) card-id nil
+         :extra-attrs extra-attrs
+         :replace? (:is_placeholder doc))))
+    (document-summary (:id doc))))
 
 ;;; ----------------------------------------- routes -----------------------------------------
 
