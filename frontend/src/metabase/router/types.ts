@@ -69,27 +69,19 @@ export interface Location<Q = DefaultQuery> {
 }
 
 /**
- * The loose query accepted when building a navigation target, where values may
- * still be numbers or other primitives before serialization. Mirrors history@3's
- * `QueryLike`, distinct from the parsed `DefaultQuery` a `Location` carries.
- */
-type QueryLike = Record<string, any>;
-
-/**
- * A location to navigate to, as an object. Mirrors history@3's
- * `LocationDescriptorObject`; the string form is `LocationDescriptor`.
+ * A location to navigate to, as an object. Carries the query as a `search`
+ * string, the only form v7 reads; call sites that hold a query object serialize
+ * it with `queryToSearch` first.
  */
 export interface LocationDescriptorObject {
   pathname?: string;
   search?: string;
-  query?: QueryLike;
   hash?: string;
   state?: LocationState;
 }
 
 /**
  * A location to navigate to: either a path string or a descriptor object.
- * Mirrors history@3's `LocationDescriptor`.
  */
 export type LocationDescriptor = LocationDescriptorObject | string;
 
