@@ -86,6 +86,28 @@ function getNativeQuestionCard(): UnsavedCard<NativeDatasetQuery> {
   return createAdHocNativeCard();
 }
 
+function getNativeQuestionCardWithUnmappedTag(
+  type: "dimension" | "temporal-unit",
+): UnsavedCard<NativeDatasetQuery> {
+  return createAdHocNativeCard({
+    dataset_query: {
+      type: "native",
+      database: SAMPLE_DB_ID,
+      native: {
+        query: "select * from products where {{my_filter}}",
+        "template-tags": {
+          my_filter: {
+            id: "24d574c5-40e7-4e9d-9d0e-3fbc7b1f7bd0",
+            name: "my_filter",
+            "display-name": "My Filter",
+            type,
+          },
+        },
+      },
+    },
+  });
+}
+
 function getSavedGUIQuestionCard(
   overrides?: Partial<Card<StructuredDatasetQuery>>,
 ): Card<StructuredDatasetQuery> {
@@ -583,6 +605,32 @@ describe("View Header | Not saved native question", () => {
     setupNative();
     expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
   });
+
+  describe.each(["dimension", "temporal-unit"] as const)(
+    "%s template tag without a field",
+    (type) => {
+      const UNMAPPED_TAG_ERROR =
+        'The variable "my_filter" needs to be mapped to a field.';
+
+      it("does not let the question be saved and explains why", async () => {
+        const { onOpenModal } = setup({
+          card: getNativeQuestionCardWithUnmappedTag(type),
+          isDirty: true,
+        });
+
+        const saveButton = screen.getByTestId("qb-save-button");
+        expect(saveButton).toHaveAttribute("aria-disabled", "true");
+
+        await userEvent.hover(saveButton);
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(
+          UNMAPPED_TAG_ERROR,
+        );
+
+        await userEvent.click(saveButton);
+        expect(onOpenModal).not.toHaveBeenCalled();
+      });
+    },
+  );
 });
 
 describe("View Header | Saved native question", () => {

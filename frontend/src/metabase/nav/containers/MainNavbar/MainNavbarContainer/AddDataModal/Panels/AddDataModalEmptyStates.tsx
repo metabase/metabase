@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
+import { StoragePurchaseButton } from "metabase/common/components/upsells/StoragePurchaseModal";
 import { useSelector } from "metabase/redux";
 import { Link } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
@@ -10,11 +11,12 @@ import {
   Box,
   Button,
   Center,
+  Group,
   Icon,
+  Loader,
   Stack,
   Text,
   Title,
-  Tooltip,
 } from "metabase/ui";
 import { getSubpathSafeUrl } from "metabase/urls";
 
@@ -22,6 +24,13 @@ import IconCSV from "./illustrations/csv.svg?component";
 
 export const CONTENT_MAX_WIDTH = "22.5rem";
 export const INNER_WIDTH = "12.5rem";
+
+/** Shared by both tabs so their loading states can't drift apart visually. */
+export const PanelLoadingState = () => (
+  <Center h="100%">
+    <Loader data-testid="loading-indicator" />
+  </Center>
+);
 
 type ContactReason =
   | "add-database"
@@ -112,7 +121,7 @@ interface EmptyStateProps {
   illustration: ReactNode;
   ctaLink?: CTALink;
   contactAdminReason?: ContactReason;
-  upsell?: ReactNode;
+  secondaryAction?: ReactNode;
 }
 
 const AddDataEmptyState = ({
@@ -121,7 +130,7 @@ const AddDataEmptyState = ({
   illustration,
   ctaLink,
   contactAdminReason,
-  upsell,
+  secondaryAction,
 }: EmptyStateProps) => {
   return (
     <Stack gap="lg" align="center" justify="center" pt="2.5rem">
@@ -133,17 +142,19 @@ const AddDataEmptyState = ({
         <Text c="text-secondary">{subtitle}</Text>
       </Box>
       {ctaLink && (
-        <Button
-          variant="filled"
-          w={INNER_WIDTH}
-          component={Link}
-          to={ctaLink.to}
-        >
-          {ctaLink.text}
-        </Button>
+        <Group gap="sm" justify="center">
+          <Button
+            variant="filled"
+            w={secondaryAction ? undefined : INNER_WIDTH}
+            component={Link}
+            to={ctaLink.to}
+          >
+            {ctaLink.text}
+          </Button>
+          {secondaryAction}
+        </Group>
       )}
       {contactAdminReason && <ContactAdminAlert reason={contactAdminReason} />}
-      {upsell}
     </Stack>
   );
 };
@@ -163,38 +174,44 @@ export const DatabasePanelEmptyState = () => {
   );
 };
 
+const CSVIllustration = () => <Box component={IconCSV} c="core-brand" h={48} />;
+
+/**
+ * Shared by the CSV and Sheets panels: the instance is entitled to storage (the
+ * `attached_dwh` token is present) but the DWH database has not shown up yet —
+ * either it is still provisioning, or the token runs ahead of the data. A reload
+ * re-fetches the databases list, so pointing at a refresh is the honest hint.
+ */
+export const getStorageNotProvisionedSubtitle = () =>
+  t`You don't have storage provisioned yet. Refresh this page after 1-2 minutes.`;
+
+export const CSVStorageNotProvisionedEmptyState = () => (
+  <AddDataEmptyState
+    title={t`Upload CSV files`}
+    subtitle={getStorageNotProvisionedSubtitle()}
+    illustration={<CSVIllustration />}
+  />
+);
+
 export const CSVPanelEmptyState = ({
   ctaLink,
   contactAdminReason,
-  upsell,
+  canOfferStorage,
 }:
   | {
       ctaLink: CTALink;
       contactAdminReason?: never;
-      upsell?: ReactNode;
+      canOfferStorage?: boolean;
     }
   | {
       ctaLink?: never;
       contactAdminReason: ContactReason;
-      upsell?: never;
+      canOfferStorage?: never;
     }) => {
-  const text = (
-    <Text component="span" td="underline">{c(
-      "in the sentence 'To work with CSVs, enable file uploads in your database.'",
-    ).t`your database`}</Text>
-  );
-  const ctaSubtitle = c("{0} refers to the string 'your database'")
-    .jt`To work with CSVs, enable file uploads in ${(
-    <Tooltip
-      inline
-      maw={INNER_WIDTH}
-      multiline
-      label={t`PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.`}
-      key="database-tooltip"
-    >
-      {text}
-    </Tooltip>
-  )}.`;
+  const ctaSubtitle = canOfferStorage
+    ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Storage, only visible to admins
+      t`To work with CSVs, either enable file uploads in your database, or add Metabase Storage.`
+    : t`To work with CSVs, enable file uploads in your database.`;
 
   const subtitle = ctaLink
     ? ctaSubtitle
@@ -204,10 +221,14 @@ export const CSVPanelEmptyState = ({
     <AddDataEmptyState
       title={t`Upload CSV files`}
       subtitle={subtitle}
-      illustration={<Box component={IconCSV} c="core-brand" h={66} />}
+      illustration={<CSVIllustration />}
       contactAdminReason={contactAdminReason}
       ctaLink={ctaLink}
-      upsell={upsell}
+      secondaryAction={
+        canOfferStorage ? (
+          <StoragePurchaseButton location="add-data-modal-csv" />
+        ) : undefined
+      }
     />
   );
 };

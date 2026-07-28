@@ -1,9 +1,6 @@
-import type { ReactNode } from "react";
 import { createContext, useContext } from "react";
 
 import type { Route } from "./route";
-
-export const OutletContext = createContext<ReactNode>(null);
 
 export const RouteContext = createContext<Route | null>(null);
 
@@ -21,7 +18,4 @@ export function useRoute(): Route | null {
  *
  * @see https://reactrouter.com/7.18.1/api/components/Outlet
  */
-export function Outlet(): JSX.Element {
-  const child = useContext(OutletContext);
-  return <>{child}</>;
-}
+export { Outlet } from "react-router";
