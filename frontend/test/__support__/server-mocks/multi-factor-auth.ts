@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 
 import type {
   MfaAdminOverview,
+  MfaAdminUser,
   MfaEnrollResponse,
   MfaEnrolledUser,
   MfaStatus,
@@ -46,18 +47,32 @@ export function setupMfaAdminOverviewEndpoint(overview: MfaAdminOverview) {
   fetchMock.get("path:/api/ee/mfa/admin/overview", overview);
 }
 
+function userListResponse<T extends MfaAdminUser>(
+  users: T[],
+): MfaUserListResponse<T> {
+  return { data: users, total: users.length, limit: null, offset: null };
+}
+
 export function setupMfaEnrolledUsersEndpoint(users: MfaEnrolledUser[]) {
-  const response: MfaUserListResponse<MfaEnrolledUser> = {
-    data: users,
-    total: users.length,
-    limit: null,
-    offset: null,
-  };
-  fetchMock.get("path:/api/ee/mfa/admin/enrolled-users", response);
+  fetchMock.get(
+    "path:/api/ee/mfa/admin/enrolled-users",
+    userListResponse(users),
+  );
 }
 
 export function setupMfaEnrolledUsersEndpointError() {
   fetchMock.get("path:/api/ee/mfa/admin/enrolled-users", 500);
+}
+
+export function setupMfaUnenrolledUsersEndpoint(users: MfaAdminUser[]) {
+  fetchMock.get(
+    "path:/api/ee/mfa/admin/unenrolled-users",
+    userListResponse(users),
+  );
+}
+
+export function setupMfaUnenrolledUsersEndpointError() {
+  fetchMock.get("path:/api/ee/mfa/admin/unenrolled-users", 500);
 }
 
 export function setupMfaAdminRemoveEndpoint() {

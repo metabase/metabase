@@ -96,6 +96,22 @@ describe("EnrolledUsersPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows an empty state when nobody is enrolled", async () => {
+    setup({ users: [] });
+
+    expect(await screen.findByText("No results found")).toBeInTheDocument();
+  });
+
+  it("shows an error state instead of an empty table when the request fails", async () => {
+    setup({ hasError: true });
+
+    expect(await screen.findByText("An error occurred")).toBeInTheDocument();
+    // the table must not render at all — an empty one would read as "nobody is enrolled"
+    expect(
+      screen.queryByTestId("mfa-enrolled-users-table"),
+    ).not.toBeInTheDocument();
+  });
+
   it("searching resets to the first page, so a new query can't land on a stale offset", async () => {
     // more than one page, so the pagination controls render
     setup({
