@@ -104,14 +104,18 @@
 (mu/defn device-info :- DeviceInfo
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
   [{{:strs [user-agent]} :headers, :keys [browser-id token-exchange?], :as request}]
+  ;; This is best-effort: server-to-server logins (SAML/OIDC/JWT callbacks, token exchanges, etc.) routinely
+  ;; have no browser-id/user-agent/IP to report, and we already fall back to "unknown" for those below. That's
+  ;; not an error condition worth a WARN on every such login -- it was previously logged at WARN and, on
+  ;; instances with a lot of non-browser logins, drowned out real warnings (metabase#74272).
   (let [id          (or browser-id
-                        (log/warn "Login request is missing device ID information"))
+                        (log/debug "Login request is missing device ID information"))
         description (or user-agent
-                        (log/warn "Login request is missing user-agent information"))
+                        (log/debug "Login request is missing user-agent information"))
         ip-address  (or (request.current/ip-address request)
-                        (log/warn "Unable to determine login request IP address"))]
+                        (log/debug "Unable to determine login request IP address"))]
     (when-not (and id description ip-address)
-      (log/warn "Error determining login history for request"))
+      (log/debug "Error determining login history for request"))
     {:device_id          (or id (trs "unknown"))
      :device_description (or description (trs "unknown")),
      :embedded           (embed.util/is-modular-embedding-request? request)

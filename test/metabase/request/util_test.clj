@@ -80,6 +80,17 @@
             :token_exchange     false}
            (req.util/device-info (update @mock-request :headers assoc "x-metabase-client" "embedding-simple"))))))
 
+(deftest ^:parallel device-info-missing-user-agent-does-not-warn-test
+  (testing "a login request with no user-agent header (routine for server-to-server SSO callbacks, token
+           exchanges, etc.) doesn't log at :warn -- it's an expected, gracefully-handled case, not an
+           error worth an admin's attention on every such login (metabase#74272)"
+    (let [request (update @mock-request :headers dissoc "user-agent")]
+      (is (= "unknown"
+             (:device_description (req.util/device-info request))))
+      (is (empty? (mt/with-log-messages-for-level [messages :warn]
+                    (req.util/device-info request)
+                    (messages)))))))
+
 (deftest ^:parallel describe-user-agent-test
   (are [user-agent expected] (= expected (request.user-agent/describe-user-agent user-agent))
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/89.0.4389.86 Safari/537.36"
