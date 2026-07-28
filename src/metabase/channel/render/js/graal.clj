@@ -230,16 +230,15 @@
   ^Context [^String max-cpu-time]
   (generate-untrusted-context!* common/bundle-resource-path max-cpu-time "full static-viz"))
 
-(defn- generate-untrusted-builtin-context!
-  "Pool generator for the builtin pool. Returns a wrapper map, not a raw `Context`: dirigiste hands the
-  same object back on release/dispose/destroy, so wrapping lets the cumulative-CPU accumulator `:used-ms`
-  (see [[pool-cpu-soft-limit-ms]]) travel with its context without a global table."
-  []
-  {:context (generate-untrusted-builtin-context!* pool-max-cpu-time)
-   :used-ms (atom 0)})
+(defn- pooled-context-generator
+  "Wrap a raw-context `generate` thunk so a pooled context carries a cumulative-CPU accumulator. Returns a
+  wrapper map, not a raw `Context`: dirigiste hands the same object back on release/dispose/destroy, so the
+  `:used-ms` accumulator (see [[pool-cpu-soft-limit-ms]]) travels with its context without a global table."
+  [generate]
+  (fn [] {:context (generate), :used-ms (atom 0)}))
 
-(defn- destroy-untrusted-builtin-context!
-  "Unwrap a builtin-pool wrapper (see [[generate-untrusted-builtin-context!]]) and destroy its context."
+(defn- destroy-pooled-context!
+  "Unwrap a pool wrapper (see [[pooled-context-generator]]) and destroy its context."
   [{:keys [^Context context]}]
   (destroy-untrusted-context! context))
 
@@ -250,17 +249,19 @@
   :static-viz)
 
 (def ^:private ^Pool untrusted-plugin-context-pool
-  "Pool of isolate contexts (slim custom-viz bundle) for rendering untrusted custom-viz plugin JS. A
-  context is held exclusively from acquire to release; when idle for 10 minutes the pool shrinks to 0 and
-  the generator's `destroy` closes the context (and, on the last context from either pool, the shared
-  engine). See [[metabase.util.pool/create-pool]]."
-  (u.pool/create-pool generate-untrusted-plugin-context! destroy-untrusted-context! {:max-size 1, :idle-minutes 10}))
+  "Pool of one isolate context (slim custom-viz bundle) for rendering untrusted custom-viz plugin JS. Pools
+  wrappers (see [[pooled-context-generator]]), not raw contexts. When idle for 10 minutes the pool shrinks
+  to 0 and `destroy` closes the context (and, on the last context from either pool, the shared engine).
+  See [[metabase.util.pool/create-pool]]."
+  (u.pool/create-pool (pooled-context-generator #(generate-untrusted-plugin-context! pool-max-cpu-time))
+                      destroy-pooled-context! {:max-size 1, :idle-minutes 10}))
 
 (def ^:private ^Pool untrusted-builtin-context-pool
   "Pool of one isolate context (full static-viz bundle) for rendering built-in static viz. Pools wrappers
-  (see [[generate-untrusted-builtin-context!]]), not raw contexts. Same idle-shrink behavior as
+  (see [[pooled-context-generator]]), not raw contexts. Same idle-shrink behavior as
   [[untrusted-plugin-context-pool]]."
-  (u.pool/create-pool generate-untrusted-builtin-context! destroy-untrusted-builtin-context! {:max-size 1, :idle-minutes 10}))
+  (u.pool/create-pool (pooled-context-generator #(generate-untrusted-builtin-context!* pool-max-cpu-time))
+                      destroy-pooled-context! {:max-size 1, :idle-minutes 10}))
 
 (def ^:private render-lock
   "Serializes *all* static-viz rendering: every render — builtin or plugin — holds this, so at most one
@@ -271,10 +272,11 @@
   (Object.))
 
 (def ^:private pool-cpu-soft-limit-ms
-  "Recycle a pooled builtin context once its renders' cumulative host wall time passes this threshold —
-  well before the context's hard [[pool-max-cpu-time]] budget (which is cumulative, and whose exhaustion
-  would kill a render *mid-flight*). Host wall time upper-bounds the single-threaded guest's CPU time, so
-  accounting with it errs toward recycling early, which is safe: the pool regenerates off the render path."
+  "Recycle a pooled context (builtin or plugin) once its renders' cumulative host wall time passes this
+  threshold — well before the context's hard [[pool-max-cpu-time]] budget (which is cumulative, and whose
+  exhaustion would kill a render *mid-flight*). Host wall time upper-bounds the single-threaded guest's CPU
+  time, so accounting with it errs toward recycling early, which is safe: the pool regenerates off the
+  render path."
   120000)
 
 (defn- do-with-throwaway-plugin-context
@@ -288,37 +290,6 @@
       (finally
         (destroy-untrusted-context! context)))))
 
-(defn- do-with-pooled-plugin-context
-  "Prod plugin path: borrow a context from [[untrusted-plugin-context-pool]] and run `f` with it,
-  disposing (rather than releasing) any context left permanently unusable by a sandbox-limit hit."
-  [f]
-  (let [^Context context (.acquire untrusted-plugin-context-pool pool-key)
-        disposed?        (volatile! false)]
-    (try
-      (f context)
-      (catch PolyglotException e
-        ;; A cancelled / resource-exhausted context is permanently unusable; dispose it so the pool
-        ;; regenerates a fresh one rather than handing a dead context to the next render.
-        (when (or (.isCancelled e) (.isResourceExhausted e))
-          (vreset! disposed? true)
-          (log/warnf "static-viz: untrusted plugin context hit a sandbox limit (cancelled=%s resource-exhausted=%s); disposing and regenerating. %s"
-                     (.isCancelled e) (.isResourceExhausted e) (.getMessage e))
-          (.dispose untrusted-plugin-context-pool pool-key context))
-        (throw e))
-      (finally
-        (when-not @disposed?
-          (.release untrusted-plugin-context-pool pool-key context))))))
-
-(defn do-with-untrusted-plugin-context
-  "Acquire a plugin isolate context (slim custom-viz bundle) and call `f` with it, held exclusively for the
-  call, under the global [[render-lock]] so no other static-viz render runs concurrently (never let the
-  context — or a context-bound `Value` — escape)."
-  [f]
-  (locking render-lock
-    (if config/is-dev?
-      (do-with-throwaway-plugin-context f)
-      (do-with-pooled-plugin-context f))))
-
 (defn- do-with-throwaway-builtin-context
   "Dev builtin path: build a throwaway builtin context per call — so a fresh `bun run build-static-viz` is
   picked up without a REPL restart — with the tighter single-render [[render-max-cpu-time]] budget, run
@@ -330,12 +301,13 @@
       (finally
         (destroy-untrusted-context! context)))))
 
-(defn- do-with-pooled-builtin-context
-  "Prod builtin path: borrow a wrapper from [[untrusted-builtin-context-pool]] and run `f` with its
-  context, disposing (rather than releasing) it when a sandbox-limit hit leaves it unusable or when its
-  renders' cumulative CPU crosses [[pool-cpu-soft-limit-ms]] — see that var for why recycling is proactive."
-  [f]
-  (let [{:keys [^Context context used-ms] :as wrapper} (.acquire untrusted-builtin-context-pool pool-key)
+(defn- do-with-pooled-context
+  "Prod path: borrow a wrapper from `pool` and run `f` with its context. Disposes (rather than releases)
+  the context when a sandbox-limit hit leaves it permanently unusable, or when its renders' cumulative CPU
+  crosses [[pool-cpu-soft-limit-ms]] — see that var for why recycling is proactive. `label`
+  (\"builtin\"/\"plugin\") only tags log messages."
+  [^Pool pool label f]
+  (let [{:keys [^Context context used-ms] :as wrapper} (.acquire pool pool-key)
         disposed? (volatile! false)
         start     (System/nanoTime)]
     (try
@@ -345,19 +317,29 @@
         ;; regenerates a fresh one rather than handing a dead context to the next render.
         (when (or (.isCancelled e) (.isResourceExhausted e))
           (vreset! disposed? true)
-          (log/warnf "static-viz: untrusted builtin context hit a sandbox limit (cancelled=%s resource-exhausted=%s); disposing and regenerating. %s"
-                     (.isCancelled e) (.isResourceExhausted e) (.getMessage e))
-          (.dispose untrusted-builtin-context-pool pool-key wrapper))
+          (log/warnf "static-viz: untrusted %s context hit a sandbox limit (cancelled=%s resource-exhausted=%s); disposing and regenerating. %s"
+                     label (.isCancelled e) (.isResourceExhausted e) (.getMessage e))
+          (.dispose pool pool-key wrapper))
         (throw e))
       (finally
         (when-not @disposed?
           (let [total (swap! used-ms + (quot (- (System/nanoTime) start) 1000000))]
             (if (>= total pool-cpu-soft-limit-ms)
               (do
-                (log/infof "static-viz: builtin isolate context spent ~%dms of its cumulative %s CPU budget; recycling it"
-                           total pool-max-cpu-time)
-                (.dispose untrusted-builtin-context-pool pool-key wrapper))
-              (.release untrusted-builtin-context-pool pool-key wrapper))))))))
+                (log/infof "static-viz: %s isolate context spent ~%dms of its cumulative %s CPU budget; recycling it"
+                           label total pool-max-cpu-time)
+                (.dispose pool pool-key wrapper))
+              (.release pool pool-key wrapper))))))))
+
+(defn do-with-untrusted-plugin-context
+  "Acquire a plugin isolate context (slim custom-viz bundle) and call `f` with it, held exclusively for the
+  call, under the global [[render-lock]] so no other static-viz render runs concurrently (never let the
+  context — or a context-bound `Value` — escape)."
+  [f]
+  (locking render-lock
+    (if config/is-dev?
+      (do-with-throwaway-plugin-context f)
+      (do-with-pooled-context untrusted-plugin-context-pool "plugin" f))))
 
 (defn do-with-untrusted-builtin-context
   "Acquire a builtin isolate context (full static-viz bundle) and call `f` with it, held exclusively for
@@ -367,7 +349,7 @@
   (locking render-lock
     (if config/is-dev?
       (do-with-throwaway-builtin-context f)
-      (do-with-pooled-builtin-context f))))
+      (do-with-pooled-context untrusted-builtin-context-pool "builtin" f))))
 
 ;;; ------------------------------------------------ backend ----------------------------------------------
 
