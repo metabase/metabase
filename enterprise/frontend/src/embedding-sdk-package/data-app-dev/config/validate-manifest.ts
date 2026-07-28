@@ -45,7 +45,6 @@ export function validateDataAppManifest(
   initialAllowedHosts: string[],
 ): DataAppManifestStatus {
   const status: DataAppManifestStatus = {
-    checkedAt: Date.now(),
     name: null,
     bundlePath: null,
     bundlePathExists: false,

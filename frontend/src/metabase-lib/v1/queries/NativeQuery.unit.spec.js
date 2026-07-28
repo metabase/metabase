@@ -244,6 +244,23 @@ describe("NativeQuery", () => {
         });
         expect(q.canRun()).toBe(true);
       });
+
+      it("temporal-unit type without a dimension", () => {
+        q = q.setTemplateTag("foo", {
+          name: "foo",
+          type: "temporal-unit",
+          "display-name": "bar",
+        });
+        expect(q.canRun()).toBe(false);
+
+        q = q.setTemplateTag("foo", {
+          name: "foo",
+          type: "temporal-unit",
+          dimension: ["field", 123, null],
+          "display-name": "bar",
+        });
+        expect(q.canRun()).toBe(true);
+      });
     });
 
     describe("snippet template tags", () => {
