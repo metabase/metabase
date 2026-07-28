@@ -216,26 +216,38 @@
           (#'index-health/expire-stale-gauges!)
           (is (empty? @calls)))))))
 
-(deftest ^:sequential expiry-ignores-entries-it-did-not-write-test
-  (testing "a legacy refresh landing mid-reload leaves a malformed entry that must not break the sweep"
+(deftest ^:sequential expiry-covers-unlabelled-series-test
+  (testing "the semantic store gauges publish with no labels, and must expire like any other"
     (let [calls (atom [])
-          stale [:metabase-search/index-coverage-ratio {:index "stale"}]
-          live  (atom {;; what (conj {} [gauge-key index]) leaves behind
-                       :metabase-search/index-garbage-count :semantic-search
-                       stale                                ::stale})]
+          stale [:metabase-search/semantic-gate-size nil]
+          live  (atom {stale ::stale})]
       (with-redefs [index-health/live-gauge-series live
                     u/since-ms                    {::stale 3600000}]
         (mt/with-dynamic-fn-redefs [analytics/remove-series! (fn [& args] (swap! calls conj (vec args)))]
           (#'index-health/expire-stale-gauges!)
-          (is (= [stale] @calls) "the well-formed stale series is retired")
-          (is (= {:metabase-search/index-garbage-count :semantic-search} @live)
-              "the malformed entry is left alone rather than throwing"))))))
+          (is (= [[:metabase-search/semantic-gate-size nil]] @calls))
+          (is (empty? @live)))))))
 
-(deftest ^:parallel migrate-legacy-tracker-test
+(deftest ^:sequential reload-era-entries-become-expirable-test
+  (testing "an entry a pre-reload refresh conj'd onto the migrated map is made usable, not left forever"
+    (let [calls (atom [])
+          live  (atom {;; what (conj {} [gauge-key index]) leaves behind
+                       :metabase-search/index-garbage-count :semantic-search})]
+      (with-redefs [index-health/live-gauge-series live]
+        (mt/with-dynamic-fn-redefs [analytics/remove-series! (fn [& args] (swap! calls conj (vec args)))]
+          (#'index-health/expire-stale-gauges!)
+          (is (empty? @calls) "not stale yet -- it was just given a timer")
+          (is (= [[:metabase-search/index-garbage-count {:index "semantic-search"}]] (keys @live))
+              "and it now carries a key removal and expiry can act on"))))))
+
+(deftest ^:parallel normalize-tracker-test
   (testing "a reload's retained set becomes timed entries, so its series stay removable"
     (is (=? {[:metabase-search/index-coverage-ratio {:index "semantic-search"}] some?}
-            (#'index-health/migrate-legacy-tracker
+            (#'index-health/normalize-tracker
              #{[:metabase-search/index-coverage-ratio :semantic-search]}))))
-  (testing "an already-migrated tracker is left alone"
-    (let [tracked {[:metabase-search/index-coverage-ratio {:index "appdb"}] ::timer}]
-      (is (identical? tracked (#'index-health/migrate-legacy-tracker tracked))))))
+  (testing "well-formed entries pass through untouched, labels or not"
+    (let [tracked {[:metabase-search/index-coverage-ratio {:index "appdb"}] ::timer
+                   [:metabase-search/semantic-gate-size nil]                ::timer}]
+      (is (= tracked (#'index-health/normalize-tracker tracked)))))
+  (testing "anything unreadable is dropped rather than carried forward"
+    (is (= {} (#'index-health/normalize-tracker {"junk" 1})))))

@@ -106,18 +106,35 @@
   ;; that held one are ever removed; an inactive index should never create one.
   (atom {}))
 
-(defn- migrate-legacy-tracker
-  "Carry a reload's retained tracker into the timer map. It used to be a set of `[gauge-key index]`, whose
-  series are still exported: dropping them would leave nothing able to remove them, since a measure going
-  N/A only removes what it knows it published."
-  [tracked]
-  (if (map? tracked)
-    tracked
-    (into {}
-          (map (fn [[gauge-key index]] [[gauge-key {:index (name index)}] (u/start-timer)]))
-          tracked)))
+(defn- tracked-entry
+  "One tracker entry as `[[gauge-key labels] timer]`, or nil for anything unreadable.
+  Two shapes survive a reload: the set this tracker used to be, and an entry a refresh still running that
+  older code conj'd onto the migrated map, which arrives as a `gauge-key -> index` MapEntry. Both name a
+  series that is still exported, so give them a key and timer this code can act on rather than losing the
+  ability to remove them."
+  [entry]
+  (cond
+    (and (vector? entry) (= 2 (count entry)) (vector? (first entry)))
+    entry
 
-(swap! live-gauge-series migrate-legacy-tracker)
+    ;; a set element, [gauge-key index]
+    (and (vector? entry) (= 2 (count entry)) (keyword? (first entry)) (keyword? (second entry)))
+    [[(first entry) {:index (name (second entry))}] (u/start-timer)]))
+
+(defn- normalize-tracker
+  [tracked]
+  (into {} (keep tracked-entry) tracked))
+
+(defn- normalize-tracker!
+  "Bring anything a reload left behind into the current shape, so the callers below can trust their keys."
+  []
+  (swap! live-gauge-series
+         (fn [tracked]
+           (if (and (map? tracked) (every? vector? (keys tracked)))
+             tracked
+             (normalize-tracker tracked)))))
+
+(normalize-tracker!)
 
 ;; Publishing and expiring race otherwise: a sweep can read a timer, watch a refresh replace it, and then
 ;; remove the series the refresh just exported. Both sides are rare (one refresh per interval, one sweep a
@@ -127,6 +144,7 @@
   Removed rather than set to NaN: a NaN is still scraped, and poisons any `avg` or `sum` over the series."
   [gauge-key labels value]
   (locking live-gauge-series
+    (normalize-tracker!)
     (let [series [gauge-key labels]]
       (if (some? value)
         (do
@@ -142,17 +160,11 @@
   -- and a reading nothing is renewing is worse than none."
   []
   (locking live-gauge-series
-    ;; The key is left packed until the guard has run: a refresh still on the pre-reload code can conj its
-    ;; own entry onto the migrated map, where it reads as a MapEntry and lands malformed, and destructuring
-    ;; that in the binding throws before any :when could skip it. The next publish tracks the series
-    ;; properly, so leaving one behind costs nothing.
-    (doseq [[series published] @live-gauge-series
-            :when (and (vector? series)
-                       (map? (second series))
-                       (>= (u/since-ms published) stale-gauge-age-ms))]
-      (let [[gauge-key labels] series]
-        (analytics/remove-series! gauge-key labels)
-        (swap! live-gauge-series dissoc series)))))
+    (normalize-tracker!)
+    (doseq [[[gauge-key labels :as series] published] @live-gauge-series
+            :when (>= (u/since-ms published) stale-gauge-age-ms)]
+      (analytics/remove-series! gauge-key labels)
+      (swap! live-gauge-series dissoc series))))
 
 (defmethod analytics.core/pull-collector ::expire-stale-gauges [_]
   {:min-interval-s 60
