@@ -188,7 +188,7 @@ export type {
   SyncedCollectionsSidebarSectionProps,
 } from "./types";
 
-import { reinitializeRequestHooks } from "metabase/api/client";
+import { reinitializeRequestHandlers } from "metabase/api/client";
 
 import { reinitialize as reinitializeAiControls } from "./oss/ai-controls";
 import { reinitialize as reinitializeAudit } from "./oss/audit";
@@ -238,7 +238,7 @@ export function reinitialize() {
   reinitializeNotificationsSdk();
 
   reinitializeAiControls();
-  reinitializeRequestHooks();
+  reinitializeRequestHandlers();
   reinitializeAudit();
   reinitializeAuth();
   reinitializeCaching();

@@ -4,12 +4,7 @@ export * from "./errors";
 export type {
   OnBeforeRequestHandler,
   OnBeforeRequestHandlerConfig,
-} from "./request-hooks";
-export {
-  PLUGIN_API,
-  embeddingIframeSdkRequestHooks,
-  embeddingSdkRequestHooks,
-  reinitializeRequestHooks,
-} from "./request-hooks";
+} from "./request-handlers";
+export { PLUGIN_API, reinitializeRequestHandlers } from "./request-handlers";
 export type { RequestClientInfo, RequestOptions } from "./types";
 export { setLocaleHeader } from "./locale";

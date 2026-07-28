@@ -1,5 +1,5 @@
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
-import { PLUGIN_API, embeddingSdkRequestHooks } from "metabase/api/client";
+import { PLUGIN_API } from "metabase/api/client";
 import {
   EMBEDDING_SDK_CONFIG,
   isDataApp,
@@ -66,7 +66,7 @@ export function setDataApp(
   PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader =
     setEmbedPreviewHeader;
 
-  embeddingSdkRequestHooks.reactSdkEmbedReferrer =
+  PLUGIN_API.onBeforeRequestHandlers.reactSdkEmbedReferrer =
     setReactSdkEmbedReferrerHeader;
 }
 

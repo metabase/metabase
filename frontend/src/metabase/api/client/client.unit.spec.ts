@@ -5,7 +5,7 @@ import { reinitialize } from "metabase/plugins";
 import { setBasename } from "metabase/utils/basename";
 
 import { ApiClient } from "./client";
-import { PLUGIN_API } from "./request-hooks";
+import { PLUGIN_API } from "./request-handlers";
 
 describe("api", () => {
   describe("request (RTK entry point)", () => {

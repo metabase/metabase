@@ -3,7 +3,7 @@ import { merge } from "icepick";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import {
   type OnBeforeRequestHandlerConfig,
-  embeddingSdkRequestHooks,
+  PLUGIN_API,
 } from "metabase/api/client";
 import { overrideRequestsForGuestEmbeds } from "metabase/embedding/lib/override-requests-for-embeds";
 import { refreshSiteSettings } from "metabase/redux/settings";
@@ -19,58 +19,57 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
 
     if (authConfig.isGuest && authConfig.guestEmbedProviderUri) {
       // Replaces the request token with the newly refreshed guest embed token.
-      embeddingSdkRequestHooks.getOrRefreshGuestSessionHandler = async (
-        config: OnBeforeRequestHandlerConfig,
-      ) => {
-        const newToken = await dispatch(
-          getOrRefreshGuestSession(authConfig),
-        ).unwrap();
+      PLUGIN_API.onBeforeRequestHandlers.getOrRefreshGuestSessionHandler =
+        async (config: OnBeforeRequestHandlerConfig) => {
+          const newToken = await dispatch(
+            getOrRefreshGuestSession(authConfig),
+          ).unwrap();
 
-        // The URL is templated (e.g. /api/embed/card/:entityIdentifier/params/:paramId/values or /api/embed/card/:token/query).
-        // `entityIdentifier` arrives as a URL param (in `data`); `token`
-        // arrives in the request body for the saved-card query rewrite (and in
-        // `data` for the legacy whole-bag callers). Refresh whichever channel
-        // carries it before the URL `:tag` substitution reads it.
-        if (newToken && "entityIdentifier" in config.data) {
-          return merge(config, {
-            data: {
-              entityIdentifier: newToken,
-            },
-          });
-        }
-
-        if (newToken && config.body && "token" in config.body) {
-          return merge(config, {
-            body: {
-              token: newToken,
-            },
-          });
-        }
-
-        if (newToken && "token" in config.data) {
-          return merge(config, {
-            data: {
-              token: newToken,
-            },
-          });
-        }
-
-        // The token value is inlined in the URL path (e.g. /api/embed/card/{jwt}/query).
-        // Replace it with :entityIdentifier so the parameter substitution in api.js
-        // can bake the refreshed token into the URL.
-        if (newToken) {
-          const jwtInUrl = config.url
-            .split("/")
-            .find((segment) => isJWT(segment));
-
-          if (jwtInUrl) {
+          // The URL is templated (e.g. /api/embed/card/:entityIdentifier/params/:paramId/values or /api/embed/card/:token/query).
+          // `entityIdentifier` arrives as a URL param (in `data`); `token`
+          // arrives in the request body for the saved-card query rewrite (and in
+          // `data` for the legacy whole-bag callers). Refresh whichever channel
+          // carries it before the URL `:tag` substitution reads it.
+          if (newToken && "entityIdentifier" in config.data) {
             return merge(config, {
-              url: config.url.replace(jwtInUrl, ":entityIdentifier"),
-              data: { entityIdentifier: newToken },
+              data: {
+                entityIdentifier: newToken,
+              },
             });
           }
-        }
-      };
+
+          if (newToken && config.body && "token" in config.body) {
+            return merge(config, {
+              body: {
+                token: newToken,
+              },
+            });
+          }
+
+          if (newToken && "token" in config.data) {
+            return merge(config, {
+              data: {
+                token: newToken,
+              },
+            });
+          }
+
+          // The token value is inlined in the URL path (e.g. /api/embed/card/{jwt}/query).
+          // Replace it with :entityIdentifier so the parameter substitution in api.js
+          // can bake the refreshed token into the URL.
+          if (newToken) {
+            const jwtInUrl = config.url
+              .split("/")
+              .find((segment) => isJWT(segment));
+
+            if (jwtInUrl) {
+              return merge(config, {
+                url: config.url.replace(jwtInUrl, ":entityIdentifier"),
+                data: { entityIdentifier: newToken },
+              });
+            }
+          }
+        };
     }
 
     await dispatch(refreshSiteSettings());

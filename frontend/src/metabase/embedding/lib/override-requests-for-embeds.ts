@@ -3,7 +3,6 @@ import {
   type OnBeforeRequestHandlerConfig,
   PLUGIN_API,
   type RequestMethod,
-  embeddingSdkRequestHooks,
 } from "metabase/api/client";
 import { isEmbedPreview } from "metabase/embedding/config";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
@@ -257,7 +256,7 @@ export const setupEmbedPreviewRewrite = () => {
 export const overrideRequestsForGuestEmbeds = () => {
   setupEmbedPreviewRewrite();
 
-  embeddingSdkRequestHooks.overrideRequestsForGuestEmbeds = (data) =>
+  PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds = (data) =>
     overrideRequests({
       ...data,
       embedType: "guest",
