@@ -10,6 +10,7 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.test-util :refer [with-transform-cleanup!]]
@@ -450,6 +451,111 @@
                       (is (contains? events "model_to_transforms_migration_started"))
                       (is (contains? events "model_to_transforms_migration_failure"))
                       (is (not (contains? events "model_to_transforms_migration_success"))))))))))))))
+
+(deftest replace-model-with-transform-dependent-shapes-test
+  (testing "POST /replace-model-with-transform correctly handles every dependent shape"
+    ;; one of the dependent shapes is a question that joins the model (rather than sourcing from it), so drivers
+    ;; also need :left-join support
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :left-join)
+      (mt/with-premium-features #{:dependencies}
+        (let [mp     (mt/metadata-provider)
+              schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+          (with-transform-cleanup! [target {:type   "table"
+                                            :schema schema
+                                            :name   "model_transform_shapes"}]
+            (mt/with-temp [:model/Card {model-id :id :as model-card}
+                           {:database_id   (mt/id)
+                            :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                            :type          :model
+                            :name          "Model"}
+
+                           :model/Card {direct-id :id :as direct-card}
+                           {:database_id   (mt/id)
+                            :dataset_query (lib/query mp (lib.metadata/card mp model-id))
+                            :type          :question
+                            :name          "Direct Child"}
+
+                           :model/Card {nested-id :id :as nested-card}
+                           {:database_id   (mt/id)
+                            :dataset_query (lib/query mp (lib.metadata/card mp direct-id))
+                            :type          :question
+                            :name          "Nested Grandchild"}
+
+                           :model/Card {metric-id :id :as metric-card}
+                           {:database_id   (mt/id)
+                            :dataset_query (lib/aggregate (lib/query mp (lib.metadata/card mp model-id)) (lib/count))
+                            :type          :metric
+                            :name          "Row Count Metric"}
+
+                           :model/Card {join-id :id :as join-card}
+                           {:database_id   (mt/id)
+                            :dataset_query (lib/join (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                                     (lib.metadata/card mp model-id))
+                            :type          :question
+                            :name          "Joins The Model"}
+
+                           :model/Dashboard {dashboard-id :id}
+                           {:name "Model Dashboard"}
+
+                           :model/DashboardCard {dashcard-id :id}
+                           {:dashboard_id       dashboard-id
+                            :card_id            model-id
+                            :parameter_mappings [{:parameter_id "model-id-param"
+                                                  :card_id      model-id
+                                                  :target       [:dimension
+                                                                 (lib/->legacy-MBQL
+                                                                  (lib/ref (lib.metadata/field mp (mt/id :orders :id))))
+                                                                 {:stage-number 0}]}]}]
+              (mt/with-model-cleanup [:model/ReplacementRun]
+                (doseq [card [model-card direct-card nested-card metric-card join-card]]
+                  (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
+                (deps.test/synchronously-run-backfill!)
+                (let [response (mt/user-http-request :crowberto :post 202
+                                                     "ee/replacement/replace-model-with-transform"
+                                                     {:card_id              model-id
+                                                      :transform_name       "Shapes Transform"
+                                                      :transform_target     {:type     "table"
+                                                                             :schema   schema
+                                                                             :name     (:name target)
+                                                                             :database (mt/id)}
+                                                      :target_collection_id nil})
+                      run-id   (:run_id response)
+                      final    (poll-run run-id :timeout-ms 30000)
+                      transform (t2/select-one :model/Transform :name "Shapes Transform")
+                      output-table (transforms/output-table transform)]
+                  (is (= "succeeded" (:status final)))
+                  (testing "direct dependent's source is swapped to the transform output table"
+                    (let [q (t2/select-one-fn :dataset_query :model/Card :id direct-id)]
+                      (is (= (:id output-table) (lib/primary-source-table-id q)))))
+                  (testing "nested grandchild's own ref stays untouched (card__direct-id), yet still resolves transitively"
+                    (let [q (t2/select-one-fn :dataset_query :model/Card :id nested-id)]
+                      (is (= direct-id (lib/primary-source-card-id q)))
+                      (is (=? {:status "completed"}
+                              (mt/user-http-request :crowberto :post 202 (format "card/%d/query" nested-id))))))
+                  (testing "metric aggregating the model is swapped and produces the same result"
+                    (let [q (t2/select-one-fn :dataset_query :model/Card :id metric-id)
+                          expected-count (->> (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                             (lib/count))
+                                              qp/process-query
+                                              (mt/formatted-rows [int])
+                                              ffirst)
+                          result (mt/user-http-request :crowberto :post 202 (format "card/%d/query" metric-id))]
+                      (is (= (:id output-table) (lib/primary-source-table-id q)))
+                      (is (=? {:status "completed" :row_count 1} result))
+                      (is (= [[expected-count]] (mt/formatted-rows [int] result)))))
+                  (testing "question joining (not sourcing from) the model has its join arm swapped"
+                    (let [q     (t2/select-one-fn :dataset_query :model/Card :id join-id)
+                          joins (lib/joins q)]
+                      (is (= 1 (count joins)))
+                      (is (= (:id output-table) (-> joins first :stages first :source-table)))
+                      (is (=? {:status "completed"}
+                              (mt/user-http-request :crowberto :post 202 (format "card/%d/query" join-id))))))
+                  (testing "dashboard displaying the model directly keeps working (model's own query is untouched)"
+                    (is (= model-id (t2/select-one-fn :card_id :model/DashboardCard :id dashcard-id)))
+                    (is (=? {:status "completed"}
+                            (mt/user-http-request :crowberto :post 202
+                                                  (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                                          dashboard-id dashcard-id model-id))))))))))))))
 
 (deftest all-endpoints-require-superuser-test
   (testing "All /ee/replacement/ endpoints return 403 for non-admin users"

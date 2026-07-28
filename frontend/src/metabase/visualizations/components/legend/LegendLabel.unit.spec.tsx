@@ -1,8 +1,8 @@
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent } from "@testing-library/react";
 import type { ComponentProps } from "react";
-import { Route, Router, createMemoryHistory } from "react-router";
 
-import { screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 
 import { LegendLabel } from "./LegendLabel";
 
@@ -12,25 +12,22 @@ describe("LegendLabel", () => {
     const onFocus = jest.fn();
     const onMouseEnter = jest.fn();
 
-    const history = createMemoryHistory();
-    const component = () => {
-      return (
-        <LegendLabel
-          href="#hello"
-          onClick={onClick}
-          onFocus={onFocus}
-          onMouseEnter={onMouseEnter}
-          {...props}
-        >
-          Test
-        </LegendLabel>
-      );
-    };
-
-    render(
-      <Router history={history}>
-        <Route path="/" component={component} />
-      </Router>,
+    const { history } = renderWithProviders(
+      <Route
+        path="/"
+        element={
+          <LegendLabel
+            href="#hello"
+            onClick={onClick}
+            onFocus={onFocus}
+            onMouseEnter={onMouseEnter}
+            {...props}
+          >
+            Test
+          </LegendLabel>
+        }
+      />,
+      { withRouter: true, initialRoute: "/" },
     );
 
     return { history, onClick, onFocus, onMouseEnter };
@@ -39,7 +36,8 @@ describe("LegendLabel", () => {
   it("should be a link when onClick is defined", () => {
     const { onClick } = setup();
 
-    expect(screen.getByText("Test")).toHaveAttribute("href", "#hello");
+    // A hash-only target resolves against the current pathname.
+    expect(screen.getByText("Test")).toHaveAttribute("href", "/#hello");
 
     fireEvent.click(screen.getByText("Test"));
     expect(onClick).toHaveBeenCalled();
@@ -50,7 +48,7 @@ describe("LegendLabel", () => {
 
     expect(screen.getByText("Test")).not.toHaveAttribute("href");
     fireEvent.click(screen.getByText("Test"));
-    expect(history.getCurrentLocation().pathname).toBe("/");
-    expect(history.getCurrentLocation().hash).toBe("");
+    expect(history?.getCurrentLocation().pathname).toBe("/");
+    expect(history?.getCurrentLocation().hash).toBe("");
   });
 });

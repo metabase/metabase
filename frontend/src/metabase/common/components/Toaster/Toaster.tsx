@@ -73,7 +73,6 @@ export interface ToasterProps extends HTMLAttributes<HTMLDivElement> {
   confirmText?: string;
   isShown: boolean;
   fixed?: boolean;
-  className: string;
   onConfirm: () => void;
   onDismiss: () => void;
 }

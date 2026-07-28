@@ -420,12 +420,14 @@
             [:user_group_memberships {:optional true} [:maybe [:sequential ::users.schema/user-group-membership]]]
             [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
             [:source                 {:optional true, :default :admin} [:maybe keyword?]]
-            [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
+            [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]
+            [:invite_target          {:optional true} [:maybe users.schema/InviteTarget]]]]
   (users/invite-user! (set/rename-keys body {:first_name             :first-name
                                              :last_name              :last-name
                                              :user_group_memberships :user-group-memberships
                                              :login_attributes       :login-attributes
-                                             :tenant_id              :tenant-id})))
+                                             :tenant_id              :tenant-id
+                                             :invite_target          :invite-target})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |

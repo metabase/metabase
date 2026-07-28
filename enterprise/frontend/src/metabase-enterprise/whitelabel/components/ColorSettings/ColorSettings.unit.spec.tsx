@@ -33,13 +33,13 @@ describe("ColorSettings", () => {
       Color(color("core-summarize")).hex(),
     );
     await userEvent.clear(input);
-    await userEvent.type(input, color("error"));
+    await userEvent.type(input, color("feedback-negative"));
 
     expect(onChange).toHaveBeenLastCalledWith({
       brand: color("core-filter"),
       /* Needs to convert this to hex because the input is transform to hex,
        * but we want to use hsla for our new colors, this is to allow better text search. */
-      summarize: Color(color("error")).hex(),
+      summarize: Color(color("feedback-negative")).hex(),
       accent1: textMediumHex,
     });
   });

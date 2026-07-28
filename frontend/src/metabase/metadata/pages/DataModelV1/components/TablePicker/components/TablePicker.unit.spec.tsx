@@ -451,6 +451,7 @@ function item(input: string | { display_name?: string; name: string } | null) {
   }
   const name =
     typeof input === "string" ? input : (input.display_name ?? input.name);
+  // Unjustified type cast. FIXME
   return (screen.queryByText(name)?.parentNode?.parentNode?.parentNode ??
     null) as HTMLAnchorElement | null;
 }

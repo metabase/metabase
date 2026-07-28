@@ -9,6 +9,7 @@
    [metabase.sso.settings :as sso.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.models.user :as user]
    [toucan2.core :as t2]))
 
 (use-fixtures
@@ -65,7 +66,7 @@
       (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
                                                   :details      {:type    :email/handlebars-resource
                                                                  :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
-                                                                 :path    "notification/channel_template/hello_world.hbs"}}
+                                                                 :path    "hello_world"}}
                      :model/User             {user-id :id} {:email "ngoc@metabase.com"}
                      :model/PermissionsGroup {group-id :id} {:name "Avengers"}
                      :model/PermissionsGroupMembership _ {:group_id group-id
@@ -129,20 +130,20 @@
       (check false
              "You're invited to join SuperStar's Metabase"
              [#"Ngoc wants you to join them on Metabase"
-              #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join now</a>"]
+              #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join Metabase now</a>"]
              "Ngoc")
       (testing "with sso enabled"
         (mt/with-dynamic-fn-redefs [sso.settings/sso-enabled? (constantly true)
                                     session.settings/enable-password-login (constantly false)]
           (check false
                  "You're invited to join SuperStar's Metabase"
-                 [#"<a[^>]*href=\"https?://metabase\.com/auth/login\"[^>]*>Join now</a>"]
+                 [#"<a[^>]*href=\"https?://metabase\.com/auth/login\"[^>]*>Join Metabase now</a>"]
                  "Ngoc")))
       (testing "with invitor's first_name not defined"
         (check false
                "You're invited to join SuperStar's Metabase"
                [#"You are invited to join Metabase"
-                #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join now</a>"]
+                #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join Metabase now</a>"]
                nil)))
     (testing "subject is translated"
       (mt/with-mock-i18n-bundles! {"es" {:messages {"You''re invited to join {0}''s {1}"
@@ -186,6 +187,72 @@
           (is (some #(and (= (:type %) :inline)
                           (= (:content-type %) "image/png"))
                     (rest (:message email)))))))))
+
+(deftest create-and-invite-user-redirect-test
+  (testing "create-and-invite-user! lands the invitee on the invite_target item after signup"
+    (mt/with-model-cleanup [:model/User]
+      (let [join-url-html (fn [invite-target]
+                            (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+                              (-> (notification.tu/with-captured-channel-send!
+                                    (user/create-and-invite-user! {:first_name "Newbie" :email (mt/random-email)}
+                                                                  {:first_name "Admin" :email "admin@metabase.com"}
+                                                                  false
+                                                                  invite-target))
+                                  :channel/email first :message first :content)))]
+        (testing "dashboard"
+          (is (re-find #"/auth/reset_password/.*redirect(&#x3D;|=)/dashboard/42.*#new"
+                       (join-url-html {:type "dashboard" :id 42 :name "Q3 KPIs"}))))
+        (testing "question"
+          (is (re-find #"/auth/reset_password/.*redirect(&#x3D;|=)/question/7.*#new"
+                       (join-url-html {:type "question" :id 7 :name "Signups"}))))))))
+
+(deftest create-and-invite-user-sso-redirect-test
+  (testing "with SSO enabled and password login disabled, the invite link points at /auth/login carrying the item redirect"
+    (mt/with-model-cleanup [:model/User]
+      (mt/with-dynamic-fn-redefs [sso.settings/sso-enabled?              (constantly true)
+                                  session.settings/enable-password-login (constantly false)]
+        (let [join-url-html (fn [invite-target]
+                              (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+                                (-> (notification.tu/with-captured-channel-send!
+                                      (user/create-and-invite-user! {:first_name "Newbie" :email (mt/random-email)}
+                                                                    {:first_name "Admin" :email "admin@metabase.com"}
+                                                                    false
+                                                                    invite-target))
+                                    :channel/email first :message first :content)))]
+          (testing "dashboard"
+            (is (re-find #"/auth/login\?redirect(&#x3D;|=)/dashboard/42"
+                         (join-url-html {:type "dashboard" :id 42 :name "Q3 KPIs"}))))
+          (testing "question"
+            (is (re-find #"/auth/login\?redirect(&#x3D;|=)/question/7"
+                         (join-url-html {:type "question" :id 7 :name "Signups"})))))))))
+
+(deftest create-and-invite-user-email-content-test
+  (testing "the invite email is scoped to the dashboard/question when an invite_target is present"
+    (mt/with-model-cleanup [:model/User]
+      (let [invite-email (fn [invite-target]
+                           (mt/with-temporary-setting-values [site-url  "https://metabase.com"
+                                                              site-name "SuperStar"]
+                             (-> (notification.tu/with-captured-channel-send!
+                                   (user/create-and-invite-user! {:first_name "Newbie" :email (mt/random-email)}
+                                                                 {:first_name "Ngoc" :email "ngoc@metabase.com"}
+                                                                 false
+                                                                 invite-target))
+                                 :channel/email first)))
+            body         (fn [email] (-> email :message first :content))]
+        (testing "dashboard"
+          (let [email (invite-email {:type "dashboard" :id 42 :name "Q3 KPIs"})]
+            (is (= "You're invited to view the dashboard Q3 KPIs" (:subject email)))
+            (is (re-find #"Ngoc wants to share a Metabase dashboard with you" (body email)))
+            (is (re-find #"Q3 KPIs" (body email)))))
+        (testing "question"
+          (let [email (invite-email {:type "question" :id 7 :name "Signups"})]
+            (is (= "You're invited to view the question Signups" (:subject email)))
+            (is (re-find #"Ngoc wants to share a Metabase question with you" (body email)))
+            (is (re-find #"Signups" (body email)))))
+        (testing "no invite_target falls back to the generic invite"
+          (let [email (invite-email nil)]
+            (is (= "You're invited to join SuperStar's Metabase" (:subject email)))
+            (is (re-find #"Ngoc wants you to join them on Metabase" (body email)))))))))
 
 (deftest notification-create-email-test
   (mt/with-temporary-setting-values [site-url "https://metabase.com"]

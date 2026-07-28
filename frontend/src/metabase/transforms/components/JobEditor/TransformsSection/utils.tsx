@@ -25,7 +25,7 @@ function FreshnessNote({ transform }: { transform: Transform }) {
   return (
     <Flex align="center" c="text-secondary" fz="sm" gap="xs" miw={0}>
       {isUnscheduledDependency(transform) && (
-        <Icon c="warning" name="warning" size={12} />
+        <Icon c="feedback-warning" name="warning" size={12} />
       )}
       <Ellipsified>{note}</Ellipsified>
     </Flex>

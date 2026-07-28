@@ -41,7 +41,8 @@
                     :profile_id      "gpt-x"
                     :external_id     external-id
                     :total_tokens    5
-                    :data            [{:type "text" :text "hi"}]}
+                    :data            [{:type "text" :text "hi"}]
+                    :data_version    2}
              user-id (assoc :user_id user-id))))))
 
 (deftest persist-feedback-resolves-by-external-id-test

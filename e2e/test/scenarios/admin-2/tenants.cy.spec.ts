@@ -899,16 +899,12 @@ describe("tenant users", () => {
       .click();
     H.popover().findByText("Edit user").click();
 
-    H.modal().within(() => {
-      cy.findByText("Tenant groups");
-      cy.findByText("All tenant users").click();
-    });
-
+    H.modal().findByRole("combobox", { name: "Groups" }).click();
     H.popover().findByText(GROUP_NAME).click();
 
     H.modal().within(() => {
-      cy.findByText("Tenant groups").click(); // trigger blur
-      cy.findByText("2 other groups").should("be.visible");
+      cy.findByText("Tenant groups").click(); // dismiss the dropdown
+      cy.findByRole("list").findByText(GROUP_NAME).should("be.visible");
       cy.button("Update").click();
     });
 
@@ -930,12 +926,12 @@ describe("tenant users", () => {
     });
 
     H.popover().findByText(GIZMO_TENANT.name).click();
-    H.modal().findByText("All tenant users").click();
+    H.modal().findByRole("combobox", { name: "Groups" }).click();
     H.popover().findByText(GROUP_NAME).click();
 
     H.modal().within(() => {
-      cy.findByText("Tenant groups").click(); // trigger blur
-      cy.findByText("2 other groups").should("be.visible");
+      cy.findByText("Tenant groups").click(); // dismiss the dropdown
+      cy.findByRole("list").findByText(GROUP_NAME).should("be.visible");
       cy.button("Create").click();
     });
     cy.wait("@createUser").then(

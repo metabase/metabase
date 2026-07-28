@@ -109,9 +109,7 @@ class Table {
 
   connectedTables(): Table[] {
     const fks = this.fks || [];
-    return fks
-      .map((fk) => fk.origin?.table)
-      .filter((table) => table != null) as Table[];
+    return fks.map((fk) => fk.origin?.table).filter((table) => table != null);
   }
 
   foreignTables(): Table[] {
@@ -119,6 +117,7 @@ class Table {
     if (!fields) {
       return [];
     }
+    // Unjustified type cast. FIXME
     return fields
       .filter((field) => field.isFK() && field.fk_target_field_id)
       .map((field) => this.metadata?.field(field.fk_target_field_id)?.table)

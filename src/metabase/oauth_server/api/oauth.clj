@@ -23,7 +23,7 @@
    [throttle.core :as throttle])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.net URLEncoder)))
+   (java.net URI URLEncoder)))
 
 (set! *warn-on-reflection* true)
 
@@ -34,12 +34,22 @@
   []
   (codecs/bytes->hex (nonce/random-bytes 16)))
 
+(defn- site-path-prefix
+  "Path component of site-url with no trailing slash (e.g. `/metabase` when Metabase is hosted
+   under a subpath), or an empty string when site-url has no path or is unset."
+  []
+  (or (some-> (system/site-url) (URI.) (.getPath) (str/replace #"/$" "") not-empty)
+      ""))
+
 (defn- csrf-cookie-opts
-  "Cookie options for the CSRF cookie. Sets `:secure` when site-url is HTTPS."
+  "Cookie options for the CSRF cookie. Sets `:secure` when site-url is HTTPS.
+   The cookie `:path` is the path the *browser* sees, so it must include the subpath prefix
+   when Metabase is hosted under one — otherwise the cookie is never sent back with the
+   consent form POST and CSRF validation fails."
   [max-age]
   (cond-> {:http-only true
            :same-site :strict
-           :path      "/oauth/authorize"
+           :path      (str (site-path-prefix) "/oauth/authorize")
            :max-age   max-age}
     (some-> (system/site-url) (str/starts-with? "https"))
     (assoc :secure true)))

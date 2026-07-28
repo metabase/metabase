@@ -158,7 +158,7 @@ const BedrockCredentialFields = ({
       />
       {accessKeyIdEnvName && <SetByEnvVar varName={accessKeyIdEnvName} />}
       {credentialsError && (
-        <Text size="sm" c="error" role="alert">
+        <Text size="sm" c="feedback-negative" role="alert">
           {credentialsError}
         </Text>
       )}

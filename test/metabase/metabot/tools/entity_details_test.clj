@@ -521,6 +521,46 @@
             (is (map? (:query_json output)))
             (is (= "mbql/query" (get-in output [:query_json "lib/type"])))))))))
 
+(deftest get-report-details-skips-related-tables-test
+  (testing "get-report-details never computes related-tables"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:database_id   (mt/id)
+                        :type          :question
+                        :name          "Orders question"
+                        :dataset_query (mt/mbql-query orders {:limit 3})}]
+          (let [calls (atom 0)
+                orig  (mt/original-fn #'entity-details/related-tables)]
+            (mt/with-dynamic-fn-redefs [entity-details/related-tables (fn [& args]
+                                                                        (swap! calls inc)
+                                                                        (apply orig args))]
+              (let [output (-> (entity-details/get-report-details {:report-id card-id})
+                               :structured-output)]
+                (is (=? {:id card-id :type :question} output))
+                (is (not (contains? output :related_tables)))
+                (is (= 0 @calls))))))))))
+
+(deftest get-report-details-skips-metrics-test
+  (testing "get-report-details never computes metrics"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:database_id   (mt/id)
+                        :type          :question
+                        :name          "Orders question"
+                        :dataset_query (mt/mbql-query orders {:limit 3})}]
+          (let [calls (atom 0)
+                orig  (mt/original-fn #'lib/available-metrics)]
+            (mt/with-dynamic-fn-redefs [lib/available-metrics (fn [& args]
+                                                                (swap! calls inc)
+                                                                (apply orig args))]
+              (let [output (-> (entity-details/get-report-details {:report-id card-id})
+                               :structured-output)]
+                (is (=? {:id card-id :type :question} output))
+                (is (not (contains? output :metrics)))
+                (is (= 0 @calls))))))))))
+
 (deftest related-tables-with-fields-capped-test
   (testing (str "FK-related-table *column* expansion is capped at `max-related-tables-with-fields` so a table "
                 "with a very large / highly-connected schema can't fetch and pin an unbounded number of columns "

@@ -1,5 +1,4 @@
 import { useEffect, useMemo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -8,6 +7,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { Link, Outlet } from "metabase/router";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Flex, Group, Tabs, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -22,7 +22,7 @@ const PAGE_SIZE = 25;
 const DEFAULT_NO_RESULTS_MESSAGE = () => t`No results found`;
 
 export function PeopleListingApp({
-  children,
+  children = <Outlet />,
   external = false,
   showInviteButton = true,
   noResultsMessage = DEFAULT_NO_RESULTS_MESSAGE(),
@@ -76,6 +76,7 @@ export function PeopleListingApp({
 
   const handleTabChange = (tab: string | null) => {
     if (tab) {
+      // Unjustified type cast. FIXME
       updateStatus(tab as ActiveStatus);
     }
   };

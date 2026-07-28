@@ -9,13 +9,13 @@
   text-decoration: none;
   padding: 0.25rem 0.75rem;
   border-radius: 2rem;
-  border: 1px solid var(--mb-color-upsell-secondary);
-  color: var(--mb-color-upsell-primary);
+  border: 1px solid var(--mb-color-background_surface-brand-subtle);
+  color: var(--mb-color-background_surface-brand-strong);
   cursor: pointer;
 
   &:hover {
-    background-color: var(--mb-color-upsell-secondary);
+    background-color: var(--mb-color-background_surface-brand-subtle);
     color: var(--mb-color-text-primary);
-    border: 1px solid var(--mb-color-upsell-primary);
+    border: 1px solid var(--mb-color-background_surface-brand-strong);
   }
 }

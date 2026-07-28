@@ -2,16 +2,16 @@
 // MUST be imported BEFORE `react` and `react-dom`
 import "metabase-dev";
 
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { api } from "metabase/api/client";
 import { init } from "metabase/app";
-import { setRequestClientHeaders } from "metabase/embedding/lib/embedding-request-auth";
+import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
 import { PLUGIN_API } from "metabase/plugins";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
 import { clearCurrentUser } from "metabase/redux/user";
+import { push } from "metabase/router";
 import { getRoutes } from "metabase/routes";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 

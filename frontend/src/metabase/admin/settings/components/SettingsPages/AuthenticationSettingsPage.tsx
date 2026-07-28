@@ -7,6 +7,7 @@ import { hasAnySsoFeature } from "metabase/common/utils/plan";
 import {
   type AuthSettingsPageTab,
   PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_MULTI_FACTOR_AUTH,
 } from "metabase/plugins";
 import { Box, Flex, Stack } from "metabase/ui";
 
@@ -37,6 +38,7 @@ export function AuthenticationSettingsPage({
           <GoogleAuthCard />
           <LdapAuthCard />
           <ApiKeysAuthCard />
+          <PLUGIN_MULTI_FACTOR_AUTH.AdminAuthCard />
         </Stack>
         <Box style={{ flexShrink: 0 }}>
           <UpsellSSO location="authentication-sidebar" />

@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { isDefaultGroup } from "metabase/admin/utils/groups";
 import { useListPermissionsGroupsQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
+import { isDefaultGroup } from "metabase/common/utils/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Tabs } from "metabase/ui";
 import {
@@ -12,7 +12,6 @@ import {
   useGetAIControlsInstanceLimitQuery,
   useGetAIControlsTenantLimitsQuery,
 } from "metabase-enterprise/api";
-import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 
 import { GroupLimitsTab } from "./GroupLimitsTab";
 import { TenantLimitsTab } from "./TenantLimitsTab";
@@ -21,10 +20,8 @@ type GroupLimitsTabValue = "user-groups" | "tenant-groups" | "specific-tenants";
 
 export function GroupLimitsSettingsSection() {
   const isUsingTenants = useSetting("use-tenants");
-  const limitPeriod =
-    (useSetting("metabot-limit-reset-rate") as MetabotLimitPeriod) ?? "monthly";
-  const limitType =
-    (useSetting("metabot-limit-unit") as MetabotLimitType) ?? "tokens";
+  const limitPeriod = useSetting("metabot-limit-reset-rate") ?? "monthly";
+  const limitType = useSetting("metabot-limit-unit") ?? "tokens";
   const [activeTab, setActiveTab] =
     useState<GroupLimitsTabValue>("user-groups");
 
@@ -124,6 +121,7 @@ export function GroupLimitsSettingsSection() {
     <SettingsSection title={t`Group and tenant limits`}>
       <Tabs
         value={activeTab}
+        // Unjustified type cast. FIXME
         onChange={(value) => setActiveTab(value as GroupLimitsTabValue)}
       >
         <Tabs.List mb="md">

@@ -1,0 +1,140 @@
+## Reverse migrations for the "Async workspace provisioning" revert (#78172).
+## The forward changesets from #78091 (20260718_workspace_status_columns.yaml,
+## 20260720_workspace_target_branch.yaml) stay in the changelog so instances
+## that already ran them keep consistent history; these changesets drop the
+## added columns again. workspace_database.status keeps its widened
+## varchar(254) — narrowing could truncate rows and the pre-revert code is
+## fine with the wider type.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-21T10:00:00
+      author: ranquild
+      comment: Drop the unique index on workspace.target_branch
+      changes:
+        - dropIndex:
+            tableName: workspace
+            indexName: idx_workspace_target_branch
+      rollback:
+        - createIndex:
+            tableName: workspace
+            indexName: idx_workspace_target_branch
+            unique: true
+            columns:
+              - column:
+                  name: target_branch
+
+  - changeSet:
+      id: v64.2026-07-21T10:00:01
+      author: ranquild
+      comment: Drop workspace.target_branch
+      changes:
+        - dropColumn:
+            tableName: workspace
+            columnName: target_branch
+      rollback:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: target_branch
+                  type: varchar(254)
+                  remarks: Git branch the workspace's child instance commits to via remote sync
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-21T10:00:02
+      author: ranquild
+      comment: Drop workspace.instance_url
+      changes:
+        - dropColumn:
+            tableName: workspace
+            columnName: instance_url
+      rollback:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: instance_url
+                  type: ${text.type}
+                  remarks: URL of the provisioned child Metabase instance
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-21T10:00:03
+      author: ranquild
+      comment: Drop workspace.instance_id
+      changes:
+        - dropColumn:
+            tableName: workspace
+            columnName: instance_id
+      rollback:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: instance_id
+                  type: varchar(254)
+                  remarks: External identifier of the provisioned child Metabase instance
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-21T10:00:04
+      author: ranquild
+      comment: Drop workspace.status_details
+      changes:
+        - dropColumn:
+            tableName: workspace
+            columnName: status_details
+      rollback:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: status_details
+                  type: ${text.type}
+                  remarks: Encrypted details for the current status, e.g. the provisioning failure message
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-21T10:00:05
+      author: ranquild
+      comment: Drop workspace.status
+      changes:
+        - dropColumn:
+            tableName: workspace
+            columnName: status
+      rollback:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: status
+                  type: varchar(254)
+                  defaultValue: unprovisioned
+                  remarks: Provisioning lifecycle state of the workspace
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.2026-07-21T10:00:06
+      author: ranquild
+      comment: Drop workspace_database.status_details
+      changes:
+        - dropColumn:
+            tableName: workspace_database
+            columnName: status_details
+      rollback:
+        - addColumn:
+            tableName: workspace_database
+            columns:
+              - column:
+                  name: status_details
+                  type: ${text.type}
+                  remarks: Encrypted details for the current status, e.g. the provisioning failure message
+                  constraints:
+                    nullable: true

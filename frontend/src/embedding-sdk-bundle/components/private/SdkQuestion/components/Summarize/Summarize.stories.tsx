@@ -4,6 +4,7 @@ import { Box, Group } from "metabase/ui";
 
 import { Summarize } from "./Summarize";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {

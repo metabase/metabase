@@ -3,7 +3,10 @@ import fetchMock, {
   type UserRouteConfig,
 } from "fetch-mock";
 
+import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import type {
+  MetabotConversation,
+  MetabotConversationTitleResponse,
   MetabotGroupLimit,
   MetabotGroupPermission,
   MetabotId,
@@ -36,9 +39,76 @@ export function setupMetabotsEndpoints(
   );
   metabots.forEach((metabot) => {
     fetchMock.put(`path:/api/metabot/metabot/${metabot.id}`, (call) => {
+      // Unjustified type cast. FIXME
       return { ...metabot, ...JSON.parse(call.options?.body as string) };
     });
   });
+}
+
+export function setupListMetabotConversationsEndpoint(
+  conversations: MetabotConversation[] = [],
+) {
+  fetchMock.removeRoute("metabot-conversations-list");
+  fetchMock.get(
+    "path:/api/metabot/conversations",
+    {
+      data: conversations,
+      total: conversations.length,
+      limit: conversations.length,
+      offset: 0,
+    },
+    { name: "metabot-conversations-list" },
+  );
+}
+
+export function setupGetMetabotConversationTitleEndpoint(
+  response: MetabotConversationTitleResponse,
+) {
+  fetchMock.removeRoute("metabot-conversation-title");
+  fetchMock.get(
+    "express:/api/metabot/conversations/:conversationId/title",
+    response,
+    { name: "metabot-conversation-title" },
+  );
+}
+
+export function createMockMetabotConversationDetail(
+  opts?: Partial<MetabotConversationDetail>,
+): MetabotConversationDetail {
+  return {
+    conversation_id: "00000000-0000-0000-0000-000000000000",
+    created_at: new Date().toISOString(),
+    title: null,
+    user_id: 1,
+    state: {},
+    messages: [],
+    ...opts,
+  };
+}
+
+export function setupGetMetabotConversationEndpoint(
+  detail: MetabotConversationDetail,
+) {
+  const routeName = `metabot-conversation-detail-${detail.conversation_id}`;
+  fetchMock.removeRoute(routeName);
+  fetchMock.get(
+    `path:/api/metabot/conversations/${detail.conversation_id}`,
+    detail,
+    { name: routeName },
+  );
+}
+
+export function setupGetMetabotConversationEndpointError(
+  conversationId: string,
+  status = 500,
+) {
+  const routeName = `metabot-conversation-detail-${conversationId}`;
+  fetchMock.removeRoute(routeName);
+  fetchMock.get(
+    `path:/api/metabot/conversations/${conversationId}`,
+    { status },
+    { name: routeName },
+  );
 }
 
 export function setupMetabotPromptSuggestionsEndpointError(

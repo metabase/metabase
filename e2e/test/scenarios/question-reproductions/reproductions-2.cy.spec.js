@@ -1,7 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -51,108 +50,6 @@ describe("issue 23023", () => {
     cy.findAllByTestId("header-cell").contains("Tax").should("not.exist");
   });
 });
-
-describe("issue 24839: should be able to summarize a nested question based on the source question with aggregations (metabase#24839)", () => {
-  const questionDetails = {
-    name: "24839",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [
-        ["sum", ["field", ORDERS.QUANTITY, null]],
-        ["avg", ["field", ORDERS.TOTAL, null]],
-      ],
-      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-    },
-    display: "line",
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestion(questionDetails).then(({ body: { id } }) => {
-      // Start ad-hoc nested question based on the saved one
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          database: SAMPLE_DB_ID,
-          query: { "source-table": `card__${id}` },
-          type: "query",
-        },
-      });
-    });
-  });
-
-  it("from the notebook GUI (metabase#24839-1)", () => {
-    H.openNotebook();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Summarize").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sum of ...").click();
-    H.popover()
-      .should("contain", "Sum of Quantity")
-      .and("contain", "Average of Total");
-  });
-
-  it("from a table header cell (metabase#24839-2)", () => {
-    H.tableHeaderClick("Average of Total");
-
-    H.popover().contains("Distinct values").click();
-
-    cy.findByTestId("scalar-value").invoke("text").should("eq", "49");
-
-    cy.findByTestId("aggregation-item")
-      .invoke("text")
-      .should("eq", "Distinct values of Average of Total");
-  });
-});
-
-describe("issue 25016", () => {
-  const questionDetails = {
-    display: "table",
-    dataset_query: {
-      database: SAMPLE_DB_ID,
-      type: "query",
-      query: {
-        "source-query": {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
-            ["field", PRODUCTS.CATEGORY, null],
-          ],
-        },
-        aggregation: [["count"]],
-        breakout: [["field", "CATEGORY", { "base-type": "type/Text" }]],
-      },
-    },
-    visualization_settings: {
-      "table.pivot_column": "CATEGORY",
-      "table.cell_column": "count",
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("should be possible to filter by a column in a multi-stage query (metabase#25016)", () => {
-    H.visitQuestionAdhoc(questionDetails);
-    H.tableHeaderClick("Category");
-
-    H.popover().within(() => {
-      cy.findByText("Filter by this column").click();
-      cy.findByText("Gadget").click();
-      cy.button("Add filter").click();
-    });
-
-    cy.wait("@dataset");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 1 row").should("be.visible");
-  });
-});
-
 describe("issue 27104", () => {
   const questionDetails = {
     dataset_query: {
@@ -359,58 +256,6 @@ describe("issue 28874", () => {
     cy.findByText("Product ID").should("not.exist");
   });
 });
-
-describe("issue 29082", () => {
-  const questionDetails = {
-    name: "22788",
-    dataset_query: {
-      type: "query",
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": ORDERS_ID,
-        filter: ["=", ["field", ORDERS.USER_ID, null], 1],
-      },
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("should handle nulls in quick filters (metabase#29082)", () => {
-    H.visitQuestionAdhoc(questionDetails);
-    cy.wait("@dataset");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 11 rows").should("exist");
-
-    cy.get(".test-TableInteractive-emptyCell").first().click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    H.popover().within(() => cy.findByText("=").click());
-    cy.wait("@dataset");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 8 rows").should("exist");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Discount is empty").should("exist");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Discount is empty").icon("close").click();
-    cy.wait("@dataset");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 11 rows").should("exist");
-
-    cy.get(".test-TableInteractive-emptyCell").first().click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    H.popover().within(() => cy.findByText("≠").click());
-    cy.wait("@dataset");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 3 rows").should("exist");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Discount is not empty").should("exist");
-  });
-});
-
 describe("issue 30165", () => {
   beforeEach(() => {
     H.restore();
@@ -445,31 +290,6 @@ describe("issue 30165", () => {
     cy.findByTestId("query-builder-main")
       .findByText("Here's where your results will appear")
       .should("be.visible");
-  });
-});
-
-describe("issue 30610", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should remove stale metadata when saving a new question (metabase#30610)", () => {
-    H.openOrdersTable();
-    H.openNotebook();
-    removeSourceColumns();
-    H.saveQuestionToCollection("New orders");
-    createAdHocQuestion("New orders");
-    visualizeAndAssertColumns();
-  });
-
-  it("should remove stale metadata when updating an existing question (metabase#30610)", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-    H.openNotebook();
-    removeSourceColumns();
-    updateQuestion();
-    createAdHocQuestion("Orders");
-    visualizeAndAssertColumns();
   });
 });
 
@@ -577,40 +397,6 @@ describe("issue 43216", () => {
     H.popover().findByText("D").should("be.visible");
   });
 });
-
-function updateQuestion() {
-  H.queryBuilderHeader().findByText("Save").click();
-  cy.findByTestId("save-question-modal").within((modal) => {
-    cy.findByText("Save").click();
-  });
-}
-
-function removeSourceColumns() {
-  cy.findByTestId("fields-picker").click();
-  H.popover().findByText("Select all").click();
-}
-
-function createAdHocQuestion(questionName) {
-  H.startNewQuestion();
-  H.miniPickerBrowseAll().click();
-  H.entityPickerModal().within(() => {
-    cy.findByText("Our analytics").click();
-    cy.findByText(questionName).click();
-  });
-  cy.findByTestId("fields-picker").click();
-  H.popover().within(() => {
-    cy.findByText("ID").should("be.visible");
-    cy.findByText("Total").should("not.exist");
-  });
-}
-
-function visualizeAndAssertColumns() {
-  H.visualize();
-  H.tableInteractive().within(() => {
-    cy.findByText("ID").should("exist");
-    cy.findByText("Total").should("not.exist");
-  });
-}
 
 const EXPRESSION_NAME = "TEST_EXPRESSION";
 

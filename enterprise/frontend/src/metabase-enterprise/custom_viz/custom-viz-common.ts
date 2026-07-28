@@ -1,7 +1,15 @@
 import type { CustomVisualization } from "custom-viz";
+import type { ComponentType } from "react";
 
-import type { Visualization } from "metabase/visualizations/types/visualization";
-import type { CustomVizPluginId } from "metabase-types/api";
+import type {
+  Visualization,
+  VisualizationPassThroughProps,
+  VisualizationProps,
+} from "metabase/visualizations/types/visualization";
+import type {
+  CustomVizPluginId,
+  VisualizationDisplay,
+} from "metabase-types/api";
 
 import { sanitizePluginSettings } from "./custom-viz-settings";
 
@@ -18,17 +26,17 @@ import { sanitizePluginSettings } from "./custom-viz-settings";
  * components.
  */
 export function applyDefaultVisualizationProps(
-  Component: Visualization,
+  Component: ComponentType<VisualizationProps & VisualizationPassThroughProps>,
   vizDef: CustomVisualization<Record<string, unknown>>,
   settings: {
-    identifier: string;
+    identifier: VisualizationDisplay;
     pluginId: CustomVizPluginId;
     getUiName: () => string;
     iconUrl?: string | undefined;
     isDev?: boolean;
   },
-) {
-  Object.assign(Component, {
+): Visualization {
+  return Object.assign(Component, {
     settings:
       sanitizePluginSettings(
         vizDef.settings,
@@ -43,5 +51,5 @@ export function applyDefaultVisualizationProps(
     defaultSize: vizDef.defaultSize,
     isDev: settings.isDev,
     ...settings,
-  } satisfies Partial<Record<keyof Visualization, unknown>>);
+  });
 }

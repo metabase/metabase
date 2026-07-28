@@ -28,7 +28,7 @@ export const TRANSFORMS_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
     },
     value: DataPermissionValue.NO,
     icon: "close",
-    iconColor: "danger",
+    iconColor: "feedback-negative",
   },
   yes: {
     get label() {
@@ -36,7 +36,7 @@ export const TRANSFORMS_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
     },
     value: DataPermissionValue.YES,
     icon: "check",
-    iconColor: "success",
+    iconColor: "feedback-positive",
   },
 };
 

@@ -31,6 +31,7 @@ export const getAccentColors = (
 const getBaseAccentsNames = (withGray = false) => {
   const accents: ColorName[] = _.times(
     ACCENT_COUNT,
+    // Unjustified type cast. FIXME
     (i) => `accent${i}` as ColorName,
   );
   if (withGray) {
@@ -55,6 +56,7 @@ export const getLightAccentColors = (
   withGray = false,
 ): string[] => {
   return getBaseAccentsNames(withGray).map((accent) =>
+    // Unjustified type cast. FIXME
     Color(color(`${accent}-light` as ColorName, palette)).hex(),
   );
 };
@@ -64,14 +66,19 @@ export const getDarkAccentColors = (
   withGray = false,
 ) => {
   return getBaseAccentsNames(withGray).map((accent) =>
+    // Unjustified type cast. FIXME
     Color(color(`${accent}-dark` as ColorName, palette)).hex(),
   );
 };
 
 export const getStatusColorRanges = (): string[][] => {
   return [
-    [color("error"), "transparent", color("success")],
-    [color("error"), color("warning"), color("success")],
+    [color("feedback-negative"), "transparent", color("feedback-positive")],
+    [
+      color("feedback-negative"),
+      color("feedback-warning"),
+      color("feedback-positive"),
+    ],
   ];
 };
 
@@ -87,7 +94,7 @@ export const getPreferredColor = (key: string, palette?: ColorPalette) => {
     case "accepted":
     case "active":
     case "profit":
-      return color("success", palette);
+      return color("feedback-positive", palette);
     case "cancel":
     case "canceled":
     case "cancelled":
@@ -103,12 +110,12 @@ export const getPreferredColor = (key: string, palette?: ColorPalette) => {
     case "cost":
     case "deleted":
     case "pending":
-      return color("error", palette);
+      return color("feedback-negative", palette);
     case "warn":
     case "warning":
     case "incomplete":
     case "unstable":
-      return color("warning", palette);
+      return color("feedback-warning", palette);
     case "count":
       return color("accent0", palette);
     case "sum":

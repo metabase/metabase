@@ -44,6 +44,7 @@ function setup({
   isReadOnly?: boolean;
   touch?: boolean;
 } = {}) {
+  // Unjustified type cast. FIXME
   (isTouchDevice as jest.Mock).mockReturnValue(touch);
 
   return renderWithProviders(

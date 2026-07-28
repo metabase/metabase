@@ -55,6 +55,7 @@ const mockCard = createMockCard({
   name: "Test Question",
 });
 
+// Unjustified type cast. FIXME
 const defaultSettings: any = {
   dashboardId: 1,
   hiddenParameters: ["category"],
@@ -125,6 +126,7 @@ describe("useEmbeddingParameters", () => {
     it("should return true when dashboardId and lockedParameters are present", () => {
       const { result } = renderHook(() =>
         useEmbeddingParameters({
+          // Unjustified type cast. FIXME
           settings: {
             dashboardId: 1,
             lockedParameters: ["status"],
@@ -143,6 +145,7 @@ describe("useEmbeddingParameters", () => {
     it("should return false when no resource id is present", () => {
       const { result } = renderHook(() =>
         useEmbeddingParameters({
+          // Unjustified type cast. FIXME
           settings: {
             hiddenParameters: ["category"],
             isGuest: true,
@@ -160,6 +163,7 @@ describe("useEmbeddingParameters", () => {
     it("should return false when no parameters are initialized", () => {
       const { result } = renderHook(() =>
         useEmbeddingParameters({
+          // Unjustified type cast. FIXME
           settings: {
             dashboardId: 1,
             isGuest: true,
@@ -177,6 +181,7 @@ describe("useEmbeddingParameters", () => {
     it("should work with questionId instead of dashboardId", () => {
       const { result } = renderHook(() =>
         useEmbeddingParameters({
+          // Unjustified type cast. FIXME
           settings: {
             questionId: 1,
             lockedParameters: ["status"],
@@ -244,6 +249,7 @@ describe("useEmbeddingParameters", () => {
     it("should mark parameter as enabled when not hidden or locked", () => {
       const { result } = renderHook(() =>
         useEmbeddingParameters({
+          // Unjustified type cast. FIXME
           settings: {
             dashboardId: 1,
             hiddenParameters: [],
@@ -265,6 +271,7 @@ describe("useEmbeddingParameters", () => {
     it("should prioritize locked over hidden", () => {
       const { result } = renderHook(() =>
         useEmbeddingParameters({
+          // Unjustified type cast. FIXME
           settings: {
             dashboardId: 1,
             hiddenParameters: ["category"],
@@ -353,14 +360,18 @@ describe("useEmbeddingParameters", () => {
       expect(mockUpdateSettings).not.toHaveBeenCalled();
 
       rerender({
+        // Unjustified type cast. FIXME
         resource: mockDashboard as any,
+        // Unjustified type cast. FIXME
         initialAvailableParameters: [mockParameter1, mockParameter2] as any,
       });
 
       expect(mockUpdateSettings).toHaveBeenCalledTimes(1);
 
       rerender({
+        // Unjustified type cast. FIXME
         resource: mockDashboard as any,
+        // Unjustified type cast. FIXME
         initialAvailableParameters: [mockParameter1, mockParameter2] as any,
       });
 
@@ -398,7 +409,9 @@ describe("useEmbeddingParameters", () => {
       );
 
       rerender({
+        // Unjustified type cast. FIXME
         resource: mockDashboard as any,
+        // Unjustified type cast. FIXME
         initialAvailableParameters: [mockParameter1, mockParameter2] as any,
       });
 
@@ -434,6 +447,7 @@ describe("useEmbeddingParameters", () => {
           initialAvailableParameters: Parameter[] | null;
         }) =>
           useEmbeddingParameters({
+            // Unjustified type cast. FIXME
             settings: {
               questionId: 1,
               isGuest: true,
@@ -453,7 +467,9 @@ describe("useEmbeddingParameters", () => {
       );
 
       rerender({
+        // Unjustified type cast. FIXME
         resource: mockCard as any,
+        // Unjustified type cast. FIXME
         initialAvailableParameters: [mockParameter1] as any,
       });
 
@@ -503,6 +519,7 @@ describe("useEmbeddingParameters", () => {
 
       const { result } = renderHook(() =>
         useEmbeddingParameters({
+          // Unjustified type cast. FIXME
           settings: {
             dashboardId: 1,
             hiddenParameters: ["param-with-dash_and_underscore"],
@@ -533,6 +550,7 @@ describe("useEmbeddingParameters", () => {
           }),
         {
           initialProps: {
+            // Unjustified type cast. FIXME
             resource: mockDashboard as Dashboard | Card,
           },
         },
@@ -572,7 +590,9 @@ describe("useEmbeddingParameters", () => {
           }),
         {
           initialProps: {
+            // Unjustified type cast. FIXME
             resource: firstDashboard as Dashboard | Card | null,
+            // Unjustified type cast. FIXME
             initialAvailableParameters: [mockParameter1] as Parameter[] | null,
           },
         },

@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { CSSProperties } from "react";
 
 import { Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
@@ -42,11 +41,9 @@ export function NotebookActionButton({
       )}
       aria-label={label}
       onClick={onClick}
-      style={
-        {
-          "--notebook-action-button-color": `var(--mb-color-${color})`,
-        } as CSSProperties
-      }
+      style={{
+        "--notebook-action-button-color": `var(--mb-color-${color})`,
+      }}
       {...props}
     >
       {large ? (

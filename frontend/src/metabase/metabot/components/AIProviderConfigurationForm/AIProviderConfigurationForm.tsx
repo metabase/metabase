@@ -64,7 +64,7 @@ export function AIProviderConfigurationForm({
   const isCurrentConfigured = connectedProvider === provider && isConfigured;
 
   useEffect(() => {
-    if (isModal) {
+    if (isModal || !connectedProvider) {
       return;
     }
     setProvider(connectedProvider);
@@ -130,8 +130,10 @@ export function AIProviderConfigurationForm({
         sendToast({
           message,
           icon: "warning",
-          toastColor: "error",
+          toastColor: "feedback-negative",
         });
+      } else {
+        setProvider(undefined);
       }
     } catch (error) {
       const message = getErrorMessage(
@@ -142,7 +144,7 @@ export function AIProviderConfigurationForm({
       sendToast({
         message,
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
       });
     }
   }, [
@@ -238,6 +240,7 @@ export function AIProviderConfigurationForm({
                 >
                   {option.label}
                 </Text>
+                {/* Unjustified type cast. FIXME */}
                 {!isAvailableProvider(option.value as MetabotProvider) && (
                   <Text c="text-disabled" lh="1rem" size="sm">
                     {t`Coming soon`}
@@ -296,7 +299,7 @@ export function AIProviderConfigurationForm({
               { isCurrentConfigured: true, isConnectButtonEnabled: false },
               () => (
                 <Button
-                  c="danger"
+                  c="feedback-negative"
                   loading={isMutating}
                   disabled={isMutating}
                   onClick={handleDisconnect}

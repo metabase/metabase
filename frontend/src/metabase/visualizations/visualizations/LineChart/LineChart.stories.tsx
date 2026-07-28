@@ -22,13 +22,13 @@ export default {
   component: LineChart,
 };
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(LineChart);
 
 const dataset_query = createMockStructuredDatasetQuery({
   query: { "source-table": 1 },
 });
 
+// Unjustified type cast. FIXME
 const MOCK_SERIES = [
   {
     card: createMockCard({ id: 1, display: "line", dataset_query }),

@@ -98,7 +98,7 @@ export const MigrationInProgress = ({
               <Button
                 mt="md"
                 onClick={openModal}
-                c="error"
+                c="feedback-negative"
               >{t`Cancel migration`}</Button>
               <Button
                 mt="md"
@@ -123,7 +123,7 @@ export const MigrationInProgress = ({
         <Flex justify="end" mt="3.5rem">
           <Button
             variant="filled"
-            color="error"
+            color="feedback-negative"
             onClick={handleCancelMigration}
           >{t`Cancel migration`}</Button>
         </Flex>

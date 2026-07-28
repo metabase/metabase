@@ -1,6 +1,7 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
+import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -12,11 +13,8 @@ type TableOverviewPageParams = {
   tableId: string;
 };
 
-type TableOverviewPageProps = {
-  params: TableOverviewPageParams;
-};
-
-export function TableOverviewPage({ params }: TableOverviewPageProps) {
+export function TableOverviewPage() {
+  const params = useParams<TableOverviewPageParams>();
   const tableId = Urls.extractEntityId(params.tableId);
   const { table, isLoading, error } = useLoadTableWithMetadata(tableId);
 

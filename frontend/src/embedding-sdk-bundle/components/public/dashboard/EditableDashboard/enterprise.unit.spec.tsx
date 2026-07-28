@@ -129,6 +129,28 @@ describe("EditableDashboard", () => {
     expect(screen.getByText("Test dashboard")).toBeInTheDocument();
   });
 
+  it("should allow to go back to the dashboard after editing a question from the dashcard menu (EMB-2012)", async () => {
+    await setupEnterprise({ dashboardName: "Test dashboard" });
+
+    const dashcard = screen.getAllByTestId("dashcard").at(0);
+    await userEvent.click(within(dashcard!).getByTestId("dashcard-menu"));
+
+    const menu = await screen.findByRole("menu");
+    await userEvent.click(within(menu).getByText("Edit question"));
+
+    // We should be in the question view
+    expect(
+      await screen.findByTestId("query-visualization-root"),
+    ).toBeInTheDocument();
+
+    // The back button should be there, just like when drilling into a question
+    const backButton = await screen.findByLabelText("Back to Test dashboard");
+    await userEvent.click(backButton);
+
+    // We should be back on the dashboard
+    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+  });
+
   it("should allow to pass `dataPickerProps.entityTypes` to the query builder", async () => {
     await setupEnterprise({
       dataPickerProps: {

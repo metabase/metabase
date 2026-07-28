@@ -65,8 +65,9 @@ describe("TextInputBlurChange", () => {
 
   it("should set `internalValue` to the normalized value even if the normalized value is the same as the previous one", async () => {
     const value = "/";
+    // Unjustified type cast. FIXME
     setup({ value, normalize: (value) => (value as string).trim() });
-    const input = screen.getByDisplayValue(value) as HTMLInputElement;
+    const input = screen.getByDisplayValue<HTMLInputElement>(value);
     await userEvent.clear(input);
     await userEvent.type(input, "           /         ");
 

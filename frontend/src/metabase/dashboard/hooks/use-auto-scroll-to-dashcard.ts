@@ -1,8 +1,8 @@
-import type { LocationDescriptorObject } from "history";
 import { useCallback, useMemo } from "react";
-import { replace } from "react-router-redux";
 
 import { useDispatch } from "metabase/redux";
+import type { LocationDescriptorObject } from "metabase/router";
+import { replace } from "metabase/router";
 import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
 import type { DashCardId } from "metabase-types/api";
 

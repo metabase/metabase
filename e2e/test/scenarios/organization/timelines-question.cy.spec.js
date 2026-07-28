@@ -233,7 +233,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
-      H.echartsIcon("star").should("be.visible");
+      H.timelineEventChip("RC1").should("be.visible");
     });
 
     it("should not show events for non-timeseries questions", () => {
@@ -263,7 +263,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
-      H.echartsIcon("star").should("not.exist");
+      H.timelineEventChip("RC1").should("not.exist");
     });
 
     it("should show events for native queries", () => {
@@ -300,7 +300,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.findByText("Visualization").should("be.visible");
       cy.wait("@getTimelines");
 
-      H.echartsIcon("star").should("be.visible");
+      H.timelineEventChip("RC1").should("be.visible");
     });
 
     it("should toggle individual event visibility", () => {
@@ -330,19 +330,19 @@ describe("scenarios > organization > timelines > question", () => {
         cy.findByTestId("view-footer")
           .findByText("Visualization")
           .should("be.visible");
-        H.echartsIcon("cloud").should("be.visible");
+        H.timelineEventChip("RC1").should("be.visible");
 
         // should hide individual events from chart if hidden in sidebar
         cy.icon("calendar").click();
         cy.findByTestId("sidebar-content").findByText("Releases").click();
         toggleEventVisibility("RC1");
 
-        H.echartsIcon("cloud").should("not.exist");
+        H.timelineEventChip("RC1").should("not.exist");
 
         // should show individual events in chart again
         toggleEventVisibility("RC1");
 
-        H.echartsIcon("cloud").should("be.visible");
+        H.timelineEventChip("RC1").should("be.visible");
 
         // should show a newly created event
         cy.button("Create event").click();
@@ -352,14 +352,14 @@ describe("scenarios > organization > timelines > question", () => {
         waitForTimelinesAfterCreatingAnEvent("RC2");
 
         H.undoToast().icon("close").click();
-        H.echartsIcon("star").should("be.visible");
+        H.timelineEventChip("RC2").should("be.visible");
 
         // should then hide the newly created event
         timelineEventVisibility("RC2").should("be.checked");
         toggleEventVisibility("RC2");
         timelineEventVisibility("RC2").should("not.be.checked");
 
-        H.echartsIcon("star").should("not.exist");
+        H.timelineEventChip("RC2").should("not.exist");
 
         // its timeline, visible but having one hidden event
         // should display its checkbox with a "dash" icon
@@ -375,8 +375,8 @@ describe("scenarios > organization > timelines > question", () => {
           });
 
         // once timeline is visible, all its events should be visible
-        H.echartsIcon("star").should("be.visible");
-        H.echartsIcon("cloud").should("be.visible");
+        H.timelineEventChip("RC2").should("be.visible");
+        H.timelineEventChip("RC1").should("be.visible");
 
         // should initialize events in a hidden timelime
         // with event checkboxes unchecked
@@ -398,13 +398,13 @@ describe("scenarios > organization > timelines > question", () => {
           .closest("[aria-label='Timeline card header']")
           .within(() => cy.findByRole("checkbox").click());
 
-        H.echartsIcon("warning").should("be.visible");
+        H.timelineEventChip("TC1").should("be.visible");
 
         // events whose timeline was invisible on page load
         // should be hideable once their timelines are visible
         toggleEventVisibility("TC1");
 
-        H.echartsIcon("warning").should("not.exist");
+        H.timelineEventChip("TC1").should("not.exist");
 
         /**
          * This tests the case where group by unit with the event in the end range bucket
@@ -433,11 +433,11 @@ describe("scenarios > organization > timelines > question", () => {
         toggleEventVisibility("RC2").should("not.be.checked");
 
         cy.log("the new event should be visible in the chart");
-        H.echartsIcon("star").should("be.visible");
+        H.timelineEventChip("Event at the end of range").should("be.visible");
       });
     });
 
-    it("should color the event icon when hovering", () => {
+    it("should show a single-event popover on hover without a 'See all' link", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
@@ -447,12 +447,18 @@ describe("scenarios > organization > timelines > question", () => {
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
-      H.echartsIcon("star").should("be.visible");
-      H.echartsIcon("star").realHover();
-      H.echartsIcon("star", true).should("be.visible");
+      H.timelineEventChip("RC1").should("be.visible").realHover();
+
+      cy.log(
+        "hovering a single event shows a compact popover with no 'See all'",
+      );
+      cy.findByTestId("timeline-event-popover").within(() => {
+        cy.findByText("RC1").should("be.visible");
+        cy.findByText("See all").should("not.exist");
+      });
     });
 
-    it("should display the event tooltip when hovering on a stacked chart #74005", () => {
+    it("should show the event popover when hovering on a stacked chart #74005", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
@@ -478,42 +484,138 @@ describe("scenarios > organization > timelines > question", () => {
         },
       });
 
-      H.echartsIcon("star").should("be.visible");
-      H.echartsIcon("star").realHover();
-      cy.findByTestId("timeline-event-tooltip").within(() => {
-        cy.findByText("RC1").should("be.visible");
-      });
+      H.timelineEventChip("RC1").should("be.visible").realHover();
+      cy.findByTestId("timeline-event-popover")
+        .findByText("RC1")
+        .should("be.visible");
     });
 
-    it("should open the sidebar when clicking an event icon", () => {
+    it("should collapse close events into a count chip and focus the sidebar on the group from 'See all'", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
-          { name: "RC1", timestamp: "2027-10-20T00:00:00Z", icon: "star" },
+          { name: "Alpha", timestamp: "2027-10-03T00:00:00Z" },
+          { name: "Beta", timestamp: "2027-10-10T00:00:00Z" },
+          { name: "Gamma", timestamp: "2027-10-17T00:00:00Z" },
+          { name: "Delta", timestamp: "2027-10-24T00:00:00Z" },
         ],
+      });
+      // a second timeline that must be filtered out while the cluster is focused
+      H.createTimelineWithEvents({
+        timeline: { name: "Other" },
+        events: [{ name: "Outsider", timestamp: "2028-01-15T00:00:00Z" }],
+      });
+
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+      });
+
+      cy.findByTestId("visualization-root").findByTestId(
+        "timeline-events-band",
+      );
+
+      cy.log(
+        "the four same-month events collapse into one chip with the count",
+      );
+      H.timelineEventChip("4 events").should("be.visible").and("contain", "4");
+
+      cy.log("hovering shows the first three events and a 'See all' link");
+      H.timelineEventChip("4 events").realHover();
+      cy.findByTestId("timeline-event-popover").within(() => {
+        cy.findByText("Alpha").should("be.visible");
+        cy.findByText("Gamma").should("be.visible");
+        cy.findByText("Delta").should("not.exist");
+        cy.findByText("See all").click();
+      });
+
+      cy.log("'See all' selects the cluster and focuses the sidebar on it");
+      H.timelineEventChip("4 events").should(
+        "have.attr",
+        "data-selected",
+        "true",
+      );
+      cy.findByTestId("sidebar-content").within(() => {
+        timelineEventCard("Alpha").should("be.visible");
+        timelineEventCard("Delta").should("be.visible");
+      });
+
+      cy.log("the unrelated timeline is filtered out of the focused list");
+      cy.findByTestId("sidebar-content")
+        .findByText("Other")
+        .should("not.exist");
+
+      cy.log("'All events' restores the full list of timelines");
+      cy.findByTestId("timeline-sidebar-show-all").click();
+      cy.findByTestId("sidebar-content")
+        .findByText("Other")
+        .should("be.visible");
+    });
+
+    it("should focus the sidebar on the group when a grouped chip is clicked directly", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          { name: "Alpha", timestamp: "2027-10-03T00:00:00Z" },
+          { name: "Beta", timestamp: "2027-10-10T00:00:00Z" },
+        ],
+      });
+      H.createTimelineWithEvents({
+        timeline: { name: "Other" },
+        events: [{ name: "Outsider", timestamp: "2028-01-15T00:00:00Z" }],
+      });
+
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+      });
+
+      cy.log("clicking a grouped chip focuses the sidebar on its events");
+      H.timelineEventChip("2 events").should("be.visible").click();
+
+      cy.findByTestId("sidebar-content").within(() => {
+        timelineEventCard("Alpha").should("be.visible");
+        timelineEventCard("Beta").should("be.visible");
+      });
+      cy.findByTestId("sidebar-content")
+        .findByText("Other")
+        .should("not.exist");
+    });
+
+    it("should select a single event and open the full sidebar when its chip is clicked", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1", timestamp: "2027-01-01T00:00:00Z" }],
       });
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
-      H.echartsIcon("star").should("be.visible");
-      H.echartsIcon("star").click();
+      H.timelineEventChip("RC1").should("be.visible").click();
 
-      // event should be selected in sidebar
-      timelineEventCard("RC1").should("be.visible");
-      timelineEventCard("RC1").should(
-        "have.css",
-        "border-left",
-        "4px solid rgb(80, 158, 226)",
-      );
-
-      // after clicking the icon again, it should be deselected in sidebar
-      H.echartsIcon("star", true).click();
-      timelineEventCard("RC1").should("be.visible");
-      timelineEventCard("RC1").should(
-        "have.css",
-        "border-left",
-        "4px solid rgba(0, 0, 0, 0)",
-      );
+      cy.log("the sidebar opens (unfiltered) with the event selected");
+      H.timelineEventChip("RC1").should("have.attr", "data-selected", "true");
+      cy.findByTestId("sidebar-content").findByText("RC1").should("be.visible");
+      cy.findByTestId("timeline-sidebar-show-all").should("not.exist");
     });
 
     // TODO @nemanjaglumac 2026-04-17: Simplify or potentially remove this repro altogether!

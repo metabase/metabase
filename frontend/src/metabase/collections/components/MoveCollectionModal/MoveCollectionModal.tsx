@@ -49,7 +49,7 @@ const MoveCollectionModalView = ({
   );
 };
 
-// used with ModalRoute router
+// used with modalRoute
 export const MoveCollectionModal = ({
   collectionId,
   params,

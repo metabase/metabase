@@ -820,7 +820,8 @@
                           :profile_id      "slackbot"
                           :external_id     external-id
                           :total_tokens    5
-                          :data            [{:_type "TEXT" :role "assistant" :content "hi"}]}))]
+                          :data            [{:type "text" :text "hi"}]
+                          :data_version    2}))]
       {:conv-id conv-id :external-id external-id :message-id msg-id})))
 
 (defn- tear-down-slackbot-feedback!
@@ -921,7 +922,8 @@
                      :profile_id      "slackbot"
                      :user_id         lucky-id
                      :total_tokens    0
-                     :data            [{:_type "TEXT" :role "user" :content "+1"}]})
+                     :data            [{:type "text" :text "+1"}]
+                     :data_version    2})
         (let [rasta-result (#'slackbot/handle-feedback-modal-submission
                             (modal-submission-payload {:conv-id     conv-id
                                                        :external-id external-id
@@ -1002,7 +1004,8 @@
                                   :channel_id      channel-id
                                   :slack_msg_id    message-ts
                                   :total_tokens    5
-                                  :data            [{:_type "TEXT" :role "assistant" :content "hi"}]}))
+                                  :data            [{:type "text" :text "hi"}]
+                                  :data_version    2}))
               ;; external-id intentionally omitted from the button payload — only channel + ts are present
               payload    (modal-submission-payload {:conv-id     conv-id
                                                     :external-id nil

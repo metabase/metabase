@@ -19,6 +19,7 @@ const CreateQuestionInner = (props: CreateQuestionProps = {}) => (
   <InteractiveQuestion {...props} questionId="new" />
 );
 
+// Unjustified type cast. FIXME
 export const CreateQuestion = withPublicComponentWrapper(CreateQuestionInner, {
   supportsGuestEmbed: false,
 }) as typeof CreateQuestionInner;

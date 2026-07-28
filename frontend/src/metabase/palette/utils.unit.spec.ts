@@ -1,4 +1,4 @@
-import type { LocationDescriptor } from "history";
+import type { LocationDescriptor } from "metabase/router";
 
 import type { PaletteActionImpl } from "./types";
 import {
@@ -21,6 +21,7 @@ const createMockAction = ({
   section = "basic",
   disabled,
 }: mockAction): PaletteActionImpl =>
+  // Unjustified type cast. FIXME
   ({ id, name, section, disabled }) as PaletteActionImpl;
 
 describe("command palette utils", () => {

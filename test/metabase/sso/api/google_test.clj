@@ -20,3 +20,21 @@
                (sso.settings/google-auth-client-id)))
         (is (= "foo.com"
                (sso.settings/google-auth-auto-create-accounts-domain)))))))
+
+(deftest google-settings-reset-test
+  (testing "PUT /api/google/settings can clear the settings, disabling Google Sign-In"
+    (mt/with-temporary-setting-values [google-auth-client-id                    nil
+                                       google-auth-auto-create-accounts-domain  nil
+                                       google-auth-enabled                      nil]
+      (mt/user-http-request :crowberto :put 200 "google/settings"
+                            {:google-auth-client-id                   test-client-id
+                             :google-auth-enabled                     true
+                             :google-auth-auto-create-accounts-domain "foo.com"})
+      (is (sso.settings/google-auth-enabled))
+      (mt/user-http-request :crowberto :put 200 "google/settings"
+                            {:google-auth-client-id                   nil
+                             :google-auth-enabled                     false
+                             :google-auth-auto-create-accounts-domain nil})
+      (is (nil? (sso.settings/google-auth-client-id)))
+      (is (nil? (sso.settings/google-auth-auto-create-accounts-domain)))
+      (is (not (sso.settings/google-auth-enabled))))))

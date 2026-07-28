@@ -80,6 +80,7 @@ const setup = async ({
   setupSearchEndpoints(
     availableModels.map((type, index) =>
       createMockSearchResult({
+        // Unjustified type cast. FIXME
         model: type as SearchModel,
         id: index + 1,
         database_id: TEST_DATABASE.id,
@@ -104,9 +105,9 @@ const setup = async ({
 };
 
 const getCheckboxes = () => {
-  return within(screen.getByTestId("type-filter-checkbox-group")).getAllByRole(
-    "checkbox",
-  ) as HTMLInputElement[];
+  return within(
+    screen.getByTestId("type-filter-checkbox-group"),
+  ).getAllByRole<HTMLInputElement>("checkbox");
 };
 
 describe("TypeFilterContent", () => {

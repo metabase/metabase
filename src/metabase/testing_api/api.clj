@@ -15,11 +15,13 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.test-spec :as lib.schema.test-spec]
+   [metabase.mcp.usage :as mcp.usage]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.task.search-index :as task.search-index]
+   [metabase.session.api :as session.api]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -57,7 +59,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/snapshot/:name"
   "Snapshot the database for testing purposes."
   [{snapshot-name :name} :- [:map
@@ -133,7 +134,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/restore/:name"
   "Restore a database snapshot for testing purposes."
   [{snapshot-name :name} :- [:map
@@ -148,7 +148,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/echo"
   "Simple echo handler. Fails when you POST with `?fail=true`."
   [_route-params
@@ -164,7 +163,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/set-time"
   "Make java-time see world at exact time."
   [_route-params
@@ -185,7 +183,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/echo"
   "Simple echo handler. Fails when you GET with `?fail=true`."
   [_route-params
@@ -201,7 +198,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/mark-stale"
   "Mark the card or dashboard as stale"
   [_route-params
@@ -225,7 +221,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/stats"
   "Triggers a send of instance usage stats"
   []
@@ -243,10 +238,25 @@
   metabase-enterprise.metabot.usage
   [])
 
+(defenterprise reset-mfa-throttlers-for-testing!
+  "Clears the accumulated MFA management throttle state (enroll/disable/regenerate) on EE.
+  No-op on OSS."
+  metabase-enterprise.mfa.management
+  [])
+
+(api.macros/defendpoint :post "/reset-throttlers" :- [:map [:success [:= true]]]
+  "Reset all in-memory login/MFA throttle state. Throttlers count failed attempts for up to an
+  hour and are not touched by a snapshot restore, so repeated E2E runs that deliberately submit
+  wrong credentials or codes would otherwise trip \"Too many attempts\". Intended only for E2E
+  tests."
+  []
+  (session.api/reset-throttlers-for-testing!)
+  (reset-mfa-throttlers-for-testing!)
+  {:success true})
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/refresh-caches"
   "Manually triggers the cache refresh task, if Enterprise code is available."
   []
@@ -273,12 +283,12 @@
    [:advisory_url      {:optional true} [:maybe ms/NonBlankString]]
    [:remediation       ms/NonBlankString]
    [:affected_versions [:sequential [:map [:min :string] [:fixed :string]]]]
+   [:download_jar_urls {:optional true} [:maybe [:sequential [:map [:version :string] [:url :string]]]]]
    [:matching_query    {:optional true} [:maybe [:map-of :keyword :string]]]
    [:match_status      [:enum "unknown" "active" "resolved" "not_affected" "error"]]
    [:published_at      :any]
    [:updated_at        :any]])
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/security-advisories"
   "Nuke all existing security advisories and insert the provided ones."
   [_route-params
@@ -339,7 +349,7 @@
   (t2/insert! :model/MetabotConversation
               {:id         id
                :user_id    user-id
-               :summary    "E2E usage auditing conversation"
+               :title      "E2E usage auditing conversation"
                :created_at created-at
                :ip_address ip-address})
   (doseq [role roles]
@@ -349,6 +359,7 @@
                  :role            role
                  :profile_id      profile-id
                  :data            []
+                 :data_version    2
                  :total_tokens    0
                  :created_at      created-at}))
   (t2/insert! :model/AiUsageLog
@@ -556,3 +567,40 @@
                                                                    [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
                                                                    [:second_tenant_id {:optional true} [:maybe ms/PositiveInt]]]]
   (seed-usage-auditing-data! user_id second_user_id tenant_id second_tenant_id))
+
+(api.macros/defendpoint :post "/mcp/seed-tool-call"
+  :- [:map
+      [:session_id ms/NonBlankString]
+      [:tool_name ms/NonBlankString]]
+  "Seed one `mcp_session_log` + one `mcp_tool_call_log` row so the MCP analytics E2E page has a
+  visible tool-call row. Routes through the production `metabase.mcp.usage` recording helpers
+  (rather than hand-rolled inserts) so the seeded rows can't drift from real MCP writes.
+  Intended only for E2E tests."
+  [_route-params
+   _query-params
+   {:keys [user_id tool_name client_name client_version status error_code error_message duration_ms]}
+   :- [:map
+       [:user_id        ms/PositiveInt]
+       [:tool_name       {:optional true} [:maybe ms/NonBlankString]]
+       [:client_name     {:optional true} [:maybe ms/NonBlankString]]
+       [:client_version  {:optional true} [:maybe ms/NonBlankString]]
+       [:status          {:optional true} [:maybe ms/NonBlankString]]
+       [:error_code      {:optional true} [:maybe :int]]
+       [:error_message   {:optional true} [:maybe ms/NonBlankString]]
+       [:duration_ms     {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]
+  (let [session-id (str "e2e-mcp-" (random-uuid))
+        tool-name  (or tool_name "execute_query")]
+    (mcp.usage/record-mcp-session!
+     {:session-id  session-id
+      :user-id     user_id
+      :client-info {:name    (or client_name "claude")
+                    :version (or client_version "1.0.0")}})
+    (mcp.usage/record-mcp-tool-call!
+     {:tool-name     tool-name
+      :user-id       user_id
+      :session-id    session-id
+      :status        (or status "success")
+      :duration-ms   (or duration_ms 42)
+      :error-code    error_code
+      :error-message error_message})
+    {:session_id session-id :tool_name tool-name}))

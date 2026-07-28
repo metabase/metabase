@@ -34,7 +34,7 @@ interface ViewTitleHeaderProps {
   originalQuestion?: Question;
   isSummarized?: boolean;
 
-  result: Dataset;
+  result?: Dataset;
   queryBuilderMode: QueryBuilderMode;
   isBookmarked: boolean;
   toggleBookmark: () => void;

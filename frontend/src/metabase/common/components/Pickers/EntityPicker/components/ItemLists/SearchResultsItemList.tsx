@@ -32,10 +32,12 @@ const makeIntoPickerItem = (
       ...pick(item, ["id", "name", "collection", "database_id"]),
       model: "table",
       database_name: item.database_name ?? undefined,
+      // Unjustified type cast. FIXME
       schema: item.table_schema as SchemaName,
     };
   }
 
+  // Unjustified type cast. FIXME
   return {
     ...item,
     type: "type" in item ? item.type : item.collection_type,
@@ -65,7 +67,9 @@ const useApiSearch = ({
         searchModels: ["table" as const],
       };
     }
+    // Unjustified type cast. FIXME
     const searchModels = models.filter((model) =>
+      // Unjustified type cast. FIXME
       SEARCH_MODELS.includes(model as SearchModel),
     ) as SearchModel[];
     if (searchScope === "all") {

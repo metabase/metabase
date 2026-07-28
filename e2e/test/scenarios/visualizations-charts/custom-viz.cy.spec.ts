@@ -1398,22 +1398,24 @@ describe("admin > custom visualizations", () => {
     const QUESTION_NAME = "Custom Viz Dev Mode Question Test";
     let devServerPid: number | null = null;
 
+    before(() => {
+      cy.exec(`mkdir -p ${tmpDir}`);
+      cy.log("Build the SDK so we can use the repo-local CLI");
+      cy.exec(
+        `cd "${sdkDir}" && bun install --frozen-lockfile && bun run build`,
+        {
+          timeout: TIMEOUT,
+        },
+      );
+    });
+
     beforeEach(() => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
       H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
-    });
 
-    before(() => {
-      cy.exec(`mkdir -p ${tmpDir}`);
-      cy.log("Build the SDK so we can use the repo-local CLI");
-      cy.exec(`cd "${sdkDir}" && bun install && bun run build`, {
-        timeout: TIMEOUT,
-      });
-
-      // Scaffold the boilerplate plugin using the init CLI command.
       cy.exec(`rm -rf "${projectDir}"`, { timeout: TIMEOUT });
       cy.exec(
         `cd "${tmpDir}" && node "${cliPath}" init "${CUSTOM_VIZ_DEV_PROJECT_NAME}"`,
@@ -1463,7 +1465,7 @@ describe("admin > custom visualizations", () => {
 
       // Install dependencies in the tmp plugin folder.
       cy.exec(`cd "${projectDir}" && npm i`, { timeout: TIMEOUT });
-      // Start the plugin dev server and keep it running
+
       cy.task<{ pid: number }>("startCustomVizDevServer", {
         cwd: projectDir,
       }).then(({ pid }) => {
@@ -1471,12 +1473,11 @@ describe("admin > custom visualizations", () => {
       });
     });
 
-    after(() => {
-      if (devServerPid == null) {
-        return;
+    afterEach(() => {
+      if (devServerPid != null) {
+        cy.task("stopCustomVizDevServer", devServerPid);
+        devServerPid = null;
       }
-
-      cy.task("stopCustomVizDevServer", devServerPid);
     });
 
     it("should load a dev-only plugin from a local dev server URL and use it in a question", () => {

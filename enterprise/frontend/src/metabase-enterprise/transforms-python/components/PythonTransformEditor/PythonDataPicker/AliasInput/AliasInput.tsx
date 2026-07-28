@@ -37,7 +37,9 @@ export function AliasInput({
   }
 
   function handleBlur() {
-    onChange(value);
+    if (value !== selection.alias) {
+      onChange(value);
+    }
   }
 
   return (

@@ -67,11 +67,7 @@
   (merge
    {:host (tx/db-test-env-var-or-throw :mysql :host "localhost")
     :port (tx/db-test-env-var-or-throw :mysql :port 3306)
-    :user (tx/db-test-env-var :mysql :user "root")
-    ;; MySQL 8+ uses caching_sha2_password by default, which requires RSA key exchange
-    ;; for password auth over non-SSL connections. Needed for workspace isolation tests
-    ;; which create password-authenticated users.
-    :additional-options "allowPublicKeyRetrieval=true"}
+    :user (tx/db-test-env-var :mysql :user "root")}
    (when-let [password (tx/db-test-env-var :mysql :password)]
      {:password password})
    (when (= context :db)
@@ -116,8 +112,9 @@
 ;;; use one single global lock for all datasets. MySQL needs a global lock to do DDL stuff and blows up if other queries
 ;;; are running at the same time even if they are in different logical databases
 (defmethod test.data.impl.get-or-create/dataset-lock :mysql
-  [driver _dataset-name]
-  ((get-method test.data.impl.get-or-create/dataset-lock :sql-jdbc) driver ""))
+  [driver _dataset]
+  ((get-method test.data.impl.get-or-create/dataset-lock :sql-jdbc)
+   driver {:database-name ""}))
 
 (defmethod sql.tx/create-index-sql :mysql
   ([driver table-name field-names]

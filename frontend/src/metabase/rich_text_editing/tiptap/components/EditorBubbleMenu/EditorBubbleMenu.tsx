@@ -55,6 +55,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
 }) => {
   const forceUpdate = useForceUpdate();
   const [initialLinkUrl, setInitialLinkUrl] = useState<string | null>(null);
+  const [contentKey, setContentKey] = useState(0);
 
   const handleLinkClick = () => {
     const existingLink = editor.getAttributes("link");
@@ -92,8 +93,13 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
       className={className}
       editor={editor}
       options={{
-        onHide: () => setInitialLinkUrl(null),
         ...options,
+        onHide: () => {
+          setInitialLinkUrl(null);
+          //remount the content to clean up any lingering tooltips
+          setContentKey((key) => key + 1);
+          options?.onHide?.();
+        },
       }}
       shouldShow={({
         editor,
@@ -139,6 +145,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
       }}
     >
       <Flex
+        key={contentKey}
         gap={4}
         p="2px"
         className={S.bubbleMenu}

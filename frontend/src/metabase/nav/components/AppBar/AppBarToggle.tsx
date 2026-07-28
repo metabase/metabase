@@ -51,6 +51,7 @@ export function AppBarToggle({
   if (!isNavBarEnabled) {
     return null;
   }
+  // Unjustified type cast. FIXME
   return (
     <div ref={hoverRef as React.Ref<HTMLDivElement>}>
       <Tooltip

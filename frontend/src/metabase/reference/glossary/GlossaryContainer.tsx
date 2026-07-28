@@ -9,9 +9,9 @@ import {
 } from "metabase/api";
 import S from "metabase/common/components/Glossary/Glossary.module.css";
 import { GlossaryTable } from "metabase/common/components/Glossary/GlossaryTable";
-import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
+import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
 import { Card, Group, Stack, Text } from "metabase/ui";

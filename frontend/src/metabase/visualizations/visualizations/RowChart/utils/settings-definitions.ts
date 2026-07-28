@@ -227,8 +227,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: (series: Series, vizSettings: VisualizationSettings) => {
       // If there are multiple series, we check if the metric names match.
       // If they do, we use that as the default y axis label.
-      const [metric] =
-        (vizSettings["graph.metrics"] as string[] | undefined) ?? [];
+      const [metric] = vizSettings["graph.metrics"] ?? [];
       const metricNames = Array.from(
         new Set(
           series.map(({ data: { cols } }) => {

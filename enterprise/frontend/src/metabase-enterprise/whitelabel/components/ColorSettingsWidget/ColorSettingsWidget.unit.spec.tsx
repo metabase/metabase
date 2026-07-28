@@ -11,6 +11,7 @@ import type { SettingKey } from "metabase-types/api";
 import { ColorSettingsWidget } from "./ColorSettingsWidget";
 
 function setup(colors: Record<string, string>) {
+  // Unjustified type cast. FIXME
   MetabaseSettings.set("application-colors" as SettingKey, colors);
   fetchMock.get("path:/api/session/properties", {
     "application-colors": colors,

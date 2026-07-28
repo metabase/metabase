@@ -56,7 +56,7 @@ export const CustomGeoJSONWidget = () => {
     settingDetails,
   } = useAdminSetting("custom-geojson");
 
-  const customGeoJsonSetting = settingValue as CustomGeoJSONSetting;
+  const customGeoJsonSetting = settingValue;
   const mapsExcludingBuiltIns = getMapsExcludingBuiltIns(customGeoJsonSetting);
 
   const handleSave = useCallback(async (): Promise<void> => {
@@ -228,7 +228,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }: ListMapsProps) => {
                 <td className={AdminS.TableActions}>
                   <Button
                     variant="filled"
-                    color="danger"
+                    color="feedback-negative"
                     onClick={() => setMapIdToDelete(mapId)}
                   >{t`Remove`}</Button>
                 </td>

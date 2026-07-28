@@ -6,7 +6,7 @@ export const CollectionSyncStatusBadge = () => (
   <Tooltip label={t`Unsynced changes`}>
     <Box
       bdrs="50%"
-      bg="warning"
+      bg="feedback-warning"
       h="0.5rem"
       w="0.5rem"
       mr="xs"

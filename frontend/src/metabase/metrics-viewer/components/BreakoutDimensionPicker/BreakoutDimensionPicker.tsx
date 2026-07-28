@@ -9,7 +9,7 @@ import {
   type DimensionOption,
   groupIntoSections,
 } from "metabase/common/components/DimensionPill";
-import { HoverParent } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import { HoverParent } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
 import { Flex, Icon } from "metabase/ui";
 import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";

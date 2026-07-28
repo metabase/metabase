@@ -7,6 +7,7 @@ import type { ColorSettings } from "metabase-types/api/settings";
 import { useDefaultEmbeddingThemeSettings } from "./use-default-embedding-theme-settings";
 
 const setup = (applicationColors?: ColorSettings) => {
+  // Unjustified type cast. FIXME
   const initialState = createMockState({
     settings: { values: { "application-colors": applicationColors } },
   } as Partial<State>);

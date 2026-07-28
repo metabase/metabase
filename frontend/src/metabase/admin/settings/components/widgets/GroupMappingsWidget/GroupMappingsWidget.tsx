@@ -26,6 +26,7 @@ export function GroupMappingsWidget(props: GroupMappingsWidgetProps) {
   const allGroups = data ?? EMPTY_GROUP_LIST;
   const mappings = useSelector(
     (state) =>
+      // Unjustified type cast. FIXME
       (getSetting(state, props.mappingSetting as keyof Settings) as
         | Record<string, GroupId[]>
         | undefined) ?? {},
@@ -51,6 +52,7 @@ export function GroupMappingsWidget(props: GroupMappingsWidgetProps) {
 
   return (
     <GroupMappingsWidgetView
+      // Unjustified type cast. FIXME
       {...(props as unknown as React.ComponentProps<
         typeof GroupMappingsWidgetView
       >)}

@@ -47,6 +47,7 @@ export function MetabotChatInput() {
         autosize
         minRows={1}
         maxRows={4}
+        // Unjustified type cast. FIXME
         ref={metabot.promptInputRef as LegacyRef<HTMLTextAreaElement>}
         autoFocus
         value={metabot.prompt}
@@ -107,7 +108,7 @@ export function MetabotChatInput() {
           <Menu.Dropdown>
             <Menu.Item
               leftSection={<Icon name="edit_document_outlined" size="1rem" />}
-              onClick={metabot.resetConversation}
+              onClick={metabot.createNewConversation}
             >
               {t`Start new chat`}
             </Menu.Item>

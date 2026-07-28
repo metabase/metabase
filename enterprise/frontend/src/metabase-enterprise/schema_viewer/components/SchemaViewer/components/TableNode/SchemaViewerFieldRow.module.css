@@ -43,7 +43,7 @@
   width: 0.675rem;
   height: 0.675rem;
   border-radius: 50%;
-  background: var(--mb-color-white);
+  background: var(--mb-color-core-white);
   border: 1px solid var(--node-border-color, var(--mb-color-border-neutral));
   pointer-events: none;
   z-index: 1;

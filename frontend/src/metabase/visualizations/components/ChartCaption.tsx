@@ -44,6 +44,7 @@ const ChartCaption = ({
     "";
   const description = settings["card.description"];
   const data =
+    // Unjustified type cast. FIXME
     visualizerRawSeries ?? (series as TransformedSeries)._raw ?? series;
   const card = data?.[0].card;
   const cardIds = new Set(data?.map((s) => s.card.id) ?? []);

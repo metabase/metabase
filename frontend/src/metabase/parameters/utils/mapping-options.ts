@@ -330,6 +330,7 @@ export function getMappingOptionByTarget(
       query,
       stageIndex,
       stageColumns,
+      // Unjustified type cast. FIXME
       stageMappingOptions.map(({ target }) => target[1] as DimensionReference),
     );
 

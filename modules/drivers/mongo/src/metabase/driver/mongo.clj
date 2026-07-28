@@ -464,8 +464,7 @@
                               :index-info                      false
                               :python-transforms               true
                               :transforms/python               true
-                              :database-routing                true
-                              :workspace                       false}]
+                              :database-routing                true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)
@@ -513,13 +512,9 @@
   [_driver _feature _db]
   true)
 
-;; We say Mongo supports foreign keys so that the front end can use implicit
-;; joins. In reality, Mongo doesn't support foreign keys.
-;; Only define an implementation for `:metadata/key-constraints` if none exists already.
-;; In test extensions we define an alternate implementation, and we don't want
-;; to stomp over that if it was loaded already.
-(when-not (get (methods driver/database-supports?) [:mongo :metadata/key-constraints])
-  (defmethod driver/database-supports? [:mongo :metadata/key-constraints] [_driver _feature _db] true))
+(defmethod driver/database-supports? [:mongo :metadata/key-constraints]
+  [_driver _feature _db]
+  false)
 
 (defmethod driver/mbql->native :mongo
   [_ query]

@@ -117,7 +117,7 @@ function ModalContent({
       title: getConfirmTitle(dependents.length),
       message: t`This can't be undone.`,
       confirmButtonText: getConfirmSubmitLabel(dependents.length),
-      confirmButtonProps: { variant: "filled", color: "error" },
+      confirmButtonProps: { variant: "filled", color: "feedback-negative" },
       onConfirm: async () => {
         trackReplaceDataSourceConfirmed({ triggeredFrom });
         await replaceSource({

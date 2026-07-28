@@ -5,7 +5,6 @@ import {
   current, // immer and icepick don't play nicely together
 } from "@reduxjs/toolkit";
 import { assocIn, merge } from "icepick";
-import { push } from "react-router-redux";
 import { isBoolean } from "underscore";
 
 import {
@@ -30,6 +29,7 @@ import {
   createAction,
   createThunkAction,
 } from "metabase/redux";
+import { push } from "metabase/router";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -209,7 +209,7 @@ export interface UpdateDataPermissionParams {
   entityId: PermissionEntityId;
   view: "database" | "group";
 }
-interface UpdateDataPermissionPayload {
+export interface UpdateDataPermissionPayload {
   groupId: GroupId;
   permissionInfo: Pick<
     PermissionSectionConfig,
@@ -289,7 +289,7 @@ export const saveDataPermissions = createThunkAction(
     const advancedPermissions =
       PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.reduce<{
         modifiedGroupIds: string[];
-        permissions: Record<string, undefined | { group_id: string }[]>;
+        permissions: Record<string, undefined | { group_id: number }[]>;
       }>(
         (data, selector) => {
           const [extraData, modifiedGroupIds] = selector(state);

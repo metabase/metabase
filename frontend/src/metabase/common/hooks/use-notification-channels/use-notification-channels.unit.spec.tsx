@@ -12,7 +12,7 @@ describe("useHasAnyNotificationChannel", () => {
     setupNotificationChannelsEndpoints({
       slack: { configured: true },
       email: { configured: false },
-    } as any);
+    });
 
     renderWithProviders(<MockComponent />);
     expect(await screen.findByText("Has Channel: yes")).toBeInTheDocument();
@@ -22,7 +22,7 @@ describe("useHasAnyNotificationChannel", () => {
     setupNotificationChannelsEndpoints({
       slack: { configured: true },
       email: { configured: true },
-    } as any);
+    });
 
     renderWithProviders(<MockComponent />);
     expect(await screen.findByText("Has Channel: yes")).toBeInTheDocument();
@@ -32,7 +32,7 @@ describe("useHasAnyNotificationChannel", () => {
     setupNotificationChannelsEndpoints({
       slack: { configured: false },
       email: { configured: false },
-    } as any);
+    });
 
     renderWithProviders(<MockComponent />);
     expect(await screen.findByText("Has Channel: no")).toBeInTheDocument();

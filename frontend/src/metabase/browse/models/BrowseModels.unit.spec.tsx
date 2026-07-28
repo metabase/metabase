@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupRecentViewsEndpoints,
@@ -8,6 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createMockSetupState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import {
   createMockCollection,
   createMockSearchResult,
@@ -46,10 +46,10 @@ const setup = ({
   setupRecentViewsEndpoints(mockRecentModels);
   return renderWithProviders(
     <>
-      <Route path="/" component={() => <BrowseModels />} />
+      <Route path="/" element={<BrowseModels />} />
       <Route
         path="/model/:slug"
-        component={() => <div data-testid="model-detail-page" />}
+        element={<div data-testid="model-detail-page" />}
       />
     </>,
     {

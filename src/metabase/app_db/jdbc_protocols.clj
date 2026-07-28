@@ -76,8 +76,8 @@
     (jdbc/set-parameter (double ratio) stmt i)))
 
 (defn clob->str
-  "Convert an H2 clob to a String."
-  ^String [^org.h2.jdbc.JdbcClob clob]
+  "Convert a JDBC clob to a String."
+  ^String [^java.sql.Clob clob]
   (when clob
     (letfn [(->str [^BufferedReader buffered-reader]
               (loop [acc []]
@@ -90,18 +90,21 @@
           (with-open [buffered-reader (BufferedReader. reader)]
             (->str buffered-reader)))))))
 
+;; CLOB/BLOB are handled via the java.sql interfaces (not the concrete driver classes) so this
+;; always-loaded namespace carries no compile-time reference to any specific JDBC driver -- in
+;; particular it loads fine when the H2 library has been stripped from the classpath.
 (extend-protocol jdbc/IResultSetReadColumn
   org.postgresql.util.PGobject
   (result-set-read-column [clob _ _]
     (.getValue clob))
 
-  org.h2.jdbc.JdbcClob
+  java.sql.Clob
   (result-set-read-column [clob _ _]
     (clob->str clob))
 
-  org.h2.jdbc.JdbcBlob
-  (result-set-read-column [^org.h2.jdbc.JdbcBlob blob _ _]
-    (.getBytes blob 0 (.length blob))))
+  java.sql.Blob
+  (result-set-read-column [^java.sql.Blob blob _ _]
+    (.getBytes blob 1 (int (.length blob)))))
 
 (defmulti ^:private read-column
   {:arglists '([rs rsmeta i])}

@@ -12,7 +12,9 @@ jest.mock("metabase/ui/components/feedback/Loader/Loader", () => ({
 }));
 
 const mockUseMetabaseProviderPropsStore =
+  // Unjustified type cast. FIXME
   useMetabaseProviderPropsStore as jest.Mock;
+// Unjustified type cast. FIXME
 const mockSetCustomLoader = setCustomLoader as jest.Mock;
 
 const MockLoaderComponent = () => <div>Custom Loader</div>;

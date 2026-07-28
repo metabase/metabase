@@ -417,9 +417,6 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
-(defmethod serdes/hash-fields :model/Action [_action]
-  [:name (serdes/hydrated-hash :model) :created_at])
-
 (defmethod serdes/generate-path "QueryAction" [_ _] nil)
 (defmethod serdes/make-spec "QueryAction" [_model-name _opts]
   {:copy      []
@@ -457,7 +454,7 @@
                                         :import serdes/import-visualization-settings}}
    :defaults  {:archived false}})
 
-(defmethod serdes/dependencies "Action" [action]
+(defmethod serdes/deserialization-dependencies "Action" [action]
   (set
    (concat
     ;; other stuff is implicitly referenced through a Card
@@ -467,7 +464,19 @@
       (let [{:keys [database_id dataset_query]} (first (:query action))]
         (concat
          [[{:model "Database" :id database_id}]]
-         (serdes/mbql-deps dataset_query)))))))
+         (serdes/mbql-deps false dataset_query)))))))
+
+(defmethod serdes/serialization-dependencies "Action" [_model-name {:keys [id model_id type]}]
+  ;; Serialization runs on the raw entity, whose query lives in the `query_action` child table (`:type` is a keyword
+  ;; here, not a string), so the query is fetched rather than read from a nested `:query` key.
+  (set
+   (concat
+    (when model_id [[{:model "Card" :id model_id}]])
+    (when (= type :query)
+      (when-let [{:keys [database_id dataset_query]} (t2/select-one :model/QueryAction :action_id id)]
+        (concat
+         (when database_id [[{:model "Database" :id database_id}]])
+         (serdes/mbql-deps true dataset_query)))))))
 
 (defmethod serdes/storage-path "Action" [action _ctx]
   [{:label "actions"} {:label (:name action) :key (:entity_id action)}])

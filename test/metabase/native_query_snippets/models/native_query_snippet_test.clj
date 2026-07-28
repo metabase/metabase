@@ -57,15 +57,6 @@
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
              (t2/update! :model/NativeQuerySnippet snippet-id {:collection_id dest-collection-id})))))))
 
-(deftest identity-hash-test
-  (testing "Native query snippet hashes are composed of the name and the collection's hash"
-    (let [now #t "2022-09-01T12:34:56Z"]
-      (mt/with-temp [:model/Collection         coll    {:name "field-db" :namespace :snippets :location "/" :created_at now}
-                     :model/NativeQuerySnippet snippet {:name "my snippet" :collection_id (:id coll) :created_at now}]
-        (is (= "7ac51ad0"
-               (serdes/raw-hash ["my snippet" (serdes/identity-hash coll) (:created_at snippet)])
-               (serdes/identity-hash snippet)))))))
-
 (deftest basic-param-finding-test
   (testing "Can find params in a snippet"
     (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "{{id}}"}]

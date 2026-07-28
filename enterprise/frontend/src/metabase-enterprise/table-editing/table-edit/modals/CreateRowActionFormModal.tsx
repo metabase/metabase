@@ -70,7 +70,7 @@ export function CreateRowActionFormModal({
     values,
     validateForm: revalidateForm,
   } = useFormik({
-    initialValues: initialValues ?? ({} as Record<string, RowValue>),
+    initialValues: initialValues ?? {},
     onSubmit: handleFormikSubmit,
     validate: validateForm,
     validateOnMount: true,

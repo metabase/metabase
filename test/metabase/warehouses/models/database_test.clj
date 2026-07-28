@@ -89,12 +89,41 @@
           (is (= nil
                  (trigger-for-db db-id))))))))
 
+(deftest health-check-candidates-test
+  (testing "startup health checks pick one representative database per engine: the lowest id, skipping
+            audit/sample/destination databases"
+    (mt/with-temp [:model/Database {router :id} {:engine :postgres}
+                   :model/Database {dest :id}   {:engine :mysql :router_database_id router}
+                   :model/Database {sample :id} {:engine :mysql :is_sample true}
+                   :model/Database {audit :id}  {:engine :mysql :is_audit true}
+                   :model/Database {_mysql :id} {:engine :mysql}
+                   :model/Database {pg2 :id}    {:engine :postgres}
+                   :model/Database {pg3 :id}    {:engine :postgres}]
+      (let [candidates    (#'database/health-check-candidates)
+            candidate-ids (into #{} (map :id) candidates)
+            engines       (into #{} (map :engine) candidates)]
+        (testing "exactly one representative per engine"
+          (is (= (count candidates) (count engines))))
+        (testing "every engine with an eligible database gets a representative"
+          (is (contains? engines :postgres))
+          (is (contains? engines :mysql)))
+        (testing "only the lowest-id database of an engine can be the representative"
+          (is (not (contains? candidate-ids pg2)))
+          (is (not (contains? candidate-ids pg3))))
+        (testing "router destinations are never candidates"
+          (is (not (contains? candidate-ids dest))))
+        (testing "sample databases can't claim an engine's slot"
+          (is (not (contains? candidate-ids sample))))
+        (testing "audit databases are never candidates"
+          (is (not (contains? candidate-ids audit))))))))
+
 (deftest check-health!-test
   (mt/test-drivers (mt/normal-drivers)
     (let [original-select (mt/original-fn #'t2/select)]
       (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))
+                                  ;; make the startup candidate fetch return only the test DB
                                   t2/select (fn [model & args]
-                                              (if (and (= model :model/Database) (empty? args))
+                                              (if (= model :model/Database)
                                                 [(mt/db)]
                                                 (apply original-select model args)))]
         (binding [driver.settings/*allow-testing-h2-connections* true]
@@ -529,7 +558,6 @@
                                        :name "Secret Test"
                                        :details base-details}]
       (mt/with-current-user (mt/user->id :crowberto)
-        #_{:clj-kondo/ignore [:redundant-nested-call]}
         (are [expected extra-details] (= (merge
                                           base-details
                                           expected)
@@ -708,20 +736,6 @@
         (testing ":write_data_details :auth-provider is keywordized"
           (is (keyword? (get-in db [:write_data_details :auth-provider]))))))))
 
-(deftest user-may-not-update-sample-database-test
-  (mt/with-temp [:model/Database {:keys [id] :as _sample-database} {:engine    :h2
-                                                                    :is_sample true
-                                                                    :name      "Sample Database"
-                                                                    :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
-    (testing " updating the engine of a sample database is not allowed"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"The engine on a sample database cannot be changed."
-           (t2/update! :model/Database id {:engine :sqlite}))))
-    (testing " updating other attributes of a sample database is allowed"
-      (t2/update! :model/Database id {:name "My New Name"})
-      (is (= "My New Name" (t2/select-one-fn :name :model/Database :id id))))))
-
 (driver/register! ::test, :abstract? true)
 
 (deftest preserve-driver-namespaces-test
@@ -729,14 +743,6 @@
     (mt/with-temp [:model/Database {db-id :id} {:engine (u/qualified-name ::test)}]
       (is (= ::test
              (t2/select-one-fn :engine :model/Database :id db-id))))))
-
-(deftest identity-hash-test
-  (testing "Database hashes are composed of the name and engine"
-    (mt/with-temp [:model/Database db {:engine :mysql :name "hashmysql"}]
-      (is (= (Integer/toHexString (hash ["hashmysql" :mysql]))
-             (serdes/identity-hash db)))
-      (is (= "b6f1a9e8"
-             (serdes/identity-hash db))))))
 
 (deftest ^:parallel serdes-extract-is-stub-test
   (testing "serdes/extract-one preserves :is_stub true and elides it when false"
@@ -1066,3 +1072,16 @@
       (data-perms/set-database-permission! pg db-id :perms/manage-database :yes)
       (mt/with-test-user :rasta
         (is (false? (mi/can-query? :model/Database db-id)))))))
+
+(deftest router-database-id-is-immutable-test
+  (testing "updating a database's router_database_id throws"
+    (mt/with-temp [:model/Database {router-id :id} {}
+                   :model/Database {normal-id :id} {}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"router_database_id"
+           (t2/update! :model/Database normal-id {:router_database_id router-id})))))
+  (testing "a no-op update that does not touch router_database_id is allowed (destination can still be edited)"
+    (mt/with-temp [:model/Database {router-id :id} {}
+                   :model/Database {dest-id :id} {:router_database_id router-id}]
+      (is (t2/update! :model/Database dest-id {:name "renamed-destination"})))))

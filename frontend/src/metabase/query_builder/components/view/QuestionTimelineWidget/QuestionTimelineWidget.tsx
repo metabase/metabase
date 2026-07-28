@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ViewFooterButton } from "metabase/common/components/ViewFooterButton";
+import { ViewFooterButton } from "metabase/query_builder/components/view/ViewFooterButton";
 import { getUiControls } from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import {

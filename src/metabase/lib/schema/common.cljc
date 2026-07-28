@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.common
-  (:refer-clojure :exclude [update-keys every? #?@(:clj [some])])
+  (:refer-clojure :exclude [update-keys #?@(:clj [some])])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -8,7 +8,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.performance :refer [update-keys every? #?@(:clj [some])]]))
+   [metabase.util.performance :refer [update-keys every-key? #?@(:clj [some])]]))
 
 (comment metabase.types.core/keep-me)
 
@@ -313,7 +313,7 @@
 
 (defn- kebab-cased-map? [m]
   (and (map? m)
-       (every? kebab-cased-key? (keys m))))
+       (every-key? kebab-cased-key? m)))
 
 (mr/def ::kebab-cased-map
   [:fn

@@ -54,7 +54,7 @@ export const ArchiveModal = ({
               </Box>
               <Button onClick={onClose}>{t`Cancel`}</Button>
               <FormSubmitButton
-                color="error"
+                color="feedback-negative"
                 variant="filled"
                 label={archiveButtonLabel}
                 activeLabel={archiveButtonLabel}

@@ -7,9 +7,12 @@
    [metabase.api.open-api :as open-api]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.email.messages :as messages]
+   [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
+   [metabase.session.challenge :as session.challenge]
    [metabase.session.models.session :as session]
    [metabase.session.schema :as session.schema]
    [metabase.settings.core :as setting]
@@ -28,17 +31,51 @@
 
 ;;; ## API Endpoints
 
+(def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
+
 (def ^:private login-throttlers
   {:username   (throttle/make-throttler :username)
    ;; IP Address doesn't have an actual UI field so just show error by username
    :ip-address (throttle/make-throttler :username, :attempts-threshold 50)})
 
+(def ^:private verify-throttlers
+  ;; Codes are 6 digits, so brute-force limits are load-bearing. Only failures count (see
+  ;; `call-with-failure-throttling` below), so 5 wrong codes per user per hour, not 5 logins.
+  {:user-id    (throttle/make-throttler :user-id, :attempts-threshold 5)
+   :ip-address (throttle/make-throttler :ip-address, :attempts-threshold 50)})
+
+(def ^:private email-otp-send-throttlers
+  ;; sending is expensive and spammable — every send counts, much tighter than verification
+  {:user-id    (throttle/make-throttler :user-id, :attempts-threshold 3)
+   :ip-address (throttle/make-throttler :ip-address, :attempts-threshold 20)})
+
+(defn- call-with-failure-throttling
+  "Run `f` guarded by `pairs` of `[throttler throttle-key]`. Only a thrown exception counts as an
+  attempt; successful calls are free. No-op when `MB_DISABLE_SESSION_THROTTLE` is set.
+  The MFA management endpoints have their own throttling helpers (`mfa.throttling`); the two are
+  kept separate deliberately — this one lives in OSS session code, that one in the EE module."
+  [pairs f]
+  (if throttling-disabled?
+    (f)
+    (try
+      ((reduce (fn [g [thr key]]
+                 (fn [] (throttle/do-with-throttling thr key g)))
+               f
+               pairs))
+      (catch clojure.lang.ExceptionInfo e
+        ;; `throttle/do-with-throttling`'s over-the-limit exception carries `:errors` but no
+        ;; `:status-code` (unlike `throttle/check`'s), which would surface as a 500
+        (let [data (ex-data e)]
+          (if (and (:errors data) (nil? (:status-code data)))
+            (throw (ex-info (ex-message e) (assoc data :status-code 400) e))
+            (throw e)))))))
+
 (def ^:private password-fail-message (deferred-tru "Password did not match stored password."))
 (def ^:private password-fail-snippet (deferred-tru "did not match stored password"))
 
-(mu/defn- ldap-login :- [:maybe [:map [:key ms/UUIDString]]]
-  "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
-  authenticated."
+(mu/defn- ldap-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]]
+  "If LDAP is enabled and a matching user exists return a new Session for them (or an MFA-pending
+  result map when a second factor is required), or `nil` if they couldn't be authenticated."
   [username password device-info :- request/DeviceInfo]
   (when (sso/ldap-enabled)
     (let [result (auth-identity/login! :provider/ldap
@@ -56,14 +93,15 @@
                          :errors {:password password-fail-snippet}}))
 
         (:success? result)
-        (:session result)
+        (if (:mfa/pending? result) result (:session result))
 
         :else
         (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
                                                  :status-code 401}))))))
 
-(mu/defn- email-login :- [:maybe [:map [:key ms/UUIDString]]]
-  "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
+(mu/defn- email-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]]
+  "Find a matching `User` if one exists and return a new Session for them (or an MFA-pending result
+  map when a second factor is required), or `nil` if they couldn't be authenticated."
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]
    device-info :- request/DeviceInfo]
@@ -73,11 +111,9 @@
                                       :device-info device-info})]
     (cond
       (contains? #{:invalid-credentials :server-error :authentication-expired} (:error result)) nil
-      (:success? result) (:session result)
+      (:success? result) (if (:mfa/pending? result) result (:session result))
       :else (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
                                                      :status-code 401})))))
-
-(def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
 
 (defn- throttle-check
   "Pass through to `throttle/check` but will not check if `throttling-disabled?` is true"
@@ -85,9 +121,9 @@
   (when-not throttling-disabled?
     (throttle/check throttler throttle-key)))
 
-(mu/defn- login :- session.schema/SessionSchema
-  "Attempt to login with different available methods with `username` and `password`, returning new Session ID or
-  throwing an Exception if login could not be completed."
+(mu/defn- login :- [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]
+  "Attempt to login with different available methods with `username` and `password`, returning a new Session (or an
+  MFA-pending result map when a second factor is required) or throwing an Exception if login could not be completed."
   [username    :- ms/NonBlankString
    password    :- ms/NonBlankString
    device-info :- request/DeviceInfo]
@@ -100,6 +136,32 @@
        (ex-info (str password-fail-message)
                 {:status-code 401
                  :errors      {:password password-fail-snippet}}))))
+
+(defn- session-response
+  "Ring response that sets the session cookies for a freshly created `session`.
+  Body shape: `{:id <session-key>}`. The body is the same as the `POST /api/session` success path."
+  [session request]
+  (let [response (vary-meta {:id (str (:key session))} assoc :metabase-user-id (:user_id session))]
+    (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
+
+(defenterprise verify-second-factor!
+  "Verify a second-factor code (TOTP, recovery, or emailed one-time code) for user-id, atomically
+  consuming it plus the challenge jti. Returns boolean.
+
+  OSS fallback returns false — OSS can never have issued a challenge token (the MFA gate lives in
+  EE), so this is unreachable in practice."
+  metabase-enterprise.mfa.core
+  [_user-id _code _jti]
+  false)
+
+(defenterprise send-mfa-email-otp!
+  "Generate + email a one-time fallback code for user-id's confirmed enrollment; rejects a jti that
+  already minted a session.
+
+  OSS fallback throws (unreachable, as above)."
+  metabase-enterprise.mfa.core
+  [_user-id _jti]
+  (throw (ex-info (tru "Multi-factor authentication is not available.") {:status-code 400})))
 
 (defn- do-http-401-on-error [f]
   (try
@@ -127,13 +189,20 @@
                                    [:username ms/NonBlankString]
                                    [:password ms/NonBlankString]]
    request]
-  (let [ip-address   (request/ip-address request)
-        request-time (t/zoned-date-time (t/zone-id "GMT"))
-        do-login     (fn []
-                       (let [{session-key :key, :as session} (login username password (request/device-info request))
-                             response                        (vary-meta {:id (str session-key)}
-                                                                        assoc :metabase-user-id (:user_id session))]
-                         (request/set-session-cookies request response session request-time)))]
+  (let [ip-address (request/ip-address request)
+        do-login   (fn []
+                     (let [result (login username password (request/device-info request))]
+                       (if (:mfa/pending? result)
+                         ;; First factor OK, but a second factor is required: build and sign a
+                         ;; challenge token here (OSS session machinery) and return it instead of
+                         ;; a session. No cookies are set yet.
+                         {:status 200
+                          :body   {:mfa_required    true
+                                   :methods         (:mfa/methods result)
+                                   :challenge_token (session.challenge/issue-challenge-token
+                                                     (get-in result [:user :id])
+                                                     (:mfa/first-factor result))}}
+                         (session-response result request))))]
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
@@ -246,6 +315,19 @@
   "Throttler for password_reset. There's no good field to mark so use password as a default."
   (throttle/make-throttler :password :attempts-threshold 10))
 
+(defn reset-throttlers-for-testing!
+  "Clear the accumulated state of every login/verification throttler in this namespace. Throttler
+  state is in-memory with an hour-long `:attempt-ttl-ms`, so failed attempts survive an app-db
+  snapshot restore; the testing API (see [[metabase.testing-api.api]]) exposes this so E2E runs
+  can start from a clean slate."
+  []
+  (doseq [throttler (concat (vals login-throttlers)
+                            (vals verify-throttlers)
+                            (vals email-otp-send-throttlers)
+                            (vals forgot-password-throttlers)
+                            [reset-password-throttler])]
+    (reset! (:attempts throttler) nil)))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -267,13 +349,22 @@
                       [:provider/support-access-grant
                        :provider/emailed-secret-password-reset]
                       request-body)]
-    (if (:success? auth-result)
+    (cond
+      (not (:success? auth-result))
+      (api/throw-invalid-param-exception :password (tru "Invalid reset token"))
+
+      ;; The password change succeeded, but the user is MFA-enrolled: issue no session, or anyone
+      ;; who can trigger a reset email routes around the second factor. They log in normally (and
+      ;; get challenged) with the new password.
+      (:mfa/pending? auth-result)
+      {:success true}
+
+      :else
       (let [session  (:session auth-result)
             response (vary-meta {:success true :session_id (str (:key session))}
                                 assoc :metabase-user-id (:user_id session))]
         (request/set-session-cookies request response session
-                                     (t/zoned-date-time (t/zone-id "GMT"))))
-      (api/throw-invalid-param-exception :password (tru "Invalid reset token")))))
+                                     (t/zoned-date-time (t/zone-id "GMT")))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -357,6 +448,79 @@
              [:password ms/ValidPassword]]]
   ;; if we pass the [[ms/ValidPassword]] test we're g2g
   {:valid true})
+
+;; No response schema: the success path returns a full ring response (session cookies must be set),
+;; which the response-schema machinery would validate as the body. Same constraint as
+;; `POST /api/session`. Body shape: `{:id <session-key>}`.
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/mfa/verify"
+  "Complete a two-step login by verifying a one-time code. Takes the `challenge_token` returned by
+  `POST /api/session` and either the 6-digit `code` from the user's authenticator app, one of
+  their single-use recovery codes, or an emailed one-time code; on success sets the session cookie."
+  [_route-params
+   _query-params
+   ;; `:remember` is not bound here but is part of the contract: `request/set-session-cookies`
+   ;; reads it from the raw body to decide session-vs-permanent cookie, exactly as on
+   ;; `POST /api/session` — for MFA users THIS request is the one that creates the session.
+   {challenge-token :challenge_token, code :code} :- [:map
+                                                      [:challenge_token ms/NonBlankString]
+                                                      [:code            ms/NonBlankString]
+                                                      [:remember        {:optional true} :boolean]]
+   request]
+  (let [claims (or (session.challenge/verify-challenge-token challenge-token)
+                   (throw (ex-info (tru "Authentication session expired. Please log in again.")
+                                   {:status-code 401})))
+        {:keys [jti]} claims
+        _ (when-not jti
+            (throw (ex-info (tru "Authentication session expired. Please log in again.")
+                            {:status-code 401})))
+        user-id      (:user-id claims)
+        first-factor (auth-identity/provider-string->keyword (:provider claims))]
+    ;; Throttle only failed attempts — counting successes would lock out a legitimately busy user.
+    ;; The inner fn throws on failure so call-with-failure-throttling records the attempt.
+    (call-with-failure-throttling
+     [[(verify-throttlers :ip-address) (request/ip-address request)]
+      [(verify-throttlers :user-id) user-id]]
+     (fn []
+       (when-not (verify-second-factor! user-id code jti)
+         (events/publish-event! :event/mfa-verification-failed
+                                {:object (t2/select-one :model/User :id user-id)})
+         (throw (ex-info (tru "Invalid authentication code.") {:status-code 401})))))
+    (let [user (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id)]
+      ;; the account can be deactivated (or deleted) between the password step and here; a
+      ;; challenge token must not outlive the account. Same 401 as a bad token — no oracle.
+      (when-not (:is_active user)
+        (throw (ex-info (tru "Authentication session expired. Please log in again.")
+                        {:status-code 401})))
+      (session-response (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor)
+                        request))))
+
+(api.macros/defendpoint :post "/mfa/send-email-otp" :- [:map [:success [:= true]]]
+  "Email a one-time code as a fallback second factor (for a user who lost their authenticator but
+  still has recovery codes disabled or unavailable). Requires a valid challenge token from
+  `POST /api/session`; the code is single-use with a 10-minute expiry and is accepted by
+  `POST /mfa/verify` like any other code."
+  [_route-params
+   _query-params
+   {challenge-token :challenge_token} :- [:map [:challenge_token ms/NonBlankString]]
+   request]
+  (let [claims (or (session.challenge/verify-challenge-token challenge-token)
+                   (throw (ex-info (tru "Authentication session expired. Please log in again.")
+                                   {:status-code 401})))
+        {:keys [jti]} claims
+        _ (when-not jti
+            (throw (ex-info (tru "Authentication session expired. Please log in again.")
+                            {:status-code 401})))
+        user-id (:user-id claims)
+        ip      (request/ip-address request)]
+    ;; sending is expensive and spammable — every send counts, not failure-only
+    (when-not throttling-disabled?
+      (throttle/check (email-otp-send-throttlers :ip-address) ip)
+      (throttle/check (email-otp-send-throttlers :user-id) user-id))
+    (when-not (channel.settings/email-configured?)
+      (throw (ex-info (tru "Email is not configured on this instance.") {:status-code 400})))
+    (send-mfa-email-otp! user-id jti))
+  {:success true})
 
 (defn- +log-all-request-failures [handler]
   (open-api/handler-with-open-api-spec

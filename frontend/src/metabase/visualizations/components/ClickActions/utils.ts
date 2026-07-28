@@ -38,6 +38,7 @@ Object.values(SECTIONS).map((section, index) => {
 export const getGroupedAndSortedActions = (
   clickActions: RegularClickAction[],
 ) => {
+  // Unjustified type cast. FIXME
   const groupedClickActions = _.groupBy(clickActions, "section") as {
     [key in ClickActionSection]?: RegularClickAction[];
   };

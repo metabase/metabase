@@ -71,6 +71,7 @@ export function getPieChartFormatters(
     return String(
       formatValue(value, {
         column: metricColSettings.column,
+        // Unjustified type cast. FIXME
         number_separators: metricColSettings.number_separators as string,
         number_style: "percent",
         decimals,

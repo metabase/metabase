@@ -1,21 +1,28 @@
 import cx from "classnames";
-import type { Location } from "history";
 import { Component } from "react";
 
-import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
+import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import * as actions from "metabase/reference/reference";
 import SegmentFieldDetail from "metabase/reference/segments/SegmentFieldDetail";
+import {
+  type InjectedRouteProps,
+  type Location,
+  withRouteProps,
+} from "metabase/router";
 
 import type { ClearStateProps, FetchProps } from "../reference";
-import type {
-  ReferenceRouteParams,
-  ReferenceRouteProps,
-  StateWithReference,
+import {
+  type ReferenceRouteParams,
+  type ReferenceRouteProps,
+  type StateWithReference,
+  getField,
+  getIsEditing,
+  getSegment,
+  getSegmentId,
 } from "../selectors";
-import { getField, getIsEditing, getSegment, getSegmentId } from "../selectors";
 import type { StubbedField, StubbedSegment } from "../types";
 
 import SegmentFieldSidebar from "./SegmentFieldSidebar";
@@ -89,7 +96,12 @@ class SegmentFieldDetailContainer extends Component<SegmentFieldDetailContainerP
 
 // connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(SegmentFieldDetailContainer as unknown as React.ComponentType);
+export default withRouteProps(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+  )(
+    // Unjustified type cast. FIXME
+    SegmentFieldDetailContainer as unknown as React.ComponentType<InjectedRouteProps>,
+  ),
+);

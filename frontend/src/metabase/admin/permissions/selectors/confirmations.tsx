@@ -10,9 +10,8 @@ import {
   getSchemasPermission,
   hasPermissionValueInSubgraph,
 } from "metabase/admin/permissions/utils/graph";
-import { Alert } from "metabase/common/components/Alert";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
-import { Flex, Text } from "metabase/ui";
+import { Alert, Flex, Icon, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   ConcreteTableId,
@@ -255,7 +254,7 @@ export function getViewDataPermissionsTooRestrictiveWarningModal(
       message: (
         <Flex direction="column" gap="lg">
           <Text>{coreMessage}</Text>
-          <Alert variant="warning" icon="warning">
+          <Alert size="compact" color="warning" icon={<Icon name="warning" />}>
             {resetGranularSettingsWarnging}
           </Alert>
         </Flex>
@@ -295,6 +294,7 @@ export function getRevokingAccessToAllTablesWarningModal(
     const allTableEntityIds = database.getTables().map((table) => ({
       databaseId: table.db_id,
       schemaName: table.schema_name || "",
+      // Unjustified type cast. FIXME
       tableId: table.id as ConcreteTableId,
     }));
 

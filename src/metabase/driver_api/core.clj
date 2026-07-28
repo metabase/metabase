@@ -193,6 +193,8 @@
 
 (p/import-fn lib/unique-name-generator-with-options unique-name-generator)
 
+(p/import-def qp.error-type/connection-pool-checkout-queue-full qp.error-type.connection-pool-checkout-queue-full)
+(p/import-def qp.error-type/connection-pool-checkout-timeout qp.error-type.connection-pool-checkout-timeout)
 (p/import-def qp.error-type/db qp.error-type.db)
 (p/import-def qp.error-type/driver qp.error-type.driver)
 (p/import-def qp.error-type/invalid-parameter qp.error-type.invalid-parameter)

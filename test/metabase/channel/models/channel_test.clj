@@ -55,7 +55,7 @@
         (testing "success"
           (is (some? (insert! {:details {:type    "email/handlebars-resource"
                                          :subject "Hello {{name}}"
-                                         :path    "metabase/channel/email/password_reset.hbs"}}))))
+                                         :path    "password_reset"}}))))
         (testing "invalid path"
           (is (thrown? Exception
                        (insert! {:details {:type    "email/handlebars-resource"

@@ -2,10 +2,7 @@ import type { TooltipOption } from "echarts/types/dist/shared";
 
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
 import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import {
-  GOAL_LINE_SERIES_ID,
-  TIMELINE_EVENT_SERIES_ID,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { GOAL_LINE_SERIES_ID } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getTooltipBaseOption } from "metabase/visualizations/echarts/tooltip";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 
@@ -64,10 +61,7 @@ export const getBoxPlotTooltipOption = (
 
       const { dataIndex, seriesId, seriesName, data } = params;
 
-      if (
-        seriesId === TIMELINE_EVENT_SERIES_ID ||
-        seriesId === GOAL_LINE_SERIES_ID
-      ) {
+      if (seriesId === GOAL_LINE_SERIES_ID) {
         return "";
       }
 

@@ -27,7 +27,6 @@
 
 (deftest ^:parallel backend-message?
   (testing "messages present in any .clj and .cljc files are detected as backend messages"
-    #_{:clj-kondo/ignore [:equals-true]}
     (are [source-references expected] (= expected
                                          (i18n/backend-message? {:source-references source-references}))
       ;; Simple .clj and .cljc files with and without line numbers

@@ -1,9 +1,13 @@
+import _ from "underscore";
+
 import type {
   CardId,
   CollectionId,
   DatabaseId,
   SortDirection,
   TableId,
+  TransformGraphRunSortColumn,
+  TransformGraphRunType,
   TransformId,
   TransformJobId,
   TransformJobRunSortColumn,
@@ -17,6 +21,7 @@ import type {
 const TRANSFORMS_ROOT_URL = `/data-studio/transforms`;
 const JOBS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/jobs`;
 const RUNS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/runs`;
+const INDIVIDUAL_RUNS_ROOT_URL = `${RUNS_ROOT_URL}/individual`;
 const LIBRARY_ROOT_URL = `${TRANSFORMS_ROOT_URL}/library`;
 
 export type TransformPythonLibraryParams = {
@@ -69,6 +74,10 @@ export function transformRun(transformId: TransformId) {
 
 export function transformSettings(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/settings`;
+}
+
+export function transformIndexes(transformId: TransformId) {
+  return `${TRANSFORMS_ROOT_URL}/${transformId}/indexes`;
 }
 
 export function transformDependencies(transformId: TransformId) {
@@ -194,10 +203,89 @@ export function transformRunList({
 
   const queryString = searchParams.toString();
   if (queryString.length > 0) {
-    return `${RUNS_ROOT_URL}?${queryString}`;
+    return `${INDIVIDUAL_RUNS_ROOT_URL}?${queryString}`;
   } else {
-    return RUNS_ROOT_URL;
+    return INDIVIDUAL_RUNS_ROOT_URL;
   }
+}
+
+export type TransformGraphRunListParams = {
+  page?: number;
+  types?: TransformGraphRunType[];
+  statuses?: TransformRunStatus[];
+  transformIds?: TransformId[];
+  startTime?: string;
+  endTime?: string;
+  runMethods?: TransformRunMethod[];
+  sortColumn?: TransformGraphRunSortColumn;
+  sortDirection?: SortDirection;
+};
+
+export function transformGraphRunList({
+  page,
+  types,
+  statuses,
+  transformIds,
+  startTime,
+  endTime,
+  runMethods,
+  sortColumn,
+  sortDirection,
+}: TransformGraphRunListParams = {}) {
+  const searchParams = new URLSearchParams();
+  if (page != null) {
+    searchParams.set("page", String(page));
+  }
+  types?.forEach((type) => {
+    searchParams.append("types", type);
+  });
+  statuses?.forEach((status) => {
+    searchParams.append("statuses", status);
+  });
+  transformIds?.forEach((transformId) => {
+    searchParams.append("transform-ids", String(transformId));
+  });
+  if (startTime != null) {
+    searchParams.set("start-time", startTime);
+  }
+  if (endTime != null) {
+    searchParams.set("end-time", endTime);
+  }
+  runMethods?.forEach((runMethod) => {
+    searchParams.append("run-methods", runMethod);
+  });
+  if (sortColumn != null) {
+    searchParams.set("sort-column", sortColumn);
+  }
+  if (sortDirection != null) {
+    searchParams.set("sort-direction", sortDirection);
+  }
+
+  const queryString = searchParams.toString();
+  return queryString.length > 0
+    ? `${RUNS_ROOT_URL}?${queryString}`
+    : RUNS_ROOT_URL;
+}
+
+export type CommonRunListParams = {
+  statuses?: TransformRunStatus[];
+  transformIds?: TransformId[];
+  startTime?: string;
+  endTime?: string;
+  runMethods?: TransformRunMethod[];
+};
+
+export function pickCommonRunListParams(
+  params: CommonRunListParams,
+): CommonRunListParams {
+  return _.pick(
+    params,
+    "statuses",
+    "transformIds",
+    "startTime",
+    "endTime",
+    "runMethods",
+  );
 }
 
 export function transformPythonLibrary({ path }: TransformPythonLibraryParams) {

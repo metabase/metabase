@@ -4,20 +4,46 @@
    [clojure.test :refer :all]
    [metabase.metabot.agent.streaming :as streaming]))
 
-(deftest navigate-to-part-test
-  (testing "creates correct navigate_to data part structure"
-    (let [url "/question#abc123"
-          part (streaming/navigate-to-part url)]
+(deftest viz-part-test
+  (testing "always emits a card generated_entity"
+    (let [query {:database 1 :type :query :query {:source-table 1}}
+          part  (streaming/viz-part {:entity-id "card-1"
+                                     :query-id  "q1"
+                                     :query     query
+                                     :display   :bar
+                                     :title     "My Chart"})]
       (is (= :data (:type part)))
-      (is (= "navigate_to" (:data-type part)))
-      (is (= url (:data part)))))
-  (testing "works with various URL formats"
-    (let [part1 (streaming/navigate-to-part "/model/123")
-          part2 (streaming/navigate-to-part "/metric/456")
-          part3 (streaming/navigate-to-part "/dashboard/789")]
-      (is (= "/model/123" (:data part1)))
-      (is (= "/metric/456" (:data part2)))
-      (is (= "/dashboard/789" (:data part3))))))
+      (is (= "generated_entity" (:data-type part)))
+      (is (= {:type    "card"
+              :id      "card-1"
+              :title   "My Chart"
+              :query   {:id "q1" :query query}
+              :display "bar"}
+             (:data part)))))
+  (testing "omits :display when not provided"
+    (let [part (streaming/viz-part {:entity-id "card-2"
+                                    :query-id  "q2"
+                                    :query     {:database 1}
+                                    :title     "No Display"})]
+      (is (= {:type  "card"
+              :id    "card-2"
+              :title "No Display"
+              :query {:id "q2" :query {:database 1}}}
+             (:data part)))
+      (is (not (contains? (:data part) :display))))))
+
+(deftest dashboard-entity-part-test
+  (testing "emits a dashboard generated_entity"
+    (let [part (streaming/dashboard-entity-part {:title "Orders" :url "/auto/dashboard/table/123"})]
+      (is (= :data (:type part)))
+      (is (= "generated_entity" (:data-type part)))
+      (is (= {:type "dashboard" :url "/auto/dashboard/table/123" :title "Orders"}
+             (:data part)))
+      (is (not (contains? (:data part) :id)))))
+  (testing "includes :id when provided"
+    (let [part (streaming/dashboard-entity-part {:title "Orders" :url "/dashboard/9" :id 9})]
+      (is (= {:type "dashboard" :url "/dashboard/9" :title "Orders" :id 9}
+             (:data part))))))
 
 (deftest query->question-url-test
   (testing "converts query to /question# URL"
@@ -33,32 +59,6 @@
                          :aggregation [[:count]]}}
           url (streaming/query->question-url query)]
       (is (str/starts-with? url "/question#")))))
-
-(deftest reactions->data-parts-test
-  (testing "converts redirect reactions to navigate_to data parts"
-    (let [reactions [{:type :metabot.reaction/redirect :url "/question#xyz"}]
-          parts (streaming/reactions->data-parts reactions)]
-      (is (= 1 (count parts)))
-      (is (= :data (:type (first parts))))
-      (is (= "navigate_to" (:data-type (first parts))))
-      (is (= "/question#xyz" (:data (first parts))))))
-  (testing "handles multiple reactions"
-    (let [reactions [{:type :metabot.reaction/redirect :url "/model/1"}
-                     {:type :metabot.reaction/redirect :url "/metric/2"}]
-          parts (streaming/reactions->data-parts reactions)]
-      (is (= 2 (count parts)))
-      (is (= "/model/1" (:data (first parts))))
-      (is (= "/metric/2" (:data (second parts))))))
-  (testing "ignores non-redirect reactions"
-    (let [reactions [{:type :metabot.reaction/message :message "hello"}
-                     {:type :metabot.reaction/redirect :url "/model/1"}
-                     {:type :unknown/reaction :data "foo"}]
-          parts (streaming/reactions->data-parts reactions)]
-      (is (= 1 (count parts)))
-      (is (= "/model/1" (:data (first parts))))))
-  (testing "returns empty vector for empty reactions"
-    (is (= [] (streaming/reactions->data-parts [])))
-    (is (= [] (streaming/reactions->data-parts nil)))))
 
 (deftest state-part-test
   (testing "creates state data part"
@@ -77,7 +77,6 @@
           part (streaming/todo-list-part todos)]
       (is (= :data (:type part)))
       (is (= "todo_list" (:data-type part)))
-      (is (= 1 (:version part)))
       (is (= todos (:data part)))))
   (testing "handles empty todo list"
     (let [part (streaming/todo-list-part [])]
@@ -93,7 +92,6 @@
           part (streaming/code-edit-part edit-data)]
       (is (= :data (:type part)))
       (is (= "code_edit" (:data-type part)))
-      (is (= 1 (:version part)))
       (is (= edit-data (:data part)))))
   (testing "handles complex edit data"
     (let [edit-data {:buffer_id "buf-1"
@@ -112,7 +110,6 @@
           part (streaming/transform-suggestion-part suggestion)]
       (is (= :data (:type part)))
       (is (= "transform_suggestion" (:data-type part)))
-      (is (= 1 (:version part)))
       (is (= suggestion (:data part)))))
   (testing "handles Python transform suggestion"
     (let [suggestion {:id 2
@@ -131,7 +128,6 @@
           part (streaming/adhoc-viz-part value)]
       (is (= :data (:type part)))
       (is (= "adhoc_viz" (:data-type part)))
-      (is (= 1 (:version part)))
       (is (= value (:data part)))))
   (testing "handles minimal value without title/display"
     (let [value {:query {:database 1} :link "/question#xyz"}
@@ -146,44 +142,10 @@
           part (streaming/static-viz-part value)]
       (is (= :data (:type part)))
       (is (= "static_viz" (:data-type part)))
-      (is (= 1 (:version part)))
       (is (= value (:data part))))))
-
-(deftest viz-part-test
-  (testing "inline -> generated_entity card embedding the query"
-    (let [part (streaming/viz-part {:inline?   true
-                                    :entity-id "c-1"
-                                    :query-id  "q-1"
-                                    :query     {:database 1}
-                                    :display   :bar
-                                    :title     "Orders by month"
-                                    :link      "/question#abc"})]
-      (is (= :data (:type part)))
-      (is (= "generated_entity" (:data-type part)))
-      (is (= 1 (:version part)))
-      (is (= {:type    "card"
-              :id      "c-1"
-              :query   {:id "q-1" :query {:database 1}}
-              :title   "Orders by month"
-              :display "bar"}
-             (:data part)))))
-  (testing "omits display when absent"
-    (let [part (streaming/viz-part {:inline?   true
-                                    :entity-id "c-1"
-                                    :query-id  "q-1"
-                                    :query     {:database 1}
-                                    :title     "Orders by month"})]
-      (is (= "Orders by month" (:title (:data part))))
-      (is (not (contains? (:data part) :display)))))
-  (testing "non-inline -> navigate_to link"
-    (let [part (streaming/viz-part {:inline? false
-                                    :link    "/question#abc"})]
-      (is (= "navigate_to" (:data-type part)))
-      (is (= "/question#abc" (:data part))))))
 
 (deftest data-type-constants-test
   (testing "data type constants are defined correctly"
-    (is (= "navigate_to" streaming/navigate-to-type))
     (is (= "state" streaming/state-type))
     (is (= "todo_list" streaming/todo-list-type))
     (is (= "code_edit" streaming/code-edit-type))
@@ -196,41 +158,10 @@
   (testing "state parts are not persisted (value lives on MetabotConversation.state)"
     (is (false? (streaming/persistable-data-part? (streaming/state-part {:queries {}})))))
   (testing "other parts are persisted"
-    (is (true? (streaming/persistable-data-part? (streaming/navigate-to-part "/question/1"))))
+    (is (true? (streaming/persistable-data-part? (streaming/todo-list-part []))))
     (is (true? (streaming/persistable-data-part? {:type :text :text "hi"})))))
 
 ;;; Transducer Tests
-
-(deftest expand-reactions-xf-test
-  (testing "expands reactions from tool-output parts"
-    (let [parts [{:type :tool-output
-                  :id "t1"
-                  :result {:output "done"
-                           :reactions [{:type :metabot.reaction/redirect :url "/question#abc"}]}}]
-          result (into [] streaming/expand-reactions-xf parts)]
-      (is (= 2 (count result)))
-      (is (= :tool-output (:type (first result))))
-      (is (= :data (:type (second result))))
-      (is (= "navigate_to" (:data-type (second result))))))
-  (testing "passes through non-tool-output parts unchanged"
-    (let [parts [{:type :text :text "hello"}
-                 {:type :usage :tokens 100}]
-          result (into [] streaming/expand-reactions-xf parts)]
-      (is (= parts result))))
-  (testing "handles tool-output without reactions"
-    (let [parts [{:type :tool-output :id "t1" :result {:output "done"}}]
-          result (into [] streaming/expand-reactions-xf parts)]
-      (is (= 1 (count result)))
-      (is (= :tool-output (:type (first result))))))
-  (testing "handles multiple reactions from single tool"
-    (let [parts [{:type :tool-output
-                  :id "t1"
-                  :result {:reactions [{:type :metabot.reaction/redirect :url "/a"}
-                                       {:type :metabot.reaction/redirect :url "/b"}]}}]
-          result (into [] streaming/expand-reactions-xf parts)]
-      (is (= 3 (count result)))
-      (is (= "/a" (:data (second result))))
-      (is (= "/b" (:data (nth result 2)))))))
 
 (deftest expand-data-parts-xf-test
   (testing "expands data-parts from tool-output results"
@@ -299,27 +230,23 @@
           parts [{:type :tool-output
                   :id "t1"
                   :result {:structured-output {:query-id "q1" :query query}
-                           :reactions [{:type :metabot.reaction/redirect :url "/nav"}]
                            :data-parts [{:type :data :data-type "todo_list" :data []}]}}
                  {:type :text :text "[Link](metabase://query/q1)"}]
           result (into [] (streaming/post-process-xf {} {} (atom {})) parts)]
-      ;; Should have: tool-output, navigate_to data part, todo_list data part, resolved text
-      (is (= 4 (count result)))
+      ;; Should have: tool-output, todo_list data part, resolved text
+      (is (= 3 (count result)))
       (is (= :tool-output (:type (nth result 0))))
-      (is (= "navigate_to" (:data-type (nth result 1))))
-      (is (= "todo_list" (:data-type (nth result 2))))
-      (is (re-find #"\[Link\]\(/question#" (:text (nth result 3))))))
+      (is (= "todo_list" (:data-type (nth result 1))))
+      (is (re-find #"\[Link\]\(/question#" (:text (nth result 2))))))
   (testing "works with empty parts"
     (let [result (into [] (streaming/post-process-xf {} {} (atom {})) [])]
       (is (= [] result))))
-  (testing "preserves order: tool-output, reactions, data-parts, text"
+  (testing "preserves order: tool-output, data-parts, text"
     (let [parts [{:type :tool-output
                   :id "t1"
-                  :result {:reactions [{:type :metabot.reaction/redirect :url "/r"}]
-                           :data-parts [{:type :data :data-type "dp"}]}}
+                  :result {:data-parts [{:type :data :data-type "dp"}]}}
                  {:type :text :text "text"}]
           result (into [] (streaming/post-process-xf {} {} (atom {})) parts)]
       (is (= :tool-output (:type (nth result 0))))
-      (is (= "navigate_to" (:data-type (nth result 1))))
-      (is (= "dp" (:data-type (nth result 2))))
-      (is (= "text" (:text (nth result 3)))))))
+      (is (= "dp" (:data-type (nth result 1))))
+      (is (= "text" (:text (nth result 2)))))))

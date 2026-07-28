@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupListBreakingGraphNodesEndpoint,
@@ -12,6 +11,8 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
+import { Route, withRouteProps } from "metabase/router";
 import type * as Urls from "metabase/urls";
 import type { DependencyDiagnosticsMode } from "metabase-enterprise/monitor/dependency-diagnostics/components/types";
 import type {
@@ -82,13 +83,21 @@ function setup({
 
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
-  const PageComponent =
+  const PageComponent = withRouteProps(
     mode === "broken"
       ? BrokenDependencyDiagnosticsPage
-      : UnreferencedDependencyDiagnosticsPage;
+      : UnreferencedDependencyDiagnosticsPage,
+  );
 
   const { history } = renderWithProviders(
-    <Route path={getPageUrl(mode, {})} component={PageComponent} />,
+    <Route
+      path={getPageUrl(mode, {})}
+      element={
+        <MonitorContent>
+          <PageComponent />
+        </MonitorContent>
+      }
+    />,
     {
       withRouter: true,
       initialRoute: getPageUrl(mode, urlParams),
@@ -125,6 +134,16 @@ describe("DependencyDiagnosticsPage", () => {
       const list = await screen.findByRole("treegrid");
       expect(await within(list).findByText("Question 1")).toBeInTheDocument();
       expect(await within(list).findByText("Question 2")).toBeInTheDocument();
+    });
+
+    it("renders selected row details in the Monitor sidebar outlet", async () => {
+      setup({ nodes: CARD_NODES });
+
+      const list = await screen.findByRole("treegrid");
+      await userEvent.click(await within(list).findByText("Question 1"));
+
+      const sidebarRegion = await screen.findByTestId("monitor-sidebar-region");
+      expect(sidebarRegion).toHaveTextContent("Question 1");
     });
   });
 

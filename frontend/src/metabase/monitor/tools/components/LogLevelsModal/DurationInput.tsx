@@ -26,6 +26,7 @@ export const DurationInput = () => {
           // rendering long error message for 80px-wide input messes up the layout
           // so this error message will be displayed under the form instead
           error={null}
+          allowDecimal={false}
           id={id}
           name="duration"
           placeholder={t`Duration`}

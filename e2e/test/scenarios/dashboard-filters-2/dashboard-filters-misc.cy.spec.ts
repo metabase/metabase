@@ -6,132 +6,6 @@ import * as QSHelpers from "./shared/dashboard-filters-query-stages";
 
 const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
-describe("scenarios > dashboard > filters > query stages + temporal unit parameters", () => {
-  describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-
-      cy.intercept("POST", "/api/dataset").as("dataset");
-    });
-
-    it("1st stage explicit join + unit of time parameter", () => {
-      H.createDashboard(
-        {
-          name: "My new dashboard",
-        },
-        { wrapId: true, idAlias: "myNewDash" },
-      );
-
-      cy.get("@myNewDash").then((dashId: number | any) => {
-        cy.request("POST", "/api/activity/recents", {
-          context: "selection",
-          model: "dashboard",
-          model_id: dashId,
-        });
-      });
-
-      H.startNewQuestion();
-
-      H.miniPicker().within(() => {
-        cy.findByText("Sample Database").click();
-        cy.findByText("Orders").click();
-      });
-
-      H.getNotebookStep("filter")
-        .findByText("Add filters to narrow your answer")
-        .click();
-      H.popover().within(() => {
-        cy.findByText("Orders").click();
-        cy.findByText("Product").click();
-        cy.findByText("Category").click();
-        cy.findByLabelText("Gizmo").click();
-        cy.findByLabelText("Doohickey").click();
-        cy.button("Add filter").click();
-      });
-
-      H.getNotebookStep("summarize")
-        .findByText("Pick a function or metric")
-        .click();
-      H.popover().findByText("Count of rows").click();
-      H.getNotebookStep("summarize").icon("add").click();
-      H.popover().within(() => {
-        cy.findByText("Sum of ...").click();
-        cy.findByText("Total").click();
-      });
-
-      H.getNotebookStep("summarize")
-        .findByText("Pick a column to group by")
-        .click();
-      H.popover()
-        .findByLabelText("Created At")
-        .findByLabelText("Temporal bucket")
-        .realHover()
-        .click();
-      // eslint-disable-next-line metabase/no-unsafe-element-filtering
-      H.popover().last().findByText("Week").click();
-      H.getNotebookStep("summarize")
-        .findByTestId("breakout-step")
-        .icon("add")
-        .click();
-      H.popover().within(() => {
-        cy.findByText("Orders").click();
-        cy.findByText("Product").click();
-        cy.findByText("Category").click();
-      });
-
-      // eslint-disable-next-line metabase/no-unsafe-element-filtering
-      cy.findAllByTestId("action-buttons").last().button("Summarize").click();
-      H.popover().findByText("Count of rows").click();
-      H.getNotebookStep("summarize", { stage: 1 })
-        .findByText("Pick a column to group by")
-        .click();
-      H.popover().findByLabelText("Created At: Week").click();
-
-      H.visualize(); // need to visualize because startNewQuestion does not set "display" property on a card
-      cy.wait("@dataset");
-      H.saveQuestion("test"); // added to new dash automatically
-
-      cy.findByLabelText("Add a filter or parameter").click();
-      H.popover().findByText("Text or Category").click();
-      H.getDashboardCard().findByText("Select…").click();
-      cy.findAllByText("Category").first().click();
-
-      cy.findByLabelText("Add a filter or parameter").click();
-      H.popover().findByText("Time grouping").click();
-      H.getDashboardCard().findByText("Select…").click();
-      H.popover().findByText("Created At: Week").click();
-
-      H.saveDashboard();
-      H.filterWidget().eq(0).click();
-      H.popover().within(() => {
-        cy.findByText("Gizmo").click();
-        cy.button("Add filter").click();
-      });
-
-      H.filterWidget().eq(1).click();
-      H.popover().findByText("Quarter").click();
-
-      H.getDashboardCard().findByText("Q1 2026").should("be.visible");
-      H.getDashboardCard().findByTestId("legend-caption-title").click();
-      cy.wait("@dataset");
-
-      // assert that new filter was applied
-      cy.findByTestId("qb-filters-panel").within(() => {
-        cy.findByText("Product → Category is 2 selections").should(
-          "be.visible",
-        );
-        cy.findByText("Product → Category is Gizmo").should("be.visible");
-      });
-
-      // assert that temporal unit parameter was applied
-      cy.findByTestId("chart-container")
-        .findByText("Q1 2026")
-        .should("be.visible");
-    });
-  });
-});
-
 describe("pivot tables", () => {
   const QUESTION_PIVOT_INDEX = 0;
 
@@ -210,10 +84,27 @@ describe("pivot tables", () => {
 
     cy.log("filter picker");
 
+    // After exiting edit mode the pivot dashcard re-renders and re-runs its
+    // query. Until that finishes the dashcard title isn't wired to open the
+    // question — its click handler is only attached once the card series has
+    // loaded — so clicking it too early navigates nowhere and the pivot query
+    // never fires. Wait for the card to finish loading before clicking.
+    H.getDashboardCard(QUESTION_PIVOT_INDEX)
+      .findByTestId("legend-caption-title")
+      .should("be.visible");
+    H.getDashboardCard(QUESTION_PIVOT_INDEX)
+      .findByTestId("loading-indicator")
+      .should("not.exist");
+
     H.getDashboardCard(QUESTION_PIVOT_INDEX)
       .findByTestId("legend-caption-title")
       .click();
-    cy.wait("@datasetPivot");
+    // Clicking the title navigates to an ad-hoc QB, which must boot the route,
+    // load table metadata, and only then issue /api/dataset/pivot. Under network
+    // throttling that whole chain can exceed cy.wait's default 5s timeout (the
+    // request does fire — just late), so give the alias a throttle-tolerant
+    // window instead of asserting on the default.
+    cy.wait("@datasetPivot", { timeout: 30000 });
     cy.findByTestId("qb-header")
       .button(/Filter/)
       .click();

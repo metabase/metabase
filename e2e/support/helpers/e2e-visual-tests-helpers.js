@@ -1,12 +1,7 @@
 import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import { color as getColor } from "metabase/ui/colors";
-import { Icons } from "metabase/ui/components/icons/Icon/icons";
 import { GOAL_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/goal-line.ts";
 import { TREND_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/trend-line.ts";
-import {
-  setSvgColor,
-  svgToDataUri,
-} from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 
 import { isFixedPositionElementVisible } from "./e2e-element-visibility-helpers";
 
@@ -57,14 +52,8 @@ export function getXYTransform(element) {
   return { x, y };
 }
 
-export function echartsIcon(name, isSelected = false) {
-  const iconSvg = setSvgColor(
-    Icons[name].source,
-    getColor(isSelected ? "brand" : "text-disabled"),
-  );
-  const dataUri = svgToDataUri(iconSvg);
-
-  return echartsContainer().find(`image[href="${dataUri}"]`);
+export function timelineEventChip(label) {
+  return cy.get(`[data-testid="timeline-event-chip"][aria-label="${label}"]`);
 }
 
 export function chartGridLines() {

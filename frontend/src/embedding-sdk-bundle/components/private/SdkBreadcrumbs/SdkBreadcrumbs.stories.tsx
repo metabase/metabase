@@ -47,6 +47,7 @@ const SdkBreadcrumbStory = () => {
           const type = match<string, SdkBreadcrumbItemType>(item.model)
             .with("card", () => "question")
             .with("dataset", () => "model")
+            // Unjustified type cast. FIXME
             .otherwise((model) => model as SdkBreadcrumbItemType);
 
           setView({ type, id: item.id });

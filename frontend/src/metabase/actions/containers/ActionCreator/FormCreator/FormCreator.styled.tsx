@@ -24,8 +24,8 @@ export const FieldSettingsButtonsContainer = styled.div`
 
 export const WarningBanner = styled.div`
   padding: var(--mantine-spacing-md);
-  border: 1px solid var(--mb-color-warning);
+  border: 1px solid var(--mb-color-feedback-warning);
   border-radius: var(--mantine-spacing-sm);
-  background: ${() => alpha("warning", 0.1)};
+  background: ${() => alpha("feedback-warning", 0.1)};
   line-height: 1.25rem;
 `;

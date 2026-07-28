@@ -1,11 +1,11 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateCollectionMutation } from "metabase/api";
 import { getCollectionPathAsArray } from "metabase/common/collections/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";

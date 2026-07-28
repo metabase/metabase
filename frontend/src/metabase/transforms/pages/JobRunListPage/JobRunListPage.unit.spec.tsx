@@ -1,11 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
+  setupDatabaseListEndpoint,
   setupGetTransformJobEndpoint,
   setupListJobRunTransformRunsEndpoint,
   setupListTransformJobRunsEndpoint,
+  setupListTransformJobTransformsEndpoint,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import {
@@ -16,12 +17,14 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import type {
   TransformJobRun,
   TransformRunForJobRun,
 } from "metabase-types/api";
 import {
+  createMockDatabase,
   createMockListTransformJobRunsResponse,
   createMockTransformJob,
   createMockTransformJobRun,
@@ -48,6 +51,8 @@ function setup({
 
   setupUserMetabotPermissionsEndpoint();
   setupGetTransformJobEndpoint(job);
+  setupDatabaseListEndpoint([createMockDatabase()]);
+  setupListTransformJobTransformsEndpoint(JOB_ID, []);
   setupListTransformJobRunsEndpoint(JOB_ID, () =>
     createMockListTransformJobRunsResponse({
       data: currentRuns,
@@ -61,7 +66,7 @@ function setup({
 
   const path = "/data-studio/transforms/jobs/:jobId/runs";
 
-  renderWithProviders(<Route path={path} component={JobRunListPage} />, {
+  renderWithProviders(<Route path={path} element={<JobRunListPage />} />, {
     withRouter: true,
     initialRoute,
   });

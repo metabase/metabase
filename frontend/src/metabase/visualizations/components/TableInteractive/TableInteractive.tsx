@@ -317,6 +317,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       );
       const clicked = getCellClickedObject(columnIndex, rowIndex);
 
+      // Unjustified type cast. FIXME
       const isLink = (formattedValue as any)?.type === ExternalLink;
       if (getIsCellClickable(clicked) && !isLink) {
         onVisualizationClick?.({

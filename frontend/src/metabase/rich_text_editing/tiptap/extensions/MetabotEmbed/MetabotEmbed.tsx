@@ -22,8 +22,9 @@ import {
 import { useDispatch, useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
-import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
+import type { MetabotGenerateContentRequest } from "metabase-types/api";
 
+import { buildDraftCard } from "../shared/draft-card";
 import { wrapCardEmbed } from "../shared/layout";
 
 import S from "./MetabotEmbed.module.css";
@@ -194,34 +195,14 @@ export const MetabotComponent = memo(
       }
 
       const newCardId = host.actions.generateDraftCardId();
-      const card: Card = {
-        ...data.draft_card,
+      const card = buildDraftCard({
         id: newCardId,
-        entity_id: "entity_id" as Card["entity_id"],
-        created_at: "",
-        updated_at: "",
         name: data.draft_card.name || t`Exploration`,
-        description: null,
-        type: "question",
-        public_uuid: null,
-        enable_embedding: false,
-        embedding_params: null,
-        can_write: false,
-        can_restore: false,
-        can_delete: false,
-        can_manage_db: false,
-        initially_published_at: null,
-        collection_id: null,
-        collection_position: null,
-        dashboard: null,
-        dashboard_id: null,
-        dashboard_count: null,
-        result_metadata: [],
-        last_query_start: null,
-        average_query_time: null,
-        cache_ttl: null,
-        archived: false,
-      };
+        display: data.draft_card.display,
+        dataset_query: data.draft_card.dataset_query,
+        visualization_settings: data.draft_card.visualization_settings,
+        database_id: data.draft_card.database_id,
+      });
 
       host.analytics.trackAskMetabot(document);
       await dispatch(host.actions.loadMetadataForDocumentCard(card));

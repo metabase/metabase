@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import type Question from "metabase-lib/v1/Question";
-import type FieldEntity from "metabase-lib/v1/metadata/Field";
+import type { FieldTypeInfo } from "metabase-lib/v1/types/utils/isa";
 import {
   isBoolean,
   isInteger,
@@ -19,7 +19,10 @@ const hasSingleIntegerPk = (model?: Question) => {
   return pkFields?.length === 1 && isInteger(pkFields[0]);
 };
 
-export const canIndexField = (field: FieldEntity, model: Question): boolean => {
+export const canIndexField = (
+  field: FieldTypeInfo,
+  model: Question,
+): boolean => {
   return !!(isString(field) && !isBoolean(field) && hasSingleIntegerPk(model));
 };
 

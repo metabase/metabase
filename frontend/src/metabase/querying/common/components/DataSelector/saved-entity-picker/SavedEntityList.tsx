@@ -16,8 +16,8 @@ import { CARD_INFO } from "./constants";
 
 interface SavedEntityListProps {
   type: CardType;
-  selectedId: string;
-  databaseId: DatabaseId;
+  selectedId?: string;
+  databaseId?: DatabaseId | null;
   collection?: Collection;
   onSelect: (tableOrModelId: string) => void;
 }

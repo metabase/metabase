@@ -205,7 +205,7 @@ export interface VisualizationProps {
   ) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
-  onOpenTimelines?: () => void;
+  onOpenTimelines?: (eventIds?: number[]) => void;
 
   canToggleSeriesVisibility?: boolean;
   onUpdateWarnings?: any;
@@ -228,7 +228,7 @@ export type VisualizationPassThroughProps = {
   zoomedRowIndex?: number;
   onZoomRow?: (rowIndex: number) => void;
   onDeselectTimelineEvents?: () => void;
-  onOpenTimelines?: () => void;
+  onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
 
   // Table
@@ -262,7 +262,7 @@ export type VisualizationPassThroughProps = {
    * Items that will be shown in a menu when the title is clicked.
    * Used for visualizer cards to jump to underlying questions
    */
-  titleMenuItems?: ReactNode[];
+  titleMenuItems?: ReactNode;
 
   // frontend/src/metabase/visualizations/components/ChartSettings/ChartSettingsVisualization/ChartSettingsVisualization.tsx
   isSettings?: boolean;
@@ -276,9 +276,17 @@ export type VisualizationPassThroughProps = {
    * Props used for Audit Table visualization
    */
   isSelectable?: boolean;
-  rowChecked?: [];
-  onAllSelectClick?: () => void;
-  onRowSelectClick?: () => void;
+  rowChecked?: Record<string, boolean>;
+  onAllSelectClick?: (event: { rows: RowValues[] }) => void;
+  onRowSelectClick?: (event: { row: RowValues; rowIndex: number }) => void;
+  isSortable?: boolean;
+  sorting?: AuditTableSorting;
+  onSortingChange?: (sorting: AuditTableSorting) => void;
+};
+
+export type AuditTableSorting = {
+  column: string;
+  isAscending: boolean;
 };
 
 export type ColumnSettingDefinition<TValue, TProps = unknown> = {
@@ -622,10 +630,7 @@ export type VisualizationGridSize = {
 
 // TODO: add component property for the react component instead of the intersection
 export type Visualization = ComponentType<
-  Omit<VisualizationProps, "width" | "height"> & {
-    width?: number | null;
-    height?: number | null;
-  } & VisualizationPassThroughProps
+  VisualizationProps & VisualizationPassThroughProps
 > &
   VisualizationDefinition;
 
@@ -635,7 +640,7 @@ export type VisualizationDefinition = {
   getUiName: () => string;
   identifier: VisualizationDisplay;
   aliases?: string[];
-  iconName: IconName;
+  iconName?: IconName;
   iconUrl?: string;
   hasEmptyState?: boolean;
   isDev?: boolean; // is custom viz in dev mode

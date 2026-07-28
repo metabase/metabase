@@ -1330,120 +1330,9 @@
   (custom-migrations.util/with-temp-schedule! [scheduler]
     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))))
 
-(defn- card-ids-depending-on-database
-  "Set of report_card ids that depend on `database-id` directly (their own query targets it) or transitively
-  (a card built on such a card via source_card_id, to any depth)."
-  [database-id]
-  (loop [frontier (into #{} (map :id) (t2/query {:select [:id] :from [:report_card]
-                                                 :where  [:= :database_id database-id]}))
-         acc      #{}]
-    (if (empty? frontier)
-      acc
-      (let [acc'  (into acc frontier)
-            next* (into #{} (map :id) (t2/query {:select [:id] :from [:report_card]
-                                                 :where  [:and [:in :source_card_id frontier]
-                                                          [:not [:in :id acc']]]}))]
-        (recur next* acc')))))
-
-(defn- collection-has-survivors?
-  "True if `coll-id` still holds anything after sample content is gone: any content row filed into it, or any
-  surviving child collection (whose path is exactly `child-location`). Checked bottom-up so a child that itself
-  survived keeps its parent alive."
-  [coll-id child-location]
-  (boolean
-   (or (seq (t2/query {:select [1] :from [:collection] :where [:= :location child-location] :limit 1}))
-       (some (fn [table]
-               (seq (t2/query {:select [1] :from [table] :where [:= :collection_id coll-id] :limit 1})))
-             [:report_card :report_dashboard :native_query_snippet :pulse :timeline :document
-              :metabase_table :transform]))))
-
-(defn- remove-sqlite-sample-database-on-downgrade!
-  "Delete the SQLite sample database and everything that depends on it - its tables/fields, every Card whose
-  query targets it (directly or transitively through source_card_id), those cards' dashcards, and Dashboards
-  left empty as a result - even when that content was user-created, because it cannot work without the database.
-
-  The Example collections are then pruned, bottom-up: a sample collection is deleted only if nothing is left in
-  it once the sample content is gone (no content rows, no surviving child collection); a collection a user kept
-  their own content in is left intact. Permission records for the deleted collections go with them.
-
-  Children are deleted explicitly, bottom-up, rather than relying on ON DELETE CASCADE: MySQL 9.7 resolves
-  multi-level cascade fan-outs incompletely, leaving orphaned rows that later break ALTER TABLE statements which
-  re-validate foreign keys."
-  []
-  (when-let [sample-db-id (:id (t2/query-one {:select [:id]
-                                              :from   [:metabase_database]
-                                              :where  [:and [:= :is_sample true] [:= :engine "sqlite"]]}))]
-    (let [card-ids               (card-ids-depending-on-database sample-db-id)
-          field-ids-q            {:select [:id]
-                                  :from   [:metabase_field]
-                                  :where  [:in :table_id {:select [:id]
-                                                          :from   [:metabase_table]
-                                                          :where  [:= :db_id sample-db-id]}]}
-          affected-dashboard-ids (if (empty? card-ids)
-                                   #{}
-                                   (->> (t2/query {:select-distinct [:dashboard_id]
-                                                   :from            [:report_dashboardcard]
-                                                   :where           [:in :card_id card-ids]})
-                                        (into #{} (map :dashboard_id))))]
-      (when (seq card-ids)
-        (t2/query {:delete-from :dashboardcard_series
-                   :where       [:or
-                                 [:in :card_id card-ids]
-                                 [:in :dashboardcard_id {:select [:id]
-                                                         :from   [:report_dashboardcard]
-                                                         :where  [:in :card_id card-ids]}]]})
-        (t2/query {:delete-from :report_dashboardcard :where [:in :card_id card-ids]})
-        (t2/query {:delete-from :parameter_card
-                   :where       [:or
-                                 [:in :card_id card-ids]
-                                 [:and [:= :parameterized_object_type "card"]
-                                  [:in :parameterized_object_id card-ids]]]})
-        (t2/query {:delete-from :report_card :where [:in :id card-ids]}))
-      (t2/query {:delete-from :dimension :where [:in :field_id field-ids-q]})
-      (t2/query {:delete-from :metabase_field
-                 :where       [:in :table_id {:select [:id]
-                                              :from   [:metabase_table]
-                                              :where  [:= :db_id sample-db-id]}]})
-      (t2/query {:delete-from :metabase_table :where [:= :db_id sample-db-id]})
-      (t2/query {:delete-from :metabase_database :where [:= :id sample-db-id]})
-      (when (seq affected-dashboard-ids)
-        ;; A dashboard that depended on the sample DB is removed once no card-backed dashcard survives - even if
-        ;; text/heading dashcards remain (the example dashboard is built entirely from sample cards plus headings).
-        ;; A dashboard that still has a real card of its own (e.g. a user mixed in another card) is left alone.
-        (let [non-empty (->> (t2/query {:select-distinct [:dashboard_id]
-                                        :from            [:report_dashboardcard]
-                                        :where           [:and [:in :dashboard_id affected-dashboard-ids]
-                                                          [:not= :card_id nil]]})
-                             (into #{} (map :dashboard_id)))
-              empty-ids (remove non-empty affected-dashboard-ids)]
-          (when (seq empty-ids)
-            (t2/query {:delete-from :report_dashboardcard :where [:in :dashboard_id empty-ids]})
-            (t2/query {:delete-from :dashboard_tab :where [:in :dashboard_id empty-ids]})
-            (t2/query {:delete-from :parameter_card
-                       :where       [:and [:= :parameterized_object_type "dashboard"]
-                                     [:in :parameterized_object_id empty-ids]]})
-            (t2/query {:delete-from :report_dashboard :where [:in :id empty-ids]}))))
-      ;; Prune the Example collections deepest-first, so an emptied child is gone before its parent is judged.
-      (doseq [{:keys [id location]} (->> (t2/query {:select [:id :location] :from [:collection] :where [:= :is_sample true]})
-                                         (sort-by (comp count :location) >))]
-        (when-not (collection-has-survivors? id (str location id "/"))
-          (t2/query {:delete-from :permissions
-                     :where       [:or
-                                   [:= :collection_id id]
-                                   [:in :object [(format "/collection/%d/" id)
-                                                 (format "/collection/%d/read/" id)]]]})
-          (t2/query {:delete-from :collection :where [:= :id id]}))))))
-
-;; The bundled sample database moved from H2 to SQLite. If an instance running a SQLite-sample
-;; version is downgraded to an H2-sample version, the older code cannot use the SQLite sample
-;; database (it has the wrong engine/details) and would leave it broken. On downgrade we therefore
-;; remove the SQLite sample database and the content left dangling by it, and we do NOT restore an
-;; H2 sample database. This mirrors the upgrade behavior in
-;; metabase.sample-data.impl/replace-sample-database!. There is no forward migration: the upgrade
-;; (H2 -> SQLite) replacement is handled at startup, not here.
-(define-reversible-migration MigrateAwayFromSqliteSampleDatabaseOnDowngrade
-  (log/info "No forward migration for MigrateAwayFromSqliteSampleDatabaseOnDowngrade")
-  (remove-sqlite-sample-database-on-downgrade!))
+;; No-op. The SQLite <-> H2 sample database engine swap is handled in place at startup
+;; (metabase.sample-data.impl). Kept because a shipped v63 build ran a delete-based rollback here.
+(define-reversible-migration MigrateAwayFromSqliteSampleDatabaseOnDowngrade nil nil)
 
 ;; when card display is area or bar,
 ;; 1. set the display key to :stackable.stack_display value OR leave it the same
@@ -2326,3 +2215,25 @@
                              :where  [:and
                                       [:not= :embed_url nil]
                                       [:= :embedding_hostname nil]]})))
+
+(define-migration BackfillMfaConfirmedAt
+  ;; MFA enrollment confirmation used to live only inside the credentials JSON — encrypted at
+  ;; rest when MB_ENCRYPTION_SECRET_KEY is set, and therefore invisible to SQL. Lift it into the
+  ;; new auth_identity.confirmed_at column so enrollment state is queryable (admin visibility of
+  ;; users without 2FA; Phase 2 mfa-required). The JSON keeps working as the source for rows
+  ;; written by older code; new code writes only the column.
+  (run! (fn [{:keys [id credentials]}]
+          (let [creds        (encrypted-json-out credentials)
+                confirmed-at (when (map? creds)
+                               (try
+                                 (some-> ^String (:confirmed_at creds) java.time.OffsetDateTime/parse)
+                                 (catch Exception _ nil)))]
+            (when confirmed-at
+              (t2/query {:update :auth_identity
+                         :set    {:confirmed_at confirmed-at}
+                         :where  [:= :id id]}))))
+        (t2/reducible-query {:select [:id :credentials]
+                             :from   [:auth_identity]
+                             :where  [:and
+                                      [:= :provider "totp"]
+                                      [:= :confirmed_at nil]]})))

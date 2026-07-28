@@ -7,10 +7,13 @@ function getWithFallback<K, V>(
   key: K,
   fallback: () => V,
 ): V {
+  // Unjustified type cast. FIXME
   if ("has" in map && map.has(key as any)) {
+    // Unjustified type cast. FIXME
     return map.get(key as any)!;
   } else {
     const value = fallback();
+    // Unjustified type cast. FIXME
     map.set(key as any, value);
     return value;
   }
@@ -20,7 +23,7 @@ type CacheValue = unknown;
 type CacheMap = Map<unknown, CacheValue | CacheMap>;
 
 const rootCache = new WeakMap<object, CacheMap>();
-const createMap = () => new Map() as CacheMap;
+const createMap = (): CacheMap => new Map();
 
 export function memoize<T extends (...args: any[]) => any>(fn: T): T {
   const memoized = (...args: Parameters<T>): ReturnType<T> => {
@@ -40,6 +43,7 @@ export function memoize<T extends (...args: any[]) => any>(fn: T): T {
     return getWithFallback(currentMap, lastKey, () => fn(...args));
   };
 
+  // Unjustified type cast. FIXME
   return memoized as T;
 }
 
@@ -48,6 +52,7 @@ export function useMemoizedCallback<T extends (...args: any[]) => any>(
   deps: React.DependencyList = [],
 ): T {
   return useMemo(() => {
+    // Unjustified type cast. FIXME
     return memoize((...args: Parameters<T>): ReturnType<T> => {
       return callback(...args);
     }) as T;

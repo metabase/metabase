@@ -241,8 +241,8 @@
   [conn]
   (u/index-by :doc_id #(select-keys % [:entity_type :entity_local_id])
               (jdbc/execute! conn
-                             [(format "SELECT doc_id, entity_type, entity_local_id FROM \"%s\""
-                                      index-table/*vectors-table*)]
+                             [(format "SELECT doc_id, entity_type, entity_local_id FROM %s"
+                                      (index-table/vectors-table-sql))]
                              {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
 (defn- stored-docs-for-entity
@@ -255,8 +255,8 @@
           (comp (filter #(= target-class (entity-class %)))
                 (map (juxt :doc_id #(select-keys % [:entity_type :entity_local_id]))))
           (jdbc/execute! conn
-                         [(format "SELECT doc_id, entity_type, entity_local_id FROM \"%s\" WHERE entity_local_id = ?"
-                                  index-table/*vectors-table*)
+                         [(format "SELECT doc_id, entity_type, entity_local_id FROM %s WHERE entity_local_id = ?"
+                                  (index-table/vectors-table-sql))
                           entity-local-id]
                          {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
 
@@ -289,7 +289,7 @@
                         docs)]
       (when (seq records)
         (jdbc/execute! conn
-                       (-> (sql.helpers/insert-into (keyword index-table/*vectors-table*))
+                       (-> (sql.helpers/insert-into (keyword (index-table/vectors-table)))
                            (sql.helpers/values (vec records))
                            (sql.helpers/on-conflict :doc_id)
                            (sql.helpers/do-nothing)
@@ -299,7 +299,7 @@
 (defn- delete-rows! [conn doc-ids]
   (when (seq doc-ids)
     (jdbc/execute! conn
-                   (-> (sql.helpers/delete-from (keyword index-table/*vectors-table*))
+                   (-> (sql.helpers/delete-from (keyword (index-table/vectors-table)))
                        (sql.helpers/where [:in :doc_id (vec doc-ids)])
                        (sql/format {:quoted true})))))
 
@@ -316,15 +316,19 @@
         (jdbc/execute-one! conn
                            [(format (str "SELECT count(*) AS documents, "
                                          "count(distinct (entity_type, entity_local_id)) AS entities "
-                                         "FROM \"%s\"")
-                                    index-table/*vectors-table*)]
+                                         "FROM %s")
+                                    (index-table/vectors-table-sql))]
                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     {:documents documents :entities entities}))
+
+(defn- capture-reconcile-watermark [conn]
+  (:now (jdbc/execute-one! conn ["SELECT now() AS now"]
+                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
 ;; Scalability — targeted writes, full-diff backstop.
 ;; The full diff is O(total index size) per run, not O(changes). Embeddings — the only expensive resource —
 ;; are already change-scoped (only a new doc_text is embedded; an idle run embeds nothing), and the O(total)
-;; metadata read is cheap over the *library* (the bounded curated tier), so a full run stays comfortable
+;; metadata read is cheap over the *library* (a bounded tier), so a full run stays comfortable
 ;; into the tens of thousands of docs. The write path no longer pays it on every edit: an `osi_ai_context`
 ;; write drives [[reconcile-entity!]] (one entity's slice), and [[reconcile!]] runs only on a slow schedule
 ;; and from the force-reconcile API as the backstop for membership / name / description changes that aren't
@@ -334,11 +338,12 @@
 (defn- reconcile-against-appdb!
   "The full diff body — assumes the reconcile advisory lock is held on `conn`. See the namespace docstring."
   [conn embedding-model]
-  (let [desired     (desired-docs)
-        desired-ids (set (map :doc_id desired))
-        stored      (stored-docs conn)
-        to-insert   (remove #(contains? stored (:doc_id %)) desired)
-        orphans     (remove desired-ids (keys stored))
+  (let [reconciled-at (capture-reconcile-watermark conn)
+        desired       (desired-docs)
+        desired-ids   (set (map :doc_id desired))
+        stored        (stored-docs conn)
+        to-insert     (remove #(contains? stored (:doc_id %)) desired)
+        orphans       (remove desired-ids (keys stored))
         ;; entity classes whose insert failed this run — their orphans are spared (see below).
         failed      (volatile! #{})
         inserted    (transduce
@@ -360,6 +365,15 @@
         to-delete   (cond->> orphans
                       (seq @failed) (remove #(contains? @failed (entity-class (get stored %)))))]
     (delete-rows! conn to-delete)
+    ;; Record freshness when the run converged as far as it can -- no *transient* batch failure this run
+    ;; (@failed is populated only by a caught insert exception). A doc silently dropped for exceeding the
+    ;; per-item token limit is a permanent, expected shortfall (`inserted` < `(count to-insert)` forever), so
+    ;; gating on the insert count instead would freeze reconciled_at the moment one un-embeddable doc enters
+    ;; the library -- NLQ staleness would then climb to critical (or stay NaN) even though every reconcile is
+    ;; doing all it can. Gate on the absence of retryable failures, not on full insertion. Persist the
+    ;; pre-read watermark so changes made during a long reconcile never look newer than the source snapshot.
+    (when (empty? @failed)
+      (index-table/touch-reconciled-at! conn reconciled-at))
     ;; index-size after the writes feeds the document/entity gauges (full reconcile only).
     (merge (diff-result desired to-insert inserted (count to-delete))
            (index-size conn))))

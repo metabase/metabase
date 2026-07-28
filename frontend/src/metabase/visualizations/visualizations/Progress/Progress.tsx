@@ -8,7 +8,7 @@ import { checkNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
-import { PROGRESS_CHART_DEFINITION } from "./chart-definition";
+import { PROGRESS_CHART_DEFINITION } from "./definition";
 import {
   calculateProgressMetrics,
   extractProgressValue,
@@ -23,9 +23,7 @@ const MAX_BAR_HEIGHT = 65;
 const MIN_BAR_HEIGHT = 30;
 const COMPONENT_HEIGHT_TO_MIN_BAR_HEIGHT = 99;
 
-Object.assign(Progress, PROGRESS_CHART_DEFINITION);
-
-export function Progress(props: VisualizationProps) {
+function ProgressComponent(props: VisualizationProps) {
   const {
     className,
     isMobile,
@@ -255,3 +253,8 @@ export function IconWithBorder() {
     </Flex>
   );
 }
+
+export const Progress = Object.assign(
+  ProgressComponent,
+  PROGRESS_CHART_DEFINITION,
+);

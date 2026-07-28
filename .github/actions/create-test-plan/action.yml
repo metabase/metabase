@@ -17,6 +17,9 @@ inputs:
   loki-infra-touched:
     description: Whether Loki infra changed.
     required: true
+  e2e-infra-touched:
+    description: Whether e2e harness/support code changed.
+    required: true
   shared-sources-touched:
     description: Whether cljc/cljs/package.json changed.
     required: true
@@ -40,6 +43,34 @@ runs:
   steps:
     - name: Prepare Node + Bun
       uses: ./.github/actions/prepare-node-bun
+    - name: Resolve closest-ancestor e2e coverage manifest
+      id: manifest
+      uses: actions/github-script@v9
+      with:
+        script: | # js
+          const { pathToFileURL } = require("url");
+          const { resolveCoverageManifest } = await import(
+            pathToFileURL(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/resolve-coverage-manifest.mjs`,
+            ).href,
+          );
+          const result = await resolveCoverageManifest({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            headSha: context.payload.pull_request?.head?.sha ?? context.sha,
+          });
+          core.setOutput("path", result?.path ?? "");
+    - name: Build dependency graph
+      shell: bash
+      run: |
+        # Quiet on success; surface output only if install fails.
+        bun install --frozen-lockfile > /tmp/bun-install.log 2>&1 \
+          || { echo "bun install issues (continuing):"; tail -20 /tmp/bun-install.log; }
+        bunx depcruise frontend/src enterprise/frontend/src \
+          --config .dependency-cruiser.cjs \
+          --output-type json > dependency-graph.json || true
+
     - name: Create test plan
       id: compute
       shell: bash
@@ -49,18 +80,52 @@ runs:
         BE_CHANGED_FILES: ${{ inputs.be-changed-files }}
         UNIT_INFRA_TOUCHED: ${{ inputs.unit-infra-touched }}
         LOKI_INFRA_TOUCHED: ${{ inputs.loki-infra-touched }}
+        E2E_INFRA_TOUCHED: ${{ inputs.e2e-infra-touched }}
         SHARED_SOURCES_TOUCHED: ${{ inputs.shared-sources-touched }}
         DEP_GRAPH_JSON: dependency-graph.json
+        E2E_SPEC_MANIFEST: ${{ steps.manifest.outputs.path }}
       run: |
-        # on failure create-test-plan falls back to the rules graph.
-        bun install --frozen-lockfile || true
-        bunx depcruise frontend/src enterprise/frontend/src \
-          --config .dependency-cruiser.cjs \
-          --output-type json > dependency-graph.json || true
+        # stdout is the plan JSON; the planner's own info logs go to stderr.
+        bun .github/scripts/create-test-plan.ts > test-plan.json
+        echo "stats=$(jq -c '.stats' test-plan.json)" >> "$GITHUB_OUTPUT"
+        echo "fe_unit_specs_to_run=$(jq -c '.fe_unit_specs_to_run' test-plan.json)" >> "$GITHUB_OUTPUT"
+        echo "loki_stories_to_run=$(jq -c '.loki_stories_to_run' test-plan.json)" >> "$GITHUB_OUTPUT"
+        echo "e2e_specs_to_run=$(jq -c '.e2e_specs_to_run' test-plan.json)" >> "$GITHUB_OUTPUT"
 
-        OUTPUT=$(bun .github/scripts/create-test-plan.ts)
-        echo "$OUTPUT" | jq '.stats'
-        echo "stats=$(echo "$OUTPUT" | jq -c '.stats')" >> "$GITHUB_OUTPUT"
-        echo "fe_unit_specs_to_run=$(echo "$OUTPUT" | jq -c '.fe_unit_specs_to_run')" >> "$GITHUB_OUTPUT"
-        echo "loki_stories_to_run=$(echo "$OUTPUT" | jq -c '.loki_stories_to_run')" >> "$GITHUB_OUTPUT"
-        echo "e2e_specs_to_run=$(echo "$OUTPUT" | jq -c '.e2e_specs_to_run')" >> "$GITHUB_OUTPUT"
+    - name: Report test plan
+      shell: bash
+      run: |
+        plan=test-plan.json
+        row() { # name, selected, total
+          if [ "$2" -eq "$3" ]; then echo "| $1 | all ($3) | $3 |"; else echo "| $1 | $2 | $3 |"; fi
+        }
+        {
+          echo "## Affected test plan"
+          echo
+          echo "| Suite | Selected | Total |"
+          echo "|---|---:|---:|"
+          row "Unit" "$(jq '.stats.unit_specs_to_run_usage' "$plan")" "$(jq '.stats.unit_specs_all' "$plan")"
+          row "Loki" "$(jq '.stats.loki_stories_to_run_usage' "$plan")" "$(jq '.stats.loki_stories_all' "$plan")"
+          row "E2E"  "$(jq '.stats.e2e_specs_to_run_usage' "$plan")"  "$(jq '.stats.e2e_specs_all' "$plan")"
+          echo
+          echo "Changed: $(jq '.stats.fe_files_changed' "$plan") FE / $(jq '.stats.be_files_changed' "$plan") BE file(s) · $(jq '.stats.fe_modules_affected_usage' "$plan") FE module(s) affected"
+          echo
+          e2e_run=$(jq '.stats.e2e_specs_to_run_usage' "$plan")
+          e2e_all=$(jq '.stats.e2e_specs_all' "$plan")
+          if [ "$e2e_run" -eq "$e2e_all" ]; then
+            echo "**E2E: full run** — no manifest, or a change the coverage manifest can't scope (backend, e2e infra, cljc/cljs)."
+          else
+            echo "<details><summary><b>E2E specs to run ($e2e_run)</b></summary>"
+            echo
+            jq -r '.e2e_specs_to_run[]' "$plan" | sed 's/^/- /'
+            echo
+            echo "</details>"
+          fi
+          echo
+          echo "<details><summary>Full stats (rules vs usage graph)</summary>"
+          echo
+          echo '```json'
+          jq '.stats' "$plan"
+          echo '```'
+          echo "</details>"
+        } | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"

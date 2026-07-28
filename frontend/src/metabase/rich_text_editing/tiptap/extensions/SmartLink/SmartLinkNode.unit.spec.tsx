@@ -1,6 +1,4 @@
 import type { NodeViewProps } from "@tiptap/react";
-import { createMemoryHistory } from "history";
-import { Route, Router, useRouterHistory } from "react-router";
 
 import {
   setupCardEndpoints,
@@ -11,6 +9,8 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route } from "metabase/router";
+import { RouterProviderV7Memory } from "metabase/router/v7/RouterProviderV7";
 import {
   createMockCard,
   createMockCollection,
@@ -31,6 +31,7 @@ function createProps(
   updateAttributes?: NodeViewProps["updateAttributes"],
 ) {
   const node = { attrs: { entityId: entity.id, model, label } };
+  // Unjustified type cast. FIXME
   return {
     node,
     updateAttributes: updateAttributes ?? jest.fn(),
@@ -49,7 +50,7 @@ function setup({
   updateAttributes?: NodeViewProps["updateAttributes"];
 }) {
   const props = createProps(model, entity, label, updateAttributes);
-  renderWithProviders(<SmartLinkComponent {...props} />);
+  renderWithProviders(<SmartLinkComponent {...props} />, { withRouter: true });
 }
 
 describe("SmartLink", () => {
@@ -203,16 +204,11 @@ describe("SmartLink", () => {
 
       setupDashboardEndpoints(dashboard);
 
-      const historyWithBasename = useRouterHistory(createMemoryHistory)({
-        basename: "/subpath",
-        entries: ["/"],
-      });
-
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
-        <Router history={historyWithBasename}>
-          <Route path="*" component={() => <SmartLinkComponent {...props} />} />
-        </Router>,
+        <RouterProviderV7Memory initialRoute="/subpath" basename="/subpath">
+          <Route path="*" element={<SmartLinkComponent {...props} />} />
+        </RouterProviderV7Memory>,
       );
 
       await waitFor(() => {
@@ -234,15 +230,11 @@ describe("SmartLink", () => {
 
       setupDashboardEndpoints(dashboard);
 
-      const historyNoBasename = useRouterHistory(createMemoryHistory)({
-        entries: ["/"],
-      });
-
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
-        <Router history={historyNoBasename}>
-          <Route path="*" component={() => <SmartLinkComponent {...props} />} />
-        </Router>,
+        <RouterProviderV7Memory initialRoute="/">
+          <Route path="*" element={<SmartLinkComponent {...props} />} />
+        </RouterProviderV7Memory>,
       );
 
       await waitFor(() => {

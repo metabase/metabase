@@ -1,7 +1,5 @@
 import cx from "classnames";
-import type { Location } from "history";
 import { type ComponentType, type ReactNode, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken, useGetTableQuery } from "metabase/api";
@@ -9,6 +7,8 @@ import { FieldSet } from "metabase/common/components/FieldSet";
 import CS from "metabase/css/core/index.css";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/querying/common/components/DataSelector";
 import { connect, useSelector } from "metabase/redux";
+import type { Location } from "metabase/router";
+import { push } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Icon } from "metabase/ui";
 import type { ConcreteTableId, Segment } from "metabase-types/api";
@@ -95,7 +95,9 @@ function TableSelector({ tableId, setTableId }: TableSelectorProps) {
       <div className={CS.p2} style={{ width: 200 }}>
         <DatabaseSchemaAndTableDataSelector
           selectedTableId={tableId}
-          setSourceTableFn={setTableId}
+          setSourceTableFn={(newTableId) =>
+            setTableId(typeof newTableId === "number" ? newTableId : null)
+          }
           triggerElement={
             <span
               className={cx(

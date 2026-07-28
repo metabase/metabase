@@ -10,6 +10,8 @@ This page covers the [View data](./data.md#view-data-permissions) permission lev
 
 **Impersonation access** allows admins to "outsource" View data permissions to roles in your database. Admins can associate user attributes with database-defined roles and their privileges. If someone is in a group with their View data permission set to Impersonation, the person will be able to view and query data based on the privileges granted to the role specified by their user attribute.
 
+![Connection impersonation](./images/connection-impersonation.png)
+
 ## Databases that support impersonation
 
 For now, impersonation access is only available for the following databases:

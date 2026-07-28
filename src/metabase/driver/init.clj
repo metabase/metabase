@@ -7,8 +7,9 @@
    [metabase.driver.common.table-rows-sample]
    [metabase.driver.events.driver-notifications]
    [metabase.driver.events.report-timezone-updated]
-   ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
-   [metabase.driver.h2]
+   ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types.
+   ;; H2 is intentionally not loaded here: it is lazy-loaded on demand so the H2 library can be absent from the
+   ;; classpath.
    [metabase.driver.mysql]
    [metabase.driver.postgres]
    [metabase.driver.settings]

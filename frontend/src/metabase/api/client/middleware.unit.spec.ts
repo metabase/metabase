@@ -126,6 +126,7 @@ describe("runBeforeRequestHandlers", () => {
       return {
         ...data,
         url: data.url + "/step1",
+        // Unjustified type cast. FIXME
         data: { ...data.data, value: (data.data.value as number) + 2 },
       };
     });
@@ -135,6 +136,7 @@ describe("runBeforeRequestHandlers", () => {
       return {
         ...data,
         url: data.url + "/step2",
+        // Unjustified type cast. FIXME
         data: { ...data.data, value: (data.data.value as number) * 10 },
       };
     });
@@ -144,6 +146,7 @@ describe("runBeforeRequestHandlers", () => {
       return {
         ...data,
         url: data.url + "/step3",
+        // Unjustified type cast. FIXME
         data: { ...data.data, value: (data.data.value as number) - 4 },
       };
     });

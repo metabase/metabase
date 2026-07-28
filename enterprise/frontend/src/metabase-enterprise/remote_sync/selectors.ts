@@ -40,6 +40,16 @@ export const getIsError = createSelector(
   (currentTask) => currentTask?.status === "errored",
 );
 
+export const getIsStalled = createSelector(
+  getCurrentTask,
+  (currentTask) => currentTask?.status === "timed-out",
+);
+
+export const getLastProgressReportAt = createSelector(
+  getCurrentTask,
+  (currentTask) => currentTask?.last_progress_report_at ?? null,
+);
+
 export const getIsSuccess = createSelector(
   getCurrentTask,
   (currentTask) => currentTask?.status === "successful",

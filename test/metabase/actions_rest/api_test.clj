@@ -14,7 +14,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -395,6 +394,53 @@
                        :specific-errors {:model_id ["missing required key, received: nil"]}}
                       (mt/user-http-request :crowberto :post 400 "action" {:type "query" :name "test"}))))))))))
 
+(deftest remap-parameter-keys-test
+  (testing "remap-parameter-keys translates incoming parameter keys to the destination parameter's :id"
+    (let [action {:parameters [{:id "d800e41d-edde-49cb-b63b-2386aba34334"
+                                :slug "id"
+                                :name "ID"}
+                               {:id "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b"
+                                :slug "discount"
+                                :name "Discount"}]}]
+      (testing "slug-keyed input is remapped to :id"
+        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}
+               (#'api.action/remap-parameter-keys action
+                                                  {"id" 1 "discount" 0.1}))))
+      (testing "already-:id-keyed input is passed through unchanged"
+        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}
+               (#'api.action/remap-parameter-keys
+                action
+                {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                 "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}))))
+      (testing "display-name keys (`:name`) are NOT accepted — they pass through unchanged"
+        (is (= {"ID" 1 "Discount" 0.1}
+               (#'api.action/remap-parameter-keys action
+                                                  {"ID" 1 "Discount" 0.1}))))
+      (testing "unknown keys pass through unchanged so downstream validation still fires"
+        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                "bogus" 42}
+               (#'api.action/remap-parameter-keys action
+                                                  {"id" 1 "bogus" 42}))))
+      (testing "a mix of :id and :slug keys resolve together"
+        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}
+               (#'api.action/remap-parameter-keys
+                action
+                {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                 "discount" 0.1}))))
+      (testing "empty parameters map → empty result"
+        (is (= {}
+               (#'api.action/remap-parameter-keys action {}))))
+      (testing "implicit-action style (no :slug) — :id-keyed input still passes through"
+        (let [implicit-action {:parameters [{:id "name" :name "Name"}
+                                            {:id "email" :name "Email"}]}]
+          (is (= {"name" "Foo" "email" "foo@bar.com"}
+                 (#'api.action/remap-parameter-keys
+                  implicit-action
+                  {"name" "Foo" "email" "foo@bar.com"}))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUBLIC SHARING ENDPOINTS                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -492,53 +538,6 @@
         (testing "Test that we get a 404 if Action doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" Integer/MAX_VALUE)))))))))
-
-(deftest remap-parameter-keys-test
-  (testing "remap-parameter-keys translates incoming parameter keys to the destination parameter's :id"
-    (let [action {:parameters [{:id "d800e41d-edde-49cb-b63b-2386aba34334"
-                                :slug "id"
-                                :name "ID"}
-                               {:id "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b"
-                                :slug "discount"
-                                :name "Discount"}]}]
-      (testing "slug-keyed input is remapped to :id"
-        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
-                "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}
-               (#'api.action/remap-parameter-keys action
-                                                  {"id" 1 "discount" 0.1}))))
-      (testing "already-:id-keyed input is passed through unchanged"
-        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
-                "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}
-               (#'api.action/remap-parameter-keys
-                action
-                {"d800e41d-edde-49cb-b63b-2386aba34334" 1
-                 "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}))))
-      (testing "display-name keys (`:name`) are NOT accepted — they pass through unchanged"
-        (is (= {"ID" 1 "Discount" 0.1}
-               (#'api.action/remap-parameter-keys action
-                                                  {"ID" 1 "Discount" 0.1}))))
-      (testing "unknown keys pass through unchanged so downstream validation still fires"
-        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
-                "bogus" 42}
-               (#'api.action/remap-parameter-keys action
-                                                  {"id" 1 "bogus" 42}))))
-      (testing "a mix of :id and :slug keys resolve together"
-        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
-                "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}
-               (#'api.action/remap-parameter-keys
-                action
-                {"d800e41d-edde-49cb-b63b-2386aba34334" 1
-                 "discount" 0.1}))))
-      (testing "empty parameters map → empty result"
-        (is (= {}
-               (#'api.action/remap-parameter-keys action {}))))
-      (testing "implicit-action style (no :slug) — :id-keyed input still passes through"
-        (let [implicit-action {:parameters [{:id "name" :name "Name"}
-                                            {:id "email" :name "Email"}]}]
-          (is (= {"name" "Foo" "email" "foo@bar.com"}
-                 (#'api.action/remap-parameter-keys
-                  implicit-action
-                  {"name" "Foo" "email" "foo@bar.com"}))))))))
 
 (deftest execute-action-test
   (mt/with-actions-test-data-and-actions-enabled
@@ -678,10 +677,27 @@
                                              :visualization_settings {:fields {"name" {:id     "name"
                                                                                        :hidden true}}}}]
         (testing "Hidden parameter should fail gracefully"
-          (testing "GET /api/action/:id/execute"
+          (testing "POST /api/action/:id/execute"
             (is (partial= {:message "No destination parameter found for #{\"name\"}. Found: #{\"last_login\" \"id\"}"}
                           (mt/user-http-request :crowberto :post 400 (format "action/%s/execute" action-id)
                                                 {:parameters {:name "Darth Vader"}})))))))))
+
+(deftest implicit-update-timestamp-round-trip-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-test-data-tables #{"users"}
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-actions [_ {:type :model :dataset_query (mt/mbql-query users)}
+                          {action-id :action-id} {:type :implicit :kind "row/update"}]
+          (testing "a prefetched temporal value round-trips unchanged through an update execution (#32840)"
+            (let [fetch!      #(mt/user-http-request :crowberto :post 200 (format "action/%d/execute/values" action-id)
+                                                     {:parameters {"id" 1}})
+                  {:keys [last_login] :as fetched} (fetch!)
+                  local-value (.format ^java.time.OffsetDateTime last_login
+                                       (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss"))]
+              (is (some? last_login))
+              (mt/user-http-request :crowberto :post 200 (format "action/%d/execute" action-id)
+                                    {:parameters (assoc fetched :last_login local-value)})
+              (is (= last_login (:last_login (fetch!)))))))))))
 
 (deftest fetch-implicit-action-default-values-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -694,26 +710,26 @@
                         {query-action-id :action-id}  {:type :query}]
         (testing "403 if user does not have permission to view the action"
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (format "action/%d/execute" update-action-id) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :rasta :post 403 (format "action/%d/execute/values" update-action-id) {:parameters {"id" 1}}))))
         (testing "404 if id does not exist"
           (is (= "Not found."
-                 (mt/user-http-request :rasta :get 404 (format "action/%d/execute" Integer/MAX_VALUE) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :rasta :post 404 (format "action/%d/execute/values" Integer/MAX_VALUE) {:parameters {"id" 1}}))))
         (testing "returns empty map for query actions (not implicit)"
           (is (= {}
-                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" query-action-id) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :crowberto :post 200 (format "action/%d/execute/values" query-action-id) {:parameters {"id" 1}}))))
         (testing "Can't fetch for create action"
           (is (= "Values can only be fetched for actions that require a Primary Key."
-                 (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" create-action-id) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :crowberto :post 400 (format "action/%d/execute/values" create-action-id) {:parameters {"id" 1}}))))
         (testing "fetch for update action return name and id"
           (is (= {:id 1 :name "Red Medicine"}
-                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" update-action-id) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :crowberto :post 200 (format "action/%d/execute/values" update-action-id) {:parameters {"id" 1}}))))
         (testing "fetch for delete action returns the id only"
           (is (= {:id 1}
-                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :crowberto :post 200 (format "action/%d/execute/values" delete-action-id) {:parameters {"id" 1}}))))
         (mt/with-actions-disabled
           (testing "error if actions is disabled"
             (is (= "Actions are not enabled."
-                   (:message (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))))))))
+                   (:message (mt/user-http-request :crowberto :post 400 (format "action/%d/execute/values" delete-action-id) {:parameters {"id" 1}}))))))))))
 
 ;; This is just to test the flow, a comprehensive tests for error type ares in
 ;; [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]

@@ -1,4 +1,3 @@
-import { Route } from "react-router";
 import _ from "underscore";
 
 import { mockSettings } from "__support__/settings";
@@ -9,6 +8,7 @@ import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card, NormalizedTable } from "metabase-types/api";
 import { createMockCard, createMockSettings } from "metabase-types/api/mocks";
@@ -41,6 +41,7 @@ const setup = async ({
     state.entities = {
       ...state.entities,
       tables: {
+        // Unjustified type cast. FIXME
         ...(state.entities.tables as Record<number, NormalizedTable>),
         [virtualTable.id]: virtualTable,
       },
@@ -56,13 +57,10 @@ const setup = async ({
     };
   }
 
-  return renderWithProviders(
-    <Route path="/" component={() => <QuestionSources />} />,
-    {
-      withRouter: true,
-      storeInitialState: state,
-    },
-  );
+  return renderWithProviders(<Route path="/" element={<QuestionSources />} />, {
+    withRouter: true,
+    storeInitialState: state,
+  });
 };
 
 describe("QuestionSources", () => {

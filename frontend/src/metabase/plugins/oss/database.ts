@@ -11,11 +11,13 @@ import type {
 } from "metabase-types/api";
 
 const getDefaultPluginDbRouting = () => ({
+  // Unjustified type cast. FIXME
   DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
   }>,
   getDatabaseNameFieldProps: (_isSlug: boolean) => ({}),
   getDestinationDatabaseRoutes: (_IsAdmin: any) =>
+    // Unjustified type cast. FIXME
     null as React.ReactElement | null,
   useRedirectDestinationDatabase: (
     _database: Pick<DatabaseType, "id" | "router_database_id"> | undefined,
@@ -28,6 +30,7 @@ const getDefaultPluginDbRouting = () => ({
 export const PLUGIN_DB_ROUTING = getDefaultPluginDbRouting();
 
 const getDefaultPluginDatabaseReplication = () => ({
+  // Unjustified type cast. FIXME
   DatabaseReplicationSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
   }>,
@@ -39,8 +42,10 @@ export const PLUGIN_DATABASE_REPLICATION =
 const getDefaultPluginTableEditing = () => ({
   isEnabled: () => false,
   isDatabaseTableEditingEnabled: (_database: DatabaseType): boolean => false,
+  // Unjustified type cast. FIXME
   getRoutes: () => null as React.ReactElement | null,
   getTableEditUrl: (_tableId: TableId, _databaseId: DatabaseId): string => "/",
+  // Unjustified type cast. FIXME
   AdminDatabaseTableEditingSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
     settingsAvailable?: Record<string, DatabaseLocalSettingAvailability>;

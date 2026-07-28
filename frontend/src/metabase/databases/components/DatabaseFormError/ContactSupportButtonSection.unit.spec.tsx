@@ -1,8 +1,7 @@
-import { Route } from "react-router";
-
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { createMockTokenStatus } from "metabase-types/api/mocks";
 
 import { ContactSupportButtonSection } from "./ContactSupportButtonSection";
@@ -23,7 +22,7 @@ const setup = (params?: SetupParams) => {
   });
 
   renderWithProviders(
-    <Route path="*" component={ContactSupportButtonSection} />,
+    <Route path="*" element={<ContactSupportButtonSection />} />,
     {
       storeInitialState,
       withRouter: true,

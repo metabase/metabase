@@ -9,13 +9,12 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
@@ -204,15 +203,14 @@
          :failed       failed
          :uncached     uncached}))))
 
-(defn persist-table-dependencies!
+(defenterprise persist-table-dependencies!
   "Best-effort write-back of `:uncached` deps from `transform-ordering` into the
-  `transform.table_dependencies` column, keyed by transform id."
-  [id->raw-deps]
-  (doseq [[id raw-deps] id->raw-deps]
-    (try
-      (t2/update! (t2/table-name :model/Transform) id {:table_dependencies (json/encode (vec raw-deps))})
-      (catch Throwable e
-        (log/warnf e "Failed to cache table-dependencies for transform %s" id)))))
+  `transform.table_dependencies` column, keyed by transform id.
+
+  OSS fallback: a no-op. Caching transform dependencies is an EE-only optimization."
+  metabase-enterprise.transforms.core
+  [_id->raw-deps]
+  nil)
 
 (defn find-cycle
   "Finds a path containing a cycle in the directed graph `node->children`.

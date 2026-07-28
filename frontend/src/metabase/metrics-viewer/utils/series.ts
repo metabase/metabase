@@ -439,6 +439,7 @@ export function splitByBreakout({
         };
       }
     }
+    // Unjustified type cast. FIXME
     groupedRows.push([
       row[DIMENSION_COLUMN_INDEX],
       row[metricColumnIndex],
@@ -494,6 +495,7 @@ function createSeriesCard(
   display: string,
   vizSettings: VisualizationSettings,
 ): Card {
+  // Unjustified type cast. FIXME
   return {
     id,
     name,

@@ -1,6 +1,5 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 
 import { NewModelOption } from "./NewModelOption";
 
@@ -15,7 +14,7 @@ const setup = (props = {}) =>
   renderWithProviders(
     <Route
       path="*"
-      component={() => <NewModelOption {...defaultProps} {...props} />}
+      element={<NewModelOption {...defaultProps} {...props} />}
     />,
     { withRouter: true },
   );

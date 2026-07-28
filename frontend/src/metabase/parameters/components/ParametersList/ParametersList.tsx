@@ -58,6 +58,7 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
     const handleSortEnd = useCallback(
       ({ id, newIndex }: DragEndEvent) => {
         if (setParameterIndex) {
+          // Unjustified type cast. FIXME
           setParameterIndex(id as ParameterId, newIndex);
         }
       },

@@ -40,6 +40,7 @@ describe("CollectionHeader", () => {
 
     it("should not be able to edit name for the root collection", () => {
       const collection = {
+        // Unjustified type cast. FIXME
         id: "root" as CollectionId,
         name: "Our analytics",
         can_write: true,

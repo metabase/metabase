@@ -1,9 +1,9 @@
-import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
+import type { Location } from "metabase/router";
+import { push, replace } from "metabase/router";
 import type { InspectorLensMetadata } from "metabase-types/api";
 
 import type { LensHandle, RouteParams } from "../../types";
@@ -30,7 +30,7 @@ type UseLensNavigationResult = {
 
 export const useLensNavigation = (
   availableLenses: InspectorLensMetadata[],
-  params: RouteParams,
+  params: Partial<RouteParams>,
   location: Location,
 ): UseLensNavigationResult => {
   const dispatch = useDispatch();

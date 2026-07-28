@@ -27,7 +27,8 @@
   [advisory]
   (-> (select-keys advisory [:advisory_id :title :severity :description :advisory_url :remediation
                              :published_at :match_status :last_evaluated_at
-                             :acknowledged_by_user :acknowledged_at :affected_versions])
+                             :acknowledged_by_user :acknowledged_at :affected_versions :download_jar_urls])
+      (update :download_jar_urls sequence)
       (set/rename-keys {:acknowledged_by_user :acknowledged_by})))
 
 (def ^:private AcknowledgedByUser
@@ -51,7 +52,8 @@
    [:last_evaluated_at [:maybe ms/TemporalInstant]]
    [:acknowledged_by   [:maybe AcknowledgedByUser]]
    [:acknowledged_at   [:maybe ms/TemporalInstant]]
-   [:affected_versions ::security-center.schema/affected-versions]])
+   [:affected_versions ::security-center.schema/affected-versions]
+   [:download_jar_urls ::security-center.schema/download-jar-urls]])
 
 (def ^:private AcknowledgeResponse
   "Schema for the acknowledge endpoint response."

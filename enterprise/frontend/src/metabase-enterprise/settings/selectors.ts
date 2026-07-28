@@ -49,6 +49,7 @@ export function getShowMetabaseLinks(state: EnterpriseState) {
 export function getLoginPageIllustration(
   state: EnterpriseState,
 ): IllustrationValue {
+  // Unjustified type cast. FIXME
   const illustrationOption = getSetting(
     state,
     "login-page-illustration",
@@ -66,6 +67,7 @@ export function getLoginPageIllustration(
 
     case "custom":
       return {
+        // Unjustified type cast. FIXME
         src: getSetting(state, "login-page-illustration-custom") as string,
         isDefault: false,
       };
@@ -75,6 +77,7 @@ export function getLoginPageIllustration(
 export function getLandingPageIllustration(
   state: EnterpriseState,
 ): IllustrationValue {
+  // Unjustified type cast. FIXME
   const illustrationOption = getSetting(
     state,
     "landing-page-illustration",
@@ -92,6 +95,7 @@ export function getLandingPageIllustration(
 
     case "custom":
       return {
+        // Unjustified type cast. FIXME
         src: getSetting(state, "landing-page-illustration-custom") as string,
         isDefault: false,
       };
@@ -99,6 +103,7 @@ export function getLandingPageIllustration(
 }
 
 export function getNoDataIllustration(state: EnterpriseState): string | null {
+  // Unjustified type cast. FIXME
   const illustrationOption = getSetting(
     state,
     "no-data-illustration",
@@ -112,11 +117,13 @@ export function getNoDataIllustration(state: EnterpriseState): string | null {
       return null;
 
     case "custom":
+      // Unjustified type cast. FIXME
       return getSetting(state, "no-data-illustration-custom") as string;
   }
 }
 
 export function getNoObjectIllustration(state: EnterpriseState): string | null {
+  // Unjustified type cast. FIXME
   const illustrationOption = getSetting(
     state,
     "no-object-illustration",
@@ -130,6 +137,7 @@ export function getNoObjectIllustration(state: EnterpriseState): string | null {
       return null;
 
     case "custom":
+      // Unjustified type cast. FIXME
       return getSetting(state, "no-object-illustration-custom") as string;
   }
 }

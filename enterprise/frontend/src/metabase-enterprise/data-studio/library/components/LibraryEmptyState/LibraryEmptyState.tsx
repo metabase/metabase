@@ -56,7 +56,7 @@ export function LibraryEmptyState() {
                 loading={isLoading}
               >{t`Create my Library`}</Button>
             </Group>
-            {error && <Text c="error">{error}</Text>}
+            {error && <Text c="feedback-negative">{error}</Text>}
           </Stack>
         </Stack>
         <SimpleGrid cols={2} spacing="sm">

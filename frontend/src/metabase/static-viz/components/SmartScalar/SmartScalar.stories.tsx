@@ -18,16 +18,19 @@ const COLS = [
     name: "Date",
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
+    source: "breakout",
   }),
   createMockColumn({
     name: "Count",
     base_type: "type/Integer",
     effective_type: "type/Integer",
+    source: "aggregation",
   }),
   createMockColumn({
     name: "Average",
     base_type: "type/Integer",
     effective_type: "type/Integer",
+    source: "aggregation",
   }),
 ];
 

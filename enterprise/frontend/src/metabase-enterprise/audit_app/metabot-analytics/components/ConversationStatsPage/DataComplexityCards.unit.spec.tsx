@@ -21,6 +21,7 @@ const mockScore = (
 
 /* eslint-disable testing-library/no-node-access -- Snapshot cleanup is applied to a cloned DOM tree. */
 const cleanForSnapshot = (element: Element) => {
+  // Unjustified type cast. FIXME
   const clone = element.cloneNode(true) as Element;
   clone.querySelectorAll("style").forEach((style) => style.remove());
   [clone, ...Array.from(clone.querySelectorAll("*"))].forEach((node) => {

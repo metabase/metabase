@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.encryption-test :as encryption-test]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
@@ -181,3 +183,33 @@
             "Password hash should match between AuthIdentity and User")
         (is (= (:password_salt auth-creds) (:password_salt user))
             "Password salt should match between AuthIdentity and User")))))
+
+(deftest credentials-encrypted-at-rest-test
+  (testing "with a secret key set, the raw credentials column is ciphertext, not JSON"
+    (encryption-test/with-secret-key "key-for-auth-identity-test-1"
+      (mt/with-temp [:model/User {user-id :id}]
+        (t2/insert! :model/AuthIdentity {:user_id     user-id
+                                         :provider    "google"
+                                         :credentials {:secret "super-secret"}})
+        (let [raw (t2/select-one-fn :credentials :auth_identity
+                                    :user_id user-id :provider "google")]
+          (is (encryption/possibly-encrypted-string? raw)
+              "Raw column value should be encrypted")
+          (is (not (re-find #"super-secret" (str raw)))
+              "Plaintext must not appear in the stored value"))
+        (testing "and the model transform round-trips the plaintext map"
+          (is (= "super-secret"
+                 (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "google")
+                         [:credentials :secret]))))))))
+
+(deftest credentials-plaintext-rows-still-readable-test
+  (testing "rows written before encryption (plain JSON in the column) still read as maps"
+    (encryption-test/with-secret-key "key-for-auth-identity-test-2"
+      (mt/with-temp [:model/User {user-id :id}]
+        (t2/insert! :model/AuthIdentity {:user_id user-id :provider "google" :credentials {}})
+        ;; simulate a legacy plaintext row by writing raw JSON straight to the table
+        (t2/update! :auth_identity {:user_id user-id :provider "google"}
+                    {:credentials "{\"secret\":\"legacy-plain\"}"})
+        (is (= "legacy-plain"
+               (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "google")
+                       [:credentials :secret])))))))

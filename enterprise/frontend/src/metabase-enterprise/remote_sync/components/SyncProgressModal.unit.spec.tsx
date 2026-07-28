@@ -14,6 +14,8 @@ import { SyncProgressModal } from "./SyncProgressModal";
 const setup = ({
   taskType = "import" as const,
   progress = 0.5,
+  isStalled = false,
+  minutesSinceLastUpdate = null,
   isError = false,
   errorMessage = "",
   isSuccess = false,
@@ -24,6 +26,8 @@ const setup = ({
 }: {
   taskType?: "import" | "export";
   progress?: number;
+  isStalled?: boolean;
+  minutesSinceLastUpdate?: number | null;
   isError?: boolean;
   errorMessage?: string;
   isSuccess?: boolean;
@@ -42,6 +46,8 @@ const setup = ({
       <SyncProgressModal
         taskType={taskType}
         progress={progress}
+        isStalled={isStalled}
+        minutesSinceLastUpdate={minutesSinceLastUpdate}
         isError={isError}
         errorMessage={errorMessage}
         isSuccess={isSuccess}
@@ -98,6 +104,29 @@ describe("SyncProgressModal", () => {
       expect(
         screen.queryByRole("button", { name: "Cancel" }),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("stalled progress state (GHY-4132)", () => {
+    it("replaces the frozen progress bar with a 'still working' message when the task has stalled", () => {
+      // Reproduces GHY-4132: a large push stops reporting progress, the backend marks the still-running
+      // task :timed-out, and the UI used to sit on a frozen 'Exporting content…' bar. Instead we report
+      // honestly that it is still running but hasn't reported progress recently.
+      setup({ taskType: "export", isStalled: true, minutesSinceLastUpdate: 6 });
+
+      expect(
+        screen.getByText("Still working. No update for 6 minutes."),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+      expect(screen.queryByText("Exporting content…")).not.toBeInTheDocument();
+    });
+
+    it("uses the singular 'minute' when only one minute has passed", () => {
+      setup({ taskType: "export", isStalled: true, minutesSinceLastUpdate: 1 });
+
+      expect(
+        screen.getByText("Still working. No update for 1 minute."),
+      ).toBeInTheDocument();
     });
   });
 
@@ -191,6 +220,7 @@ describe("SyncProgressModal", () => {
       setup({
         taskType: "export",
         isSuccess: true,
+        // Unjustified type cast. FIXME
         outcome: { kind: "teleported" } as unknown as RemoteSyncOutcome,
       });
 
@@ -203,6 +233,7 @@ describe("SyncProgressModal", () => {
       setup({
         taskType: "import",
         isSuccess: true,
+        // Unjustified type cast. FIXME
         outcome: { kind: "pulled" } as unknown as RemoteSyncOutcome,
       });
 
@@ -215,6 +246,7 @@ describe("SyncProgressModal", () => {
       setup({
         taskType: "export",
         isSuccess: true,
+        // Unjustified type cast. FIXME
         outcome: { kind: "pushed", count: 3 } as unknown as RemoteSyncOutcome,
       });
 
@@ -227,6 +259,7 @@ describe("SyncProgressModal", () => {
       setup({
         taskType: "export",
         isSuccess: true,
+        // Unjustified type cast. FIXME
         outcome: { kind: "merged", pulled: 1 } as unknown as RemoteSyncOutcome,
       });
 

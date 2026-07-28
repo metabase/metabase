@@ -165,6 +165,7 @@ describe("CustomMappingModal", () => {
   it("fills missing mappings with original values as strings", async () => {
     const onChange = jest.fn();
     setup({
+      // Unjustified type cast. FIXME
       value: new Map([
         [1, undefined],
         [null, undefined],

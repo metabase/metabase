@@ -1,3 +1,4 @@
+import { PLUGIN_NOTIFICATIONS_SDK } from "metabase/plugins";
 import { Center, Divider } from "metabase/ui";
 
 import { DashboardBookmark } from "../../DashboardBookmark";
@@ -12,13 +13,13 @@ import {
   CopyAnalyticsDashboardButton,
   DashboardActionMenu,
   DashboardInfoButton,
+  DashboardSubscriptionsButton,
   EditDashboardButton,
   ExportAsPdfButton,
   FullscreenAnalyticsDashboard,
   FullscreenToggle,
 } from "../buttons";
 import { AddLinkOrEmbedButton } from "../buttons/AddLinkOrEmbedButton";
-import { DashboardSubscriptionsButton } from "../buttons/DashboardSubscriptionsButton";
 import { RefreshIndicator } from "../buttons/RefreshIndicator";
 
 import { DashboardSharingMenu } from "./DashboardSharingMenu/DashboardSharingMenu";
@@ -70,6 +71,10 @@ export const dashboardActionButtons: Record<
     component: DashboardSharingMenu,
     enabled: ({ isEditing }) => !isEditing,
   },
+  [DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS_BUTTON]: {
+    component: DashboardSubscriptionsButton,
+    enabled: ({ isEditing, dashboard }) => !isEditing && !dashboard?.archived,
+  },
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {
     component: () => <RefreshWidget />,
     enabled: ({ dashboard, isEditing }) => !isEditing && !dashboard?.archived,
@@ -85,6 +90,14 @@ export const dashboardActionButtons: Record<
   [DASHBOARD_ACTION.DASHBOARD_INFO]: {
     component: () => <DashboardInfoButton />,
     enabled: ({ isEditing }) => !isEditing,
+  },
+  [DASHBOARD_ACTION.AUTO_REFRESH_INDICATOR]: {
+    component: () => <RefreshWidget />,
+    enabled: ({ isEditing, dashboard, refreshPeriod }) =>
+      !isEditing &&
+      !dashboard?.archived &&
+      refreshPeriod != null &&
+      refreshPeriod > 0,
   },
   [DASHBOARD_ACTION.DASHBOARD_ACTION_MENU]: {
     component: ({
@@ -134,7 +147,7 @@ export const dashboardActionButtons: Record<
   // Modular embedding
   [DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS]: {
     enabled: ({ withSubscriptions }) => withSubscriptions,
-    component: () => <DashboardSubscriptionsButton />,
+    component: () => <PLUGIN_NOTIFICATIONS_SDK.DashboardSubscriptionsButton />,
   },
   [DASHBOARD_ACTION.REFRESH_INDICATOR]: {
     enabled: ({ refreshPeriod }) => refreshPeriod != null && refreshPeriod > 0,

@@ -10,7 +10,6 @@ import type {
   TimeSeriesInterval,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
-import type { RenderingContext } from "metabase/visualizations/types";
 import type { TimelineEvent } from "metabase-types/api";
 
 import type { ChartLayout } from "../layout/types";
@@ -36,6 +35,7 @@ const groupEventsByUnitStart = (
     (acc, event) => {
       const unitStart = dayjs
         .utc(event.timestamp)
+        // Unjustified type cast. FIXME
         .startOf(unit as OpUnitType)
         .toISOString();
 
@@ -56,33 +56,10 @@ const groupEventsByUnitStart = (
   }));
 };
 
-const getMinDistanceFromTimelineEventGroup = (
-  eventGroup: TimelineEventGroup,
-  renderingContext: RenderingContext,
-) => {
-  const eventsCount = eventGroup.events.length;
-  if (eventsCount === 1) {
-    return CHART_STYLE.timelineEvents.minDistance;
-  }
-
-  const countLabelWidth = renderingContext.measureText(eventsCount.toString(), {
-    ...CHART_STYLE.axisTicks,
-    size: renderingContext.theme.cartesian.label.fontSize,
-    family: renderingContext.fontFamily,
-  });
-
-  return (
-    CHART_STYLE.timelineEvents.minDistance +
-    CHART_STYLE.timelineEvents.countLabelMargin +
-    countLabelWidth
-  );
-};
-
 export const mergeOverlappingTimelineEventGroups = (
   eventGroups: TimelineEventGroup[],
   interval: TimeSeriesInterval,
   intervalWidth: number,
-  renderingContext: RenderingContext,
 ): TimelineEventGroup[] => {
   const sortedGroups = [...eventGroups].sort((a, b) =>
     dayjs.utc(a.date).isAfter(dayjs.utc(b.date)) ? 1 : -1,
@@ -107,12 +84,8 @@ export const mergeOverlappingTimelineEventGroups = (
     const intervalsDiff =
       currentGroupDate.diff(lastGroupDate, interval.unit) / interval.count;
     const pixelDiff = intervalsDiff * intervalWidth;
-    const lastGroupMinDistance = getMinDistanceFromTimelineEventGroup(
-      lastGroup,
-      renderingContext,
-    );
 
-    if (pixelDiff < lastGroupMinDistance) {
+    if (pixelDiff < CHART_STYLE.timelineEvents.minDistance) {
       const combinedEvents = [...lastGroup.events, ...currentGroup.events];
       mergedGroups[mergedGroups.length - 1] = {
         date: lastGroup.date,
@@ -142,7 +115,6 @@ export const getTimelineEventsModel = (
   chartModel: BaseCartesianChartModel,
   chartLayout: ChartLayout,
   timelineEvents: TimelineEvent[],
-  renderingContext: RenderingContext,
 ) => {
   if (timelineEvents.length === 0 || !isTimeSeriesAxis(chartModel.xAxisModel)) {
     return null;
@@ -178,6 +150,5 @@ export const getTimelineEventsModel = (
     timelineEventsByUnitStart,
     chartModel.xAxisModel.interval,
     intervalWidth,
-    renderingContext,
   );
 };

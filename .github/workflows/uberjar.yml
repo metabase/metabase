@@ -128,8 +128,9 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
       SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}  # faster builds for dev
-      # Emit bundle stats on trunk/release builds so they can be tracked over time
-      EMIT_BUNDLE_STATS: ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-')) && 'true' || 'false' }}
+      # Emit bundle stats on trunk/release builds (tracked over time) and on PRs
+      # (the bundle-size check reads them for both the PR head and its base ref).
+      EMIT_BUNDLE_STATS: ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-') || github.event_name == 'pull_request') && 'true' || 'false' }}
     steps:
       - name: Check out the code
         uses: actions/checkout@v6
@@ -142,7 +143,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
+          java-version: "${{ needs.get-build-requirements.outputs.java_version || 25 }}"
       - name: Build
         run: ./bin/build.sh
       - name: Upload bundle stats
@@ -173,7 +174,7 @@ jobs:
     strategy:
       matrix:
         edition: ["ee", "oss"]
-        java-version: [21]
+        java-version: [25]
     steps:
       - name: Check out the code
         uses: actions/checkout@v6

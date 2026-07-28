@@ -12,9 +12,8 @@
 (driver/register! ::empty-string-is-null, :abstract? true)
 
 (defmethod sql.qp/->honeysql [::empty-string-is-null :value]
-  [driver [_ value info]]
-  (let [value (when-not (= value "")
-                value)]
-    ((get-method sql.qp/->honeysql [:sql :value]) driver [:value value info])))
+  [driver [_ value opts]]
+  (let [value (when-not (= value "") value)]
+    ((get-method sql.qp/->honeysql [:sql :value]) driver (sql.qp/mbql-clause-with-opts :sql :value opts value))))
 
 (prefer-method sql.qp/->honeysql [::empty-string-is-null :value] [:sql :value])

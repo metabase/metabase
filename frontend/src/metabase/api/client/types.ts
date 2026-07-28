@@ -22,7 +22,20 @@ export type ResponseFor<Raw extends boolean> = Raw extends true
   ? Response
   : unknown;
 
-export type RequestClientInfo = { name: string; version?: string | null };
+export type RequestClientInfo = {
+  /**
+   * Client environment name
+   */
+  name: string;
+  /**
+   * Client identifier (if any), e.g. a data app name
+   */
+  identifier?: string;
+  /**
+   * SDK package version
+   */
+  version?: string | null;
+};
 
 export type ResponseErrorInfo = {
   metabaseVersion: string | null;

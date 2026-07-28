@@ -6,7 +6,7 @@ export default defineConfig({
   output: {
     path: "frontend/src/metabase-types/openapi",
     clean: false,
-    format: "prettier",
+    postProcess: ["prettier"],
   },
   parser: {
     filters: {
@@ -17,13 +17,10 @@ export default defineConfig({
       },
     },
   },
-  types: {
-    enums: "javascript", // This generates runtime enums!
-  },
   plugins: [
     {
-      enums: true,
       name: "@hey-api/typescript",
+      enums: "javascript", // This generates runtime enums!
     },
   ],
 });

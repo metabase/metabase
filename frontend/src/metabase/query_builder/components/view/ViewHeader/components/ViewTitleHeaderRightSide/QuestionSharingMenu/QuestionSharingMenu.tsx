@@ -1,15 +1,18 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { useSetting } from "metabase/common/hooks";
-import { LinkCopiedTooltipLabel } from "metabase/embedding/components/SharingMenu/LinkCopiedTooltipLabel";
+import { CopyLinkButton } from "metabase/embedding/components/SharingMenu/ActionButtons/CopyLinkButton";
+import { EmbedButton } from "metabase/embedding/components/SharingMenu/ActionButtons/EmbedButton";
+import { InviteToViewModal } from "metabase/embedding/components/SharingMenu/InviteToViewModal";
 import {
   COPY_TIMEOUT_MS,
-  CopyLinkMenuItem,
-  CopyPublicLinkMenuItem,
-} from "metabase/embedding/components/SharingMenu/MenuItems/CopyLinkMenuItem";
-import { EmbedMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/EmbedMenuItem";
+  LinkCopiedTooltipLabel,
+} from "metabase/embedding/components/SharingMenu/LinkCopiedTooltipLabel";
+import { CopyPublicLinkMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/CopyPublicLinkMenuItem";
+import { InviteToViewMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/InviteToViewMenuItem";
 import { PublicLinkMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/PublicLinkMenuItem";
 import {
   SharingButton,
@@ -76,10 +79,6 @@ function useQuestionAppUrl(question: Question) {
   );
 }
 
-function CopyQuestionLinkMenuItem({ question }: { question: Question }) {
-  return <CopyLinkMenuItem url={useQuestionAppUrl(question)} />;
-}
-
 function AdminQuestionSharingMenu({ question }: { question: Question }) {
   const { modalType, setModalType } = useSharingModal<QuestionSharingModalType>(
     {
@@ -87,21 +86,36 @@ function AdminQuestionSharingMenu({ question }: { question: Question }) {
       resourceType: "question",
     },
   );
+  const [isInviteOpen, { open: openInvite, close: closeInvite }] =
+    useDisclosure();
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
+  // Creating a public link is a write, so hide that action when the question is
+  // not writable (e.g. a remote-synced entity on a read-only instance). An
+  // existing public link stays visible either way — viewing and copying it are
+  // reads. Embedding stays available; its Publish button is disabled instead.
+  const canWrite = question.canWrite();
+  const hasPublicLink = Boolean(question.publicUUID?.());
+  const shareUrl = useQuestionAppUrl(question);
 
   return (
     <Flex>
-      <SharingMenu>
-        <CopyQuestionLinkMenuItem question={question} />
-        {isPublicSharingEnabled && (
+      <SharingMenu
+        actions={
+          <>
+            <CopyLinkButton url={shareUrl} />
+            <EmbedButton
+              onClick={() => setModalType(GUEST_EMBED_EMBEDDING_TYPE)}
+            />
+          </>
+        }
+      >
+        <InviteToViewMenuItem onClick={openInvite} />
+        {isPublicSharingEnabled && (hasPublicLink || canWrite) && (
           <PublicLinkMenuItem
-            hasPublicLink={Boolean(question.publicUUID?.())}
+            hasPublicLink={hasPublicLink}
             onClick={() => setModalType("question-public-link")}
           />
         )}
-        <EmbedMenuItem
-          onClick={() => setModalType(GUEST_EMBED_EMBEDDING_TYPE)}
-        />
       </SharingMenu>
       {modalType === "question-public-link" && (
         <QuestionPublicLinkPopover
@@ -111,22 +125,35 @@ function AdminQuestionSharingMenu({ question }: { question: Question }) {
           onClose={() => setModalType(null)}
         />
       )}
+      {isInviteOpen && (
+        <InviteToViewModal
+          title={t`Invite someone to view this question`}
+          shareUrl={shareUrl}
+          triggeredFrom="question"
+          inviteTarget={{
+            type: "question",
+            id: question.id(),
+            name: question.card().name,
+          }}
+          onClose={closeInvite}
+        />
+      )}
     </Flex>
   );
 }
 
-// Non-admins can't create public links. When one already exists they get a
-// menu with both copy options; otherwise the button copies the app link directly.
+// Non-admins can't create public links. When one already exists they get the
+// popover with both copy options; otherwise the button copies the app link directly.
 function NonAdminQuestionSharingMenu({ question }: { question: Question }) {
+  const appUrl = useQuestionAppUrl(question);
   const publicUuid = question.publicUUID?.();
 
   if (!publicUuid) {
-    return <CopyQuestionLinkButton question={question} />;
+    return <CopyQuestionLinkButton url={appUrl} />;
   }
 
   return (
-    <SharingMenu>
-      <CopyQuestionLinkMenuItem question={question} />
+    <SharingMenu actions={<CopyLinkButton url={appUrl} />}>
       <CopyPublicLinkMenuItem
         url={getPublicQuestionUrl({ uuid: publicUuid })}
         onCopied={() =>
@@ -137,9 +164,7 @@ function NonAdminQuestionSharingMenu({ question }: { question: Question }) {
   );
 }
 
-function CopyQuestionLinkButton({ question }: { question: Question }) {
-  const url = useQuestionAppUrl(question);
-
+function CopyQuestionLinkButton({ url }: { url: string }) {
   return (
     <CopyButton value={url} timeout={COPY_TIMEOUT_MS}>
       {({ copied, copy }) => (

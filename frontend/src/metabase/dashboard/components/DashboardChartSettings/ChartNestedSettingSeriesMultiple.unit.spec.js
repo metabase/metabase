@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { DashboardChartSettings } from "./DashboardChartSettings";

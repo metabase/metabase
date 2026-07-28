@@ -1,5 +1,3 @@
-import type { WithRouterProps } from "react-router";
-
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useDashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/use-dashboard-location-sync";
@@ -10,31 +8,32 @@ import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
+import { useParams, useRouter } from "metabase/router";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { isActionDashCard, isQuestionCard } from "metabase/utils/dashboard";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
+import type { EntityToken } from "metabase-types/api/entity";
 
 import { usePublicEndpoints } from "../../../hooks/use-public-endpoints";
 import { PublicOrEmbeddedDashboardView } from "../PublicOrEmbeddedDashboardView";
 
-const PublicOrEmbeddedDashboardPageInner = ({
-  location,
-  router,
-}: WithRouterProps) => {
+const PublicOrEmbeddedDashboardPageInner = () => {
+  const { location, router } = useRouter();
+
   useDashboardLocationSync({ location });
   useDashboardUrlQuery(router, location);
 
   return <PublicOrEmbeddedDashboardView />;
 };
 
-export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
+export const PublicOrEmbeddedDashboardPage = () => {
   const dispatch = useDispatch();
 
-  const { location, params } = props;
-  const { uuid, token } = params;
+  const { location } = useRouter();
+  const { uuid, token } = useParams<{ uuid: string; token: EntityToken }>();
 
-  const parameterQueryParams = props.location.query;
+  const parameterQueryParams = location.query;
 
   const dashboardId = uuid || token;
 
@@ -54,12 +53,18 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
 
   const canWhitelabel = useSelector(getCanWhitelabel);
 
+  // The `:uuid` (public) and `:token` (embed) routes each supply exactly one of
+  // these, so `dashboardId` is always defined when this page renders.
+  if (dashboardId == null) {
+    return null;
+  }
+
   return (
     <LocaleProvider
       locale={canWhitelabel ? locale : undefined}
       shouldWaitForLocale
     >
-      <EmbeddingEntityContextProvider uuid={uuid} token={token}>
+      <EmbeddingEntityContextProvider uuid={uuid ?? null} token={token ?? null}>
         <DashboardContextProvider
           dashboardId={dashboardId}
           hideParameters={hide_parameters}
@@ -90,7 +95,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
           }
           dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
         >
-          <PublicOrEmbeddedDashboardPageInner {...props} />
+          <PublicOrEmbeddedDashboardPageInner />
         </DashboardContextProvider>
       </EmbeddingEntityContextProvider>
     </LocaleProvider>

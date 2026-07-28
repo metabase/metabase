@@ -26,11 +26,12 @@
 (defn- entities->snapshot
   "Serializes `entities` to file specs and returns a snapshot whose list-files/read-file expose them. The
   snapshot also records writes into `written` (an atom) and reports a fixed version, so it can stand in for
-  the remote tip in [[source/merge-and-store!]]."
+  the remote tip in the merge tests."
   [entities task-id written]
   (let [by-path (into {} (map (juxt :path :content)) (source/serialize-specs entities task-id))]
     (reify source.p/SourceSnapshot
       (list-files [_] (vec (keys by-path)))
+      (list-dir [_ p] (source/paths->children (keys by-path) p))
       (read-file [_ p] (get by-path p))
       (open-commit [_]
         (let [staged (atom [])]
@@ -38,49 +39,38 @@
             (stage-upsert! [_ spec] (swap! staged conj spec) nil)
             (stage-delete! [_ _path] nil)
             (replace-all! [_] nil)
+            (empty-commit? [_] false)
             (finish-commit! [_ message]
               (reset! written {:message message :files @staged})
+              "merged-version")
+            (finish-commit! [_ message report-progress]
+              (reset! written {:message message :files @staged})
+              (when report-progress (report-progress 0.8))
               "merged-version")
             (abort-commit! [_] nil))))
       (version [_] "remote-tip"))))
 
-(deftest merge-and-store!-clean-merge-test
-  (testing "when local and remote changed different entities, merge-and-store! writes the union with no conflict"
-    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
-      (let [written     (atom nil)
-            base        [(create-test-entity "A" "a" "Card") (create-test-entity "B" "b" "Card")]
-            ;; local kept A and B, added C
-            ours        [(create-test-entity "A" "a" "Card") (create-test-entity "B" "b" "Card")
-                         (create-test-entity "C" "c" "Card")]
-            ;; remote kept A and B, added D
-            theirs      [(create-test-entity "A" "a" "Card") (create-test-entity "B" "b" "Card")
-                         (create-test-entity "D" "d" "Card")]
-            base-snap   (entities->snapshot base task-id (atom nil))
-            remote-snap (entities->snapshot theirs task-id written)
-            result      (source/merge-and-store! ours remote-snap base-snap task-id "merge commit")]
-        (is (= :success (:status result)))
-        (is (= "merged-version" (:version result)))
-        (is (= {:added 1 :updated 0 :removed 0} (:summary result))
-            "only D is folded in from the remote")
-        (testing "the union of all four entities is written"
-          (let [ids (->> @written :files
-                         (keep #(second (re-find #"entity_id: (\w+)" (:content %))))
-                         sort)]
-            (is (= ["A" "B" "C" "D"] ids))))))))
-
-(deftest merge-and-store!-conflict-test
-  (testing "when the same entity changed on both sides, merge-and-store! returns :conflict and writes nothing"
-    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
-      (let [written     (atom nil)
-            base        [(create-test-entity "A" "a" "Card")]
-            ours        [(create-test-entity* "A" "a" "Card" "ours")]
-            theirs      [(create-test-entity* "A" "a" "Card" "theirs")]
-            base-snap   (entities->snapshot base task-id (atom nil))
-            remote-snap (entities->snapshot theirs task-id written)
-            result      (source/merge-and-store! ours remote-snap base-snap task-id "merge commit")]
-        (is (= :conflict (:status result)))
-        (is (= 1 (count (:conflicts result))))
-        (is (nil? @written) "nothing should be written when there is a conflict")))))
+(deftest paths->children-test
+  (testing "the flat-path stand-in matches the contract git's list-dir implements"
+    (let [paths ["root.txt"
+                 "data_apps/README.md"
+                 "data_apps/beta/data_app.yaml"
+                 "data_apps/alpha/data_app.yaml"
+                 "data_apps/alpha/deep/nested.js"]]
+      (testing "immediate children only, as full paths, sorted and deduped"
+        (is (= ["data_apps/README.md" "data_apps/alpha" "data_apps/beta"]
+               (source/paths->children paths "data_apps")))
+        (is (= ["data_apps/alpha/data_app.yaml" "data_apps/alpha/deep"]
+               (source/paths->children paths "data_apps/alpha"))))
+      (testing "the repo root — paths are repo-relative, so the root prefix is empty, not \"/\""
+        (is (= ["data_apps" "root.txt"] (source/paths->children paths ""))))
+      (testing "a file, or an absent directory, has no children"
+        (is (= [] (source/paths->children paths "root.txt")))
+        (is (= [] (source/paths->children paths "nope"))))
+      (testing "plain lexicographic order, which a single level of git's own tree order is not"
+        ;; git orders entries as if directories ended in "/", and \- sorts before \/, so git would hand
+        ;; back ("d/a-b" "d/a") here. Lexicographic is the rule a flat path list can honour too.
+        (is (= ["d/a" "d/a-b"] (source/paths->children ["d/a-b" "d/a/x"] "d")))))))
 
 (deftest preview-merge-clean-test
   (testing "preview-merge reports a clean merge and summary without writing"

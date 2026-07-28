@@ -284,8 +284,6 @@ export function addColumnToCartesianChart(
     | Draft<VisualizerVizDefinitionWithColumns>
     | VisualizerVizDefinitionWithColumns,
   settings: ComputedVisualizationSettings,
-  datasets: Record<string, Dataset>,
-  dataSourceColumns: DatasetColumn[],
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataSource: VisualizerDataSource,

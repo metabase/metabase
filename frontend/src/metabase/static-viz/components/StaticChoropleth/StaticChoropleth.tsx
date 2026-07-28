@@ -84,7 +84,9 @@ export const StaticChoropleth = ({
     ? buildColorScale(domain, settings["map.colors"], toRgb)
     : {
         colorScale: (_value: number) => zeroColor,
+        // Unjustified type cast. FIXME
         groups: [] as number[][],
+        // Unjustified type cast. FIXME
         heatMapColors: [] as string[],
       };
 

@@ -17,7 +17,7 @@ import {
 const setupWithNegativeFeedback = async () => {
   setup();
   const feedbackEndpoint = mockFeedbackEndpoint();
-  mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+  mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
   await enterChatMessage("Who is your favorite?");
   const lastMessage = (await lastChatMessage())!;
@@ -54,7 +54,7 @@ describe("metabot > feedback", () => {
   it("should present the user an option to provide feedback", async () => {
     setup();
     const feedbackEndpoint = mockFeedbackEndpoint();
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
     await enterChatMessage("Who is your favorite?");
     const lastMessage = (await lastChatMessage())!;
@@ -123,7 +123,7 @@ describe("metabot > feedback", () => {
   it("should submit positive feedback", async () => {
     setup();
     const feedbackEndpoint = mockFeedbackEndpoint();
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
     await enterChatMessage("Who is your favorite?");
     const lastMessage = (await lastChatMessage())!;

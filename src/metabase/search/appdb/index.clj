@@ -22,7 +22,6 @@
    [metabase.util.string :as string]
    [toucan2.core :as t2])
   (:import
-   (org.h2.jdbc JdbcSQLSyntaxErrorException)
    (org.postgresql.util PSQLException)))
 
 (comment
@@ -288,7 +287,8 @@
   ;; Use with care, obviously this can give false positives if used with a query that's *actually* malformed.
   ;; TODO we should handle the MySQL and MariaDB flavors here too
   (or (instance? PSQLException (ex-cause e))
-      (instance? JdbcSQLSyntaxErrorException (ex-cause e))))
+      (= mdb/jdbc-sql-syntax-error-exception-classname
+         (some-> e ex-cause class .getName))))
 
 (defn- retry-upsert-ex [table-type table-name-before table-name-after e-before e-after]
   (ex-info "Failed retrying search index batch upsert"
@@ -475,7 +475,6 @@
     (when (or force-reset? (not (exists? (active-table))))
       (reset-index!))))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temp-index-table
   "Create a temporary index table for the duration of the body. Uses the existing index if we're already mocking."
   [& body]

@@ -2,13 +2,13 @@ import { createSelector } from "@reduxjs/toolkit";
 import { createCachedSelector } from "re-reselect";
 import _ from "underscore";
 
-import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
 import {
   getDashboardQuestions,
   getSavedDashboardUiParameters,
@@ -573,8 +573,8 @@ export const getSelectedTabId = createSelector(
     (state) => getSetting(state, "site-url"),
     getDashboard,
     (state) => state.dashboard.selectedTabId,
-    (state: State) =>
-      (state as Partial<SdkStoreState>).sdk?.initialDashboardTabId,
+    (state: State & Partial<SdkSharedStoreState>) =>
+      state.sdk?.initialDashboardTabId,
   ],
   (isWebApp, siteUrl, dashboard, selectedTabId, sdkInitialDashboardTabId) => {
     if (dashboard && selectedTabId === null) {
@@ -638,21 +638,6 @@ function getSdkInitialDashboardTabId(
   return dashboard.tabs?.[0]?.id ?? null;
 }
 
-export const getCurrentTabDashcards = createSelector(
-  [getDashboardComplete, getSelectedTabId],
-  (dashboard, selectedTabId) => {
-    if (!dashboard || !Array.isArray(dashboard?.dashcards)) {
-      return [];
-    }
-    if (!selectedTabId) {
-      return dashboard.dashcards;
-    }
-    return dashboard.dashcards.filter(
-      (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
-    );
-  },
-);
-
 export const getHiddenParameterSlugs = createSelector(
   [getDashboardComplete, getParameters, getIsEditing],
   (dashboard, parameters, isEditing) => {
@@ -667,23 +652,6 @@ export const getHiddenParameterSlugs = createSelector(
     );
 
     return hiddenParameters.map((parameter) => parameter.slug).join(",");
-  },
-);
-
-export const getTabHiddenParameterSlugs = createSelector(
-  [getParameters, getCurrentTabDashcards, getIsEditing],
-  (parameters, currentTabDashcards, isEditing) => {
-    if (isEditing) {
-      // All filters should be visible in edit mode
-      return undefined;
-    }
-
-    const currentTabParameterIds = getMappedParametersIds(currentTabDashcards);
-    const hiddenParameters = parameters.filter(
-      (parameter) => !currentTabParameterIds.includes(parameter.id),
-    );
-
-    return hiddenParameters.map((p) => p.slug).join(",");
   },
 );
 
@@ -714,6 +682,7 @@ export const getParameterMappingsBeforeEditing = createSelector(
         }
 
         map[parameterId][dashcard.id] =
+          // Unjustified type cast. FIXME
           parameterMapping as DashboardParameterMapping;
       }
     }

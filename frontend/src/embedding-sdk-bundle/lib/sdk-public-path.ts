@@ -31,7 +31,7 @@
 // so the assignment below is rewritten to set the runtime's `publicPath`.
 declare let __webpack_public_path__: string;
 
-const resolveAssetBaseUrl = (): string | undefined => {
+export const resolveAssetBaseUrl = (): string | undefined => {
   const fromGlobal =
     typeof window !== "undefined"
       ? window.METABASE_EMBEDDING_SDK_ASSET_BASE_URL
@@ -45,9 +45,15 @@ const resolveAssetBaseUrl = (): string | undefined => {
     return undefined;
   }
 
+  // Unjustified type cast. FIXME
   const scriptUrl = (document.currentScript as HTMLScriptElement | null)?.src;
 
-  if (!scriptUrl) {
+  // Only derive the base from `document.currentScript` when it is the SDK entry
+  // itself. In Storybook (and other hosts) the current script is a
+  // bundle-specific file — e.g. `.../embedding-sdk/<story>.iframe.bundle.js` —
+  // and deriving the base from it would point on-demand chunks at the wrong
+  // directory and fail to load them.
+  if (!scriptUrl || !/embedding-sdk\.js(\?|$)/.test(scriptUrl)) {
     return undefined;
   }
 
@@ -60,5 +66,3 @@ const assetBaseUrl = resolveAssetBaseUrl();
 if (assetBaseUrl) {
   __webpack_public_path__ = assetBaseUrl;
 }
-
-export {};

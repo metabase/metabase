@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { isEmbedding } from "metabase/embedding/config";
+
 export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
 
 // NOTE: this is not ideal, but will get fixed w/ BOT-189 allowing us to use fixed entity_ids
@@ -82,6 +84,14 @@ export const METABOT_PROFILE_OVERRIDES = {
   TRANSFORMS_CODEGEN: "transforms_codegen",
 } as const satisfies Record<string, MetabotProfileId | undefined>;
 
+export const isHistoryEnabledProfile = (profile: string | undefined) =>
+  profile === undefined || profile === "nlq";
+
+export const resolveMetabotProfileId = (
+  profile: MetabotProfileId | undefined,
+): MetabotProfileId =>
+  profile ?? (isEmbedding() ? "embedding_next" : "internal");
+
 export const METABOT_ERR_MSG = {
   get default() {
     return t`Sorry, I ran into an error. Could you please try that again?`;
@@ -91,6 +101,9 @@ export const METABOT_ERR_MSG = {
   },
   get locked() {
     return t`You've used all of your included AI service tokens. To keep using AI features you can either end your trial early and start your subscription, or stay in the trial and add your own AI provider API key.`;
+  },
+  get outOfSync() {
+    return t`This conversation was updated elsewhere. Please refresh to see the latest messages.`;
   },
   format(msg: string) {
     return t`Sorry, an error occurred: ${msg}. If this persists, please contact your administrator.`;
@@ -106,6 +119,9 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   },
   get analyze_chart() {
     return t`Inspecting the visualization`;
+  },
+  get save_entity() {
+    return t`Saving`;
   },
   get list_available_fields() {
     return undefined;

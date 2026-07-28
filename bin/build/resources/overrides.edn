@@ -4,6 +4,7 @@
   "com.google.cloud"                 {:resource "apache2_0.txt"}
   "com.google.cloud.sql"             {:resource "apache2_0.txt"}
   "com.google.code.gson"             {:resource "apache2_0.txt"}
+  "com.github.jknack"                {:resource "apache2_0.txt"}
   "com.google.guava"                 {:resource "apache2_0.txt"}
   "com.google.http-client"           {:resource "apache2_0.txt"}
   "com.google.protobuf"              {:resource "apache2_0.txt"}

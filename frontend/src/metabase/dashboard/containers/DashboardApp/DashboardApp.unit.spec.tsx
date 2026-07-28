@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
 import {
@@ -27,6 +26,7 @@ import {
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Dashboard } from "metabase-types/api";
 import {
@@ -99,8 +99,8 @@ async function setup({ dashboard }: Options = {}) {
 
   const { history } = renderWithProviders(
     <>
-      <Route path="/" component={TestHome} />
-      <Route path="/dashboard/:slug" component={DashboardAppContainer} />
+      <Route path="/" element={<TestHome />} />
+      <Route path="/dashboard/:slug" element={<DashboardAppContainer />} />
     </>,
     {
       initialRoute: `/dashboard/${dashboardId}`,

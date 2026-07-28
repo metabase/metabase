@@ -173,7 +173,7 @@ export type RemoteSyncTask = {
 export type RemoteSyncConflictVariant =
   | "push" // Conflict when pushing (need to pull from remote first)
   | "pull" // Conflict when pulling (need to sync local changes)
-  | "switch-branch" // Conflict when switching branches
+  | "switch-branch" // Local changes present when switching branches (Settings panel)
   | "setup"; // Conflict when setting up or pulling for the first time
 
 export type GetBranchesResponse = {

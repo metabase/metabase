@@ -11,6 +11,11 @@ export type AdvisoryVersionRange = {
   fixed: string;
 };
 
+export type AdvisoryDownloadJarUrl = {
+  version: string;
+  url: string;
+};
+
 export type AdvisorySeverity = "critical" | "high" | "medium" | "low";
 
 export type AdvisoryId = string;
@@ -28,6 +33,7 @@ export type Advisory = {
   acknowledged_by: { id: number; common_name: string; email: string } | null;
   acknowledged_at: string | null;
   affected_versions: AdvisoryVersionRange[];
+  download_jar_urls: AdvisoryDownloadJarUrl[];
 };
 
 export type ListAdvisoriesResponse = {

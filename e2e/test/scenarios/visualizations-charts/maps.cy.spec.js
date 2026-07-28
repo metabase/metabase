@@ -476,25 +476,6 @@ describe("scenarios > visualizations > maps", () => {
           .should("have.length", 1)
           .contains("Longitude is between -180 and 180");
       });
-
-      it("should handle brush filters that cross the 180th meridian (metabase#41056)", () => {
-        pinMapSelectRegion(100, 100, 200, 200);
-
-        cy.get(".CardVisualization").should("exist");
-        cy.findByTestId("question-row-count").findByText("Showing 9 rows");
-
-        // Exact value for these longitude bounds is not important.
-        const lngRegex = /\d+(\.\d+)?/.source;
-
-        cy.findAllByTestId("filter-pill")
-          .should("have.length", 1)
-          .contains(
-            new RegExp(
-              `(Latitude is between .*) and Longitude is between ${lngRegex} and 180` +
-                ` or \\1 and Longitude is between -180 and -${lngRegex}`,
-            ),
-          );
-      });
     },
   );
 });

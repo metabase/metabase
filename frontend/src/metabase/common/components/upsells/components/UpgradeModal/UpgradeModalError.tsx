@@ -14,10 +14,10 @@ export function UpgradeModalError({ onClose }: UpgradeModalErrorProps) {
         justify="center"
         w={64}
         h={64}
-        bg="error"
+        bg="feedback-negative"
         style={{ borderRadius: "50%" }}
       >
-        <Icon name="warning" c="white" size={32} />
+        <Icon name="warning" c="core-white" size={32} />
       </Flex>
 
       <Stack align="center" gap="xs">

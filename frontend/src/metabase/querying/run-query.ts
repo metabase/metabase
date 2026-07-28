@@ -1,3 +1,4 @@
+import { RTK_CACHE_KEY_PARAM } from "metabase/api/api";
 import { cardApi } from "metabase/api/card";
 import { dashboardApi } from "metabase/api/dashboard";
 import { datasetApi } from "metabase/api/dataset";
@@ -10,7 +11,7 @@ import type { Dispatch } from "metabase/redux/store";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
+import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot-options";
 import type {
   Card,
   CardQueryRequest,
@@ -67,11 +68,13 @@ async function handleQueryApiError(
       // plain-text body. Normalize so callers can rely on a `{ error, ... }`
       // shape and don't fall through to the empty state (EMB-1659).
       if (typeof error.data === "string") {
+        // Unjustified type cast. FIXME
         return {
           error: error.data,
           status: error.status,
         } as unknown as Dataset;
       }
+      // Unjustified type cast. FIXME
       return error.data as Dataset;
     }
     // For 5xx and other errors, re-throw
@@ -92,13 +95,13 @@ export function runAdhocDatasetQuery(
   // Disambiguate the RTK cache key so two callers running the same MBQL
   // query get independent cache entries and abort signals. Without this,
   // one caller cancelling would abort the shared in-flight request for
-  // every co-subscribed caller. `_refetchDeps` is stripped from the body
-  // before it hits the server.
+  // every co-subscribed caller. The key is stripped in `baseQuery` before
+  // the request hits the server.
   const requestBody = {
     ...(isPivot
       ? { ...body, ...getPivotOptions(new Question(card, metadata)) }
       : body),
-    _refetchDeps: ++adhocDatasetQueryCounter,
+    [RTK_CACHE_KEY_PARAM]: ++adhocDatasetQueryCounter,
   };
   const endpoint = isPivot
     ? datasetApi.endpoints.getAdhocPivotQuery
@@ -136,9 +139,10 @@ function runSavedCardQuery(
     // Disambiguate the RTK cache key so two callers running the same saved card
     // don't co-subscribe to one in-flight request — otherwise one caller
     // aborting its query (e.g. the SDK cancelling the previous run on every
-    // re-run) aborts every co-subscriber's query too. Stripped from the body
-    // before it hits the server. Mirrors `runAdhocDatasetQuery`.
-    _refetchDeps: ++savedCardQueryCounter,
+    // re-run) aborts every co-subscriber's query too. The key is stripped in
+    // `baseQuery` before the request hits the server. Mirrors
+    // `runAdhocDatasetQuery`.
+    [RTK_CACHE_KEY_PARAM]: ++savedCardQueryCounter,
     // `token` and `cardId` identify the card in mutually exclusive ways, so we
     // send only one. Guest and embedded requests carry a `token`: the
     // `onBeforeRequest` middleware rewrites the request to the matching
@@ -156,6 +160,7 @@ function runSavedCardQuery(
       dashboardApi.endpoints.getDashboardCardQuery,
       card,
       metadata,
+      // Unjustified type cast. FIXME
       {
         dashboardId,
         dashcardId,
@@ -168,6 +173,7 @@ function runSavedCardQuery(
     cardApi.endpoints.getCardQuery,
     card,
     metadata,
+    // Unjustified type cast. FIXME
     body as CardQueryRequest,
   );
 }

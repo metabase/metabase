@@ -114,22 +114,45 @@
 
 (deftest ^:parallel ->mbql5-native-query-test
   (testing "template tag dimensions are converted"
-    (let [original {:type :native
-                    :native
-                    {:query "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
-                     :template-tags
-                     {"NAME"
-                      {:name "NAME"
-                       :display-name "Name"
-                       :type :dimension
-                       :dimension [:field 866 nil]
-                       :widget-type :string/=
-                       :default nil}}}
-                    :database 76}
+    (let [original  {:type     :native
+                     :native
+                     {:query "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                      :template-tags
+                      {"NAME"
+                       {:name         "NAME"
+                        :display-name "Name"
+                        :type         :dimension
+                        :dimension    [:field 866 nil]
+                        :widget-type  :string/=
+                        :default      nil}}}
+                     :database 76}
           converted (lib.convert/->mbql5 original)]
-      (is (=? {:stages [{:template-tags {"NAME" {:dimension [:field {:lib/uuid string?} 866]}}}]}
+      (is (=? {:stages [{:template-tags [{:dimension [:field {:lib/uuid string?} 866]}]}]}
               converted))
       (is (mr/validate :metabase.lib.schema/query converted)))))
+
+(deftest ^:parallel native-query->legacy-test
+  (is (= {:database 76
+          :native {:query "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                   :template-tags {"NAME" {:default      nil
+                                           :dimension    [:field 866 nil]
+                                           :display-name "Name"
+                                           :name         "NAME"
+                                           :type         :dimension
+                                           :widget-type  :string/=}}}
+          :type     :native}
+         (lib.convert/->legacy-MBQL
+          {:database 76
+           :stages   [{:native   "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                       :template-tags
+                       [{:default      nil
+                         :dimension    [:field {:lib/uuid "7ba4c681-b39e-418b-8b77-b98ad974eeb1"} 866]
+                         :display-name "Name"
+                         :name         "NAME"
+                         :type         :dimension
+                         :widget-type  :string/=}]
+                       :lib/type :mbql.stage/native}]
+           :lib/type :mbql/query}))))
 
 (deftest ^:parallel ->mbql5-joins-default-alias-test
   (let [original {:database (meta/id)
@@ -536,7 +559,7 @@
     {"false" [:value false nil]}
     [:expression "false"]
 
-    {"eq"  [:= 1 2]}
+    {"eq"  [:= "a" "b"]}
     [:expression "eq"]
 
     {"and"  [:and [:field 1 nil] [:field 2 nil]]}
@@ -1512,7 +1535,7 @@
                                                          :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
                                                                         [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]}]
                                              :fields   [[:field {:lib/uuid "00000000-0000-0000-0000-000000000003", :join-alias "J"} 1]]
-                                             :conditions [[:= {:lib/uuid "00000000-0000-0000-0000-000000000004"} 1 2]]}]}]}]
+                                             :conditions [[:= {:lib/uuid "00000000-0000-0000-0000-000000000004"} "a" "b"]]}]}]}]
       (is (= {:type  :query
               :query {:source-table 1
                       :joins        [{:alias        "J"
@@ -1520,7 +1543,7 @@
                                                      :fields       [[:field 1 nil]
                                                                     [:field 2 nil]]}
                                       :fields       [[:field 1 {:join-alias "J"}]]
-                                      :condition    [:= 1 2]}]}}
+                                      :condition    [:= "a" "b"]}]}}
              (lib.convert/->legacy-MBQL query)
              ;; make sure roundtripping doesn't introduce extra stages.
              (-> query
@@ -1539,14 +1562,14 @@
                                                            :source-table 2
                                                            :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
                                                                           [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]}]
-                                             :conditions [[:= {:lib/uuid "00000000-0000-0000-0000-000000000003"} 1 2]]}]}]}]
+                                             :conditions [[:= {:lib/uuid "00000000-0000-0000-0000-000000000003"} "a" "b"]]}]}]}]
       (is (= {:type  :query
               :query {:source-table 1
                       :joins        [{:alias        "J"
                                       :source-query {:source-table 2
                                                      :fields       [[:field 1 nil]
                                                                     [:field 2 nil]]}
-                                      :condition    [:= 1 2]}]}}
+                                      :condition    [:= "a" "b"]}]}}
              (lib.convert/->legacy-MBQL query)
              ;; make sure roundtripping doesn't introduce extra stages.
              (-> query
@@ -1595,7 +1618,7 @@
           [:relative-datetime -15 :day]
           [:relative-datetime 0 :day]]
          (lib.convert/->legacy-MBQL [:between
-                                     {:include-current true,
+                                     {:include-current true
                                       :lib/uuid        "b8991b40-d452-4922-8768-b07f6f2b1918"}
                                      [:field
                                       {:base-type :type/Text
@@ -1676,3 +1699,23 @@
                                             :type         :dimension
                                             :widget-type  :date/all-options
                                             :dimension    [:field 2 nil]}}}))))
+
+(deftest ^:parallel round-trip-offset-inside-case-inside-aggregation-test
+  (testing "#42377 sum(case([Total] > 0, offset([Total], -1))) survives the legacy <-> pMBQL round-trip"
+    ;; OFFSET retains a random :lib/uuid in its (mbql5-style) options, so exact round-trip equality is not
+    ;; possible; instead assert the conversion happens without an "Error normalizing" exception and that the
+    ;; clause shape is preserved in both directions.
+    (let [legacy {:database 2762
+                  :type     :query
+                  :query    {:aggregation  [[:sum [:case [[[:> [:field 139657 nil] 0]
+                                                           [:offset {} [:field 139657 nil] -1]]]]]]
+                             :breakout     [[:field 139658 nil]]
+                             :source-table 33674}}
+          mbql5  (lib.convert/->mbql5 legacy)]
+      (is (=? {:stages [{:aggregation [[:sum {}
+                                        [:case {}
+                                         [[[:> {} [:field {} 139657] 0]
+                                           [:offset {:lib/uuid string?} [:field {} 139657] -1]]]]]]}]}
+              mbql5))
+      (is (=? legacy (lib.convert/->legacy-MBQL mbql5)))
+      (is (some? (-> mbql5 lib.convert/->legacy-MBQL lib.convert/->mbql5))))))

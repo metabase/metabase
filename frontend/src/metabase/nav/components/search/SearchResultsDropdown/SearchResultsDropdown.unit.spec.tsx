@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
@@ -11,6 +10,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { SearchResult } from "metabase-types/api";
 import {
@@ -65,14 +65,14 @@ const setup = async ({
   const { history } = renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <SearchResultsDropdown
           searchText={searchText}
           onSearchItemSelect={onSearchItemSelect}
           goToSearchApp={goToSearchApp}
           context="search-bar"
         />
-      )}
+      }
     />,
     {
       withRouter: true,

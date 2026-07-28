@@ -122,7 +122,7 @@ function createSdkInstanceContextPlugin(store: {
           data: {
             id: settings?.["analytics-uuid"],
             version: {
-              tag: (version as { tag?: string }).tag,
+              tag: version.tag,
             },
             created_at: settings?.["instance-creation"],
             token_features: settings?.["token-features"],

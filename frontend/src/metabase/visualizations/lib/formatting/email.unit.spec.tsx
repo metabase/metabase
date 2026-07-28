@@ -18,6 +18,7 @@ describe("formatEmail", () => {
         jsx: true,
         rich: true,
       });
+      // Unjustified type cast. FIXME
       expect(isElementOfType(result as JSX.Element, ExternalLink)).toBe(true);
 
       render(result);
@@ -36,6 +37,7 @@ describe("formatEmail", () => {
       "firstname.lastname@company.co.uk",
     ])("should handle complex valid email address: %s", (email) => {
       const result = formatEmail(email, { jsx: true, rich: true });
+      // Unjustified type cast. FIXME
       expect(isElementOfType(result as JSX.Element, ExternalLink)).toBe(true);
 
       render(result);
@@ -89,6 +91,7 @@ describe("formatEmail", () => {
         clicked,
       });
 
+      // Unjustified type cast. FIXME
       expect(isElementOfType(result as JSX.Element, ExternalLink)).toBe(true);
 
       render(result);
@@ -110,6 +113,7 @@ describe("formatEmail", () => {
         collapseNewlines: true,
       });
 
+      // Unjustified type cast. FIXME
       expect(isElementOfType(result as JSX.Element, ExternalLink)).toBe(false);
       expect(result).toBe("test@example.com  extra text");
     });
@@ -130,6 +134,7 @@ describe("formatEmail", () => {
         collapseNewlines: true,
       });
 
+      // Unjustified type cast. FIXME
       expect(isElementOfType(result as JSX.Element, ExternalLink)).toBe(true);
 
       render(result);
@@ -154,7 +159,9 @@ describe("formatEmail", () => {
     });
 
     it("should handle null and undefined by converting to string", () => {
+      // Unjustified type cast. FIXME
       expect(formatEmail(null as any)).toBe("null");
+      // Unjustified type cast. FIXME
       expect(formatEmail(undefined as any)).toBe("undefined");
     });
   });

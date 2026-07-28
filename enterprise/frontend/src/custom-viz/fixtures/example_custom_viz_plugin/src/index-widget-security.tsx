@@ -33,7 +33,7 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
     settings: {
       threshold: defineSetting({
         id: "threshold",
-        title: "Threspachold",
+        title: "Threshold",
         widget: "number",
         getDefault() {
           return 0;

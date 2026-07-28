@@ -2,13 +2,11 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
-   [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -18,11 +16,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
-   (java.sql PreparedStatement ResultSet)
-   (java.time Instant)
-   (java.time.temporal ChronoUnit)
-   (java.util.concurrent.locks ReadWriteLock Lock)
-   (net.snowflake.client.api.exception SnowflakeSQLException)))
+   (java.sql PreparedStatement ResultSet)))
 
 (set! *warn-on-reflection* true)
 
@@ -48,18 +42,18 @@
                               :type/Time           "TIME(3)"}]
   (defmethod sql.tx/field-base-type->sql-type [:snowflake base-type] [_ _] sql-type))
 
+;; in CI use a completely different set of databases for each run and tear down
+;; all of them when the job completes; see after-run below.
+(defonce dataset-prefix (str (rand-int 9999999)))
+
 (defn qualified-db-name
-  "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
-  time."
+  "Isolate db name so we don't stomp on any other jobs running at the same time."
   [{:keys [database-name] :as db-def}]
-  (cond (str/starts-with? database-name "sha_")
-        database-name
-        ;; releases get their own isolated datasets
-        (tx/on-master-or-release-branch?)
-        (str "sha_" (config/current-major-version) "_"
-             (tx/hash-dataset db-def) "_" database-name)
-        :else
-        (str "sha__" (tx/hash-dataset db-def) "_" database-name)))
+  (cond (or (str/starts-with? database-name "isolate_")
+            (str/starts-with? database-name "sha_")) database-name
+        ;; isolate if we are in a CI job
+        (System/getenv "GITHUB_REF_NAME") (str "isolate_" dataset-prefix database-name)
+        :else (str "sha_" (tx/hash-dataset db-def) "_" database-name)))
 
 (defmethod tx/dbdef->connection-details :snowflake
   [_driver context dbdef]
@@ -107,6 +101,15 @@
 
 ;;; --------------------------------- Cleanup ----------------------------------
 
+(defmethod tx/after-run :snowflake [_driver]
+  (let [spec (no-db-connection-spec)
+        query "select name from metabase_test_tracking.PUBLIC.datasets
+                where name like 'isolate_%s%%'"]
+    (doseq [{:keys [name]} (jdbc/query spec [(format query dataset-prefix)])]
+      (jdbc/query spec
+                  ["DELETE FROM metabase_test_tracking.PUBLIC.datasets where name = ?" name])
+      (jdbc/execute! spec [(format "DROP DATABASE \"%s\";" name)]))))
+
 (defn- old-dataset-names
   "Return a collection of all dataset names that are old
    -- tracked that haven't been touched in a while or are not tracked and too old"
@@ -120,80 +123,10 @@
     (into [] (map :name) (jdbc/reducible-query (no-db-connection-spec)
                                                [query days-ago]))))
 
-(defn- orphan-isolation-schemas
-  "Return a collection of schema names with mb__isolation_ prefix that are more than 3 hours old,
-   along with their database names."
-  []
-  (sql-jdbc.execute/do-with-connection-with-options
-   :snowflake
-   (no-db-connection-spec)
-   {:write? false}
-   (fn [^java.sql.Connection conn]
-     (with-open [stmt (.createStatement conn)
-                 ;; Prefix must match driver.u/workspace-isolated-prefix
-                 rs (.executeQuery stmt "SHOW SCHEMAS LIKE 'mb__isolation_%' IN ACCOUNT")]
-       (let [three-hours-ago (-> (Instant/now)
-                                 (.minus 3 ChronoUnit/HOURS)
-                                 java.util.Date/from)]
-         (loop [results []]
-           (if (.next rs)
-             (let [schema-name (.getString rs "name")
-                   db-name (.getString rs "database_name")
-                   created-on (.getTimestamp rs "created_on")]
-               (if (and created-on (.before created-on three-hours-ago))
-                 (recur (conj results {:schema-name schema-name :database-name db-name}))
-                 (recur results)))
-             results)))))))
-
-(defn- old-snowflake-objects
-  "Return a vector of names matching `like-pattern` (a `SHOW <kind> LIKE ...` argument) that are
-  more than 3 hours old. `kind` is the SQL noun -- one of `USERS`, `ROLES`. Snowflake's `SHOW`
-  result sets expose `name` and `created_on` columns for both.
-
-  Filters to the iso-prefixed set up front so the result set stays small even on a long-lived
-  account. We only return *expired* entries -- entries within the 3h threshold may belong to a
-  parallel-running test job."
-  [^String kind ^String like-pattern]
-  (sql-jdbc.execute/do-with-connection-with-options
-   :snowflake
-   (no-db-connection-spec)
-   {:write? false}
-   (fn [^java.sql.Connection conn]
-     (with-open [stmt (.createStatement conn)
-                 rs   (.executeQuery stmt (format "SHOW %s LIKE '%s'" kind like-pattern))]
-       (let [threshold (-> (Instant/now) (.minus 3 ChronoUnit/HOURS) java.util.Date/from)]
-         (loop [results []]
-           (if (.next rs)
-             (let [name       (.getString rs "name")
-                   created-on (.getTimestamp rs "created_on")]
-               (if (and created-on (.before created-on threshold))
-                 (recur (conj results name))
-                 (recur results)))
-             results)))))))
-
-(defn- orphan-isolation-users
-  "Return iso usernames (`mb__isolation_*`) older than 3 hours."
-  []
-  ;; Prefix must match driver.u/workspace-isolated-prefix.
-  (old-snowflake-objects "USERS" "mb__isolation_%"))
-
-(defn- orphan-isolation-roles
-  "Return iso role names older than 3 hours. NOTE: roles use a different prefix
-   (`MB_ISOLATION_ROLE_`) than schemas/users -- see `isolation-role-name` in
-   `metabase.driver.snowflake`."
-  []
-  (old-snowflake-objects "ROLES" "MB_ISOLATION_ROLE_%"))
-
 ;;; --------------------------------- Destruction ----------------------------------
 ;;;
-;;; The fns below are split into pure enumerators (above: `orphan-isolation-*`)
-;;; and destructive drops. This lets you preview from a REPL:
-;;;
-;;;     (#'sf-tx/orphan-isolation-users)
-;;;     ;; => ["mb__isolation_..." ...]
-;;;
-;;; without firing the destructive side. The whole-orchestration entry point
-;;; ([[delete-old-test-data!]]) is the glue and gets called from `tx/create-db!`.
+;;; The whole-orchestration entry point ([[delete-old-test-data!]]) is the glue
+;;; and gets called from `tx/create-db!`.
 
 (defn- with-write-stmt!
   "Open a write-capable Snowflake connection + Statement, call `f` with the stmt,
@@ -228,64 +161,9 @@
               #_{:clj-kondo/ignore [:discouraged-var]}
               (println "[Snowflake] Error deleting old dataset:" (ex-message e)))))))))
 
-(defn- drop-orphan-isolation-schemas!
-  "Drop iso schemas (`mb__isolation_*`) older than 3 hours."
-  []
-  (when-let [old-schemas (not-empty (orphan-isolation-schemas))]
-    (with-write-stmt!
-      (fn [^java.sql.Statement stmt]
-        (doseq [{:keys [schema-name database-name]} old-schemas]
-          #_{:clj-kondo/ignore [:discouraged-var]}
-          (println "[Snowflake] Deleting old isolation schema:" database-name "." schema-name)
-          (try
-            (.execute stmt (format "DROP SCHEMA IF EXISTS \"%s\".\"%s\";" database-name schema-name))
-            (catch Throwable e
-              #_{:clj-kondo/ignore [:discouraged-var]}
-              (println "[Snowflake] Error deleting old isolation schema:" (ex-message e)))))))))
-
-(defn- drop-orphan-isolation-users!
-  "Drop iso users (`mb__isolation_*`) older than 3 hours. Per-entry try/catch:
-  never let one orphan block the others."
-  []
-  (when-let [old-users (not-empty (orphan-isolation-users))]
-    (with-write-stmt!
-      (fn [^java.sql.Statement stmt]
-        (doseq [username old-users]
-          #_{:clj-kondo/ignore [:discouraged-var]}
-          (println "[Snowflake] Deleting old isolation user:" username)
-          (try
-            (.execute stmt (format "DROP USER IF EXISTS \"%s\";" username))
-            (catch Throwable e
-              #_{:clj-kondo/ignore [:discouraged-var]}
-              (println "[Snowflake] Error deleting old isolation user:" (ex-message e)))))))))
-
-(defn- drop-orphan-isolation-roles!
-  "Drop iso roles (`MB_ISOLATION_ROLE_*`) older than 3 hours. Note the
-  different prefix vs schemas/users -- see `isolation-role-name` in
-  `metabase.driver.snowflake`."
-  []
-  (when-let [old-roles (not-empty (orphan-isolation-roles))]
-    (with-write-stmt!
-      (fn [^java.sql.Statement stmt]
-        (doseq [role-name old-roles]
-          #_{:clj-kondo/ignore [:discouraged-var]}
-          (println "[Snowflake] Deleting old isolation role:" role-name)
-          (try
-            (.execute stmt (format "DROP ROLE IF EXISTS \"%s\";" role-name))
-            (catch Throwable e
-              #_{:clj-kondo/ignore [:discouraged-var]}
-              (println "[Snowflake] Error deleting old isolation role:" (ex-message e)))))))))
-
 (defn- delete-old-test-data!
-  "Delete old test data:
-   - Datasets (databases) prefixed by sha_ that haven't been accessed in a while
-   - Isolation schemas prefixed by mb__isolation_ that are more than 3 hours old
-   - Isolation users prefixed by mb__isolation_ that are more than 3 hours old
-   - Isolation roles prefixed by MB_ISOLATION_ROLE_ that are more than 3 hours old
-
-   Glue. Each drop step is independent; a failure in one doesn't block the
-   others. To preview from a REPL, call the corresponding `orphan-isolation-*`
-   enumerator instead."
+  "Delete old test data: datasets (databases) prefixed by sha_ that haven't been
+   accessed in a while."
   []
   ;; the printlns are on purpose because we want them to show up when running tests, even on CI, to make sure this
   ;; stuff is working correctly. We can change it to `log` in the future when we're satisfied everything is working as
@@ -300,10 +178,7 @@
   ;; local testing shows that identifying old datasets works correctly, but
   ;; sometimes randomly in CI it seems to decide that datasets are old and
   ;; deletes them even tho they are not old.
-  ;; (drop-old-datasets!)
-  (drop-orphan-isolation-schemas!)
-  (drop-orphan-isolation-users!)
-  (drop-orphan-isolation-roles!))
+  #_(drop-old-datasets!))
 
 (defonce ^:private deleted-old-test-data?
   (atom false))
@@ -328,7 +203,7 @@
   [driver db-def & options]
   ;; qualify the DB name with the unique prefix
   (let [db-def (assoc db-def :database-name (qualified-db-name db-def))]
-    ;; clean up any old test data (datasets and isolation schemas)
+    ;; clean up any old test data (datasets)
     (delete-old-test-data-if-needed!)
     ;; Snowflake by default uses America/Los_Angeles timezone. See https://docs.snowflake.com/en/sql-reference/parameters#timezone.
     ;; We expect UTC in tests. Hence fixing [[metabase.query-processor.timezone/database-timezone-id]] (PR #36413)
@@ -344,6 +219,8 @@
   (let [database-name (qualified-db-name dbdef)
         sql           (format "DROP DATABASE \"%s\";" database-name)]
     (log/infof "[Snowflake] %s" sql)
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println "[Snowflake] destroy database " database-name (:database-name dbdef))
     (jdbc/query (no-db-connection-spec)
                 ["DELETE FROM metabase_test_tracking.PUBLIC.datasets where name = ?" database-name])
     (jdbc/execute! (no-db-connection-spec) [sql])))
@@ -520,6 +397,13 @@
     (jdbc/execute! spec (format "GRANT ROLE %s TO USER %s" "ACCOUNTADMIN" db-user))))
 
 (comment
+  (let [test-data (tx/get-dataset-definition (data.impl/resolve-dataset-definition
+                                              *ns* 'test-data))]
+    (tx/dataset-already-loaded? :snowflake test-data))
+  (jdbc/query (no-db-connection-spec) ["SELECT query_text, end_time
+                                        FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+                                        WHERE query_text LIKE 'DROP DATABASE %'
+                                        ORDER BY end_time DESC limit 64"])
   (old-dataset-names)
   (drop-old-datasets!)
   (into [] (jdbc/reducible-query (no-db-connection-spec) ["select * from metabase_test_tracking.PUBLIC.datasets"]))
@@ -643,66 +527,3 @@
     "TIME"         :type/Time
     ;; Default: unknown types get :type/*
     :type/*))
-
-;; Sadly Snowflake does not implement locks outside very limited scope of
-;; automatic locking around DDL; there are no advisory locks, so we are stuck
-;; building them ourselves out of table rows.
-(defn- setup-locks! []
-  ;; Reuse the existing tracking database, but make a new table.
-  (with-write-stmt! (fn [^java.sql.Statement stmt]
-                      (.executeQuery stmt "CREATE DATABASE IF NOT EXISTS metabase_test_tracking;")))
-  ;; normal tables literally cannot have primary keys enforced! must be hybrid.
-  (with-write-stmt! (fn [^java.sql.Statement stmt]
-                      (.executeQuery stmt "CREATE HYBRID TABLE IF NOT EXISTS metabase_test_tracking.PUBLIC.locks
-                                          (dataset TEXT PRIMARY KEY, at TIMESTAMPTZ DEFAULT current_timestamp())")))
-  ;; unfortuantely with-redefs in the test suite can mean that we end up trying
-  ;; to create locks as other users which will need access to the locks table
-  (with-write-stmt! (fn [^java.sql.Statement stmt]
-                      (.executeQuery stmt "GRANT ALL ON metabase_test_tracking.PUBLIC.locks TO SYSADMIN"))))
-
-(alter-var-root #'setup-locks! memoize)
-
-(defn- try-lock! [^java.sql.Statement stmt dataset-name]
-  (try
-    (.executeQuery stmt (format "INSERT INTO metabase_test_tracking.PUBLIC.locks (dataset) VALUES ('%s')"
-                                dataset-name))
-    true
-    (catch SnowflakeSQLException e
-      (when-not (= "A primary key already exists." (.getMessage e))
-        (throw e))
-      (with-write-stmt! (fn [^java.sql.Statement stmt]
-                          (.executeQuery stmt "DELETE FROM metabase_test_tracking.PUBLIC.locks
-                                           WHERE TIMEDIFF('seconds', at, current_timestamp()::TIMESTAMPTZ) > 60")))
-      false)))
-
-(defn- lock! [dataset-name]
-  (setup-locks!)
-  (loop [tries 0]
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (println "[Snowflake] locking attempt" tries "on" dataset-name)
-    (let [locked? (with-write-stmt! try-lock! dataset-name)]
-      (when (< 1000 tries)
-        (throw (Exception. "could not acquire snowflake lock")))
-      (when (not locked?)
-        (Thread/sleep 100)
-        (recur (inc tries))))))
-
-(defn- unlock! [dataset-name ^java.sql.Statement stmt]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (println "[Snowflake] unlocking" dataset-name)
-  (.executeQuery stmt (format "DELETE FROM metabase_test_tracking.PUBLIC.locks WHERE dataset = '%s'"
-                              dataset-name)))
-
-(defmethod test.data.impl.get-or-create/dataset-lock :snowflake
-  [_driver dataset-name]
-  (reify ReadWriteLock
-    (readLock [_]
-      (reify Lock
-        (lock [_])
-        (unlock [_])))
-    (writeLock [_]
-      (reify Lock
-        (lock [_]
-          (lock! dataset-name))
-        (unlock [_]
-          (with-write-stmt! (partial unlock! dataset-name)))))))

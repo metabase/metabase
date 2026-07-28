@@ -4,9 +4,9 @@
 }
 
 .increase {
-  color: var(--mb-color-success);
+  color: var(--mb-color-feedback-positive);
 }
 
 .decrease {
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
 }

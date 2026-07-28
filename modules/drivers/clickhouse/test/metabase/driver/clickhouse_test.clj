@@ -5,6 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -30,6 +31,23 @@
   (if (resolve `mt/with-dynamic-redefs)
     `(mt/with-dynamic-redefs ~bindings ~@body)
     `(mt/with-dynamic-fn-redefs ~bindings ~@body)))
+
+(deftest ^:parallel expr->columns-test
+  (testing "splits a ClickHouse key expression into its top-level columns/expressions (no live DB needed)"
+    ;; the catalog strings here are the real stored forms: `system.tables.sorting_key` is unwrapped, a single-expression
+    ;; `system.data_skipping_indices.expr` is paren-wrapped, and a function key carries its own inner comma.
+    (are [expr expected] (= expected (#'clickhouse/expr->columns expr))
+      "a, b"                ["a" "b"]                  ; sorting key, no wrapper
+      "(a, b)"              ["a" "b"]                  ; skip-index, wrapped
+      "a"                   ["a"]
+      "(lower(s))"          ["lower(s)"]               ; wrapped single expression, not truncated
+      "a, cityHash64(s, b)" ["a" "cityHash64(s, b)"]   ; function key's inner comma is not a split point
+      ;; a backtick-quoted name can hold a comma or paren; it must stay one column and come out bare
+      "`weird,name`, b"     ["weird,name" "b"]
+      "`paren(col`, b"      ["paren(col" "b"]
+      "`back``tick`"        ["back`tick"]              ; doubled backtick is an escaped backtick
+      ""                    []                         ; blank -> [], so :key-columns stays schema-valid
+      nil                   [])))
 
 (deftest ^:parallel clickhouse-version
   (mt/test-driver :clickhouse

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { push, replace } from "react-router-redux";
 
 import { useDispatch, useSelector } from "metabase/redux";
+import { push, replace } from "metabase/router";
 import { getLocation } from "metabase/selectors/routing";
 import * as Urls from "metabase/urls";
 

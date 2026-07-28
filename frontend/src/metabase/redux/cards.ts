@@ -60,6 +60,7 @@ const WRITABLE_CARD_PROPERTIES = [
 ] as const;
 
 const pickWritable = (card: object) =>
+  // Unjustified type cast. FIXME
   _.pick(card, "id", ...WRITABLE_CARD_PROPERTIES) as Record<string, unknown>;
 
 /**

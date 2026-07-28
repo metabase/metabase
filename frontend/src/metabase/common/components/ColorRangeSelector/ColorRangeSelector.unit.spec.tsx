@@ -9,18 +9,22 @@ import { getColorRangeLabel } from "./ColorRangeToggle";
 // Color components only speak hex, so we need to convert the values we use for testing to hex
 const color = (name: string) => Color(libColors(name)).hex();
 
-const DEFAULT_VALUE = [color("white"), color("core-brand")];
+const DEFAULT_VALUE = [color("core-white"), color("core-brand")];
 const DEFAULT_COLORS = [
   color("core-brand"),
   color("core-summarize"),
   color("core-filter"),
 ];
 
-const WHITE_COLOR_RANGE = [color("error"), color("white"), color("success")];
+const WHITE_COLOR_RANGE = [
+  color("feedback-negative"),
+  color("core-white"),
+  color("feedback-positive"),
+];
 const WARNING_COLOR_RANGE = [
-  color("error"),
-  color("warning"),
-  color("success"),
+  color("feedback-negative"),
+  color("feedback-warning"),
+  color("feedback-positive"),
 ];
 
 function setup() {

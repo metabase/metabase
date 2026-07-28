@@ -71,6 +71,7 @@ describe("createBrandingElement", () => {
 
     // Should only have logo for xs size
     expect(element.children.length).toBe(1);
+    // Unjustified type cast. FIXME
     const logo = element.children[0] as HTMLImageElement;
     expect(logo.tagName).toBe("IMG");
     expect(logo.src).toMatch(/^data:image\/svg\+xml;base64,/);
@@ -92,6 +93,7 @@ describe("createBrandingElement", () => {
     expect(text.tagName).toBe("SPAN");
     expect(text).toHaveTextContent("Made with");
     expect(logo.tagName).toBe("IMG");
+    // Unjustified type cast. FIXME
     expect((logo as HTMLImageElement).src).toMatch(
       /^data:image\/svg\+xml;base64,/,
     );

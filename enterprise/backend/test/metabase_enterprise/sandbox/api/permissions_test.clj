@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
@@ -152,3 +153,33 @@
                               :query {:source-table (str "card__" (u/the-id card))}
                               :type :query}))
                     "metabase_cache"))))))))
+
+(deftest oss-preserves-sandboxed-view-data-test
+  (testing "PUT /api/permissions/graph in OSS preserves stored EE sandbox config on rows it never surfaces"
+    (mt/with-model-cleanup [:model/Sandbox]
+      (mt/with-temp [:model/PermissionsGroup {gid :id} {}
+                     :model/Card {cid1 :id} {}
+                     :model/Card {cid2 :id} {}]
+        (mt/with-premium-features #{:advanced-permissions :sandboxes}
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (-> (data-perms.graph/api-graph)
+               (assoc-in [:groups gid (mt/id) :view-data]
+                         {"PUBLIC" {(mt/id :orders) :sandboxed (mt/id :people) :sandboxed}})
+               (assoc :sandboxes [{:table_id (mt/id :orders) :group_id gid :card_id cid1 :attribute_remappings {"foo" 1}}
+                                  {:table_id (mt/id :people) :group_id gid :card_id cid2 :attribute_remappings {"foo" 1}}]))))
+        (mt/with-premium-features #{}
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (assoc-in (data-perms.graph/api-graph)
+                     [:groups gid (mt/id) :create-queries]
+                     {"PUBLIC" {(mt/id :orders) :query-builder}})))
+        (testing "both sandbox rows survive the OSS create-queries edit"
+          (is (t2/exists? :model/Sandbox :table_id (mt/id :orders) :group_id gid))
+          (is (t2/exists? :model/Sandbox :table_id (mt/id :people) :group_id gid)))
+        (testing "the graph still surfaces :sandboxed view-data under EE"
+          (mt/with-premium-features #{:advanced-permissions :sandboxes}
+            (is (=? {(mt/id :orders) :sandboxed
+                     (mt/id :people) :sandboxed}
+                    (get-in (data-perms.graph/api-graph)
+                            [:groups gid (mt/id) :view-data "PUBLIC"])))))))))

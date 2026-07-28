@@ -42,7 +42,7 @@ const createMockStateWithPermissions = ({
     }),
   });
 
-  return state as unknown as State;
+  return state;
 };
 
 describe("TenantCollectionPermissionsPage selectors", () => {
@@ -116,6 +116,7 @@ describe("TenantCollectionPermissionsPage selectors", () => {
   describe("getCurrentTenantCollectionId", () => {
     it("should return undefined when collectionId is null", () => {
       const state = createMockStateWithPermissions();
+      // Unjustified type cast. FIXME
       const props = { params: { collectionId: null as any } };
 
       expect(getCurrentTenantCollectionId(state, props)).toBeUndefined();
@@ -123,6 +124,7 @@ describe("TenantCollectionPermissionsPage selectors", () => {
 
     it("should return undefined when collectionId is undefined", () => {
       const state = createMockStateWithPermissions();
+      // Unjustified type cast. FIXME
       const props = { params: { collectionId: undefined as any } };
 
       expect(getCurrentTenantCollectionId(state, props)).toBeUndefined();
@@ -144,6 +146,7 @@ describe("TenantCollectionPermissionsPage selectors", () => {
 
     it("should handle numeric collection id", () => {
       const state = createMockStateWithPermissions();
+      // Unjustified type cast. FIXME
       const props = { params: { collectionId: 100 as any } };
 
       expect(getCurrentTenantCollectionId(state, props)).toBe(100);

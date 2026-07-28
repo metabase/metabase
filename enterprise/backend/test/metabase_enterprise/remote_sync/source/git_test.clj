@@ -9,9 +9,12 @@
    [metabase.test :as mt]
    [metabase.util :as u])
   (:import (java.io File)
+           (java.nio.file Files Paths)
+           (java.nio.file.attribute FileAttribute)
            (org.apache.commons.io FileUtils)
            (org.eclipse.jgit.api Git TransportCommand)
-           (org.eclipse.jgit.lib PersonIdent)
+           (org.eclipse.jgit.dircache DirCacheEditor DirCacheEditor$PathEdit DirCacheEntry)
+           (org.eclipse.jgit.lib AnyObjectId FileMode PersonIdent)
            (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider)))
 
 (set! *warn-on-reflection* true)
@@ -69,6 +72,30 @@
     (-> (.add git)
         (.addFilepattern path)
         (.call))))
+
+(defn- git-working-link!
+  "Writes a symlink in the working path and stages it, so a test can cover the mode-120000 entries a real
+  repo can hold. Git stores the link's *target text* as the blob, and never follows it."
+  [{:keys [^Git git]} ^String path ^String target]
+  (let [full-path (io/file (.getWorkTree (.getRepository git)) path)]
+    (io/make-parents full-path)
+    (Files/createSymbolicLink (.toPath full-path)
+                              (Paths/get target (into-array String []))
+                              (into-array FileAttribute []))
+    (-> (.add git)
+        (.addFilepattern path)
+        (.call))))
+
+(defn- git-working-gitlink!
+  "Stages a submodule entry (mode 160000) pointing at `commit-id`. A gitlink has no working-tree file to
+  add, so this edits the index directly, as `git update-index --cacheinfo 160000,<sha>,<path>` does."
+  [{:keys [^Git git]} ^String path ^AnyObjectId commit-id]
+  (let [^DirCacheEditor editor (.editor (.lockDirCache (.getRepository git)))]
+    (.add editor (proxy [DirCacheEditor$PathEdit] [path]
+                   (apply [^DirCacheEntry entry]
+                     (.setFileMode entry FileMode/GITLINK)
+                     (.setObjectId entry commit-id))))
+    (.commit editor)))
 
 (defn- git-working-create-branch!
   "Creates a branch with an initial commit and file using the working directory"
@@ -198,6 +225,72 @@
       (is (= ["file-in-branch-1.txt" "master.txt" "subdir/path.txt"] (source.p/list-files branch-1)))
       (is (= ["file-in-branch-2.txt" "master.txt" "subdir/path.txt"] (source.p/list-files branch-2))))))
 
+(deftest list-dir
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[master _remote] (init-source! "master" remote-dir
+                                         :files {"root.txt"                 "at the root"
+                                                 "dir/readme.md"            "a file, not a directory"
+                                                 "dir/alpha/one.txt"        "ONE"
+                                                 "dir/alpha/two.txt"        "TWO"
+                                                 "dir/alpha/deep/leaf.txt"  "LEAF"
+                                                 "dir/beta/three.txt"       "THREE"
+                                                 ;; \- sorts before \/, so git's own tree order here is
+                                                 ;; ("d/a-b" "d/a") — the case the sort normalizes
+                                                 "d/a-b"                    "a sibling"
+                                                 "d/a/x"                    "inside a directory"
+                                                 "zzz/other.txt"            "elsewhere"})
+          snap (source.p/snapshot master)]
+      (testing "immediate children only — no descendants, no siblings of the directory itself"
+        (is (= ["dir/alpha" "dir/beta" "dir/readme.md"] (source.p/list-dir snap "dir"))))
+      (testing "children are full repo-root relative paths, so they feed straight back into read-file"
+        (let [child (some #{"dir/alpha/one.txt"} (source.p/list-dir snap "dir/alpha"))]
+          (is (= "ONE" (source.p/read-file snap child)))))
+      (testing "files and directories are both listed, sorted — `deep` is a directory"
+        (is (= ["dir/alpha/deep" "dir/alpha/one.txt" "dir/alpha/two.txt"]
+               (source.p/list-dir snap "dir/alpha"))))
+      (testing "the repo root"
+        (is (= ["d" "dir" "root.txt" "zzz"] (source.p/list-dir snap ""))))
+      (testing "ordering is plain lexicographic, not git's own tree order"
+        ;; git compares a directory as if it ended in "/", so its tree order here is ("d/a-b" "d/a").
+        ;; We normalize to lexicographic — the one order a flat path list can produce too, so every
+        ;; snapshot implementation agrees.
+        (is (= ["d/a" "d/a-b"] (source.p/list-dir snap "d"))))
+      (testing "nesting: each call steps down exactly one level, and paths stay rooted at the repo"
+        (is (= ["dir/alpha/deep/leaf.txt"] (source.p/list-dir snap "dir/alpha/deep"))))
+      (testing "a path that is a file, or absent, has no children rather than throwing"
+        (is (= [] (source.p/list-dir snap "dir/readme.md")))
+        (is (= [] (source.p/list-dir snap "nope")))
+        (is (= [] (source.p/list-dir snap "dir/alpha/nope")))))))
+
+(deftest list-dir-dotfiles-and-symlinks
+  (testing "the entry kinds a real repo can hold, beyond plain files and directories"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [remote (init-remote! remote-dir
+                                 :files {"dir/plain.txt"        "a file"
+                                         "dir/.dotfile"         "a dotfile"
+                                         "dir/.hidden/file.txt" "inside a dot-directory"
+                                         "outside/target.txt"   "outside dir"})
+            _      (git-working-link! remote "dir/linkdir" "../outside")
+            _      (git-working-link! remote "dir/linkfile" "plain.txt")
+            head   (git-working-commit! remote "add symlinks")
+            _      (git-working-gitlink! remote "dir/sub" head)
+            _      (git-working-commit! remote "add submodule")
+            snap   (source.p/snapshot (->source! "master" remote))]
+        (testing "git has no notion of a hidden file, so neither do we — dotted names are listed as-is"
+          (is (= ["dir/.dotfile" "dir/.hidden" "dir/linkdir" "dir/linkfile" "dir/plain.txt" "dir/sub"]
+                 (source.p/list-dir snap "dir")))
+          (is (= ["dir/.hidden/file.txt"] (source.p/list-dir snap "dir/.hidden"))
+              "a dot-directory is an ordinary tree we descend into"))
+        (testing "only a tree has children: everything else lists nothing, whatever it points at"
+          (is (= [] (source.p/list-dir snap "dir/linkdir")) "a symlink to a directory")
+          (is (= [] (source.p/list-dir snap "dir/linkfile")) "a symlink to a file")
+          (is (= [] (source.p/list-dir snap "dir/sub")) "a submodule (gitlink) — its tree isn't in this repo")
+          (is (= [] (source.p/list-dir snap "dir/plain.txt")) "a plain file"))
+        (testing "reading a symlink yields its target text, never the target's content: git does not follow
+                  links, so a link can neither escape the repo nor pull in a file from outside the directory"
+          (is (= "../outside" (source.p/read-file snap "dir/linkdir")))
+          (is (= "plain.txt" (source.p/read-file snap "dir/linkfile"))))))))
+
 (deftest read-file
   (mt/with-temp-dir [remote-dir nil]
     (let [[master _remote] (init-source! "master" remote-dir
@@ -294,6 +387,42 @@
           (testing "the commit was pushed to the remote"
             (is (= ["Incremental" "Initial commit"]
                    (map :message (git/log (assoc remote :branch "master")))))))))))
+
+(deftest empty-commit?-detects-no-op-tree-test
+  (testing "empty-commit? is true exactly when the staged tree matches the parent commit's tree"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"collections/a.yaml" "content A"
+                                                   "collections/b.yaml" "content B"})]
+        (testing "re-staging identical content is empty"
+          (let [c (source.p/open-commit (source.p/snapshot master))]
+            (source.p/stage-upsert! c {:path "collections/a.yaml" :content "content A"})
+            (is (true? (source.p/empty-commit? c)))
+            (source.p/abort-commit! c)))
+        (testing "staging a real content change is not empty"
+          (let [c (source.p/open-commit (source.p/snapshot master))]
+            (source.p/stage-upsert! c {:path "collections/a.yaml" :content "changed A"})
+            (is (false? (source.p/empty-commit? c)))
+            (source.p/abort-commit! c)))
+        (testing "adding a new file is not empty"
+          (let [c (source.p/open-commit (source.p/snapshot master))]
+            (source.p/stage-upsert! c {:path "collections/c.yaml" :content "content C"})
+            (is (false? (source.p/empty-commit? c)))
+            (source.p/abort-commit! c)))
+        (testing "deleting a path that isn't in the tree is empty"
+          (let [c (source.p/open-commit (source.p/snapshot master))]
+            (source.p/stage-delete! c "collections/does-not-exist.yaml")
+            (is (true? (source.p/empty-commit? c)))
+            (source.p/abort-commit! c)))
+        (testing "none of the aborted no-op checks moved the branch"
+          (is (= ["Initial commit"] (map :message (git/log master)))))
+        (testing "empty-commit? then finish-commit! still commits a real change (tree written once, memoized)"
+          (let [c (source.p/open-commit (source.p/snapshot master))]
+            (source.p/stage-upsert! c {:path "collections/a.yaml" :content "changed A"})
+            (is (false? (source.p/empty-commit? c)))
+            (source.p/finish-commit! c "Edit A"))
+          (is (= ["Edit A" "Initial commit"] (map :message (git/log master))))
+          (is (= "changed A" (source.p/read-file (source.p/snapshot master) "collections/a.yaml"))))))))
 
 (deftest apply-changes-preserves-deep-unchanged-subtree-test
   (testing "an incremental upsert leaves deeply-nested, unrelated subtrees untouched (carried forward by id)"

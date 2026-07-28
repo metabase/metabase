@@ -1,9 +1,9 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { Link } from "metabase/router";
 import type { UtmProps } from "metabase/selectors/settings";
 import {
   Alert,
@@ -147,10 +147,13 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                                       <Group gap="xs">
                                         <Icon
                                           name="check"
-                                          c="success-secondary"
+                                          c="feedback-positive-selected"
                                           size={12}
                                         />
-                                        <Text size="sm" c="success-secondary">
+                                        <Text
+                                          size="sm"
+                                          c="feedback-positive-selected"
+                                        >
                                           {t`Done`}
                                         </Text>
                                       </Group>
@@ -234,15 +237,11 @@ const StepAlert = ({
   message: string;
 }) => (
   <Alert
-    icon={<Icon size={14} name={type === "success" ? "check" : "info"} />}
+    size="compact"
+    icon={<Icon name={type === "success" ? "check" : "info"} />}
     mt="xl"
     color={type === "info" ? "core-brand" : type}
-    lh="lg"
-    classNames={{
-      wrapper: S.infoAlertWrapper,
-      icon: S.infoAlertIcon,
-      message: S.infoAlertMessage,
-    }}
+    classNames={{ message: S.infoAlertMessage }}
   >
     {message}
   </Alert>

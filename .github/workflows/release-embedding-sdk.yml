@@ -1,46 +1,103 @@
+# Step 2 of the SDK release process: merging a version-bump PR (opened by
+# sdk-version-bump-pr.yml, labeled `sdk-release-trigger`) publishes the version
+# and dist-tag committed in package.template.json's `sdkRelease` block.
+#
+# workflow_dispatch publishes the same way, from the branch chosen in the ref
+# picker, without a PR. It reads the same committed sdkRelease block and never
+# bumps the version - so it is not how you cut a release. Use it only to publish
+# a version that is already committed, when the bump PR cannot do it.
+#
+# To retry a failed run, re-run the failed jobs on that run rather than
+# dispatching a fresh one: if publish-npm already succeeded, a fresh run would
+# stop at check-git-tag on the existing tag.
 name: Release Metabase Embedding SDK for React
-run-name: Release SDK from ${{ inputs.branch }}
+run-name: Release SDK from ${{ github.event_name == 'workflow_dispatch' && github.ref_name || github.event.pull_request.base.ref }}
 
 on:
   workflow_dispatch:
     inputs:
-      branch:
-        description: "Branch we want to release the SDK from (to release from other branches use the workflow from those branches)"
+      read_first:
+        description: |
+          ⚠️ To cut a release, use the "SDK Version Bump PR" workflow instead — it bumps the version and opens a PR; merging that PR publishes.
+          This publishes the version already committed in package.template.json. It never bumps. Pick the branch in "Use workflow from" above.
+          Use it only when neither the bump PR nor re-running the failed jobs will do.
         type: choice
-        required: true
-        default: "master"
+        required: false
         options:
-          - master
+          - Publish the committed version from the branch picked in "Use workflow from" above
+  # Step 2 of the new release process: merging a version-bump PR (opened by
+  # sdk-version-bump-pr.yml, labeled `sdk-release-trigger`) triggers a release
+  # of whatever branch that PR targeted. See `prepare-release` below.
+  #
+  # The `paths` filter keeps this from creating a run for every PR closed
+  # anywhere in the repo - version-bump PRs always touch package.template.json,
+  # so this is a reliable pre-filter ahead of the label/merge check below.
+  pull_request:
+    types: [closed]
+    paths:
+      - enterprise/frontend/src/embedding-sdk-package/package.template.json
 
 concurrency:
-  # We want to ensure only one job is running at a time per branch because
-  # there could be a conflict when updating the readme file.
-  group: ${{ github.workflow }}-${{ inputs.branch }}
-  cancel-in-progress: true
+  # One release at a time per branch; base.ref is empty on workflow_dispatch, so
+  # it falls back to the ref picker's branch. Never cancel in progress - a queued
+  # release that turns out stale fails loudly at check-git-tag.
+  #
+  # Non-release closed PRs queue here too and skip in seconds. GitHub keeps only
+  # one pending run per group and cancels any earlier one, so one could in theory
+  # evict a release waiting to start; that needs two same-branch releases at once.
+  # `queue: max` would fix it, but actionlint cannot parse it (rhysd/actionlint#654).
+  group: sdk-release-${{ github.event.pull_request.base.ref || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
+  # Gates the whole workflow: either a manual workflow_dispatch, or a merged
+  # PR carrying the sdk-release-trigger label. Every other job depends
+  # (directly or transitively) on this one, so if it's skipped the rest of
+  # the run is skipped too - no separate `if:` needed on downstream jobs.
+  prepare-release:
+    name: Prepare release trigger
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'sdk-release-trigger'))
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      branch: ${{ steps.resolve.outputs.branch }}
+    steps:
+      # base.ref is only set on a pull_request event; on a dispatch it is empty,
+      # so this falls through to the branch picked in the ref picker.
+      - name: Resolve target branch
+        id: resolve
+        run: echo "branch=${{ github.event.pull_request.base.ref || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
   workflow-summary:
     name: Log inputs
+    needs: prepare-release
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
+        env:
+          BRANCH: ${{ needs.prepare-release.outputs.branch }}
         run: |
-          tee -a $GITHUB_STEP_SUMMARY << EOF
+          tee -a "$GITHUB_STEP_SUMMARY" << EOF
           **Inputs:**
 
-          - \`branch\`: ${{ inputs.branch }}
+          - \`branch\`: $BRANCH
+          - \`trigger\`: ${{ github.event_name }}
 
           triggered by: @${{ github.event.sender.login }}
           EOF
 
-  send-slack-notification-start:
-    name: "Send Slack notification: SDK release started"
-    needs: determine-sdk-version
+  # Builds release/dist/index.cjs once, for every Slack job to download. It hangs
+  # off prepare-release only - not off the metadata read or anything downstream -
+  # so the artifact exists even when the release fails at its very first step,
+  # which is exactly when send-slack-notification-failure needs it.
+  build-release-scripts:
+    name: Build release scripts
+    needs: prepare-release
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
-    outputs:
-      slackMessageId: ${{ steps.send-slack-message-start.outputs.result }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -51,11 +108,27 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
 
-      - name: Cache build scripts
+      - name: Upload release scripts
         uses: actions/upload-artifact@v7
         with:
           name: build-scripts
           path: release/dist/index.cjs
+
+  send-slack-notification-start:
+    name: "Send Slack notification: SDK release started"
+    needs:
+      - build-release-scripts
+      - read-sdk-release-metadata
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      slackMessageId: ${{ steps.send-slack-message-start.outputs.result }}
+    steps:
+      - name: Retrieve release scripts
+        uses: actions/download-artifact@v8
+        with:
+          name: build-scripts
+          path: release/dist/
 
       - name: Send build start message
         id: send-slack-message-start
@@ -66,7 +139,7 @@ jobs:
           result-encoding: string
           script: | # js
             const { mentionUserByGithubLogin, sendSlackMessage, githubRunLink } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const sdkVersion = "${{ needs.determine-sdk-version.outputs.sdk_version }}";
+            const sdkVersion = "${{ needs.read-sdk-release-metadata.outputs.sdk_version }}";
 
             const title = `:rocket: *SDK release: ${sdkVersion}* :rocket:`
             const runLink = githubRunLink(
@@ -87,23 +160,22 @@ jobs:
   send-slack-notification-failure:
     name: "Send Slack notification: SDK release failed"
     needs:
-      [
-        "determine-sdk-version",
-        "send-slack-notification-start",
-        "check-git-tag",
-        "test",
-        "build-sdk",
-        "publish-npm",
-        "tag-latest",
-        "git-tag",
-      ]
+      - build-release-scripts
+      - read-sdk-release-metadata
+      - send-slack-notification-start
+      - check-git-tag
+      - test
+      - build-sdk
+      - publish-npm
+      - tag-latest
+      - git-tag
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       slackMessageId: ${{ needs.send-slack-notification-start.outputs.slackMessageId }}
     if: ${{ always() && contains(needs.*.result, 'failure') }}
     steps:
-      - name: Retrieve build scripts
+      - name: Retrieve release scripts
         uses: actions/download-artifact@v8
         with:
           name: build-scripts
@@ -115,8 +187,9 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: | # js
-            const { githubRunLink, sendSlackReply } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const sdkVersion = "${{ needs.determine-sdk-version.outputs.sdk_version }}";
+            const { githubRunLink, sendSlackReply, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const sdkVersion = "${{ needs.read-sdk-release-metadata.outputs.sdk_version }}";
+            const messageId = "${{ env.slackMessageId }}";
 
             const runLink = githubRunLink(
               `:x: ${sdkVersion} Release has failed`,
@@ -124,23 +197,34 @@ jobs:
               context.repo.owner,
               context.repo.repo,
             );
-            sendSlackReply({
-              channelName: 'team-embedding-releases',
-              message: runLink,
-              messageId: ${{ env.slackMessageId}},
-              broadcast: true
-            });
+
+            if (messageId) {
+              sendSlackReply({
+                channelName: 'team-embedding-releases',
+                message: runLink,
+                messageId,
+                broadcast: true,
+              });
+            } else {
+              sendSlackMessage({
+                channelName: 'team-embedding-releases',
+                message: runLink,
+              });
+            }
 
   send-slack-notification-successful:
     name: "Send Slack notification: SDK release successful"
     needs:
-      ["determine-sdk-version", "send-slack-notification-start", "publish-npm"]
+      - build-release-scripts
+      - read-sdk-release-metadata
+      - send-slack-notification-start
+      - publish-npm
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       slackMessageId: ${{ needs.send-slack-notification-start.outputs.slackMessageId }}
     steps:
-      - name: Retrieve build scripts
+      - name: Retrieve release scripts
         uses: actions/download-artifact@v8
         with:
           name: build-scripts
@@ -153,7 +237,7 @@ jobs:
         with:
           script: | # js
             const { githubRunLink, sendSlackReply } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const sdkVersion = "${{ needs.determine-sdk-version.outputs.sdk_version }}";
+            const sdkVersion = "${{ needs.read-sdk-release-metadata.outputs.sdk_version }}";
 
             const runLink = githubRunLink(
               `:partydeploy: ${sdkVersion} Release is complete :partydeploy:`,
@@ -164,93 +248,104 @@ jobs:
             sendSlackReply({
               channelName: 'team-embedding-releases',
               message: runLink,
-              messageId: ${{ env.slackMessageId}},
+              messageId: "${{ env.slackMessageId }}",
               broadcast: true
             });
 
-  determine-sdk-version:
+  # Reads the version + release metadata straight from package.template.json
+  # instead of computing them (the version and sdkRelease.distTag/tagAsLatest
+  # are already correct on this branch, because sdk-version-bump-pr.yml wrote
+  # them there and a human reviewed them before merging).
+  read-sdk-release-metadata:
+    name: Read SDK release metadata
+    needs: prepare-release
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 20
+    timeout-minutes: 5
     outputs:
-      sdk_version: ${{ fromJson(steps.new-sdk-version.outputs.result).version }}
-      major_version: ${{ fromJson(steps.new-sdk-version.outputs.result).majorVersion }}
-      pre_release_label: ${{ fromJson(steps.new-sdk-version.outputs.result).preReleaseLabel }}
+      sdk_version: ${{ steps.metadata.outputs.sdk_version }}
+      major_version: ${{ steps.metadata.outputs.major_version }}
+      dist_tag: ${{ steps.metadata.outputs.dist_tag }}
+      tag_as_latest: ${{ steps.metadata.outputs.tag_as_latest }}
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.branch }}
+          ref: ${{ needs.prepare-release.outputs.branch }}
 
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
 
-      - name: Get current SDK version
-        id: current-sdk-version
-        run: |
-          VERSION=$(jq -r .version ./enterprise/frontend/src/embedding-sdk-package/package.template.json)
-          echo "sdk_current_version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Get next SDK patch or pre-release version
-        id: new-sdk-version
+      - name: Read version and sdkRelease metadata
+        id: metadata
         uses: actions/github-script@v9
         with:
-          script: | #js
-            const { getNextSdkVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+          script: | # js
+            const { readSdkReleaseMetadata } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            const branch = "${{ inputs.branch }}";
-            const currentVersion = "${{ steps.current-sdk-version.outputs.sdk_current_version }}";
+            let metadata;
+            try {
+              metadata = readSdkReleaseMetadata({
+                packageTemplatePath:
+                  'enterprise/frontend/src/embedding-sdk-package/package.template.json',
+              });
+            } catch (error) {
+              core.setFailed(error.message);
+              return;
+            }
 
-            const result = getNextSdkVersion(branch, currentVersion);
-
-            return {
-              version: result.version,
-              preReleaseLabel: result.preReleaseLabel,
-              majorVersion: result.majorVersion
-            };
+            core.setOutput('sdk_version', metadata.version);
+            core.setOutput('major_version', metadata.majorVersion);
+            core.setOutput('dist_tag', metadata.distTag);
+            core.setOutput('tag_as_latest', String(metadata.tagAsLatest));
 
       - name: Append workflow summary
         run: |
-          tee -a $GITHUB_STEP_SUMMARY << EOF
-          **Derived inputs:**
+          tee -a "$GITHUB_STEP_SUMMARY" << EOF
+          **SDK release metadata (from package.template.json):**
 
-          - \`current_version\`: "${{ steps.current-sdk-version.outputs.sdk_current_version }}"
-          - \`next_version\`: "${{ fromJson(steps.new-sdk-version.outputs.result).version }}"
-          - \`major_version\`: "${{ fromJson(steps.new-sdk-version.outputs.result).majorVersion }}"
+          - \`version\`: "${{ steps.metadata.outputs.sdk_version }}"
+          - \`major_version\`: "${{ steps.metadata.outputs.major_version }}"
+          - \`distTag\`: "${{ steps.metadata.outputs.dist_tag }}"
+          - \`tagAsLatest\`: "${{ steps.metadata.outputs.tag_as_latest }}"
           EOF
 
   check-git-tag:
-    needs: determine-sdk-version
+    needs:
+      - prepare-release
+      - read-sdk-release-metadata
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     env:
-      tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.sdk_version }}
+      tag: embedding-sdk-${{ needs.read-sdk-release-metadata.outputs.sdk_version }}
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.branch }}
+          ref: ${{ needs.prepare-release.outputs.branch }}
           fetch-depth: 0
           fetch-tags: true
 
       - name: check tags
         run: |
-          if [ $(git tag -l | grep $tag$) ]
+          if git tag -l | grep -q "${tag}$"
           then
-            echo "::error::Tag '${{ env.tag }}' already exists. If you expect to run this workflow with the same tag, please remove the tag first and rerun this workflow again."
+            echo "::error::Tag '${{ env.tag }}' already exists. If you expect to run this workflow with the same tag, please remove the tag first and rerun this workflow."
             exit 1
           else
             exit 0
           fi
 
   test:
-    needs: check-git-tag
+    needs:
+      - prepare-release
+      - check-git-tag
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.branch }}
+          ref: ${{ needs.prepare-release.outputs.branch }}
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -262,14 +357,16 @@ jobs:
         run: bun run embedding-sdk:test-unit
 
   build-sdk:
-    needs: [test, determine-sdk-version]
+    needs:
+      - prepare-release
+      - test
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.branch }}
+          ref: ${{ needs.prepare-release.outputs.branch }}
           fetch-depth: 0
           fetch-tags: true
 
@@ -279,11 +376,9 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
-      - name: Bump published npm package version
-        # NOTE: this should happen before "Build SDK bundle" as we inject SDK version into the code during build step
-        run: |
-          ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ needs.determine-sdk-version.outputs.sdk_version }}
-
+      # No version bump here anymore: package.template.json's version is
+      # already correct on this branch (bumped by sdk-version-bump-pr.yml
+      # before merge), so we build with it as-is.
       - name: Build SDK package
         run: bun run build-embedding-sdk-package
 
@@ -297,93 +392,21 @@ jobs:
           path: ./resources/embedding-sdk
 
   publish-npm:
-    needs: [build-sdk, determine-sdk-version]
+    needs:
+      - prepare-release
+      - build-sdk
+      - read-sdk-release-metadata
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     permissions:
       id-token: write # OIDC handshake for npm trusted publishing
       actions: read # actions/download-artifact reads the Actions API via GITHUB_TOKEN
-      pull-requests: write # gh pr review --approve step uses GITHUB_TOKEN
-    env:
-      sdk_version: ${{ needs.determine-sdk-version.outputs.sdk_version }}
     steps:
-      - name: Check out branch to prepare for a SDK version bump PR
-        uses: actions/checkout@v6
-        with:
-          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-          # when we created version update PR, it would only have diff from 2 files SDK readme and SDK package.json template
-          ref: ${{ inputs.branch}}
-
-      - name: Setup git user
-        run: |
-          git config --global user.email "github-automation@metabase.com"
-          git config --global user.name "Metabase Automation"
-
-      - name: Update readme
-        if: inputs.branch != 'master'
-        run: |
-          bash ./bin/embedding-sdk/release_utils.bash update_readme ${{ env.sdk_version }}
-
-      - name: Bump published npm package version
-        run: |
-          bash ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ env.sdk_version }}
-
-      - name: Create a PR updating readme + published version (using GitHub Metabase Automation account)
-        run: |
-          git checkout -b update-sdk-version-${{ env.sdk_version }}
-
-          if [ "${{ inputs.branch }}" = "master" ]; then
-            COMMIT_MSG="chore(sdk): Update published npm version to ${{ env.sdk_version }}"
-            PR_TITLE="chore(sdk): Update SDK version to ${{ env.sdk_version }}"
-            PR_BODY="Update published npm package version to ${{ env.sdk_version }}"
-          else
-            COMMIT_MSG="docs(sdk): Update Readme version references and published npm version to ${{ env.sdk_version }}"
-            PR_TITLE="docs(sdk): Update SDK version to ${{ env.sdk_version }}"
-            PR_BODY="Update Readme version references and published npm package version to ${{ env.sdk_version }}"
-          fi
-
-          git commit -a -m "$COMMIT_MSG"
-          git push origin HEAD
-          gh pr create --base "${{ inputs.branch }}" \
-                       --assignee "${GITHUB_ACTOR}" \
-                       --title "$PR_TITLE" \
-                       --body "$PR_BODY"
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-
-      - name: Edit PR adding useful information (using Metabase bot app)
-        # metabase/embedding team is added automatically as code owner of updated `package.template.json` file
-        run: |
-          gh pr edit --add-reviewer albertoperdomo --add-label no-backport
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-
-      - name: Auto approve PR (using GitHub Actions account)
-        run: |
-          gh pr review --approve
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
-        run: |
-          gh pr merge --auto --squash
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-
       - name: Retrieve build SDK package artifact
         uses: actions/download-artifact@v8
         with:
           name: metabase-sdk
           path: sdk
-
-      - name: Compute master tag
-        id: compute-tag
-        run: |
-          if [ -n "${{ needs.determine-sdk-version.outputs.pre_release_label }}" ]; then
-            echo "masterTag=${{ needs.determine-sdk-version.outputs.pre_release_label }}" >> $GITHUB_OUTPUT
-          else
-            echo "masterTag=nightly" >> $GITHUB_OUTPUT
-          fi
 
       # Trusted publishing requires npm >= 11.5.1 and Node >= 22.14.0.
       # Node 22.x line bundles npm 10.x, so pin Node 24.x which ships npm 11.x.
@@ -396,34 +419,41 @@ jobs:
       - name: Publish to NPM
         working-directory: sdk
         run: |
-          TAG="${{ steps.compute-tag.outputs.masterTag }}"
+          TAG="${{ needs.read-sdk-release-metadata.outputs.dist_tag }}"
           echo "Resolved npm tag: $TAG"
           npm publish --tag "$TAG"
 
-  # When a newer release branch goes gold, remove this entire job from this branch.
   tag-latest:
     name: Tag npm release as latest
-    # Pre-gold: remove `if: false` once this branch becomes gold.
-    if: false
-    needs: [publish-npm, determine-sdk-version]
+    # Driven by package.template.json's sdkRelease.tagAsLatest instead of a
+    # hardcoded `if: false` that had to be hand-edited (uncommented) once a
+    # branch went gold - see sdk-version-bump-pr.yml, which is where a human
+    # sets this to true when appropriate.
+    if: ${{ needs.read-sdk-release-metadata.outputs.tag_as_latest == 'true' }}
+    needs:
+      - publish-npm
+      - read-sdk-release-metadata
     uses: ./.github/workflows/embedding-sdk-tag-latest.yml
     with:
-      version: ${{ needs.determine-sdk-version.outputs.sdk_version }}
+      version: ${{ needs.read-sdk-release-metadata.outputs.sdk_version }}
     secrets: inherit
 
   git-tag:
-    needs: [publish-npm, determine-sdk-version]
+    needs:
+      - prepare-release
+      - publish-npm
+      - read-sdk-release-metadata
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     env:
-      tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.sdk_version }}
-      stable_tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.major_version }}-stable
+      tag: embedding-sdk-${{ needs.read-sdk-release-metadata.outputs.sdk_version }}
+      stable_tag: embedding-sdk-${{ needs.read-sdk-release-metadata.outputs.major_version }}-stable
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v6
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-          ref: ${{ inputs.branch }}
+          ref: ${{ needs.prepare-release.outputs.branch }}
 
       - name: Setup git user
         run: |
@@ -436,7 +466,7 @@ jobs:
           git push origin ${{ env.tag }}
 
       - name: Create and push SDK stable version tag
-        if: ${{ startsWith(inputs.branch, 'release-x.') }}
+        if: ${{ startsWith(needs.prepare-release.outputs.branch, 'release-x.') }}
         run: |
           git tag -a -f ${{ env.stable_tag }} -m "Tagging SDK stable version ${{ env.stable_tag }}"
           git push origin -f ${{ env.stable_tag }}

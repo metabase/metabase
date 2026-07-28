@@ -47,10 +47,8 @@ export const ApiKeyProviderFields = ({
   const onConnect = async () => {
     await updateMetabotSettings({
       provider: selectedProvider,
-      "api-key": localApiKey || null,
+      ...(localApiKey !== null && { "api-key": localApiKey || null }),
     }).unwrap();
-
-    setLocalApiKey(null);
   };
 
   const hasDirtyApiKey = localApiKey !== null;
@@ -58,15 +56,23 @@ export const ApiKeyProviderFields = ({
     !isCurrentConfigured || hasDirtyApiKey ? onConnect : null;
   const { isMutating } = useAIProviderConfigurationContext(connectHandler);
 
-  const needsApiKey = !hasConfiguredSettingValue(apiKeySetting);
+  const hasVerifiedApiKey = updateMetabotSettingsResult.isSuccess;
+  const needsApiKey =
+    !hasConfiguredSettingValue(apiKeySetting) && !hasVerifiedApiKey;
   const { modelsQuery, credentialsError: savedCredentialsError } =
     useProviderModelsQuery(selectedProvider, { skip: needsApiKey });
   const credentialsError = hasDirtyApiKey ? undefined : savedCredentialsError;
 
+  const queriedModels = modelsQuery.currentData?.models ?? [];
+  const verifiedModels = updateMetabotSettingsResult.data?.models ?? [];
+  const models = queriedModels.length > 0 ? queriedModels : verifiedModels;
+
   const apiKeySettingValue = apiKeySetting?.value;
 
   useEffect(() => {
-    setLocalApiKey(null);
+    if (apiKeySettingValue) {
+      setLocalApiKey(null);
+    }
   }, [apiKeySettingValue]);
 
   const handleApiKeyChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -102,15 +108,15 @@ export const ApiKeyProviderFields = ({
         <ProviderModelPicker
           provider={selectedProvider}
           connectedModel={connectedModel}
-          models={modelsQuery.currentData?.models ?? []}
-          isLoading={modelsQuery.isLoading}
+          models={models}
+          isLoading={modelsQuery.isLoading && models.length === 0}
           loadError={modelsQuery.error}
           disabled={isEnvSetting || isMutating}
         />
       )}
 
       {updateMetabotSettingsResult.error && (
-        <Text size="sm" c="error">
+        <Text size="sm" c="feedback-negative">
           {getErrorMessage(
             updateMetabotSettingsResult.error,
             t`Unable to save provider settings.`,

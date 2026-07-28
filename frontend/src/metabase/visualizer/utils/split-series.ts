@@ -51,6 +51,7 @@ export function splitVisualizerSeries(
   const allMetrics = mainCard.visualization_settings["graph.metrics"];
   const allDimensions = mainCard.visualization_settings["graph.dimensions"];
 
+  // Unjustified type cast. FIXME
   return dataSourceIds
     .map((dataSourceId, i) => {
       const columnNames = Object.keys(columnValuesMapping).filter(

@@ -477,11 +477,12 @@
    {tags :template-tags, params :parameters, :as _stage} :- ::lib.schema/stage]
   (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
   (try
-    (into {} (for [[k tag] tags
-                   :let    [v (value-for-tag metadata-providerable tag params)]]
+    (into {} (for [{tag-name :name, :as tag} tags
+                   :let                      [v (value-for-tag metadata-providerable tag params)]]
                (do
-                 (log/tracef "Value for tag %s\n%s\n->\n%s" (pr-str k) (u/pprint-to-str tag) (u/pprint-to-str v))
-                 [(or (lib/match-and-normalize-tag-name k) k) v])))
+                 (log/tracef "Value for tag %s\n%s\n->\n%s" (pr-str tag-name) (u/pprint-to-str tag) (u/pprint-to-str v))
+                 (let [k' (or (lib/match-and-normalize-tag-name tag-name) tag-name)]
+                   [k' v]))))
     (catch Throwable e
       (throw (ex-info (tru "Error building query parameter map: {0}" (ex-message e))
                       {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)

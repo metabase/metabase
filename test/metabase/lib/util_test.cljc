@@ -379,3 +379,26 @@
                                                                                     {:name "count"}
                                                                                     {:name "CC", :lib/expression-name "CC"}]}}]}]}]}
               (lib.util/pipeline query))))))
+
+#?(:clj
+   (deftest ^:parallel recover-test
+     (testing "returns the thunk's value when nothing is thrown"
+       (is (= 42 (lib.util/recover (fn [] 42) (fn [_] :unreached)))))
+     (testing "recoverable throwables reach the handler unchanged -- any Exception, plus AssertionError"
+       (are [make] (let [e (make)]
+                     (identical? e (lib.util/recover (fn [] (throw e)) (fn [caught] caught))))
+         #(AssertionError. "bad data")
+         #(RuntimeException.)
+         #(ex-info "boom" {})
+         #(InterruptedException.)
+         #(java.util.concurrent.TimeoutException.)))
+     (testing "fatal Errors propagate uncaught, unchanged"
+       (are [make] (let [e (make)]
+                     (identical? e (try
+                                     (lib.util/recover (fn [] (throw e)) (fn [_] :unreached))
+                                     (catch Error caught caught))))
+         #(StackOverflowError.)
+         #(OutOfMemoryError.)
+         #(LinkageError.)
+         #(ThreadDeath.)
+         #(Error. "generic")))))

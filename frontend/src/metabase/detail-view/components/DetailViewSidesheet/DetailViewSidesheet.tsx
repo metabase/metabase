@@ -1,6 +1,5 @@
 import { useDisclosure, useHotkeys } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
@@ -25,6 +24,7 @@ import {
   getRowName,
 } from "metabase/detail-view/utils";
 import { useDispatch } from "metabase/redux";
+import { Link } from "metabase/router";
 import {
   Box,
   Button,

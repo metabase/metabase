@@ -420,7 +420,16 @@
       (is (= "my default value"
              (param-val-or-default {:default "my default value"}))))
     (testing "When the parameter’s :value is explicitly nil (i.e. for no-op filters), do not fallback to the :default key"
-      (is (nil? (param-val-or-default {:value nil :default "my default value"}))))))
+      (is (nil? (param-val-or-default {:value nil :default "my default value"}))))
+    (testing "Empty collections count as no value (#76854)"
+      (is (nil? (param-val-or-default {:default []})))
+      (is (nil? (param-val-or-default {:value [] :default ["CA"]}))))))
+
+(deftest ^:parallel value-string-empty-value-test
+  (testing "Filters with an empty list of values render as an empty string instead of throwing (#76854)"
+    (is (= "" (params/value-string {:type "string/=" :default []} "en")))
+    (is (= "" (params/value-string {:type "string/=" :value []} "en")))
+    (is (= "" (params/formatted-list [])))))
 
 (deftest ^:parallel value-string-contains-test
   (testing "string/contains parameters are correctly formatted"

@@ -1,7 +1,9 @@
 (ns metabase-enterprise.snippet-collections.api.native-query-snippet-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -180,6 +182,22 @@
                [{:id (:id snippet) :name "My Snippet"}
                 {:id (:id sub-collection) :name "Nested Snippet Collection"}]
                (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))
+
+(deftest snippet-folder-read-only-remote-sync-test
+  (testing "A snippet folder (Collection in the snippets namespace) in a remote-synced collection cannot be edited under read-only remote sync"
+    (mt/with-premium-features #{:snippet-collections}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Collection folder {:name             "Snippet Folder"
+                                                 :namespace        "snippets"
+                                                 :is_remote_synced true}]
+          (testing "read-only remote sync blocks writes to the snippet folder"
+            (mt/with-temporary-setting-values [remote-sync.settings/remote-sync-type :read-only]
+              (is (false? (mi/can-write? (t2/select-one :model/Collection :id (:id folder))))
+                  "snippet folder in a remote-synced collection should not be writable when remote-sync-type is read-only")))
+          (testing "read-write remote sync allows writes to the snippet folder"
+            (mt/with-temporary-setting-values [remote-sync.settings/remote-sync-type :read-write]
+              (is (true? (mi/can-write? (t2/select-one :model/Collection :id (:id folder))))
+                  "snippet folder should be writable when remote-sync-type is read-write"))))))))
 
 (deftest ee-disabled-snippets-graph-test
   (testing "GET /api/collection/root/items?namespace=snippets"

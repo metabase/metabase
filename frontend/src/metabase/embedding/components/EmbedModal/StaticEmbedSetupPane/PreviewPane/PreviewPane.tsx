@@ -72,6 +72,7 @@ function PreviewPaneContainer({
     <div
       className={cx(Style.Container, className)}
       style={{
+        // Unjustified type cast. FIXME
         ["--background-url" as any]: `url(${dataUri})`,
         display: hidden ? "none" : undefined,
       }}

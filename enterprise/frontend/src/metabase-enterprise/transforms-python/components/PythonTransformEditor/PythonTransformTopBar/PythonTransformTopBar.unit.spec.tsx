@@ -1,11 +1,10 @@
-import { Route } from "react-router";
-
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Transform } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -50,14 +49,14 @@ function setup({
 
   renderWithProviders(
     <Route
-      component={() => (
+      element={
         <PythonTransformTopBar
           databaseId={databaseId}
           isEditMode={isEditMode}
           transform={transform}
           onDatabaseChange={onDatabaseChange}
         />
-      )}
+      }
       path="/"
     />,
     {

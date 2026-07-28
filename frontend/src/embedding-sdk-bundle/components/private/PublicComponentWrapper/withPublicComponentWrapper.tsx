@@ -13,6 +13,7 @@ export function withPublicComponentWrapper<P extends object>(
     WrappedComponent.displayName || WrappedComponent.name || "Component";
 
   const WithPublicComponentWrapper: React.FC<P> = (props) => {
+    // Unjustified type cast. FIXME
     const { height, width } = props as Partial<FlexibleSizeProps>;
     return (
       <GuestEmbedGuard

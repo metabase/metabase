@@ -10,6 +10,7 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.oauth-server.api :as oauth-server.api]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.request.core :as request]
    [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
    [metabase.server.routes.index :as index]
@@ -41,6 +42,11 @@
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private ^{:arglists '([request respond raise])} embed-routes
   (GET "/sdk/v1" [] index/embed-sdk)
+  ;; Same `data-app.html` for the bare path and any deeper sub-route — the
+  ;; iframe's React Router owns the sub-path; reloads at an inner URL still
+  ;; have to serve the SPA shell.
+  (GET [(str "/" request/data-app-url-segment "/:name"), :name #"[^/]+"] [] index/data-app)
+  (GET [(str "/" request/data-app-url-segment "/:name/*"), :name #"[^/]+"] [] index/data-app)
   (GET ["/question/:token.:export-format", :export-format qp.schema/export-formats-regex]
     [token export-format]
     (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (system/site-url) token export-format)))

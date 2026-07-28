@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.auth-identity.provider :as provider]
+   [metabase.test :as mt]
    [methodical.core :as methodical]))
 
 ;; Set up test providers for testing the hierarchy
@@ -91,6 +92,19 @@
         (is (= "Invalid credentials" (:message result)))
         (is (nil? (:session result)))
         (is (nil? (:user result)))))))
+
+(deftest create-user!-refuses-to-strip-tenant-id-test
+  (testing (str "UXW-4898: when user-data carries :tenant_id but the sso-user-fields field list would strip it "
+                "(e.g. a premium-feature check disagrees with the upstream tenant flow that stamped it), "
+                "create-user! must throw rather than silently create a non-tenant user — such a user could "
+                "never log in with its tenant claim again")
+    (mt/with-premium-features #{:sso-jwt}
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"tenant assignment could not be applied"
+                            (#'provider/create-user! {:email      "uxw-4898-invariant@metabase.com"
+                                                      :sso_source :jwt
+                                                      :tenant_id  1}
+                                                     :jwt))))))
 
 (deftest ^:parallel ^:parallel three-valued-success-state-test
   (testing "Success states work correctly"

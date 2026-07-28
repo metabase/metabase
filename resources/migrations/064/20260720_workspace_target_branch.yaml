@@ -1,0 +1,32 @@
+## Workspaces get a target_branch: the git branch the workspace's child
+## instance commits to via remote sync. Unique across workspaces so two
+## workspaces can't fight over the same branch.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-20T10:00:00
+      author: ranquild
+      comment: Add workspace.target_branch
+      changes:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: target_branch
+                  type: varchar(254)
+                  remarks: Git branch the workspace's child instance commits to via remote sync
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-20T10:00:01
+      author: ranquild
+      comment: Unique index on workspace.target_branch
+      changes:
+        - createIndex:
+            tableName: workspace
+            indexName: idx_workspace_target_branch
+            unique: true
+            columns:
+              - column:
+                  name: target_branch

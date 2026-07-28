@@ -28,6 +28,7 @@ export const NoStylesError = () => (
         <h1>This is inside of the provider</h1>
       </div>
 
+      {/* Unjustified type cast. FIXME */}
       <StaticQuestion questionId={(window as any).QUESTION_ID || 1} />
     </ComponentProvider>
   </div>
@@ -45,6 +46,7 @@ export const NoStylesSuccess = () => (
         <h1>This is inside of the provider</h1>
       </div>
 
+      {/* Unjustified type cast. FIXME */}
       <StaticQuestion questionId={(window as any).QUESTION_ID || 1} />
     </ComponentProvider>
   </div>
@@ -56,6 +58,7 @@ export const FontFromConfig = () => (
       authConfig={storybookSdkAuthDefaultConfig}
       theme={{ fontFamily: "Impact" }}
     >
+      {/* Unjustified type cast. FIXME */}
       <StaticQuestion questionId={(window as any).QUESTION_ID || 1} />
     </ComponentProvider>
   </div>

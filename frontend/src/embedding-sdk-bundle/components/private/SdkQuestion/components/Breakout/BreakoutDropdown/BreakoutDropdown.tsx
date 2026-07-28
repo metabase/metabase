@@ -9,6 +9,7 @@ import {
 import type { PopoverProps } from "metabase/ui";
 
 import { useSdkQuestionContext } from "../../../context";
+import { shouldRenderQueryBuilderEditingControl } from "../../../utils/should-render-query-builder-editing-control";
 import { ToolbarButton } from "../../util/ToolbarButton";
 import { BreakoutBadgeList } from "../BreakoutBadgeList";
 import { BreakoutPicker } from "../BreakoutPicker";
@@ -103,7 +104,7 @@ export const BreakoutDropdown = (
 ) => {
   const { question } = useSdkQuestionContext();
 
-  if (!question) {
+  if (!question || !shouldRenderQueryBuilderEditingControl(question)) {
     return null;
   }
 

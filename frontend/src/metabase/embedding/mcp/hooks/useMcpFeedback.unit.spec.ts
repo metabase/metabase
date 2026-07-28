@@ -6,16 +6,8 @@ import { renderHookWithProviders, waitFor } from "__support__/ui";
 import { useMcpFeedback } from "./useMcpFeedback";
 
 describe("useMcpFeedback", () => {
-  const randomUuidSpy = jest.spyOn(crypto, "randomUUID");
-  const feedbackMessageId = "11111111-1111-1111-1111-111111111111";
-
   beforeEach(() => {
-    randomUuidSpy.mockReturnValue(feedbackMessageId);
     fetchMock.post("path:/api/embed-mcp/feedback", 200);
-  });
-
-  afterEach(() => {
-    randomUuidSpy.mockReset();
   });
 
   it("submits the MCP feedback payload", async () => {
@@ -53,10 +45,10 @@ describe("useMcpFeedback", () => {
       { method: "POST" },
     );
 
+    // Unjustified type cast. FIXME
     expect(JSON.parse(lastCall?.options?.body as string)).toEqual({
       feedback: {
         positive: false,
-        message_id: feedbackMessageId,
         issue_type: "wrong-visualization",
         freeform_feedback: "Needs a different chart",
       },

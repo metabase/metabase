@@ -69,6 +69,7 @@ export function useMcpVisualizationSelector({
 
   const sensibleChartTypes = getMcpChartTypes({
     defaultDisplay: defaultDisplayState.defaultDisplay,
+    // Unjustified type cast. FIXME
     sensibleVisualizations: sensibleVisualizations as CardDisplayType[],
     canShowTable: rowCount >= 2,
   });

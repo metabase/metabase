@@ -8,6 +8,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type {
   CollectionId,
   CollectionNamespace,
@@ -94,15 +95,21 @@ export const setup = ({
   });
 
   renderWithProviders(
-    <CreateCollectionForm
-      onCancel={onCancel}
-      onSubmit={onSubmit}
-      showAuthorityLevelPicker={showAuthorityLevelPicker}
-      collectionId={parentCollectionNamespace !== undefined ? 1 : undefined}
-      initialCollectionId={initialCollectionId}
-      namespaces={namespaces}
+    <Route
+      path="/"
+      element={
+        <CreateCollectionForm
+          onCancel={onCancel}
+          onSubmit={onSubmit}
+          showAuthorityLevelPicker={showAuthorityLevelPicker}
+          collectionId={parentCollectionNamespace !== undefined ? 1 : undefined}
+          initialCollectionId={initialCollectionId}
+          namespaces={namespaces}
+        />
+      }
     />,
     {
+      withRouter: true,
       storeInitialState: createMockState({
         currentUser: user,
         settings,

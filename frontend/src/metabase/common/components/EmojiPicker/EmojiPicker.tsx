@@ -4,7 +4,7 @@ import {
   type Emoji as EmojiType,
   EmojiPicker as Picker,
 } from "frimousse";
-import { type CSSProperties, type ChangeEvent, useState } from "react";
+import { type ChangeEvent, useState } from "react";
 import { t } from "ttag";
 
 import { ActionIcon, Box, Icon, Paper, Text, TextInput } from "metabase/ui";
@@ -104,13 +104,14 @@ function Emoji({
       component="button"
       w="2rem"
       fz="1.25rem"
+      // Unjustified type cast. FIXME
       ref={ref as React.RefObject<HTMLButtonElement>}
       data-emoji={emoji.emoji}
       styles={{
         root: {
           // for colored backgrounds
           "--emoji": `"${emoji.emoji}"`,
-        } as CSSProperties,
+        },
       }}
       {...props}
     >

@@ -8,7 +8,11 @@ type TaskRunStatusBadgeProps = {
 };
 
 export const TaskRunStatusBadge = ({ taskRun }: TaskRunStatusBadgeProps) => (
-  <Badge color={getTaskRunStatusColor(taskRun.status)}>
+  <Badge
+    color={getTaskRunStatusColor(taskRun.status)}
+    size="sm"
+    variant="light"
+  >
     {formatTaskRunStatus(taskRun.status)}
   </Badge>
 );

@@ -12,13 +12,10 @@ import {
   getGoalLineParams,
   getGoalLineSeriesOption,
 } from "metabase/visualizations/echarts/cartesian/option/goal-line";
-import { getTimelineEventsSeries } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { TimelineEventId } from "metabase-types/api";
 
 import { BOXPLOT_STATS } from "../constants";
 import type { BoxPlotLayoutModel } from "../layout/types";
@@ -67,8 +64,6 @@ const buildBoxPlotYAxisOption = (
 export const getBoxPlotOption = (
   chartModel: BoxPlotChartModel,
   layoutModel: BoxPlotLayoutModel,
-  timelineEventsModel: TimelineEventsModel | null,
-  selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   isAnimated: boolean,
   renderingContext: RenderingContext,
@@ -80,15 +75,6 @@ export const getBoxPlotOption = (
   }
 
   const { adjustedPadding, sideLabelOverflow, xAxisOffset } = layoutModel;
-
-  const hasTimelineEvents = timelineEventsModel != null;
-  const timelineEventsSeries = hasTimelineEvents
-    ? getTimelineEventsSeries(
-        timelineEventsModel,
-        selectedTimelineEventsIds,
-        renderingContext,
-      )
-    : null;
 
   const pointsDatasetIndices = {
     outlierAbove: chartModel.outlierAbovePointsDataset.length > 0 ? 1 : -1,
@@ -142,7 +128,6 @@ export const getBoxPlotOption = (
     ...meanSeries,
     ...labelsSeries,
     goalSeriesOption,
-    timelineEventsSeries,
   ].flatMap((option) => option ?? []);
 
   const xAxis = buildCategoricalDimensionAxis(
@@ -195,6 +180,7 @@ export const getBoxPlotOption = (
 
   const datasets: { source: OptionSourceData; dimensions: string[] }[] = [
     {
+      // Unjustified type cast. FIXME
       source: chartModel.boxDataset as OptionSourceData,
       dimensions: boxDimensions,
     },
@@ -202,18 +188,21 @@ export const getBoxPlotOption = (
 
   if (pointsDatasetIndices.outlierAbove >= 0) {
     datasets.push({
+      // Unjustified type cast. FIXME
       source: chartModel.outlierAbovePointsDataset as OptionSourceData,
       dimensions: pointsDimensions,
     });
   }
   if (pointsDatasetIndices.outlierBelow >= 0) {
     datasets.push({
+      // Unjustified type cast. FIXME
       source: chartModel.outlierBelowPointsDataset as OptionSourceData,
       dimensions: pointsDimensions,
     });
   }
   if (pointsDatasetIndices.nonOutlier >= 0) {
     datasets.push({
+      // Unjustified type cast. FIXME
       source: chartModel.nonOutlierPointsDataset as OptionSourceData,
       dimensions: pointsDimensions,
     });

@@ -39,3 +39,11 @@
    [:is_group_manager
     {:optional true, :description "Only relevant if `advanced-permissions` is enabled. If it is, you should always include this key."}
     :boolean]])
+
+(def InviteTarget
+  "The dashboard or question an invite points at, as `{:type :id :name}`. Drives the post-signup
+  landing redirect and the scoped invite email. Not an access grant; collection permissions still apply."
+  [:map
+   [:type [:enum "dashboard" "question"]]
+   [:id   ms/PositiveInt]
+   [:name ms/NonBlankString]])

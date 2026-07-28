@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateSegmentMutation } from "metabase/api";
@@ -11,6 +9,7 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
+import { push } from "metabase/router";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -22,14 +21,12 @@ import { useSegmentQuery } from "../../hooks/use-segment-query";
 import { createInitialQueryForTable } from "../../utils/segment-query";
 
 type NewSegmentPageProps = {
-  route: Route;
   table: Table;
   breadcrumbs: ReactNode;
   getSuccessUrl: (segment: Segment) => string;
 };
 
 export function NewSegmentPage({
-  route,
   table,
   breadcrumbs,
   getSuccessUrl,
@@ -73,7 +70,6 @@ export function NewSegmentPage({
     }
     const { data: segment, error } = await createSegment({
       name: name.trim(),
-      table_id: table.id,
       definition: definition,
       description: description.trim() || undefined,
     });
@@ -128,7 +124,7 @@ export function NewSegmentPage({
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
       />
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </PageContainer>
   );
 }

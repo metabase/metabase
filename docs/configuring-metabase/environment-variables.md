@@ -361,7 +361,7 @@ Whether to (asynchronously) sync newly created Databases during config-from-file
 - [Exported as](../installation-and-operation/serialization.md): `csp-img-allowed-hosts`.
 - [Configuration file name](./config-file.md): `csp-img-allowed-hosts`
 
-Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance.
+Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations.
 
 ### `MB_CSP_IMG_ENABLED`
 
@@ -909,6 +909,38 @@ Whether or not we should install the Metabase analytics database on startup. Def
 
 Setting this environment variable to false will prevent installing the analytics database, which is handy in a migration use-case where it conflicts with the incoming database.
 
+### `MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_CHECKOUT_TIMEOUT_MS`
+
+- Type: integer
+- Default: `0`
+
+Number of milliseconds a query will wait for a free data-warehouse connection once the c3p0 pool has hit
+  jdbc-data-warehouse-max-connection-pool-size before giving up. Maps to c3p0's `checkoutTimeout`. `0` waits
+  indefinitely (the old, unbounded behavior); a positive value fails fast, which the query processor surfaces to the
+  frontend as an HTTP 503 (Service Unavailable) rather than letting the request queue grow without limit.
+
+When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum time (in milliseconds) a query will wait before failing with a "service unavailable" (HTTP 503) error
+  instead of queueing indefinitely. Raise it if you routinely run more concurrent queries than
+  MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE and would rather have them wait; set it to `0` to wait forever.
+
+### `MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_MAX_PENDING_CHECKOUTS`
+
+- Type: integer
+- Default: `0`
+
+Maximum number of queries allowed to be waiting for a free data-warehouse connection at once, once the c3p0 pool has
+  hit jdbc-data-warehouse-max-connection-pool-size. When this many queries are already queued waiting for a
+  connection, further queries fail fast instead of joining the queue, which the query processor surfaces to the
+  frontend as an HTTP 503 (Service Unavailable). `0` (the default) lets the queue grow without bound (the old
+  behavior). Complements jdbc-data-warehouse-connection-pool-checkout-timeout-ms, which bounds how long each query
+  waits; this bounds how many can wait at the same time.
+
+When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum number of queries that may be waiting at the same time before further queries fail immediately with a
+  "service unavailable" (HTTP 503) error instead of joining the queue. Raise it to tolerate deeper bursts; set it to
+  `0` to allow an unbounded queue.
+
 ### `MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE`
 
 - Type: integer
@@ -1255,6 +1287,14 @@ When set to `true`, users who log in via LDAP will automatically get a Metabase 
 
 The array of last two ISO8601 dates when an admin dismissed the license token missing banner.
 
+### `MB_LLM_ANTHROPIC_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.anthropic.com`
+- [Configuration file name](./config-file.md): `llm-anthropic-api-base-url`
+
+The Anthropic API base URL.
+
 ### `MB_LLM_ANTHROPIC_API_KEY`
 
 - Type: string
@@ -1263,13 +1303,149 @@ The array of last two ISO8601 dates when an admin dismissed the license token mi
 
 The Anthropic API Key.
 
+### `MB_LLM_ANTHROPIC_MODEL`
+
+- Type: string
+- Default: `claude-opus-4-5-20251101`
+- [Configuration file name](./config-file.md): `llm-anthropic-model`
+
+The Anthropic model to use.
+
+### `MB_LLM_AZURE_API_BASE_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-azure-api-base-url`
+
+The base URL of the Azure resource's OpenAI- or Anthropic-compatible surface, e.g. `https://<resource>.services.ai.azure.com/openai`.
+
+### `MB_LLM_AZURE_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-azure-api-key`
+
+The API key for the Azure resource hosting your models.
+
+### `MB_LLM_BEDROCK_ACCESS_KEY_ID`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-bedrock-access-key-id`
+
+The AWS Access Key ID for Amazon Bedrock.
+
+### `MB_LLM_BEDROCK_REGION`
+
+- Type: string
+- Default: `us-east-1`
+- [Configuration file name](./config-file.md): `llm-bedrock-region`
+
+The AWS region for Amazon Bedrock (e.g. us-east-1).
+
+### `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-bedrock-secret-access-key`
+
+The AWS Secret Access Key for Amazon Bedrock.
+
+### `MB_LLM_BEDROCK_SESSION_TOKEN`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-bedrock-session-token`
+
+The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials.
+
+### `MB_LLM_CONNECTION_TIMEOUT_MS`
+
+- Type: integer
+- Default: `5000`
+- [Configuration file name](./config-file.md): `llm-connection-timeout-ms`
+
+Connection timeout in milliseconds for LLM API requests.
+
+### `MB_LLM_MAX_TOKENS`
+
+- Type: integer
+- Default: `4096`
+- [Configuration file name](./config-file.md): `llm-max-tokens`
+
+Maximum tokens for LLM responses.
+
 ### `MB_LLM_METABOT_PROVIDER`
 
 - Type: string
 - Default: `anthropic/claude-sonnet-4-6`
 - [Configuration file name](./config-file.md): `llm-metabot-provider`
 
-The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4.1-mini`, `openrouter/anthropic/claude-haiku-4-5`.
+The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`.
+
+### `MB_LLM_OPENAI_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.openai.com`
+- [Configuration file name](./config-file.md): `llm-openai-api-base-url`
+
+The OpenAI API base URL.
+
+### `MB_LLM_OPENAI_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-openai-api-key`
+
+The OpenAI API Key.
+
+### `MB_LLM_OPENAI_MODEL`
+
+- Type: string
+- Default: `gpt-5.4`
+- [Configuration file name](./config-file.md): `llm-openai-model`
+
+The OpenAI Model (e.g. 'gpt-5.5', 'gpt-5.4-mini').
+
+### `MB_LLM_OPENROUTER_API_BASE_URL`
+
+- Type: string
+- Default: `https://openrouter.ai/api`
+- [Configuration file name](./config-file.md): `llm-openrouter-api-base-url`
+
+The OpenRouter API base URL used for Chat Completions.
+
+### `MB_LLM_OPENROUTER_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-openrouter-api-key`
+
+The OpenRouter API Key.
+
+### `MB_LLM_RATE_LIMIT_PER_IP`
+
+- Type: integer
+- Default: `100`
+- [Configuration file name](./config-file.md): `llm-rate-limit-per-ip`
+
+Maximum SQL generation requests per IP address per minute.
+
+### `MB_LLM_RATE_LIMIT_PER_USER`
+
+- Type: integer
+- Default: `20`
+- [Configuration file name](./config-file.md): `llm-rate-limit-per-user`
+
+Maximum SQL generation requests per user per minute.
+
+### `MB_LLM_REQUEST_TIMEOUT_MS`
+
+- Type: integer
+- Default: `60000`
+- [Configuration file name](./config-file.md): `llm-request-timeout-ms`
+
+Socket timeout in milliseconds for LLM API requests.
 
 ### `MB_LOAD_ANALYTICS_CONTENT`
 
@@ -1361,6 +1537,21 @@ Whether the user's recently viewed items are included in the Metabot system prom
 - [Configuration file name](./config-file.md): `metabot-slack-signing-secret`
 
 Signing secret for verifying requests from the Metabot Slack app.
+
+### `MB_MFA_CHALLENGE_SIGNING_KEY`
+
+- Type: string
+- Default: `null`
+
+Key used to sign MFA challenge tokens. Generated automatically on first use.
+
+### `MB_MFA_ENFORCEMENT`
+
+- Type: keyword
+- Default: `off`
+- [Configuration file name](./config-file.md): `mfa-enforcement`
+
+Controls whether two-factor authentication is available to users. :off disables it entirely; :optional allows users to enroll voluntarily.
 
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 
@@ -1548,6 +1739,27 @@ The maximum size of the cache, per saved question, in kilobytes.
 - [Configuration file name](./config-file.md): `query-caching-max-ttl`
 
 The absolute maximum time to keep any cached query results, in seconds.
+
+### `MB_QUEUE_BACKEND`
+
+- Type: string
+- Default: `null`
+
+Which queue backend to use. Valid values: `quartz`, `memory`. When unset, defaults to `quartz`, or to `memory` when the task scheduler is disabled (`MB_DISABLE_SCHEDULER`).
+
+### `MB_QUEUE_MAX_RETRIES`
+
+- Type: integer
+- Default: `5`
+
+Maximum number of times a failed queue message will be retried before being dropped.
+
+### `MB_QUEUE_NO_LISTENER_MAX_AGE_MS`
+
+- Type: integer
+- Default: `86400000`
+
+How long (in milliseconds) a Quartz queue message with no listener anywhere in the cluster is kept before the reaper drops it. With node-affinity, such a message is never acquired and just waits in the store; this bounds that wait so a message for a queue no node handles (e.g. a new queue whose node was rolled back) does not linger forever. Generous by default (1 day) so a node can restart or be re-upgraded and still deliver it.
 
 ### `MB_REDIRECT_ALL_REQUESTS_TO_HTTPS`
 
@@ -1813,8 +2025,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 - Default: `null`
 - [Configuration file name](./config-file.md): `saml-identity-provider-slo-uri`
 
-This is the URL where your users go to logout of your identity provider. Depending on which IdP you're
-using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`.
+If SAML single logout (SLO) is enabled, Metabase will make an HTTP-Redirect SLO request to this endpoint when a user logs out of Metabase.
 
 ### `MB_SAML_IDENTITY_PROVIDER_URI`
 
@@ -1865,7 +2076,7 @@ Absolute path to the Keystore file to use for signing SAML requests.
 - Default: `false`
 - [Configuration file name](./config-file.md): `saml-slo-enabled`
 
-Is SAML Single Log Out enabled?
+If enabled, Metabase will redirect users to your configured SAML Single Logout endpoint when they log out of Metabase.
 
 ### `MB_SAML_USER_PROVISIONING_ENABLED`
 
@@ -2295,10 +2506,14 @@ Controls the timeout for transform runs, including the queries they execute. Thi
 ### `MB_TRANSFORMS_ENABLED`
 
 - Type: boolean
-- Default: `false`
+- Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `transforms-enabled`.
 - [Configuration file name](./config-file.md): `transforms-enabled`
 
-Enable transforms for instances that have not explicitly purchased the transform add-on.
+Whether transforms are enabled.
+
+When enabled, data analysts and admins can write, schedule and run transforms.
+  Disabling this feature will hide all transform features, prevent transform editing or creation, and prevent any new runs.
 
 ### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
 

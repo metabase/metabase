@@ -19,6 +19,24 @@
 
 (set! *warn-on-reflection* true)
 
+(defn paths->children
+  "The immediate children of directory `path` implied by a flat collection of file `paths`. For snapshots
+  that hold their whole file list in memory and so have no tree objects to walk; the git source overrides
+  this with a real subtree read."
+  [paths ^String path]
+  ;; the root is the empty prefix — snapshot paths are repo-relative, so they never start with a slash
+  (let [prefix (if (str/blank? path) "" (str path "/"))]
+    (->> paths
+         (keep (fn [^String p]
+                 (when (str/starts-with? p prefix)
+                   (let [child (subs p (count prefix))]
+                     (str prefix (if-let [idx (str/index-of child "/")]
+                                   (subs child 0 idx)
+                                   child))))))
+         distinct
+         sort
+         vec)))
+
 ;; A read-only, path-filtered view over a snapshot, used to scope ingestion to a set of path regexes:
 ;; files (and reads) outside the filters are omitted. It is not a write target — exports write to the
 ;; unfiltered source snapshot — so the write methods throw rather than silently filtering writes.
@@ -29,6 +47,11 @@
     (filter (fn [file-path]
               (some (fn [path-filter] (re-matches path-filter file-path)) path-filters))
             (source.p/list-files original-snapshot)))
+
+  ;; Derived from this view's own (filtered) file list rather than delegated, so a child filtered out of
+  ;; `list-files` can't reappear here.
+  (list-dir [this path]
+    (paths->children (source.p/list-files this) path))
 
   (read-file [_ path]
     (when (some (fn [path-filter] (re-matches path-filter path)) path-filters)
@@ -138,12 +161,13 @@
   (let [by-path (into {} (map (juxt :path :content)) specs)]
     (reify source.p/SourceSnapshot
       (list-files [_] (vec (keys by-path)))
+      (list-dir [_ path] (paths->children (keys by-path) path))
       (read-file [_ path] (get by-path path))
       (open-commit [_] (throw (ex-info "in-memory merge snapshot is read-only" {})))
       (version [_] nil))))
 
 (defn preview-merge
-  "Dry-run of [[merge-and-store!]]: computes the 3-way merge without writing anything. Returns
+  "Dry-run of the export merge: computes the 3-way merge without writing anything. Returns
   `{:clean? bool :conflicts [labels] :summary {:added :updated :removed}
     :force-push-casualties {:deleted [labels] :overwritten [labels]}}`. The casualties are the remote
   content a force push (rather than a merge) would discard. Pass nil for `task-id` to skip progress
@@ -165,38 +189,6 @@
   `snapshot` the rewritten remote tip (theirs)."
   [stream snapshot]
   (remote-sync.merge/force-push-casualties [] (serialize-specs stream nil) (snapshot->specs snapshot)))
-
-(defn- replace-all-files!
-  "Wholesale-commit `file-specs` ({:path :content}) to `snapshot`: clear the managed dirs, stage every spec,
-  and push. Returns the new version; aborts the commit on any error."
-  [snapshot message file-specs]
-  (let [commit (source.p/open-commit snapshot)]
-    (try
-      (source.p/replace-all! commit)
-      (doseq [spec file-specs]
-        (source.p/stage-upsert! commit spec))
-      (source.p/finish-commit! commit message)
-      (catch Throwable e
-        (source.p/abort-commit! commit)
-        (throw e)))))
-
-(defn merge-and-store!
-  "Like [[store!]], but reconciles the freshly serialized local state against a remote branch that has
-  advanced beyond the last sync. Performs an entity-identity 3-way merge of:
-  - the merge base (`base-snapshot`, the last successfully synced state),
-  - the local state (serialized from `stream`),
-  - the current remote tip (`snapshot`).
-
-  On a clean merge, writes the merged file set (which fast-forwards onto the remote tip) and returns
-  `{:status :success :version <sha> :summary {:added :updated :removed}}`. When the same entity changed
-  on both sides, returns `{:status :conflict :conflicts [..] :summary {..}}` without writing anything."
-  [stream snapshot base-snapshot task-id message]
-  (let [{:keys [merged conflicts summary]} (compute-merge stream snapshot base-snapshot task-id)]
-    (if (seq conflicts)
-      {:status :conflict :conflicts conflicts :summary summary}
-      {:status  :success
-       :version (replace-all-files! snapshot message merged)
-       :summary summary})))
 
 (defn source-from-settings
   "Creates a git source from the current remote sync settings.

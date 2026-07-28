@@ -52,6 +52,7 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
   // Handle sort column click
   const handleSort = useCallback(
     (columnName: string, direction: SortDirection) => {
+      // Unjustified type cast. FIXME
       setSortColumn(columnName as CacheSortColumn);
       setSortDirection(direction);
       resetPage();

@@ -1613,7 +1613,9 @@
         [:model/Card {native-card-id :id :as native-card} (merge (mt/card-with-source-metadata-for-query native-query)
                                                                  {:table_id        nil
                                                                   :name            "15655"})
-         :model/Card card {:table_id      (mt/id :orders) ; this is wrong (!)
+         ;; a wrong table_id used to be part of this repro (set by the FE, see #15655); table_id is now always
+         ;; derived from the query, so this card gets table_id nil (its source is a native card)
+         :model/Card card {:table_id      (mt/id :orders) ; ignored: cleared since the query has no source table
                            :dataset_query {:query    {:source-table (format "card__%s" native-card-id)
                                                       :aggregation  [[:count]]
                                                       :breakout     [[:field "SOURCE" {:base-type :type/Text}]]}
@@ -1647,16 +1649,16 @@
                      transient_name))
               (is (= "Automatically generated comparison dashboard comparing Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
                      comparison-description))
-              (is (= [{:group-name nil, :card-name "Number of 15655 per SOURCE"}
-                      {:group-name nil, :card-name "Number of 15655 per SOURCE"}
-                      {:group-name nil, :card-name "Number of 15655 per CITY"}
-                      {:group-name nil, :card-name "Number of 15655 per CITY"}
-                      {:group-name nil, :card-name "Number of 15655 per NAME"}
-                      {:group-name nil, :card-name "Number of 15655 per NAME"}
-                      {:group-name nil, :card-name "Number of 15655 per SOURCE over time"}
-                      {:group-name nil, :card-name "Number of 15655 per SOURCE over time"}
-                      {:group-name nil, :card-name "Number of 15655 per CITY over time"}
-                      {:group-name nil, :card-name "Number of 15655 per CITY over time"}]
+              (is (= [{:group-name nil, :card-name "SOURCE by CITY"}
+                      {:group-name nil, :card-name "SOURCE by CITY"}
+                      {:group-name nil, :card-name "SOURCE by NAME"}
+                      {:group-name nil, :card-name "SOURCE by NAME"}
+                      {:group-name "### How the SOURCE fields is distributed", :card-name nil}
+                      {:group-name nil, :card-name "Distinct values"}
+                      {:group-name nil, :card-name "Distinct values"}
+                      {:group-name nil, :card-name "How the SOURCE is distributed (Number of 15655 where SOURCE is Affiliate)"}
+                      {:group-name nil, :card-name "Null values"}
+                      {:group-name nil, :card-name "Null values"}]
                      (->> comparison-dashcards
                           (take 10)
                           (map (fn [dashcard]

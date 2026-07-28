@@ -23,6 +23,7 @@ const setup = async () => {
     "site-locale": "En",
     "report-timezone": "",
     "start-of-week": "monday",
+    // Unjustified type cast. FIXME
     "available-timezones": [
       "Europe/Paris",
       "Pacific/Auckland",
@@ -36,6 +37,7 @@ const setup = async () => {
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
+      // Unjustified type cast. FIXME
       createMockSettingDefinition({ key: key as SettingKey, value }),
     ),
   );

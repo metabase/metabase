@@ -35,6 +35,7 @@ export const DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS: InteractiveEmbeddingOptionsS
     action_buttons: true,
   };
 
+// Unjustified type cast. FIXME
 const ALLOWED_INTERACTIVE_EMBEDDING_OPTIONS = (
   Object.keys(
     DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,
@@ -49,6 +50,7 @@ interface Location {
 const interactiveEmbedSlice = createSlice({
   name: "interactiveEmbed",
   initialState: {
+    // Unjustified type cast. FIXME
     options: {} as InteractiveEmbeddingOptionsState,
     isEmbeddingSdk: false,
   },

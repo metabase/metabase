@@ -4,9 +4,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getInputTypes } from "metabase/actions/constants";
-import { Toggle } from "metabase/common/components/Toggle";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { Popover, Radio, Stack, UnstyledButton } from "metabase/ui";
+import { Popover, Radio, Stack, Switch, UnstyledButton } from "metabase/ui";
 import { TextInput } from "metabase/ui/components/inputs/TextInput";
 import type {
   FieldSettings,
@@ -203,10 +202,10 @@ function RequiredInput({
         <RequiredToggleLabel
           htmlFor={`${id}-required`}
         >{t`Required`}</RequiredToggleLabel>
-        <Toggle
+        <Switch
           id={`${id}-required`}
-          value={required}
-          onChange={onChangeRequired}
+          checked={required}
+          onChange={(e) => onChangeRequired(e.currentTarget.checked)}
         />
       </ToggleContainer>
       {required && (

@@ -11,13 +11,13 @@ function setup(opts: SetupOpts) {
 
 describe("TagEditorHelp (EE without token)", () => {
   it("should show a help link when `show-metabase-links: true`", () => {
-    setup({ showMetabaseLinks: true });
+    setup({ showMetabaseLinks: true, sampleDatabaseId: 99 });
 
     expect(screen.getByText("Read the full documentation")).toBeInTheDocument();
   });
 
   it("should show a help link when `show-metabase-links: false`", () => {
-    setup({ showMetabaseLinks: false });
+    setup({ showMetabaseLinks: false, sampleDatabaseId: 99 });
 
     expect(screen.getByText("Read the full documentation")).toBeInTheDocument();
   });

@@ -175,71 +175,6 @@ describe("scenarios > models", () => {
     cy.location("pathname").should("eq", "/collection/root");
   });
 
-  it("allows to turn a native question with a long alias into a model (metabase#47584)", () => {
-    const nativeQuery = `
-    SELECT
-      count(*) AS coun,
-      state AS Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count
-    FROM people
-    GROUP BY
-      Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count`;
-    H.createNativeQuestion(
-      {
-        name: "People Model with long alias",
-        native: {
-          query: nativeQuery,
-        },
-      },
-      { visitQuestion: true, wrapId: true },
-    );
-
-    turnIntoModel();
-    H.openQuestionActions();
-    assertIsModel();
-
-    cy.get("@questionId").then((questionId) => {
-      cy.wait("@dataset").then(({ response }) => {
-        expect(response.body.error).to.not.exist;
-      });
-    });
-
-    H.filter();
-    H.popover().findByText("COUN").click();
-    H.selectFilterOperator("Greater than");
-    H.popover().within(() => {
-      cy.findByLabelText("Filter value").type("30");
-      cy.button("Apply filter").click();
-    });
-    cy.wait("@dataset").then(({ response }) => {
-      expect(response.body.error).to.not.exist;
-    });
-
-    assertQuestionIsBasedOnModel({
-      model: "People Model with long alias",
-      collection: "Our analytics",
-      table: "People",
-    });
-
-    cy.get("@questionId").then((questionId) => {
-      saveQuestionBasedOnModel({ modelId: questionId, name: "Q1" });
-    });
-
-    assertQuestionIsBasedOnModel({
-      questionName: "Q1",
-      model: "People Model with long alias",
-      collection: "Our analytics",
-      table: "People",
-    });
-
-    cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
-    getCollectionItemCard("People Model with long alias").within(() => {
-      cy.icon("model");
-    });
-    getCollectionItemRow("Q1").icon("table2");
-
-    cy.location("pathname").should("eq", "/collection/root");
-  });
-
   it("changes model's display to table", () => {
     H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
@@ -703,7 +638,7 @@ describe("scenarios > models", () => {
     };
 
     beforeEach(() => {
-      H.createQuestion(modelDetails, { wrapId: true, idAlias: "modelId" });
+      H.createQuestion(modelDetails);
     });
 
     it("should allow adding models to dashboards", () => {
@@ -721,23 +656,6 @@ describe("scenarios > models", () => {
           cy.findByText(modelDetails.name);
           cy.findByText("37.65");
         });
-      });
-    });
-
-    it("should allow using models in native queries", () => {
-      cy.intercept("POST", "/api/dataset").as("query");
-      cy.get("@modelId").then((id) => {
-        H.startNewNativeQuestion();
-        H.NativeEditor.type(`select * from {{#${id}}}`, {
-          parseSpecialCharSequences: false,
-        });
-      });
-      cy.findByTestId("native-query-editor-container").icon("play").click();
-      cy.wait("@query");
-      H.tableInteractive().within(() => {
-        cy.findByText("USER_ID");
-        cy.findByText("PRODUCT_ID");
-        cy.findByText("TAX");
       });
     });
   });

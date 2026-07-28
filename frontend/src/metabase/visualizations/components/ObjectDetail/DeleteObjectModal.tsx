@@ -43,12 +43,12 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
       }).unwrap();
 
       const message = t`Successfully deleted`;
-      sendToast({ message, toastColor: "success" });
+      sendToast({ message, toastColor: "feedback-positive" });
       onClose();
       onSuccess();
     } catch (error) {
       const message = getActionErrorMessage(error);
-      sendToast({ icon: "warning", toastColor: "error", message });
+      sendToast({ icon: "warning", toastColor: "feedback-negative", message });
     }
   };
 
@@ -61,7 +61,7 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
         <Button
           key="delete"
           variant="filled"
-          color="error"
+          color="feedback-negative"
           disabled={
             typeof actionId === "undefined" ||
             typeof objectId === "undefined" ||

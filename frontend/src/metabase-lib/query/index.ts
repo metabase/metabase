@@ -20,6 +20,7 @@ export * from "./measures";
 export * from "./metrics";
 export * from "./native";
 export * from "./order_by";
+export * from "./page";
 export * from "./query";
 export * from "./segments";
 export * from "./temporal_bucket";

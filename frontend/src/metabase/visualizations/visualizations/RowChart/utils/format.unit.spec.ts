@@ -38,6 +38,7 @@ const chartColumns: CartesianChartColumns = {
   ],
 };
 
+// Unjustified type cast. FIXME
 const settings = {
   "graph.label_value_formatting": "full",
   column: (column: DatasetColumn) => {
@@ -58,6 +59,7 @@ const settings = {
 } as VisualizationSettings;
 
 const getBar = (metricColumn: DatasetColumn) =>
+  // Unjustified type cast. FIXME
   ({
     series: {
       seriesInfo: {

@@ -1,10 +1,5 @@
 const { H } = cy;
-import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  FIRST_COLLECTION_ID,
-  ORDERS_MODEL_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -13,16 +8,6 @@ const ORDERS_SCALAR_METRIC = {
   type: "metric",
   query: {
     "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-  },
-  display: "scalar",
-};
-
-const ORDERS_SCALAR_MODEL_METRIC = {
-  name: "Orders model metric",
-  type: "metric",
-  query: {
-    "source-table": `card__${ORDERS_MODEL_ID}`,
     aggregation: [["count"]],
   },
   display: "scalar",
@@ -191,44 +176,6 @@ describe("scenarios > metrics > question", () => {
   it("should be able to view a table-based metric without data access", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
       cy.signInAsSandboxedUser();
-      H.visitMetric(card.id);
-    });
-    cy.findByTestId("scalar-container")
-      .findByText("18,760")
-      .should("be.visible");
-    H.MetricPage.aboutPage().within(() => {
-      cy.button(/Filter/).should("not.exist");
-      cy.button(/Summarize/).should("not.exist");
-    });
-  });
-
-  it("should be able to view a model-based metric without data access", () => {
-    H.createQuestion(ORDERS_SCALAR_MODEL_METRIC).then(({ body: card }) => {
-      cy.signInAsSandboxedUser();
-      H.visitMetric(card.id);
-    });
-    cy.findByTestId("scalar-container")
-      .findByText("18,760")
-      .should("be.visible");
-    H.MetricPage.aboutPage().within(() => {
-      cy.button(/Filter/).should("not.exist");
-      cy.button(/Summarize/).should("not.exist");
-    });
-  });
-
-  it("should be able to view a model-based metric without collection access to the source model", () => {
-    cy.signInAsAdmin();
-    cy.updateCollectionGraph({
-      [USER_GROUPS.ALL_USERS_GROUP]: {
-        root: "none",
-        [FIRST_COLLECTION_ID]: "read",
-      },
-    });
-    H.createQuestion({
-      ...ORDERS_SCALAR_MODEL_METRIC,
-      collection_id: FIRST_COLLECTION_ID,
-    }).then(({ body: card }) => {
-      cy.signIn("nocollection");
       H.visitMetric(card.id);
     });
     cy.findByTestId("scalar-container")

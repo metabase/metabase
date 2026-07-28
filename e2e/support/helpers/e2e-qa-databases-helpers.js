@@ -422,11 +422,19 @@ export function waitForSyncToFinish({
   });
 }
 
+/**
+ * @param {object} options
+ * @param {number} [options.dbId]
+ * @param {string} [options.tableName] - wait until this table is synced
+ * @param {string} [options.tableAlias]
+ * @param {string[]} [options.tables] - wait until all of these tables are synced
+ * @param {boolean} [options.retrigger] - occasionally re-trigger the schema sync while waiting
+ */
 export function resyncDatabase({
   dbId = 2,
   tableName = "",
-  tableAlias = undefined, // TS was complaining that this was a required param
-  tables,
+  tableAlias = undefined,
+  tables = [],
   retrigger = false,
 }) {
   // must be signed in as admin to sync

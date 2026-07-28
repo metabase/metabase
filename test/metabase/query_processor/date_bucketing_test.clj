@@ -1393,6 +1393,21 @@
                    {:aggregation [[:count]]
                     :filter [:relative-time-interval $timestamp -1 :week 0 :week]})))))))))
 
+(deftest ^:parallel relative-time-interval-positive-offset-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :date-arithmetics :test/dynamic-dataset-loading)
+    (testing "positive-offset relative-time-interval (\"Next N, starting N from now\") executes and returns the shifted window"
+      (mt/dataset checkins:1-per-day:60
+        (let [mp    (mt/metadata-provider)
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                        (lib/aggregate (lib/count))
+                        (lib/filter (lib/relative-time-interval
+                                     (lib.metadata/field mp (mt/id :checkins :timestamp))
+                                     1 :week 1 :week)))]
+          (is (= 7
+                 (ffirst
+                  (mt/formatted-rows [int] (qp/process-query query))))))))))
+
 ;; Make sure that when referencing the same field multiple times with different units we return the one that actually
 ;; reflects the units the results are in. eg when we breakout by one unit and filter by another, make sure the results
 ;; and the col info use the unit used by breakout
