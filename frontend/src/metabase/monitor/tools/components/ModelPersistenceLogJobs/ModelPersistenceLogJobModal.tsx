@@ -14,9 +14,9 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import { Box, Button } from "metabase/ui";
 import { parseNumberParam } from "metabase/urls";
 
-import S from "./ModelCacheRefreshJobs.module.css";
+import S from "./ModelPersistenceLogJobs.module.css";
 
-export function ModelCacheRefreshJobModal({
+export function ModelPersistenceLogJobModal({
   params,
   onClose,
 }: ModalComponentProps) {
