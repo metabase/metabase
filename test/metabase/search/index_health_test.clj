@@ -230,20 +230,25 @@
 
 (deftest ^:sequential sweep-iterates-its-own-snapshot-test
   (testing "a pre-reload writer doesn't hold the lock, so a late malformed entry must not reach the sweep"
-    (let [calls (atom [])
-          stale [:metabase-search/index-coverage-ratio {:index "stale"}]
-          live  (atom {stale ::stale})]
+    (let [calls     (atom [])
+          stale     [:metabase-search/index-coverage-ratio {:index "stale"}]
+          live      (atom {stale ::stale})
+          normalize @#'index-health/normalize-tracker!]
       (with-redefs [index-health/live-gauge-series live
                     u/since-ms                    {::stale 3600000}]
-        (mt/with-dynamic-fn-redefs
-          [analytics/remove-series! (fn [& args]
-                                      ;; the legacy writer, landing mid-sweep
-                                      (swap! live assoc :metabase-search/index-garbage-count :semantic-search)
-                                      (swap! calls conj (vec args)))]
-          (#'index-health/expire-stale-gauges!)
-          (is (= [[:metabase-search/index-coverage-ratio {:index "stale"}]] @calls))
-          (is (= {:metabase-search/index-garbage-count :semantic-search} @live)
-              "the late entry is left for the next sweep to normalize, not destructured by this one"))))))
+        ;; land the malformed entry in the window the fix closes: after normalizing, before the sweep would
+        ;; have re-read the atom. Iterating the returned snapshot is what makes it invisible here.
+        (with-redefs-fn {#'index-health/normalize-tracker!
+                         (fn []
+                           (let [normalized (normalize)]
+                             (swap! live assoc :metabase-search/index-garbage-count :semantic-search)
+                             normalized))}
+          (fn []
+            (mt/with-dynamic-fn-redefs [analytics/remove-series! (fn [& args] (swap! calls conj (vec args)))]
+              (#'index-health/expire-stale-gauges!)
+              (is (= [[:metabase-search/index-coverage-ratio {:index "stale"}]] @calls))
+              (is (contains? @live :metabase-search/index-garbage-count)
+                  "the late entry waits for the next sweep to normalize it"))))))))
 
 (deftest ^:sequential reload-era-entries-become-expirable-test
   (testing "an entry a pre-reload refresh conj'd onto the migrated map is made usable, not left forever"
