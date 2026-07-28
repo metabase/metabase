@@ -7,15 +7,15 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- ^DatabaseMetaData fake-metadata
-  [driver-name product-version major]
+(defn- fake-metadata
+  ^DatabaseMetaData [driver-name product-version major]
   (reify DatabaseMetaData
     (getDriverName [_] driver-name)
     (getDatabaseProductVersion [_] product-version)
     (getDatabaseMajorVersion [_] major)))
 
-(defn- ^Connection fake-connection
-  [driver-name product-version major]
+(defn- fake-connection
+  ^Connection [driver-name product-version major]
   (reify Connection
     (getMetaData [_] (fake-metadata driver-name product-version major))))
 
