@@ -1,4 +1,3 @@
-/* The tr qualifier out-specifies TBody's emotion `td { background-color: transparent }` */
 tr.dropTargetRow td {
   background-color: var(--mb-color-background_surface-brand-subtle-hover);
 }

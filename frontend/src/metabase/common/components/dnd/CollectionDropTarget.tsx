@@ -38,8 +38,7 @@ export function canDropItemIntoCollection({
   const droppingToSameCollection =
     canonicalCollectionId(item.collection_id) ===
     canonicalCollectionId(collection.id);
-  // When multiple items are selected, all of them get moved on drop, so the
-  // target collection must not be part of the dragged selection.
+  // every selected item gets moved on drop, so the target must not be among them
   const droppingIntoDraggedCollection = Boolean(
     selectedItems?.some(
       (selectedItem) =>
@@ -60,8 +59,7 @@ const dropTargetSpec = {
     return { collection: props.collection };
   },
   canDrop(props: CollectionDropTargetOwnProps, monitor: DropTargetMonitor) {
-    // react-dnd v4 types the drag payload as `any`; ItemDragSource.beginDrag
-    // always provides `{ item }`.
+    // react-dnd v4 types the drag payload as `any`; beginDrag provides `{ item }`
     const { item } = monitor.getItem() as { item: CollectionItem };
     return canDropItemIntoCollection({
       item,
@@ -107,10 +105,9 @@ class CollectionRowDropTargetInner extends Component<
 }
 
 /**
- * A collection drop target that, unlike `CollectionDropTarget`, renders no
- * markup of its own: `children` receives `connectDropTarget` and must attach
- * it to a native element. This makes it usable where `DropArea`'s wrapper
- * `<div>` would be invalid markup, such as around a table `<tr>`.
+ * Renders no markup of its own: `children` must attach the received
+ * `connectDropTarget` to a native element. Usable where `DropArea`'s
+ * wrapper `<div>` would be invalid markup, such as around a table `<tr>`.
  */
 export const CollectionRowDropTarget: ComponentType<CollectionRowDropTargetProps> =
   DropTarget(
