@@ -1,6 +1,6 @@
 import { TEST_DASHBOARD_STATE } from "../components/DashboardTabs/test-utils";
 
-import { getIdFromSlug, moveTab, tabsReducer } from "./tabs";
+import { duplicateTab, getIdFromSlug, moveTab, tabsReducer } from "./tabs";
 
 /**
  * It's preferred to write tests in `DashboardTabs.unit.spec.tsx`,
@@ -15,6 +15,28 @@ describe("tabsReducer", () => {
     expect(newDashState.dashboards[1].tabs?.map((t) => t.id)).toEqual([
       2, 3, 1,
     ]);
+  });
+
+  it("duplicateTab copies dashcardData when present and skips when missing", () => {
+    const data = {
+      1: { data: { rows: [[1]] } },
+      99: { data: { rows: [[2]] } },
+    };
+    expect(() =>
+      tabsReducer(
+        { ...TEST_DASHBOARD_STATE, dashcardData: {} },
+        duplicateTab(1),
+      ),
+    ).not.toThrow();
+
+    const next = tabsReducer(
+      { ...TEST_DASHBOARD_STATE, dashcardData: { 1: data, 2: { 1: null } } },
+      duplicateTab(1),
+    );
+    const newId = next.dashboards[1].dashcards.find(
+      (id) => !TEST_DASHBOARD_STATE.dashboards[1].dashcards.includes(id),
+    )!;
+    expect(next.dashcardData[newId]).toEqual(data);
   });
 });
 

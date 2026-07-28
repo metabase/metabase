@@ -368,10 +368,11 @@ export const tabsReducer = createReducer<DashboardState>(
           if (sourceDashCard.card_id == null) {
             throw Error("sourceDashCard is non-virtual yet has null card_id");
           }
-          state.dashcardData[newDashCardId] = {
-            [sourceDashCard.card_id]:
-              state.dashcardData[sourceDashCard.id][sourceDashCard.card_id],
-          };
+          // Skip if results are not loaded yet (avoids throw); copy full map for series cards.
+          const sourceData = state.dashcardData[sourceDashCard.id];
+          if (sourceData) {
+            state.dashcardData[newDashCardId] = { ...sourceData };
+          }
         });
 
         // 3. Select new tab
