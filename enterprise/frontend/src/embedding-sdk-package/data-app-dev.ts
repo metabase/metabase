@@ -6,6 +6,7 @@ export {
   type DevToolbarProps,
 } from "./data-app-dev/components/DevToolbar/DevToolbar";
 export { devDiagnostics } from "./data-app-dev/components/DevToolbar/diagnostics";
+export { DEV_SESSION_ID } from "./data-app-dev/lib/dev-session";
 export { instanceConnectionCheck } from "./data-app-dev/lib/instance-connection-check";
 export { installDiagnosticsReporter } from "./data-app-dev/lib/diagnostics-reporter";
 export { sdkCallCapture } from "./data-app-dev/lib/sdk-call-capture";
