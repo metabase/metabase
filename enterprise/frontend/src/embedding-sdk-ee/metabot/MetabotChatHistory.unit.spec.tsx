@@ -1,20 +1,19 @@
 import { assocIn } from "icepick";
 
 import { screen } from "__support__/ui";
-import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import type { MetabotChatMessage } from "metabase/metabot/state/types";
-import { setup } from "metabase/metabot/tests/utils";
+import {
+  createTestMetabotState,
+  setup,
+  testConversationId,
+} from "metabase/metabot/tests/utils";
 
 import { MetabotChatHistory } from "./MetabotChatHistory";
 
 const makeVisibleState = (messages: MetabotChatMessage[]) =>
   assocIn(
-    assocIn(
-      getMetabotInitialState(),
-      ["conversations", "omnibot", "visible"],
-      true,
-    ),
-    ["conversations", "omnibot", "messages"],
+    assocIn(createTestMetabotState(), ["agents", "omnibot", "visible"], true),
+    ["conversations", testConversationId("omnibot"), "messages"],
     messages,
   );
 

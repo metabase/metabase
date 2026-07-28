@@ -9,6 +9,8 @@ import {
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import {
+  attachAgentToConversation,
+  getIsConversationEmpty,
   getIsConversationInProgress,
   setConversationSnapshot,
 } from "metabase/metabot/state";
@@ -29,15 +31,35 @@ export const MetabotConversationPage = () => {
   const { canUseNlq, isLoading } = useUserMetabotPermissions();
   const { conversationId } = useMetabotAgent("ask");
 
+  // The route owns which conversation the ask agent is on, so the agent trails
+  // the URL by a render. Until it catches up its selectors describe whichever
+  // conversation it was on before, which is not the one being asked for.
+  const isAttached = urlConvoId != null && conversationId === urlConvoId;
+
   const isSettingsLoading = useSelector(getSettingsLoading);
   const isInProgress = useSelector((state) =>
-    getIsConversationInProgress(state, "ask"),
+    isAttached ? getIsConversationInProgress(state, urlConvoId) : false,
+  );
+  const isEmpty = useSelector((state) =>
+    isAttached ? getIsConversationEmpty(state, urlConvoId) : true,
   );
 
-  const isConvoLoaded = conversationId === urlConvoId;
+  useEffect(
+    function attachAgentToUrlConversation() {
+      if (urlConvoId) {
+        dispatch(
+          attachAgentToConversation({
+            agentId: "ask",
+            conversationId: urlConvoId,
+          }),
+        );
+      }
+    },
+    [dispatch, urlConvoId],
+  );
 
   const { currentData: conversation, isError } = useGetMetabotConversationQuery(
-    !urlConvoId || !canUseNlq || (isConvoLoaded && !isInProgress)
+    !urlConvoId || !canUseNlq || (!isEmpty && !isInProgress)
       ? skipToken
       : urlConvoId,
     {
@@ -53,7 +75,6 @@ export const MetabotConversationPage = () => {
 
       dispatch(
         setConversationSnapshot({
-          agentId: "ask",
           conversationId: conversation.conversation_id,
           title: conversation.title ?? undefined,
           forkedFromConversationId:
@@ -71,7 +92,7 @@ export const MetabotConversationPage = () => {
     return <ConversationLoader />;
   }
 
-  if (!canUseNlq) {
+  if (!canUseNlq || !urlConvoId) {
     return <Navigate to={Urls.newQuestion({ mode: "ask" })} replace />;
   }
 
@@ -79,7 +100,7 @@ export const MetabotConversationPage = () => {
     return <ConversationLoadError />;
   }
 
-  if (!isConvoLoaded) {
+  if (!isAttached || isEmpty) {
     return <ConversationLoader />;
   }
 

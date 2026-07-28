@@ -164,14 +164,13 @@ export type MetabotReactionsState = {
   suggestedTransforms: MetabotSuggestedTransform[];
 };
 
-export interface MetabotConverstationState {
+export interface MetabotConversationState {
   conversationId: string;
-  loadId: string;
   title: string | undefined;
   forkedFromConversationId: string | undefined;
   isProcessing: boolean;
+  hasMessagedInSession: boolean;
   messages: MetabotChatMessage[];
-  visible: boolean;
   state: MetabotStateContext;
   stateBeforeTurn?: MetabotStateContext;
   activeToolCalls: MetabotToolCall[];
@@ -182,6 +181,11 @@ export interface MetabotConverstationState {
     developerMessage: string;
     metabotReqIdOverride: string | undefined;
   };
+}
+
+export interface MetabotAgentState {
+  conversationId: string;
+  visible: boolean;
 }
 
 export const fixedMetabotAgentIds = [
@@ -195,7 +199,8 @@ type FixedMetabotAgentId = (typeof fixedMetabotAgentIds)[number];
 export type MetabotAgentId = FixedMetabotAgentId | `test_${number}`;
 
 export interface MetabotState {
-  conversations: Record<MetabotAgentId, MetabotConverstationState | undefined>;
+  conversations: Record<string, MetabotConversationState | undefined>;
+  agents: Partial<Record<MetabotAgentId, MetabotAgentState>>;
   reactions: MetabotReactionsState;
   titlePollingConversationIds: string[];
   debugMode: boolean;

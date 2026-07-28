@@ -21,6 +21,7 @@ import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import {
   assertConversation,
   continueResponseButton,
+  conversationIdForAgent,
   enterChatMessage,
   input,
   queryContinueResponseButton,
@@ -303,11 +304,7 @@ describe("AgentMessage", () => {
       ]);
       expect(await input()).toHaveTextContent("How many orders?");
 
-      const conversationId =
-        store.getState().metabot.conversations.omnibot?.conversationId;
-      if (!conversationId) {
-        throw new Error("expected an active omnibot conversation");
-      }
+      const conversationId = conversationIdForAgent(store);
       const reloaded: ["user" | "agent", string][] = [
         ["user", "How many orders?"],
         ["agent", "There are 42 orders."],
