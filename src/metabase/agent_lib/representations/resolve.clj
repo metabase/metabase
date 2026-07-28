@@ -29,12 +29,18 @@
   encoding or for handing back to the LLM as the canonical MBQL 5 representation."
   (:require
    [clojure.walk :as walk]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
-   [metabase.util.log :as log]))
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -99,6 +105,69 @@
        node))
    pmbql-query))
 
+(defn- annotate-metric-and-measure-ref-types
+  "BOT-1901: Stamp `:effective-type` on `:metric` / `:measure` refs missing it, computed
+  from the metric's / measure's aggregation definition — mirroring the FE's `lib.ref/ref-method
+  :metadata/metric`. Untyped refs poison arithmetic type inference in
+  [[metabase.agent-lib.representations.repair/assert-editor-accepts-expressions!]]"
+  [pmbql-query]
+  (walk/postwalk
+   (fn [node]
+     (if (and (vector? node)
+              (#{:metric :measure} (nth node 0 nil))
+              (map? (nth node 1 nil))
+              (pos-int? (nth node 2 nil))
+              (not (contains? (nth node 1) :effective-type)))
+       (let [md (case (nth node 0)
+                  :metric  (lib.metadata/metric pmbql-query (nth node 2))
+                  :measure (lib.metadata/measure pmbql-query (nth node 2)))
+             t  (when md (lib.metadata.calculation/type-of pmbql-query md))]
+         (if (and t (isa? t :type/*) (not= t :type/*))
+           (update node 1 assoc :effective-type t)
+           node))
+       node))
+   pmbql-query))
+
+(defn- assert-parseable-temporal-literal!
+  "Throw an agent-facing error if temporal string `s` is not a real date / datetime / year /
+  year-month — i.e. one [[u.date/parse]] can read. The query schema only checks structure with a
+  regex, so a value like `\"2024-13-45\"` passes normalization but is not a valid date."
+  [s]
+  (try
+    (u.date/parse s)
+    nil
+    (catch Exception e
+      ;; `s` is untrusted agent input — bound it before it lands in an exception message or ex-data so a
+      ;; pathological literal can't flood logs. A real temporal literal is well under this length.
+      (let [s' (u/truncate s 64)]
+        (throw (ex-info (tru "Invalid temporal literal {0} in :absolute-datetime — use an ISO-8601 date, datetime, year, or year-month."
+                             (pr-str s'))
+                        {:agent-error? true
+                         :status-code  400
+                         :error        :invalid-temporal-literal
+                         :literal      s'}
+                        e))))))
+
+(defn- validate-absolute-datetime-literals
+  "Validate (without coercing) the string literals in `:absolute-datetime` clauses, so malformed
+  temporal input fails fast here — where the agent sees it and can correct — instead of surviving to
+  query execution.
+
+  The actual string → `java.time` coercion is intentionally NOT done here: it happens later in the
+  QP's `wrap-value-literals`, where the comparison field's type and the report timezone are
+  available. This pass only rejects literals that can't possibly parse. Returns the query unchanged."
+  [pmbql-query]
+  ;; `match/match-many`, not `lib.walk/walk-clauses`: the latter is a `mu/defn` that validates its
+  ;; whole-query argument against `::lib.schema/query`, so under test instrumentation it would throw a
+  ;; raw "Invalid input" on an otherwise-malformed query (e.g. an `:offset` in `:expressions`) here,
+  ;; pre-empting the friendlier not-runnable gate downstream. We only need to inspect literals, and
+  ;; matching a bare `[:absolute-datetime _ s _]` vector suffices — the same shape check the sibling
+  ;; `annotate-field-types` pass uses.
+  (match/match-many pmbql-query
+    [:absolute-datetime _ (s :guard string?) _]
+    (assert-parseable-temporal-literal! s))
+  pmbql-query)
+
 (defn resolve-query
   "Convert a parsed (string-keyed, portable) representations query into a canonical, numeric-ID,
   `:lib/uuid`-stamped MBQL 5 query attached to `metadata-provider`.
@@ -117,7 +186,9 @@
          resolved (resolve/import-mbql resolver kw-form)
          with-mp  (assoc resolved :lib/metadata metadata-provider)]
      (-> (lib.normalize/normalize ::lib.schema/query with-mp)
-         (annotate-field-types metadata-provider)))))
+         (annotate-field-types metadata-provider)
+         annotate-metric-and-measure-ref-types
+         validate-absolute-datetime-literals))))
 
 ;;; ============================================================
 ;;; Export final pMBQL back to portable representations

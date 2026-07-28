@@ -498,7 +498,10 @@ async function setup({
         },
       )
     : renderWithProviders(
-        <Route path="/admin/metabot*" component={AIProviderSettingsSection} />,
+        <Route
+          path="/admin/metabot*"
+          element={<AIProviderSettingsSection />}
+        />,
         {
           withRouter: true,
           initialRoute: "/admin/metabot",
@@ -662,7 +665,10 @@ describe("AIProviderSettingsSection", () => {
 
   it("shows Connect instead of Disconnect when the configured API key input is dirty", async () => {
     await setup();
-    await screen.findByLabelText("API key");
+    // Wait for the saved key from the setting-details
+    await waitFor(() =>
+      expect(screen.getByLabelText("API key")).not.toHaveValue(""),
+    );
 
     expect(
       screen.getByRole("button", { name: "Disconnect" }),
@@ -749,7 +755,10 @@ describe("AIProviderSettingsSection", () => {
       },
     });
 
-    expect(await screen.findByLabelText("API key")).toBeDisabled();
+    // Wait for the env-backed state from setting-details
+    await waitFor(() => {
+      expect(screen.getByLabelText("API key")).toBeDisabled();
+    });
     expect(
       await screen.findByText("Anthropic API key expired or invalid"),
     ).toBeInTheDocument();
@@ -2062,11 +2071,17 @@ describe("AIProviderSettingsSection", () => {
         apiKeyValues: { azure: "**********ey" },
       });
 
-      expect(await screen.findByLabelText("Model provider")).toHaveValue(
-        "Anthropic",
+      // The saved values hydrate from the async setting-details fetch, so
+      // wait for them rather than asserting synchronously.
+      await waitFor(() =>
+        expect(screen.getByLabelText("Model provider")).toHaveValue(
+          "Anthropic",
+        ),
       );
-      expect(screen.getByLabelText("Base URL")).toHaveValue(
-        "https://my-resource.services.ai.azure.com/anthropic",
+      await waitFor(() =>
+        expect(screen.getByLabelText("Base URL")).toHaveValue(
+          "https://my-resource.services.ai.azure.com/anthropic",
+        ),
       );
       expect(screen.getByLabelText("Deployment name")).toHaveValue(
         "claude-sonnet-4-5",
@@ -2088,6 +2103,11 @@ describe("AIProviderSettingsSection", () => {
       });
 
       const deploymentInput = await screen.findByLabelText("Deployment name");
+      // Wait for the saved deployment to hydrate before editing it — clearing
+      // the still-empty input is a no-op the arriving value then overwrites.
+      await waitFor(() =>
+        expect(deploymentInput).toHaveValue("claude-sonnet-4-5"),
+      );
       await userEvent.clear(deploymentInput);
       await userEvent.type(deploymentInput, "renamed-deployment");
 
@@ -2404,5 +2424,198 @@ describe("AIProviderSettingsSection", () => {
         screen.getByRole("button", { name: "Disconnect" }),
       ).toBeInTheDocument();
     });
+  });
+});
+
+const DEFAULT_PROVIDER_VALUE = "anthropic/claude-sonnet-4-6";
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
+const DIVERGENT_MODELS = [
+  { id: "claude-sonnet-4-6", display_name: "Claude Sonnet 4.6" },
+  { id: "claude-sonnet-5", display_name: "Claude Sonnet 5" },
+];
+
+function setupDivergentReadsBackend({
+  delayAdminSettingDetailsRefetch = false,
+}: { delayAdminSettingDetailsRefetch?: boolean } = {}) {
+  fetchMock.removeRoutes();
+  fetchMock.clearHistory();
+
+  const backend: { apiKeySaved: boolean; providerRow: string | null } = {
+    apiKeySaved: false,
+    providerRow: null,
+  };
+
+  const providerValue = () => backend.providerRow ?? DEFAULT_PROVIDER_VALUE;
+  const isConfigured = () => backend.apiKeySaved;
+
+  const sessionPropertiesResponse = () =>
+    createMockSettings({
+      "llm-metabot-provider": providerValue(),
+      "llm-metabot-configured?": isConfigured(),
+    });
+
+  const disconnectedSnapshot = sessionPropertiesResponse();
+  let pendingStaleSessionPropertiesReads = 0;
+
+  fetchMock.get("path:/api/session/properties", () => {
+    if (pendingStaleSessionPropertiesReads > 0) {
+      pendingStaleSessionPropertiesReads -= 1;
+      return disconnectedSnapshot;
+    }
+    return sessionPropertiesResponse();
+  });
+
+  const adminSettingDetailsResponse = () => [
+    createMockSettingDefinition({
+      key: "llm-metabot-provider",
+      value: backend.providerRow ?? undefined,
+    }),
+    createMockSettingDefinition({
+      key: "llm-anthropic-api-key",
+      value: backend.apiKeySaved ? "**********ey" : undefined,
+    }),
+  ];
+
+  const detailsRefetchDeferred = defer<void>();
+  let adminSettingDetailsRequestCount = 0;
+
+  fetchMock.get("path:/api/setting", async () => {
+    adminSettingDetailsRequestCount += 1;
+    if (
+      delayAdminSettingDetailsRefetch &&
+      adminSettingDetailsRequestCount > 1
+    ) {
+      await detailsRefetchDeferred.promise;
+    }
+    return adminSettingDetailsResponse();
+  });
+
+  fetchMock.get("path:/api/metabot/settings", () => ({
+    value: providerValue(),
+    models: backend.apiKeySaved ? DIVERGENT_MODELS : [],
+  }));
+
+  fetchMock.put("path:/api/metabot/settings", (call) => {
+    const body: MetabotSettingsUpdateBody = JSON.parse(
+      String(call.options?.body ?? "{}"),
+    );
+    const currentProviderFromGetter = providerValue().split("/")[0];
+    const providerChanged = currentProviderFromGetter !== body.provider;
+
+    if ("api-key" in body) {
+      backend.apiKeySaved = Boolean(body["api-key"]);
+    }
+
+    const model =
+      body.model ?? (providerChanged ? DEFAULT_ANTHROPIC_MODEL : null);
+    if (model) {
+      backend.providerRow = `${body.provider}/${model}`;
+    }
+
+    return { value: providerValue(), models: DIVERGENT_MODELS };
+  });
+
+  renderWithProviders(
+    <Route path="/admin/metabot*" element={<AIProviderSettingsSection />} />,
+    {
+      withRouter: true,
+      initialRoute: "/admin/metabot",
+      storeInitialState: {
+        settings: mockSettings(disconnectedSnapshot),
+        currentUser: createMockUser({ is_superuser: true }),
+      },
+    },
+  );
+
+  return {
+    backend,
+    releaseAdminSettingDetailsRefetch: () => detailsRefetchDeferred.resolve(),
+    markNextSessionPropertiesReadStale: () => {
+      pendingStaleSessionPropertiesReads += 1;
+    },
+  };
+}
+
+async function connectToAnthropicFromScratch() {
+  await screen.findByText("Connect to an AI provider");
+  await userEvent.click(await screen.findByLabelText("Provider"));
+  await userEvent.click(
+    await screen.findByRole("option", { name: "Anthropic" }),
+  );
+  await userEvent.type(
+    await screen.findByLabelText("API key"),
+    "sk-ant-test-key",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+}
+
+describe("AIProviderSettingsSection with divergent settings reads", () => {
+  it("keeps the entered API key and offers the model picker while the setting-details refetch lags behind session-properties", async () => {
+    const { releaseAdminSettingDetailsRefetch } = setupDivergentReadsBackend({
+      delayAdminSettingDetailsRefetch: true,
+    });
+
+    await connectToAnthropicFromScratch();
+
+    expect(await screen.findByLabelText("Model")).toBeInTheDocument();
+    expect(screen.getByLabelText("API key")).toHaveValue("sk-ant-test-key");
+
+    await userEvent.click(screen.getByLabelText("Model"));
+    expect(
+      await screen.findByRole("option", { name: "Claude Sonnet 5" }),
+    ).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    releaseAdminSettingDetailsRefetch();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("API key")).toHaveValue("**********ey");
+    });
+    expect(
+      await screen.findByText("Connected to Anthropic"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Disconnect" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the provider and model selection when a stale node serves the session-properties refetch after picking a model", async () => {
+    const { backend, markNextSessionPropertiesReadStale } =
+      setupDivergentReadsBackend();
+
+    await connectToAnthropicFromScratch();
+    await screen.findByText("Connected to Anthropic");
+    await waitFor(() => {
+      expect(screen.getByLabelText("Model")).toHaveValue("Claude Sonnet 4.6");
+    });
+
+    // Let the session-properties refetch land before arming the one-shot stale marker.
+    // Otherwise that in-flight refetch consumes it and the model-pick refetch below
+    // gets fresh data instead of stale.
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/session/properties"),
+      ).toHaveLength(2);
+    });
+    await act(async () => {
+      await fetchMock.callHistory.flush(true);
+    });
+
+    markNextSessionPropertiesReadStale();
+
+    await userEvent.click(screen.getByLabelText("Model"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Claude Sonnet 5" }),
+    );
+
+    await waitFor(() => {
+      expect(backend.providerRow).toBe("anthropic/claude-sonnet-5");
+    });
+
+    // Wait for the stale refetch to flip the section back to the setup layout
+    // then check the form kept the new selection instead of resetting to the stale snapshot.
+    expect(await screen.findByLabelText("Provider")).toHaveValue("Anthropic");
+    expect(screen.getByLabelText("API key")).toBeInTheDocument();
+    expect(screen.getByLabelText("Model")).toHaveValue("Claude Sonnet 5");
   });
 });

@@ -194,6 +194,186 @@
                :query))
         "Datetime literal strings should get parsed in the current report timezone.")))
 
+(deftest ^:parallel wrap-prewrapped-absolute-datetime-strings-test
+  (testing (str "an `:absolute-datetime` whose literal is still a string (e.g. Metabot's "
+                "representations repair wraps `between` bounds as "
+                "`[:absolute-datetime {} \"2024-01-01\" :day]`) gets parsed to a `java.time` value, "
+                "in the comparison field's type and unit — same as a raw string would")
+    (is (=? {:filters [[:between
+                        {}
+                        [:field {:temporal-unit :month} (meta/id :checkins :date)]
+                        [:absolute-datetime {} (t/local-date "2024-01-01") :month]
+                        [:absolute-datetime {} (t/local-date "2024-12-31") :month]]]}
+            (-> (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query checkins
+                   {:filter [:between
+                             [:field (meta/id :checkins :date) {:temporal-unit :month}]
+                             [:absolute-datetime "2024-01-01" :day]
+                             [:absolute-datetime "2024-12-31" :day]]}))
+                wrap-value-literals
+                :stages
+                first))))
+  (testing "an `:absolute-datetime` whose literal is already a `java.time` value is left unchanged"
+    (let [parsed (lib/query
+                  meta/metadata-provider
+                  (lib.tu.macros/mbql-query checkins
+                    {:filter [:= [:field (meta/id :checkins :date) {:temporal-unit :month}]
+                              [:absolute-datetime (t/local-date "2024-01-01") :month]]}))]
+      (is (= (:stages parsed) (:stages (wrap-value-literals parsed)))))))
+
+(deftest wrap-prewrapped-absolute-datetime-strings-tz-test
+  (testing (str "a pre-wrapped local string is coerced using the report timezone, by the field's "
+                "type — the type/tz awareness that can only happen here in the QP, at execution time")
+    (mt/with-report-timezone-id! "US/Pacific"
+      (is (= (:query
+              (lib.tu.macros/mbql-query checkins
+                {:source-query {:source-table $$checkins}
+                 :filter       [:=
+                                [:field "DATE" {:temporal-unit :day, :base-type :type/DateTimeWithZoneID}]
+                                [:absolute-datetime (t/zoned-date-time "2018-10-01T00:00-07:00[US/Pacific]") :day]]}))
+             (-> (lib.tu.macros/mbql-query checkins
+                   {:source-query {:source-table $$checkins}
+                    :filter       [:= [:field "DATE" {:temporal-unit :day, :base-type :type/DateTimeWithZoneID}]
+                                   [:absolute-datetime "2018-10-01" :day]]})
+                 (assoc-in [:settings :report-timezone] "US/Pacific")
+                 (wrap-value-literals "US/Pacific")
+                 :query))
+          "pre-wrapped string coerced to the report timezone for a DateTimeWithZoneID field"))))
+
+(defn- year-literal-filter-query
+  "Build a pMBQL query whose `:=` filter compares an *unbucketed* `checkins.date` against a string-valued
+  `[:absolute-datetime {} `s` `unit`]`. Year / year-month string literals can't be expressed through the
+  legacy `mbql-query` macro, so we build a valid query and swap the literal into the already-wrapped
+  pMBQL clause."
+  [s unit]
+  (-> (lib/query
+       meta/metadata-provider
+       (lib.tu.macros/mbql-query checkins
+         {:filter [:= [:field (meta/id :checkins :date) nil]
+                   [:absolute-datetime "2024-01-01" :day]]}))
+      (assoc-in [:stages 0 :filters 0 3 2] s)
+      (assoc-in [:stages 0 :filters 0 3 3] unit)))
+
+(deftest ^:parallel wrap-prewrapped-absolute-datetime-unit-test
+  (testing (str "a string-valued `:absolute-datetime` keeps its own temporal unit when re-parsed against "
+                "an *unbucketed* field, so a year / year-month literal is not collapsed to a single "
+                ":default-bucketed instant")
+    (doseq [[unit s expected] [[:year  "2024"    "2024-01-01"]
+                               [:month "2024-03" "2024-03-01"]]]
+      (is (=? {:filters [[:= {}
+                          [:field {} (meta/id :checkins :date)]
+                          [:absolute-datetime {} (t/local-date expected) unit]]]}
+              (-> (year-literal-filter-query s unit)
+                  wrap-value-literals
+                  :stages
+                  first))
+          (str (name unit) " literal keeps its unit against an unbucketed field"))))
+  (testing "the comparison field's own bucket still wins over the literal's unit when the field is bucketed"
+    (is (=? {:filters [[:= {}
+                        [:field {:temporal-unit :month} (meta/id :checkins :date)]
+                        [:absolute-datetime {} (t/local-date "2024-01-01") :month]]]}
+            (-> (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query checkins
+                   {:filter [:= [:field (meta/id :checkins :date) {:temporal-unit :month}]
+                             [:absolute-datetime "2024-01-01" :day]]}))
+                wrap-value-literals
+                :stages
+                first)))))
+
+(deftest ^:parallel wrap-prewrapped-absolute-datetime-default-unit-test
+  (testing (str "a field carrying an explicit `:default` temporal unit counts as *unbucketed*, so the "
+                "literal's own unit still wins instead of collapsing to a single `:default`-bucketed "
+                "instant. `add-default-temporal-unit` stamps `:default` onto every temporal field ref on "
+                "`:temporal/requires-default-unit` drivers (Druid family), so the unit-preservation "
+                "feature would otherwise be fully defeated there.")
+    (doseq [[unit s expected] [[:year  "2024"    "2024-01-01"]
+                               [:month "2024-03" "2024-03-01"]]]
+      (is (=? {:filters [[:= {}
+                          [:field {:temporal-unit :default} (meta/id :checkins :date)]
+                          [:absolute-datetime {} (t/local-date expected) unit]]]}
+              (-> (year-literal-filter-query s unit)
+                  (assoc-in [:stages 0 :filters 0 2 1 :temporal-unit] :default)
+                  wrap-value-literals
+                  :stages
+                  first))
+          (str (name unit) " literal keeps its unit against a `:default`-bucketed field")))))
+
+(deftest ^:parallel wrap-prewrapped-absolute-datetime-mixed-between-test
+  (testing "a mixed `:between` wraps only the string-valued bound and passes the other through untouched"
+    (testing "string bound + already-parsed `:absolute-datetime` bound"
+      (is (=? {:filters [[:between {}
+                          [:field {} (meta/id :checkins :date)]
+                          [:absolute-datetime {} (t/local-date "2024-01-01") :day]
+                          [:absolute-datetime {} (t/local-date "2024-12-31") :month]]]}
+              (-> (lib/query
+                   meta/metadata-provider
+                   (lib.tu.macros/mbql-query checkins
+                     {:filter [:between
+                               [:field (meta/id :checkins :date) nil]
+                               [:absolute-datetime "2024-01-01" :day]
+                               [:absolute-datetime (t/local-date "2024-12-31") :month]]}))
+                  wrap-value-literals
+                  :stages
+                  first))
+          "the string bound is parsed; the already-parsed bound is left as-is"))
+    (testing "string bound + `:relative-datetime` bound"
+      (is (=? {:filters [[:between {}
+                          [:field {} (meta/id :checkins :date)]
+                          [:absolute-datetime {} (t/local-date "2024-01-01") :day]
+                          [:relative-datetime {} 0 :day]]]}
+              (-> (lib/query
+                   meta/metadata-provider
+                   (lib.tu.macros/mbql-query checkins
+                     {:filter [:between
+                               [:field (meta/id :checkins :date) nil]
+                               [:absolute-datetime "2024-01-01" :day]
+                               [:relative-datetime 0 :day]]}))
+                  wrap-value-literals
+                  :stages
+                  first))
+          "the `:relative-datetime` bound is left untouched"))
+    (testing "raw (unwrapped) string bound + `:relative-datetime` bound"
+      (is (=? {:filters [[:between {}
+                          [:field {} (meta/id :checkins :date)]
+                          [:absolute-datetime {} (t/local-date "2026-01-01") :default]
+                          [:relative-datetime {} 0 :day]]]}
+              (-> (lib/query
+                   meta/metadata-provider
+                   (lib.tu.macros/mbql-query checkins
+                     {:filter [:between
+                               [:field (meta/id :checkins :date) nil]
+                               "2026-01-01"
+                               [:relative-datetime 0 :day]]}))
+                  wrap-value-literals
+                  :stages
+                  first))
+          "the raw string bound still gets wrapped, same as when the `:relative-datetime` bound isn't present"))))
+
+(deftest ^:parallel wrap-prewrapped-absolute-datetime-two-literals-test
+  (testing (str "a comparison with a string-valued `:absolute-datetime` on *both* sides (no field to "
+                "wrap against) still has each literal parsed using its own unit — neither is mis-bound "
+                "as the `field` and silently dropped, and no bare string survives to execution")
+    (is (=? {:filters [[:= {}
+                        [:absolute-datetime {} (t/local-date "2024-01-01") :day]
+                        [:absolute-datetime {} (t/local-date "2025-01-01") :day]]]}
+            (-> (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query checkins
+                   {:filter [:= [:absolute-datetime "2024-01-01" :day]
+                             [:absolute-datetime "2025-01-01" :day]]}))
+                wrap-value-literals
+                :stages
+                first))))
+  (testing "two already-parsed `:absolute-datetime` literals are left unchanged (nothing to parse)"
+    (let [parsed (lib/query
+                  meta/metadata-provider
+                  (lib.tu.macros/mbql-query checkins
+                    {:filter [:= [:absolute-datetime (t/local-date "2024-01-01") :day]
+                              [:absolute-datetime (t/local-date "2025-01-01") :day]]}))]
+      (is (= (:stages parsed) (:stages (wrap-value-literals parsed)))))))
+
 (deftest ^:parallel string-filters-test
   (testing "string filters like `starts-with` should not parse datetime strings for obvious reasons"
     (is (= (lib.tu.macros/mbql-query checkins

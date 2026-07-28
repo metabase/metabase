@@ -19,7 +19,7 @@ export const NotificationRunSummaryLog = ({
   cardId,
   onViewAllClick,
 }: NotificationRunSummaryLogProps) => {
-  const viewAllUrl = Urls.adminToolsTasksRunsFor({
+  const viewAllUrl = Urls.monitorTasksRunsFor({
     runType: "alert",
     entityType: "card",
     entityId: cardId,

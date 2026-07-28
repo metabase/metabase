@@ -1,5 +1,5 @@
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Series,
   SeriesSettings,

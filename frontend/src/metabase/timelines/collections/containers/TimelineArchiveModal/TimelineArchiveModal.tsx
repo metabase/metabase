@@ -1,6 +1,6 @@
 import { skipToken, useGetTimelineQuery } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import * as Urls from "metabase/urls";

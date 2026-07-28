@@ -37,8 +37,8 @@ export const setup = ({
 
   renderWithProviders(
     <>
-      <Route path="/auth/login" component={Login} />
-      <Route path="/auth/login/:provider" component={Login} />
+      <Route path="/auth/login" element={<Login />} />
+      <Route path="/auth/login/:provider" element={<Login />} />
     </>,
     { storeInitialState: state, withRouter: true, initialRoute },
   );

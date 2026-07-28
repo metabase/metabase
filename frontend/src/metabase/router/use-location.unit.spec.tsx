@@ -1,6 +1,8 @@
+import { MemoryRouter } from "react-router";
+
 import { renderWithProviders, screen } from "__support__/ui";
 
-import { Route } from "./react-router";
+import { Route } from "./route";
 import { useLocation } from "./use-location";
 
 function LocationProbe() {
@@ -18,7 +20,7 @@ function LocationProbe() {
 
 describe("router/useLocation", () => {
   it("exposes the current location in v7 shape", () => {
-    renderWithProviders(<Route path="foo/bar" component={LocationProbe} />, {
+    renderWithProviders(<Route path="foo/bar" element={<LocationProbe />} />, {
       withRouter: true,
       initialRoute: "/foo/bar?x=1&y=2#section",
     });
@@ -28,24 +30,37 @@ describe("router/useLocation", () => {
     expect(screen.getByTestId("hash")).toHaveTextContent("#section");
   });
 
-  it("returns exactly the v7 Location fields, without v3's `query`", () => {
-    renderWithProviders(<Route path="foo/bar" component={LocationProbe} />, {
+  it("does not carry v3's `query` and `action` fields", () => {
+    renderWithProviders(<Route path="foo/bar" element={<LocationProbe />} />, {
       withRouter: true,
       initialRoute: "/foo/bar?x=1",
     });
 
-    // v7's Location is exactly { pathname, search, hash, state, key }, no `query`.
-    expect(screen.getByTestId("keys")).toHaveTextContent(
-      /^hash,key,pathname,search,state$/,
+    const keys = screen.getByTestId("keys").textContent?.split(",");
+    expect(keys).toEqual(
+      expect.arrayContaining(["pathname", "search", "hash"]),
     );
+    expect(keys).not.toContain("query");
+    expect(keys).not.toContain("action");
   });
 
   it("defaults state to null like v7 (not v3's undefined)", () => {
-    renderWithProviders(<Route path="foo/bar" component={LocationProbe} />, {
+    renderWithProviders(<Route path="foo/bar" element={<LocationProbe />} />, {
       withRouter: true,
       initialRoute: "/foo/bar",
     });
 
     expect(screen.getByTestId("state")).toHaveTextContent(/^null$/);
+  });
+
+  it("works above the route tree, where the facade context is not published", () => {
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/foo/bar?x=1"]}>
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("pathname")).toHaveTextContent("/foo/bar");
+    expect(screen.getByTestId("search")).toHaveTextContent("?x=1");
   });
 });

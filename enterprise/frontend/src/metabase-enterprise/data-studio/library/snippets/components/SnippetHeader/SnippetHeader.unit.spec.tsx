@@ -55,12 +55,12 @@ const setup = ({ snippet = {}, remoteSyncType }: SetupOps) => {
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <SnippetHeader
           snippet={mockSnippet}
           actions={<div data-testid="custom-actions" />}
         />
-      )}
+      }
     />,
     {
       storeInitialState: state,

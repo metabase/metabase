@@ -7,7 +7,7 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID, ORDERS } = SAMPLE_DATABASE;
 
 const ORDERS_SCALAR_METRIC = {
   name: "Count of orders",
@@ -662,6 +662,48 @@ describe("scenarios > native question > data reference sidebar", () => {
       cy.findByText("ORDERS").click();
       sidebarHeaderTitle().findByText("Sample Database").click();
       cy.findByText("Data Reference");
+    });
+  });
+
+  it("should show library tables grouped by the query's database and regroup them when the database changes", function () {
+    const SECOND_DB_NAME = "Second database";
+
+    H.activateToken("pro-self-hosted");
+    H.addSqliteDatabase(SECOND_DB_NAME);
+    H.createLibrary();
+
+    cy.log("publish a table in each of two databases");
+    H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
+
+    H.startNewNativeQuestion({ database: SAMPLE_DB_ID });
+
+    cy.log("open the Library pane from the data reference main pane");
+    dataReferenceSidebar().within(() => {
+      sidebarHeaderTitle().findByText("Sample Database").click();
+      cy.findByText("Library").click();
+    });
+
+    cy.log("the query's tables are grouped apart from the other database's");
+    dataReferenceSidebar().within(() => {
+      cy.findByText("In this database").should("be.visible");
+      cy.findByText("Orders").should("be.visible");
+      cy.findByText("Products").should("be.visible");
+
+      cy.findByText("In other databases").should("not.exist");
+    });
+
+    cy.log("switching the query database regroups the tables");
+    cy.findByTestId("gui-builder-data").click();
+    H.popover().findByText(SECOND_DB_NAME).click();
+
+    dataReferenceSidebar().within(() => {
+      cy.findByText("In this database").should("exist");
+      cy.findByText("No tables").should("exist");
+
+      cy.findByText("In other databases").should("be.visible");
+      cy.findByText("Orders").should("be.visible");
+      cy.findByText("Products").should("be.visible");
+      cy.findAllByText("Sample Database").should("have.length", 2);
     });
   });
 

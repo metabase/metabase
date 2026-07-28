@@ -45,6 +45,8 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(use-fixtures :each (fn [thunk] (qp.pivot.test-util/do-with-pivot-parity-check thunk)))
+
 (defn- format-response [m]
   (when-not (map? m)
     (throw (ex-info (format "Expected results to be a map! Got: %s" (u/pprint-to-str m))
@@ -131,6 +133,7 @@
                     :started_at       true
                     :running_time     true
                     :embedding_client nil
+                    :embedding_client_identifier nil
                     :embedding_hostname nil
                     :embedding_path nil
                     :embedding_route nil
@@ -668,11 +671,12 @@
                                      (mt/mbql-query venues {:fields [$id $name]}))))))))
 
 ;; historical test: don't do this going forward
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel compile-test-6
   (testing "POST /api/dataset/native"
     (testing "\nCan we fetch a native version of an MBQL query?"
       (testing "`:now` is usable inside `:case` with mongo (#32216)"
+        ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+        #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
         (mt/test-driver :mongo
           (is (= {"$switch"
                   {"branches"
@@ -689,8 +693,9 @@
                      :query json/decode first (get-in ["$project" "E"])))))))))
 
 ;; historical test: don't do this going forward
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest report-timezone-test
+  ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (mt/test-driver :postgres
     (testing "expected (desired) and actual timezone should be returned as part of query results"
       (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
@@ -703,9 +708,10 @@
                      (select-keys [:requested_timezone :results_timezone])))))))))
 
 ;; historical test: don't do this going forward
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest databricks-stack-trace-test
   (testing "exceptions with stacktraces should have the stacktrace removed"
+    ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+    #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
     (mt/test-driver :databricks
       (let [res (mt/user-http-request :rasta :post 400 "dataset"
                                       (lib/native-query (mt/metadata-provider)

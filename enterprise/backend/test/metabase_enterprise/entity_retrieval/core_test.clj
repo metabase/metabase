@@ -6,13 +6,19 @@
    [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
+   [metabase-enterprise.semantic-search.embedding-health :as embedding-health]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.entity-retrieval.mirror :as mirror]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [next.jdbc :as jdbc]))
 
 (set! *warn-on-reflection* true)
+
+;; the dedicated-harness tests below hit the app db before any auto-initializing mt helper — on the
+;; appdb-mode CI job this namespace can be an early db touch in a fresh JVM
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- approx [target] #(< (abs (- (double %) (double target))) 1e-9))
 
@@ -34,7 +40,8 @@
 (deftest dispatch-without-pgvector-test
   (testing "with the feature enabled but pgvector unconfigured, the EE impls degrade gracefully"
     ;; Pin db-url to nil so the result is deterministic regardless of any ambient MB_PGVECTOR_DB_URL:
-    ;; available? is false, so search returns [] and the write-path nudge no-ops rather than throwing.
+    ;; entity retrieval is dedicated-only, so no URL means available? is false, search returns [] and the
+    ;; write-path nudge no-ops rather than throwing.
     (mt/with-premium-features #{:library :library-retrieval}
       (with-redefs [semantic.db.datasource/db-url nil]
         (is (= [] (mirror/search "anything" 10)))
@@ -123,8 +130,8 @@
     (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model (constantly semantic.tu/mock-embedding-model)]
       (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
         (mt/with-premium-features #{}
-          (is (true?  (entity-retrieval.core/pgvector-configured?))
-              "scheduling gates on pgvector config, not the license, so a post-boot license still syncs")
+          (is (true?  (entity-retrieval.core/pgvector-schedulable?))
+              "a dedicated URL schedules the sync job unlicensed, so a post-boot license still syncs")
           (is (false? (entity-retrieval.core/available?))))
         (mt/with-premium-features #{:library-retrieval}
           (is (false? (entity-retrieval.core/available?))
@@ -134,16 +141,119 @@
               ":library without :library-retrieval does not entitle the tool"))
         (mt/with-premium-features #{:library :library-retrieval}
           (is (true? (entity-retrieval.core/available?)))))
-      ;; pgvector unconfigured -> unavailable regardless of license
-      (with-redefs [semantic.db.datasource/db-url nil]
-        (mt/with-premium-features #{:library :library-retrieval}
-          (is (false? (entity-retrieval.core/available?))))))
+      (testing "no dedicated URL: the app db serves when it can host pgvector"
+        ;; the schema probe is Postgres-only SQL, so leaving it live would read as unusable on the H2 and
+        ;; MySQL app-db runs -- the mode is what this case is about
+        (with-redefs [semantic.db.datasource/db-url                nil
+                      entity-retrieval.core/app-db-schema-usable?  (constantly true)]
+          (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :app-db)]
+            (mt/with-premium-features #{:library :library-retrieval}
+              (is (true? (entity-retrieval.core/available?)))))
+          (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :unavailable)]
+            (mt/with-premium-features #{:library :library-retrieval}
+              (is (false? (entity-retrieval.core/available?)))))))
+      (testing "the app-db arm checks this feature's own schema, not semantic search's"
+        (with-redefs [semantic.db.datasource/db-url nil]
+          (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :app-db)]
+            (mt/with-premium-features #{:library :library-retrieval}
+              (with-redefs [entity-retrieval.core/app-db-schema-usable? (constantly false)]
+                (is (false? (entity-retrieval.core/available?))
+                    "a role that can use semantic_search but cannot create library_retrieval is not ready"))
+              (with-redefs [entity-retrieval.core/app-db-schema-usable? (constantly true)]
+                (is (true? (entity-retrieval.core/available?))))))))
+      (testing "a dedicated store needs no app-db schema check"
+        (with-redefs [semantic.db.datasource/db-url                    "jdbc:postgresql://stub"
+                      entity-retrieval.core/app-db-schema-usable?      #(throw (ex-info "must not probe" {}))]
+          (mt/with-premium-features #{:library :library-retrieval}
+            (is (true? (entity-retrieval.core/available?))))))
+      (testing "an unlicensed instance resolves no store: doing so probes the app db"
+        (with-redefs [semantic.db.datasource/db-url nil]
+          (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode
+                                      #(throw (ex-info "must not probe" {}))]
+            (mt/with-premium-features #{}
+              (is (false? (entity-retrieval.core/pgvector-schedulable?)))
+              (is (false? (entity-retrieval.core/available?))))))))
     (testing "fully licensed + pgvector, but no way to compute embeddings -> unavailable"
       (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
         (mt/with-premium-features #{:library :library-retrieval}
           ;; an unrecognized provider hits embedding-supported?'s :default (false)
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model (constantly {:provider "no-embedder"})]
             (is (false? (entity-retrieval.core/available?)))))))))
+
+(deftest app-db-schema-check-caching-test
+  (let [answers (atom nil)
+        probe   (fn [] (let [[answer & remaining] @answers]
+                         (reset! answers (vec remaining))
+                         answer))]
+    (testing "a confirmed yes latches: an app-db hiccup reads as no, and must not take retrieval offline"
+      (reset! answers [true false])
+      (with-redefs [entity-retrieval.core/app-db-schema-confirmed?  (atom false)
+                    entity-retrieval.core/retry-app-db-schema-probe probe]
+        (is (true? (#'entity-retrieval.core/app-db-schema-usable?)))
+        (is (true? (#'entity-retrieval.core/app-db-schema-usable?)))
+        (is (= [false] @answers) "the probe was not consulted again")))
+    (testing "a no is re-checked, so a privilege granted while we run gets picked up"
+      (reset! answers [false true])
+      (with-redefs [entity-retrieval.core/app-db-schema-confirmed?  (atom false)
+                    entity-retrieval.core/retry-app-db-schema-probe probe]
+        (is (false? (#'entity-retrieval.core/app-db-schema-usable?)))
+        (is (true? (#'entity-retrieval.core/app-db-schema-usable?)))))))
+
+(deftest entity-retrieval-availability-requires-a-closed-breaker-test
+  (mt/with-premium-features #{:library-retrieval}
+    (let [recovery-requested? (atom false)]
+      (mt/with-dynamic-fn-redefs
+        [entity-retrieval.core/retrieval-status            (constantly {:index {:status :populated}})
+         semantic.embedding/embedder-circuit-untrusted?     (constantly true)
+         embedding-health/request-circuit-recovery!         #(reset! recovery-requested? true)]
+        (is (false? (entity-retrieval.core/entity-retrieval-available?)))
+        (is (true? @recovery-requested?) "an untrusted circuit starts recovery without offering the tool"))))
+  (mt/with-premium-features #{:library-retrieval}
+    (mt/with-dynamic-fn-redefs
+      [entity-retrieval.core/retrieval-status        (constantly {:index {:status :populated}})
+       semantic.embedding/embedder-circuit-untrusted? (constantly false)]
+      (is (true? (entity-retrieval.core/entity-retrieval-available?))))))
+
+(deftest entity-retrieval-availability-checks-readiness-before-breaker-test
+  (mt/with-premium-features #{:library-retrieval}
+    (mt/with-dynamic-fn-redefs
+      [entity-retrieval.core/retrieval-status         (constantly {:dependencies {:embedder false}})
+       semantic.embedding/embedder-circuit-untrusted? #(throw (ex-info "must not resolve an endpoint" {}))]
+      (is (false? (entity-retrieval.core/entity-retrieval-available?))))))
+
+(deftest retrieval-status-missing-table-reads-as-absence-test
+  (mt/with-premium-features #{:library :library-retrieval}
+    ;; db-url is read directly as a var, so with-redefs (not with-dynamic-fn-redefs) is required here.
+    (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
+      (mt/with-dynamic-fn-redefs
+        [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
+         semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)]
+        (let [deps {:store true, :embedder true, :licenses true}
+              status-when-probe-throws
+              (fn [e]
+                (mt/with-dynamic-fn-redefs [index-table/index-status (fn [& _] (throw e))]
+                  (entity-retrieval.core/retrieval-status)))]
+          (testing "42P01 (first build pending / manual drop) reads as a missing index, not a store fault"
+            (is (=? {:dependencies deps, :index {:status :missing}}
+                    (status-when-probe-throws
+                     (java.sql.SQLException. "relation \"library_entity_index_meta\" does not exist" "42P01")))))
+          (testing "a wrapped 42P01 is found through the cause chain"
+            (is (=? {:dependencies deps, :index {:status :missing}}
+                    (status-when-probe-throws
+                     (ex-info "probe failed" {}
+                              (java.sql.SQLException. "relation does not exist" "42P01"))))))
+          (testing "any other probe failure (a real connectivity fault) reads as :unreachable, carrying :error"
+            (is (=? {:dependencies deps, :index {:status :unreachable, :error "connection refused"}}
+                    (status-when-probe-throws
+                     (java.sql.SQLException. "connection refused" "08001")))))
+          (testing "interruption propagates instead of being reported as an unreachable index"
+            (is (thrown? InterruptedException
+                         (status-when-probe-throws (InterruptedException.)))))
+          (testing "compatible metadata without its vectors table reads as missing, including the metric probe"
+            (mt/with-dynamic-fn-redefs [index-table/index-status          (constantly :compatible)
+                                        index-table/vectors-table-exists? (constantly false)]
+              (is (=? {:dependencies deps, :index {:status :missing}}
+                      (entity-retrieval.core/retrieval-status false))))))))))
 
 (deftest ^:sequential entity-retrieval-available?-requires-a-populated-index-test
   (testing "the curated tool is offered only once the index has documents (else the nlq profile falls back)"
@@ -153,8 +263,8 @@
               ds     (semantic.db.datasource/ensure-initialized-data-source!)]
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
                                       (constantly semantic.tu/mock-embedding-model)]
-            (binding [index-table/*vectors-table* (str "library_entity_index_test_" suffix)
-                      index-table/*meta-table*    (str "library_entity_index_meta_test_" suffix)]
+            (binding [index-table/*tables* {:vectors (str "library_entity_index_test_" suffix)
+                                            :meta    (str "library_entity_index_meta_test_" suffix)}]
               (try
                 (testing "configured + licensed but no index table yet -> unavailable"
                   (is (true?  (entity-retrieval.core/available?)))
@@ -176,8 +286,8 @@
                       (is (false? (entity-retrieval.core/entity-retrieval-available?))))))
                 (finally
                   (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
-                                          index-table/*vectors-table* ", "
-                                          index-table/*meta-table*)]))))))))))
+                                          (index-table/vectors-table) ", "
+                                          (index-table/meta-table))]))))))))))
 
 (deftest ^:sequential ranks-by-similarity-test
   (testing "search ranks library documents by cosine similarity, nearest first"
@@ -188,8 +298,8 @@
               q      "the query"]
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
                                       (constantly semantic.tu/mock-embedding-model)]
-            (binding [index-table/*vectors-table* (str "library_entity_index_test_" suffix)
-                      index-table/*meta-table*    (str "library_entity_index_meta_test_" suffix)]
+            (binding [index-table/*tables* {:vectors (str "library_entity_index_test_" suffix)
+                                            :meta    (str "library_entity_index_meta_test_" suffix)}]
               ;; the two tables' name docs embed "near"/"far"; q ties "near" exactly and is orthogonal to "far".
               (semantic.tu/with-mock-embeddings {q      [1.0 0.0 0.0 0.0]
                                                  "near" [1.0 0.0 0.0 0.0]
@@ -209,8 +319,8 @@
                               (mirror/search q 10))))
                     (finally
                       (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
-                                              index-table/*vectors-table* ", "
-                                              index-table/*meta-table*)]))))))))))))
+                                              (index-table/vectors-table) ", "
+                                              (index-table/meta-table))]))))))))))))
 
 (defn- put-ai-context!
   "PUT an ai_context entry through the CRUD API."
@@ -237,8 +347,8 @@
                                  [:structured-output :data]))]
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
                                       (constantly semantic.tu/mock-embedding-model)]
-            (binding [index-table/*vectors-table* (str "library_entity_index_test_" suffix)
-                      index-table/*meta-table*    (str "library_entity_index_meta_test_" suffix)]
+            (binding [index-table/*tables* {:vectors (str "library_entity_index_test_" suffix)
+                                            :meta    (str "library_entity_index_meta_test_" suffix)}]
               ;; the curated synonym ties the query exactly; the table's own name "orders" is orthogonal.
               (semantic.tu/with-mock-embeddings {q       [1.0 0.0 0.0 0.0]
                                                  synonym [1.0 0.0 0.0 0.0]
@@ -268,11 +378,11 @@
                                      ds
                                      [(format (str "SELECT 1 FROM \"%s\" "
                                                    "WHERE doc_type = 'synonym' AND entity_local_id = %d")
-                                              index-table/*vectors-table* table-id)])))))
+                                              (index-table/vectors-table) table-id)])))))
                     (finally
                       (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
-                                              index-table/*vectors-table* ", "
-                                              index-table/*meta-table*)]))))))))))))
+                                              (index-table/vectors-table) ", "
+                                              (index-table/meta-table))]))))))))))))
 
 (deftest ^:sequential doc-type-boost-breaks-ties-test
   (testing "on a distance tie, a name match outranks a synonym match (blended ORDER BY, not raw NN)"
@@ -284,8 +394,8 @@
               synonym "a curated synonym"]
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
                                       (constantly semantic.tu/mock-embedding-model)]
-            (binding [index-table/*vectors-table* (str "library_entity_index_test_" suffix)
-                      index-table/*meta-table*    (str "library_entity_index_meta_test_" suffix)]
+            (binding [index-table/*tables* {:vectors (str "library_entity_index_test_" suffix)
+                                            :meta    (str "library_entity_index_meta_test_" suffix)}]
               ;; alpha's name and beta's curated synonym both tie the query exactly; beta's name is orthogonal.
               (semantic.tu/with-mock-embeddings {q       [1.0 0.0 0.0 0.0]
                                                  "alpha" [1.0 0.0 0.0 0.0]
@@ -306,8 +416,8 @@
                            (mapv (juxt (comp :id :entity) :doc_type) (take 2 (mirror/search q 10)))))
                     (finally
                       (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
-                                              index-table/*vectors-table* ", "
-                                              index-table/*meta-table*)]))))))))))))
+                                              (index-table/vectors-table) ", "
+                                              (index-table/meta-table))]))))))))))))
 
 (deftest ^:sequential search-degrades-on-dimension-mismatch-test
   ;; A post-upgrade embedding-dimension change leaves the query vector incompatible with the index column
@@ -319,8 +429,8 @@
               ds     (semantic.db.datasource/ensure-initialized-data-source!)]
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
                                       (constantly semantic.tu/mock-embedding-model)]
-            (binding [index-table/*vectors-table* (str "library_entity_index_test_" suffix)
-                      index-table/*meta-table*    (str "library_entity_index_meta_test_" suffix)]
+            (binding [index-table/*tables* {:vectors (str "library_entity_index_test_" suffix)
+                                            :meta    (str "library_entity_index_meta_test_" suffix)}]
               (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
                              :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
                              :model/Database   {db-id :id}    {}
@@ -333,5 +443,5 @@
                   (semantic.tu/with-mock-embeddings {"q" [1.0]}
                     (is (= [] (entity-retrieval.core/search "q" 10))))
                   (finally
-                    (jdbc/execute! ds [(str "DROP TABLE IF EXISTS \"" index-table/*vectors-table*
-                                            "\", \"" index-table/*meta-table* "\"")])))))))))))
+                    (jdbc/execute! ds [(str "DROP TABLE IF EXISTS \"" (index-table/vectors-table)
+                                            "\", \"" (index-table/meta-table) "\"")])))))))))))

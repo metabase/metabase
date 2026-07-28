@@ -9,7 +9,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { IndexRoute, Route } from "metabase/router";
+import { Route } from "metabase/router";
 import type { EmbeddingHomepageStatus } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -59,7 +59,9 @@ const setup = async (inputSetupOpts?: Partial<SetupOpts>) => {
   });
 
   renderWithProviders(
-    <Route path="/" component={() => <AdminPeopleApp>empty</AdminPeopleApp>} />,
+    <Route path="/" element={<AdminPeopleApp />}>
+      <Route index element={<>empty</>} />
+    </Route>,
     {
       storeInitialState: state,
       withRouter: true,
@@ -91,12 +93,14 @@ const setupTenantRoute = async (initialRoute: string) => {
     }),
   });
 
+  const TenantsRouteGuard = createTenantsRouteGuard();
+
   renderWithProviders(
-    <Route path="/admin/people" component={AdminPeopleApp}>
-      <Route path="tenants" component={createTenantsRouteGuard()}>
-        <Route path="groups" component={UpsellTenants} />
-        <Route path="people" component={UpsellTenants} />
-        <IndexRoute component={UpsellTenants} />
+    <Route path="/admin/people" element={<AdminPeopleApp />}>
+      <Route path="tenants" element={<TenantsRouteGuard />}>
+        <Route path="groups" element={<UpsellTenants />} />
+        <Route path="people" element={<UpsellTenants />} />
+        <Route index element={<UpsellTenants />} />
       </Route>
     </Route>,
     {

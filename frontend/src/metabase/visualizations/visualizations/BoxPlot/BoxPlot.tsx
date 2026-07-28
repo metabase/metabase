@@ -28,7 +28,7 @@ import {
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 
-import { BOXPLOT_CHART_DEFINITION } from "./chart-definition";
+import { BOXPLOT_CHART_DEFINITION } from "./definition";
 import { useBoxPlotEvents } from "./events";
 
 function BoxPlotInner({
@@ -236,7 +236,7 @@ function BoxPlotInner({
   );
 }
 
-export function BoxPlot(props: VisualizationProps) {
+function BoxPlotComponent(props: VisualizationProps) {
   return (
     <ChartRenderingErrorBoundary onRenderError={props.onRenderError}>
       <BoxPlotInner {...props} />
@@ -244,4 +244,7 @@ export function BoxPlot(props: VisualizationProps) {
   );
 }
 
-Object.assign(BoxPlot, BOXPLOT_CHART_DEFINITION);
+export const BoxPlot = Object.assign(
+  BoxPlotComponent,
+  BOXPLOT_CHART_DEFINITION,
+);

@@ -4,8 +4,8 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type {
   Card,
+  DashboardCard,
   DatasetData,
-  QuestionDashboardCard,
   RowValue,
 } from "metabase-types/api";
 
@@ -28,7 +28,7 @@ export interface ObjectDetailProps {
   question?: Question;
   metadata?: Metadata;
   card?: Card;
-  dashcard?: QuestionDashboardCard;
+  dashcard?: DashboardCard;
   isObjectDetail?: boolean; // whether this should be shown in a modal
   table?: Table | null;
   zoomedRow?: RowValue[] | undefined;

@@ -1,7 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { Location } from "history";
-import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
@@ -18,8 +16,7 @@ import { MetricQueryEditor } from "metabase/metrics/components/MetricQueryEditor
 import { NAME_MAX_LENGTH } from "metabase/metrics/constants";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { Route } from "metabase/router";
-import { goBack, push } from "metabase/router";
+import { goBack, push, useRouter } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Breadcrumbs, Card, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -32,13 +29,7 @@ import { getValidationResult } from "../../utils/validation";
 import { CreateMetricModal } from "./CreateMetricModal";
 import { getInitialQuery, getQuery } from "./utils";
 
-interface NewMetricPageQuery {
-  collectionId?: string;
-}
-
 interface NewMetricPageProps {
-  location: Location<NewMetricPageQuery>;
-  route: Route;
   urls?: MetricUrls;
   renderBreadcrumbs?: () => ReactNode;
   showAppSwitcher?: boolean;
@@ -46,13 +37,12 @@ interface NewMetricPageProps {
 }
 
 export function NewMetricPage({
-  location,
-  route,
   urls = defaultUrls,
   renderBreadcrumbs,
   showAppSwitcher = false,
   triggeredFrom = "main_app",
 }: NewMetricPageProps) {
+  const { location } = useRouter();
   const metadata = useSelector(getMetadata);
   const [name, setName] = useState("");
   const [datasetQuery, setDatasetQuery] = useState(() =>
@@ -159,7 +149,7 @@ export function NewMetricPage({
           onClose={closeModal}
         />
       )}
-      <LeaveRouteConfirmModal route={route} isEnabled={!isModalOpened} />
+      <LeaveRouteConfirmModal isEnabled={!isModalOpened} />
     </>
   );
 }

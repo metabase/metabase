@@ -447,7 +447,7 @@
 ;;; tests run the real parser end-to-end against the H2 test-data DB so we catch integration issues. They need the
 ;;; real application DB metadata provider, so they cannot be `^:parallel`.
 
-(deftest sql-real-tables-for-native-join-with-where-test
+(deftest ^:parallel sql-real-tables-for-native-join-with-where-test
   (testing "real tables-for-native against a plain JOIN + WHERE: both tables come through end-to-end"
     (let [sql   "SELECT o.id FROM orders o JOIN products p ON o.product_id = p.id WHERE p.category = 'Widget'"
           mp    (mt/metadata-provider)

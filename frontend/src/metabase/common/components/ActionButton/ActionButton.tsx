@@ -135,11 +135,7 @@ export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
         {active ? (
           useLoadingSpinner ? (
             <Center px="2rem">
-              <Loader
-                size="sm"
-                color="core-white"
-                data-testid="loading-indicator"
-              />
+              <Loader size="sm" color="core-white" />
             </Center>
           ) : (
             activeText

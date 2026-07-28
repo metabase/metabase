@@ -25,6 +25,7 @@
                               :config-text-file
                               :content-translation
                               :content-verification
+                              :data-apps
                               :data-complexity-score
                               :dashboard-subscription-filters
                               :disable-password-login
@@ -79,6 +80,7 @@
             :config_text_file               true
             :content_translation            true
             :content_verification           true
+            :data-apps                      true
             :data-complexity-score          true
             :dashboard_subscription_filters true
             :disable_password_login         true
@@ -126,7 +128,6 @@
             :etl_connections_pg             false
             :dependencies                   false
             :schema-viewer                  false
-            :workspaces                     false
             :writable_connection            true}
            (mt/with-temporary-setting-values [csp-img-enabled true
                                               custom-viz-enabled true]

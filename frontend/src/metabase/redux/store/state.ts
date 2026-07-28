@@ -17,7 +17,6 @@ import type { ModalState } from "./modal";
 import type { ParametersState } from "./parameters";
 import type { PulseState } from "./pulse";
 import type { QueryBuilderState } from "./qb";
-import type { SettingsState } from "./settings";
 import type { SetupState } from "./setup";
 import type { UndoState } from "./undo";
 import type { FileUploadState } from "./upload";
@@ -39,7 +38,6 @@ export interface State {
   pulse: PulseState;
   qb: QueryBuilderState;
   routing: RouterState;
-  settings: SettingsState;
   setup: SetupState;
   upload: FileUploadState;
   modal: ModalState;

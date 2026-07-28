@@ -20,6 +20,7 @@ export type MetabaseProviderPropsStoreInternalProps = {
   loadingError?: SdkLoadingError | null;
   reduxStore?: ComponentProviderProps["reduxStore"] | null;
   singleInstanceIdsMap?: Record<string, string[]>;
+  dataApp?: { name: string; isDev?: boolean } | null;
 };
 
 /**

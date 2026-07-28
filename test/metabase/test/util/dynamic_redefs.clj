@@ -50,12 +50,14 @@
   (fn [& args]
     (let [depth (get *proxy-depths* a-var 0)]
       (when (> depth max-proxy-depth)
-        (throw (ex-info (str "with-dynamic-fn-redefs: runaway recursion through proxy for " a-var ". "
-                             "This usually means the replacement fn calls the redefined var directly "
-                             "(closing over the var resolves to the proxy, not the original). "
-                             "Use (metabase.test.util.dynamic-redefs/original-fn " (pr-str a-var) ") "
-                             "to capture the unpatched function.")
-                        {:var a-var, :depth depth})))
+        ;; Throw an Error, not an Exception: and a plain Exception gets swallowed by a `(catch Exception ...)` in the code under test,
+        ;; turning this diagnostic into silent, confusing behavior.
+        (throw (AssertionError.
+                (str "with-dynamic-fn-redefs: runaway recursion through proxy for " a-var " (depth " depth "). "
+                     "This usually means the replacement fn calls the redefined var directly "
+                     "(closing over the var resolves to the proxy, not the original). "
+                     "Use (metabase.test.util.dynamic-redefs/original-fn " (pr-str a-var) ") "
+                     "to capture the unpatched function."))))
       (binding [*proxy-depths* (assoc *proxy-depths* a-var (inc depth))]
         (let [current-f (dynamic-value a-var)]
           (apply current-f args))))))

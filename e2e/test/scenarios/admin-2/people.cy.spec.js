@@ -892,7 +892,9 @@ describe("scenarios > admin > people > group managers", () => {
   });
 });
 
-describe("issue 23689", () => {
+// TODO: remove skip when this issue gets fixed. Initial attempt: https://github.com/metabase/metabase/pull/23825,
+// reverted in https://github.com/metabase/metabase/pull/24760 to fix a security vulnerability.
+describe("issue 23689", { tags: "@skip" }, () => {
   function findUserByFullName(user) {
     const { first_name, last_name } = user;
     return cy.findByText(`${first_name} ${last_name}`);
@@ -904,9 +906,6 @@ describe("issue 23689", () => {
   }
 
   beforeEach(() => {
-    // TODO: remove the next line when this issue gets fixed
-    cy.skipOn(true);
-
     cy.intercept("GET", "/api/permissions/membership").as("membership");
 
     H.restore();

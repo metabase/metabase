@@ -4,6 +4,7 @@ import {
   isImplicitDeleteAction,
   isImplicitUpdateAction,
 } from "metabase/actions/utils";
+import * as Urls from "metabase/urls";
 import { singularize } from "metabase/utils/formatting";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import type Question from "metabase-lib/v1/Question";
@@ -222,7 +223,9 @@ export function getRowUrl(
   }
 
   if (typeof table?.id === "number") {
-    return `/table/${table.id}/detail/${rowId}`;
+    const tableUrl = Urls.table({ id: table.id, name: table.display_name });
+
+    return `${tableUrl}/detail/${rowId}`;
   }
 
   return undefined;

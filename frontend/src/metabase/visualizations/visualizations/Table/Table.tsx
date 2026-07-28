@@ -1,627 +1,184 @@
 import cx from "classnames";
-import { Component } from "react";
+import { useCallback, useMemo } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { isNative } from "metabase/common/utils/card";
 import CS from "metabase/css/core/index.css";
 import { getSubpathSafeUrl } from "metabase/urls";
-import { displayNameForColumn } from "metabase/utils/formatting";
-import {
-  trackTableFreezeColumnsEnabled,
-  trackTableFreezeRowsEnabled,
-} from "metabase/visualizations/analytics";
-import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
-import { ChartSettingNumberInput } from "metabase/visualizations/components/settings/ChartSettingNumberInput";
-import {
-  ChartSettingsTableFormatting,
-  isFormattable,
-} from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import * as DataGrid from "metabase/visualizations/lib/data_grid";
 import {
   isPivoted as _isPivoted,
-  columnSettings,
   getTitleForColumn,
-  tableColumnSettings,
 } from "metabase/visualizations/lib/settings/column";
-import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import { getDefaultPivotColumn } from "metabase/visualizations/lib/utils";
-import {
-  getDefaultSize,
-  getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
-import {
-  isAvatarURL,
-  isCoordinate,
-  isDimension,
-  isEmail,
-  isImageURL,
-  isMetric,
-  isNumber,
-  isString,
-  isURL,
-} from "metabase-lib/v1/types/utils/isa";
-import type {
-  ColumnSettings,
-  DatasetColumn,
-  DatasetData,
-  Series,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { DatasetData } from "metabase-types/api";
 
 import { TableInteractive } from "../../components/TableInteractive";
-import type {
-  ColumnSettingDefinition,
-  ComputedVisualizationSettings,
-  VisualizationProps,
-} from "../../types";
+import type { VisualizationProps } from "../../types";
+
+import { TABLE_DEFINITION } from "./definition";
 
 interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;
 }
 
-interface TableState {
-  data: Pick<
-    DatasetData,
-    "cols" | "rows" | "results_timezone" | "rows_truncated"
-  > | null;
-  question: Question | null;
-}
+type TableData = Pick<
+  DatasetData,
+  "cols" | "rows" | "results_timezone" | "rows_truncated"
+>;
 
-export class Table extends Component<TableProps, TableState> {
-  static getUiName = () => t`Table`;
-  static identifier = "table";
-  static iconName = "table2";
-  static canSavePng = false;
-
-  static minSize = getMinSize("table");
-  static defaultSize = getDefaultSize("table");
-
-  static isSensible() {
-    return true;
-  }
-
-  static isLiveResizable() {
-    return false;
-  }
-
-  static checkRenderable() {
-    // scalar can always be rendered, nothing needed here
-  }
-
-  static isPivoted = _isPivoted;
-
-  static settings = {
-    ...columnSettings({ getHidden: () => true }),
-    "table.pagination": {
-      getSection: () => t`Columns`,
-      get title() {
-        return t`Paginate results`;
-      },
-      inline: true,
-      widget: "toggle",
-      dashboard: true,
-      getDefault: () => false,
-    },
-    "table.row_index": {
-      getSection: () => t`Display`,
-      get title() {
-        return t`Show row index`;
-      },
-      inline: true,
-      widget: "toggle",
-      getDefault: () => false,
-    },
-    "table.freeze_columns": {
-      getSection: () => t`Display`,
-      get title() {
-        return t`Freeze columns`;
-      },
-      inline: true,
-      widget: "toggle",
-      default: false,
-      getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
-        _isPivoted(series, settings),
-      readDependencies: ["table.pivot"],
-      onUpdate: (value: boolean) => {
-        if (value) {
-          trackTableFreezeColumnsEnabled();
-        }
-      },
-    },
-    "table.freeze_columns_count": {
-      getSection: () => t`Display`,
-      get title() {
-        return t`Number of columns to freeze`;
-      },
-      widget: ChartSettingNumberInput,
-      default: 1,
-      isValid: (_series: Series, settings: VisualizationSettings) =>
-        settings["table.freeze_columns_count"] >= 1,
-      getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
-        !settings["table.freeze_columns"] || _isPivoted(series, settings),
-      readDependencies: ["table.freeze_columns", "table.pivot"],
-      getProps: () => ({ min: 1 }),
-    },
-    "table.freeze_rows": {
-      getSection: () => t`Display`,
-      get title() {
-        return t`Freeze rows`;
-      },
-      inline: true,
-      widget: "toggle",
-      default: false,
-      getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
-        _isPivoted(series, settings),
-      readDependencies: ["table.pivot"],
-      onUpdate: (value: boolean) => {
-        if (value) {
-          trackTableFreezeRowsEnabled();
-        }
-      },
-    },
-    "table.freeze_rows_count": {
-      getSection: () => t`Display`,
-      get title() {
-        return t`Number of rows to freeze`;
-      },
-      widget: ChartSettingNumberInput,
-      default: 1,
-      isValid: (_series: Series, settings: VisualizationSettings) =>
-        settings["table.freeze_rows_count"] >= 1,
-      getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
-        !settings["table.freeze_rows"] || _isPivoted(series, settings),
-      readDependencies: ["table.freeze_rows", "table.pivot"],
-      getProps: () => ({ min: 1 }),
-    },
-    "table.pivot": {
-      getSection: () => t`Columns`,
-      get title() {
-        return t`Pivot table`;
-      },
-      widget: "toggle",
-      inline: true,
-      getHidden: (
-        [{ data }]: Series,
-        settings: ComputedVisualizationSettings,
-      ) => data && data.cols.length !== 3 && !settings["table.pivot"],
-      getDefault: ([{ card, data }]: Series) => {
-        let native: boolean;
-        try {
-          native = isNative(card);
-        } catch (error) {
-          // isNative throws when used in the visualizer
-          native = false;
-        }
-        if (
-          !data ||
-          data.cols.length !== 3 ||
-          native ||
-          data.cols.filter(isMetric).length !== 1 ||
-          data.cols.filter(isDimension).length !== 2
-        ) {
-          return false;
-        }
-
-        return getDefaultPivotColumn(data.cols, data.rows) != null;
-      },
-    },
-
-    "table.pivot_column": {
-      getSection: () => t`Columns`,
-      get title() {
-        return t`Pivot column`;
-      },
-      widget: "field",
-      getDefault: ([
-        {
-          data: { cols, rows },
-        },
-      ]: Series) => {
-        return getDefaultPivotColumn(cols, rows)?.name;
-      },
-      getProps: ([
-        {
-          data: { cols },
-        },
-      ]: Series) => ({
-        options: cols.filter(isDimension).map(getOptionFromColumn),
-      }),
-      getHidden: (series: Series, settings: VisualizationSettings) =>
-        !settings["table.pivot"],
-      readDependencies: ["table.pivot"],
-      persistDefault: true,
-    },
-    "table.cell_column": {
-      getSection: () => t`Columns`,
-      get title() {
-        return t`Cell column`;
-      },
-      widget: "field",
-      getDefault: (
-        [{ data }]: Series,
-        { "table.pivot_column": pivotCol }: VisualizationSettings,
-      ) => {
-        // We try to show numeric values in pivot cells, but if none are
-        // available, we fall back to the last column in the unpivoted table
-        const nonPivotCols = data.cols.filter((c) => c.name !== pivotCol);
-        const lastCol = nonPivotCols[nonPivotCols.length - 1];
-        const { name } = nonPivotCols.find(isMetric) || lastCol || {};
-        return name;
-      },
-      getProps: ([
-        {
-          data: { cols },
-        },
-      ]: Series) => ({
-        options: cols.map(getOptionFromColumn),
-      }),
-      getHidden: (series: Series, settings: VisualizationSettings) =>
-        !settings["table.pivot"],
-      readDependencies: ["table.pivot", "table.pivot_column"],
-      persistDefault: true,
-    },
-    ...tableColumnSettings({ isShowingDetailsOnlyColumns: false }),
-    "table.column_widths": {},
-    [DataGrid.COLUMN_FORMATTING_SETTING]: {
-      getSection: () => t`Conditional Formatting`,
-      widget: ChartSettingsTableFormatting,
-      getDefault: () => [],
-      getProps: (series: Series, settings: VisualizationSettings) => ({
-        cols: series[0].data.cols.filter(isFormattable),
-        isPivoted: settings["table.pivot"],
-      }),
-
-      getHidden: ([
-        {
-          data: { cols },
-        },
-      ]: Series) => cols.filter(isFormattable).length === 0,
-      readDependencies: ["table.pivot"],
-    },
-    "table._cell_background_getter": {
-      getValue(
-        [
-          {
-            data: { rows, cols },
-          },
-        ]: Series,
-        settings: VisualizationSettings,
-      ) {
-        return makeCellBackgroundGetter(
-          rows,
-          cols,
-          settings[DataGrid.COLUMN_FORMATTING_SETTING] ?? [],
-          settings["table.pivot"],
-        );
-      },
-      readDependencies: [DataGrid.COLUMN_FORMATTING_SETTING, "table.pivot"],
-    },
-  };
-
-  static columnSettings = (column: DatasetColumn) => {
-    const settings: Record<
-      string,
-      ColumnSettingDefinition<unknown, unknown>
-    > = {
-      column_title: {
-        title: t`Column title`,
-        widget: "input",
-        getDefault: (column) => displayNameForColumn(column),
-      },
-      click_behavior: {},
-      text_align: {
-        title: t`Align`,
-        widget: "select",
-        getDefault: (column) => {
-          const baseColumn = column?.remapped_to_column ?? column;
-          return isNumber(baseColumn) || isCoordinate(baseColumn)
-            ? "right"
-            : "left";
-        },
-        getProps: () => ({
-          options: [
-            { name: t`Left`, value: "left" },
-            { name: t`Right`, value: "right" },
-            { name: t`Middle`, value: "middle" },
-          ],
-        }),
-      },
-    };
-
-    if (isNumber(column)) {
-      settings["show_mini_bar"] = {
-        title: t`Show a mini bar chart`,
-        widget: "toggle",
-        inline: true,
-      };
-    }
-
-    if (isString(column)) {
-      const isNotImage = (columnSettings: ColumnSettings) =>
-        columnSettings["view_as"] !== "image";
-
-      settings["text_wrapping"] = {
-        title: t`Wrap text`,
-        getDefault: () => false,
-        widget: "toggle",
-        inline: true,
-        isValid: (_column, columnSettings) => {
-          return isNotImage(columnSettings);
-        },
-        getHidden: (_column, columnSettings) => {
-          return !isNotImage(columnSettings);
-        },
-      };
-    }
-
-    let defaultValue = !column.semantic_type || isURL(column) ? "link" : null;
-
-    const options = [
-      { name: t`Text`, value: null },
-      { name: t`Link`, value: "link" },
-    ];
-
-    if (!column.semantic_type || isEmail(column)) {
-      defaultValue = "email_link";
-      options.push({ name: t`Email link`, value: "email_link" });
-    }
-    if (!column.semantic_type || isImageURL(column) || isAvatarURL(column)) {
-      defaultValue = isAvatarURL(column) ? "image" : "link";
-      options.push({ name: t`Image`, value: "image" });
-    }
-    if (!column.semantic_type) {
-      defaultValue = "auto";
-      options.push({ name: t`Automatic`, value: "auto" });
-    }
-
-    if (options.length > 1) {
-      settings["view_as"] = {
-        title: t`Display as`,
-        widget: options.length === 2 ? "radio" : "select",
-        getDefault: () => defaultValue,
-        getProps: () => ({
-          options,
-        }),
-      };
-    }
-
-    const linkFieldsHint = t`You can use the value of any column here like this: {{COLUMN}}`;
-
-    settings["link_text"] = {
-      title: t`Link text`,
-      widget: ChartSettingLinkUrlInput,
-      hint: linkFieldsHint,
-      getDefault: () => null,
-      getHidden: (_, settings) =>
-        settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
-      readDependencies: ["view_as"],
-      getProps: (
-        column,
-        settings,
-        onChange,
-        {
-          series: [
-            {
-              data: { cols },
-            },
-          ],
-        },
-      ) => {
-        return {
-          options: cols.map((column) => column.name),
-          placeholder: t`Link to {{bird_id}}`,
-        };
-      },
-    };
-
-    settings["link_url"] = {
-      title: t`Link URL`,
-      widget: ChartSettingLinkUrlInput,
-      hint: linkFieldsHint,
-      getDefault: () => null,
-      getHidden: (_, settings) => settings["view_as"] !== "link",
-      readDependencies: ["view_as"],
-      getProps: (
-        column,
-        settings,
-        onChange,
-        {
-          series: [
-            {
-              data: { cols },
-            },
-          ],
-        },
-      ) => {
-        return {
-          options: cols.map((column) => column.name),
-          placeholder: t`http://toucan.example/{{bird_id}}`,
-        };
-      },
-    };
-
-    return settings;
-  };
-
-  state: TableState = {
-    data: null,
-    question: null,
-  };
-
-  UNSAFE_componentWillMount() {
-    this._updateData(this.props);
-  }
-
-  UNSAFE_componentWillReceiveProps(newProps: TableProps) {
-    if (
-      newProps.series !== this.props.series ||
-      !_.isEqual(newProps.settings, this.props.settings) ||
-      newProps.isShowingDetailsOnlyColumns !==
-        this.props.isShowingDetailsOnlyColumns
-    ) {
-      this._updateData(newProps);
-    }
-  }
-
-  _updateData({
+function TableComponent(props: TableProps) {
+  const {
     series,
     settings,
     metadata,
     isShowingDetailsOnlyColumns,
-  }: TableProps) {
-    const [{ card, data }] = series;
-    // construct a Question that is in-sync with query results
-    const question = new Question(card, metadata);
+    isDashboard,
+  } = props;
 
-    if (Table.isPivoted(series, settings)) {
-      const pivotIndex = _.findIndex(
-        data.cols,
+  const question = useSyncedQuestion(series, metadata);
+
+  const data = useMemo<TableData>(() => {
+    const [{ data }] = series;
+
+    if (_isPivoted(series, settings)) {
+      const pivotIndex = data.cols.findIndex(
         (col) => col.name === settings["table.pivot_column"],
       );
-      const cellIndex = _.findIndex(
-        data.cols,
+      const cellIndex = data.cols.findIndex(
         (col) => col.name === settings["table.cell_column"],
       );
-      const normalIndex = _.findIndex(
-        data.cols,
+      const normalIndex = data.cols.findIndex(
         (col, index) => index !== pivotIndex && index !== cellIndex,
       );
-      this.setState({
-        data: DataGrid.pivot(
-          data,
-          normalIndex,
-          pivotIndex,
-          cellIndex,
-          settings,
-        ),
-        question,
-      });
-    } else {
-      const { cols, rows, results_timezone, rows_truncated } = data;
-      const columnSettings = settings["table.columns"] ?? [];
-      const columnIndexes = findColumnIndexesForColumnSettings(
-        cols,
-        columnSettings,
-      ).filter(
-        (columnIndex, settingIndex) =>
-          columnIndex >= 0 &&
-          (isShowingDetailsOnlyColumns ||
-            (cols[columnIndex].visibility_type !== "details-only" &&
-              columnSettings[settingIndex].enabled)),
-      );
-
-      this.setState({
-        data: {
-          cols: columnIndexes.map((i) => cols[i]),
-          rows: rows.map((row) => columnIndexes.map((i) => row[i])),
-          results_timezone,
-          rows_truncated,
-        },
-        question,
-      });
-    }
-  }
-
-  // shared helpers for table implementations
-
-  getColumnTitle = (columnIndex: number) => {
-    const cols = this.state.data && this.state.data.cols;
-    if (!cols) {
-      return null;
-    }
-    const { series, settings } = this.props;
-    return getTitleForColumn(cols[columnIndex], series, settings);
-  };
-
-  getColumnSortDirection = (columnIndex: number) => {
-    const { question, data } = this.state;
-    if (!question || !data) {
-      return;
+      return DataGrid.pivot(data, normalIndex, pivotIndex, cellIndex, settings);
     }
 
-    const query = question.query();
-    const stageIndex = -1;
-    const column = Lib.findMatchingColumn(
-      query,
-      stageIndex,
-      Lib.fromLegacyColumn(query, stageIndex, data.cols[columnIndex]),
-      Lib.orderableColumns(query, stageIndex),
+    const { cols, rows, results_timezone, rows_truncated } = data;
+    const columnSettings = settings["table.columns"] ?? [];
+    const columnIndexes = findColumnIndexesForColumnSettings(
+      cols,
+      columnSettings,
+    ).filter(
+      (columnIndex, settingIndex) =>
+        columnIndex >= 0 &&
+        (isShowingDetailsOnlyColumns ||
+          (cols[columnIndex].visibility_type !== "details-only" &&
+            columnSettings[settingIndex].enabled)),
     );
 
-    if (column != null) {
-      const columnInfo = Lib.displayInfo(query, stageIndex, column);
-      if (columnInfo.orderByPosition != null) {
-        const orderBys = Lib.orderBys(query, stageIndex);
-        const orderBy = orderBys[columnInfo.orderByPosition];
-        const orderByInfo = Lib.displayInfo(query, stageIndex, orderBy);
-        return orderByInfo.direction;
+    return {
+      cols: columnIndexes.map((i) => cols[i]),
+      rows: rows.map((row) => columnIndexes.map((i) => row[i])),
+      results_timezone,
+      rows_truncated,
+    };
+  }, [series, settings, isShowingDetailsOnlyColumns]);
+
+  const getColumnTitle = useCallback(
+    (columnIndex: number) =>
+      getTitleForColumn(data.cols[columnIndex], series, settings),
+    [data, series, settings],
+  );
+
+  const getColumnSortDirection = useCallback(
+    (columnIndex: number) => {
+      const query = question.query();
+      const stageIndex = -1;
+      const column = Lib.findMatchingColumn(
+        query,
+        stageIndex,
+        Lib.fromLegacyColumn(query, stageIndex, data.cols[columnIndex]),
+        Lib.orderableColumns(query, stageIndex),
+      );
+
+      if (column != null) {
+        const columnInfo = Lib.displayInfo(query, stageIndex, column);
+        if (columnInfo.orderByPosition != null) {
+          const orderBys = Lib.orderBys(query, stageIndex);
+          const orderBy = orderBys[columnInfo.orderByPosition];
+          const orderByInfo = Lib.displayInfo(query, stageIndex, orderBy);
+          return orderByInfo.direction;
+        }
       }
-    }
-  };
+    },
+    [question, data],
+  );
 
-  render() {
-    const { series, isDashboard, settings } = this.props;
-    const { data } = this.state;
+  const isPivoted = _isPivoted(series, settings);
+  const areAllColumnsHidden = data.cols.length === 0;
 
-    const isPivoted = Table.isPivoted(series, settings);
-    const areAllColumnsHidden = data?.cols.length === 0;
-
-    if (!data) {
-      return null;
-    }
-
-    if (areAllColumnsHidden) {
-      const allFieldsHiddenImageUrl = getSubpathSafeUrl(
-        "app/assets/img/hidden-field.png",
-      );
-      const allFieldsHiddenImage2xUrl = getSubpathSafeUrl(
-        "app/assets/img/hidden-field@2x.png",
-      );
-
-      return (
-        <div
-          className={cx(
-            CS.flexFull,
-            CS.px1,
-            CS.pb1,
-            CS.textCentered,
-            CS.flex,
-            CS.flexColumn,
-            CS.layoutCentered,
-            { [CS.textSlateLight]: isDashboard, [CS.textSlate]: !isDashboard },
-          )}
-        >
-          <img
-            data-testid="Table-all-fields-hidden-image"
-            width={99}
-            src={allFieldsHiddenImageUrl}
-            srcSet={`
-              ${allFieldsHiddenImageUrl}   1x,
-              ${allFieldsHiddenImage2xUrl} 2x
-            `}
-            className={CS.mb2}
-          />
-          <span
-            className={cx(CS.h4, CS.textBold)}
-          >{t`Every field is hidden right now`}</span>
-        </div>
-      );
-    }
-
-    return (
-      <TableInteractive
-        {...this.props}
-        question={this.state.question}
-        data={data}
-        isPivoted={isPivoted}
-        getColumnTitle={this.getColumnTitle}
-        getColumnSortDirection={this.getColumnSortDirection}
-      />
-    );
+  if (areAllColumnsHidden) {
+    return <AllFieldsHiddenMessage isDashboard={isDashboard} />;
   }
+
+  return (
+    <TableInteractive
+      {...props}
+      question={question}
+      data={data}
+      isPivoted={isPivoted}
+      getColumnTitle={getColumnTitle}
+      getColumnSortDirection={getColumnSortDirection}
+    />
+  );
 }
+
+/*
+ * Constructs a Question that is in-sync with query results.
+ * Reads metadata through a ref so async metadata updates don't recreate the
+ * question (and rebuild every column) mid-interaction; series changes on every
+ * query run, which is when fresh metadata actually needs to be picked up.
+ */
+function useSyncedQuestion(
+  series: VisualizationProps["series"],
+  metadata: VisualizationProps["metadata"],
+) {
+  const metadataRef = useLatest(metadata);
+  return useMemo(() => {
+    const [{ card }] = series;
+    return new Question(card, metadataRef.current);
+  }, [series, metadataRef]);
+}
+
+function AllFieldsHiddenMessage({ isDashboard }: { isDashboard: boolean }) {
+  const allFieldsHiddenImageUrl = getSubpathSafeUrl(
+    "app/assets/img/hidden-field.png",
+  );
+  const allFieldsHiddenImage2xUrl = getSubpathSafeUrl(
+    "app/assets/img/hidden-field@2x.png",
+  );
+
+  return (
+    <div
+      className={cx(
+        CS.flexFull,
+        CS.px1,
+        CS.pb1,
+        CS.textCentered,
+        CS.flex,
+        CS.flexColumn,
+        CS.layoutCentered,
+        { [CS.textSlateLight]: isDashboard, [CS.textSlate]: !isDashboard },
+      )}
+    >
+      <img
+        data-testid="Table-all-fields-hidden-image"
+        width={99}
+        src={allFieldsHiddenImageUrl}
+        srcSet={`
+          ${allFieldsHiddenImageUrl}   1x,
+          ${allFieldsHiddenImage2xUrl} 2x
+        `}
+        className={CS.mb2}
+      />
+      <span
+        className={cx(CS.h4, CS.textBold)}
+      >{t`Every field is hidden right now`}</span>
+    </div>
+  );
+}
+
+export const Table = Object.assign(TableComponent, TABLE_DEFINITION);

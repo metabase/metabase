@@ -1,9 +1,9 @@
-import type { Location } from "history";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import type { Location } from "metabase/router";
 import { Stack } from "metabase/ui";
 import { getSchemaViewerParams } from "metabase/urls";
 import { useGetErdQuery } from "metabase-enterprise/api";

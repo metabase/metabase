@@ -93,9 +93,17 @@
   ((resolve 'metabase.test.initialize.plugins/init-test-drivers!)
    [:driver-deprecation-test-legacy :driver-deprecation-test-new :secret-test-driver]))
 
+;; Initialize the MQ subsystem: sync backends, no buffering, register listeners.
+;; Must happen before :db so that listeners (e.g. connection-pool-invalidated) are available
+;; when database initialization triggers events.
+(define-initialization :mq
+  (classloader/require 'metabase.test.initialize.mq)
+  ((resolve 'metabase.test.initialize.mq/init!)))
+
 ;; initializing the DB also does setup needed so the scheduler will work correctly. (Remember that the scheduler uses
 ;; a JDBC backend!)
 (define-initialization :db
+  (initialize-if-needed! :mq)
   (classloader/require 'metabase.test.initialize.db)
   ((resolve 'metabase.test.initialize.db/init!)))
 

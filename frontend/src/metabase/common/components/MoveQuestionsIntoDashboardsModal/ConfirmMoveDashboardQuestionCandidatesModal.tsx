@@ -96,7 +96,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
         {match({ isLoading, fetchError, rows })
           .with({ isLoading: true }, () => (
             <Flex justify="center" py="18.25rem">
-              <Loader size="xl" data-testid="loading-indicator" />
+              <Loader size="xl" />
             </Flex>
           ))
           .with({ fetchError: P.not(P.nullish) }, ({ fetchError }) => {

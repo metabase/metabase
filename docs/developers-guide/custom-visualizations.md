@@ -268,7 +268,7 @@ settings: {
 | `group`                        | Sub-heading within a section for grouping related settings.                                      |
 | `index`                        | Display order within a group.                                                                    |
 | `inline`                       | When `true`, renders the widget on the same line as `title` (handy for `"toggle"`).              |
-| `widget`                       | A [built-in widget](#built-in-widgets) name, or a [custom React component](#custom-widgets).      |
+| `widget`                       | A [built-in widget](#built-in-widgets) name, or a [custom React component](#custom-widgets).     |
 | `getDefault(series, settings)` | Computes the default value when none is stored.                                                  |
 | `getValue(series, settings)`   | Always-computed value — overrides the stored value on every render.                              |
 | `getProps(series, settings)`   | Returns widget-specific props.                                                                   |
@@ -417,13 +417,15 @@ Metabase runs plugin code in an isolated sandbox, so a visualization works only 
 - **Navigation and the rest of the app**: history changes, the host page's URL and referrer, and any DOM outside the plugin's own container.
 - **Unsafe DOM and timing APIs**: `document.write`, `execCommand`, constructable stylesheets, raw HTML parsers (`DOMParser`, `setHTMLUnsafe`, `XSLTProcessor`), and resource-timing APIs that expose other requests the page has made.
 
-### Custom visualizations don't render in embeds or public links
+### When embedding, custom visualizations are only available in the SDK
 
-[Embeds](../embedding/introduction.md) and [public links](../embedding/public-links.md) (to questions, dashboards, and documents) don't render custom visualizations. Any card that uses one falls back to the default visualization (a table).
+The [Modular embedding SDK](../embedding/sdk/introduction.md) renders custom visualizations when you allowlist them with the [`allowedCustomVisualizations` prop](../embedding/sdk/config.md#custom-visualizations) on `MetabaseProvider`.
+
+Other embedding types don't render custom visualizations. In [modular embedding](../embedding/modular-embedding.md) with web components and [public links](../embedding/public-links.md), any card that uses a custom visualization falls back to the default visualization for the query's results.
 
 ### Custom visualizations don't render in exports and subscriptions
 
-Static renders—like charts in alerts or dashboard subscriptions—fall back to a table for any card that uses a custom visualization.
+Static renders—like charts in alerts or dashboard subscriptions—fall back to a default visualization for the card's data shape.
 
 ## Example plugins
 

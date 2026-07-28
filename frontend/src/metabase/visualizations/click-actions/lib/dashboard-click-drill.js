@@ -5,10 +5,10 @@ import _ from "underscore";
 
 import {
   formatSourceForTarget,
-  getDataFromClicked,
   getTargetForQueryParams,
 } from "metabase/parameters/utils/click-behavior";
 import * as Urls from "metabase/urls";
+import { getDataFromClicked } from "metabase/visualizations/lib/formatting/click-data";
 import { renderLinkURLForClick } from "metabase/visualizations/lib/formatting/link";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";

@@ -63,7 +63,7 @@ function setup({ dataset = DATASET }: SetupOpts = {}) {
 
   setupCardDataset({ dataset });
 
-  renderWithProviders(<Route path="/" component={TestComponent} />, {
+  renderWithProviders(<Route path="/" element={<TestComponent />} />, {
     withRouter: true,
     storeInitialState: createMockState({
       entities: createMockEntitiesState({

@@ -14,7 +14,7 @@ const setup = (props = {}) =>
   renderWithProviders(
     <Route
       path="*"
-      component={() => <NewModelOption {...defaultProps} {...props} />}
+      element={<NewModelOption {...defaultProps} {...props} />}
     />,
     { withRouter: true },
   );

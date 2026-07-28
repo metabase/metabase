@@ -315,6 +315,19 @@
   "Throttler for password_reset. There's no good field to mark so use password as a default."
   (throttle/make-throttler :password :attempts-threshold 10))
 
+(defn reset-throttlers-for-testing!
+  "Clear the accumulated state of every login/verification throttler in this namespace. Throttler
+  state is in-memory with an hour-long `:attempt-ttl-ms`, so failed attempts survive an app-db
+  snapshot restore; the testing API (see [[metabase.testing-api.api]]) exposes this so E2E runs
+  can start from a clean slate."
+  []
+  (doseq [throttler (concat (vals login-throttlers)
+                            (vals verify-throttlers)
+                            (vals email-otp-send-throttlers)
+                            (vals forgot-password-throttlers)
+                            [reset-password-throttler])]
+    (reset! (:attempts throttler) nil)))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

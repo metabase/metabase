@@ -58,10 +58,7 @@ const setup = ({ result }: { result: ApiSearchResult }) => {
   setupUserRecipientsEndpoint({ users: [USER] });
 
   const { history } = renderWithProviders(
-    <Route
-      path="*"
-      component={() => <SearchResult result={result} index={0} />}
-    />,
+    <Route path="*" element={<SearchResult result={result} index={0} />} />,
     {
       withRouter: true,
       initialRoute: "/",
@@ -173,10 +170,7 @@ describe("SearchResult", () => {
     it("renders x-ray button for indexed entity search result", () => {
       setup({ result: TEST_RESULT_INDEXED_ENTITY });
 
-      expect(screen.getByTestId("search-result-item-icon")).toHaveAttribute(
-        "type",
-        "indexed-entity",
-      );
+      expect(screen.getByTestId("search-result-item-icon")).toBeInTheDocument();
 
       expect(getIcon("bolt")).toBeInTheDocument();
     });

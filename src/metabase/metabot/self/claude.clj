@@ -259,21 +259,21 @@
   blocks: a cached static prefix and an uncached dynamic suffix. The model sees
   the concatenation; the split is purely a wire-protocol device for caching.
 
-  If the sentinel is absent, fall back to a single cached content block covering
-  the whole prompt."
+  If the sentinel is absent (or nothing but whitespace follows it) fall back to
+  a single cached content block covering the whole prompt."
   [system]
-  (let [idx (.indexOf ^String system ^String system-cache-breakpoint-sentinel)]
-    (if (neg? idx)
+  (let [idx    (.indexOf ^String system ^String system-cache-breakpoint-sentinel)
+        suffix (when-not (neg? idx)
+                 (str/triml (subs system (+ idx (count system-cache-breakpoint-sentinel)))))]
+    (if (or (neg? idx) (str/blank? suffix))
       [{:type          "text"
-        :text          system
+        :text          (if (neg? idx) system (str/trimr (subs system 0 idx)))
         :cache_control {:type "ephemeral"}}]
-      (let [prefix (str/trimr (subs system 0 idx))
-            suffix (str/triml (subs system (+ idx (count system-cache-breakpoint-sentinel))))]
-        [{:type          "text"
-          :text          prefix
-          :cache_control {:type "ephemeral"}}
-         {:type "text"
-          :text suffix}]))))
+      [{:type          "text"
+        :text          (str/trimr (subs system 0 idx))
+        :cache_control {:type "ephemeral"}}
+       {:type "text"
+        :text suffix}])))
 
 (defn- anthropic-error-msg
   "Canonical, status-specific Anthropic error message."
@@ -293,6 +293,7 @@
   "Anthropic chat models offered in the Metabot model picker, as a map of model id -> display name.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
   {"claude-fable-5"             "Claude Fable 5"
+   "claude-opus-5"              "Claude Opus 5"
    "claude-opus-4-8"            "Claude Opus 4.8"
    "claude-opus-4-7"            "Claude Opus 4.7"
    "claude-opus-4-6"            "Claude Opus 4.6"

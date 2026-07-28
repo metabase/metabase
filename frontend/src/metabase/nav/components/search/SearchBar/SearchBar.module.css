@@ -1,0 +1,109 @@
+.container {
+  border: 1px solid var(--mb-color-border-neutral);
+  background-color: var(--mb-color-background_page-primary);
+  overflow: hidden;
+  transition:
+    background 150ms,
+    width 0.2s;
+
+  &:not(.active):hover {
+    background-color: var(--mb-color-background_page-secondary);
+  }
+
+  &.active {
+    background-color: var(--mb-color-background_page-tertiary);
+  }
+}
+
+.input {
+  background-color: transparent;
+  border: none;
+  color: var(--mb-color-text-primary);
+  font-weight: 700;
+  font-size: var(--mantine-font-size-md);
+  flex-basis: 0;
+  flex-grow: 1;
+
+  &:focus {
+    outline: none;
+  }
+
+  &::placeholder {
+    color: var(--mb-color-text-primary);
+  }
+}
+
+.searchIcon {
+  flex-basis: 1rem;
+}
+
+.closeButton {
+  align-items: center;
+  justify-content: center;
+  color: var(--mb-color-text-disabled);
+
+  &:hover {
+    color: var(--mb-color-text-secondary);
+  }
+}
+
+@media (prefers-reduced-motion) {
+  .container {
+    transition: none;
+  }
+}
+
+@media screen and (--breakpoint-max-sm) {
+  .container {
+    justify-content: center;
+    margin-left: auto;
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--mantine-radius-xl);
+    border-color: transparent;
+
+    &.active {
+      width: 100%;
+      border-color: var(--mb-color-border-neutral);
+      border-radius: var(--mantine-radius-sm);
+      justify-content: flex-start;
+    }
+  }
+
+  .input {
+    width: 0;
+    flex-grow: 0;
+    padding: 0;
+
+    &.active {
+      flex-grow: 1;
+      padding-top: var(--mantine-spacing-sm);
+      padding-bottom: var(--mantine-spacing-sm);
+    }
+  }
+
+  .searchIcon {
+    transition: margin 0.3s;
+
+    &.active {
+      margin-left: var(--mantine-spacing-sm);
+      margin-right: var(--mantine-spacing-sm);
+    }
+  }
+}
+
+@media screen and (--breakpoint-min-sm) {
+  .container {
+    max-width: 50em;
+    border-radius: var(--mantine-radius-sm);
+    justify-content: flex-start;
+  }
+
+  .input {
+    padding: var(--mantine-spacing-sm) 0.75rem;
+  }
+
+  .searchIcon {
+    margin-left: var(--mantine-spacing-sm);
+  }
+}

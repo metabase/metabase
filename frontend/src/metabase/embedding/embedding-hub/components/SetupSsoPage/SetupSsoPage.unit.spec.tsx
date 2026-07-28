@@ -51,7 +51,10 @@ const setup = ({
   });
 
   return renderWithProviders(
-    <Route path="/admin/embedding/setup-guide/sso" component={SetupSsoPage} />,
+    <Route
+      path="/admin/embedding/setup-guide/sso"
+      element={<SetupSsoPage />}
+    />,
     {
       storeInitialState: createMockState({
         settings: createMockSettingsState(settings),

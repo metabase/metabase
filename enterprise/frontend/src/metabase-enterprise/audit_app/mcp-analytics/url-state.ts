@@ -3,6 +3,7 @@ import {
   type UrlStateConfig,
   getFirstParamValue,
 } from "metabase/common/hooks/use-url-state";
+import type { SortDirection } from "metabase-types/api";
 
 import {
   type FilterUrlState,
@@ -10,27 +11,62 @@ import {
   mergeUrlStateConfig,
 } from "../metabot-analytics/components/ConversationFilters/url-state";
 
+import { MCP_EVENT_SORT_COLUMNS, type McpEventSortColumn } from "./query-utils";
+
 export type McpTab = "charts" | "events";
 
 type McpPageUrlState = {
   tab: McpTab;
+  /** Current page of the row-level events table, 0-indexed. */
+  page: number;
+  sort_column: McpEventSortColumn;
+  sort_direction: SortDirection;
 };
 
 export type McpUrlState = FilterUrlState & McpPageUrlState;
 
 const DEFAULT_TAB: McpTab = "charts";
+const DEFAULT_SORT_COLUMN: McpEventSortColumn = "created_at";
+const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
 
 /** Parse the `tab` query param, defaulting to the charts tab for any unrecognized value. */
 function parseTab(param: QueryParam): McpTab {
   return getFirstParamValue(param) === "events" ? "events" : DEFAULT_TAB;
 }
 
+/** Parse the `page` query param, defaulting to 0 for anything missing or invalid. */
+function parsePage(param: QueryParam): number {
+  const parsed = parseInt(getFirstParamValue(param) || "0", 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function parseSortColumn(param: QueryParam): McpEventSortColumn {
+  const value = getFirstParamValue(param);
+  return (
+    MCP_EVENT_SORT_COLUMNS.find((col) => col === value) ?? DEFAULT_SORT_COLUMN
+  );
+}
+
+function parseSortDirection(param: QueryParam): SortDirection {
+  const value = getFirstParamValue(param);
+  // we don't want to use `value` directly because it may be an invalid sort direction
+  // coming from URL params
+  return value === "asc" || value === "desc" ? value : DEFAULT_SORT_DIRECTION;
+}
+
 const mcpPageUrlStateConfig: UrlStateConfig<McpPageUrlState> = {
   parse: (query) => ({
     tab: parseTab(query.tab),
+    page: parsePage(query.page),
+    sort_column: parseSortColumn(query.sort_column),
+    sort_direction: parseSortDirection(query.sort_direction),
   }),
-  serialize: ({ tab }) => ({
+  serialize: ({ tab, page, sort_column, sort_direction }) => ({
     tab: tab === DEFAULT_TAB ? undefined : tab,
+    page: page === 0 ? undefined : String(page),
+    sort_column: sort_column === DEFAULT_SORT_COLUMN ? undefined : sort_column,
+    sort_direction:
+      sort_direction === DEFAULT_SORT_DIRECTION ? undefined : sort_direction,
   }),
 };
 

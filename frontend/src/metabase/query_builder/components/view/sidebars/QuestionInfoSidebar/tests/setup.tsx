@@ -71,10 +71,13 @@ export const setup = async ({
     <QuestionInfoSidebar question={question} onSave={onSave} />
   );
 
-  renderWithProviders(<Route path="*" component={TestQuestionInfoSidebar} />, {
-    withRouter: true,
-    storeInitialState: state,
-  });
+  renderWithProviders(
+    <Route path="*" element={<TestQuestionInfoSidebar />} />,
+    {
+      withRouter: true,
+      storeInitialState: state,
+    },
+  );
 
   await waitForLoaderToBeRemoved();
 };

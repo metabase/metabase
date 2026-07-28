@@ -56,7 +56,7 @@ export function updateTransformSignature(
         // Replace existing Args section
         updatedScript = updatedScript.replace(
           argsRegex,
-          `    $1
+          `$1
 
     Args:
 ${newArgsSection}

@@ -8,7 +8,7 @@ import {
 } from "metabase/metabot/state";
 import { createMockTransform } from "metabase-types/api/mocks";
 
-import { resetChatButton, setup } from "./utils";
+import { newConversationButton, setup } from "./utils";
 
 describe("metabot > reaction state", () => {
   it("should clear navigateToPath and suggestedTransforms when resetting omnibot conversation", async () => {
@@ -29,7 +29,7 @@ describe("metabot > reaction state", () => {
     expect(getReactions().navigateToPath).toBe("/some/path");
     expect(getReactions().suggestedTransforms).toHaveLength(1);
 
-    await userEvent.click(await resetChatButton());
+    await userEvent.click(await newConversationButton());
 
     expect(getReactions().navigateToPath).toBeNull();
     expect(getReactions().suggestedTransforms).toEqual([]);

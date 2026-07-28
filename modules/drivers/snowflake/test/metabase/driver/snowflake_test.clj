@@ -170,19 +170,20 @@
                                                                                             (assoc :host alternative-host)
                                                                                             (assoc :use-hostname use-hostname))]
                                                                             (sql-jdbc.conn/connection-details->spec :snowflake details))))
-        true nil "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
-        true "" "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
-        true "  " "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
-        true "snowflake.example.com/" "//snowflake.example.com/?enablePutGet=false"
-        true "snowflake.example.com" "//snowflake.example.com/?enablePutGet=false"
-        false nil "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
-        false "" "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
-        false "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
-        false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"))
+        true nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        true "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        true "  " "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        true "snowflake.example.com/" "//snowflake.example.com/"
+        true "snowflake.example.com" "//snowflake.example.com/"
+        false nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        false "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        false "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))
     (testing "Unsafe options are removed"
-      (let [details (assoc details :additional-options "enablePutGet=true")
-            spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
-        (is (re-find #"enablePutGet=false" (:subname spec)))))
+      (doseq [opts [nil "enablePutGet=true"]]
+        (let [spec (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :additional-options opts))]
+          (is (= "false" (:enablePutGet spec)))
+          (is (not (re-find #"(?i)enablePutGet" (str (:subname spec))))))))
     (testing "Application parameter is set to identify Metabase connections"
       (is (= "Metabase_Metabase"
              (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
@@ -1688,12 +1689,16 @@
                                                             (assoc :private-key-value priv-key-val)
                                                             (assoc :use-password false)
                                                             (assoc :dbname nil))}]
-              (is (= #{{:name "continent",    :schema "PUBLIC", :description nil}
-                       {:name "municipality", :schema "PUBLIC", :description nil}
-                       {:name "region",       :schema "PUBLIC", :description nil}
-                       {:name "country",      :schema "PUBLIC", :description nil}
-                       {:name "airport",      :schema "PUBLIC", :description nil}}
-                     (:tables (driver/describe-database :snowflake db)))))))))))
+              ;; we would ideally check = here, but there are some other completely
+              ;; unrelated tests which create tables in the PUBLIC schema and
+              ;; fail to clean them up correctly, manifesting as failure here
+              (is (set/subset?
+                   #{{:name "continent",    :schema "PUBLIC", :description nil}
+                     {:name "municipality", :schema "PUBLIC", :description nil}
+                     {:name "region",       :schema "PUBLIC", :description nil}
+                     {:name "country",      :schema "PUBLIC", :description nil}
+                     {:name "airport",      :schema "PUBLIC", :description nil}}
+                   (:tables (driver/describe-database :snowflake db)))))))))))
 
 ;;; ------------------------------------------------ Fake Sync Tests ------------------------------------------------
 ;; Tests to validate that fake sync produces correct metadata for Snowflake.

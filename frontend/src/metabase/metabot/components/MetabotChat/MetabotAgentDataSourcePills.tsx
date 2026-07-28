@@ -10,15 +10,16 @@ import {
   useGetTableQuery,
   useSubmitMetabotSourceFeedbackMutation,
 } from "metabase/api";
+import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
+import { getMetabotId } from "metabase/metabot/state";
 import {
   getCollectionLocationLabel,
   getCollectionLocationParts,
   getDatabaseLocationParts,
-} from "metabase/common/utils/source-location";
-import { getMetabotId } from "metabase/metabot/state";
+} from "metabase/metabot/utils/source-location";
 import { useSelector } from "metabase/redux";
 import {
   ActionIcon,
@@ -73,9 +74,8 @@ const isNativeDatasetQuery = (
 ): datasetQuery is NativeDatasetQuery =>
   "type" in datasetQuery && datasetQuery.type === "native";
 
-const decodeQueryFromPath = (path: string): DecodedQuery => {
+const decodeQuery = (datasetQuery: DatasetQuery | undefined): DecodedQuery => {
   try {
-    const datasetQuery = deserializeCardFromQuery(path).dataset_query;
     if (!datasetQuery) {
       return { kind: "none" };
     }
@@ -606,14 +606,14 @@ const NativeSourcesRow = ({
   );
 };
 
-export const NavigateToTablePills = ({
+const DatasetQueryTablePills = ({
   messageId,
-  path,
+  datasetQuery,
 }: {
   messageId?: string;
-  path: string;
+  datasetQuery: DatasetQuery | undefined;
 }) => {
-  const decoded = useMemo(() => decodeQueryFromPath(path), [path]);
+  const decoded = useMemo(() => decodeQuery(datasetQuery), [datasetQuery]);
 
   if (decoded.kind === "none") {
     return null;
@@ -645,6 +645,39 @@ export const NavigateToTablePills = ({
       fieldIds={decoded.fieldIds}
       messageId={messageId}
     />
+  );
+};
+
+export const GeneratedCardTablePills = ({
+  messageId,
+  value,
+}: {
+  messageId?: string;
+  value: GeneratedCard;
+}) => (
+  <DatasetQueryTablePills
+    messageId={messageId}
+    datasetQuery={value.query.query}
+  />
+);
+
+export const NavigateToTablePills = ({
+  messageId,
+  path,
+}: {
+  messageId?: string;
+  path: string;
+}) => {
+  const datasetQuery = useMemo(() => {
+    try {
+      return deserializeCardFromQuery(path).dataset_query;
+    } catch {
+      return undefined;
+    }
+  }, [path]);
+
+  return (
+    <DatasetQueryTablePills messageId={messageId} datasetQuery={datasetQuery} />
   );
 };
 

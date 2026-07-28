@@ -1,10 +1,10 @@
-import { IndexRoute, Route } from "metabase/router";
+import { Route } from "metabase/router";
 
 import { NotificationsAdminPage } from "./NotificationsAdminPage";
 
 export const getRoutes = () => (
   <>
-    <IndexRoute component={NotificationsAdminPage} />
-    <Route path=":notificationId" component={NotificationsAdminPage} />
+    <Route index element={<NotificationsAdminPage />} />
+    <Route path=":notificationId" element={<NotificationsAdminPage />} />
   </>
 );

@@ -1,24 +1,22 @@
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/redux";
-import { updateUserSetting } from "metabase/redux/settings";
+import { useUpdateSettingMutation } from "metabase/api";
+import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
-import { Alert, Anchor, Box, Icon, Text } from "metabase/ui";
+import { Alert, Anchor, Box, Icon } from "metabase/ui";
 
 export const PermissionsEditorSplitPermsMessage = () => {
-  const dispatch = useDispatch();
+  const [updateSetting] = useUpdateSettingMutation();
 
   const docsUrl = useSelector((state) =>
     getDocsUrl(state, { page: "permissions/no-self-service-deprecation" }),
   );
 
   const handleDismiss = () => {
-    dispatch(
-      updateUserSetting({
-        key: "show-updated-permission-banner",
-        value: false,
-      }),
-    );
+    updateSetting({
+      key: "show-updated-permission-banner",
+      value: false,
+    });
   };
 
   return (
@@ -30,20 +28,19 @@ export const PermissionsEditorSplitPermsMessage = () => {
       }}
     >
       <Alert
-        icon={<Icon name="info" size={16} />}
+        size="compact"
+        icon={<Icon name="info" />}
         color="core-brand"
         withCloseButton
         onClose={handleDismiss}
       >
-        <Text>
-          {t`Your data permissions may look different, but the access hasn’t changed.`}
-          <Anchor
-            ml="0.5rem"
-            fw="bold"
-            target="_blank"
-            href={docsUrl}
-          >{t`Learn more`}</Anchor>
-        </Text>
+        {t`Your data permissions may look different, but the access hasn’t changed.`}
+        <Anchor
+          ml="0.5rem"
+          fw="bold"
+          target="_blank"
+          href={docsUrl}
+        >{t`Learn more`}</Anchor>
       </Alert>
     </Box>
   );

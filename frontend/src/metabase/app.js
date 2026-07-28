@@ -23,7 +23,6 @@ import "metabase/plugins/builtin";
 // Set CSP nonce for dynamic style injection (e.g. CodeMirror)
 import "metabase/utils/csp";
 
-import { createHistory } from "history";
 import { DragDropContextProvider } from "react-dnd";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
@@ -31,43 +30,37 @@ import { createRoot } from "react-dom/client";
 import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
+import { refetchSiteSettings } from "metabase/api";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-embedding";
 import { MetabotProvider } from "metabase/metabot/context";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { MetabaseReduxProvider } from "metabase/redux";
-import { refreshSiteSettings } from "metabase/redux/settings";
-import { syncHistoryWithStore, useRouterHistory } from "metabase/router";
+import { createV7Navigator } from "metabase/router/v7/navigator";
 import { getUserId } from "metabase/selectors/user";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
-import { getBasename, setBasename } from "metabase/utils/basename";
+import { setBasename } from "metabase/utils/basename";
 import { captureConsoleErrors } from "metabase/utils/errors";
 import { initMetaplow } from "metabase/utils/metaplow";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import MetabaseSettings from "metabase/utils/settings";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 
-import { HistoryProvider } from "./history";
-import { RouterProvider } from "./router";
+import { RouterProvider, createLocationMirror } from "./router";
 import { getStore } from "./store";
 import { OverlayStackProvider } from "./ui/components/overlays/overlay-stack";
 
 setBasename(window.MetabaseRoot);
 
-// eslint-disable-next-line react-hooks/rules-of-hooks
-const browserHistory = useRouterHistory(createHistory)({
-  basename: getBasename(),
-});
-
 initializePlugins();
 
 function _init(reducers, getRoutes, callback) {
-  const store = getStore(reducers, browserHistory);
+  const store = getStore(reducers, createV7Navigator());
   const routes = getRoutes(store);
-  const syncedHistory = syncHistoryWithStore(browserHistory, store);
+  const mirrorLocation = createLocationMirror(store.dispatch);
 
   createSnowplowTracker(() => getUserId(store.getState()));
   initMetaplow({
@@ -78,9 +71,17 @@ function _init(reducers, getRoutes, callback) {
   // Uses bootstrap data so it's available before the first API call.
   if (window.MetabaseBootstrap?.["tracing-enabled"]) {
     initTracing();
-    // Rotate trace ID on route changes so all API calls within
-    // a single page view share one trace.
-    syncedHistory.listen(() => rotateTraceId());
+    // Rotate trace ID on route changes so all API calls within a single page view
+    // share one trace. The router mirrors the location into state.routing.
+    let lastPathname;
+    store.subscribe(() => {
+      const { pathname } =
+        store.getState().routing.locationBeforeTransitions ?? {};
+      if (pathname !== lastPathname) {
+        lastPathname = pathname;
+        rotateTraceId();
+      }
+    });
   }
 
   initializeInteractiveEmbedding(store.dispatch);
@@ -96,9 +97,9 @@ function _init(reducers, getRoutes, callback) {
               <GlobalStyles />
               {createPortal(<PortalContainer />, document.body)}
               <MetabotProvider>
-                <HistoryProvider history={syncedHistory}>
-                  <RouterProvider>{routes}</RouterProvider>
-                </HistoryProvider>
+                <RouterProvider onLocationChange={mirrorLocation}>
+                  {routes}
+                </RouterProvider>
               </MetabotProvider>
             </AppThemeProvider>
           </OverlayStackProvider>
@@ -110,7 +111,11 @@ function _init(reducers, getRoutes, callback) {
   registerVisualizations();
   registerDashboardVisualizations();
 
-  store.dispatch(refreshSiteSettings());
+  // Populate the settings cache on load for every app entry.
+  // The main app also keeps a live `useGetSettingsQuery` subscription in AppComponent,
+  // but the public and embed entries don't mount AppComponent/
+  // In RTK if there is no active subscriber, invalidating a tag does not trigger a refetch.
+  store.dispatch(refetchSiteSettings());
 
   PLUGIN_APP_INIT_FUNCTIONS.forEach((init) => init());
 

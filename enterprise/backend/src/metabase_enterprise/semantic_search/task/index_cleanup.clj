@@ -9,6 +9,7 @@
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.util :as semantic.u]
@@ -21,21 +22,74 @@
 
 (set! *warn-on-reflection* true)
 
+;; Both orphan sweeps feed table names to DROP, so in shared app-db mode the schema scoping keeps a LIKE
+;; pattern from matching and dropping application tables.
+
+(defn- scope-where-to-schema
+  "Restrict an `information_schema.tables` WHERE (an aliased-`:t` `[:and ...]` vector) to the module schema.
+  A no-op without a schema (dedicated mode)."
+  [where schema]
+  (cond-> where schema (conj [:= :t.table_schema [:inline schema]])))
+
+(defn- requalify-table-names
+  "Prefix bare `information_schema` table names with the module schema so they match how the metadata table
+  stores them. A no-op in dedicated mode."
+  [schema table-names]
+  (map #(cond->> % schema (str schema ".")) table-names))
+
+(defn- like-escape
+  "Escape LIKE wildcards so `s` only matches itself (Postgres's default escape character is backslash)."
+  [s]
+  (str/replace s #"([\\%_])" "\\\\$1"))
+
 (defn- orphan-index-tables
-  "Returns a list of semantic search index tables which are not referenced in the metadata table.
-  Not expected to occur, but if it does, these tables can be dropped."
-  [pgvector {:keys [metadata-table-name]}]
-  (let [orphaned-tables-sql
+  "Returns a list of semantic search index tables which are not registered in the metadata table's
+  table_name column. Not expected to occur (index tables are created in the same transaction that
+  registers them), but if it does, these tables can be dropped.
+
+  Candidacy is decided by table-name shape ([[semantic.index/index-table-name?]]); the control-plane
+  tables (metadata/control/gate) share the index_ prefix but are excluded both by shape and by name.
+  Matching is index-table-qualifier-aware, so a config with a distinguishing qualifier (e.g. test
+  configs) only ever sees its own tables. Only base tables are candidates — never views.
+
+  With a `:schema` (shared app-db mode) only tables inside the module's schema are considered, and the
+  returned names are schema-qualified to match how the metadata table stores them. Without one
+  (dedicated pgvector DB) the scan is limited to current_schema(), where the unqualified DROP that
+  consumes these names resolves — tables in other schemas would be detected but never dropped."
+  [pgvector {:keys [metadata-table-name control-table-name gate-table-name index-table-qualifier schema]}]
+  (let [;; the qualifier may embed the app-db schema ("<schema>.%s") — information_schema reports bare
+        ;; table names, so build the LIKE pattern and the qualifier stripping from its name part only
+        [prefix suffix]     (str/split (semantic.u/table-name-part index-table-qualifier) #"%s" -1)
+        like-pattern        (str (like-escape prefix) "index\\_%" (like-escape suffix))
+        control-plane-names (into #{} (map semantic.u/table-name-part)
+                                  [metadata-table-name control-table-name gate-table-name])
+        index-shaped?       (fn [table-name]
+                              ;; the LIKE prefilter guarantees the literal qualifier prefix/suffix, so
+                              ;; strip them to recover the bare index_… name the naming code produced
+                              (semantic.index/index-table-name?
+                               (subs table-name (count prefix) (- (count table-name) (count suffix)))))
+        ;; information_schema reports bare names; stored metadata names are qualified when we have a schema
+        stored-name (if schema
+                      [:|| [:inline (str schema ".")] :t.table_name]
+                      :t.table_name)
+        orphaned-tables-sql
         (-> {:select [:t.table_name]
              :from [[:information_schema.tables :t]]
              :left-join [[(keyword metadata-table-name) :meta]
-                         [:= :meta.table_name :t.table_name]]
+                         [:= :meta.table_name stored-name]]
              :where [:and
-                     [:like :t.table_name [:inline "index_table_%"]]
-                     [:= :meta.table_name nil]]}
+                     [:like :t.table_name [:inline like-pattern]]
+                     [:= :meta.table_name nil]
+                     [:= :t.table_type [:inline "BASE TABLE"]]
+                     [:= :t.table_schema (if schema
+                                           [:inline schema]
+                                           [:current_schema])]]}
             (sql/format :quoted true))]
     (->> (jdbc/execute! pgvector orphaned-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-         (map :table_name))))
+         (map :table_name)
+         (remove control-plane-names)
+         (filter index-shaped?)
+         (requalify-table-names schema))))
 
 (defn- parse-repair-table-timestamp
   "Extracts timestamp from repair table name. Returns nil if parsing fails."
@@ -51,19 +105,22 @@
   Repair tables are named: repair_<millis-since-epoch>_<short-id>
 
   Repair tables should not become orphaned under normal operation, since they should be deleted immeditaely after use.
-  However, in case of a crash or failure, they may be left behind, so we clean them up after a retention period."
-  [pgvector]
+  However, in case of a crash or failure, they may be left behind, so we clean them up after a retention period.
+  With a `:schema` (shared app-db mode) only tables inside the module's schema are considered — a `repair_%`
+  pattern must never match application tables — and the returned names are schema-qualified."
+  [pgvector {:keys [schema]}]
   (let [retention-cutoff (t/minus (t/instant) (t/hours (semantic.settings/repair-table-retention-hours)))
         repair-tables-sql (-> {:select [:t.table_name]
                                :from [[:information_schema.tables :t]]
-                               :where [:like :t.table_name [:inline "repair_%"]]}
+                               :where (scope-where-to-schema [:and [:like :t.table_name [:inline "repair_%"]]] schema)}
                               (sql/format :quoted true))
         all-repair-tables (->> (jdbc/execute! pgvector repair-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                                (map :table_name))
-        old-tables (filter (fn [table-name]
-                             (when-let [table-timestamp (parse-repair-table-timestamp table-name)]
-                               (t/before? table-timestamp retention-cutoff)))
-                           all-repair-tables)]
+        old-tables (->> all-repair-tables
+                        (filter (fn [table-name]
+                                  (when-let [table-timestamp (parse-repair-table-timestamp table-name)]
+                                    (t/before? table-timestamp retention-cutoff))))
+                        (requalify-table-names schema))]
     (when (seq old-tables)
       (log/infof "Found %d orphaned repair tables older than %d hours"
                  (count old-tables)
@@ -72,8 +129,8 @@
 
 (defn- cleanup-orphan-repair-tables!
   "Cleans up repair tables that are older than the retention period."
-  [pgvector]
-  (let [orphan-tables (orphan-repair-tables pgvector)]
+  [pgvector index-metadata]
+  (let [orphan-tables (orphan-repair-tables pgvector index-metadata)]
     (when (seq orphan-tables)
       (let [tables-to-drop (map keyword orphan-tables)
             drop-table-sql (sql/format
@@ -149,32 +206,54 @@
     (catch Exception e
       (log/error e "Failed to clean up tombstone records from gate table"))))
 
+(defn- drop-index-table!
+  "Drops one stale/orphaned index table, isolating failures: one undroppable table (e.g. one with a
+  dependent view) must not abort the rest of the cleanup batch.
+  Returns :dropped, :missing (referenced table no longer exists), or :failed."
+  [pgvector kind table-name]
+  (try
+    (log/infof "Dropping %s semantic search index: %s" kind table-name)
+    (jdbc/execute! pgvector (sql/format (sql.helpers/drop-table (keyword table-name)) :quoted true))
+    :dropped
+    ;; no IF EXISTS: a vacuous drop must not count as :dropped, so let 42P01 (undefined_table) tell us
+    (catch java.sql.SQLException e
+      (if (= "42P01" (.getSQLState e))
+        (do (log/infof "Skipping %s semantic search index %s: table no longer exists" kind table-name)
+            :missing)
+        (do (log/warnf e "Failed to drop %s semantic search index %s" kind table-name)
+            :failed)))
+    (catch Exception e
+      (log/warnf e "Failed to drop %s semantic search index %s" kind table-name)
+      :failed)))
+
 (defn- cleanup-stale-indexes!
   [pgvector index-metadata]
-  (let [stale-table-names    (map keyword (stale-index-tables pgvector index-metadata))
-        orphaned-table-names (map keyword (orphan-index-tables pgvector index-metadata))
-        tables-to-drop       (concat stale-table-names orphaned-table-names)
-        drop-table-sql       (sql/format
-                              (apply sql.helpers/drop-table :if-exists tables-to-drop)
-                              :quoted true)]
-    (when (seq tables-to-drop)
-      (log/infof "Found %d semantic search index tables to clean up" (count tables-to-drop))
-      (doseq [table-name stale-table-names]
-        (log/info "Dropping stale/orphaned semantic search index:" table-name))
-      (jdbc/execute! pgvector drop-table-sql))))
+  (let [stale-table-names    (stale-index-tables pgvector index-metadata)
+        orphaned-table-names (orphan-index-tables pgvector index-metadata)
+        found                (+ (count stale-table-names) (count orphaned-table-names))]
+    (when (pos? found)
+      (log/infof "Found %d semantic search index tables to clean up" found)
+      (let [outcomes (concat (mapv #(drop-index-table! pgvector "stale" %) stale-table-names)
+                             (mapv #(drop-index-table! pgvector "orphaned" %) orphaned-table-names))
+            dropped  (count (filter #{:dropped} outcomes))]
+        (log/infof "Dropped %d of %d semantic search index tables" dropped found)))))
 
 (defn- cleanup-stale-indexes-and-gate-tombstones!
   []
   (when (semantic.u/semantic-search-available?)
     (let [pgvector       (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.env/get-index-metadata)]
-      ;; Available but never initialized is a steady state (semantic neither default nor additional);
-      ;; the bookkeeping tables only exist after init, and the cleanup queries would throw without them.
+      ;; Available but never initialized is a steady state (semantic neither default nor additional,
+      ;; or app-db mode with the engine disabled); the bookkeeping tables only exist after init, and
+      ;; the cleanup queries would throw without them.
       ;; Still runs while merely available, so an opted-out instance's leftover indexes get cleaned.
       (when (semantic.index-metadata/control-and-metadata-tables-exist? pgvector index-metadata)
         (cleanup-stale-indexes! pgvector index-metadata)
-        (cleanup-old-gate-tombstones! pgvector index-metadata)
-        (cleanup-orphan-repair-tables! pgvector)))))
+        (cleanup-old-gate-tombstones! pgvector index-metadata))
+      ;; Repair-table cleanup is information_schema-driven, so it needs no bookkeeping tables and runs
+      ;; outside the guard above. Shared app-db mode scopes the sweep to the module schema; dedicated mode
+      ;; owns the whole DB, so its `repair_%` sweep is DB-wide by design (a mispointed URL is the caller's).
+      (cleanup-orphan-repair-tables! pgvector index-metadata))))
 
 (def ^:private cleanup-job-key (jobs/key "metabase.task.semantic-index-cleanup.job"))
 (def ^:private cleanup-trigger-key (triggers/key "metabase.task.semantic-index-cleanup.trigger"))

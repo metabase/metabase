@@ -20,7 +20,8 @@
    [metabase.config.core :as config]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.pool :as u.pool])
   (:import
    (io.aleph.dirigiste Pool)
    (org.graalvm.polyglot Context Engine HostAccess Source Value)))
@@ -154,8 +155,8 @@
   three renders run at once — one per context, on the shared engine. When idle for up to 10 minutes the
   pool shrinks to 0 and the generator's `destroy` closes the context (and, on the last one, the shared
   engine); the first render after an idle gap rebuilds them. See
-  [[metabase.channel.render.js.common/create-pool]]."
-  (common/create-pool generate-context! destroy-context! {:max-size 3, :idle-minutes 10}))
+  [[metabase.util.pool/create-pool]]."
+  (u.pool/create-pool generate-context! destroy-context! {:max-size 3, :idle-minutes 10}))
 
 (defn- do-with-static-viz-context
   "Borrow a pooled static-viz context and call `f` with it, held exclusively for the call (never let it —

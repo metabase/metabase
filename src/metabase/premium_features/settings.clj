@@ -293,6 +293,10 @@
   "Does this instance support remote syncing collections."
   :remote-sync)
 
+(define-premium-feature ^{:added "0.57.0"} enable-data-apps?
+  "Should we allow users to publish and run data apps?"
+  :data-apps)
+
 (define-premium-feature ^{:added "0.59.0"} enable-basic-transforms?
   "Should we allow users to use transforms? Replacement for transforms"
   :transforms-basic)
@@ -376,10 +380,6 @@
   "Should we allow users to view database schemas as ER diagrams?"
   :schema-viewer)
 
-(define-premium-feature enable-workspaces?
-  "Should we allow users to manage workspaces?"
-  :workspaces)
-
 (defn- -token-features []
   {:admin_security_center          (security-center-enabled?)
    :advanced_permissions           (enable-advanced-permissions?)
@@ -394,6 +394,7 @@
    :content_verification           (enable-content-verification?)
    :custom-viz                     (enable-custom-viz?)
    :custom-viz-available           (has-feature? :custom-viz)
+   :data-apps                      (enable-data-apps?)
    :data-complexity-score          (enable-data-complexity-score?)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
@@ -436,7 +437,6 @@
    :transforms-basic               (enable-basic-transforms?)
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
-   :workspaces                     (enable-workspaces?)
    :whitelabel                     (enable-whitelabeling?)
    :writable_connection            (enable-writable-connection?)
    :ai_controls                    (enable-ai-controls?)})

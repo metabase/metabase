@@ -129,7 +129,7 @@
                                     (sso-settings/saml-attribute-email)))
                           {:status-code 400
                            :user-attributes (keys user-attributes)})))
-        (log/infof "Successfully authenticated SAML assertion for: %s %s" first-name last-name)
+        (log/debug "Successfully authenticated SAML assertion")
         {:success? true
          :user-data {:email email
                      :first_name first-name

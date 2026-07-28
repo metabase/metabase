@@ -155,7 +155,7 @@ const setup = ({ table, remoteSyncType, onMoved }: SetupOpts = {}) => {
   renderWithProviders(
     <Route
       path="/"
-      component={() => <TableMoreMenu table={tableData} onMoved={onMoved} />}
+      element={<TableMoreMenu table={tableData} onMoved={onMoved} />}
     />,
     {
       withRouter: true,

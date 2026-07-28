@@ -15,7 +15,6 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
-   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -109,7 +108,8 @@
    ;; `:json-schema` override only changes what the LLM sees. See [[construct-notebook-query-json-schema]].
    [:query [:map {:json-schema construct-notebook-query-json-schema}]]
    [:visualization {:optional true} construct-visualization-schema]
-   [:title :string]])
+   [:title :string]
+   [:description :string]])
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
@@ -146,16 +146,19 @@
         (let [hint (case entity-type
                      "metric"
                      (str "Metrics are aggregations, not sources. To use metric " entity-id
-                          ", put its `base_table_portable_fk` (from `entity_details` on the metric) "
-                          "into `source-table:` and reference the metric as "
-                          "`aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
+                          ", put its base table into `source-table:` — combine the `database_name` "
+                          "and `base_table_fully_qualified_name` attributes from its search result "
+                          "or `read_resource metabase://metric/" entity-id "` — and reference the "
+                          "metric as `aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
                      ("question" "model" "card")
                      (str "To reference saved " entity-type " " entity-id
-                          " as a query source, put its `portable_entity_id` (a 21-char "
-                          "string from `entity_details`) into `source-card:` — not a URI.")
+                          " as a query source, put its `portable_entity_id` (the 21-char "
+                          "string from its search result or `read_resource`) into "
+                          "`source-card:` — not a URI.")
                      "table"
-                     (str "Use the portable FK `[<db-name>, <schema>, <table-name>]` from "
-                          "`entity_details` in `source-table:` — not a URI.")
+                     (str "Use the portable FK `[<db-name>, <schema>, <table-name>]` in "
+                          "`source-table:` — not a URI. `read_resource metabase://table/" entity-id
+                          "` reports the exact names.")
                      (str "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` "
                           "or, via `source-card:`, a saved-card `portable_entity_id`."))]
           (throw (ex-info (tru "`source-table:` does not accept URIs like `{0}`. {1}"
@@ -177,8 +180,7 @@
   "ContentStore for agent query construction. Alias for
   [[shared.content-store/default-store]] — the chokepoint wrapper applies `api/read-check` to
   every lookup whenever `api/*current-user-id*` is bound, symmetrically across all five
-  ContentStore methods. The unchecked underlying store gates non-NanoID entity-id values to
-  avoid a full-table scan via `find-by-identity-hash`."
+  ContentStore methods. The unchecked underlying store rejects non-NanoID entity-id values."
   shared.content-store/default-store)
 
 (defn- check-first-stage-source-table-query-permissions!
@@ -220,7 +222,7 @@
           ids     (t2/select-pks-vec :model/Database :name db-name)]
       (case (count ids)
         0 (throw (ex-info (tru (str "Unknown database: `{0}`. Use the exact database name as "
-                                    "reported by `entity_details` / metadata tools (it appears "
+                                    "reported by search / `read_resource` (it appears "
                                     "as the first element of every portable FK, e.g. "
                                     "`source-table: [<db-name>, <schema>, <table>]`).")
                                db-name)
@@ -242,9 +244,10 @@
       (if-let [card (tools.u/get-card-by-entity-id eid)]
         (:database_id card)
         (throw (ex-info (tru (str "No saved question or model found with entity_id {0}. Do not invent "
-                                  "or guess entity_ids: call `entity_details` with `entity-type: question` "
-                                  "or `entity-type: model` and the card''s numeric id first, then copy the "
-                                  "exact `portable_entity_id` from the response into `source-card:`.")
+                                  "or guess entity_ids: call `read_resource` with "
+                                  "`metabase://question/<numeric id>` or `metabase://model/<numeric id>` "
+                                  "first, then copy the exact `portable_entity_id` from the response "
+                                  "into `source-card:`.")
                              (pr-str eid))
                         {:agent-error? true
                          :status-code  400
@@ -441,9 +444,11 @@
   "Construct and visualize a notebook query from a metric, model, or table.
 
   Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`, plus a
-  short, human-friendly `title` shown above the resulting chart. See
+  short, human-friendly `title` shown above the resulting chart. Also provide a concise
+  one- or two-sentence `description` of what the chart shows (the metric, the grouping, and
+  any notable filter); it is used as the saved question's description. See
   `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
-  [{:keys [_reasoning query visualization title]} :- construct-notebook-query-args-schema]
+  [{:keys [_reasoning query visualization title description]} :- construct-notebook-query-args-schema]
   (try
     (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
           chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
@@ -475,13 +480,12 @@
                         "<instructions>\n" instruction-text "\n</instructions>")
            :data-parts        (when results-url
                                 [(streaming/viz-part
-                                  {:inline?   (shared/inline-viz-capable?)
-                                   :entity-id (:chart-id chart-result)
-                                   :query-id  (:query-id structured)
-                                   :query     (links/->legacy-mbql (:query structured))
-                                   :display   chart-type
-                                   :title     title
-                                   :link      results-url})])
+                                  {:entity-id   (:chart-id chart-result)
+                                   :query-id    (:query-id structured)
+                                   :query       (links/->legacy-mbql (:query structured))
+                                   :display     chart-type
+                                   :title       title
+                                   :description description})])
            :structured-output full-structured
            :instructions      instruction-text})
         ;; query-result may already have :output (error) or only :structured-output

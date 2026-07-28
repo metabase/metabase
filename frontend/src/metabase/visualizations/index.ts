@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -16,6 +17,7 @@ import type { Visualization } from "./types/visualization";
 
 const visualizations = new Map<VisualizationDisplay, Visualization>();
 const aliases = new Map<string, Visualization>();
+const settingWidgets = new Map<string, ComponentType<any>>();
 visualizations.get = function (key) {
   return (
     Map.prototype.get.call(this, key) ||
@@ -39,6 +41,10 @@ export function setDefaultVisualization(visualization: Visualization) {
   defaultVisualization = visualization;
 }
 
+function isVisualizationComponent(visualization: Visualization | undefined) {
+  return typeof visualization === "function";
+}
+
 export function registerVisualization(visualization: Visualization) {
   if (visualization == null) {
     throw new Error(t`Visualization is null`);
@@ -51,25 +57,51 @@ export function registerVisualization(visualization: Visualization) {
     );
   }
   if (visualizations.has(identifier)) {
-    if (isStorybookActive) {
-      console.error(
-        `Visualization with that identifier is already registered: ` +
-          visualization.name,
-      );
+    const registeredVisualization = visualizations.get(identifier);
+    const isReplacingDefinitionWithComponent =
+      isVisualizationComponent(visualization) &&
+      !isVisualizationComponent(registeredVisualization);
+    const isRegisteringDefinitionOverComponent =
+      !isVisualizationComponent(visualization) &&
+      isVisualizationComponent(registeredVisualization);
 
-      // do not throw if it's storybook
+    if (isRegisteringDefinitionOverComponent) {
       return;
     }
 
-    throw new Error(
-      t`Visualization with that identifier is already registered: ` +
-        visualization.name,
-    );
+    if (!isReplacingDefinitionWithComponent) {
+      if (isStorybookActive) {
+        console.error(
+          `Visualization with that identifier is already registered: ` +
+            visualization.name,
+        );
+
+        // do not throw if it's storybook
+        return;
+      }
+
+      throw new Error(
+        t`Visualization with that identifier is already registered: ` +
+          visualization.name,
+      );
+    }
   }
   visualizations.set(identifier, visualization);
   for (const alias of visualization.aliases || []) {
     aliases.set(alias, visualization);
   }
+}
+
+export function registerSettingWidgets(
+  widgets: Record<string, ComponentType<any>>,
+) {
+  for (const [key, widget] of Object.entries(widgets)) {
+    settingWidgets.set(key, widget);
+  }
+}
+
+export function getSettingWidgetComponent(key: string) {
+  return settingWidgets.get(key);
 }
 
 type SeriesLike = Array<{ card: { display: VisualizationDisplay } }>;

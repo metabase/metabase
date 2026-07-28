@@ -477,13 +477,14 @@
          (merge related)))))
 
 (defn cards-details
-  "Get the details of metrics or models as specified by `card-type` and `cards`
+  "Get the details of metrics, models, or questions as specified by `card-type` and `cards`
   from the database with ID `database-id` respecting `options`."
   [card-type database-id cards options]
   (let [mp (lib-be/application-database-metadata-provider database-id)
         detail-fn (case card-type
                     :metric metric-details
-                    :model card-details)]
+                    :model card-details
+                    :question card-details)]
     (lib.metadata/bulk-metadata mp :metadata/card (map :id cards))
     (map #(-> (detail-fn % mp (u/assoc-default options :field-values-fn identity))
               (assoc :type card-type))

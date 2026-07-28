@@ -6,9 +6,9 @@ import {
   useGetCollectionQuery,
   useGetTimelineQuery,
 } from "metabase/api";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useSetCollection } from "metabase/common/hooks";
 import { getDefaultTimelineName } from "metabase/common/utils/timelines";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import MoveTimelineModal from "metabase/timelines/common/components/MoveTimelineModal";
@@ -38,9 +38,9 @@ function MoveTimelineModalContainer({ params, ...props }: ModalComponentProps) {
           ? getDefaultTimelineName(sourceCollection)
           : timeline.name;
       // Fire-and-forget so the modal can close back to the parent path before
-      // we push the new timeline detail URL — otherwise ModalRoute's onClose
-      // would compute the parent off the post-navigation location and bounce
-      // us off the timeline page.
+      // we push the new timeline detail URL, otherwise the modal route's
+      // onClose would resolve the parent off the post-navigation location and
+      // bounce us off the timeline page.
       void (async () => {
         await setCollection(
           { model: "timeline", id: timeline.id, name },

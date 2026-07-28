@@ -1,35 +1,33 @@
 import { useCallback } from "react";
 
 import {
+  sessionApi,
   useClearGroupMembershipMutation,
   useDeletePermissionsGroupMutation,
   useListPermissionsGroupsQuery,
+  useUpdateSettingMutation,
 } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
-import { updateSetting } from "metabase/redux/settings";
 import { getSetting } from "metabase/selectors/settings";
 import type { GroupId, GroupInfo } from "metabase-types/api";
-import type { Settings } from "metabase-types/api/settings";
 
+import type { MappingSettingKey } from "./GroupMappingsWidgetView";
 import { GroupMappingsWidgetView } from "./GroupMappingsWidgetView";
 
 const EMPTY_GROUP_LIST: GroupInfo[] = [];
 
 type GroupMappingsWidgetProps = {
-  mappingSetting: string;
+  mappingSetting: MappingSettingKey;
   [key: string]: unknown;
 };
 
 export function GroupMappingsWidget(props: GroupMappingsWidgetProps) {
   const dispatch = useDispatch();
+  const [updateSetting] = useUpdateSettingMutation();
   const { data } = useListPermissionsGroupsQuery({});
   const allGroups = data ?? EMPTY_GROUP_LIST;
   const mappings = useSelector(
-    (state) =>
-      // Unjustified type cast. FIXME
-      (getSetting(state, props.mappingSetting as keyof Settings) as
-        | Record<string, GroupId[]>
-        | undefined) ?? {},
+    (state) => getSetting(state, props.mappingSetting) ?? {},
   );
 
   const [deletePermissionsGroup] = useDeletePermissionsGroupMutation();
@@ -44,10 +42,24 @@ export function GroupMappingsWidget(props: GroupMappingsWidgetProps) {
     [clearGroupMembership],
   );
   const handleUpdateSetting = useCallback(
-    async (args: { key: string; value: Record<string, GroupId[]> }) => {
-      await dispatch(updateSetting(args));
+    async (args: {
+      key: MappingSettingKey;
+      value: Record<string, GroupId[]>;
+    }) => {
+      await updateSetting(args).unwrap();
+      // For this particular setting we don't need to fully wait for the refetch.
+      // So long as unwrap succeeds, we can update the cache to reflect the new value
+      dispatch(
+        sessionApi.util.updateQueryData(
+          "getSessionProperties",
+          undefined,
+          (draft) => {
+            draft[args.key] = args.value;
+          },
+        ),
+      );
     },
-    [dispatch],
+    [updateSetting, dispatch],
   );
 
   return (

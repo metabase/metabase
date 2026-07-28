@@ -1,18 +1,16 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { Outlet } from "metabase/router";
 
 import { SectionLayout } from "../../components/SectionLayout";
 
-type DependenciesSectionLayoutProps = {
-  children?: ReactNode;
-};
-
-export function DependenciesSectionLayout({
-  children,
-}: DependenciesSectionLayoutProps) {
+export function DependenciesSectionLayout() {
   usePageTitle(t`Dependency graph`);
 
-  return <SectionLayout>{children}</SectionLayout>;
+  return (
+    <SectionLayout>
+      <Outlet />
+    </SectionLayout>
+  );
 }

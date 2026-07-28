@@ -111,10 +111,6 @@
                                 tag-id->transform-ids)]
       (mapv #(assoc % :can_run (get tag-id->can-run (:id %) true)) tags))))
 
-(defmethod serdes/hash-fields :model/TransformTag
-  [_tt]
-  [:name :built_in_type])
-
 (defmethod serdes/make-spec "TransformTag"
   [_model-name _opts]
   {:copy [:entity_id :built_in_type]

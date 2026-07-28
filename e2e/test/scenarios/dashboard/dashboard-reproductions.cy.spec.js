@@ -47,7 +47,7 @@ describe("issue 12578", () => {
 
     // Without tick the dashboard header will not load
     cy.tick();
-    cy.findByLabelText("Auto Refresh").click();
+    H.openDashboardMenu("Auto-refresh");
     H.popover().findByText("1 minute").click();
 
     // Mock slow card request
@@ -841,7 +841,6 @@ describe("issue 31697", () => {
   const segmentDetails = {
     name: "Orders segment",
     description: "All orders with a total under $100.",
-    table_id: ORDERS_ID,
     definition: {
       "source-table": ORDERS_ID,
       aggregation: [["count"]],

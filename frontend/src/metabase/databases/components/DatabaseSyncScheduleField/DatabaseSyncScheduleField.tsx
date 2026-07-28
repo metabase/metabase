@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { SchedulePicker } from "metabase/common/components/SchedulePicker/SchedulePicker";
+import { Schedule, toCronString } from "metabase/common/components/Schedule";
 import { FormField } from "metabase/forms";
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
@@ -38,12 +38,15 @@ const DatabaseSyncScheduleField = ({
 
   return (
     <FormField title={title} description={description}>
-      <SchedulePicker
-        schedule={value ?? DEFAULT_SCHEDULE}
+      <Schedule
+        mt="md"
+        cronString={toCronString(value ?? DEFAULT_SCHEDULE)}
         scheduleOptions={SCHEDULE_OPTIONS}
-        textBeforeInterval={t`Sync`}
+        verb={t`Sync`}
         minutesOnHourPicker
-        onScheduleChange={handleScheduleChange}
+        onScheduleChange={(_cronString, nextSchedule) =>
+          handleScheduleChange(nextSchedule)
+        }
       />
     </FormField>
   );

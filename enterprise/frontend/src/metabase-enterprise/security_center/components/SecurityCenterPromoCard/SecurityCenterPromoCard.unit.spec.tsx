@@ -57,7 +57,7 @@ function setup({
   });
 
   return renderWithProviders(
-    <Route path="*" component={SecurityCenterPromoCard} />,
+    <Route path="*" element={<SecurityCenterPromoCard />} />,
     {
       initialRoute: "/",
       storeInitialState: state,

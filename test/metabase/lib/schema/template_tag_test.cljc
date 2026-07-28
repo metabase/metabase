@@ -60,3 +60,15 @@
                                         {:base-type :type/Text, :lib/uuid "15f3559e-5c7a-4684-9a7a-d906da2eaf61", :effective-type :type/Text}
                                         1]
                          :widget-type  :string/contains}))))
+
+(deftest ^:parallel normalize-template-tags-map-to-list-test
+  (testing "names in the map values need to match keys in the map"
+    (is (=? [{:name         "time-unit"
+              :display-name "id"
+              :type         :temporal-unit
+              :dimension    [:field {:lib/uuid string?} 1]}]
+            (lib/normalize ::lib.schema.template-tag/template-tags
+                           {"time-unit" {:name         "id"
+                                         :display-name "id"
+                                         :type         :temporal-unit
+                                         :dimension    [:field 1]}})))))

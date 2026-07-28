@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 
 import { useSelector } from "metabase/redux";
-import { Navigate } from "metabase/router";
+import { Navigate, Outlet } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 
 /**
@@ -12,7 +12,11 @@ import { getSetting } from "metabase/selectors/settings";
  * `/api/setup` and reloads settings, flipping `has-user-setup` to true midway
  * through the flow. Reading it live would redirect the user out of setup.
  */
-export function RedirectIfSetup({ children }: { children: ReactNode }) {
+export function RedirectIfSetup({
+  children = <Outlet />,
+}: {
+  children?: ReactNode;
+}) {
   const hasUserSetup = useSelector((state) =>
     getSetting(state, "has-user-setup"),
   );

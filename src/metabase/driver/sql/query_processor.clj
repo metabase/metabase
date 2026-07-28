@@ -1621,10 +1621,12 @@
     ;; -> SELECT CASE WHEN ... > ... THEN 1 ELSE 0 END AS \"x\""
   [driver clause & _unique-name-fn]
   (let [{cast-type ::add-cast
-         wrap-in-case? ::wrap-in-case} (driver-api/field-options clause)
+         wrap-in-case? ::wrap-in-case} (driver-api/match-one clause
+                                         [_ (opts :guard :lib/uuid) _] opts ;; mbql5
+                                         [_ _ opts] opts)
         maybe-cast    #(cond-> %
-                         wrap-in-case? (as-> <> (vector ::wrap-in-case <>))
-                         cast-type     (as-> <> (vector ::cast <> cast-type)))
+                         wrap-in-case? (as-> <> (mbql-clause driver ::wrap-in-case <>))
+                         cast-type     (as-> <> (mbql-clause driver ::cast <> cast-type)))
         honeysql-form (->honeysql driver (maybe-cast clause))
         field-alias   (field-clause->alias driver clause)]
     (if field-alias
@@ -2043,7 +2045,6 @@
 
 (defmethod apply-top-level-clause [:sql :joins]
   [driver _ honeysql-form {:keys [joins]}]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (let [f apply-joins-honey-sql-2]
     (f driver honeysql-form joins)))
 
@@ -2085,7 +2086,7 @@
 (defmethod ->honeysql [:sql :metadata/table]
   [driver table]
   ;; `:db` is normally absent on `:metadata/table` — sync doesn't populate it.
-  ;; Workspace remap (and any future cross-DB rewriter) can fill it to route the
+  ;; A cross-DB rewriter can fill it to route the
   ;; query at a database different from the connection's bound one. The
   ;; identifier helper drops nil components, so absent `:db` produces the same
   ;; `schema.table` shape as before.
@@ -2111,7 +2112,9 @@
     {:source-table 0, :breakout 1, ...}"
   (into {} (map-indexed
             #(vector %2 %1)
-            [:source-table :breakout :aggregation :fields :filter :filters :joins :order-by :page :limit])))
+            ;; `:pivot` runs AFTER `:order-by` so it can prepend its `GROUPING(...) ASC` primary sort to the existing
+            ;; ORDER BY entries.
+            [:source-table :breakout :aggregation :fields :filter :filters :joins :order-by :pivot :page :limit])))
 
 (defn- query->keys-in-application-order
   "Return the keys present in an MBQL `inner-query` in the order they should be processed."
@@ -2343,16 +2346,15 @@
 (defmethod driver/compile-transform :sql
   [driver {:keys [query output-db output-table]}]
   (let [{sql-query :query sql-params :params} query
-        ;; If the workspace remap populated `:output-db`, qualify the output
-        ;; table with that DB so the CTAS lands in the iso database. Used by
-        ;; MySQL workspace transforms today — the iso namespace lives at the
+        ;; If `:output-db` is populated, qualify the output table with that DB
+        ;; so the CTAS lands in that database. The target namespace lives at the
         ;; AST `:db` position and the canonical `output-table` is bare.
         ;;
         ;; HoneySQL renders `(keyword ns name)` as ``ns`.`name`` on MySQL — we
         ;; lean on that here. 3-part `:db.:schema.:name` writes (Snowflake / SQL
         ;; Server / BigQuery cross-DB) aren't expressible through this single-
-        ;; keyword shape; when those workspaces land they'll either need
-        ;; `output-table` to carry both qualifiers or a different HoneySQL form.
+        ;; keyword shape; supporting those would need `output-table` to carry
+        ;; both qualifiers or a different HoneySQL form.
         target-id (cond
                     (and (not (str/blank? output-db))
                          (str/blank? (namespace (keyword output-table))))

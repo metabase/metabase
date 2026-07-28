@@ -6,14 +6,14 @@
    have to special-case non-protocol routes."
   (:require
    [clojure.string :as str]
-   [metabase.agent-api.api :as agent-api]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.validation :as mcp.validation]
+   [metabase.metabot.config :as metabot.config]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (defn- mcp-session-id-from-headers
   [request]
@@ -36,24 +36,15 @@
 (def ^:private OptionalFeedbackText
   [:maybe [:string {:max feedback-text-max-length}]])
 
-(defn- rethrow-api-check-exception
-  [e]
-  (when (:status-code (ex-data e))
-    (throw e)))
-
-(defn- submit-mcp-feedback!
-  [body]
-  (let [submitted? (try
-                     (agent-api/submit-mcp-visualization-feedback! body)
-                     (catch clojure.lang.ExceptionInfo e
-                       (rethrow-api-check-exception e)
-                       (log/error e "Failed to submit MCP feedback to Harbormaster")
-                       (api/check false [502 (tru "Could not submit feedback.")]))
-                     (catch Exception e
-                       (log/error e "Failed to submit MCP feedback to Harbormaster")
-                       (api/check false [502 (tru "Could not submit feedback.")])))]
-    (api/check-400 submitted?
-                   (tru "Cannot submit feedback. The license token and/or Store API URL are missing!"))))
+(defn- persist-mcp-feedback!
+  [{:keys [feedback conversation_data]}]
+  (t2/insert! :model/McpFeedback
+              {:user_id           api/*current-user-id*
+               :positive          (:positive feedback)
+               :issue_type        (:issue_type feedback)
+               :freeform_feedback (:freeform_feedback feedback)
+               :prompt            (:prompt conversation_data)
+               :query             (:query conversation_data)}))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/drills"
@@ -71,14 +62,13 @@
 (api.macros/defendpoint :post "/feedback" :- [:map
                                               [:status [:= 204]]
                                               [:body :nil]]
-  "Proxy MCP Apps visualization feedback to Harbormaster."
+  "Persist MCP Apps visualization feedback."
   [_route-params
    _query-params
    body :- [:map
             [:feedback [:map
-                        [:message_id        ms/NonBlankString]
                         [:positive          :boolean]
-                        [:issue_type        {:optional true} [:maybe :string]]
+                        [:issue_type        {:optional true} [:maybe [:string {:max 64}]]]
                         [:freeform_feedback {:optional true} OptionalFeedbackText]]]
             [:conversation_data [:map
                                  [:source [:= "mcp"]]
@@ -87,7 +77,8 @@
    request]
   (let [session-id (mcp-session-id-from-headers request)
         _          (check-session-header! session-id api/*current-user-id*)]
-    (submit-mcp-feedback! body))
+    (metabot.config/check-metabot-enabled!)
+    (persist-mcp-feedback! body))
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

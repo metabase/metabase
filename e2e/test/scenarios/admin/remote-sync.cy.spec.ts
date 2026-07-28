@@ -655,6 +655,26 @@ describe("Remote Sync", () => {
         .click();
       H.collectionTable().findByText(UPDATED_REMOTE_QUESTION_NAME);
     });
+
+    it("keeps the Embed sharing option available for a question in a read-only synced collection (metabase#72752)", () => {
+      H.copySyncedCollectionFixture();
+      H.commitToRepo();
+      // Enable static embedding instance-wide so the Embed option is offered.
+      H.updateSetting("enable-embedding-static", true);
+      H.configureGitAndPullChanges("read-only");
+
+      cy.visit("/");
+
+      H.navigationSidebar()
+        .findByRole("treeitem", { name: /Synced Collection/ })
+        .click();
+      H.collectionTable().findByText(REMOTE_QUESTION_NAME).click();
+
+      // The Embed option stays available on a read-only synced question; the
+      // Publish button inside the modal is disabled instead (unit-tested).
+      H.openSharingMenu();
+      H.sharingMenu().findByText("Embed").should("be.visible");
+    });
   });
 
   describe("shared tenant collections", () => {
