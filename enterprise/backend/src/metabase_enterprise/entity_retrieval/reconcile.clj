@@ -241,8 +241,8 @@
   [conn]
   (u/index-by :doc_id #(select-keys % [:entity_type :entity_local_id])
               (jdbc/execute! conn
-                             [(format "SELECT doc_id, entity_type, entity_local_id FROM \"%s\""
-                                      index-table/*vectors-table*)]
+                             [(format "SELECT doc_id, entity_type, entity_local_id FROM %s"
+                                      (index-table/vectors-table-sql))]
                              {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
 (defn- stored-docs-for-entity
@@ -255,8 +255,8 @@
           (comp (filter #(= target-class (entity-class %)))
                 (map (juxt :doc_id #(select-keys % [:entity_type :entity_local_id]))))
           (jdbc/execute! conn
-                         [(format "SELECT doc_id, entity_type, entity_local_id FROM \"%s\" WHERE entity_local_id = ?"
-                                  index-table/*vectors-table*)
+                         [(format "SELECT doc_id, entity_type, entity_local_id FROM %s WHERE entity_local_id = ?"
+                                  (index-table/vectors-table-sql))
                           entity-local-id]
                          {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
 
@@ -289,7 +289,7 @@
                         docs)]
       (when (seq records)
         (jdbc/execute! conn
-                       (-> (sql.helpers/insert-into (keyword index-table/*vectors-table*))
+                       (-> (sql.helpers/insert-into (keyword (index-table/vectors-table)))
                            (sql.helpers/values (vec records))
                            (sql.helpers/on-conflict :doc_id)
                            (sql.helpers/do-nothing)
@@ -299,7 +299,7 @@
 (defn- delete-rows! [conn doc-ids]
   (when (seq doc-ids)
     (jdbc/execute! conn
-                   (-> (sql.helpers/delete-from (keyword index-table/*vectors-table*))
+                   (-> (sql.helpers/delete-from (keyword (index-table/vectors-table)))
                        (sql.helpers/where [:in :doc_id (vec doc-ids)])
                        (sql/format {:quoted true})))))
 
@@ -316,8 +316,8 @@
         (jdbc/execute-one! conn
                            [(format (str "SELECT count(*) AS documents, "
                                          "count(distinct (entity_type, entity_local_id)) AS entities "
-                                         "FROM \"%s\"")
-                                    index-table/*vectors-table*)]
+                                         "FROM %s")
+                                    (index-table/vectors-table-sql))]
                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     {:documents documents :entities entities}))
 
