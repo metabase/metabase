@@ -104,20 +104,28 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
         .should("have.attr", "aria-selected", "true");
       devToolbarRoot().findByText("No errors captured.").should("be.visible");
 
-      devToolbarRoot().findByRole("tab", { name: /^Blocked/ }).click();
+      devToolbarRoot()
+        .findByRole("tab", { name: /^Blocked/ })
+        .click();
       devToolbarRoot().findByText("Nothing blocked.").should("be.visible");
 
-      devToolbarRoot().findByRole("tab", { name: /^Queries/ }).click();
+      devToolbarRoot()
+        .findByRole("tab", { name: /^Queries/ })
+        .click();
       devToolbarRoot()
         .findByText("No Metabase calls captured.")
         .should("be.visible");
 
-      devToolbarRoot().findByRole("tab", { name: /^Manifest/ }).click();
+      devToolbarRoot()
+        .findByRole("tab", { name: /^Manifest/ })
+        .click();
       devToolbarRoot()
         .findByText("Manifest has not been validated yet.")
         .should("be.visible");
 
-      devToolbarRoot().findByRole("tab", { name: /^Connection/ }).click();
+      devToolbarRoot()
+        .findByRole("tab", { name: /^Connection/ })
+        .click();
       devToolbarRoot()
         .findByText("Connection check has not run yet.")
         .should("be.visible");
@@ -142,7 +150,9 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
         .findByText(/Blocked fetch to/)
         .should("not.exist");
 
-      devToolbarRoot().findByRole("tab", { name: /^Blocked/ }).click();
+      devToolbarRoot()
+        .findByRole("tab", { name: /^Blocked/ })
+        .click();
       devToolbarRoot()
         .findByText(/Blocked fetch to api\.example\.com/)
         .should("be.visible");
@@ -170,7 +180,9 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
 
       mountDevToolbar();
       openDevToolbar();
-      devToolbarRoot().findByRole("tab", { name: /^Queries/ }).click();
+      devToolbarRoot()
+        .findByRole("tab", { name: /^Queries/ })
+        .click();
 
       devToolbarRoot()
         .findByText(/Dev runs with an API key/)
@@ -204,7 +216,9 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
 
       mountDevToolbar();
       openDevToolbar();
-      devToolbarRoot().findByRole("tab", { name: /^Queries/ }).click();
+      devToolbarRoot()
+        .findByRole("tab", { name: /^Queries/ })
+        .click();
 
       // Without the reason the author only learns *that* a query failed, and
       // has to leave the toolbar for the browser's Network tab to find out why.
@@ -238,7 +252,9 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
 
       mountDevToolbar();
       openDevToolbar();
-      devToolbarRoot().findByRole("tab", { name: /^Manifest/ }).click();
+      devToolbarRoot()
+        .findByRole("tab", { name: /^Manifest/ })
+        .click();
 
       // The tab is showing (top row visible); the rest is rendered further down
       // the scrollable panel body, so assert it exists rather than fighting the
@@ -268,7 +284,9 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
 
       mountDevToolbar();
       openDevToolbar();
-      devToolbarRoot().findByRole("tab", { name: /^Connection/ }).click();
+      devToolbarRoot()
+        .findByRole("tab", { name: /^Connection/ })
+        .click();
 
       devToolbarRoot().findByText("http://localhost:3000").should("be.visible");
       devToolbarRoot().findByText("✓").should("exist");
