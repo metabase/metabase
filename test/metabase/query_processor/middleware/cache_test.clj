@@ -340,6 +340,82 @@
         (is (= :cached
                (run-query :cache-strategy strategy)))))))
 
+(deftest early-refresh-test
+  ;; (ttl-strategy) TTL = :multiplier 60 * :avg-execution-ms 1000 = 60 seconds, so the default 10% ratio puts the
+  ;; refresh zone in the last 6 seconds
+  (let [t0 #t "2026-01-01T00:00:00Z[UTC]"]
+    (testing "an entry with most of its window left is served, not refreshed"
+      (with-mock-cache! [save-chan]
+        (mt/with-clock t0
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (mt/with-clock (t/plus t0 (t/seconds 30))
+          (is (= :cached
+                 (run-query))))))
+    (testing "an entry inside the last tenth of its window is refreshed before it can expire"
+      (with-mock-cache! [save-chan]
+        (mt/with-clock t0
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (mt/with-clock (t/plus t0 (t/seconds 57))
+          (is (= :not-cached
+                 (run-query))
+              "the request that wins the lease recomputes rather than serving an entry about to expire")
+          (mt/wait-for-result save-chan))))
+    (testing "a request that loses the early-refresh lease is still served the (fresh) entry"
+      (with-mock-cache! [save-chan]
+        (let [query-hash (qp.util/query-hash (test-query nil))]
+          (mt/with-clock t0
+            (run-query)
+            (mt/wait-for-result save-chan))
+          (mt/with-clock (t/plus t0 (t/seconds 57))
+            (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash (u/minutes->ms 5))))
+            (is (= :cached
+                   (run-query))
+                "only the lease winner pays for the early refresh")))))
+    (testing "early refreshing is off when the ratio is 0"
+      (with-mock-cache! [save-chan]
+        (mt/with-temporary-setting-values [query-caching-early-refresh-ratio 0.0]
+          (mt/with-clock t0
+            (run-query)
+            (mt/wait-for-result save-chan))
+          (mt/with-clock (t/plus t0 (t/seconds 57))
+            (is (= :cached
+                   (run-query)))))))))
+
+(deftest stale-while-revalidate-staleness-is-bounded-test
+  (testing "a lease loser is not served an entry that expired long before the refresh holding the lease started; past
+            that bound it recomputes instead (#78339)"
+    (with-mock-cache! [save-chan]
+      ;; (ttl-strategy) TTL = :multiplier 60 * :avg-execution-ms 1000 = 60 seconds
+      (let [t0         #t "2026-01-01T00:00:00Z[UTC]"
+            query-hash (qp.util/query-hash (test-query nil))]
+        (mt/with-clock t0
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (testing "the entry expired 30 days ago and another process just claimed the refresh lease"
+          (mt/with-clock (t/plus t0 (t/days 30))
+            (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash (u/minutes->ms 5))))
+            (is (= :not-cached
+                   (run-query))
+                "a 30-day-old entry is too stale to serve to the lease loser")))))))
+
+(deftest stale-while-revalidate-within-lease-window-test
+  (testing "a lease loser is still served an entry that only just expired, so concurrent requests don't stampede the
+            warehouse while a refresh is in flight"
+    (with-mock-cache! [save-chan]
+      (let [t0         #t "2026-01-01T00:00:00Z[UTC]"
+            query-hash (qp.util/query-hash (test-query nil))]
+        (mt/with-clock t0
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (testing "the entry expired 1 second ago and another process holds the refresh lease"
+          (mt/with-clock (t/plus t0 (t/seconds 61))
+            (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash (u/minutes->ms 5))))
+            (is (= :cached
+                   (run-query))
+                "just-expired results are fine to serve while the refresh is in flight")))))))
+
 (deftest ignore-valid-results-when-caching-is-disabled-test
   (testing "if caching is disabled then cache shouldn't be used even if there's something valid in there"
     (with-mock-cache! [save-chan]
