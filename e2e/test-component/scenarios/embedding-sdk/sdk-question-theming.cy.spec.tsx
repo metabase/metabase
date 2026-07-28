@@ -78,7 +78,7 @@ describe(
         cy.findByTestId("table-root").should(
           "have.css",
           "background-color",
-          "rgb(12, 28, 39)",
+          "rgb(7, 23, 34)",
         );
 
         cy.findByText(QUESTION_NAME).should(

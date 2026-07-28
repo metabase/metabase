@@ -69,7 +69,7 @@ describe("scenarios > embedding-sdk > guest-embed-theming", () => {
           cy.findByTestId("table-root").should(
             "have.css",
             "background-color",
-            "rgb(12, 28, 39)",
+            "rgb(7, 23, 34)",
           );
 
           cy.findByText("Question for Guest Embed SDK").should(
