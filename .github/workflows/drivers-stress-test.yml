@@ -377,6 +377,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-9-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mysql-latest-ee:
