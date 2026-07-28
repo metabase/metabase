@@ -359,9 +359,7 @@
     [:maybe [:sequential {:description "Editor operations, applied in order as one atomic save."} op-schema]]]])
 
 (def ^:private dashboard-write-entry
-  {:tool-name       "dashboard_write"
-   :update-scope    metabot.scope/agent-dashboard-update
-   :create-required [:name]})
+  {:create-required [:name]})
 
 ;;; ------------------------------------------------- Handler ------------------------------------------------------
 
@@ -420,11 +418,14 @@
   follow-up read is needed. Requires write permission on the dashboard and read permission on every card
   referenced."
   {:name         "dashboard_write"
-   :scope        metabot.scope/agent-dashboard-create
-   :update-scope metabot.scope/agent-dashboard-update
+   :scope        metabot.scope/agent-dashboard-write
+   ;; `archived: true` trashes the dashboard, and `remove`/`remove_tab`/`remove_parameter` drop
+   ;; cards, tabs, and subscriptions — not the additive-only update `destructiveHint false`
+   ;; would assert.
+   :annotations  {:readOnlyHint false :destructiveHint true}
    :args         dashboard-write-args-schema}
-  [args {:keys [token-scopes]}]
-  (let [dispatched (common/dispatch-write dashboard-write-entry token-scopes args)]
+  [args _]
+  (let [dispatched (common/dispatch-write dashboard-write-entry args)]
     (common/success-content
      (projections/project
       :dashboard :concise

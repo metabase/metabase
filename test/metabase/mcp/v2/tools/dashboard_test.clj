@@ -9,7 +9,6 @@
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.dashboard :as tools.dashboard]
-   [metabase.metabot.scope :as metabot.scope]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -140,13 +139,6 @@
         (is (some? (tool-error (call-tool! :rasta nil "dashboard_write"
                                            (wire {:method "update" :id (:id dash) :name "Hacked"})))))
         (is (= "Sales" (t2/select-one-fn :name :model/Dashboard :id (:id dash))))))))
-
-(deftest update-scope-is-rechecked-test
-  (testing "GHY-4147: a token holding only the create scope cannot update"
-    (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
-      (is (some? (tool-error (call-tool! :crowberto #{metabot.scope/agent-dashboard-create}
-                                         "dashboard_write"
-                                         (wire {:method "update" :id (:id dash) :name "New"}))))))))
 
 (deftest parameter-ops-accept-json-shapes-test
   (testing "GHY-4147: a parameter's JSON-shaped properties are coerced to the shape the REST save stores"
