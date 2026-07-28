@@ -1511,10 +1511,16 @@
                             can-write-metadata? (filter mi/can-write?))
          hydration-keys   (cond-> []
                             (premium-features/any-transforms-enabled?)   (conj :transform)
-                            include-measures? (conj :measures))]
-     (if (seq hydration-keys)
-       (apply t2/hydrate filtered-tables hydration-keys)
-       filtered-tables))))
+                            include-measures? (conj :measures))
+         hydrated-tables  (if (seq hydration-keys)
+                            (apply t2/hydrate filtered-tables hydration-keys)
+                            filtered-tables)]
+     ;; hydration is permission-free; gate the hydrated Measures with their own can-read? (the already-fetched
+     ;; parent table is passed along to avoid re-fetching it per row)
+     (cond->> hydrated-tables
+       include-measures? (mapv (fn [table]
+                                 (update table :measures
+                                         (partial filterv #(mi/can-read? (assoc % :table table))))))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API

@@ -17,14 +17,17 @@
    [metabase.graph.core :as graph]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.measures.models.measure :as measure]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
+   [metabase.segments.models.segment :as segment]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]
    [toucan2.util :as t2.util]))
 
@@ -203,9 +206,10 @@
   - Collection-based (:model/Card, :model/Dashboard, :model/Document, :model/NativeQuerySnippet):
     Uses collection/visible-collection-filter-clause for collection filtering and adds archived entity filtering.
     Native query snippets have additional restrictions for sandboxed users.
-  - Table: Uses perms/visible-table-filter-select with appropriate permissions. Tables are NOT filtered by
-    active/visibility_type regardless of `include-archived-items`, so dependencies broken by dropped or
-    hidden tables stay visible.
+  - Table: Uses table/visible-filter-clause, the SQL counterpart of `mi/can-read? :model/Table`. Tables are NOT
+    filtered by active/visibility_type regardless of `include-archived-items`, so dependencies broken by dropped
+    or hidden tables stay visible.
+  - Segment/Measure: their entity visible-filter-clauses (the SQL counterparts of their can-read?).
   - Transform: Analysts can view any transform they have source view permission to."
   ([entity-type-field entity-id-field]
    (visible-entities-filter-clause entity-type-field entity-id-field nil))
@@ -266,22 +270,17 @@
                                                            :only [:= archived-column true]
                                                            :all nil)]}]]))
 
-                     ;; Table with visible-filter-clause; inactive/hidden tables are always included
-                     ;; so that dependencies broken by dropped tables stay visible
+                     ;; Table readability via table/visible-filter-clause; inactive/hidden tables are always
+                     ;; included so that dependencies broken by dropped tables stay visible
                      :model/Table
                      [:and
                       [:= entity-type-field (name entity-type)]
                       [:in entity-id-field {:select [:id]
                                             :from   [table-name]
-                                            :where  [:in id-column
-                                                     (perms/visible-table-filter-select
-                                                      :id
-                                                      {:user-id       api/*current-user-id*
-                                                       :is-superuser? api/*is-superuser?*}
-                                                      {:perms/view-data      :unrestricted
-                                                       :perms/create-queries :query-builder})]}]]
+                                            :where  [:and (table/visible-filter-clause id-column)]}]]
 
-                     ;; Segment/Measure with table permissions and archived filtering
+                     ;; Segment/Measure readability via their entity visible-filter-clauses (their can-read?
+                     ;; counterparts), plus archived filtering
                      (:model/Segment :model/Measure)
                      (let [archived-column (keyword (name table-name) "archived")
                            table-id-column (keyword (name table-name) "table_id")]
@@ -290,20 +289,9 @@
                         [:in entity-id-field {:select [:id]
                                               :from   [table-name]
                                               :where  [:and
-                                                       ;; Check that user can see the table this entity belongs to
-                                                       [:in table-id-column
-                                                        {:select [:metabase_table.id]
-                                                         :from   [:metabase_table]
-                                                         ;; using this clause because we had to change the mi/visible-filter-clause
-                                                         ;; to allow returning CTE based filters
-                                                         ;; TODO(ed 2025-12-16: support using CTES in filters in dependency graph)
-                                                         :where  [:in :metabase_table.id
-                                                                  (perms/visible-table-filter-select
-                                                                   :id
-                                                                   {:user-id       api/*current-user-id*
-                                                                    :is-superuser? api/*is-superuser?*}
-                                                                   {:perms/view-data      :unrestricted
-                                                                    :perms/create-queries :query-builder})]}]
+                                                       (if (= model :model/Segment)
+                                                         (segment/visible-filter-clause table-id-column)
+                                                         (measure/visible-filter-clause table-id-column))
                                                        ;; Filter by archived status
                                                        (case include-archived-items
                                                          :exclude [:= archived-column false]

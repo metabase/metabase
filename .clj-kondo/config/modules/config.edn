@@ -1276,7 +1276,7 @@
 
   measures
   {:team "Graphy"
-   :api  #{metabase.measures.api}
+   :api  #{metabase.measures.api metabase.measures.models.measure}
    :uses #{api
            events
            lib
@@ -2055,8 +2055,7 @@
 
   segments
   {:team "Graphy"
-   :api  #{metabase.segments.api
-           metabase.segments.schema}
+   :api  #{metabase.segments.api metabase.segments.models.segment metabase.segments.schema}
    :uses #{api
            events
            lib
@@ -3177,6 +3176,7 @@
            graph
            lib
            lib-be
+           measures
            models
            permissions
            premium-features
@@ -3184,12 +3184,14 @@
            query-processor
            request
            revisions
+           segments
            settings
            sql-tools
            task
            transforms
            transforms-base
-           util}
+           util
+           warehouse-schema}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard

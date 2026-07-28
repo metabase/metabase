@@ -592,8 +592,10 @@
     (when-not row
       (throw (ex-info (format "%s %s not found" (name kind) id)
                       {:agent-error? true :status-code 404})))
-    ;; Measure/segment perms delegate to the parent Table, so read-checking it gates access.
-    (let [table     (api/read-check :model/Table (:table_id row))
+    ;; Read-check the Measure/Segment itself (today that delegates to its parent Table, but the entity is what we
+    ;; are exposing, and its read policy may diverge from the Table's).
+    (api/read-check row)
+    (let [table     (t2/select-one :model/Table :id (:table_id row))
           db-id     (:db_id table)
           mp        (lib-be/application-database-metadata-provider db-id)
           database  (lib.metadata/database mp)
