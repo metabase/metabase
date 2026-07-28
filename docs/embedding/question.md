@@ -53,9 +53,7 @@ To keep an embed alive after its token expires, configure a token endpoint with 
 
 #### View-only chart example with web components
 
-Say you have a question written in SQL, with a field filter to filter orders by `user_id`. You want to embed the question, and filter the orders that people see based on their user ID.
-
-Here's the question.
+Say you have a question written in SQL, with a field filter to filter orders by `user_id`: Here's the question.
 
 ```sql
 {% raw %}
@@ -68,7 +66,7 @@ WHERE
 {% endraw %}
 ```
 
-Here's the frontend code. This example includes a theme that defines the chart's appearance.
+Now say you want to embed this question, and filter the orders that people see based on their user ID. Here's the frontend code. This example includes a theme that defines the chart's appearance.
 
 ```html
 <script defer src="https://your-metabase.example.com/app/embed.js"></script>
@@ -124,7 +122,7 @@ Fetch the JWT token from your backend and programmatically pass it to the 'metab
 </metabase-question>
 ```
 
-On the server side, you set the value for the locked parameter in the token, so people can't see or change it. That way you can show user 13 a question filtered to just the orders placed by user 13.
+On your app's server, set the value for the locked parameter in the token, so people viewing the embed can't see or change the value. That way you can show user 13 a question filtered to just the orders placed by user 13.
 
 ```js
 // you will need to install via 'npm install jsonwebtoken' or in your package.json
@@ -152,11 +150,7 @@ You can generate the above code using the in-app wizard. Set the `user_id` param
 
 For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
 
-For the full list of attributes, see [Question attributes](#question-attributes).
-
-#### The "Powered by Metabase" banner
-
-Metabase adds a "Powered by Metabase" banner to guest embeds (both charts and dashboards) on the OSS and Starter plans. To remove the banner, upgrade to a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
+For the full list of attributes, see [chart component attributes](#chart-attributes).
 
 ### View-only charts using the React SDK
 
@@ -178,7 +172,7 @@ The component has a default height, which you can change with the `height` prop.
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
-An interactive chart lets people explore their data: they can drill through the chart, filter results, summarize and group them, and optionally save their changes. With SSO, people can self-serve their data (which means less work for you building bespoke charts).
+An interactive chart lets people explore their data: they can drill through the chart, filter results, summarize and group them, an optionally save their changes. 
 
 - [Web components](#interactive-charts-using-a-web-component)
 - [React SDK](#interactive-charts-using-the-react-sdk)
@@ -201,54 +195,6 @@ Use `InteractiveQuestion` when you want people to explore their data and customi
 
 ```typescript
 {% include_file "{{ dirname }}/sdk/snippets/questions/interactive-question.tsx" %}
-```
-
-#### `InteractiveQuestion` props
-
-{% include_file "{{ dirname }}/sdk/api/snippets/InteractiveQuestionProps.md" snippet="properties" %}
-
-#### `InteractiveQuestion` components
-
-These components are available via the `InteractiveQuestion` namespace (like `<InteractiveQuestion.Filter />`). Use them to [customize the layout](#customize-the-layout) of an interactive question.
-
-- [InteractiveQuestion.AlertsButton](./sdk/api/InteractiveQuestion.html#alertsbutton)
-- [InteractiveQuestion.Breakout](./sdk/api/InteractiveQuestion.html#breakout)
-- [InteractiveQuestion.BreakoutDropdown](./sdk/api/InteractiveQuestion.html#breakoutdropdown)
-- [InteractiveQuestion.ChartTypeDropdown](./sdk/api/InteractiveQuestion.html#charttypedropdown)
-- [InteractiveQuestion.ChartTypeSelector](./sdk/api/InteractiveQuestion.html#charttypeselector)
-- [InteractiveQuestion.DownloadWidget](./sdk/api/InteractiveQuestion.html#downloadwidget)
-- [InteractiveQuestion.DownloadWidgetDropdown](./sdk/api/InteractiveQuestion.html#downloadwidgetdropdown)
-- [InteractiveQuestion.Editor](./sdk/api/InteractiveQuestion.html#editor)
-- [InteractiveQuestion.EditorButton](./sdk/api/InteractiveQuestion.html#editorbutton)
-- [InteractiveQuestion.Filter](./sdk/api/InteractiveQuestion.html#filter)
-- [InteractiveQuestion.FilterDropdown](./sdk/api/InteractiveQuestion.html#filterdropdown)
-- [InteractiveQuestion.NavigationBackButton](./sdk/api/InteractiveQuestion.html#navigationbackbutton)
-- [InteractiveQuestion.QuestionSettings](./sdk/api/InteractiveQuestion.html#questionsettings)
-- [InteractiveQuestion.QuestionSettingsDropdown](./sdk/api/InteractiveQuestion.html#questionsettingsdropdown)
-- [InteractiveQuestion.QuestionVisualization](./sdk/api/InteractiveQuestion.html#questionvisualization)
-- [InteractiveQuestion.ResetButton](./sdk/api/InteractiveQuestion.html#resetbutton)
-- [InteractiveQuestion.SaveButton](./sdk/api/InteractiveQuestion.html#savebutton)
-- [InteractiveQuestion.SaveQuestionForm](./sdk/api/InteractiveQuestion.html#savequestionform)
-- [InteractiveQuestion.SqlParametersList](./sdk/api/InteractiveQuestion.html#sqlparameterslist)
-- [InteractiveQuestion.Summarize](./sdk/api/InteractiveQuestion.html#summarize)
-- [InteractiveQuestion.SummarizeDropdown](./sdk/api/InteractiveQuestion.html#summarizedropdown)
-- [InteractiveQuestion.Title](./sdk/api/InteractiveQuestion.html#title)
-- [InteractiveQuestion.VisualizationButton](./sdk/api/InteractiveQuestion.html#visualizationbutton)
-
-[InteractiveQuestion.BackButton](./sdk/api/InteractiveQuestion.html#backbutton) is deprecated. Use `InteractiveQuestion.NavigationBackButton` instead.
-
-#### Customize the layout
-
-By default, `InteractiveQuestion` comes with a layout that lets people view the question, apply filters and aggregations, and use the query builder:
-
-```typescript
-{% include_file "{{ dirname }}/sdk/snippets/questions/customize-interactive-question.tsx" snippet="example-default-interactive-question" %}
-```
-
-To build your own layout, use namespaced components inside `InteractiveQuestion` (like `<InteractiveQuestion.Filter />`):
-
-```typescript
-{% include_file "{{ dirname }}/sdk/snippets/questions/customize-interactive-question.tsx" snippet="example-customized-interactive-question" %}
 ```
 
 #### Customize what happens when someone clicks on a chart
@@ -283,6 +229,53 @@ To prevent people from saving changes (or saving as a new question), set `isSave
 ```
 
 In the embed wizard, this corresponds to the **Allow people to save new questions** option.
+
+#### `InteractiveQuestion` props
+
+{% include_file "{{ dirname }}/sdk/api/snippets/InteractiveQuestionProps.md" snippet="properties" %}
+
+#### Customize the layout of an interactive chart
+
+By default, `InteractiveQuestion` comes with a layout that lets people view the question, apply filters and aggregations, and use the query builder:
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/questions/customize-interactive-question.tsx" snippet="example-default-interactive-question" %}
+```
+
+To build your own layout, use namespaced components inside `InteractiveQuestion` (like `<InteractiveQuestion.Filter />`):
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/questions/customize-interactive-question.tsx" snippet="example-customized-interactive-question" %}
+```
+#### `InteractiveQuestion` components
+
+These components are available via the `InteractiveQuestion` namespace (like `<InteractiveQuestion.Filter />`). Use them to [customize the layout](#customize-the-layout) of an interactive question.
+
+- [InteractiveQuestion.AlertsButton](./sdk/api/InteractiveQuestion.html#alertsbutton)
+- [InteractiveQuestion.Breakout](./sdk/api/InteractiveQuestion.html#breakout)
+- [InteractiveQuestion.BreakoutDropdown](./sdk/api/InteractiveQuestion.html#breakoutdropdown)
+- [InteractiveQuestion.ChartTypeDropdown](./sdk/api/InteractiveQuestion.html#charttypedropdown)
+- [InteractiveQuestion.ChartTypeSelector](./sdk/api/InteractiveQuestion.html#charttypeselector)
+- [InteractiveQuestion.DownloadWidget](./sdk/api/InteractiveQuestion.html#downloadwidget)
+- [InteractiveQuestion.DownloadWidgetDropdown](./sdk/api/InteractiveQuestion.html#downloadwidgetdropdown)
+- [InteractiveQuestion.Editor](./sdk/api/InteractiveQuestion.html#editor)
+- [InteractiveQuestion.EditorButton](./sdk/api/InteractiveQuestion.html#editorbutton)
+- [InteractiveQuestion.Filter](./sdk/api/InteractiveQuestion.html#filter)
+- [InteractiveQuestion.FilterDropdown](./sdk/api/InteractiveQuestion.html#filterdropdown)
+- [InteractiveQuestion.NavigationBackButton](./sdk/api/InteractiveQuestion.html#navigationbackbutton)
+- [InteractiveQuestion.QuestionSettings](./sdk/api/InteractiveQuestion.html#questionsettings)
+- [InteractiveQuestion.QuestionSettingsDropdown](./sdk/api/InteractiveQuestion.html#questionsettingsdropdown)
+- [InteractiveQuestion.QuestionVisualization](./sdk/api/InteractiveQuestion.html#questionvisualization)
+- [InteractiveQuestion.ResetButton](./sdk/api/InteractiveQuestion.html#resetbutton)
+- [InteractiveQuestion.SaveButton](./sdk/api/InteractiveQuestion.html#savebutton)
+- [InteractiveQuestion.SaveQuestionForm](./sdk/api/InteractiveQuestion.html#savequestionform)
+- [InteractiveQuestion.SqlParametersList](./sdk/api/InteractiveQuestion.html#sqlparameterslist)
+- [InteractiveQuestion.Summarize](./sdk/api/InteractiveQuestion.html#summarize)
+- [InteractiveQuestion.SummarizeDropdown](./sdk/api/InteractiveQuestion.html#summarizedropdown)
+- [InteractiveQuestion.Title](./sdk/api/InteractiveQuestion.html#title)
+- [InteractiveQuestion.VisualizationButton](./sdk/api/InteractiveQuestion.html#visualizationbutton)
+
+[InteractiveQuestion.BackButton](./sdk/api/InteractiveQuestion.html#backbutton) is deprecated. Use `InteractiveQuestion.NavigationBackButton` instead.
 
 ## Embed the query builder
 
@@ -360,7 +353,7 @@ You can pass values to a question's [SQL parameters](../questions/native-editor/
 
 > SQL parameters only work with native SQL questions, not query-builder questions.
 
-### With the SDK
+### Controling parameters with the SDK
 
 `initialSqlParameters` sets the values once on load (uncontrolled). Your app won't know when people change them:
 
@@ -376,7 +369,7 @@ You can pass values to a question's [SQL parameters](../questions/native-editor/
 
 `onSqlParametersChange` receives the [SQL question parameter change payload](./parameters.md#sql-question-parameter-change-payload). For how values are resolved (clearing, defaults, missing slugs), see [Modular embedding parameters](./parameters.md#how-parameter-values-are-resolved).
 
-### With web components
+### Controlling parameters with web components
 
 Seed values once with the `initial-sql-parameters` attribute:
 
@@ -409,7 +402,7 @@ Alerts created in an embedded context only send to the logged-in user and exclud
 </MetabaseProvider>
 ```
 
-## Question attributes
+## Chart attributes
 
 {% include_file "{{ dirname }}/eajs/snippets/MetabaseQuestionAttributes.md" snippet="properties" %}
 
@@ -439,6 +432,10 @@ You can theme an embedded question and toggle parts of its UI. For the full set 
 ```
 
 Colors set in a question's visualization settings override theme colors.
+
+### The "Powered by Metabase" banner
+
+Metabase adds a "Powered by Metabase" banner to guest embeds (both charts and dashboards) on the OSS and Starter plans. To remove the banner, upgrade to a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
 
 ## Further reading
 
