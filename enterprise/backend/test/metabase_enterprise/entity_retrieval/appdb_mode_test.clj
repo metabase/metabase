@@ -94,6 +94,9 @@
                 (is (identical? app-db ds) "app-db mode shares the application pool")
                 ;; an index built before the schema existed, standing in for an upgrading instance. Its
                 ;; rows must survive: rebuilding instead would re-embed the whole library.
+                ;; ensure-tables! installs the extension, but this table predates that call and its
+                ;; vector(4) column needs the type to exist already
+                (jdbc/execute! app-db ["CREATE EXTENSION IF NOT EXISTS vector"])
                 (jdbc/execute! app-db ["CREATE TABLE library_entity_index
                                         (doc_id text primary key, entity_type text, entity_local_id bigint,
                                          doc_type text, doc_text text, doc_embedding vector(4))"])

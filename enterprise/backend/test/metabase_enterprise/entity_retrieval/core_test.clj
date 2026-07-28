@@ -142,7 +142,10 @@
         (mt/with-premium-features #{:library :library-retrieval}
           (is (true? (entity-retrieval.core/available?)))))
       (testing "no dedicated URL: the app db serves when it can host pgvector"
-        (with-redefs [semantic.db.datasource/db-url nil]
+        ;; the schema probe is Postgres-only SQL, so leaving it live would read as unusable on the H2 and
+        ;; MySQL app-db runs -- the mode is what this case is about
+        (with-redefs [semantic.db.datasource/db-url                nil
+                      entity-retrieval.core/app-db-schema-usable?  (constantly true)]
           (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :app-db)]
             (mt/with-premium-features #{:library :library-retrieval}
               (is (true? (entity-retrieval.core/available?)))))
