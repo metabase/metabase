@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   readFileSync,
   rmSync,
@@ -15,12 +16,13 @@ import { gunzipSync } from "node:zlib";
 import { extract as tarExtract } from "tar-stream";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-const CLI_PATH = join(__dirname, "..", "dist", "cli.js");
-const PACK_PATH = join(__dirname, "..", "dist", "pack.js");
+import {
+  MAX_COMPRESSED_BYTES,
+  MAX_UNCOMPRESSED_BYTES,
+  packPlugin,
+} from "./pack";
 
-// Kept in sync with the limits in pack.mjs.
-const MAX_COMPRESSED_BYTES = 5 * 1024 * 1024;
-const MAX_UNCOMPRESSED_BYTES = 25 * 1024 * 1024;
+const CLI_PATH = join(__dirname, "..", "dist", "cli.js");
 
 // The scaffolded project's name and version, which name the archive.
 const TGZ_NAME = "my-viz-0.0.1.tgz";
@@ -48,16 +50,6 @@ function editJson(file: string, edit: (json: Record<string, unknown>) => void) {
   const json = JSON.parse(readFileSync(path, "utf-8"));
   edit(json);
   writeFileSync(path, JSON.stringify(json, null, 2));
-}
-
-/** Runs pack.mjs against the scaffolded project, the way the CLI does. */
-function runPack(): string {
-  return execFileSync("node", [PACK_PATH], {
-    cwd: projectDir,
-    encoding: "utf-8",
-    // Pipe stderr so failing-path assertions don't print stack traces.
-    stdio: ["ignore", "pipe", "pipe"],
-  });
 }
 
 async function readTgz(path: string): Promise<Entry[]> {
@@ -98,18 +90,20 @@ afterEach(async () => {
 });
 
 describe("pack", () => {
-  it("writes <name>-<version>.tgz into the working directory", () => {
+  it("writes <name>-<version>.tgz into the project directory", async () => {
     buildProject();
 
-    const stdout = runPack();
+    const result = await packPlugin(projectDir);
 
-    expect(stdout).toContain(join(projectDir, TGZ_NAME));
-    expect(stdout).toContain("Packed ");
+    expect(result.outPath).toBe(join(projectDir, TGZ_NAME));
+    expect(existsSync(result.outPath)).toBe(true);
+    expect(result.compressedBytes).toBeGreaterThan(0);
+    expect(result.uncompressedBytes).toBeGreaterThan(result.compressedBytes);
   });
 
   it("packs the manifest, the bundle, and the icon", async () => {
     buildProject();
-    runPack();
+    await packPlugin(projectDir);
 
     const entries = await readTgz(join(projectDir, TGZ_NAME));
 
@@ -127,12 +121,10 @@ describe("pack", () => {
     }
   });
 
-  it("leaves out files the icon doesn't cover", async () => {
-    // The icon is the only asset Metabase serves, so nothing else in
-    // dist/assets/ belongs in the archive.
+  it("leaves out extraneous assets", async () => {
     buildProject();
     writeFileSync(join(projectDir, "dist", "assets", "extra.svg"), "<svg />");
-    runPack();
+    await packPlugin(projectDir);
 
     const entries = await readTgz(join(projectDir, TGZ_NAME));
 
@@ -141,59 +133,63 @@ describe("pack", () => {
     );
   });
 
-  it("rejects a project without a manifest", () => {
+  it("rejects a project without a manifest", async () => {
     buildProject();
     rmSync(join(projectDir, "metabase-plugin.json"));
 
-    expect(runPack).toThrow(
+    await expect(packPlugin(projectDir)).rejects.toThrow(
       "metabase-plugin.json not found at the project root.",
     );
   });
 
-  it("rejects a manifest without a name", () => {
+  it("rejects a manifest without a name", async () => {
     buildProject();
     editJson("metabase-plugin.json", (manifest) => delete manifest.name);
 
-    expect(runPack).toThrow('metabase-plugin.json is missing a "name" field.');
+    await expect(packPlugin(projectDir)).rejects.toThrow(
+      'metabase-plugin.json is missing a "name" field.',
+    );
   });
 
-  it("rejects a project that has not been built", () => {
-    expect(runPack).toThrow(
+  it("rejects a project that has not been built", async () => {
+    await expect(packPlugin(projectDir)).rejects.toThrow(
       'dist/index.js not found. Run "npm run build" first.',
     );
   });
 
-  it("rejects a package.json without a version", () => {
+  it("rejects a package.json without a version", async () => {
     buildProject();
     editJson("package.json", (pkg) => delete pkg.version);
 
-    expect(runPack).toThrow('package.json is missing a "version" field.');
+    await expect(packPlugin(projectDir)).rejects.toThrow(
+      'package.json is missing a "version" field.',
+    );
   });
 
-  it("rejects an icon missing from dist/assets/", () => {
+  it("rejects an icon missing from dist/assets/", async () => {
     buildProject();
     rmSync(join(projectDir, "dist", "assets", "icon.svg"));
 
-    expect(runPack).toThrow(
+    await expect(packPlugin(projectDir)).rejects.toThrow(
       'Asset "icon.svg" declared in metabase-plugin.json but missing from dist/assets/.',
     );
   });
 
-  it("rejects a bundle over the uncompressed limit", () => {
+  it("rejects a bundle over the uncompressed limit", async () => {
     // Zeros compress to almost nothing, so only the uncompressed check trips.
     buildProject(Buffer.alloc(MAX_UNCOMPRESSED_BYTES + 1024));
 
-    expect(runPack).toThrow(
+    await expect(packPlugin(projectDir)).rejects.toThrow(
       `exceeds limit of ${formatMiB(MAX_UNCOMPRESSED_BYTES)}`,
     );
   });
 
-  it("rejects a bundle over the compressed limit", () => {
+  it("rejects a bundle over the compressed limit", async () => {
     // Random bytes are incompressible, so the archive stays under the
     // uncompressed limit while blowing past the compressed one.
     buildProject(randomBytes(MAX_COMPRESSED_BYTES + 1024 * 1024));
 
-    expect(runPack).toThrow(
+    await expect(packPlugin(projectDir)).rejects.toThrow(
       `exceeds limit of ${formatMiB(MAX_COMPRESSED_BYTES)}`,
     );
   });

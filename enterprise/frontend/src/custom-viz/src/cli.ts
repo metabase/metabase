@@ -2,16 +2,15 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 /* eslint-disable no-console */
 
-import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { Command } from "commander";
 
 import { version } from "../package.json";
 
+import { packPlugin } from "./pack";
 import {
   generateGitignore,
   generateIconSvg,
@@ -102,15 +101,20 @@ program
   .command("pack")
   .description("Package a built visualization into an upload-ready .tgz")
   .option("--dir <dir>", "Project directory", ".")
-  .action((options: { dir: string }) => {
-    const script = fileURLToPath(
-      new URL(/* @vite-ignore */ "./pack.js", import.meta.url),
-    );
-    const { status } = spawnSync(process.execPath, [script], {
-      cwd: resolve(process.cwd(), options.dir),
-      stdio: "inherit",
-    });
-    process.exit(status ?? 1);
+  .action(async (options: { dir: string }) => {
+    try {
+      const { outPath, compressedBytes } = await packPlugin(
+        resolve(process.cwd(), options.dir),
+      );
+      console.log(
+        `Packed ${outPath} (${(compressedBytes / 1024).toFixed(1)} KiB)`,
+      );
+    } catch (error) {
+      console.error(
+        `Error: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      process.exit(1);
+    }
   });
 
 program.parse();

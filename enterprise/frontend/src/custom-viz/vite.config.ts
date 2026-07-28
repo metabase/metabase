@@ -17,7 +17,6 @@ export default defineConfig({
       entry: {
         cli: resolve(__dirname, "src/cli.ts"),
         index: resolve(__dirname, "src/index.ts"),
-        pack: resolve(__dirname, "src/pack.mjs"),
       },
       formats: ["es"],
     },
