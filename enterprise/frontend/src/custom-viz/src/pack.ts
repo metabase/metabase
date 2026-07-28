@@ -15,18 +15,21 @@ export const MAX_UNCOMPRESSED_BYTES = 25 * 1024 * 1024;
 
 export async function packPlugin(dir: string = process.cwd()) {
   const projectRoot = resolve(dir);
-
   const manifestPath = resolve(projectRoot, "metabase-plugin.json");
+
   if (!existsSync(manifestPath)) {
     throw new Error("metabase-plugin.json not found at the project root.");
   }
+
   const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
   const name = manifest.name?.trim();
+
   if (!name) {
     throw new Error('metabase-plugin.json is missing a "name" field.');
   }
 
   const bundlePath = resolve(projectRoot, "dist/index.js");
+
   if (!existsSync(bundlePath)) {
     throw new Error('dist/index.js not found. Run "npm run build" first.');
   }
@@ -35,6 +38,7 @@ export async function packPlugin(dir: string = process.cwd()) {
     readFileSync(resolve(projectRoot, "package.json"), "utf-8"),
   );
   const version = pkg.version?.trim();
+
   if (!version) {
     throw new Error('package.json is missing a "version" field.');
   }
@@ -48,39 +52,45 @@ export async function packPlugin(dir: string = process.cwd()) {
 
   const tar = tarPack();
   const mtime = new Date();
-  const addEntry = (path: string, content: Buffer) =>
-    tar.entry(
+  const addEntry = (path: string, content: Buffer) => {
+    return tar.entry(
       { name: path, size: content.length, mtime, mode: 0o644 },
       content,
     );
+  };
 
   addEntry("metabase-plugin.json", readFileSync(manifestPath));
   addEntry("dist/index.js", readFileSync(bundlePath));
+
   for (const assetName of assetNames) {
     const assetPath = resolve(projectRoot, "dist/assets", assetName);
+
     if (!existsSync(assetPath)) {
       throw new Error(
         `Asset "${assetName}" declared in metabase-plugin.json but missing from dist/assets/.`,
       );
     }
+
     addEntry(`dist/assets/${assetName}`, readFileSync(assetPath));
   }
+
   tar.finalize();
 
   const tarChunks = [];
+
   for await (const chunk of tar) {
     tarChunks.push(chunk);
   }
+
   const tarBuffer = Buffer.concat(tarChunks);
   const tgz = gzipSync(tarBuffer);
 
-  const formatMiB = (bytes: number) =>
-    `${(bytes / 1024 / 1024).toFixed(2)} MiB`;
   if (tarBuffer.length > MAX_UNCOMPRESSED_BYTES) {
     throw new Error(
       `Uncompressed bundle is ${formatMiB(tarBuffer.length)}, exceeds limit of ${formatMiB(MAX_UNCOMPRESSED_BYTES)}.`,
     );
   }
+
   if (tgz.length > MAX_COMPRESSED_BYTES) {
     throw new Error(
       `Compressed bundle is ${formatMiB(tgz.length)}, exceeds limit of ${formatMiB(MAX_COMPRESSED_BYTES)}.`,
@@ -95,4 +105,8 @@ export async function packPlugin(dir: string = process.cwd()) {
     compressedBytes: tgz.length,
     uncompressedBytes: tarBuffer.length,
   };
+}
+
+function formatMiB(bytes: number) {
+  return `${(bytes / 1024 / 1024).toFixed(2)} MiB`;
 }
