@@ -135,6 +135,7 @@ export function useModelsAndOption(
 
   const markedTimelineEventIds = useMemo(() => {
     if (
+      card.display === "bar" ||
       hoveredTimelineEventIds == null ||
       hoveredTimelineEventIds.length === 0
     ) {
@@ -143,7 +144,7 @@ export function useModelsAndOption(
     return [
       ...new Set([...selectedTimelineEventIds, ...hoveredTimelineEventIds]),
     ];
-  }, [selectedTimelineEventIds, hoveredTimelineEventIds]);
+  }, [selectedTimelineEventIds, hoveredTimelineEventIds, card.display]);
 
   const option = useMemo(() => {
     if (width === 0 || height === 0) {
