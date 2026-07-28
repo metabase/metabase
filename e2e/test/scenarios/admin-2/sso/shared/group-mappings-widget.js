@@ -1,5 +1,3 @@
-import { popover } from "e2e/support/helpers";
-
 export function crudGroupMappingsWidget(authenticationMethod) {
   cy.visit("/admin/settings/authentication/" + authenticationMethod);
   cy.wait("@getSettings");
@@ -51,16 +49,22 @@ export function checkGroupConsistencyAfterDeletingMappings(
 
   deleteMappingWithGroups("cn=People2");
 
-  // cn=People1 will have Admin and nosql as groups
-  cy.findByText("1 other group");
-
-  // cn=People3 will have readonly as group
-  cy.findByText("readonly");
+  // Scope to the table: the group dropdown is portaled and stays mounted
+  // (hidden) after being opened, so a group name can also linger as an
+  // off-screen option outside the table.
+  cy.findByTestId("admin-content-table").within(() => {
+    // cn=People1 will have Admin and nosql as groups
+    cy.findByText("1 other group");
+    // cn=People3 will have readonly as group
+    cy.findByText("readonly");
+  });
 
   // Ensure mappings are as expected after a page reload
   cy.visit("/admin/settings/authentication/" + authenticationMethod);
-  cy.findByText("1 other group");
-  cy.findByText("readonly");
+  cy.findByTestId("admin-content-table").within(() => {
+    cy.findByText("1 other group");
+    cy.findByText("readonly");
+  });
 }
 
 const deleteMappingWithGroups = (mappingName) => {
@@ -76,7 +80,7 @@ const deleteMappingWithGroups = (mappingName) => {
 
 const createMapping = (name) => {
   cy.button("New mapping").click();
-  cy.findByLabelText("new-group-mapping-name-input").type(name);
+  cy.findByLabelText("New group mapping name").type(name);
   cy.button("Add").click();
 };
 
@@ -88,15 +92,11 @@ const addGroupsToMapping = (mappingName, groups) => {
     });
 
   groups.forEach((group) => {
-    popover().within(() => {
-      cy.findByText(group).click();
-
-      cy.findByText(group)
-        .closest("[data-element-id=list-section]")
-        .within(() => {
-          cy.icon("check");
-        });
-    });
+    cy.findByRole("option", { name: group }).click();
+    // Wait for the selection to round-trip before picking the next group
+    cy.findByRole("option", { name: group })
+      .find("input[type=checkbox]")
+      .should("be.checked");
   });
 
   cy.realPress("{esc}");
