@@ -41,7 +41,7 @@ const PAGE_SIZE = 20;
 
 const COLUMN_WIDTHS = [0.22, 0.16, 0.28, 0.14, 0.14, 0.06];
 
-export function ModelCacheRefreshJobs() {
+export function ModelPersistenceLogJobs() {
   const dispatch = useDispatch();
   const [refreshModelCache] = useRefreshModelCacheMutation();
   const { page, handleNextPage, handlePreviousPage } = usePagination();
@@ -97,7 +97,7 @@ export function ModelCacheRefreshJobs() {
         mih={0}
         p={0}
         withBorder
-        data-testid="model-cache-logs"
+        data-testid="model-persistence-log-jobs"
       >
         {isLoading ? (
           <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
@@ -105,9 +105,11 @@ export function ModelCacheRefreshJobs() {
           <TreeTable
             instance={treeTableInstance}
             hierarchical={false}
-            ariaLabel={t`Model caching log`}
+            ariaLabel={t`Model persistence log`}
             emptyState={<MonitorEmptyState label={t`No log entries`} />}
-            getRowProps={() => ({ "data-testid": "model-cache-log-row" })}
+            getRowProps={() => ({
+              "data-testid": "model-persistence-log-job-row",
+            })}
             onRowClick={handleRowActivate}
           />
         )}
@@ -130,12 +132,12 @@ export function ModelCacheRefreshJobs() {
   );
 }
 
-export function ModelCachePage() {
+export function ModelPersistenceLogPage() {
   return (
     <Flex h="100%" wrap="nowrap">
       <MonitorMain>
-        <MonitorHeaderTitle mb="sm">{t`Model caching log`}</MonitorHeaderTitle>
-        <ModelCacheRefreshJobs />
+        <MonitorHeaderTitle mb="sm">{t`Model persistence log`}</MonitorHeaderTitle>
+        <ModelPersistenceLogJobs />
       </MonitorMain>
       <Outlet /> {/* refresh modal */}
     </Flex>

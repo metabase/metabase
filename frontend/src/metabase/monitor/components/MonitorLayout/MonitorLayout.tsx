@@ -41,7 +41,7 @@ function getActiveSection(pathname: string): MonitorSection | null {
     .with(P.string.startsWith(Urls.monitorJobs()), () => "jobs")
     .with(P.string.startsWith(Urls.monitorLogs()), () => "logs")
     .with(
-      P.string.startsWith(Urls.monitorModelCaching()),
+      P.string.startsWith(Urls.monitorModelPersistenceLog()),
       () => "model-caching",
     )
     .otherwise(() => null);
@@ -140,9 +140,9 @@ export function MonitorLayout() {
             onClick={() => trackMonitorSectionClicked("logs")}
           />
           <AreaTab
-            label={t`Model caching log`}
+            label={t`Model persistence log`}
             icon="bolt"
-            to={Urls.monitorModelCaching()}
+            to={Urls.monitorModelPersistenceLog()}
             isSelected={activeSection === "model-caching"}
             showLabel={isNavbarOpened}
             onClick={() => trackMonitorSectionClicked("model-caching")}
