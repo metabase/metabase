@@ -28,15 +28,15 @@
 
 (def ^:private ConversationSummary
   [:map
-   [:conversation_id ms/UUIDString]
-   [:created_at      ms/TemporalInstant]
-   [:title           [:maybe :string]]
+   [:conversation_id             ms/UUIDString]
+   [:created_at                  ms/TemporalInstant]
+   [:title                       [:maybe :string]]
    ;; Wire compatibility: keep the field name `user_id`, but it now means the
    ;; conversation originator (first writer), not "the only allowed reader".
-   [:user_id         [:maybe ms/PositiveInt]]
-   [:profile_id      [:maybe :string]]
-   [:message_count   ms/IntGreaterThanOrEqualToZero]
-   [:last_message_at [:maybe ms/TemporalInstant]]
+   [:user_id                     [:maybe ms/PositiveInt]]
+   [:profile_id                  [:maybe :string]]
+   [:message_count               ms/IntGreaterThanOrEqualToZero]
+   [:last_message_at             [:maybe ms/TemporalInstant]]
    [:forked_from_conversation_id [:maybe ms/UUIDString]]])
 
 (def ^:private ListConversationsResponse
@@ -48,17 +48,17 @@
 
 (def ^:private ConversationDetail
   [:map
-   [:conversation_id ms/UUIDString]
-   [:created_at      ms/TemporalInstant]
-   [:title           [:maybe :string]]
-   [:user_id         [:maybe ms/PositiveInt]]
+   [:conversation_id             ms/UUIDString]
+   [:created_at                  ms/TemporalInstant]
+   [:title                       [:maybe :string]]
+   [:user_id                     [:maybe ms/PositiveInt]]
    [:forked_from_conversation_id [:maybe ms/UUIDString]]
-   [:state           {:optional true} [:maybe ::metabot.schema/state]]
-   [:saved_entities  [:sequential
-                      [:map
-                       [:card_id  ms/PositiveInt]
-                       [:chart_id [:maybe :string]]]]]
-   [:messages        [:sequential :map]]])
+   [:state                       {:optional true} [:maybe ::metabot.schema/state]]
+   [:saved_entities              [:sequential
+                                  [:map
+                                   [:card_id  ms/PositiveInt]
+                                   [:chart_id [:maybe :string]]]]]
+   [:messages                    [:sequential :map]]])
 
 (def ^:private ConversationTitleResponse
   [:map

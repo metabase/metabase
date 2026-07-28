@@ -800,20 +800,20 @@
   [conversation-id]
   (when-let [conv (t2/select-one :model/MetabotConversation :id conversation-id)]
     (let [messages (live-messages conversation-id)]
-      {:conversation_id (:id conv)
-       :created_at      (:created_at conv)
-       :title           (:title conv)
-       :user_id         (:user_id conv)
+      {:conversation_id             (:id conv)
+       :created_at                  (:created_at conv)
+       :title                       (:title conv)
+       :user_id                     (:user_id conv)
        :forked_from_conversation_id (:forked_from_conversation_id conv)
-       :state           (conversation-state messages)
-       :saved_entities  (mapv (fn [{:keys [id metabot_chart_id]}]
-                                {:card_id  id
-                                 :chart_id metabot_chart_id})
-                              (t2/select [:model/Card :id :metabot_chart_id]
-                                         :metabot_conversation_id conversation-id
-                                         :archived false
-                                         {:order-by [[:id :asc]]}))
-       :messages        (messages->chat-messages messages)})))
+       :state                       (conversation-state messages)
+       :saved_entities              (mapv (fn [{:keys [id metabot_chart_id]}]
+                                            {:card_id  id
+                                             :chart_id metabot_chart_id})
+                                          (t2/select [:model/Card :id :metabot_chart_id]
+                                                     :metabot_conversation_id conversation-id
+                                                     :archived false
+                                                     {:order-by [[:id :asc]]}))
+       :messages                    (messages->chat-messages messages)})))
 
 ;;; ---------------------------------------- Forking ----------------------------------------
 
