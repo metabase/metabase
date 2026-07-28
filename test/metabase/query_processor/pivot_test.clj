@@ -1466,18 +1466,25 @@
 (deftest ^:parallel native-pivot-honors-max-results-constraint-test
   (testing "Native pivot path honors the caller's :constraints :max-results — no special pivot-only cap"
     (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
-      ;; pivot-query produces ~1000 detail rows plus rollups, comfortably exceeding 50.
-      (let [max-results 50]
-        (qp.store/with-metadata-provider (mt/id)
-          (let [query   (-> (qp.pivot.test-util/pivot-query)
-                            (assoc :constraints {:max-results max-results})
+      (let [max-results 50
+            mp          (mt/metadata-provider)
+            orders      (lib.metadata/table mp (mt/id :orders))
+            product-id  (lib.metadata/field mp (mt/id :orders :product_id))
+            user-id     (lib.metadata/field mp (mt/id :orders :user_id))
+            query       (-> (lib/query mp orders)
+                            (lib/breakout product-id)
+                            (lib/breakout user-id)
+                            (lib/aggregate (lib/count))
+                            (merge {:constraints {:max-results max-results}
+                                    :pivot_rows  [0]
+                                    :pivot_cols  [1]})
                             qp.middleware.normalize/normalize-preprocessing-middleware)
-                results (#'qp.pivot/run-native-pivot-query query nil)]
-            (testing "row count matches the requested cap"
-              (is (= max-results (count (mt/rows results)))))
-            (testing "result emits :pivot_rows_truncated (not :rows_truncated) so the FE pivot truncation warning fires"
-              (is (= max-results (get-in results [:data :pivot_rows_truncated])))
-              (is (not (contains? (:data results) :rows_truncated))))))))))
+            results     (#'qp.pivot/run-native-pivot-query query nil)]
+        (testing "row count matches the requested cap"
+          (is (= max-results (count (mt/rows results)))))
+        (testing "result emits :pivot_rows_truncated (not :rows_truncated) so the FE pivot truncation warning fires"
+          (is (= max-results (get-in results [:data :pivot_rows_truncated])))
+          (is (not (contains? (:data results) :rows_truncated))))))))
 
 (deftest ^:parallel filters-query-test
   (testing "Pivot queries with a filter on a breakout column complete successfully"

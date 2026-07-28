@@ -17,6 +17,14 @@
     (is (= ["GROUPING(CAST(foo AS ?), bar)" "int"]
            (sql/format-expr [::sql-mbql5.pivot/grouping-fn [:cast :foo "int"] :bar])))))
 
+(deftest ^:parallel grouping-id-fn-formatter-test
+  (testing "renders GROUPING_ID(expr1, expr2, ...) for plain identifier args"
+    (is (= ["GROUPING_ID(col_a, col_b)"]
+           (sql/format-expr [::sql-mbql5.pivot/grouping-id-fn :col-a :col-b]))))
+  (testing "preserves args from nested expressions"
+    (is (= ["GROUPING_ID(CAST(foo AS ?), bar)" "int"]
+           (sql/format-expr [::sql-mbql5.pivot/grouping-id-fn [:cast :foo "int"] :bar])))))
+
 (deftest ^:parallel grouping-sets-formatter-test
   (testing "renders GROUPING SETS ((..), (..), ()) including the empty grand-total set"
     (is (= ["GROUPING SETS ((col_a, col_b), (col_a), ())"]

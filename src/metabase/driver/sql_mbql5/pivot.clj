@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
+   [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.options :as lib.options]
    [metabase.lib.pivot :as lib.pivot]
@@ -27,6 +28,26 @@
     (into [(str "GROUPING(" (str/join ", " sql-parts) ")")] args)))
 
 (sql/register-fn! ::grouping-fn #'format-grouping-fn)
+
+(defn- format-grouping-id-fn
+  "Render `GROUPING_ID(expr1, expr2, ...)` from a HoneySQL form `[::grouping-id-fn expr1 expr2 ...]`."
+  [_fn exprs]
+  (let [[sql-parts args] (format-exprs exprs)]
+    (into [(str "GROUPING_ID(" (str/join ", " sql-parts) ")")] args)))
+
+(sql/register-fn! ::grouping-id-fn #'format-grouping-id-fn)
+
+(defmulti pivot-grouping-hsql
+  "Return a HoneySQL form producing the pivot-grouping bitmask, one bit per expression in `exprs`. The default emits
+  `GROUPING(exprs...)` (the Postgres/Oracle/Snowflake multi-arg extension). Drivers whose SQL dialect wants a
+  different function or shape override this method."
+  {:arglists '([driver exprs])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod pivot-grouping-hsql :sql-mbql5
+  [_driver exprs]
+  (into [::grouping-fn] exprs))
 
 (defn- format-grouping-sets
   "Render `GROUPING SETS ((expr1, expr2), (expr1), ())` from a HoneySQL form
@@ -112,7 +133,7 @@
                                 combos)
         non-remap-hsql    (mapv breakout-hsql non-remap-poss)
         ;; Args reversed so the bitmask convention matches `pivot.common/group-bitmask`: bit 0 = first non-remap breakout.
-        grouping-fn       (into [::grouping-fn] (rseq non-remap-hsql))
+        grouping-fn       (pivot-grouping-hsql driver (rseq non-remap-hsql))
         grouping-sets     (into [::grouping-sets] sets-hsql)]
     (-> honeysql-form
         (update :select splice-pivot-grouping-select (count breakout) [grouping-fn lib.pivot/pivot-grouping-column-name])
