@@ -17,6 +17,8 @@ import { createMockDocumentContent } from "metabase-types/api/mocks/document";
 
 import { ExplorationComments } from "./ExplorationComments";
 
+const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
+
 jest.mock("metabase/comments/components", () => ({
   CommentEditor: ({
     readonly,
@@ -99,6 +101,10 @@ function setup({ comments = [], context, renderCommentTags }: SetupOpts = {}) {
 }
 
 describe("ExplorationComments", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   it("renders the page's comments as one flat chronological stream, replies included", async () => {
     setup({
       comments: [
@@ -188,6 +194,11 @@ describe("ExplorationComments", () => {
       target_type: "exploration",
       parent_comment_id: null,
       context: { timeline_id: 42 },
+    });
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "exploration_comment_created",
+      target_id: EXPLORATION_ID,
+      triggered_from: "sidebar",
     });
   });
 

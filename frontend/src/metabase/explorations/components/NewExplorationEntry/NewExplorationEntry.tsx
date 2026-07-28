@@ -7,7 +7,10 @@ import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { CollectionPickerModal } from "metabase/common/components/Pickers";
 import { useUserSetting } from "metabase/common/hooks/use-setting/use-setting";
-import { trackExplorationAgentMessageSent } from "metabase/explorations/analytics";
+import {
+  trackExplorationAgentMessageSent,
+  trackExplorationManualSetupClicked,
+} from "metabase/explorations/analytics";
 import { EXPLORATIONS_AGENT_ID } from "metabase/explorations/components/NewExplorationChat/NewExplorationChat";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
@@ -65,8 +68,13 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
     dispatch(push(Urls.newExplorationPlan()));
   }, [dispatch]);
 
+  const handleManualSetup = useCallback(() => {
+    trackExplorationManualSetupClicked();
+    goToPlanPage();
+  }, [goToPlanPage]);
+
   const handleSubmit = useCallback(() => {
-    trackExplorationAgentMessageSent();
+    trackExplorationAgentMessageSent("entry");
     submitInput(prompt, {
       preventOpenSidebar: true,
       profile: "explorations",
@@ -136,7 +144,7 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
                 c="text-secondary"
                 bd="none"
                 className={S.buttonHoverSecondary}
-                onClick={goToPlanPage}
+                onClick={handleManualSetup}
               >
                 {t`Manual setup`}
               </Button>

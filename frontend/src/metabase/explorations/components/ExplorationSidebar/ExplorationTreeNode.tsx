@@ -21,6 +21,7 @@ import type {
 } from "metabase/common/components/tree/types";
 import { useToast } from "metabase/common/hooks";
 import {
+  trackExplorationPageHiddenToggled,
   trackExplorationRestarted,
   trackExplorationStopped,
   trackExplorationVisualizationChanged,
@@ -214,33 +215,44 @@ function ExplorationGroupMenu({
   const canHideGroup =
     canWrite && item.data?.hideable === true && pageIds.length > 0;
 
+  const setGroupHidden = useCallback(
+    async (hidden: boolean) => {
+      try {
+        await setPagesHidden({
+          pageIds,
+          explorationId,
+          hidden,
+        }).unwrap();
+        trackExplorationPageHiddenToggled(
+          explorationId,
+          hidden ? "hidden" : "shown",
+          "group",
+        );
+        return true;
+      } catch {
+        sendToast({
+          icon: "warning_triangle_filled",
+          iconColor: "warning",
+          message: t`Failed to update ${groupName}`,
+        });
+        return false;
+      }
+    },
+    [setPagesHidden, pageIds, explorationId, groupName, sendToast],
+  );
+
   const handleToggleGroupHidden = useCallback(async () => {
     const nextHidden = !allHidden;
-    try {
-      await setPagesHidden({
-        pageIds,
-        explorationId,
-        hidden: nextHidden,
-      }).unwrap();
-    } catch {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "warning",
-        message: t`Failed to update ${groupName}`,
-      });
-      return;
-    }
-    if (nextHidden) {
+    const succeeded = await setGroupHidden(nextHidden);
+    if (succeeded && nextHidden) {
       sendToast({
         icon: "eye_crossed_out",
         message: t`${groupName} hidden`,
         actionLabel: t`Undo`,
-        actions: [
-          () => setPagesHidden({ pageIds, explorationId, hidden: false }),
-        ],
+        actions: [() => setGroupHidden(false)],
       });
     }
-  }, [setPagesHidden, pageIds, explorationId, groupName, allHidden, sendToast]);
+  }, [allHidden, setGroupHidden, groupName, sendToast]);
 
   const handleCopyLink = useCallback(() => {
     const page = pickInitialSidebarPage(item.children ?? []);

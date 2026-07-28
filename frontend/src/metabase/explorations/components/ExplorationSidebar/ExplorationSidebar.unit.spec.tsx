@@ -9,7 +9,10 @@ import {
   screen,
   within,
 } from "__support__/ui";
-import { trackExplorationVisualizationChanged } from "metabase/explorations/analytics";
+import {
+  trackExplorationSidebarTabChanged,
+  trackExplorationVisualizationChanged,
+} from "metabase/explorations/analytics";
 import { DEFAULT_SORT_ORDER } from "metabase/explorations/sidebar-preferences";
 import {
   createBlock,
@@ -37,6 +40,11 @@ import { getExplorationSidebarTree } from "./utils";
 jest.mock("metabase/explorations/analytics");
 
 describe("ExplorationSidebar", () => {
+  beforeEach(() => {
+    jest.mocked(trackExplorationVisualizationChanged).mockClear();
+    jest.mocked(trackExplorationSidebarTabChanged).mockClear();
+  });
+
   describe("keyboard navigation", () => {
     it("moves selection to the next page with ArrowRight", () => {
       const { setSelectedPageId } = setup({
@@ -62,6 +70,19 @@ describe("ExplorationSidebar", () => {
       fireEvent.keyDown(document.body, { key: "ArrowLeft" });
 
       expect(setSelectedPageId).toHaveBeenCalledWith("2");
+    });
+  });
+
+  describe("sidebar tabs", () => {
+    it("tracks tab changes when switching to a different tab", async () => {
+      const { exploration } = setup({ queries: [doneQuery] });
+
+      await userEvent.click(screen.getByRole("radio", { name: /Stars/ }));
+
+      expect(trackExplorationSidebarTabChanged).toHaveBeenCalledWith(
+        exploration.id,
+        "stars",
+      );
     });
   });
 

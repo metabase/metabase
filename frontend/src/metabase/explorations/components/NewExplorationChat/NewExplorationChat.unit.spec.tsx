@@ -4,7 +4,10 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
+import {
+  trackExplorationAgentMessageSent,
+  trackExplorationPlanEdited,
+} from "metabase/explorations/analytics";
 import { makeMockSelection } from "metabase/explorations/test-utils";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type {
@@ -294,6 +297,7 @@ describe("NewExplorationChat", () => {
       preventOpenSidebar: true,
       profile: "explorations",
     });
+    expect(trackExplorationAgentMessageSent).toHaveBeenCalledWith("plan_chat");
 
     await userEvent.click(
       await screen.findByTestId("metabot-chat-message-retry"),

@@ -3,6 +3,10 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentType } from "react";
 
 import { screen } from "__support__/ui";
+import {
+  trackExplorationCommentCreated,
+  trackExplorationExploreFurtherClicked,
+} from "metabase/explorations/analytics";
 import type {
   ClickActionPopoverProps,
   ClickObject,
@@ -29,6 +33,11 @@ jest.mock("metabase/api/comment", () => ({
 jest.mock("metabase/common/hooks", () => ({
   ...jest.requireActual("metabase/common/hooks"),
   useToast: () => [sendToastMock],
+}));
+
+jest.mock("metabase/explorations/analytics", () => ({
+  trackExplorationCommentCreated: jest.fn(),
+  trackExplorationExploreFurtherClicked: jest.fn(),
 }));
 
 jest.mock(
@@ -113,6 +122,8 @@ describe("useExplorationClickActionsMode", () => {
     exploreFurtherMock.mockReset();
     createCommentMock.mockReset();
     sendToastMock.mockReset();
+    jest.mocked(trackExplorationExploreFurtherClicked).mockClear();
+    jest.mocked(trackExplorationCommentCreated).mockClear();
     exploreFurtherMock.mockResolvedValue({ data: {} });
     createCommentMock.mockResolvedValue({ data: {} });
   });
@@ -164,6 +175,10 @@ describe("useExplorationClickActionsMode", () => {
       ],
     });
     expect(closePopover).toHaveBeenCalled();
+    expect(trackExplorationExploreFurtherClicked).toHaveBeenCalledWith(
+      42,
+      "success",
+    );
   });
 
   it("shows an error toast when explore further fails", async () => {
@@ -185,6 +200,10 @@ describe("useExplorationClickActionsMode", () => {
       expect.objectContaining({
         message: "Couldn't start a new exploration",
       }),
+    );
+    expect(trackExplorationExploreFurtherClicked).toHaveBeenCalledWith(
+      42,
+      "failure",
     );
   });
 
@@ -220,6 +239,10 @@ describe("useExplorationClickActionsMode", () => {
       }),
     );
     expect(onClose).toHaveBeenCalled();
+    expect(trackExplorationCommentCreated).toHaveBeenCalledWith(
+      42,
+      "chart_click",
+    );
   });
 
   it("shows an error toast when comment creation fails", async () => {
@@ -245,6 +268,7 @@ describe("useExplorationClickActionsMode", () => {
       expect.objectContaining({ message: "Failed to add comment" }),
     );
     expect(onClose).not.toHaveBeenCalled();
+    expect(trackExplorationCommentCreated).not.toHaveBeenCalled();
   });
 
   it("keeps a stable mode identity when comment drafts change", () => {

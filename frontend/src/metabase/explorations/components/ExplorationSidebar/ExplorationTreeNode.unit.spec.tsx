@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { trackExplorationPageHiddenToggled } from "metabase/explorations/analytics";
 import { DEFAULT_SORT_ORDER } from "metabase/explorations/sidebar-preferences";
 import {
   createBlock,
@@ -128,6 +129,10 @@ describe("ExplorationTreeNode", () => {
   });
 
   describe("group hide menu item", () => {
+    beforeEach(() => {
+      jest.mocked(trackExplorationPageHiddenToggled).mockClear();
+    });
+
     const revenueBlock = createBlock({
       id: 50,
       name: "Revenue",
@@ -165,6 +170,12 @@ describe("ExplorationTreeNode", () => {
           hidden: true,
         });
       });
+
+      expect(trackExplorationPageHiddenToggled).toHaveBeenCalledWith(
+        1,
+        "hidden",
+        "group",
+      );
     });
 
     it("does not offer Hide for the first thread group", async () => {
@@ -229,6 +240,12 @@ describe("ExplorationTreeNode", () => {
           hidden: false,
         });
       });
+
+      expect(trackExplorationPageHiddenToggled).toHaveBeenCalledWith(
+        1,
+        "shown",
+        "group",
+      );
     });
   });
 

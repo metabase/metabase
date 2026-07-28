@@ -60,6 +60,8 @@ interface SetupOpts {
   selectedTimelineId?: TimelineId | null;
   showTimelineDropdown?: boolean;
   withUndos?: boolean;
+  onPreviousPage?: () => void;
+  onNextPage?: () => void;
 }
 
 function setup({
@@ -68,6 +70,8 @@ function setup({
   selectedTimelineId = null,
   showTimelineDropdown = true,
   withUndos = false,
+  onPreviousPage,
+  onNextPage,
 }: SetupOpts = {}) {
   const onSelectTimelineId = jest.fn();
   const setCommentDrafts = jest.fn();
@@ -82,11 +86,13 @@ function setup({
       availableTimelines={timelines}
       selectedTimelineId={selectedTimelineId}
       onSelectTimelineId={onSelectTimelineId}
+      onPreviousPage={onPreviousPage}
+      onNextPage={onNextPage}
     />,
     { withUndos },
   );
 
-  return { onSelectTimelineId, setCommentDrafts };
+  return { onSelectTimelineId, setCommentDrafts, onPreviousPage, onNextPage };
 }
 
 async function openTimelineMenu() {
@@ -295,6 +301,12 @@ describe("ActionToolbar", () => {
           screen.queryByRole("button", { name: "Submit comment" }),
         ).not.toBeInTheDocument();
       });
+
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "exploration_comment_created",
+        target_id: EXPLORATION_ID,
+        triggered_from: "toolbar",
+      });
     });
 
     it("shows a toast when comment submission fails", async () => {
@@ -313,6 +325,36 @@ describe("ActionToolbar", () => {
       expect(
         screen.getByRole("button", { name: "Submit comment" }),
       ).toBeInTheDocument();
+      expect(trackSimpleEvent).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "exploration_comment_created",
+        }),
+      );
+    });
+  });
+
+  describe("page navigation", () => {
+    it("tracks visualization changed on Previous and Next clicks", async () => {
+      const onPreviousPage = jest.fn();
+      const onNextPage = jest.fn();
+      setup({ onPreviousPage, onNextPage });
+
+      await userEvent.click(screen.getByRole("button", { name: "Previous" }));
+      expect(onPreviousPage).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "exploration_visualization_changed",
+        target_id: EXPLORATION_ID,
+        triggered_from: "click",
+      });
+
+      trackSimpleEvent.mockClear();
+      await userEvent.click(screen.getByRole("button", { name: "Next" }));
+      expect(onNextPage).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "exploration_visualization_changed",
+        target_id: EXPLORATION_ID,
+        triggered_from: "click",
+      });
     });
   });
 
@@ -349,6 +391,12 @@ describe("ActionToolbar", () => {
           starred: true,
         });
       });
+
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "exploration_page_star_toggled",
+        target_id: EXPLORATION_ID,
+        event_detail: "starred",
+      });
     });
 
     it("unstars the page on click", async () => {
@@ -370,6 +418,12 @@ describe("ActionToolbar", () => {
         expect(JSON.parse(calls[0].options?.body as string)).toEqual({
           starred: false,
         });
+      });
+
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "exploration_page_star_toggled",
+        target_id: EXPLORATION_ID,
+        event_detail: "unstarred",
       });
     });
 
@@ -403,6 +457,11 @@ describe("ActionToolbar", () => {
       expect(
         await screen.findByText("Failed to update star"),
       ).toBeInTheDocument();
+      expect(trackSimpleEvent).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "exploration_page_star_toggled",
+        }),
+      );
     });
   });
 
@@ -447,6 +506,13 @@ describe("ActionToolbar", () => {
           hidden: true,
         });
       });
+
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "exploration_page_hidden_toggled",
+        target_id: EXPLORATION_ID,
+        event_detail: "hidden",
+        triggered_from: "page",
+      });
     });
 
     it("unhides the page on click", async () => {
@@ -468,6 +534,13 @@ describe("ActionToolbar", () => {
           page_ids: [PAGE_ID],
           hidden: false,
         });
+      });
+
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "exploration_page_hidden_toggled",
+        target_id: EXPLORATION_ID,
+        event_detail: "shown",
+        triggered_from: "page",
       });
     });
 
@@ -539,6 +612,11 @@ describe("ActionToolbar", () => {
       expect(
         await screen.findByText("Failed to update visibility"),
       ).toBeInTheDocument();
+      expect(trackSimpleEvent).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "exploration_page_hidden_toggled",
+        }),
+      );
     });
   });
 

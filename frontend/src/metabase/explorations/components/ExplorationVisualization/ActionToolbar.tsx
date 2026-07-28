@@ -15,7 +15,13 @@ import {
 } from "metabase/api/exploration";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useToast } from "metabase/common/hooks";
-import { trackExplorationTimelineChanged } from "metabase/explorations/analytics";
+import {
+  trackExplorationCommentCreated,
+  trackExplorationPageHiddenToggled,
+  trackExplorationPageStarToggled,
+  trackExplorationTimelineChanged,
+  trackExplorationVisualizationChanged,
+} from "metabase/explorations/analytics";
 import {
   getAdjacentById,
   shouldIgnoreKeyboardEvent,
@@ -94,12 +100,17 @@ export function ActionToolbar({
   );
 
   const handleToggleStarred = useCallback(async () => {
+    const nextStarred = !page.starred;
     try {
       await setPageStarred({
         pageId: page.id,
         explorationId,
-        starred: !page.starred,
+        starred: nextStarred,
       }).unwrap();
+      trackExplorationPageStarToggled(
+        explorationId,
+        nextStarred ? "starred" : "unstarred",
+      );
     } catch (error) {
       sendToast({
         icon: "warning_triangle_filled",
@@ -117,6 +128,11 @@ export function ActionToolbar({
           explorationId,
           hidden,
         }).unwrap();
+        trackExplorationPageHiddenToggled(
+          explorationId,
+          hidden ? "hidden" : "shown",
+          "page",
+        );
         return true;
       } catch (error) {
         sendToast({
@@ -222,6 +238,7 @@ export function ActionToolbar({
         message: t`Failed to send comment`,
       });
     } else {
+      trackExplorationCommentCreated(explorationId, "toolbar");
       setCommentEditorOpen(false);
     }
   };
@@ -231,7 +248,14 @@ export function ActionToolbar({
       <TriageNavButton
         label={t`Previous`}
         icon="chevronleft"
-        onClick={onPreviousPage}
+        onClick={
+          onPreviousPage
+            ? () => {
+                trackExplorationVisualizationChanged(explorationId, "click");
+                onPreviousPage();
+              }
+            : undefined
+        }
       />
 
       <Group
@@ -362,7 +386,14 @@ export function ActionToolbar({
       <TriageNavButton
         label={t`Next`}
         icon="chevronright"
-        onClick={onNextPage}
+        onClick={
+          onNextPage
+            ? () => {
+                trackExplorationVisualizationChanged(explorationId, "click");
+                onNextPage();
+              }
+            : undefined
+        }
       />
     </Group>
   );

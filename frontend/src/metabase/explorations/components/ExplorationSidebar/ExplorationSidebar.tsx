@@ -6,7 +6,10 @@ import { explorationApi } from "metabase/api/exploration";
 import { Tree, useTree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { getInitialExpandedIds } from "metabase/common/components/tree/utils";
-import { trackExplorationVisualizationChanged } from "metabase/explorations/analytics";
+import {
+  trackExplorationSidebarTabChanged,
+  trackExplorationVisualizationChanged,
+} from "metabase/explorations/analytics";
 import {
   type ExplorationSidebarTab,
   isExplorationSidebarTab,
@@ -223,7 +226,11 @@ export function ExplorationSidebar({
             bg="background-tertiary"
             value={selectedSidebarTab}
             onChange={(value) => {
-              if (isExplorationSidebarTab(value)) {
+              if (
+                isExplorationSidebarTab(value) &&
+                value !== selectedSidebarTab
+              ) {
+                trackExplorationSidebarTabChanged(exploration.id, value);
                 dispatch(push(getSelectedSidebarTabUrl(value)));
               }
             }}

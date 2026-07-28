@@ -1,6 +1,12 @@
+import userEvent from "@testing-library/user-event";
+
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { useGetMyExplorationsQuery } from "metabase/api";
+import {
+  trackExplorationAgentMessageSent,
+  trackExplorationManualSetupClicked,
+} from "metabase/explorations/analytics";
 import {
   createExplorationSummary,
   makeMockSelection,
@@ -29,6 +35,11 @@ jest.mock("metabase/metabot/components/MetabotPromptInput", () => ({
   MetabotPromptInput: () => <div data-testid="exploration-prompt-input" />,
 }));
 
+jest.mock("metabase/explorations/analytics", () => ({
+  trackExplorationAgentMessageSent: jest.fn(),
+  trackExplorationManualSetupClicked: jest.fn(),
+}));
+
 function mockMyExplorationsQuery({
   isSuccess = true,
   data,
@@ -47,10 +58,12 @@ function setup({
   isSuccess = true,
   myExplorations = { total: 0, limit: 25, offset: 0, data: [] },
   dismissedBanner = false,
+  prompt = "",
 }: {
   isSuccess?: boolean;
   myExplorations?: GetMyExplorationsResponse;
   dismissedBanner?: boolean;
+  prompt?: string;
 } = {}) {
   // Unjustified type cast. FIXME
   jest.mocked(useUserMetabotPermissions).mockReturnValue({
@@ -60,7 +73,7 @@ function setup({
 
   // Unjustified type cast. FIXME
   jest.mocked(useMetabotAgent).mockReturnValue({
-    prompt: "",
+    prompt,
     setPrompt: jest.fn(),
     submitInput: jest.fn(),
   } as any);
@@ -90,6 +103,22 @@ describe("NewExplorationEntry", () => {
       screen.getByText("What do you want to research?"),
     ).toBeInTheDocument();
     expect(screen.getByTestId("exploration-prompt-input")).toBeInTheDocument();
+  });
+
+  it("tracks agent message sent from entry when creating a plan", async () => {
+    setup({ prompt: "Why is revenue down?" });
+
+    await userEvent.click(screen.getByRole("button", { name: "Create plan" }));
+
+    expect(trackExplorationAgentMessageSent).toHaveBeenCalledWith("entry");
+  });
+
+  it("tracks manual setup clicks", async () => {
+    setup();
+
+    await userEvent.click(screen.getByRole("button", { name: "Manual setup" }));
+
+    expect(trackExplorationManualSetupClicked).toHaveBeenCalledTimes(1);
   });
 
   describe("banner and past projects list", () => {

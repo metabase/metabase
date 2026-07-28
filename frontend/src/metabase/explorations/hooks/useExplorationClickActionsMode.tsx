@@ -4,6 +4,10 @@ import { t } from "ttag";
 import { useCreateCommentMutation } from "metabase/api/comment";
 import { useExploreFurtherMutation } from "metabase/api/exploration";
 import { useToast } from "metabase/common/hooks";
+import {
+  trackExplorationCommentCreated,
+  trackExplorationExploreFurtherClicked,
+} from "metabase/explorations/analytics";
 import type {
   ClickAction,
   ClickActionPopoverProps,
@@ -67,11 +71,14 @@ export function useExplorationClickActionsMode({
               explore_filters: exploreFilters,
             });
             if (error) {
+              trackExplorationExploreFurtherClicked(explorationId, "failure");
               sendToast({
                 icon: "warning_triangle_filled",
                 iconColor: "warning",
                 message: t`Couldn't start a new exploration`,
               });
+            } else {
+              trackExplorationExploreFurtherClicked(explorationId, "success");
             }
           };
 
@@ -118,6 +125,7 @@ export function useExplorationClickActionsMode({
               message: t`Failed to add comment`,
             });
           } else {
+            trackExplorationCommentCreated(explorationId, "chart_click");
             onClose();
           }
         };

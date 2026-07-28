@@ -100,7 +100,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
   } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
 
   const handleSubmit = useCallback(() => {
-    trackExplorationAgentMessageSent();
+    trackExplorationAgentMessageSent("plan_chat");
     submitInput(prompt, {
       preventOpenSidebar: true,
       profile: "explorations",
