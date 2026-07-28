@@ -197,6 +197,16 @@
                                              (wire {:method "create" :card_id card-id
                                                     :schedule (daily-schedule 9)
                                                     :recipients ["data-team"]}))))))
+      (testing "GHY-4155: an empty recipients list reads as \"clear\", which this tool can't express —
+                say so rather than silently answering with the caller or the stored list"
+        (is (re-find #"`recipients` can't be empty"
+                     (tool-error (call-tool! :crowberto nil
+                                             (wire {:method "create" :card_id card-id
+                                                    :schedule (daily-schedule 9) :recipients []})))))
+        (let [alert-id (:id (create-alert! card-id))]
+          (is (re-find #"`recipients` can't be empty"
+                       (tool-error (call-tool! :crowberto nil
+                                               (wire {:method "update" :id alert-id :recipients []})))))))
       (testing "GHY-4155: an unknown user id names the id rather than failing at the FK"
         (is (re-find #"13371337"
                      (tool-error (call-tool! :crowberto nil

@@ -129,6 +129,13 @@
        (format (str "This alert delivers over %s, which alert_write doesn't manage — edit it in Metabase, "
                     "or leave channel, slack_channel, and recipients out to keep it as it is.")
                existing-type)))
+    ;; An empty list reads as "clear the recipients", which the cond below would silently answer
+    ;; with the caller (at create) or the stored list (at update).
+    (when (and recipients (empty? recipients))
+      (common/throw-teaching-error
+       (str "`recipients` can't be empty — an alert with nobody to send to would never reach anyone. "
+            "Pass at least one user id or email address, or leave recipients out: a new alert then "
+            "goes to you, and an existing one keeps the recipients it has.")))
     (case channel-type
       "slack"
       (do

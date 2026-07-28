@@ -240,7 +240,9 @@
 (defn update-notification!
   "Update notification `id` from `body` with the permission check and post-update side effects, and
   return the updated hydrated notification. `body` is a whole notification, not a patch: the update
-  spec deletes the subscription and handler rows it doesn't find there."
+  spec deletes the subscription and handler rows it doesn't find there. Body validation stays with
+  the callers — the PUT endpoint's `::NotificationApiInput` schema and its handlebars-resource
+  template check both run before this."
   [id body]
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
