@@ -178,9 +178,10 @@
    Also adds any CTEs required for permission filtering."
   [qry model search-ctx]
   (let [col (case model "table" :table.id "search-index" :search_index.model_id)
-        {:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx col)]
+        {:keys [with left-join clause]} (search.permissions/permitted-tables-clause search-ctx col)]
     (cond-> qry
       (seq with) (update :with (fnil into []) with)
+      left-join  (sql.helpers/left-join (first left-join) (second left-join))
       true       (sql.helpers/where
                   (case model
                     "table" clause

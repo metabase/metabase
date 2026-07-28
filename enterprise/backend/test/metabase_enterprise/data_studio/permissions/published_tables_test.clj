@@ -170,14 +170,15 @@
           (perms/set-table-permission! group-id pub-blocked-by-view-data :perms/view-data :blocked)
           (let [user-info {:user-id user-id :is-superuser? false}
                 run (fn [opts]
-                      (let [{:keys [clause with]}
-                            (mi/visible-filter-clause :model/Table :id user-info
+                      (let [{:keys [clause with left-join]}
+                            (mi/visible-filter-clause :model/Table :metabase_table.id user-info
                                                       {:perms/view-data :unrestricted
                                                        :perms/create-queries :query-builder}
                                                       opts)]
                         (t2/select-pks-set :model/Table
-                                           (cond-> {:where [:and [:= :db_id db-id] clause]}
-                                             with (assoc :with with)))))]
+                                           (cond-> {:where [:and [:= :metabase_table.db_id db-id] clause]}
+                                             with      (assoc :with with)
+                                             left-join (assoc :left-join left-join)))))]
             (testing "without :include-published-via-collection? only the data-perms grant lets a table through"
               (is (= #{plain-allowed} (run nil))))
             (testing "with :include-published-via-collection? the published+visible-collection table also passes"
@@ -190,10 +191,11 @@
             (testing "view-data :blocked at the table level still excludes the table even when published+visible"
               (let [visible (run {:include-published-via-collection? true})]
                 (is (not (contains? visible pub-blocked-by-view-data)))))
-            (testing "the returned :clause is a single IN — no top-level :or"
-              (let [{:keys [clause]} (mi/visible-filter-clause
-                                      :model/Table :id user-info
-                                      {:perms/view-data :unrestricted
-                                       :perms/create-queries :query-builder}
-                                      {:include-published-via-collection? true})]
-                (is (= :in (first clause)))))))))))
+            (testing "the returned :clause tests the joined CTE id — no top-level :or"
+              (let [{:keys [clause left-join]} (mi/visible-filter-clause
+                                                :model/Table :metabase_table.id user-info
+                                                {:perms/view-data :unrestricted
+                                                 :perms/create-queries :query-builder}
+                                                {:include-published-via-collection? true})]
+                (is (= [:not= :pt.id nil] clause))
+                (is (= [:permitted_tables :pt] (first left-join)))))))))))

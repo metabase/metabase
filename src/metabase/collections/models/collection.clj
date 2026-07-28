@@ -927,9 +927,8 @@
 (mu/defn visible-collection-filter-clause
   "Given a `CollectionVisibilityConfig`, return a HoneySQL filter clause ready for use in queries. Takes an optional
   `cte-name` in the visibility config which is used as the source for collection IDs if provided; otherwise, we filter
-  based on the results of `visible-collection-query` above. Compiles to a correlated EXISTS semi-join (IN over the
-  CTE when `cte-name` is provided), so `collection-id-field` must be table-qualified whenever its bare name is
-  `id`."
+  based on the results of `visible-collection-query` above. Compiles to a correlated EXISTS semi-join, so
+  `collection-id-field` must be table-qualified whenever its bare name is `id`."
   ([]
    (visible-collection-filter-clause :collection_id))
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]]
@@ -948,11 +947,12 @@
       (when (should-display-root-collection? user-scope visibility-config)
         [:= collection-id-field nil])
       ;; the non-root collections are here. We're saying "let this row through if..."
-      (if cte-name
-        [:in collection-id-field {:select :id :from cte-name}]
-        [:exists {:select [[[:inline 1]]]
-                  :from   [[(visible-collection-query visibility-config user-scope) :visible_collection]]
-                  :where  [:= :visible_collection.id collection-id-field]}])])))
+      [:exists {:select [[[:inline 1]]]
+                :from   [[(if cte-name
+                            cte-name
+                            (visible-collection-query visibility-config user-scope))
+                          :visible_collection]]
+                :where  [:= :visible_collection.id collection-id-field]}]])))
 
 (defn- effective-child-of-filter-clause
   [parent-coll collection-table-alias visibility-config]

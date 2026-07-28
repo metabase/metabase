@@ -77,9 +77,10 @@
   (let [model-id-col [:cast :search_index.model_id (case (mdb/db-type)
                                                      :mysql :signed
                                                      :integer)]
-        {:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx model-id-col)]
+        {:keys [with left-join clause]} (search.permissions/permitted-tables-clause search-ctx model-id-col)]
     (cond-> qry
       (seq with) (update :with (fnil into []) with)
+      left-join  (sql.helpers/left-join (first left-join) (second left-join))
       true       (sql.helpers/where
                   [:or
                    [:= :search_index.model nil]

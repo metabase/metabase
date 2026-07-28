@@ -712,6 +712,7 @@
   "Return a map with:
    - :clause - honey SQL WHERE clause fragment to filter records visible to the user
    - :with - optional vector of CTE definitions [[name query] ...] to be merged into the query
+   - :left-join - optional `[table-spec condition]` join that :clause tests, to be merged into the query
 
   Uses the map of permission type->minimum permission-level for filtering.
   Defaults to returning a no-op false statement {:clause [:= 0 1]}."

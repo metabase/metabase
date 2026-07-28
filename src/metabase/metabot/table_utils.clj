@@ -39,12 +39,14 @@
                       priority-tables []
                       exclude-table-ids #{}}}]
    (let [priority-table-ids (set (map :id priority-tables))
-         {table-where-clause :clause table-cte :with} (mi/visible-filter-clause :model/Table
-                                                                                :id
-                                                                                {:user-id       api/*current-user-id*
-                                                                                 :is-superuser? api/*is-superuser?*}
-                                                                                {:perms/view-data      :unrestricted
-                                                                                 :perms/create-queries :query-builder-and-native})
+         {table-where-clause :clause
+          table-cte          :with
+          table-join         :left-join} (mi/visible-filter-clause :model/Table
+                                                                   :metabase_table.id
+                                                                   {:user-id       api/*current-user-id*
+                                                                    :is-superuser? api/*is-superuser?*}
+                                                                   {:perms/view-data      :unrestricted
+                                                                    :perms/create-queries :query-builder-and-native})
          ;; Fetch most viewed tables, excluding priority tables and excluded tables
          fill-tables (t2/select [:model/Table :id :db_id :name :schema :description]
                                 :db_id           database-id
@@ -53,7 +55,8 @@
                                 (cond-> {:where    table-where-clause
                                          :order-by [[:view_count :desc]]
                                          :limit    all-tables-limit}
-                                  table-cte (assoc :with table-cte)))
+                                  table-cte  (assoc :with table-cte)
+                                  table-join (assoc :left-join table-join)))
          fill-tables (remove #(or (priority-table-ids (:id %))
                                   (exclude-table-ids (:id %))) fill-tables)
          fill-tables (t2/hydrate fill-tables :fields)
@@ -112,14 +115,17 @@
 
 (defn- visible-filter-clause
   []
-  (let [{table-where-clause :clause table-cte :with} (mi/visible-filter-clause :model/Table
-                                                                               :id
-                                                                               {:user-id       api/*current-user-id*
-                                                                                :is-superuser? api/*is-superuser?*}
-                                                                               {:perms/view-data      :unrestricted
-                                                                                :perms/create-queries :query-builder-and-native})]
+  (let [{table-where-clause :clause
+         table-cte          :with
+         table-join         :left-join} (mi/visible-filter-clause :model/Table
+                                                                  :metabase_table.id
+                                                                  {:user-id       api/*current-user-id*
+                                                                   :is-superuser? api/*is-superuser?*}
+                                                                  {:perms/view-data      :unrestricted
+                                                                   :perms/create-queries :query-builder-and-native})]
     (cond-> {:where table-where-clause}
-      table-cte (assoc :with table-cte))))
+      table-cte  (assoc :with table-cte)
+      table-join (assoc :left-join table-join))))
 
 (defn find-matching-tables
   "Find tables in the database that are similar to the unrecognized tables using fuzzy matching.
@@ -148,8 +154,8 @@
                              (cond-> (assoc (visible-filter-clause)
                                             :limit 10000)
                                (seq used-ids) (update :where #(if %
-                                                                [:and % [:not-in :id used-ids]]
-                                                                [:not-in :id used-ids]))))))
+                                                                [:and % [:not-in :metabase_table.id used-ids]]
+                                                                [:not-in :metabase_table.id used-ids]))))))
 
 (defn used-tables-from-ids
   "Return table info for `table-ids` in the same shape as [[used-tables]].
