@@ -17,7 +17,7 @@ import {
   PLUGIN_EMBEDDING_IFRAME_SDK,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
-import { useRouter } from "metabase/router";
+import { queryToSearch, useRouter } from "metabase/router";
 import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
 
 import { AIProviderSettingsSection } from "./AIProviderSettingsSection";
@@ -276,8 +276,8 @@ function getSelectedMetabotId(metabotId: string | undefined): MetabotTabId {
 function getMetabotTabPath(metabotId: MetabotTabId) {
   return {
     pathname: METABOT_SETTINGS_PATH,
-    query: {
+    search: queryToSearch({
       [METABOT_ID_QUERY_PARAM]: String(metabotId),
-    },
+    }),
   };
 }
