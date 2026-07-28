@@ -1455,6 +1455,8 @@
             new-block    (-> new :blocks first)
             new-queries  (:queries new)]
         (is (= 2 (count threads)) "explore-further adds a thread; restart would keep 1")
+        (is (= 1 (t2/count :model/Document :exploration_id expl-id))
+            "explore-further does not create a second Summary document")
         (is (= (:id orig-thread) (:id orig)))
         (is (= 1 (:position new)))
         (testing "the drill thread records the page it was drilled from (sidebar nesting)"
@@ -1589,7 +1591,7 @@
                                 (assoc body :explore_filters [])))))))
 
 (deftest exploration-cascade-delete-test
-  (testing "Deleting an exploration cascades to threads, selections, and queries"
+  (testing "Deleting an exploration cascades to threads, selections, queries, and the Summary document"
     (mt/with-temp [:model/User u {:email "cd@example.com"}
                    :model/Card metric (valid-metric-card (:id u))
                    :model/Timeline tl {:creator_id (:id u)}]
@@ -1601,12 +1603,118 @@
                                                                       :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
                                                         :dimensions [{:dimension_id (duid "d1")}]}]})
             eid  (:id resp)
-            tid  (-> resp :threads first :id)]
+            tid  (-> resp :threads first :id)
+            doc-id (-> resp :document :id)]
+        (is (some? doc-id) "POST creates a Summary document")
         (t2/delete! :model/Exploration :id eid)
         (is (zero? (t2/count :model/ExplorationThread :exploration_id eid)))
         (is (zero? (t2/count :model/ExplorationBlock :exploration_thread_id tid)))
         (is (zero? (t2/count :model/ExplorationThreadTimeline :exploration_thread_id tid)))
-        (is (zero? (t2/count :model/ExplorationQuery :exploration_thread_id tid)))))))
+        (is (zero? (t2/count :model/ExplorationQuery :exploration_thread_id tid)))
+        (is (false? (t2/exists? :model/Document :id doc-id))
+            "Summary document is cascade-deleted via exploration_id FK")))))
+
+(deftest exploration-create-auto-creates-summary-document-test
+  (testing "POST / auto-creates a placeholder Summary document owned by the exploration"
+    (mt/with-temp [:model/User u {:email "summary-auto@example.com"}
+                   :model/Collection coll {:name "summary-coll"}]
+      (let [resp (mt/user-http-request u :post 200 "exploration"
+                                       {:name "x" :collection_id (:id coll)})
+            doc  (:document resp)
+            docs (t2/select :model/Document :exploration_id (:id resp))]
+        (is (= 1 (count docs)))
+        (is (= "Summary" (:name doc)))
+        (is (= (:id u) (:creator_id doc)))
+        (is (= (:id resp) (:exploration_id doc)))
+        (is (= (:id coll) (:collection_id (first docs))))
+        (is (true? (:is_placeholder doc)))
+        (testing "first body save clears is_placeholder"
+          (mt/user-http-request u :put 200 (str "document/" (:id doc))
+                                {:document {:type "doc"
+                                            :content [{:type "paragraph"
+                                                       :content [{:type "text" :text "curated"}]}]}})
+          (is (false? (t2/select-one-fn :is_placeholder :model/Document :id (:id doc)))))))))
+
+(deftest exploration-put-cascades-collection-id-to-documents-test
+  (testing "Moving an exploration rewrites :collection_id on its Summary document."
+    (mt/with-temp [:model/Collection src  {}
+                   :model/Collection dest {}
+                   :model/Exploration e   {:name          "cascade"
+                                           :creator_id    (mt/user->id :crowberto)
+                                           :collection_id (:id src)}
+                   :model/Document d {:name "Summary"
+                                      :document {:type "doc" :content []}
+                                      :content_type "application/json+vnd.prose-mirror"
+                                      :creator_id (mt/user->id :crowberto)
+                                      :collection_id (:id src)
+                                      :exploration_id (:id e)}]
+      (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                            {:collection_id (:id dest)})
+      (is (= (:id dest) (t2/select-one-fn :collection_id :model/Document :id (:id d)))))))
+
+(deftest exploration-put-archive-cascades-to-documents-test
+  (testing "Archiving an exploration cascade-archives its Summary, except user-archived ones."
+    (mt/with-temp [:model/Collection c {}
+                   :model/Exploration e {:name "to-archive"
+                                         :creator_id    (mt/user->id :crowberto)
+                                         :collection_id (:id c)}
+                   :model/Document live {:name "Summary"
+                                         :document {:type "doc" :content []}
+                                         :content_type "application/json+vnd.prose-mirror"
+                                         :creator_id (mt/user->id :crowberto)
+                                         :collection_id (:id c)
+                                         :exploration_id (:id e)}
+                   :model/Document user-archived {:name "user-archived"
+                                                  :document {:type "doc" :content []}
+                                                  :content_type "application/json+vnd.prose-mirror"
+                                                  :creator_id (mt/user->id :crowberto)
+                                                  :collection_id (:id c)
+                                                  :exploration_id (:id e)
+                                                  :archived true
+                                                  :archived_directly true}]
+      (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                            {:archived true})
+      (testing "live doc is cascade-archived (archived_directly=false marks it as cascade)"
+        (let [d (t2/select-one :model/Document :id (:id live))]
+          (is (true?  (:archived d)))
+          (is (false? (:archived_directly d)))))
+      (testing "user-archived doc is left alone"
+        (let [d (t2/select-one :model/Document :id (:id user-archived))]
+          (is (true? (:archived d)))
+          (is (true? (:archived_directly d))))))))
+
+(deftest exploration-put-unarchive-cascades-to-documents-test
+  (testing "Unarchiving restores cascade-archived docs but leaves user-archived docs archived."
+    (mt/with-temp [:model/Collection c {}
+                   :model/Exploration e {:name "to-unarchive"
+                                         :creator_id    (mt/user->id :crowberto)
+                                         :collection_id (:id c)
+                                         :archived      true
+                                         :archived_directly true}
+                   :model/Document cascade-doc {:name "cascade-doc"
+                                                :document {:type "doc" :content []}
+                                                :content_type "application/json+vnd.prose-mirror"
+                                                :creator_id (mt/user->id :crowberto)
+                                                :collection_id (:id c)
+                                                :exploration_id (:id e)
+                                                :archived true
+                                                :archived_directly false}
+                   :model/Document user-archived {:name "user-archived"
+                                                  :document {:type "doc" :content []}
+                                                  :content_type "application/json+vnd.prose-mirror"
+                                                  :creator_id (mt/user->id :crowberto)
+                                                  :collection_id (:id c)
+                                                  :exploration_id (:id e)
+                                                  :archived true
+                                                  :archived_directly true}]
+      (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                            {:archived false})
+      (testing "cascade-archived doc is restored"
+        (is (false? (t2/select-one-fn :archived :model/Document :id (:id cascade-doc)))))
+      (testing "user-archived doc stays archived"
+        (let [d (t2/select-one :model/Document :id (:id user-archived))]
+          (is (true? (:archived d)))
+          (is (true? (:archived_directly d))))))))
 
 (deftest exploration-http-delete-returns-204-test
   (testing "DELETE /api/exploration/:id returns 204 and removes the row — guards a malli regression where returning the Ring response map `generic-204-no-content` instead of literal `nil` made the `:- :nil` schema reject the response and yield a 400"
@@ -2079,6 +2187,11 @@
               {:model model :model_id id :user_id user-id :object {}
                :timestamp ts :is_creation false :is_reversion false :most_recent false}))
 
+(defn- mine-names
+  "Names in the order `GET /mine` returns them for `user`."
+  [user & opts]
+  (mapv :name (:data (apply mt/user-http-request user :get 200 "exploration/mine" opts))))
+
 (defn- m-index-by
   "Index a `GET /mine` response's `:data` rows by `:name`."
   [resp]
@@ -2118,6 +2231,30 @@
             (is (= 2 (:total resp))))
           (testing "rows don't leak the internal total_count column"
             (is (not (contains? (get by-name "created-by-me") :total_count)))))))))
+
+(deftest mine-ordering-composes-document-edits-test
+  (testing "GET /mine sorts by the caller's most-recent touch, counting Summary document edits"
+    (mt/with-temp [:model/User       me {:email "mine-order@example.com"}
+                   :model/Collection coll {:name "order-coll"}
+                   ;; created-only: only touch is creation (no revisions)
+                   :model/Exploration _created-only {:name "created-only" :creator_id (:id me) :collection_id (:id coll)}
+                   ;; meta-edited: a later Exploration revision
+                   :model/Exploration meta-edited {:name "meta-edited" :creator_id (:id me) :collection_id (:id coll)}
+                   ;; doc-edited: a still-later Document (Summary) revision, even though its own
+                   ;; Exploration row was never edited after creation
+                   :model/Exploration doc-edited {:name "doc-edited" :creator_id (:id me) :collection_id (:id coll)}
+                   :model/Document doc {:name "Summary"
+                                        :document {:type "doc" :content []}
+                                        :content_type "application/json+vnd.prose-mirror"
+                                        :creator_id (:id me)
+                                        :collection_id (:id coll)
+                                        :exploration_id (:id doc-edited)}]
+      (let [now (t/offset-date-time)]
+        (touch-revision! "Exploration" (:id meta-edited) (:id me) (t/plus now (t/days 1)))
+        (touch-revision! "Document"     (:id doc)         (:id me) (t/plus now (t/days 2))))
+      (testing "doc edit (newest touch) sorts above the metadata edit, which sorts above created-only"
+        (is (= ["doc-edited" "meta-edited" "created-only"]
+               (mine-names me)))))))
 
 (deftest mine-pagination-test
   (testing "GET /mine pages with a stable order and a post-filter total"

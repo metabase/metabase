@@ -1,9 +1,9 @@
 (ns metabase.explorations.derived-perms
   "Decides whether the *current user* may see an exploration thread's derived read-data — its
-  queries, the block/page tree built from them, and the thread name. All of these embed verbatim
-  values from results computed under the exploration creator's data-access lens (sandboxing /
-  connection impersonation / database routing), so a viewer whose lens is incompatible with the
-  creator's must not see them.
+  queries, the block/page tree built from them, the thread name, and the Summary document's
+  content. All of these embed verbatim values from results computed under the exploration
+  creator's data-access lens (sandboxing / connection impersonation / database routing), so a
+  viewer whose lens is incompatible with the creator's must not see them.
 
   The per-artifact rule is exactly the gate the results themselves are streamed through
   ([[metabase.queries.cached-result]]): superusers pass unconditionally; any other viewer must hold
@@ -181,3 +181,15 @@
         (set/difference thread-ids
                         (blocked-thread-ids (concat (finalized-queries thread-ids)
                                                     (lens-stamped-threads thread-ids))))))))
+
+(defn doc-content-visible-to-current-user?
+  "Content-visibility gate installed via
+  [[metabase.documents.core/register-doc-content-visibility-fn!]] at init: a document owned by
+  an exploration (the Summary) embeds verbatim result values, so its content follows the
+  exploration's threads' derived-data visibility. Documents outside explorations are unaffected."
+  [document]
+  (if-let [exploration-id (:exploration_id document)]
+    (let [thread-ids (t2/select-pks-set :model/ExplorationThread :exploration_id exploration-id)]
+      (or (empty? thread-ids)
+          (= thread-ids (thread-ids-with-visible-derived-data thread-ids))))
+    true))

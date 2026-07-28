@@ -11,6 +11,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -3017,6 +3018,25 @@
           (is (contains? descendants-without-skip ["Collection" (:id archived-child)]))
           (is (contains? descendants-without-skip ["Card" (:id archived-card)]))
           (is (contains? descendants-without-skip ["Dashboard" (:id archived-dash)])))))))
+
+(deftest serdes-descendants-excludes-exploration-documents-test
+  (testing "Documents tied to an exploration are not included in Collection descendants (UXW-4091)"
+    (mt/with-temp [:model/Collection  coll      {:name "Coll"}
+                   :model/User        user      {:email "explo@example.com"}
+                   :model/Exploration explo     {:name "Explo" :creator_id (:id user)}
+                   :model/Document    plain-doc {:name          "Plain Doc"
+                                                 :creator_id    (:id user)
+                                                 :collection_id (:id coll)}
+                   :model/Document    explo-doc {:name           "Exploration Doc"
+                                                 :creator_id     (:id user)
+                                                 :collection_id  (:id coll)
+                                                 :exploration_id (:id explo)}]
+      (when config/ee-available?
+        (let [descendants (serdes/descendants "Collection" (:id coll) {:skip-archived true})]
+          (is (contains? descendants ["Document" (:id plain-doc)])
+              "plain documents should be included")
+          (is (not (contains? descendants ["Document" (:id explo-doc)]))
+              "exploration documents should be excluded"))))))
 
 (deftest serdes-extract-query-skip-archived-test
   (testing "Collection extract-query with skip-archived: true filters archived collections"
