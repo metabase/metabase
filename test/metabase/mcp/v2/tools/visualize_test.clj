@@ -13,6 +13,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.core :as mcp.core]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
@@ -291,6 +292,12 @@
                                   (v2.resources/read-resource uri only-this {})))))))))))
 
 ;;; ------------------------------------------------- Resources ----------------------------------------------------
+
+(deftest resource-scopes-are-advertised-test
+  (testing "GHY-4157: every v2 resource scope is in the OAuth grant — one a client can't request is a shell it could never read"
+    (let [advertised (set (mcp.core/all-scopes))]
+      (doseq [scope (v2.resources/resource-scopes)]
+        (is (contains? advertised scope) scope)))))
 
 (deftest resources-scope-gating-test
   (testing "GHY-4157: resources/list only shows shells the token can read"

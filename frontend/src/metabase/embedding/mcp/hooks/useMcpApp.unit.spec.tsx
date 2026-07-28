@@ -20,6 +20,7 @@ jest.mock("@modelcontextprotocol/ext-apps/react", () => ({
 }));
 
 const ENCODED_QUERY = "eyJkYXRhYmFzZSI6MX0=";
+const DRILLED_QUERY = "eyJkYXRhYmFzZSI6Mn0=";
 
 /**
  * Renders the hook and hands back the tool-notification handlers it registered,
@@ -112,6 +113,52 @@ describe("useMcpApp", () => {
 
       await waitFor(() => expect(result.current.query).toBe(ENCODED_QUERY));
       expect(result.current.display).toBeNull();
+    });
+
+    it("does not carry a chart type over to the next query, which never asked for one", async () => {
+      // `render_drill_through` returns a bare handle. Keeping the previous
+      // query's display would force its chart type onto different data.
+      fetchMock.get("path:/api/embed-mcp/queries/charted", {
+        query: ENCODED_QUERY,
+        prompt: null,
+      });
+      fetchMock.get("path:/api/embed-mcp/queries/drilled", {
+        query: DRILLED_QUERY,
+        prompt: null,
+      });
+
+      const { result, handlers } = setup();
+
+      handlers.ontoolresult?.({
+        structuredContent: { query_handle: "charted", display: "bar" },
+      });
+      await waitFor(() => expect(result.current.display).toBe("bar"));
+
+      handlers.ontoolresult?.({
+        structuredContent: { query_handle: "drilled" },
+      });
+
+      await waitFor(() => expect(result.current.query).toBe(DRILLED_QUERY));
+      expect(result.current.display).toBeNull();
+    });
+
+    it("keeps the requested chart type when the host sends a payload naming no query", async () => {
+      fetchMock.get("path:/api/embed-mcp/queries/handle-4", {
+        query: ENCODED_QUERY,
+        prompt: null,
+      });
+
+      const { result, handlers } = setup();
+
+      handlers.ontoolresult?.({
+        structuredContent: { query_handle: "handle-4", display: "bar" },
+      });
+      await waitFor(() => expect(result.current.query).toBe(ENCODED_QUERY));
+
+      // A host that omits structuredContent must not read as "infer the display".
+      handlers.ontoolresult?.({});
+
+      expect(result.current.display).toBe("bar");
     });
   });
 

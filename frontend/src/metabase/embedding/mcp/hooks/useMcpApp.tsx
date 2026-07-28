@@ -91,11 +91,16 @@ export function useMcpApp(): McpAppState {
       prompt,
       display,
     }: VisualizeQueryToolPayload) => {
+      if (!query && !queryHandle) {
+        return;
+      }
+
+      // Set for every payload that names a query, not only those asking for a
+      // chart type: `render_drill_through` never asks for one, and without the
+      // reset the previous query's display would be applied to the new results.
       // The tool's display enum and this bundle's list are versioned separately,
       // so an unrecognized value falls back to the inferred display.
-      if (isCardDisplayType(display)) {
-        setDisplay(display);
-      }
+      setDisplay(isCardDisplayType(display) ? display : null);
 
       if (query) {
         setQuery(query);

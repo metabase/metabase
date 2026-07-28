@@ -46,8 +46,8 @@
   (get-in @resources* [uri :scope]))
 
 (defn resource-scopes
-  "The distinct scope strings across all registered v2 resources. Folded into the OAuth grant
-   alongside [[metabase.mcp.v2.registry/registered-scopes]]."
+  "The distinct scope strings across all registered v2 resources. Folded into the OAuth grant by
+   [[metabase.mcp.core/all-scopes]], alongside [[metabase.mcp.v2.registry/registered-scopes]]."
   []
   (into (sorted-set) (keep :scope) (vals @resources*)))
 
