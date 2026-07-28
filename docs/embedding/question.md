@@ -7,7 +7,7 @@ redirect_from:
 
 # Embed a chart
 
-A question component embeds a single Metabase question (a chart, table, or other visualization) in your app. You can display a read-only chart, an interative chart,the graphical query builder, or the SQL editor.
+A question component embeds a single Metabase question (a chart, table, or other visualization) in your app. You can display a read-only chart, an interactive chart, the graphical query builder, or the SQL editor.
 
 - [View-only chart](#embed-a-view-only-chart)
 - [Interactive chart](#embed-an-interactive-chart)\*
@@ -22,7 +22,7 @@ For embedding an AI chat component, see [AI chat](./sdk/ai-chat.md).
 
 ![Static question](./images/static-question.png)
 
-A view-only (a.k.a. "static") chart displays results without letting people explore the data. You can add editable filters that viewers can use to filter the chart. You can also lock filters to filter rows, for example to filter rows by user ID. 
+A view-only (a.k.a. "static") chart displays results without letting people explore the data. You can add editable filters that people can change, or lock a filter's value so each person only sees their own rows. For example, you could filter rows by a user ID.
 
 With view-only charts, however, people won't be able to drill through the chart, or self-serve new queries.
 
@@ -40,9 +40,9 @@ Before you start, an admin needs to [turn on guest embedding](./guest-embedding.
 1. Visit the question in your Metabase.
 2. Click the **Share** icon in the upper right.
 3. Select **Embed** to open the embedding wizard.
-4. For authentication, choose **Guest**. This is the setting that makes the chart view-only. People who view this chart are treated as a guest, so your app won't need to log people in to your Metabase to view the question. Choose **Guest** before you publish; the **Publish** button only shows up once you've selected guest authentication.
-5. Publish the question: click the **Publish** button. If you don't publish the question, none of this will work.
-6. For behavior, select from the [following options](#question-attributes).
+4. For authentication, choose **Guest**. Guest authentication is what makes the chart view-only: people who view the chart are treated as guests, so your app won't need to log them in to your Metabase.
+5. Click the **Publish** button. The button only shows up once you've chosen an authentication type. 
+6. For behavior, select from the [following options](#web-component-attributes).
 7. If you're embedding a SQL question with a variable, set the parameter to **Editable** or **Locked**. Parameters are **Disabled** by default, which hides them and prevents your server from setting them. See [Configuring parameters](./guest-embedding.md#configuring-parameters).
 8. Customize the [appearance](./appearance.md).
 9. Click the **Get code** button. You'll get both the frontend and backend code based on the selections you made in the wizard.
@@ -53,7 +53,7 @@ To keep an embed alive after its token expires, configure a token endpoint with 
 
 #### View-only chart example with web components
 
-Say you have a question written in SQL, with a field filter to filter orders by `user_id`: Here's the question.
+Say you have a question written in SQL, with a field filter to filter orders by `user_id`:
 
 ```sql
 {% raw %}
@@ -66,8 +66,7 @@ WHERE
 {% endraw %}
 ```
 
-Now say you want to embed this question, and filter the orders that people see based on their user ID. Here's the frontend code. This example includes a theme that defines the chart's appearance.
-
+Now say you want to embed this question, and filter the orders that people see based on their user ID. Here's the frontend code.
 ```html
 <script defer src="https://your-metabase.example.com/app/embed.js"></script>
 <script>
@@ -122,6 +121,8 @@ Fetch the JWT token from your backend and programmatically pass it to the 'metab
 </metabase-question>
 ```
 
+The above example includes a theme that defines the chart's appearance.
+
 On your app's server, set the value for the locked parameter in the token, so people viewing the embed can't see or change the value. That way you can show user 13 a question filtered to just the orders placed by user 13.
 
 ```js
@@ -150,13 +151,13 @@ You can generate the above code using the in-app wizard. Set the `user_id` param
 
 For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
 
-For the full list of attributes, see [chart component attributes](#chart-attributes).
+For the full list of attributes, see [web component attributes](#web-component-attributes).
 
 ### View-only charts using the React SDK
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
-To embed a view-only chart with the [SDK](./sdk/introduction.md), use the `StaticQuestion` component. Wrap the component in a `MetabaseProvider` with your auth config.
+To embed a view-only chart with the [SDK](./sdk/introduction.md), use the `StaticQuestion` component. Wrap the component in the `MetabaseProvider` component with your auth config.
 
 ```typescript
 {% include_file "{{ dirname }}/sdk/snippets/questions/static-question.tsx" %}
@@ -172,7 +173,7 @@ The component has a default height, which you can change with the `height` prop.
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
-An interactive chart lets people explore their data: they can drill through the chart, filter results, summarize and group them, an optionally save their changes. 
+An interactive chart lets people explore their data: they can drill through the chart, filter results, summarize and group them, and optionally save their changes.
 
 - [Web components](#interactive-charts-using-a-web-component)
 - [React SDK](#interactive-charts-using-the-react-sdk)
@@ -249,7 +250,7 @@ To build your own layout, use namespaced components inside `InteractiveQuestion`
 ```
 #### `InteractiveQuestion` components
 
-These components are available via the `InteractiveQuestion` namespace (like `<InteractiveQuestion.Filter />`). Use them to [customize the layout](#customize-the-layout) of an interactive question.
+These components are available via the `InteractiveQuestion` namespace (like `<InteractiveQuestion.Filter />`). Use them to [customize the layout](#customize-the-layout-of-an-interactive-chart) of an interactive question.
 
 - [InteractiveQuestion.AlertsButton](./sdk/api/InteractiveQuestion.html#alertsbutton)
 - [InteractiveQuestion.Breakout](./sdk/api/InteractiveQuestion.html#breakout)
@@ -307,7 +308,7 @@ With web components, you also need `is-save-enabled="true"`, as saving is off by
 ></metabase-question>
 ```
 
-With the SDK, saving is on by default, so `targetCollection` is enough. To customize the layout, use the [namespaced components](#customize-the-layout).
+With the SDK, saving is on by default, so `targetCollection` is enough. To customize the layout, use the [namespaced components](#interactivequestion-components).
 
 ## Embed the SQL editor
 
@@ -353,7 +354,7 @@ You can pass values to a question's [SQL parameters](../questions/native-editor/
 
 > SQL parameters only work with native SQL questions, not query-builder questions.
 
-### Controling parameters with the SDK
+### Controlling parameters with the SDK
 
 `initialSqlParameters` sets the values once on load (uncontrolled). Your app won't know when people change them:
 
@@ -382,6 +383,8 @@ Seed values once with the `initial-sql-parameters` attribute:
 
 To push values at runtime (controlled), set the `sqlParameters` property on the element instead of the attribute, and listen for the `sql-parameters-change` event. See [Modular embedding parameters](./parameters.md#modular-embedding-web-components) for the full pattern.
 
+### Hide a parameter
+
 To hide a parameter from the question's UI, use the `hidden-parameters` attribute (web component) or the `hiddenParameters` prop (SDK). Both require a Pro or Enterprise plan and an SSO embed; `hidden-parameters` has no effect on a guest embed. To hide a parameter on a guest embed, set the parameter to **Locked** or leave it **Disabled** in the question's embed settings.
 
 ## Let people set up alerts on a question
@@ -402,7 +405,9 @@ Alerts created in an embedded context only send to the logged-in user and exclud
 </MetabaseProvider>
 ```
 
-## Chart attributes
+## Web component attributes
+
+These attributes apply to the `<metabase-question>` web component. For the SDK, see [`StaticQuestion` props](#staticquestion-props) and [`InteractiveQuestion` props](#interactivequestion-props).
 
 {% include_file "{{ dirname }}/eajs/snippets/MetabaseQuestionAttributes.md" snippet="properties" %}
 
