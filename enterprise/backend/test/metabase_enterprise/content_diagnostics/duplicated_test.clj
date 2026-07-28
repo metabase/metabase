@@ -544,7 +544,7 @@
 ;;; ------------------------------------------- collection subject ----------------------------------------
 
 (deftest duplicated-checker-flags-collection-name-clusters-test
-  (testing "same-named eligible collections cluster instance-wide; archived / non-default-namespace ones sit out"
+  (testing "same-named eligible collections cluster instance-wide; archived / snippet-namespace / is_sample ones sit out"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)
@@ -553,18 +553,37 @@
                          :model/Collection {coll-b :id}   {:name nm}
                          :model/Collection {solo :id}     {:name (str prefix " Unique")}
                          :model/Collection {archived :id} {:name nm :archived true}
-                         :model/Collection {snippet :id}  {:name nm :namespace "snippets"}]
+                         :model/Collection {snippet :id}  {:name nm :namespace "snippets"}
+                         :model/Collection {sample :id}   {:name nm :is_sample true}]
             (let [by-entity (duplicated-findings-by-entity!)]
               (testing "the two eligible same-named collections are symmetric peers, duplicate_count 1"
                 (is (= 1 (:duplicate_count (by-entity [:collection coll-a]))))
                 (is (= [coll-b] (get-in (by-entity [:collection coll-a]) [:details :duplicate_entity_ids])))
                 (is (= [coll-a] (get-in (by-entity [:collection coll-b]) [:details :duplicate_entity_ids]))))
-              (testing "a uniquely-named collection and the ineligible (archived / snippet-namespace) ones get no finding"
+              (testing "a uniquely-named collection and the ineligible (archived / snippet-namespace / is_sample) ones get no finding"
                 (is (nil? (by-entity [:collection solo])))
                 (is (nil? (by-entity [:collection archived])))
-                (is (nil? (by-entity [:collection snippet]))))
+                (is (nil? (by-entity [:collection snippet])))
+                (is (nil? (by-entity [:collection sample]))))
               (testing "the ineligible collections do not count as peers either"
                 (is (= [coll-b] (get-in (by-entity [:collection coll-a]) [:details :duplicate_entity_ids])))))))))))
+
+(deftest duplicated-checker-includes-non-default-namespace-collections-test
+  (testing "non-default-namespace collections ARE subjects (only the snippet/analytics namespaces sit out)"
+    ;; Transforms stands in for every non-{snippet,analytics} namespace: `eligible-collection-where` treats
+    ;; them identically, so this also covers the tenant namespace (which can't be temp-created here - it
+    ;; needs `perms/use-tenants`).
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (let [prefix (scope-prefix)
+              nm     (str prefix " Pipeline")]
+          (mt/with-temp [:model/Collection {xf-a :id} {:name nm :namespace "transforms"}
+                         :model/Collection {xf-b :id} {:name nm :namespace "transforms"}]
+            (let [by-entity (duplicated-findings-by-entity!)]
+              (testing "same-named transform-namespace collections cluster as symmetric peers"
+                (is (= 1 (:duplicate_count (by-entity [:collection xf-a]))))
+                (is (= [xf-b] (get-in (by-entity [:collection xf-a]) [:details :duplicate_entity_ids])))
+                (is (= [xf-a] (get-in (by-entity [:collection xf-b]) [:details :duplicate_entity_ids])))))))))))
 
 (deftest duplicated-api-collection-peers-hydrate-test
   (testing "GET /duplicated hydrates collection peers gated on the collection's own read visibility (its own :id)"

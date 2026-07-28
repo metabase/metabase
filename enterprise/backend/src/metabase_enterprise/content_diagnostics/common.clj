@@ -26,16 +26,23 @@
   (set/map-invert entity-type->model))
 
 (def eligible-collection-where
-  "The WHERE defining a collection *subject*: non-archived, default-namespace only (snippet/analytics-
-  namespace collections are internal), never the Trash collection and never instance-analytics collections.
-  Personal collections ARE included (the scan is permission-agnostic; serve-time filters handle exclusion).
-  The single definition of what a collection subject is, so no two checkers can ever scan divergent
-  collection sets."
+  "The WHERE defining a collection *subject* - the finalized content-diagnostics eligibility set, stated
+  directly (not via `mi/exclude-internal-content-hsql`) so the scope is visible here and stable against
+  platform changes to \"internal content\". Included: the default (nil), transforms, and tenant namespaces.
+  Excluded: the snippet and analytics namespaces, the Trash and instance-analytics types, archived
+  collections, and sample content. Personal collections ARE included (the scan is permission-agnostic;
+  serve-time filters handle exclusion). The single definition of what a collection subject is, so no two
+  checkers can ever scan divergent collection sets."
   [:and
    [:= :archived false]
-   [:= :namespace nil]
-   [:or
-    [:= :type nil]
+   [:= :is_sample false]
+   ;; namespace denylist: drop snippets + analytics (the audit tree); keep default/transforms/tenant.
+   ;; NULL-safe - the nil arm keeps default-namespace collections the NOT-IN would otherwise drop.
+   [:or [:= :namespace nil]
+    [:not-in :namespace [(name collection/snippets-ns) "analytics"]]]
+   ;; type denylist: Trash lives in the default namespace, so only this arm drops it; instance-analytics is
+   ;; already dropped by the analytics-namespace arm, listed here too to mirror the spec.
+   [:or [:= :type nil]
     [:not-in :type [collection/trash-collection-type
                     collection/instance-analytics-collection-type]]]])
 
