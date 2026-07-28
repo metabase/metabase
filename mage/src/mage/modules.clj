@@ -154,6 +154,7 @@
      timeline
      tracing
      types
+     usage-metadata
      users
      util
      version
