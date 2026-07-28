@@ -100,6 +100,7 @@
      auth-identity
      auth-provider
      batch-processing
+     bookmarks
      channel
      classloader
      collections
