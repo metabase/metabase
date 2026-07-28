@@ -6,6 +6,8 @@ import { forkConversation } from "metabase/metabot/state";
 import * as Urls from "metabase/urls";
 
 import {
+  createMockSSEStream,
+  createPauses,
   enterChatMessage,
   forkButton,
   lastChatMessage,
@@ -105,6 +107,36 @@ describe("metabot > fork", () => {
         Urls.metabotConversation("forked-convo-id"),
       ),
     );
+  });
+
+  it("does not offer to fork earlier messages while a response is streaming", async () => {
+    const { lastMessage } = await setupWithReply();
+    expect(await forkButton(lastMessage)).toBeInTheDocument();
+
+    const [pause] = createPauses(1);
+    mockAgentEndpoint({
+      stream: createMockSSEStream(
+        (async function* () {
+          yield { type: "start", messageId: "msg_second" };
+          yield { type: "text-start", id: "t2" };
+          yield { type: "text-delta", id: "t2", delta: "Thinking..." };
+          await pause.promise;
+          yield { type: "text-end", id: "t2" };
+        })(),
+      ),
+    });
+
+    await enterChatMessage("And why?");
+
+    await waitFor(() =>
+      expect(
+        within(lastMessage).queryByTestId("metabot-chat-message-fork"),
+      ).not.toBeInTheDocument(),
+    );
+
+    pause.resolve();
+
+    expect(await forkButton(lastMessage)).toBeInTheDocument();
   });
 
   it("does not offer to fork an errored response", async () => {

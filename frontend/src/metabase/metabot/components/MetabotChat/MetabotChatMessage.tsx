@@ -542,7 +542,7 @@ export const Messages = ({
 
   const handleFork = useCallback(
     async (messageId: string) => {
-      if (!agentId) {
+      if (!agentId || isDoingScience) {
         return;
       }
       setForkingMessageId(messageId);
@@ -557,7 +557,7 @@ export const Messages = ({
         setForkingMessageId(null);
       }
     },
-    [dispatch, agentId, conversationId, sendToast],
+    [dispatch, agentId, conversationId, sendToast, isDoingScience],
   );
 
   const [feedbackState, setFeedbackState] = useState<{
@@ -635,7 +635,9 @@ export const Messages = ({
                 (isDoingScience && !nextContent)
               }
               extraActions={getExtraActions?.(message.id)}
-              onFork={agentId && !readonly ? handleFork : undefined}
+              onFork={
+                agentId && !readonly && !isDoingScience ? handleFork : undefined
+              }
               isForking={
                 "externalId" in message &&
                 !!message.externalId &&
