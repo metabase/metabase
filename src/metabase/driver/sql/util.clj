@@ -129,6 +129,18 @@
                        (str/replace "\\" "\\\\")
                        (str/replace "'" "\\'")))))
 
+(defn quote-literal
+  "Wrap `s` in single quotes as a SQL string literal, escaping embedded quotes per `escape-style` (default `:ansi`).
+
+    (quote-literal \"Tito's Tacos\")              ; -> \"'Tito''s Tacos'\"
+    (quote-literal \"Tito's Tacos\" :backslashes) ; -> \"'Tito\\'s Tacos'\"
+
+  For trusted strings only -- pass user input as a query parameter where the driver supports it."
+  (^String [^String s]
+   (quote-literal s :ansi))
+  (^String [^String s escape-style]
+   (str \' (escape-sql s escape-style) \')))
+
 (defn validate-convert-timezone-args
   "Validate the arguments of convert-timezone.
   - if input column has timezone only target-timezone is required, throw exception if source-timezone is provided.
