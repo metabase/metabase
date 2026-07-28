@@ -34,7 +34,7 @@ import {
   type ConversationSummary,
 } from "../../types";
 
-const COLUMN_WIDTHS = [
+const SKELETON_COLUMN_WIDTHS = [
   0.14, 0.14, 0.11, 0.12, 0.08, 0.09, 0.1, 0.08, 0.08, 0.06,
 ];
 
@@ -137,7 +137,7 @@ export function ConversationsTable({
       data-testid="conversations-table"
     >
       {isLoading ? (
-        <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
+        <TreeTableSkeleton columnWidths={SKELETON_COLUMN_WIDTHS} />
       ) : (
         <TreeTable
           instance={treeTableInstance}
