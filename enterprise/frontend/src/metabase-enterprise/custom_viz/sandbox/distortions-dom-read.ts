@@ -1,5 +1,7 @@
 import type { CustomVizPluginId } from "metabase-types/api";
 
+import { BLOCKED_TAGS } from "./distortions-dom-mutate";
+
 // DOM scoping: every Node crossing the membrane is filtered. Nodes inside
 // the plugin's mount subtree (marked with data-plugin-sandbox=<id>) pass
 // through real; nodes outside are replaced with a detached decoy of the
@@ -107,7 +109,9 @@ function describeNode(node: Node): string {
 function createDecoyForNode(node: Node): Node {
   switch (node.nodeType) {
     case Node.ELEMENT_NODE: {
-      const decoy = document.createElement(node.nodeName.toLowerCase());
+      const tagName = node.nodeName.toLowerCase();
+      const decoyTag = BLOCKED_TAGS.has(tagName) ? "div" : tagName;
+      const decoy = document.createElement(decoyTag);
       decoy.setAttribute("data-plugin-sandbox-decoy", "true");
       decoy.setAttribute("id", "sandbox-decoy");
       return decoy;

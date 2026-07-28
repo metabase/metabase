@@ -266,6 +266,11 @@ block(
   setter(HTMLAnchorElement.prototype, "target"),
   "HTMLAnchorElement.set target",
 );
+block(method(HTMLFormElement.prototype, "submit"), "HTMLFormElement.submit");
+block(
+  method(HTMLFormElement.prototype, "requestSubmit"),
+  "HTMLFormElement.requestSubmit",
+);
 
 /**
  * Intentionally left out:
