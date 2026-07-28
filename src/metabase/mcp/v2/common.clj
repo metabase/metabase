@@ -11,7 +11,6 @@
    [clojure.string :as str]
    [metabase.agent-api.query-guards :as query-guards]
    [metabase.eid-translation.core :as eid-translation]
-   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.projections :as projections]
    [metabase.util :as u]
@@ -303,25 +302,15 @@
 
 ;;; ------------------------------------------------ _write dispatch -----------------------------------------------
 
-(defn check-update-scope!
-  "The method-level scope gate for merged `_write` tools: the registry requires the create
-   scope to list/call the tool at all; `method: \"update\"` additionally requires
-   `update-scope` at runtime. No-op for unscoped callers (cookie sessions bind the
-   unrestricted sentinel, which [[metabase.mcp.scope/matches?]] always accepts)."
-  [token-scopes update-scope tool-name]
-  (when-not (mcp.scope/matches? token-scopes update-scope)
-    (throw (ex-info (format "Insufficient scope to call %s with method: update — this token can create but not update."
-                            tool-name)
-                    {:status-code 403 ::error-code error-code-invalid-request}))))
-
 (defn dispatch-write
   "Shared `method` dispatch for `_write` tools. `entry` carries the tool's write contract:
-   `:tool-name`, `:update-scope` (re-checked at runtime on update), and `:create-required`
-   (arg keys enforced at create with teaching errors — the \"(create)\" markers in the spec).
+   `:create-required` (arg keys enforced at create with teaching errors — the \"(create)\" markers
+   in the spec). The tool's single write `:scope` is enforced at the registry gate, so dispatch
+   itself does no scope checking.
 
    Returns `[:create args]` or `[:update id args]` (with `:method`/`:id` stripped), or throws
    a teaching error. Does not itself touch the DB — the tool handler consumes the result."
-  [{:keys [tool-name update-scope create-required]} token-scopes {:keys [method id] :as args}]
+  [{:keys [create-required]} {:keys [method id] :as args}]
   (case method
     "create"
     (do
@@ -334,8 +323,6 @@
     (do
       (when (nil? id)
         (throw-teaching-error "`id` is required when method is \"update\"."))
-      (when update-scope
-        (check-update-scope! token-scopes update-scope tool-name))
       [:update id (dissoc args :method :id)])
 
     (throw-teaching-error (format "Invalid method %s — use \"create\" or \"update\"." (pr-str method)))))
