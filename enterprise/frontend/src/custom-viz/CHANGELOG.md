@@ -2,6 +2,20 @@
 
 This changelog covers the `@metabase/custom-viz` npm package — the API and CLI for building custom visualizations for Metabase. Changes to how Metabase itself hosts custom visualization plugins are covered by the [Metabase changelog](https://www.metabase.com/changelog).
 
+## 2.0.0
+
+### ⚠ BREAKING CHANGES
+
+- `column` and `column_settings` are now reserved setting ids, contributed to every visualization by Metabase to power the built-in per-column formatting popover. Plugins that declared their own settings under these ids must rename them — the `Settings` type now rejects those keys with a type error ([#78128](https://github.com/metabase/metabase/pull/78128))
+
+### Features
+
+- per-column formatting: visualization settings now include a `column` function that resolves a column's effective formatting settings — instance-wide defaults, the column's metadata settings, and the card-level settings from the column formatting popover, merged in that order. Pass its result to `formatValue` to render values the way the user configured them ([#78128](https://github.com/metabase/metabase/pull/78128))
+
+### Bug Fixes
+
+- `FormatValueOptions.date_style` now accepts `null`, matching the values Metabase actually passes ([#70306](https://github.com/metabase/metabase/pull/70306))
+
 ## 1.0.5 (2026-07-23)
 
 ### Bug Fixes
