@@ -1,12 +1,11 @@
-/* global Buffer, console */
+/* global Buffer, console, process */
 // Packages metabase-plugin.json + dist/ into <name>-<version>.tgz at the
 // project root, ready to upload via Admin → Custom visualizations → Add.
 //
 // Layout (manifest at root, dist/index.js, dist/assets/*) matches what the
 // Metabase backend expects.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { gzipSync } from "node:zlib";
 
 import { pack as tarPack } from "tar-stream";
@@ -15,7 +14,8 @@ import { pack as tarPack } from "tar-stream";
 const MAX_COMPRESSED_BYTES = 5 * 1024 * 1024;
 const MAX_UNCOMPRESSED_BYTES = 25 * 1024 * 1024;
 
-const projectRoot = dirname(fileURLToPath(import.meta.url));
+// Run from the project being packaged: `metabase-custom-viz pack`.
+const projectRoot = process.cwd();
 
 const manifestPath = resolve(projectRoot, "metabase-plugin.json");
 if (!existsSync(manifestPath)) {

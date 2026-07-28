@@ -17,12 +17,14 @@ export default defineConfig({
       entry: {
         cli: resolve(__dirname, "src/cli.ts"),
         index: resolve(__dirname, "src/index.ts"),
+        pack: resolve(__dirname, "src/pack.mjs"),
       },
       formats: ["es"],
     },
     rolldownOptions: {
       external: [
         "commander",
+        "tar-stream",
         "react",
         "react/jsx-runtime",
         "react-dom",

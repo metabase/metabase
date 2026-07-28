@@ -2,9 +2,11 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 /* eslint-disable no-console */
 
+import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { Command } from "commander";
 
@@ -15,7 +17,6 @@ import {
   generateIconSvg,
   generateIndexTsx,
   generateManifest,
-  generatePackScript,
   generatePackageJson,
   generateReadme,
   generateTsConfig,
@@ -60,7 +61,6 @@ program
       writeFile(join(name, "package.json"), generatePackageJson(name)),
       writeFile(join(name, "vite.config.ts"), generateViteConfig()),
       writeFile(join(name, "tsconfig.json"), generateTsConfig()),
-      writeFile(join(name, "pack.mjs"), generatePackScript()),
       writeFile(
         join(name, "src", "index.tsx"),
         generateIndexTsx(name, displayName),
@@ -75,7 +75,6 @@ program
     console.log(`  ${name}/package.json`);
     console.log(`  ${name}/vite.config.ts`);
     console.log(`  ${name}/tsconfig.json`);
-    console.log(`  ${name}/pack.mjs`);
     console.log(`  ${name}/src/index.tsx`);
     console.log(`  ${name}/metabase-plugin.json`);
     console.log(`  ${name}/public/assets/icon.svg`);
@@ -97,6 +96,21 @@ program
     console.log(
       "  Production:             npm run build, then upload the .tgz in Admin → Custom visualizations → Add",
     );
+  });
+
+program
+  .command("pack")
+  .description("Package a built visualization into an upload-ready .tgz")
+  .option("--dir <dir>", "Project directory", ".")
+  .action((options: { dir: string }) => {
+    const script = fileURLToPath(
+      new URL(/* @vite-ignore */ "./pack.js", import.meta.url),
+    );
+    const { status } = spawnSync(process.execPath, [script], {
+      cwd: resolve(process.cwd(), options.dir),
+      stdio: "inherit",
+    });
+    process.exit(status ?? 1);
   });
 
 program.parse();
