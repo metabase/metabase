@@ -315,15 +315,14 @@
             {}
             cards-to-copy)))
 
-(api.macros/defendpoint :post "/:from-document-id/copy" :- ::documents.schema/document
-  "Copy a Document."
-  [{:keys [from-document-id]} :- [:map
-                                  [:from-document-id ms/PositiveInt]]
-   _query-params
-   {:keys [name collection_id collection_position]} :- [:map
-                                                        [:name                {:optional true} [:maybe ms/NonBlankString]]
-                                                        [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
-                                                        [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
+(defn copy-document!
+  "Copy the document with `from-document-id` into `:collection_id` (nil = root), along with the
+  questions saved inside it, and return the new document. `copy-opts` may override `:name` and set
+  `:collection_position`.
+
+  Requires read permission on the source and create permission on the destination collection.
+  Publishes `:event/document-create`."
+  [from-document-id {:keys [name collection_id collection_position]}]
   (api/create-check :model/Document {:collection_id collection_id})
   (let [existing-document (api/check-404
                            (api/read-check
@@ -352,6 +351,19 @@
                            {:object new-document
                             :user-id api/*current-user-id*})
     new-document))
+
+(api.macros/defendpoint :post "/:from-document-id/copy" :- ::documents.schema/document
+  "Copy a Document."
+  [{:keys [from-document-id]} :- [:map
+                                  [:from-document-id ms/PositiveInt]]
+   _query-params
+   {:keys [name collection_id collection_position]} :- [:map
+                                                        [:name                {:optional true} [:maybe ms/NonBlankString]]
+                                                        [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+                                                        [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
+  (copy-document! from-document-id {:name                name
+                                    :collection_id       collection_id
+                                    :collection_position collection_position}))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 

@@ -134,6 +134,10 @@
 (api-scope/defscope agent-resource-read "agent:resource:read"
   (deferred-tru "View resources"))
 
+;; Content (type-generic tools)
+(api-scope/defscope agent-content-duplicate "agent:content:duplicate"
+  (deferred-tru "Duplicate content"))
+
 ;; Bookmark
 (api-scope/defscope agent-bookmark-write "agent:bookmark:write"
   (deferred-tru "Bookmark and un-bookmark content"))
@@ -205,19 +209,23 @@
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
    ;; segment/measure are MBQL query macros authored while building queries, like metric — the NLQ
    ;; bucket, not the raw-SQL one.
+   ;; `agent:content:*` rides both buckets: the type-generic tools cover question (nlq) and
+   ;; dashboard/document (other-tools), and each call re-checks the type's own create scope.
    :permission/metabot-nlq            #{"agent:notebook:*"
                                         "agent:query:*"
                                         "agent:question:*"
                                         "agent:metric:*"
                                         "agent:segment:*"
-                                        "agent:measure:*"}
+                                        "agent:measure:*"
+                                        "agent:content:*"}
    :permission/metabot-other-tools    #{"agent:viz:*"
                                         "agent:dashboard:*"
                                         "agent:document:*"
                                         "agent:alert:*"
                                         "agent:notification:*"
                                         "agent:bookmark:*"
-                                        "agent:collection:*"}})
+                                        "agent:collection:*"
+                                        "agent:content:*"}})
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."
