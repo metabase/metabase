@@ -29,6 +29,17 @@ export interface DiagnosticsFeed {
 
 const EMPTY_ENTRIES: DataAppDiagnosticPayload[] = [];
 
+/**
+ * Mirrors the dev server's diagnostics report — what the preview page has
+ * captured, plus the connection and manifest status — for the toolbar to
+ * render, and exposes `clear` to empty it for every reader.
+ *
+ * The endpoint is the single source of truth: the hook never reads the page's
+ * in-memory collector, so the toolbar and a shell agent polling the same URL
+ * can't diverge. `subscribe` (the dev server's "feed changed" nudge over the
+ * HMR socket) makes updates immediate; the hook polls regardless, because a
+ * dev-server restart can leave that socket unconnectable.
+ */
 export const useDiagnosticsFeed = (
   url: string = DATA_APP_DIAGNOSTICS_URL,
   subscribe?: SubscribeToChanges,
@@ -43,8 +54,11 @@ export const useDiagnosticsFeed = (
   // a slow read can't overwrite a fresher one, and `clear` can void reads still
   // in flight.
   const latestRead = useRef(0);
+  const pendingClear = useRef<Promise<void> | null>(null);
 
   const readFeed = useCallback(async () => {
+    await pendingClear.current;
+
     const readId = ++latestRead.current;
 
     try {
@@ -91,13 +105,21 @@ export const useDiagnosticsFeed = (
 
   const clear = useCallback(() => {
     // Void any read in flight, drop the entries locally, and tell the server —
-    // the DELETE empties every reader's buffer, this one included.
+    // the DELETE empties every reader's buffer, this one included. Reads issued
+    // while it is in flight wait for it (see `readFeed`).
     latestRead.current += 1;
     setReport((current) => (current ? { ...current, entries: [] } : current));
 
-    fetch(url, { method: "DELETE" }).catch(() =>
-      setProblem({ kind: "unreachable" }),
-    );
+    const request: Promise<void> = fetch(url, { method: "DELETE" })
+      .then(() => undefined)
+      .catch(() => setProblem({ kind: "unreachable" }))
+      .finally(() => {
+        if (pendingClear.current === request) {
+          pendingClear.current = null;
+        }
+      });
+
+    pendingClear.current = request;
   }, [url]);
 
   return {

@@ -160,6 +160,43 @@ describe("useDiagnosticsFeed", () => {
     expect(result.current.entries).toEqual([]);
   });
 
+  it("holds reads issued while a clear is in flight", async () => {
+    const { subscribe, nudge } = makeSubscribe();
+    let completeDelete: (value: Response) => void = () => undefined;
+    const deleteRequest = new Promise<Response>((resolve) => {
+      completeDelete = resolve;
+    });
+
+    jest
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((_url, init) =>
+        init?.method === "DELETE"
+          ? deleteRequest
+          : Promise.resolve(ok(report([entry(1)]))),
+      );
+
+    const { result } = renderHook(() => useDiagnosticsFeed("/feed", subscribe));
+    await waitFor(() => expect(result.current.entries).toHaveLength(1));
+
+    act(() => result.current.clear());
+    expect(result.current.entries).toEqual([]);
+
+    // A poll (or nudge) lands mid-DELETE. Reading now would mirror the entries
+    // the server is about to drop, flashing them back into the panel.
+    await act(async () => nudge());
+    expect(result.current.entries).toEqual([]);
+
+    // Once the DELETE completes, reads resume — against the emptied feed.
+    jest.mocked(globalThis.fetch).mockResolvedValue(ok(report([])));
+    await act(async () => {
+      completeDelete(new Response(null, { status: 204 }));
+      await deleteRequest;
+    });
+    await act(async () => nudge());
+
+    expect(result.current.entries).toEqual([]);
+  });
+
   it("distinguishes a refused response from an unreachable server", async () => {
     const fetchSpy = jest
       .spyOn(globalThis, "fetch")

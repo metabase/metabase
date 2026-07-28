@@ -303,6 +303,66 @@ describe("DevToolbar open", () => {
 
     expect(parseInt(panel.style.height, 10)).toBe(before + 120);
   });
+
+  const resizeViewport = (innerHeight: number) => {
+    Object.defineProperty(window, "innerHeight", {
+      value: innerHeight,
+      configurable: true,
+    });
+    fireEvent(window, new Event("resize"));
+  };
+
+  it("follows the viewport until the author drags, then keeps their height", async () => {
+    const originalInnerHeight = window.innerHeight;
+
+    try {
+      await setup();
+      await open();
+
+      const panel = screen.getByTestId("dev-toolbar-panel");
+
+      resizeViewport(900);
+      expect(parseInt(panel.style.height, 10)).toBe(300);
+
+      fireEvent.mouseDown(
+        screen.getByRole("separator", { name: /Resize diagnostics panel/ }),
+        { clientY: 600 },
+      );
+      fireEvent.mouseMove(window, { clientY: 400 });
+      fireEvent.mouseUp(window);
+      expect(parseInt(panel.style.height, 10)).toBe(500);
+
+      // A dragged height is kept across viewport changes, but never taller than
+      // the window — a shrunk window would otherwise leave the panel off-screen.
+      resizeViewport(1200);
+      expect(parseInt(panel.style.height, 10)).toBe(500);
+
+      resizeViewport(300);
+      expect(parseInt(panel.style.height, 10)).toBe(280);
+    } finally {
+      Object.defineProperty(window, "innerHeight", {
+        value: originalInnerHeight,
+        configurable: true,
+      });
+    }
+  });
+
+  it("stops dragging when the panel unmounts mid-drag", async () => {
+    await setup();
+    await open();
+
+    fireEvent.mouseDown(
+      screen.getByRole("separator", { name: /Resize diagnostics panel/ }),
+      { clientY: 400 },
+    );
+
+    // Close unmounts the panel; a drag whose listeners outlived it would keep
+    // setting state on an unmounted component with every mouse move.
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.mouseMove(window, { clientY: 200 });
+
+    expect(screen.queryByTestId("dev-toolbar-panel")).not.toBeInTheDocument();
+  });
 });
 
 // Guard the contract this refactor rests on: the panel must not reach into the
