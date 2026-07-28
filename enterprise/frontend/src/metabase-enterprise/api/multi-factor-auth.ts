@@ -1,3 +1,4 @@
+import { provideUserListTags } from "metabase/api/tags";
 import type {
   MfaAdminOverview,
   MfaAdminUser,
@@ -10,7 +11,13 @@ import type {
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { invalidateTags, provideMfaStatusTags, tag } from "./tags";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideMfaStatusTags,
+  tag,
+} from "./tags";
 
 export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -30,7 +37,8 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/mfa/admin/enrolled-users",
         params,
       }),
-      providesTags: () => provideMfaStatusTags(),
+      providesTags: (response) =>
+        response ? provideUserListTags(response.data) : [],
     }),
     listUnenrolledMfaUsers: builder.query<
       MfaUserListResponse<MfaAdminUser>,
@@ -41,7 +49,8 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/mfa/admin/unenrolled-users",
         params,
       }),
-      providesTags: () => provideMfaStatusTags(),
+      providesTags: (response) =>
+        response ? provideUserListTags(response.data) : [],
     }),
     removeUserMfa: builder.mutation<void, { user_id: UserId }>({
       query: (body) => ({
@@ -49,7 +58,12 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/mfa/admin/remove",
         body,
       }),
-      invalidatesTags: (_, error) => invalidateTags(error, [tag("mfa-status")]),
+      invalidatesTags: (_, error, { user_id }) =>
+        invalidateTags(error, [
+          tag("mfa-status"),
+          listTag("user"),
+          idTag("user", user_id),
+        ]),
     }),
     verifyMfa: builder.mutation<
       { id: string },

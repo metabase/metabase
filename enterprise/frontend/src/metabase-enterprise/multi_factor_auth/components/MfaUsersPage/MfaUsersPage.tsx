@@ -19,6 +19,8 @@ import type { MfaAdminUser } from "metabase-types/api";
 
 import { AUTHENTICATION_PATH } from "../../constants";
 
+import S from "./MfaUsersPage.module.css";
+
 export const PAGE_SIZE = 25;
 
 interface MfaUsersPageProps<TUser extends MfaAdminUser> {
@@ -86,7 +88,7 @@ export const MfaUsersPage = <TUser extends MfaAdminUser>({
           <TreeTable
             instance={instance}
             hierarchical={false}
-            // classNames={{ row: S.staticRow, cell: S.cell }}
+            classNames={{ row: S.staticRow, cell: S.cell }}
             ariaLabel={tableAriaLabel}
             emptyState={
               <Box p="xl" ta="center">

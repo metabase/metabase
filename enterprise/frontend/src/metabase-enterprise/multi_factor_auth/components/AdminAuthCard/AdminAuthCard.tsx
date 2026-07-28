@@ -64,7 +64,6 @@ type EnrollmentCountsProps = {
 };
 
 function EnrollmentCounts({ overview }: EnrollmentCountsProps) {
-  // the drill-in pages are superuser-only, so a settings-access admin sees plain text
   const isAdmin = useSelector(getUserIsAdmin);
   const enrolledCount = overview.enrolled_count;
   const unenrolledCount = overview.unenrolled_count;
