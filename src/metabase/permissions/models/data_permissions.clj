@@ -158,10 +158,10 @@
    (map t2.realize/realize)
    (t2/reducible-query
     {:select [:p.group_id :p.perm_type :p.db_id :p.table_id :p.schema_name :p.perm_value]
-     :from [[:permissions_group_membership :pgm]]
-     :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-            [:data_permissions :p] [:= :p.group_id :pg.id]]
-     :left-join [[:metabase_table :mt] [:= :mt.id :p.table_id]]
+     :from [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+     :join [[(t2/table-name :model/PermissionsGroup) :pg] [:= :pg.id :pgm.group_id]
+            [(t2/table-name :model/DataPermissions) :p] [:= :p.group_id :pg.id]]
+     :left-join [[(t2/table-name :model/Table) :mt] [:= :mt.id :p.table_id]]
      :where [:and
              [:= :pgm.user_id user-id]
              [:in :p.db_id db-ids]
@@ -171,21 +171,21 @@
 
 (defn- relevant-permissions-for-user-perm-and-db
   "Returns all relevant rows for a given user, permission type, and db_id, excluding permissions for deactivated
-  tables."
+  tables. Rows are raw realized maps rather than model instances -- much cheaper per row, see
+  [[relevant-permissions-for-user-and-dbs]] -- so `:perm_value` is a string; [[rows->cache-entry]] normalizes it."
   [user-id perm-type db-id]
-  (t2/select :model/DataPermissions
-             {:select [:p.group_id :p.perm_type :p.db_id :p.table_id :p.schema_name :p.perm_value]
-              :from [[:permissions_group_membership :pgm]]
-              :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                     [:data_permissions :p] [:= :p.group_id :pg.id]]
-              :left-join [[:metabase_table :mt] [:= :mt.id :p.table_id]]
-              :where [:and
-                      [:= :pgm.user_id user-id]
-                      [:= :p.perm_type (u/qualified-name perm-type)]
-                      [:= :p.db_id db-id]
-                      [:or
-                       [:= :p.table_id nil]
-                       [:= :mt.active true]]]}))
+  (t2/query {:select [:p.group_id :p.perm_type :p.db_id :p.table_id :p.schema_name :p.perm_value]
+             :from [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+             :join [[(t2/table-name :model/PermissionsGroup) :pg] [:= :pg.id :pgm.group_id]
+                    [(t2/table-name :model/DataPermissions) :p] [:= :p.group_id :pg.id]]
+             :left-join [[(t2/table-name :model/Table) :mt] [:= :mt.id :p.table_id]]
+             :where [:and
+                     [:= :pgm.user_id user-id]
+                     [:= :p.perm_type (u/qualified-name perm-type)]
+                     [:= :p.db_id db-id]
+                     [:or
+                      [:= :p.table_id nil]
+                      [:= :mt.active true]]]}))
 
 (def ^:dynamic *permissions-for-user*
   "A dynamically-bound atom containing a cache of data permissions that have been fetched so far for the current user.
@@ -956,13 +956,14 @@
       {:to-delete [] :to-insert []}
       ;; If we're setting any table permissions to a value that is different from the database-level permission,
       ;; we need to replace it with individual permission rows for every table in the database instead.
-      (let [other-new-perms (->> (t2/select :model/Table {:where
-                                                          [:and
-                                                           [:= :db_id db-id]
-                                                           ;; We can't filter out *everything* here because
-                                                           ;; max number of parameters is capped. But we might
-                                                           ;; as well filter out what we can (conservatively).
-                                                           [:not [:in :id (take 10000 table-ids)]]]})
+      (let [other-new-perms (->> (t2/select [:model/Table :id :schema]
+                                            {:where
+                                             [:and
+                                              [:= :db_id db-id]
+                                              ;; We can't filter out *everything* here because
+                                              ;; max number of parameters is capped. But we might
+                                              ;; as well filter out what we can (conservatively).
+                                              [:not [:in :id (take 10000 table-ids)]]]})
                                  (keep (fn [table]
                                          ;; See above: we filtered out what we could in the database, but if
                                          ;; the number of tables is large we need to filter them out in
@@ -984,14 +985,16 @@
 (defn- handle-no-db-permission
   "Handles the case where there's no existing database-level permission."
   [group-id db-id perm-type table-ids values new-perms]
-  (let [existing-table-perms (t2/select :model/DataPermissions
-                                        {:where [:and
-                                                 [:= :group_id group-id]
-                                                 [:= :db_id db-id]
-                                                 [:= :perm_type (u/qualified-name perm-type)]
-                                                 [:not= :table_id nil]
-                                                 [:not [:in :table_id table-ids]]]})
-        existing-table-values (set (map :perm_value existing-table-perms))]
+  (let [existing-table-values (into #{}
+                                    (map (comp keyword :perm_value))
+                                    (t2/query {:select-distinct [:perm_value]
+                                               :from [(t2/table-name :model/DataPermissions)]
+                                               :where [:and
+                                                       [:= :group_id group-id]
+                                                       [:= :db_id db-id]
+                                                       [:= :perm_type (u/qualified-name perm-type)]
+                                                       [:not= :table_id nil]
+                                                       [:not [:in :table_id table-ids]]]}))]
     (if (and (= (count existing-table-values) 1)
              (= values existing-table-values))
       ;; If all tables would have the same permissions after we update these ones, we can replace all of the table
@@ -999,7 +1002,8 @@
       (build-database-permission (index-database-permissions [group-id] [db-id])
                                  group-id db-id perm-type (first values))
       ;; Otherwise, just replace the rows for the individual table perm
-      (let [table-perms-to-delete (t2/select :model/DataPermissions
+      ;; only :id is consumed downstream (see [[set-table-permissions-internal!]]), so don't fetch full rows
+      (let [table-perms-to-delete (t2/select [:model/DataPermissions :id]
                                              {:where [:and
                                                       [:= :perm_type (u/qualified-name perm-type)]
                                                       [:= :group_id group-id]
