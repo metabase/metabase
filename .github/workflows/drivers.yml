@@ -614,12 +614,21 @@ jobs:
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
-          - name: MySQL Latest
-            junit-name: be-tests-mysql-latest-ee
-            image: mysql:latest
+          - name: MySQL 9
+            junit-name: be-tests-mysql-9-ee
+            image: mysql:9
             env:
               enable-ssl-tests: 'true'
               enable-aws-iam-tests: 'true'
+          # `mysql:latest` now resolves to MySQL 26.x, which fails in a way that floods the log
+          # until the runner cancels the job. A cancelled job can't be soft-failed with
+          # continue-on-error, so the leg is disabled until 26.x is supported.
+          # - name: MySQL Latest
+          #   junit-name: be-tests-mysql-latest-ee
+          #   image: mysql:latest
+          #   env:
+          #     enable-ssl-tests: 'false'
+          #     enable-aws-iam-tests: 'false'
         job:
           - name: Driver Tests
             test-args: >-
