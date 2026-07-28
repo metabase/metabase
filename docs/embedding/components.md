@@ -48,6 +48,8 @@ If you surround your attribute value with double quotes, make sure to use single
 
 ## Question
 
+For the full guide, including editable charts, the query builder, and the SQL editor, see [Embed a chart](./question.md).
+
 To render a question (chart):
 
 ```html
