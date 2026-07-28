@@ -295,11 +295,8 @@
    :scope       metabot.scope/agent-alert-write
    :annotations {:readOnlyHint false :destructiveHint false}
    :args        alert-write-args-schema}
-  [args {:keys [token-scopes]}]
-  (let [[op a b] (common/dispatch-write
-                  {:tool-name       "alert_write"
-                   :create-required [:card_id :schedule]}
-                  token-scopes args)]
+  [args _]
+  (let [[op a b] (common/dispatch-write {:create-required [:card_id :schedule]} args)]
     (common/success-content (case op
                               :create (create! a)
                               :update (update! a b)))))
