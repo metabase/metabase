@@ -283,6 +283,8 @@
               (let [f (by-id ["card" card-a])]
                 (is (some? f))
                 (is (= nm (:entity_display_name f)))
+                (testing "the flagged card carries its own type as a top-level card_type"
+                  (is (= "model" (:card_type f))))
                 (testing "top-level duplicate_count + normalized_name in details"
                   (is (= 1 (:duplicate_count f)))
                   (is (= (u/lower-case-en nm) (get-in f [:details :normalized_name]))))

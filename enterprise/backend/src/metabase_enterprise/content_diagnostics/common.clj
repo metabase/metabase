@@ -43,13 +43,13 @@
 
 (def ^:private entity-spec
   "Per-entity-type column lists the serve/scan multimethods read, so column choices stay out of `defmethod`
-  bodies. Per type: `:context` = extra display cols `entity-context` selects beyond `[:id :collection_id]`;
-  `:peer` / `:candidate` = extra cols the duplicate-entity hydrate / duplicated checker select beyond
-  `[:id :name]`. Only card carries the `:card_schema` its after-select hook requires; transform has only
-  `:context` (its peer/candidate reads are explicit methods). `collection` is absent: it isn't
+  bodies. Per type: `:context` = extra display cols beyond `[:id :collection_id]`; `:peer` / `:candidate` =
+  extra cols the duplicate-entity hydrate / duplicated checker select beyond `[:id :name]`. Only card carries
+  the `:card_schema` its after-select hook requires; transform has only `:context` (its peer/candidate reads
+  are explicit methods). `collection` is absent: it isn't
   column-resident (its breadcrumb comes from `location`, via its own `entity-context` method) and isn't
   a duplicated subject (no peer/candidate reads)."
-  {:card      {:context   [:description :view_count]
+  {:card      {:context   [:description :view_count :type :card_schema]
                :peer      [:view_count :type :card_schema]
                :candidate [:card_schema]}
    :dashboard {:context   [:description :view_count]
