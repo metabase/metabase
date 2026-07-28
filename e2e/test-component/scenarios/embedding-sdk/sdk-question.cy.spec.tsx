@@ -76,7 +76,9 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
         delete res.body.personal_collection_id;
       });
     });
-    cy.intercept("GET", "/api/collection/undefined*").as("unresolvedCollection");
+    cy.intercept("GET", "/api/collection/undefined*").as(
+      "unresolvedCollection",
+    );
 
     mountInteractiveQuestion();
 
