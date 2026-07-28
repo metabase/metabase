@@ -59,6 +59,23 @@
              :schedule_hour  16
              :schedule_type  "weekly"})))))
 
+(deftest ^:parallel schedule-map->cron-string-omitted-hour-test
+  (testing "an omitted schedule_hour is midnight, not every hour — leaving the cron hours field as
+            `*` would turn a weekly or monthly schedule into an hourly one"
+    (is (= "0 0 0 ? * 3 *"
+           (u.cron/schedule-map->cron-string
+            {:schedule_day   "tue"
+             :schedule_type  "weekly"})))
+    (is (= "0 0 0 1 * ? *"
+           (u.cron/schedule-map->cron-string
+            {:schedule_frame "first"
+             :schedule_type  "monthly"})))
+    (is (= "0 0 0 ? * 6L *"
+           (u.cron/schedule-map->cron-string
+            {:schedule_day   "fri"
+             :schedule_frame "last"
+             :schedule_type  "monthly"})))))
+
 (deftest cron-string->schedule-map-test
   (is (= {:schedule_day    nil
           :schedule_frame  nil

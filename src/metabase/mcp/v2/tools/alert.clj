@@ -31,13 +31,19 @@
 (defn- schedule->cron
   "Compile a ScheduleMap to the cron string the notification API stores. Shape errors from the
    underlying util (e.g. a weekly schedule with no `schedule_day`) become teaching errors."
-  [schedule]
+  [{:keys [schedule_type schedule_frame schedule_day] :as schedule}]
+  ;; The util reads schedule_day as "the frame counts weekdays", which the mid frame has no form
+  ;; for — it would fail as an opaque case mismatch rather than as advice.
+  (when (and (= schedule_type "monthly") (= schedule_frame "mid") schedule_day)
+    (common/throw-teaching-error
+     (str "A \"mid\" monthly schedule falls on the 15th, so it takes no schedule_day — drop it, "
+          "or use the \"first\" or \"last\" frame to schedule a weekday like the first Monday.")))
   (try
     (u.cron/schedule-map->cron-string schedule)
     (catch Exception _
       (common/throw-teaching-error
-       (str "Invalid schedule — \"weekly\" needs schedule_day, \"monthly\" needs schedule_frame "
-            "(and schedule_day for a frame like \"first monday\"), and both need schedule_hour.")))))
+       (str "Invalid schedule — \"weekly\" needs schedule_day and \"monthly\" needs schedule_frame "
+            "(and schedule_day for a frame like \"first monday\"). schedule_hour defaults to midnight.")))))
 
 (defn- cron-subscription
   [schedule]
@@ -250,8 +256,9 @@
   "Create or update an alert: a notification sent on a schedule when a saved question's results meet a condition.
   method: \"create\" requires card_id (the question) and schedule; method: \"update\" requires id and changes only the
   fields you pass. schedule is {schedule_type: \"hourly\" | \"daily\" | \"weekly\" | \"monthly\", schedule_hour?
-  (0-23), schedule_minute? (0-59), schedule_day? (\"sun\"…\"sat\", weekly and monthly-by-weekday), schedule_frame?
-  (\"first\" | \"mid\" | \"last\", monthly)} — never a cron string. condition is {type: \"has_result\" (default) |
+  (0-23, midnight by default), schedule_minute? (0-59), schedule_day? (\"sun\"…\"sat\", weekly and
+  monthly-by-weekday), schedule_frame? (\"first\" | \"mid\" | \"last\", monthly — \"mid\" is the 15th and takes no
+  schedule_day)} — never a cron string. condition is {type: \"has_result\" (default) |
   \"goal_above\" | \"goal_below\", send_once?: boolean} — the goal conditions need a goal line on the question's chart,
   and send_once deletes the alert after it fires. Delivery is one channel: \"email\" (default) with recipients, a list
   mixing user ids and email addresses that defaults to you, or \"slack\" with slack_channel, a channel name like
