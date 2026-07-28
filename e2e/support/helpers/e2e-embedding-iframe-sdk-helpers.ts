@@ -307,7 +307,12 @@ export const getNewEmbedScriptTag = ({
     .exhaustive();
 
   return `
-    <script src="${EMBED_JS_PATH}" ${loadTypeAttribute}></script>
+    <!-- TODO (EMB-2159): Remove once embed.js stops setting the Metabase host marker. -->
+    <script
+      src="${EMBED_JS_PATH}"
+      ${loadTypeAttribute}
+      onload="delete window.METABASE"
+    ></script>
     <script>
       function defineMetabaseConfig(settings) {
         window.metabaseConfig = settings;
