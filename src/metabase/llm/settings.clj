@@ -372,6 +372,21 @@
   :export?     false
   :setter      (partial set-normalized-base-url! :llm-azure-api-base-url))
 
+;;; ---------------------------------------------- Provider connections ------------------------------------------
+
+(defsetting llm-providers
+  (deferred-tru "JSON array of configured LLM provider connections. Each entry has a `key` (a URL-safe slug identifying the connection), a `type` (the provider type, e.g. `anthropic`), a display `name`, and a `config` map of that provider type''s credential fields.")
+  :type       :json
+  :default    []
+  :encryption :when-encryption-key-set
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :audit      :no-value
+  :doc        "Connections are normally managed from the admin AI settings page. Setting this environment variable puts the whole list under environment control and makes it read-only in the UI.
+
+The single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) keep working, and each configures one read-only connection whose key is the provider type.")
+
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
 (defsetting llm-proxy-base-url

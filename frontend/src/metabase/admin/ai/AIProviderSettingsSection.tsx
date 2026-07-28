@@ -1,35 +1,17 @@
-import { useMemo } from "react";
-import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { skipToken } from "metabase/api";
-import {
-  AIProviderConfigurationForm,
-  getProviderOptions,
-  parseProviderAndModel,
-  useGetMetabotSettingsQuery,
-} from "metabase/metabot";
-import { PLUGIN_METABOT } from "metabase/plugins";
-import { useAdminSetting, useSetting } from "metabase/settings";
+import { useListLlmProvidersQuery } from "metabase/api";
+import { AIProviderConfigurationForm } from "metabase/metabot";
 import { Badge, Flex, Group } from "metabase/ui";
 
 export function AIProviderSettingsSection({ id }: { id?: string }) {
-  const offerMetabaseAiManaged = PLUGIN_METABOT.isEnabled;
-  const { value: savedProviderValue } = useAdminSetting("llm-metabot-provider");
-  const config = useMemo(
-    () => parseProviderAndModel(savedProviderValue),
-    [savedProviderValue],
+  const { data: connections = [] } = useListLlmProvidersQuery();
+
+  const hasConnections = connections.length > 0;
+  const hasUnusableConnection = connections.some(
+    (connection) => !connection.usable,
   );
-  const isConfigured = !!useSetting("llm-metabot-configured?");
-  const connectedProvider = isConfigured ? config?.provider : undefined;
-  const connectedProviderSettingsQuery = useGetMetabotSettingsQuery(
-    connectedProvider && connectedProvider !== "metabase"
-      ? { provider: connectedProvider }
-      : skipToken,
-  );
-  const hasCredentialsError =
-    !!connectedProviderSettingsQuery.currentData?.["credentials-error"];
 
   return (
     <SettingsSection
@@ -37,41 +19,23 @@ export function AIProviderSettingsSection({ id }: { id?: string }) {
       title={
         <Flex justify="space-between" align="center">
           <Group gap="xs" wrap="nowrap">
-            {connectedProvider && (
+            {hasConnections && (
               <Badge
-                color={hasCredentialsError ? "negative" : "positive"}
+                color={hasUnusableConnection ? "negative" : "positive"}
                 indicator
                 mr="sm"
               />
             )}
             <div>
-              {match({ connectedProvider, hasCredentialsError })
-                .with(
-                  {
-                    connectedProvider: P.nonNullable,
-                    hasCredentialsError: true,
-                  },
-                  ({ connectedProvider }) =>
-                    t`Error connecting to ${getProviderOptions(offerMetabaseAiManaged)[connectedProvider]?.label}`,
-                )
-                .with(
-                  { connectedProvider: P.nonNullable },
-                  ({ connectedProvider }) =>
-                    t`Connected to ${getProviderOptions(offerMetabaseAiManaged)[connectedProvider]?.label}`,
-                )
-                .with(
-                  { connectedProvider: P.nullish },
-                  () => t`Connect to an AI provider`,
-                )
-                .exhaustive()}
+              {hasConnections ? t`AI providers` : t`Connect to an AI provider`}
             </div>
           </Group>
         </Flex>
       }
       description={
-        !connectedProvider
+        !hasConnections
           ? t`Select your AI provider to use AI explorations, SQL generation and Metabot.`
-          : undefined
+          : t`Metabot can use models from any of these providers.`
       }
     >
       <AIProviderConfigurationForm />

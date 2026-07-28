@@ -2,13 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { useRefreshTokenStatusMutation } from "metabase/api";
+import {
+  useCreateLlmProviderMutation,
+  useRefreshTokenStatusMutation,
+} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { getUserIsAdmin } from "metabase/current-user";
-import {
-  useAIProviderConfigurationContext,
-  useUpdateMetabotSettingsMutation,
-} from "metabase/metabot";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import type { MetabaseAIProviderSetupProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -16,6 +15,7 @@ import { useSetting } from "metabase/settings";
 import {
   Anchor,
   Box,
+  Button,
   Checkbox,
   Flex,
   Group,
@@ -67,13 +67,13 @@ export function MetabaseAIProviderSetup({
 
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const [updateMetabotSettings, updateMetabotSettingsResult] =
-    useUpdateMetabotSettingsMutation();
+  const [createLlmProvider, createLlmProviderResult] =
+    useCreateLlmProviderMutation();
 
   const handleConnect = useCallback(async () => {
-    await updateMetabotSettings({ provider: "metabase", model: "" }).unwrap();
+    await createLlmProvider({ type: "metabase" }).unwrap();
     onConnect?.();
-  }, [onConnect, updateMetabotSettings]);
+  }, [onConnect, createLlmProvider]);
 
   const {
     pricing: metabaseManagedAiPricing,
@@ -164,8 +164,10 @@ export function MetabaseAIProviderSetup({
     removeCloudAddOn,
   ]);
 
-  const { isMutating, handleDisconnect, resetProvider, isModal } =
-    useAIProviderConfigurationContext(connectAction, onDisconnect);
+  const isMutating =
+    createLlmProviderResult.isLoading ||
+    removeCloudAddOnResult.isLoading ||
+    metabaseManagedAiPurchase.isLoading;
 
   const metabaseManagedAiPurchaseError = metabaseManagedAiPurchase.error
     ? getErrorMessage(
@@ -174,9 +176,9 @@ export function MetabaseAIProviderSetup({
       )
     : undefined;
 
-  const updateMetabotSettingsError = updateMetabotSettingsResult.error
+  const createLlmProviderError = createLlmProviderResult.error
     ? getErrorMessage(
-        updateMetabotSettingsResult.error,
+        createLlmProviderResult.error,
         t`Unable to connect to this AI provider.`,
       )
     : undefined;
@@ -199,9 +201,7 @@ export function MetabaseAIProviderSetup({
             hasMetabaseManagedAiProviderFeature
           }
           offerMetabaseManagedAi={offerMetabaseManagedAi}
-          isModal={isModal}
-          resetProvider={resetProvider}
-          handleDisconnect={handleDisconnect}
+          onDisconnect={onDisconnect}
         />
       ) : (
         <>
@@ -268,6 +268,19 @@ export function MetabaseAIProviderSetup({
                 )}`}
               />
             ))}
+
+          {connectAction && (
+            <Flex justify="end">
+              <Button
+                variant="filled"
+                loading={isMutating}
+                disabled={isMutating}
+                onClick={connectAction}
+              >
+                {t`Connect`}
+              </Button>
+            </Flex>
+          )}
         </>
       )}
 
@@ -277,9 +290,9 @@ export function MetabaseAIProviderSetup({
         </Text>
       )}
 
-      {updateMetabotSettingsError && (
+      {createLlmProviderError && (
         <Text size="sm" c="feedback-negative">
-          {updateMetabotSettingsError}
+          {createLlmProviderError}
         </Text>
       )}
 
@@ -292,7 +305,7 @@ export function MetabaseAIProviderSetup({
       <MetabotSettingUpModal
         isSavingConfiguration={
           isSettingUpModalOpen &&
-          (updateMetabotSettingsResult.isLoading ||
+          (createLlmProviderResult.isLoading ||
             metabaseManagedAiPurchase.isLoading)
         }
         opened={isSettingUpModalOpen}
@@ -308,18 +321,14 @@ function MetabaseManagedProviderCard({
   hasDeprecatedMetabaseAiProvider,
   hasMetabaseManagedAiProviderFeature,
   offerMetabaseManagedAi,
-  isModal,
-  resetProvider,
-  handleDisconnect,
+  onDisconnect,
 }: {
   isLoadingPricing: boolean;
   pricing: MetabaseManagedAiPricing | null;
   hasDeprecatedMetabaseAiProvider: boolean;
   hasMetabaseManagedAiProviderFeature: boolean;
   offerMetabaseManagedAi: boolean;
-  isModal: boolean;
-  resetProvider: VoidFunction;
-  handleDisconnect: VoidFunction;
+  onDisconnect: () => Promise<void>;
 }) {
   const { data: metabotUsage } = useGetMetabotUsageQuery();
   const isLocked = metabotUsage?.is_locked;
@@ -360,7 +369,7 @@ function MetabaseManagedProviderCard({
             <MetabotManagedProviderLimitActions
               inline
               mt="sm"
-              onConfigure={isModal ? resetProvider : handleDisconnect}
+              onConfigure={onDisconnect}
             />
           </Flex>
         ))

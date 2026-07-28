@@ -740,7 +740,7 @@ function llmMockServerSetup() {
     responseText: MOCK_LLM_RESPONSE,
   });
 
-  H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+  H.setupAnthropicLlmProvider();
   H.updateSetting(
     "llm-anthropic-api-base-url",
     `http://localhost:${MOCK_LLM_PORT}`,

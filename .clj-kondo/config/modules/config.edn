@@ -1263,6 +1263,7 @@
   {:team "Metabot"
    :api  #{metabase.llm.api
            metabase.llm.init
+           metabase.llm.provider
            metabase.llm.settings
            metabase.llm.startup}
    :uses #{analytics
@@ -1273,6 +1274,7 @@
            lib-be
            metabot
            models
+           permissions
            premium-features
            request
            settings
@@ -2269,6 +2271,7 @@
               channel
               formatter
               lib
+              llm
               metabot
               permissions
               query-processor
@@ -3459,6 +3462,7 @@
               metabot}
    :uses    #{api
               lib-be
+              llm
               metabot
               models
               permissions

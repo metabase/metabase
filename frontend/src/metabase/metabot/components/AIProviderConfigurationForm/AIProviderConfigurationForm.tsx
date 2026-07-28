@@ -1,432 +1,158 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { P, match } from "ts-pattern";
+import { useState } from "react";
 import { t } from "ttag";
 
-import { getErrorMessage } from "metabase/api/utils";
+import {
+  useDeleteLlmProviderMutation,
+  useListLlmProviderTypesQuery,
+  useListLlmProvidersQuery,
+} from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
-import { useToast } from "metabase/common/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import {
-  useAdminSetting,
-  useAdminSettings,
-  useSetting,
-  useUpdateSettingsMutation,
-} from "metabase/settings";
-import {
-  Box,
-  Button,
-  Center,
-  Divider,
-  Flex,
-  Group,
-  Loader,
-  Select,
-  Stack,
-  Text,
-} from "metabase/ui";
-import type { MetabotProvider } from "metabase-types/api";
+import { Button, Card, Group, Icon, Menu, Stack, Text } from "metabase/ui";
+import type { LlmProviderConnection } from "metabase-types/api";
 
-import { useUpdateMetabotSettingsMutation } from "../../api";
+import { LlmModelPicker } from "./LlmModelPicker";
+import { ProviderConnectionModal } from "./ProviderConnectionModal";
 
-import { AIProviderConfigurationContext } from "./AIProviderConfigurationContext";
-import { ApiKeyProviderFields } from "./ApiKeyProviderFields";
-import { AzureProviderFields } from "./AzureProviderFields";
-import { BedrockProviderFields } from "./BedrockProviderFields";
-import { GoogleProviderFields } from "./GoogleProviderFields";
-import {
-  API_KEY_SETTING_BY_PROVIDER,
-  getProviderOptions,
-  isAvailableProvider,
-  parseProviderAndModel,
-} from "./utils";
-
-interface AIProviderConfigurationFormProps {
-  isModal?: boolean;
-  defaultProvider?: MetabotProvider;
-  onClose?: (connectedProvider?: MetabotProvider) => void;
-  onSkip?: VoidFunction;
-}
-
-export function AIProviderConfigurationForm(
-  props: AIProviderConfigurationFormProps,
-) {
-  const { isLoading } = useAdminSetting("llm-metabot-provider");
-
-  // The saved provider loads asynchronously, and the form body computes its
-  // initial selection once at mount. Mounting before the value arrives would
-  // let `defaultProvider` win over an existing connection.
-  if (props.defaultProvider && isLoading) {
-    return (
-      <Center p="lg">
-        <Loader data-testid="loading-indicator" />
-      </Center>
-    );
-  }
-
-  return <AIProviderConfigurationFormBody {...props} />;
-}
-
-function AIProviderConfigurationFormBody({
+export function AIProviderConfigurationForm({
   isModal = false,
-  defaultProvider,
   onClose,
-  onSkip,
-}: AIProviderConfigurationFormProps) {
-  const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
-  const offerMetabaseAiManaged = PLUGIN_METABOT.isEnabled;
-  const [sendToast] = useToast();
+}: {
+  isModal?: boolean;
+  onClose?: (connection?: LlmProviderConnection) => void;
+}) {
+  const { data: connections = [], isLoading } = useListLlmProvidersQuery();
+  const { data: providerTypes = [] } = useListLlmProviderTypesQuery();
+  const [deleteProvider] = useDeleteLlmProviderMutation();
 
-  const { value: savedProviderValue, settingDetails } = useAdminSetting(
-    "llm-metabot-provider",
-  );
-  const isEnvSetting =
-    !!settingDetails &&
-    !!settingDetails.is_env_setting &&
-    !!settingDetails.env_name;
-  const envSettingName = isEnvSetting ? settingDetails?.env_name : undefined;
+  const [editing, setEditing] = useState<LlmProviderConnection | undefined>();
+  const [isAdding, setIsAdding] = useState(false);
+  const [deleting, setDeleting] = useState<LlmProviderConnection | undefined>();
+  const onProviderRemoved = PLUGIN_METABOT.useOnProviderRemoved();
 
-  const isConfigured = !!useSetting("llm-metabot-configured?");
-
-  const config = useMemo(
-    () => parseProviderAndModel(savedProviderValue),
-    [savedProviderValue],
-  );
-  const connectedProvider = isConfigured ? config?.provider : undefined;
-  const connectedModel = isConfigured ? config?.model : undefined;
-  // `defaultProvider` is only a suggestion for the unconfigured state — an
-  // existing connection always wins over it. A modal without a suggestion
-  // starts unselected on purpose, even when connected (the "switch provider"
-  // flow).
-  const [provider, setProvider] = useState<MetabotProvider | undefined>(() => {
-    if (!isModal) {
-      return connectedProvider;
-    }
-    return defaultProvider ? (connectedProvider ?? defaultProvider) : undefined;
-  });
-
-  const isCurrentConfigured = connectedProvider === provider && isConfigured;
-
-  useEffect(() => {
-    if (isModal || !connectedProvider) {
-      return;
-    }
-    setProvider(connectedProvider);
-  }, [isModal, connectedProvider]);
-
-  const [updateSettings, updateSettingsResult] = useUpdateSettingsMutation();
-  const [updateMetabotSettings] = useUpdateMetabotSettingsMutation();
-  const disconnectHandlerRef = useRef<(() => Promise<void>) | null>(null);
-
-  // Setting details come from a single admin endpoint, so one `isLoading`
-  // covers every provider. Gate the provider fields on it below: their forms
-  // use Formik `enableReinitialize`/hydrate-once effects that would wipe
-  // in-progress input if they rendered before the saved credentials arrived.
-  const { details: providerApiKeyDetails, isLoading: areDetailsLoading } =
-    useAdminSettings([
-      "llm-anthropic-api-key",
-      "llm-mistral-api-key",
-      "llm-moonshot-api-key",
-      "llm-openai-api-key",
-      "llm-openrouter-api-key",
-      "llm-zai-api-key",
-    ] as const);
-
-  const disconnectProvider = useCallback(async () => {
-    if (!connectedProvider) {
-      return;
-    }
-
-    try {
-      await disconnectHandlerRef.current?.();
-    } catch {
-      return;
-    }
-
-    const settingsToClear: Record<string, null> = {
-      "llm-metabot-provider": null,
-    };
-
-    if (
-      connectedProvider !== "metabase" &&
-      connectedProvider !== "bedrock" &&
-      connectedProvider !== "azure" &&
-      connectedProvider !== "google"
-    ) {
-      const apiKeySettingKey = API_KEY_SETTING_BY_PROVIDER[connectedProvider];
-      const apiKeySetting = providerApiKeyDetails[apiKeySettingKey];
-
-      if (!apiKeySetting?.is_env_setting) {
-        settingsToClear[apiKeySettingKey] = null;
-      }
-    }
-
-    try {
-      if (
-        connectedProvider === "bedrock" ||
-        connectedProvider === "azure" ||
-        connectedProvider === "google"
-      ) {
-        // Bedrock, Azure, and Google key material spans several settings; an explicit
-        // `credentials: null` clears them all in one call. It runs before the provider
-        // is deselected so a failure can't leave saved keys behind.
-        await updateMetabotSettings({
-          provider: connectedProvider,
-          credentials: null,
-        }).unwrap();
-      }
-
-      const response = await updateSettings(settingsToClear);
-
-      if (response.error) {
-        const message = getErrorMessage(
-          response.error,
-          t`Unable to save provider settings.`,
-        );
-
-        sendToast({
-          message,
-          icon: "warning",
-          toastColor: "feedback-negative",
-        });
-      } else {
-        setProvider(undefined);
-      }
-    } catch (error) {
-      const message = getErrorMessage(
-        error,
-        t`Unable to save provider settings.`,
-      );
-
-      sendToast({
-        message,
-        icon: "warning",
-        toastColor: "feedback-negative",
-      });
-    }
-  }, [
-    connectedProvider,
-    disconnectHandlerRef,
-    providerApiKeyDetails,
-    updateMetabotSettings,
-    updateSettings,
-    sendToast,
-  ]);
-
-  const providerOptions = useMemo(() => {
-    const options = Object.values(getProviderOptions(offerMetabaseAiManaged));
-    return options.map((option) => ({
-      ...option,
-      disabled: !isAvailableProvider(option.value),
-    }));
-  }, [offerMetabaseAiManaged]);
-
-  const connectHandlerRef = useRef<(() => Promise<void>) | null>(null);
-
-  const [isDisconnecting, setIsDisconnecting] = useState(false);
-  const [isDisconnectConfirmOpen, setIsDisconnectConfirmOpen] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const handleConnect = async () => {
-    if (!connectHandlerRef.current) {
-      return;
-    }
-    setIsConnecting(true);
-    try {
-      await connectHandlerRef.current();
-    } finally {
-      setIsConnecting(false);
+  const handleModalClose = (saved?: LlmProviderConnection) => {
+    setIsAdding(false);
+    setEditing(undefined);
+    if (saved && isModal) {
+      onClose?.(saved);
     }
   };
 
-  const resetProvider = () => {
-    setProvider(undefined);
-  };
-
-  const handleDisconnect = useCallback(() => {
-    setIsDisconnectConfirmOpen(true);
-  }, []);
-
-  const handleConfirmDisconnect = async () => {
-    setIsDisconnecting(true);
-    try {
-      await disconnectProvider();
-      setIsDisconnectConfirmOpen(false);
-    } finally {
-      setIsDisconnecting(false);
+  const handleConfirmDelete = async () => {
+    if (deleting) {
+      await onProviderRemoved(deleting.type);
+      await deleteProvider(deleting.key);
+      setDeleting(undefined);
     }
   };
 
-  const isMutating =
-    isConnecting || isDisconnecting || updateSettingsResult.isLoading;
-
-  const [isConnectButtonEnabled, setIsConnectButtonEnabled] = useState(false);
+  const hasConnections = connections.length > 0;
 
   return (
-    <AIProviderConfigurationContext.Provider
-      value={{
-        connectHandlerRef,
-        disconnectHandlerRef,
-        isMutating,
-        setIsConnectButtonEnabled,
-        isConnectButtonEnabled,
-        resetProvider,
-        handleDisconnect,
-        isModal: !!isModal,
-      }}
-    >
-      <Stack gap="md">
-        {!isCurrentConfigured && (
-          <Select
-            label={t`Provider`}
-            placeholder={t`Select a provider`}
-            data={providerOptions}
-            value={provider}
-            onChange={setProvider}
-            disabled={isEnvSetting || isMutating}
-            renderOption={({ option }) => (
-              <Group
-                gap="xs"
-                p="sm"
-                justify="space-between"
-                wrap="nowrap"
-                w="100%"
-              >
-                <Text
-                  lh="1rem"
-                  c={option.disabled ? "text-disabled" : undefined}
-                >
-                  {option.label}
-                </Text>
-                {/* Unjustified type cast. FIXME */}
-                {!isAvailableProvider(option.value as MetabotProvider) && (
-                  <Text c="text-disabled" lh="1rem" size="sm">
-                    {t`Coming soon`}
-                  </Text>
-                )}
-              </Group>
-            )}
-          />
-        )}
+    <Stack gap="lg">
+      {hasConnections && (
+        <Stack gap="sm">
+          {connections.map((connection) => (
+            <ProviderConnectionCard
+              key={connection.key}
+              connection={connection}
+              onEdit={() => setEditing(connection)}
+              onDelete={() => setDeleting(connection)}
+            />
+          ))}
+        </Stack>
+      )}
 
-        {areDetailsLoading
-          ? null
-          : match(provider)
-              .with("metabase", () => (
-                <MetabaseAIProviderSetup
-                  onConnect={() => onClose?.("metabase")}
-                />
-              ))
-              .with("azure", () => (
-                <AzureProviderFields
-                  connectedModel={connectedModel}
-                  isCurrentConfigured={isCurrentConfigured}
-                  isEnvSetting={isEnvSetting}
-                />
-              ))
-              .with("bedrock", () => (
-                <BedrockProviderFields
-                  connectedModel={connectedModel}
-                  isCurrentConfigured={isCurrentConfigured}
-                  isEnvSetting={isEnvSetting}
-                />
-              ))
-              .with("google", () => (
-                <GoogleProviderFields
-                  connectedModel={connectedModel}
-                  isCurrentConfigured={isCurrentConfigured}
-                  isEnvSetting={isEnvSetting}
-                />
-              ))
-              .with(
-                "anthropic",
-                "mistral",
-                "moonshot",
-                "openai",
-                "openrouter",
-                "zai",
-                (selectedProvider) => (
-                  <ApiKeyProviderFields
-                    key={selectedProvider}
-                    selectedProvider={selectedProvider}
-                    connectedModel={connectedModel}
-                    isCurrentConfigured={isCurrentConfigured}
-                    isEnvSetting={isEnvSetting}
-                  />
-                ),
-              )
-              .with(P.nullish, () => null)
-              .exhaustive()}
+      {!hasConnections && !isLoading && (
+        <Text c="text-secondary">
+          {t`Connect an AI provider to use AI explorations, SQL generation and Metabot.`}
+        </Text>
+      )}
 
-        {envSettingName && <SetByEnvVar varName={envSettingName} />}
+      <Group justify="space-between">
+        <Button
+          variant={hasConnections ? "subtle" : "filled"}
+          leftSection={<Icon name="add" />}
+          onClick={() => setIsAdding(true)}
+        >
+          {hasConnections ? t`Add another provider` : t`Add a provider`}
+        </Button>
+      </Group>
 
-        <Flex justify={onSkip ? "flex-start" : "end"}>
-          {match({ isCurrentConfigured, isConnectButtonEnabled, isModal })
-            .with({ isModal: true, isCurrentConfigured: true }, () => (
-              <Button
-                variant="filled"
-                loading={isMutating}
-                disabled={isMutating}
-                onClick={() => onClose?.(provider)}
-              >
-                {t`Done`}
-              </Button>
-            ))
-            .with(
-              { isCurrentConfigured: true, isConnectButtonEnabled: false },
-              () => (
-                <Button
-                  c="feedback-negative"
-                  loading={isMutating}
-                  disabled={isMutating}
-                  onClick={handleDisconnect}
-                >
-                  {t`Disconnect`}
-                </Button>
-              ),
-            )
-            .with(
-              { isCurrentConfigured: false },
-              { isCurrentConfigured: true, isConnectButtonEnabled: true },
-              () => (
-                <Button
-                  variant="filled"
-                  loading={isMutating}
-                  disabled={isMutating || !isConnectButtonEnabled}
-                  onClick={handleConnect}
-                >
-                  {t`Connect`}
-                </Button>
-              ),
-            )
-            .exhaustive()}
-        </Flex>
+      {hasConnections && !isModal && <LlmModelPicker />}
 
-        {onSkip && !isCurrentConfigured && (
-          <>
-            <Divider mx={{ base: "-2rem", sm: "-4rem" }} mt="xl" mb="md" />
-            <Box>
-              <Button
-                onClick={onSkip}
-                variant="subtle"
-                px={0}
-                fw="normal"
-                disabled={isMutating}
-              >{t`I'll set this up later`}</Button>
-              <Text c="text-disabled" size="sm">
-                {t`You won't be able to use AI features until you connect a provider.`}
-              </Text>
-            </Box>
-          </>
-        )}
-        <ConfirmModal
-          opened={isDisconnectConfirmOpen}
-          onClose={() => setIsDisconnectConfirmOpen(false)}
-          title={t`Disconnect AI provider?`}
-          message={t`This will disconnect your AI provider and disable AI features across your instance until you connect a provider again.`}
-          confirmButtonText={t`Disconnect provider`}
-          onConfirm={handleConfirmDisconnect}
+      {(isAdding || editing) && (
+        <ProviderConnectionModal
+          providerTypes={providerTypes}
+          connection={editing}
+          onClose={handleModalClose}
         />
-      </Stack>
-    </AIProviderConfigurationContext.Provider>
+      )}
+
+      <ConfirmModal
+        opened={deleting != null}
+        onClose={() => setDeleting(undefined)}
+        title={t`Remove this provider?`}
+        message={t`This provider's models will no longer be available, and its saved credentials will be deleted.`}
+        confirmButtonText={t`Remove provider`}
+        onConfirm={handleConfirmDelete}
+      />
+    </Stack>
+  );
+}
+
+function ProviderConnectionCard({
+  connection,
+  onEdit,
+  onDelete,
+}: {
+  connection: LlmProviderConnection;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const isEnvManaged = connection.source === "env";
+
+  return (
+    <Card p="md" withBorder>
+      <Group justify="space-between" wrap="nowrap">
+        <Group gap="sm" wrap="nowrap">
+          <Icon
+            name={connection.usable ? "check" : "warning"}
+            c={connection.usable ? "success" : "error"}
+          />
+          <Stack gap={0}>
+            <Text fw="bold">{connection.name}</Text>
+            <Text size="sm" c="text-secondary">
+              {isEnvManaged ? t`Set by environment variables` : connection.type}
+            </Text>
+          </Stack>
+        </Group>
+
+        {!isEnvManaged && (
+          <Menu position="bottom-end">
+            <Menu.Target>
+              <Button
+                variant="subtle"
+                p="xs"
+                aria-label={t`Provider options`}
+                leftSection={<Icon name="ellipsis" />}
+              />
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item leftSection={<Icon name="pencil" />} onClick={onEdit}>
+                {t`Edit`}
+              </Menu.Item>
+              <Menu.Item
+                leftSection={<Icon name="trash" />}
+                c="error"
+                onClick={onDelete}
+              >
+                {t`Remove`}
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        )}
+      </Group>
+    </Card>
   );
 }

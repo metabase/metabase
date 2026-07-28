@@ -10,7 +10,9 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.driver :as driver]
    [metabase.llm.anthropic :as llm.anthropic]
+   [metabase.llm.api.provider]
    [metabase.llm.context :as llm.context]
+   [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.self :as metabot.self]
@@ -98,10 +100,9 @@
   (when-not (metabot.settings/llm-metabot-configured?)
     (throw (ex-info (tru "LLM is not configured. Please configure the selected provider in admin settings.")
                     {:status-code 403})))
-  (let [provider-and-model (metabot.settings/llm-metabot-provider)
-        ai-proxy?          (metabot/metabase-provider? provider-and-model)
-        provider           (metabot/provider-and-model->provider provider-and-model)]
-    (metabot.self/list-models provider {:ai-proxy? ai-proxy?})))
+  (let [{:keys [type credentials ai-proxy?]}
+        (llm.provider/resolve-model-ref (metabot.settings/llm-metabot-provider))]
+    (metabot.self/list-models type {:credentials credentials :ai-proxy? ai-proxy?})))
 
 (def ^:private table-with-columns-schema
   "Schema for table metadata with columns returned by /extract-sources."
@@ -272,4 +273,5 @@
 (def ^{:arglists '([request respond raise])} routes
   "`/api/llm` routes."
   (handlers/routes
+   (+auth metabase.llm.api.provider/routes)
    (api.macros/ns-handler *ns* +auth)))

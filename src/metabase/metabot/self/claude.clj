@@ -369,7 +369,7 @@
     (let [auth (core/resolve-auth "anthropic" "Anthropic"
                                   (when-let [k (or (not-empty (:api-key credentials))
                                                    (not-empty (llm/llm-anthropic-api-key)))]
-                                    {:url     (llm/llm-anthropic-api-base-url)
+                                    {:url     (or (not-empty (:base-url credentials)) (llm/llm-anthropic-api-base-url))
                                      :headers {"x-api-key" k}})
                                   ai-proxy?)
           res  (core/request auth {:method  :get
@@ -477,8 +477,10 @@
       (assoc :temperature temperature))))
 
 (mu/defn claude-raw
-  "Perform a streaming request to Claude API."
-  [{:keys [model input tools ai-proxy?] :as opts
+  "Perform a streaming request to Claude API.
+  Opts map supports `:credentials` (`{:api-key ... :base-url ...}`); the configured Anthropic settings are used
+  for whatever it doesn't carry."
+  [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
   (let [req (claude-request-body opts)]
     (with-span :info {:name       :metabot.claude/request
@@ -486,10 +488,12 @@
                       :msg-count  (count input)
                       :tool-count (count tools)}
       (try
-        (let [api-key  (not-empty (llm/llm-anthropic-api-key))
+        (let [api-key  (or (not-empty (:api-key credentials))
+                           (not-empty (llm/llm-anthropic-api-key)))
               auth     (core/resolve-auth "anthropic" "Anthropic"
                                           (when api-key
-                                            {:url     (llm/llm-anthropic-api-base-url)
+                                            {:url     (or (not-empty (:base-url credentials))
+                                                          (llm/llm-anthropic-api-base-url))
                                              :headers {"x-api-key" api-key}})
                                           ai-proxy?)
               response (core/request auth

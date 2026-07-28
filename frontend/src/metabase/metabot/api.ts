@@ -1,5 +1,4 @@
-import { Api } from "metabase/api";
-import { idTag, invalidateTags, listTag } from "metabase/api/tags";
+import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import type {
   Card,
   DeleteSuggestedMetabotPromptRequest,
@@ -12,25 +11,17 @@ import type {
   MetabotGenerateContentResponse,
   MetabotId,
   MetabotInfo,
-  MetabotProvider,
-  MetabotSettingsResponse,
   MetabotSlackSettings,
   MetabotSourceFeedback,
   RegenerateSuggestedMetabotPromptsResponse,
   SaveMetabotEntityRequest,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
-  UpdateMetabotSettingsRequest,
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
 
-import type { MetabotConversationDetail } from "./utils/normalize-fetched-chat-messages";
-
-const touchesCredentials = (body: UpdateMetabotSettingsRequest) =>
-  "credentials" in body || "api-key" in body;
-
-const touchesCredentials = (body: UpdateMetabotSettingsRequest) =>
-  "credentials" in body || "api-key" in body;
+import { Api } from "./api";
+import { idTag, invalidateTags, listTag } from "./tags";
 
 export const metabotApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -55,22 +46,6 @@ export const metabotApi = Api.injectEndpoints({
       }),
       providesTags: () => [listTag("metabot-conversations")],
     }),
-    getMetabotConversation: builder.query<MetabotConversationDetail, string>({
-      query: (conversationId) => ({
-        method: "GET",
-        url: `/api/metabot/conversations/${conversationId}`,
-      }),
-    }),
-    forkMetabotConversation: builder.mutation<
-      MetabotConversationDetail,
-      ForkMetabotConversationRequest
-    >({
-      query: ({ conversation_id, ...body }) => ({
-        method: "POST",
-        url: `/api/metabot/conversations/${conversation_id}/fork`,
-        body,
-      }),
-    }),
     getMetabotConversationTitle: builder.query<
       MetabotConversationTitleResponse,
       string
@@ -80,33 +55,11 @@ export const metabotApi = Api.injectEndpoints({
         url: `/api/metabot/conversations/${conversationId}/title`,
       }),
     }),
-    getMetabotSettings: builder.query<
-      MetabotSettingsResponse,
-      { provider: MetabotProvider }
-    >({
-      query: ({ provider }) => ({
+    getMetabotConversation: builder.query<MetabotConversationDetail, string>({
+      query: (conversationId) => ({
         method: "GET",
-        url: "/api/metabot/settings",
-        params: { provider },
+        url: `/api/metabot/conversations/${conversationId}`,
       }),
-      providesTags: () => [listTag("llm-models")],
-    }),
-    updateMetabotSettings: builder.mutation<
-      MetabotSettingsResponse,
-      UpdateMetabotSettingsRequest
-    >({
-      query: (body) => ({
-        method: "PUT",
-        url: "/api/metabot/settings",
-        body,
-      }),
-      invalidatesTags: (_, error, body) =>
-        invalidateTags(error, [
-          "session-properties",
-          // A credential write can change which models the provider serves, e.g. a different Bedrock
-          // region, Google location, or Azure resource.
-          ...(touchesCredentials(body) ? [listTag("llm-models")] : []),
-        ]),
     }),
     updateMetabot: builder.mutation<
       MetabotInfo,
@@ -183,6 +136,16 @@ export const metabotApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
     }),
+    forkMetabotConversation: builder.mutation<
+      MetabotConversationDetail,
+      ForkMetabotConversationRequest
+    >({
+      query: ({ conversation_id, ...body }) => ({
+        method: "POST",
+        url: `/api/metabot/conversations/${conversation_id}/fork`,
+        body,
+      }),
+    }),
     submitMetabotFeedback: builder.mutation<void, MetabotFeedback>({
       query: (params) => ({
         method: "POST",
@@ -222,18 +185,16 @@ export const metabotApi = Api.injectEndpoints({
 });
 
 export const {
-  useGetMetabotSettingsQuery,
   useGetMetabotConversationQuery,
-  useForkMetabotConversationMutation,
   useListMetabotConversationsQuery,
   useListMetabotsQuery,
-  useUpdateMetabotSettingsMutation,
   useUpdateMetabotMutation,
   useGetSuggestedMetabotPromptsQuery,
   useDeleteSuggestedMetabotPromptMutation,
   useRegenerateSuggestedMetabotPromptsMutation,
   useLazyMetabotGenerateContentQuery,
   useSaveMetabotEntityMutation,
+  useForkMetabotConversationMutation,
   useSubmitMetabotFeedbackMutation,
   useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,

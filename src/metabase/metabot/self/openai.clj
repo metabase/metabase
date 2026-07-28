@@ -278,7 +278,7 @@
     (let [auth (core/resolve-auth "openai" "OpenAI"
                                   (when-let [k (or (not-empty (:api-key credentials))
                                                    (not-empty (llm/llm-openai-api-key)))]
-                                    {:url     (llm/llm-openai-api-base-url)
+                                    {:url     (or (not-empty (:base-url credentials)) (llm/llm-openai-api-base-url))
                                      :headers {"Authorization" (str "Bearer " k)}})
                                   ai-proxy?)
           res  (core/request auth {:method  :get
@@ -352,17 +352,21 @@
 
 (mu/defn openai-raw
   "Perform a streaming request to OpenAI Responses API.
+  Opts map supports `:credentials` (`{:api-key ... :base-url ...}`); the configured OpenAI settings are used
+  for whatever it doesn't carry.
   `:ai-proxy?` is not supported for OpenAI and throws when true."
-  [{:keys [model ai-proxy?] :as opts
+  [{:keys [model credentials ai-proxy?] :as opts
     :or   {model "gpt-5.4"}} :- core/LLMRequestOpts]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
   (let [req (openai-request-body opts)]
     (try
-      (let [api-key  (not-empty (llm/llm-openai-api-key))
+      (let [api-key  (or (not-empty (:api-key credentials))
+                         (not-empty (llm/llm-openai-api-key)))
             auth     (core/resolve-auth "openai" "OpenAI"
                                         (when api-key
-                                          {:url     (llm/llm-openai-api-base-url)
+                                          {:url     (or (not-empty (:base-url credentials))
+                                                        (llm/llm-openai-api-base-url))
                                            :headers {"Authorization" (str "Bearer " api-key)}})
                                         ai-proxy?)
             response (core/request auth

@@ -2,6 +2,7 @@ import { PLUGIN_METABOT } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { MetabaseAIProviderSetup } from "./components/MetabotAdmin/MetabaseAIProviderSetup";
+import { useOnProviderRemoved } from "./useOnProviderRemoved";
 
 export function initializePlugin() {
   if (
@@ -11,5 +12,6 @@ export function initializePlugin() {
   ) {
     PLUGIN_METABOT.isEnabled = true;
     PLUGIN_METABOT.MetabaseAIProviderSetup = MetabaseAIProviderSetup;
+    PLUGIN_METABOT.useOnProviderRemoved = useOnProviderRemoved;
   }
 }

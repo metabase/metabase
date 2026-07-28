@@ -16,8 +16,8 @@
   deployment-scoped endpoints or Entra ID auth)."
   (:require
    [clojure.string :as str]
+   [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm]
-   [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
@@ -75,7 +75,7 @@
   Throws when the API key or base URL is missing."
   [credentials]
   (let [creds (or credentials (settings-credentials))]
-    (when-not (metabot.settings/provider-credentials-complete? "azure" creds)
+    (when-not (llm.provider/config-complete? "azure" creds)
       (throw (missing-credentials-ex)))
     creds))
 
@@ -141,11 +141,11 @@
         (throw e)))))
 
 (defn- configured-azure-model
-  "The saved `{family}/{deployment}` model string when the configured Metabot provider is Azure."
+  "The saved `{family}/{deployment}` model string when the connection Metabot is pointed at is an Azure one."
   []
-  (let [value (metabot.settings/llm-metabot-provider)]
-    (when (= (provider-util/provider-and-model->provider value) "azure")
-      (provider-util/provider-and-model->model value))))
+  (let [{:keys [type model]} (llm.provider/resolve-model-ref (metabot.settings/llm-metabot-provider))]
+    (when (= type "azure")
+      model)))
 
 (defn list-models
   "Validate Azure credentials with a model-free round trip and return an empty model list.
@@ -174,8 +174,9 @@
 
 (mu/defn azure-raw
   "Perform a streaming request to an Azure-hosted model deployment.
+  Opts map supports `:credentials` (`{:api-key ... :base-url ...}`); when absent the `llm-azure-*` settings are used.
   `:ai-proxy?` is not supported for Azure and throws when true."
-  [{:keys [model input tools ai-proxy?] :as opts} :- core/LLMRequestOpts]
+  [{:keys [model input tools credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
   (let [family (model->family model)
         opts   (assoc opts :model (model->deployment model) :reasoning? false)
         {:keys [path headers req]}
@@ -191,12 +192,13 @@
                       :msg-count  (count input)
                       :tool-count (count tools)}
       (try
-        (let [response (azure-request {:method    :post
-                                       :path      path
-                                       :as        :stream
-                                       :headers   headers
-                                       :body      (json/encode req)
-                                       :ai-proxy? ai-proxy?})]
+        (let [response (azure-request {:method      :post
+                                       :path        path
+                                       :as          :stream
+                                       :headers     headers
+                                       :body        (json/encode req)
+                                       :credentials credentials
+                                       :ai-proxy?   ai-proxy?})]
           ;; The SSE body is consumed lazily, after this `try` has exited — wrap
           ;; the reducible so mid-stream IO/timeout failures get the same
           ;; provider-friendly translation as request-time errors.
