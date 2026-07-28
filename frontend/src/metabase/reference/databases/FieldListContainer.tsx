@@ -1,41 +1,25 @@
 import cx from "classnames";
-import { Component } from "react";
+import { useEffect } from "react";
+import { useMount, usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/redux";
+import { connect, useSelector } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import FieldList from "metabase/reference/databases/FieldList";
 import * as actions from "metabase/reference/reference";
-import {
-  type InjectedRouteProps,
-  type Location,
-  withRouteProps,
-} from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 
 import type { ClearStateProps, FetchProps } from "../reference";
 import {
   type ReferenceRouteParams,
-  type ReferenceRouteProps,
-  type StateWithReference,
   getDatabase,
   getDatabaseId,
   getIsEditing,
   getTable,
 } from "../selectors";
-import type { StubbedDatabase, StubbedTable } from "../types";
 
 import TableSidebar from "./TableSidebar";
-
-const mapStateToProps = (
-  state: StateWithReference,
-  props: ReferenceRouteProps,
-) => ({
-  database: getDatabase(state, props),
-  table: getTable(state, props),
-  databaseId: getDatabaseId(state, props),
-  isEditing: getIsEditing(state),
-});
 
 const mapDispatchToProps = {
   ...metadataActions,
@@ -43,61 +27,46 @@ const mapDispatchToProps = {
 };
 
 interface FieldListContainerProps extends FetchProps, ClearStateProps {
-  // From React Router
-  params: ReferenceRouteParams;
-  location: Location;
-
-  // From route definition / parent
-  style: React.CSSProperties;
-
-  // From mapStateToProps
-  database: StubbedDatabase;
-  databaseId: number;
-  table: StubbedTable;
-  isEditing?: boolean;
-
-  // From mapDispatchToProps (metadataActions spread)
   fetchDatabaseMetadata: (id: number) => Promise<unknown>;
 }
 
-class FieldListContainer extends Component<FieldListContainerProps> {
-  fetchContainerData() {
-    actions.wrappedFetchDatabaseMetadata(this.props, this.props.databaseId);
-  }
+function FieldListContainer(props: FieldListContainerProps) {
+  const { pathname } = useLocation();
+  const previousPathname = usePrevious(pathname);
+  const params = useParams<ReferenceRouteParams>();
 
-  UNSAFE_componentWillMount() {
-    this.fetchContainerData();
-  }
+  const database = useSelector((state) => getDatabase(state, { params }));
+  const table = useSelector((state) => getTable(state, { params }));
+  const databaseId = useSelector((state) => getDatabaseId(state, { params }));
+  const isEditing = useSelector(getIsEditing);
 
-  UNSAFE_componentWillReceiveProps(newProps: FieldListContainerProps) {
-    if (this.props.location.pathname === newProps.location.pathname) {
-      return;
+  useMount(() => {
+    actions.wrappedFetchDatabaseMetadata(props, databaseId);
+  });
+
+  useEffect(() => {
+    const pathnameChanged =
+      previousPathname !== undefined && previousPathname !== pathname;
+    if (pathnameChanged) {
+      actions.clearState(props);
     }
+  }, [pathname, previousPathname, props]);
 
-    actions.clearState(newProps);
-  }
-
-  render() {
-    const { database, table, isEditing } = this.props;
-
-    return (
-      <SidebarLayout
-        className={cx(CS.flexFull, CS.relative)}
-        style={isEditing ? { paddingTop: "43px" } : {}}
-        sidebar={<TableSidebar database={database} table={table} />}
-      >
-        <FieldList {...this.props} />
-      </SidebarLayout>
-    );
-  }
+  return (
+    <SidebarLayout
+      className={cx(CS.flexFull, CS.relative)}
+      style={isEditing ? { paddingTop: "43px" } : {}}
+      sidebar={<TableSidebar database={database} table={table} />}
+    >
+      <FieldList params={params} />
+    </SidebarLayout>
+  );
 }
 
 // connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default withRouteProps(
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-    // Unjustified type cast. FIXME
-  )(FieldListContainer as unknown as React.ComponentType<InjectedRouteProps>),
-);
+export default connect(
+  null,
+  mapDispatchToProps,
+  // Unjustified type cast. FIXME
+)(FieldListContainer as unknown as React.ComponentType);
