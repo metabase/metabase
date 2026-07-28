@@ -9,64 +9,42 @@ import { DataModelSegmentDependenciesPage } from "metabase/data-studio/segments/
 import { DataModelSegmentDetailPage } from "metabase/data-studio/segments/pages/DataModelSegmentDetailPage";
 import { DataModelSegmentRevisionHistoryPage } from "metabase/data-studio/segments/pages/DataModelSegmentRevisionHistoryPage";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Route, redirect, withRouteProps } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 
 import { DataModel } from "./pages/DataModel";
-
-const RoutedDataModel = withRouteProps(DataModel);
-const RoutedDataModelNewSegmentPage = withRouteProps(DataModelNewSegmentPage);
-const RoutedDataModelSegmentDetailPage = withRouteProps(
-  DataModelSegmentDetailPage,
-);
-const RoutedDataModelSegmentRevisionHistoryPage = withRouteProps(
-  DataModelSegmentRevisionHistoryPage,
-);
-const RoutedDataModelSegmentDependenciesPage = withRouteProps(
-  DataModelSegmentDependenciesPage,
-);
-const RoutedDataModelNewMeasurePage = withRouteProps(DataModelNewMeasurePage);
-const RoutedDataModelMeasureDetailPage = withRouteProps(
-  DataModelMeasureDetailPage,
-);
-const RoutedDataModelMeasureRevisionHistoryPage = withRouteProps(
-  DataModelMeasureRevisionHistoryPage,
-);
-const RoutedDataModelMeasureDependenciesPage = withRouteProps(
-  DataModelMeasureDependenciesPage,
-);
 
 export function getDataStudioMetadataRoutes(IsAdmin: ComponentType) {
   return (
     <>
-      <Route index element={<RoutedDataModel />} />
-      <Route path="database" element={<RoutedDataModel />} />
-      <Route path="database/:databaseId" element={<RoutedDataModel />} />
+      <Route index element={<DataModel />} />
+      <Route path="database" element={<DataModel />} />
+      <Route path="database/:databaseId" element={<DataModel />} />
       <Route
         path="database/:databaseId/schema/:schemaId"
-        element={<RoutedDataModel />}
+        element={<DataModel />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId"
-        element={<RoutedDataModel />}
+        element={<DataModel />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/segments/new"
         element={<IsAdmin />}
       >
-        <Route index element={<RoutedDataModelNewSegmentPage />} />
+        <Route index element={<DataModelNewSegmentPage />} />
       </Route>
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId"
-        element={<RoutedDataModelSegmentDetailPage />}
+        element={<DataModelSegmentDetailPage />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/revisions"
-        element={<RoutedDataModelSegmentRevisionHistoryPage />}
+        element={<DataModelSegmentRevisionHistoryPage />}
       />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/dependencies"
-          element={<RoutedDataModelSegmentDependenciesPage />}
+          element={<DataModelSegmentDependenciesPage />}
         >
           <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
@@ -75,20 +53,20 @@ export function getDataStudioMetadataRoutes(IsAdmin: ComponentType) {
         path="database/:databaseId/schema/:schemaId/table/:tableId/measures/new"
         element={<IsAdmin />}
       >
-        <Route index element={<RoutedDataModelNewMeasurePage />} />
+        <Route index element={<DataModelNewMeasurePage />} />
       </Route>
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId"
-        element={<RoutedDataModelMeasureDetailPage />}
+        element={<DataModelMeasureDetailPage />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/revisions"
-        element={<RoutedDataModelMeasureRevisionHistoryPage />}
+        element={<DataModelMeasureRevisionHistoryPage />}
       />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/dependencies"
-          element={<RoutedDataModelMeasureDependenciesPage />}
+          element={<DataModelMeasureDependenciesPage />}
         >
           <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
@@ -101,11 +79,11 @@ export function getDataStudioMetadataRoutes(IsAdmin: ComponentType) {
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
-        element={<RoutedDataModel />}
+        element={<DataModel />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/:tab/:fieldId"
-        element={<RoutedDataModel />}
+        element={<DataModel />}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/settings"

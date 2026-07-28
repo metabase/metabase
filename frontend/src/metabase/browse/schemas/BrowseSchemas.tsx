@@ -13,6 +13,7 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { findDatabaseByName } from "metabase/common/utils/database";
 import CS from "metabase/css/core/index.css";
+import { useParams } from "metabase/router";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { DatabaseId } from "metabase-types/api";
@@ -113,13 +114,13 @@ const BrowseSchemasByDatabaseName = ({
   return <BrowseSchemasForDatabase dbId={database.id} params={params} />;
 };
 
-export const BrowseSchemas = ({ params }: { params: { slug: string } }) => {
-  const dbId = Urls.extractEntityId(params.slug);
+export const BrowseSchemas = () => {
+  const { slug = "" } = useParams<{ slug: string }>();
+  const params = { slug };
+  const dbId = Urls.extractEntityId(slug);
 
   if (dbId == null) {
-    return (
-      <BrowseSchemasByDatabaseName databaseName={params.slug} params={params} />
-    );
+    return <BrowseSchemasByDatabaseName databaseName={slug} params={params} />;
   }
 
   return <BrowseSchemasForDatabase dbId={dbId} params={params} />;

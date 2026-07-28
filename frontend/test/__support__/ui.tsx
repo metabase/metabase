@@ -29,7 +29,7 @@ import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { MetabaseReduxProvider, useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
@@ -37,6 +37,7 @@ import {
   type History,
   type LocationDescriptor,
   Route,
+  createLocationMirror,
   routerMiddleware,
   routing as routingReducer,
 } from "metabase/router";
@@ -424,6 +425,12 @@ function MaybeRouter({
   v7History?: MemoryTestHistory;
   initialRoute: string;
 }): JSX.Element {
+  const dispatch = useDispatch();
+  const onLocationChange = useMemo(
+    () => createLocationMirror(dispatch),
+    [dispatch],
+  );
+
   if (!hasRouter) {
     return children;
   }
@@ -436,7 +443,11 @@ function MaybeRouter({
     <Route path="*" element={children} />
   );
   return (
-    <RouterProviderV7Memory initialRoute={initialRoute} history={v7History}>
+    <RouterProviderV7Memory
+      initialRoute={initialRoute}
+      history={v7History}
+      onLocationChange={onLocationChange}
+    >
       {content}
     </RouterProviderV7Memory>
   );

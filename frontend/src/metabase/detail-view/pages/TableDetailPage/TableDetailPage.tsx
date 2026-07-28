@@ -17,21 +17,18 @@ import {
 } from "metabase/detail-view/utils";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
+import { useParams } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { extractRemappedColumns } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 
-interface Props {
-  params: {
+export function TableDetailPage() {
+  const { tableId: tableIdParam = "", rowId = "" } = useParams<{
     tableId: string;
     rowId: string;
-  };
-}
-
-export function TableDetailPage({ params }: Props) {
-  const tableId = parseInt(params.tableId, 10);
-  const rowId = params.rowId;
+  }>();
+  const tableId = parseInt(tableIdParam, 10);
 
   const {
     data: table,

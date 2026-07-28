@@ -45,7 +45,7 @@
   (try
     (or (not (contains? search.config/hnsw-index-backed-strategies
                         (semantic.settings/semantic-search-vector-strategy)))
-        (semantic.util/index-ready?
+        (semantic.util/index-exists?
          pgvector
          (semantic.index/schema-qualified-index-name index (semantic.index/hnsw-index-name index))))
     (catch InterruptedException e

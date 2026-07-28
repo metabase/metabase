@@ -38,7 +38,7 @@ Jobs have two components: schedule and tags.
 - **Schedule** determines when the job will be executed: daily, hourly, etc. You can specify a custom cron schedule (e.g. "Every weekday at 9:05 AM"). The times are given in your Metabase's system timezone.
 - **Tags** determine _which_ transforms a job runs, not when the job runs. For example, you can create a `Weekdays` tag, add that tag to a few transforms, then create a job that runs all the transforms with the `Weekdays` tag every weekday at 9:05AM.
 
-Jobs will run all transforms tagged with any of the tags, plus any transforms that the tagged transforms depend on, see [Jobs will run all dependent transforms](#jobs-will-run-all-dependent-transforms).
+Jobs will run all transforms tagged with any of the tags, plus any transforms that the tagged transforms depend on that aren't already up to date, see [Jobs include all dependent transforms](#jobs-include-all-dependent-transforms).
 
 You can see which transforms a job will run and in which order on the job's page.
 
@@ -104,13 +104,22 @@ To delete a job:
 2. Find the job you want to delete and click the **three dots** icon to the right of the job's name.
 3. Select **Delete**.
 
-## Jobs will run all dependent transforms
+## Jobs include all dependent transforms
 
-If one transform depends on another, Metabase will run the dependency first, even if that transform isn't tagged in the job. So if transform B depends on A, Metabase will first run A, even if A doesn't have a tag.
+If one transform depends on another, Metabase adds the dependency to the job and runs it first, even if that transform isn't tagged in the job. So if transform B depends on A, Metabase makes sure A is up to date before running B.
 
-This means that you can explicitly tag transform A to run daily, and transform B hourly, but because transform B depends on transform A, transform A will _also_ run hourly (in addition to daily), despite not having the tag.
+## Jobs skip dependencies that are already up to date
 
-You can see which transforms a job will run (and in which order) on the job's page in **Data Studio > Jobs**.
+Metabase won't re-run a dependency that's still fresh. That way, a transform pulled into a frequent job doesn't get rebuilt more often than its own schedule calls for. So, for example, if you tag transform A `daily`, and transform B `hourly`, and hourly B depends on daily A, then A runs on its own daily schedule. The hourly job that runs B won't rerun A every hour.
+
+Metabase skips a dependency when the dependency:
+
+- Has its own tags and jobs, and none of those jobs' schedules have come due since the dependency last ran successfully.
+- Has no tags at all, and it's already run successfully at least once.
+
+## See which transforms a job will run
+
+The job's page in **Data Studio > Jobs** lists every transform the job will run and in which order. The **Notes** column tells you when Metabase will skip a dependency, and flags dependencies that have no schedule of their own.
 
 ## Runs
 
@@ -120,4 +129,11 @@ You can see all past and current transform runs (both manual and scheduled) by g
 
 You can click on any transform run to see more details about the run, like the error logs. To go to the transform definition from the transform run page, click on the icon next the transform name in the right sidebar.
 
-The "Tags" column in the **Runs** table will only show the transform's specific tags. But the run might not have anything to do with those tags. Another job with different tags could have run the transform because [jobs will run _all_ dependent transforms](#jobs-will-run-all-dependent-transforms).
+The "Tags" column in the **Runs** table will only show the transform's specific tags. But the run might not have anything to do with those tags. Another job with different tags could have run the transform because [jobs include all dependent transforms](#jobs-include-all-dependent-transforms).
+
+## Emails about failed transforms
+
+If your Metabase is [set up to send email](../../configuring-metabase/email.md), Metabase will let people know when transforms fail.
+
+- **Individual transform failures**: when transforms fail during a scheduled job run, Metabase emails the last person to edit each failed transform (or the transform's creator, or admins if neither is active). Each email covers a single job run.
+- **Daily digest of job failures**: each morning, Metabase emails all admins a summary of the scheduled job runs that failed or timed out the previous day. Manual runs aren't included in the digest, and Metabase skips the email entirely if no scheduled runs failed.

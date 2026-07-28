@@ -270,8 +270,6 @@
 (defn simple-query?
   "Check if SQL is a simple SELECT without LIMIT, OFFSET, or CTEs.
 
-   Used by Workspaces to determine if automatic checkpoints can be inserted.
-
    Parameters:
    - dialect: SQLGlot dialect string (e.g., \"postgres\", \"mysql\"), or nil for default
    - sql: The SQL query string to check
