@@ -43,7 +43,8 @@ export const UnsubscribeUserModal = ({
       sendToast({ message: t`Unsubscribe successful` });
       onClose();
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, t`Unknown error encountered`));
+      const message = getErrorMessage(error, t`Unknown error encountered`);
+      setErrorMessage(message);
     }
   };
 

@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -24,7 +23,7 @@ import { handleMetabotSlashCommand } from "./metabot-analytics/slash-commands";
 import { getUserMenuRoutes } from "./routes";
 import { isAuditDb } from "./utils";
 
-const getUserMenuItems = (user: User): ReactNode => [
+const getUserMenuItems = (user: User): React.ReactNode => [
   <Menu.Item
     component={ForwardRefLink}
     to={
