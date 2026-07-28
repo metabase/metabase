@@ -5,6 +5,7 @@
   OSS shims live in [[metabase.entity-retrieval.mirror]]; the background sync they nudge is the
   [[metabase-enterprise.entity-retrieval.task.sync]] Quartz job."
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [clojurewerkz.quartzite.jobs :as jobs]
    [honey.sql :as sql]
@@ -14,7 +15,9 @@
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase-enterprise.semantic-search.embedding-health :as embedding-health]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -30,23 +33,81 @@
   [[metabase-enterprise.entity-retrieval.task.sync]]."
   (jobs/key "metabase-enterprise.entity-retrieval.sync.job"))
 
-(defn pgvector-configured?
-  "True when a dedicated pgvector store is configured (MB_PGVECTOR_DB_URL).
-  Deliberately excludes pgvector-on-the-app-db: entity retrieval's tables are not yet schema-isolated
-  (bare `library_entity_index*` names, dropped and recreated on rebuild), so it stays dedicated-only
-  until they are.
-  The sync task gates scheduling on this rather than [[available?]], so the periodic safety net exists
-  even when the library-retrieval feature is turned on after startup (a common onboarding flow).
-  A plain URL check, not [[metabase-enterprise.semantic-search.db.datasource/pgvector-mode]]: mode
-  resolution can probe the app db, which a dedicated-only scheduling gate has no business doing."
-  []
-  (semantic.db.datasource/dedicated-url-configured?))
-
 (defn- licensed?
   "Without a library, there is nothing one is entitled to retrieve."
   []
   (and (premium-features/has-feature? :library)
        (premium-features/has-feature? :library-retrieval)))
+
+(defn pgvector-schedulable?
+  "Whether this instance could have a pgvector store: a dedicated one, or an app db that might host one.
+  Env and license only, never a query -- the sync task schedules on this, and resolving
+  [[metabase-enterprise.semantic-search.db.datasource/pgvector-mode]] would probe the app db of instances
+  that can't use the answer.
+  Licensing an app-db instance post-boot needs a restart before the job schedules."
+  []
+  (or (semantic.db.datasource/dedicated-url-configured?)
+      (and (licensed?)
+           (= :postgres (mdb/db-type)))))
+
+(def ^:private schema-privilege-sql
+  "NULL when the schema does not exist, otherwise whether this role may both use it and create in it.
+  Two calls rather than `'USAGE, CREATE'`: a comma-separated list reads as OR, which USAGE alone passes."
+  "SELECT CASE WHEN to_regnamespace(?) IS NULL THEN NULL
+              ELSE has_schema_privilege(?, 'USAGE') AND has_schema_privilege(?, 'CREATE')
+         END AS privileged")
+
+(defn- app-db-schema-usable?*
+  "Whether this role can hold the index in [[index-table/index-schema]].
+  Privileges, not existence: USAGE without CREATE passes a mere existence check, then fails in
+  [[index-table/ensure-tables!]].
+  A database failure reads as unusable, so an outage can't throw out of the fire-and-forget
+  [[request-entity-sync!]]."
+  []
+  (let [schema index-table/index-schema]
+    (try
+      (if-some [privileged (:privileged (jdbc/execute-one!
+                                         (mdb/data-source)
+                                         [schema-privilege-sql schema schema schema]
+                                         {:builder-fn jdbc.rs/as-unqualified-lower-maps}))]
+        privileged
+        ;; Not there yet -- can this role create it? Rolled back, so nothing is persisted here.
+        (do
+          (jdbc/with-transaction [tx (mdb/data-source) {:rollback-only true}]
+            (jdbc/execute! tx [(format "CREATE SCHEMA IF NOT EXISTS %s" (semantic.util/quote-ident schema))]))
+          true))
+      (catch InterruptedException e
+        (throw e))
+      (catch Exception e
+        (log/debug e "The application database user cannot host the library retrieval schema")
+        false))))
+
+(defonce ^{:doc "Set once [[app-db-schema-usable?*]] has answered yes. Rebound by tests."}
+  app-db-schema-confirmed?
+  (atom false))
+
+(def ^:private retry-app-db-schema-probe
+  "[[app-db-schema-usable?*]], re-run at most every five minutes."
+  (memoize/ttl app-db-schema-usable?* :ttl/threshold (* 5 60 1000)))
+
+;; A latch that closes once we detect the necessary schema.
+;; This way we retry until the resource is ready, but don't leave it disabled for TTL on transient failures.
+(defn- app-db-schema-usable?
+  "Whether this role can hold the index, cached. [[available?]] asks on every write nudge and every search,
+  and the underlying check can attempt DDL."
+  []
+  (swap! app-db-schema-confirmed? #(or % (retry-app-db-schema-probe))))
+
+(defn pgvector-configured?
+  "Whether a pgvector store is resolvable, dedicated or on the app db.
+  The app-db arm checks this feature's own schema: semantic search's predicate answers for
+  `semantic_search`, so a role that can use that one but not create ours would read as ready and then fail
+  every reconcile.
+  Probes the app db, so check the license first (see [[available?]])."
+  []
+  (and (semantic.db.datasource/pgvector-configured?)
+       (or (semantic.db.datasource/dedicated-url-configured?)
+           (app-db-schema-usable?))))
 
 (defn- embedder-configured?
   "Whether an embedding backend is configured: without one we can neither index nor retrieve."
@@ -61,8 +122,9 @@
 
   Re-evaluate this per use, as this configuration is dynamic."
   []
-  (and (pgvector-configured?)
-       (licensed?)
+  ;; License first: [[pgvector-configured?]] can probe the app db, and an unlicensed instance must not.
+  (and (licensed?)
+       (pgvector-configured?)
        (embedder-configured?)))
 
 (defn- missing-table-error?
@@ -75,14 +137,16 @@
                  (u/full-exception-chain e))))
 
 (defn- dependencies
-  "Entity retrieval's necessary conditions, as a `{:store, :embedder, :licenses}` map of booleans."
+  "Entity retrieval's necessary conditions, as a `{:store, :embedder, :licenses}` map of booleans.
+  `:store` reads false when unlicensed rather than being resolved, which would query the app db."
   []
-  {:store    (pgvector-configured?)
-   :embedder (embedder-configured?)
-   :licenses (licensed?)})
+  (let [licensed (licensed?)]
+    {:store    (and licensed (pgvector-configured?))
+     :embedder (embedder-configured?)
+     :licenses licensed}))
 
 (defn- index-populated? [ds]
-  (boolean (seq (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" LIMIT 1" index-table/*vectors-table*)]))))
+  (boolean (seq (jdbc/execute! ds [(format "SELECT 1 FROM %s LIMIT 1" (index-table/vectors-table-sql))]))))
 
 (defn- probe-index
   "The `:index` map — `{:status <enum>}`, plus `:error` on `:unreachable`. A compatible metadata row is
@@ -331,7 +395,7 @@
                        pgvector
                        (-> (sql.helpers/select :entity_type :entity_local_id :doc_type :doc_text
                                                [[:raw distance] :distance])
-                           (sql.helpers/from (keyword index-table/*vectors-table*))
+                           (sql.helpers/from (keyword (index-table/vectors-table)))
                            ;; Exact scan, no HNSW: the blended order-by can't use an ANN index, and the
                            ;; library set is tiny.
                            (sql.helpers/order-by [[:raw (ranking-sql distance)] :asc])

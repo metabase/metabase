@@ -46,8 +46,8 @@ jobs:
             const FAILED_RUN_URL = "${{ github.event.workflow_run.html_url }}";
             const FAILED_RUN_NAME = "${{ github.event.workflow_run.name }}";
             const BREAKING_COMMIT = "${{ github.event.workflow_run.head_sha }}";
-            const AUTHOR = process.env.AUTHOR_NAME;
-            const AUTHOR_LOGIN = process.env.AUTHOR_LOGIN;
+            let AUTHOR = process.env.AUTHOR_NAME;
+            let AUTHOR_LOGIN = process.env.AUTHOR_LOGIN;
             const BRANCH = process.env.BRANCH_NAME;
 
             if (ATTEMPT <= MAX_ATTEMPTS) {
@@ -84,6 +84,24 @@ jobs:
               // don't bother slack if only the flaky job failed
               if (failedJobs.every(job => job.name.toLowerCase().includes("flaky"))) {
                 return;
+              }
+
+              // the workflow_run payload omits the github login when the commit
+              // author isn't matched to a github account, so look it up from
+              // the commit itself
+              if (!AUTHOR_LOGIN) {
+                try {
+                  const { data: commit } = await github.rest.repos.getCommit({
+                    owner,
+                    repo,
+                    ref: BREAKING_COMMIT,
+                  });
+
+                  AUTHOR_LOGIN = commit.author?.login ?? '';
+                  AUTHOR = AUTHOR || commit.commit?.author?.name || '';
+                } catch (error) {
+                  console.log(`Could not look up the author of ${BREAKING_COMMIT}: ${error.message}`);
+                }
               }
 
               const failedJobsList = failedJobs.map(job => ({
