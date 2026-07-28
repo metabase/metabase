@@ -81,7 +81,6 @@
    [:description [:maybe :string]]
    [:source :any]
    [:target :any]
-   [:table_dependencies {:optional true} [:maybe [:sequential :map]]]
    [:source_type :keyword]
    [:source_database_id {:optional true} [:maybe pos-int?]]
    [:source_readable {:optional true} [:maybe :boolean]]

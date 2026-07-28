@@ -187,32 +187,3 @@
               (t2/update! :model/Transform transform-id {:name "Deserialized Update"})
               (t2/delete! :model/Transform transform-id)))
           (is (empty? @events-published)))))))
-
-(defn- stored-deps [transform-id]
-  (t2/select-one-fn :table_dependencies :model/Transform transform-id))
-
-(deftest table-dependencies-cache-test
-  (testing "table_dependencies is not computed on insert — it is filled lazily on the first read"
-    (mt/with-temp [:model/Transform {id :id}
-                   {:name   "deps insert"
-                    :source {:type  "query"
-                             :query {:database (mt/id)
-                                     :type     "query"
-                                     :query    {:source-table (mt/id :orders)}}}}]
-      (is (nil? (stored-deps id)))))
-  (testing "changing the source invalidates any cached table_dependencies"
-    (mt/with-temp [:model/Transform {id :id}
-                   {:name   "deps update"
-                    :source {:type  "query"
-                             :query {:database (mt/id)
-                                     :type     "query"
-                                     :query    {:source-table (mt/id :orders)}}}}]
-      ;; seed a cached value (as the lazy read path would)
-      (t2/update! :model/Transform id {:table_dependencies [{:table (mt/id :orders)}]})
-      (is (= [{:table (mt/id :orders)}] (stored-deps id)))
-      (t2/update! :model/Transform id
-                  {:source {:type  "query"
-                            :query {:database (mt/id)
-                                    :type     "query"
-                                    :query    {:source-table (mt/id :people)}}}})
-      (is (nil? (stored-deps id))))))

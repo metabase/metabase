@@ -78,15 +78,3 @@
         ;; needs for skip-on-failure attribution.
         (is (=? {:dependencies {1 #{} 2 #{1}} :not-found #{} :failed #{1}}
                 (ordering/transform-ordering #{2} [(tx 1 #{}) (tx 2 #{1})])))))))
-
-(deftest passthrough-card-or-snippet-test
-  (testing "transforms that read through a card/snippet are omitted from :uncached (they pass through)"
-    (with-redefs [transforms-base.i/table-dependencies :test-deps
-                  ;; pretend transform 1 references a card/snippet
-                  ordering/references-card-or-snippet? #(= 1 (:id %))]
-      (let [{:keys [uncached]} (ordering/transform-ordering
-                                #{1 2}
-                                [{:id 1 :test-deps #{}}
-                                 {:id 2 :test-deps #{}}])]
-        (is (not (contains? uncached 1)))
-        (is (contains? uncached 2))))))

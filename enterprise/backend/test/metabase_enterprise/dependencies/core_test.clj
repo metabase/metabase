@@ -3,12 +3,14 @@
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase-enterprise.dependencies.core :as dependencies]
+   [metabase-enterprise.dependencies.models.dependency-status :as deps.status]
    [metabase-enterprise.dependencies.test-util :as deps.tu]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.test :as mt]
    [metabase.util.malli :as mu]))
 
 (defn- only-missing-column-errors
@@ -266,3 +268,35 @@
         (future-cancel fut))
       (is (not= ::timeout result) "errors-from-proposed-edits hung (possible infinite loop)")
       (is (= {} result)))))
+
+(deftest ^:sequential transform-table-deps-test
+  (mt/with-premium-features #{:dependencies}
+    (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
+                       :model/Transform {plain-tf :id} {:source {:type  :query
+                                                                 :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}}
+                       :model/Transform {card-tf :id} {:source {:type  :query
+                                                                :query (lib/query mp (lib.metadata/card mp card-id))}}
+                       :model/Transform {python-tf :id} {:source {:type            :python
+                                                                  :source-database (mt/id)
+                                                                  :source-tables   [{:alias       "orders"
+                                                                                     :database_id (mt/id)
+                                                                                     :schema      "public"
+                                                                                     :table       "orders"
+                                                                                     :table_id    (mt/id :orders)}]
+                                                                  :body            "def transform(orders):\n    return orders"}}]
+          (deps.tu/synchronously-run-backfill!)
+          (let [ids    [plain-tf card-tf python-tf]
+                result (dependencies/transform-table-deps ids)]
+            (testing "fresh, table-only transforms come back in table-dependencies format"
+              (is (= #{{:table (mt/id :orders)}} (get result plain-tf))))
+            (testing "python transforms with resolved source tables come from the graph too"
+              (is (= #{{:table (mt/id :orders)}} (get result python-tf))))
+            (testing "transforms reading through a card are left to the live computation"
+              (is (not (contains? result card-tf))))
+            (testing "transforms whose analysis is stale are left to the live computation"
+              (deps.status/mark-stale! :transform [plain-tf])
+              (is (not (contains? (dependencies/transform-table-deps ids) plain-tf))))
+            (testing "never-analyzed transform ids are not returned"
+              (is (empty? (dependencies/transform-table-deps [Integer/MAX_VALUE]))))))))))

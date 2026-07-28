@@ -8,20 +8,7 @@
   (:require
    [java-time.api :as t]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
-
-(defenterprise persist-table-dependencies!
-  "Best-effort write-back of `:uncached` deps from `transform-ordering` into the
-  `transform.table_dependencies` column, keyed by transform id."
-  :feature :none
-  [id->raw-deps]
-  (doseq [[id raw-deps] id->raw-deps]
-    (try
-      (t2/update! (t2/table-name :model/Transform) id {:table_dependencies (json/encode (vec raw-deps))})
-      (catch Throwable e
-        (log/warnf e "Failed to cache table-dependencies for transform %s" id)))))
 
 (defenterprise transform-metered-as
   "Return the meter bucket a new transform run of the given source-type counts toward,

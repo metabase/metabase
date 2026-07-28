@@ -30,6 +30,19 @@
          {:stale true :fail_count 0 :next_retry_at nil :terminal false}
          {:stale true :dependency_analysis_version 0})))))
 
+(defn fresh-entity-ids
+  "Subset of `entity-ids` (of `entity-type`) whose dependency analysis is fresh: not stale, not
+  terminal, and at the current analysis version. These are the entities whose `dependency` rows can
+  be trusted as a complete, up-to-date picture of their upstream dependencies."
+  [entity-type entity-ids]
+  (when (seq entity-ids)
+    (t2/select-fn-set :entity_id :model/DependencyStatus
+                      :entity_type entity-type
+                      :entity_id [:in entity-ids]
+                      :stale false
+                      :terminal false
+                      :dependency_analysis_version models.dependency/current-dependency-analysis-version)))
+
 (defn upsert-status!
   "Upsert a dependency_status entry, setting stale=false, version to current,
   and clearing any failure state. Uses [[app-db/update-or-insert!]] for cross-database atomicity."
