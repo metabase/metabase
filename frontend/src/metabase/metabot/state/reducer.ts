@@ -1,4 +1,4 @@
-import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
+import { type PayloadAction, createSlice, nanoid } from "@reduxjs/toolkit";
 import { castDraft } from "immer";
 import _ from "underscore";
 
@@ -6,6 +6,7 @@ import { logout } from "metabase/redux/auth";
 import { uuid } from "metabase/utils/uuid";
 import type {
   MetabotCodeEdit,
+  MetabotStateContext,
   MetabotSuggestedTransform,
   SuggestedTransform,
 } from "metabase-types/api";
@@ -31,7 +32,7 @@ import type {
   MetabotToolCall,
   MetabotUserChatMessage,
 } from "./types";
-import { createMessageId } from "./utils";
+import { createMessageId, hasInProgressMessage } from "./utils";
 
 export const metabot = createSlice({
   name: "metabase/metabot",
@@ -62,7 +63,32 @@ export const metabot = createSlice({
     setDebugMode: (state, action: PayloadAction<boolean>) => {
       state.debugMode = action.payload;
     },
+    markChartSaved: (
+      state,
+      action: PayloadAction<{ entityId: string; cardId: number }>,
+    ) => {
+      state.savedChartCardIds[action.payload.entityId] = action.payload.cardId;
+    },
     // CONVERSATION REDUCERS
+    setConversationTitle: convoReducer(
+      (convo, action: ConvoPayloadAction<{ title: string }>) => {
+        convo.title = action.payload.title;
+      },
+    ),
+    setIsPollingForTitle: (
+      state,
+      action: PayloadAction<{
+        conversationId: string;
+        isPollingForTitle: boolean;
+      }>,
+    ) => {
+      const { conversationId, isPollingForTitle } = action.payload;
+      state.titlePollingConversationIds = isPollingForTitle
+        ? _.uniq([...state.titlePollingConversationIds, conversationId])
+        : state.titlePollingConversationIds.filter(
+            (id) => id !== conversationId,
+          );
+    },
     addDeveloperMessage: convoReducer(
       (convo, action: ConvoPayloadAction<{ message: string }>) => {
         convo.experimental.developerMessage = `HIDDEN DEVELOPER MESSAGE: ${action.payload.message}\n\n`;
@@ -319,38 +345,41 @@ export const metabot = createSlice({
     ) => {
       delete state.reactions.suggestedCodeEdits[action.payload];
     },
-    setConversationSnapshot: (
-      state,
-      action: PayloadAction<{
-        messages: MetabotChatMessage[];
-        state: any;
-        suggestedTransforms: MetabotSuggestedTransform[];
-        activeToolCalls: MetabotToolCall[];
-        conversationId: string;
-      }>,
-    ) => {
-      const convo = state.conversations["omnibot"];
-      if (!convo) {
-        return;
-      }
+    setConversationSnapshot: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{
+          messages: MetabotChatMessage[];
+          state?: MetabotStateContext;
+          activeToolCalls?: MetabotToolCall[];
+          conversationId: string;
+          title?: string;
+        }>,
+        state,
+      ) => {
+        const {
+          agentId,
+          messages,
+          state: snapshotState,
+          activeToolCalls,
+          conversationId,
+          title,
+        } = action.payload;
 
-      const {
-        messages,
-        state: snapshotState,
-        suggestedTransforms,
-        activeToolCalls,
-        conversationId,
-      } = action.payload;
+        convo.messages = castDraft(messages ?? []);
+        convo.state = snapshotState ?? {};
+        convo.activeToolCalls = activeToolCalls ?? [];
+        convo.conversationId = conversationId ?? uuid();
+        convo.loadId = nanoid();
+        convo.title = title;
+        convo.isProcessing = hasInProgressMessage(messages ?? []);
+        convo.stateBeforeTurn = undefined;
+        convo.pendingMessageExternalId = undefined;
 
-      convo.messages = castDraft(messages ?? []);
-      convo.state = snapshotState ?? {};
-      convo.activeToolCalls = activeToolCalls ?? [];
-      convo.conversationId = conversationId ?? uuid();
-      convo.isProcessing = false;
-
-      // Unjustified type cast. FIXME
-      state.reactions.suggestedTransforms = (suggestedTransforms ?? []) as any;
-    },
+        // NOTE: live reactions aren't reconstructed from a fetched snapshot
+        resetReactionState(state, agentId);
+      },
+    ),
   },
   extraReducers: (builder) => {
     builder

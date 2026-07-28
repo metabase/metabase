@@ -55,7 +55,9 @@ export type QueryVisualizationDisplayType =
 
 export type VisualizationDisplay =
   | VirtualCardDisplay
-  | QueryVisualizationDisplayType;
+  | QueryVisualizationDisplayType
+  // internal-only display registered by the audit app, not saveable on cards
+  | "audit-table";
 
 export type TimeseriesDisplayType = Extract<
   CardDisplayType,

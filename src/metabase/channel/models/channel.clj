@@ -70,8 +70,6 @@
 
 (defmethod serdes/entity-id "Channel" [_ {:keys [name]}] name)
 
-(defmethod serdes/hash-fields :model/Channel [_instance] [:name :type])
-
 (defmethod serdes/load-find-local "Channel"
   [path]
   (t2/select-one :model/Channel :name (:id (last path))))

@@ -85,6 +85,17 @@
   :export?    false
   :doc        false)
 
+(defsetting semantic-search-embedder-circuit-breaker-enabled
+  (deferred-tru
+   (str "Wrap embedding-service calls in a circuit breaker that fails fast after repeated failures. "
+        "Runtime kill switch; the breaker thresholds are fixed."))
+  :type       :boolean
+  :default    true
+  :encryption :no
+  :export?    false
+  :visibility :internal
+  :doc        false)
+
 (defsetting openai-max-tokens-per-batch
   (deferred-tru "The maximum number of tokens sent in a single embedding API call.")
   :type :integer

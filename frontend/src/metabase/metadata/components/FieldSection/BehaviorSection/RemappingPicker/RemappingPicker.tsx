@@ -319,7 +319,7 @@ export const RemappingPicker = ({
       {value === "custom" && (
         <>
           {isFieldsAccessRestricted && (
-            <Alert mt="md">
+            <Alert size="compact" variant="light" mt="md">
               {t`You need unrestricted data access on this table to map custom display values.`}
             </Alert>
           )}

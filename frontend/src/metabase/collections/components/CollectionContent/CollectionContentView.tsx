@@ -55,6 +55,7 @@ import UploadOverlay from "../UploadOverlay";
 
 import { CollectionMain, CollectionRoot } from "./CollectionContent.styled";
 import { CollectionItemsTable } from "./CollectionItemsTable";
+import { useCollectionChartPaste } from "./use-collection-chart-paste";
 
 const itemKeyFn = (item: CollectionItem) => `${item.id}:${item.model}`;
 
@@ -85,6 +86,8 @@ export const CollectionContentView = ({
 }) => {
   const dispatch = useDispatch();
   const [deleteCollection] = useDeleteCollectionMutation();
+
+  useCollectionChartPaste(collection);
 
   const { data: pinnedItemsData, isLoading: loading } =
     useListCollectionItemsQuery({

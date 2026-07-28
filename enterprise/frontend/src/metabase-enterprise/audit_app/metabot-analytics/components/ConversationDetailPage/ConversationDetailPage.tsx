@@ -41,7 +41,7 @@ import { getUserName } from "metabase/utils/user";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
-import { useGetMetabotConversationQuery } from "../../api";
+import { useGetMetabotAnalyticsConversationQuery } from "../../api";
 import type { ConversationFeedback, GeneratedQuery } from "../../types";
 
 import { ConversationHeader } from "./ConversationHeader";
@@ -53,7 +53,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     data: conversation,
     isLoading,
     error,
-  } = useGetMetabotConversationQuery(convoId, {
+  } = useGetMetabotAnalyticsConversationQuery(convoId, {
     refetchOnMountOrArgChange: true,
   });
 
@@ -121,6 +121,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                   key={item.id}
                   feedback={item}
                   chatMessages={feedbackChatMessages}
+                  conversationId={convoId}
                 />
               ))}
             </Stack>
@@ -143,6 +144,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
               isDoingScience={false}
               debug
               readonly
+              conversationId={convoId}
             />
           </Card>
         </Stack>
@@ -179,9 +181,11 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function FeedbackCard({
   feedback,
   chatMessages,
+  conversationId,
 }: {
   feedback: ConversationFeedback;
   chatMessages: MetabotChatMessage[];
+  conversationId: string;
 }) {
   const agentResponse = feedback.external_id
     ? chatMessages.find(
@@ -222,6 +226,7 @@ function FeedbackCard({
             message={agentResponse}
             debug
             readonly
+            conversationId={conversationId}
             hideActions
             getCopyText={noopGetCopyText}
             submittedFeedback={undefined}

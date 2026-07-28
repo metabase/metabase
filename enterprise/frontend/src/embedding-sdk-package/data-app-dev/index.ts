@@ -16,16 +16,6 @@ import { findEnvRoot } from "./config/find-env-root";
 import { readManifest } from "./config/read-manifest";
 import { dataAppSandboxDevPlugin } from "./dev-plugin/plugin";
 
-/**
- * The contract plugin array used by {@link dataAppConfig}. It bundles the React
- * plugin, inlines imported CSS, adds SVG-as-component support, runs `npm run dev`
- * through the real Near-Membrane sandbox (so dev behaves like production), serves
- * the dev entry, and applies the bundle contract — the IIFE entry/format + the
- * React/SDK externals/globals — through a `config` hook that Vite merges *over*
- * the user's config, so it can't be accidentally overridden.
- *
- * Internal: apps configure through {@link dataAppConfig}, not this directly.
- */
 function dataAppVitePlugin(): PluginOption[] {
   const appRoot = process.cwd();
   const envDir = findEnvRoot(appRoot);
@@ -48,17 +38,13 @@ function dataAppVitePlugin(): PluginOption[] {
     dataAppSandboxDevPlugin(appSlug, allowedHosts),
     {
       name: "metabase-data-app",
-      // Merged over the user's config (`mergeConfig(userConfig, this)`), so these
-      // win — the bundle Metabase loads always matches what dev runs. `loadEnv`
-      // needs the mode, which is only known here in the `config` hook.
+      // Merged over the user's config, so these win — the bundle Metabase loads
+      // always matches what dev runs.
       config: (_config: UserConfig, env: ConfigEnv): UserConfig => ({
         define: getDataAppDefine(env.mode),
         envDir,
-        // Dev preview only — keeps `.env.local` secrets out of prod builds. See
-        // `dataAppEnvPrefix`.
         envPrefix: dataAppEnvPrefix(env.command),
-        // The dev plugin serves a synthetic index.html, so there's no file on
-        // disk for Vite's default HTML/SPA middleware to find.
+        // The dev plugin serves a synthetic index.html; there's no file on disk.
         appType: "custom",
         build: {
           outDir: "dist",
@@ -79,29 +65,12 @@ function dataAppVitePlugin(): PluginOption[] {
   ];
 }
 
-/** Default dev server port; override via `dataAppConfig({ port })`. */
 const DEFAULT_DEV_PORT = 5174;
 
 export interface DataAppConfigOverrides {
-  /** Dev server port. Defaults to 5174. */
   port?: number;
 }
 
-/**
- * The complete Vite config for a Metabase data app — the only thing a template
- * `vite.config.ts` needs:
- *
- * ```ts
- * import { dataAppConfig } from "@metabase/embedding-sdk-react/data-app-dev/config";
- *
- * export default dataAppConfig();
- * ```
- *
- * `overrides` exposes only a curated set of knobs (currently just `port`, which
- * defaults to 5174). The contract plugin that enforces the bundle format +
- * sandbox is always applied and is intentionally NOT overridable, so a data app
- * can't drift from what Metabase loads.
- */
 export function dataAppConfig({
   port = DEFAULT_DEV_PORT,
 }: DataAppConfigOverrides = {}): UserConfig {

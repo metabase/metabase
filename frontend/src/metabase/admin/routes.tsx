@@ -12,6 +12,7 @@ import { EmbeddingThemeEditorApp } from "metabase/admin/embedding/components/The
 import { EmbeddingThemeListingApp } from "metabase/admin/embedding/components/ThemeListing";
 import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
 import { EmbeddingHubAdminSettingsPage } from "metabase/admin/embedding/embedding-hub";
+import { Help } from "metabase/admin/help";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import { GroupDetailApp } from "metabase/admin/people/containers/GroupDetailApp";
@@ -34,43 +35,20 @@ import {
   SetupSsoPage,
 } from "metabase/embedding/embedding-hub";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
-import { Help } from "metabase/monitor/tools/components/Help";
-import { JobInfoApp } from "metabase/monitor/tools/components/JobInfoApp";
-import { JobTriggersModal } from "metabase/monitor/tools/components/JobTriggersModal";
-import { LogLevelsModal } from "metabase/monitor/tools/components/LogLevelsModal";
-import { Logs } from "metabase/monitor/tools/components/Logs";
 import {
-  ModelCachePage,
-  ModelCacheRefreshJobModal,
-} from "metabase/monitor/tools/components/ModelCacheRefreshJobs";
-import { ToolsApp } from "metabase/monitor/tools/components/ToolsApp";
-import { ToolsUpsell } from "metabase/monitor/tools/components/ToolsUpsell";
-import {
-  getNotificationsRoutes,
-  getTasksRoutes,
-} from "metabase/monitor/tools/routes";
-import {
-  PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_AI_CONTROLS,
   PLUGIN_AUDIT,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
-  PLUGIN_DEPENDENCIES,
   PLUGIN_SECURITY_CENTER,
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
-  PLUGIN_WORKSPACES,
   PLUGIN_WRITABLE_CONNECTION,
   PerformanceTabId,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import {
-  Route,
-  type RouteComponent,
-  redirect,
-  withRouteProps,
-} from "metabase/router";
+import { Route, type RouteComponent, redirect } from "metabase/router";
 import { getTokenFeature } from "metabase/selectors/settings";
 
 import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
@@ -86,22 +64,6 @@ import {
   createTenantsRouteGuard,
 } from "./utils";
 
-// Legacy containers that still read v3 router props (`params`/`location`/
-// `route`), fed from the router context so they run as `element` routes.
-const RoutedRedirectToAllowedSettings = withRouteProps(
-  RedirectToAllowedSettings,
-);
-const RoutedDataModelV1 = withRouteProps(DataModelV1);
-const RoutedDatabasePage = withRouteProps(DatabasePage);
-const RoutedSegmentListApp = withRouteProps(SegmentListApp);
-const RoutedSegmentApp = withRouteProps(SegmentApp);
-const RoutedRevisionHistoryApp = withRouteProps(RevisionHistoryApp);
-const RoutedGroupDetailApp = withRouteProps(GroupDetailApp);
-const RoutedAdminEmbeddingApp = withRouteProps(AdminEmbeddingApp);
-const RoutedEmbeddingThemeEditorApp = withRouteProps(EmbeddingThemeEditorApp);
-const RoutedToolsApp = withRouteProps(ToolsApp);
-const RoutedOAuthAuthorizationsPage = withRouteProps(OAuthAuthorizationsPage);
-
 export const getRoutes = (
   store: Store<State>,
   CanAccessSettings: RouteComponent,
@@ -113,18 +75,17 @@ export const getRoutes = (
   return (
     <Route path="/admin" element={<CanAccessSettings />}>
       <Route element={<AdminApp />}>
-        <Route index element={<RoutedRedirectToAllowedSettings />} />
+        <Route index element={<RedirectToAllowedSettings />} />
         <Route
           path="databases"
           element={createElement(createAdminRouteGuard("databases"))}
         >
           <Route index element={<DatabaseListApp />} />
           <Route element={<IsAdmin />}>
-            <Route path="create" element={<RoutedDatabasePage />} />
+            <Route path="create" element={<DatabasePage />} />
           </Route>
-          <Route path=":databaseId/edit" element={<RoutedDatabasePage />} />
+          <Route path=":databaseId/edit" element={<DatabasePage />} />
           {PLUGIN_WRITABLE_CONNECTION.getWritableConnectionInfoRoutes(IsAdmin)}
-          {PLUGIN_WORKSPACES.getWorkspaceDatabaseRoutes(IsAdmin)}
           <Route path=":databaseId" element={<DatabaseEditApp />}>
             {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
           </Route>
@@ -135,34 +96,31 @@ export const getRoutes = (
         >
           <Route>
             <Route index element={redirect("database")} />
-            <Route path="database" element={<RoutedDataModelV1 />} />
-            <Route
-              path="database/:databaseId"
-              element={<RoutedDataModelV1 />}
-            />
+            <Route path="database" element={<DataModelV1 />} />
+            <Route path="database/:databaseId" element={<DataModelV1 />} />
             <Route
               path="database/:databaseId/schema/:schemaId"
-              element={<RoutedDataModelV1 />}
+              element={<DataModelV1 />}
             />
             <Route
               path="database/:databaseId/schema/:schemaId/table/:tableId"
-              element={<RoutedDataModelV1 />}
+              element={<DataModelV1 />}
             />
             <Route
               path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-              element={<RoutedDataModelV1 />}
+              element={<DataModelV1 />}
             />
-            <Route element={<RoutedDataModelV1 />}>
-              <Route path="segments" element={<RoutedSegmentListApp />} />
+            <Route element={<DataModelV1 />}>
+              <Route path="segments" element={<SegmentListApp />} />
               <Route path="segment/create" element={<IsAdmin />}>
-                <Route index element={<RoutedSegmentApp />} />
+                <Route index element={<SegmentApp />} />
               </Route>
               <Route path="segment/:id" element={<IsAdmin />}>
-                <Route index element={<RoutedSegmentApp />} />
+                <Route index element={<SegmentApp />} />
               </Route>
               <Route
                 path="segment/:id/revisions"
-                element={<RoutedRevisionHistoryApp />}
+                element={<RevisionHistoryApp />}
               />
             </Route>
             <Route
@@ -190,7 +148,7 @@ export const getRoutes = (
             {/*NOTE: this must come before the other routes otherwise it will be masked by them*/}
             <Route path="groups">
               <Route index element={<GroupsListingApp />} />
-              <Route path=":groupId" element={<RoutedGroupDetailApp />} />
+              <Route path=":groupId" element={<GroupDetailApp />} />
             </Route>
 
             {/* Tenants */}
@@ -231,7 +189,7 @@ export const getRoutes = (
           path="embedding"
           element={createElement(createAdminRouteGuard("embedding"))}
         >
-          <Route element={<RoutedAdminEmbeddingApp />}>
+          <Route element={<AdminEmbeddingApp />}>
             <Route index element={<EmbeddingSettings />} />
 
             <Route path="setup-guide">
@@ -254,7 +212,7 @@ export const getRoutes = (
             <Route path="themes" element={<EmbeddingThemeListingApp />} />
             <Route
               path="themes/:themeId"
-              element={<RoutedEmbeddingThemeEditorApp />}
+              element={<EmbeddingThemeEditorApp />}
             />
           </Route>
         </Route>
@@ -345,7 +303,7 @@ export const getRoutes = (
           >
             <Route
               path="mcp/authorizations"
-              element={<RoutedOAuthAuthorizationsPage />}
+              element={<OAuthAuthorizationsPage />}
             />
           </Route>
           <Route
@@ -371,44 +329,10 @@ export const getRoutes = (
           />
         )}
 
-        <Route
-          path="tools"
-          element={createElement(createAdminRouteGuard("tools"))}
-        >
-          <Route element={<RoutedToolsApp />}>
-            <Route index element={redirect("help")} />
-            <Route
-              key="error-overview"
-              path="errors"
-              // If the audit_app feature flag is present, our enterprise plugin system kicks in and we render the
-              // appropriate enterprise component. The upsell component is shown in all other cases.
-              element={createElement(
-                PLUGIN_ADMIN_TOOLS.COMPONENT || ToolsUpsell,
-              )}
-            />
-            <Route path="model-caching" element={<ModelCachePage />}>
-              {modalRoute(":jobId", ModelCacheRefreshJobModal)}
-            </Route>
-            <Route path="help" element={<Help />}>
-              {PLUGIN_SUPPORT.isEnabled &&
-                modalRoute("grant-access", PLUGIN_SUPPORT.GrantAccessModal)}
-            </Route>
-            <Route path="tasks">{getTasksRoutes()}</Route>
-            <Route path="notifications">{getNotificationsRoutes()}</Route>
-            <Route path="jobs" element={<JobInfoApp />}>
-              {modalRoute(":jobKey", JobTriggersModal, {
-                modalProps: { size: "85%" },
-              })}
-            </Route>
-            <Route path="logs" element={<Logs />}>
-              {modalRoute("levels", LogLevelsModal)}
-            </Route>
-            {PLUGIN_DEPENDENCIES.isEnabled && (
-              <Route
-                path="dependencies"
-                element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />}
-              />
-            )}
+        <Route element={createElement(createAdminRouteGuard("help"))}>
+          <Route path="help" element={<Help />}>
+            {PLUGIN_SUPPORT.isEnabled &&
+              modalRoute("grant-access", PLUGIN_SUPPORT.GrantAccessModal)}
           </Route>
         </Route>
       </Route>

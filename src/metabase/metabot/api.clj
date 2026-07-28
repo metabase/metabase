@@ -22,6 +22,7 @@
    [metabase.metabot.api.permissions]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.persistence :as metabot.persistence]
@@ -164,6 +165,22 @@
            (vreset! canceled? true)
            (reduced acc)))))))
 
+(defn- inject-title-events-xf
+  "Inject the title once its job settles, then stop watching to avoid repeated DB reads."
+  [title-job conversation-id]
+  (let [watching? (volatile! (boolean title-job))]
+    (mapcat
+     (fn [line]
+       (if (or (not @watching?)
+               (= self.core/done-sse-line line)
+               (not (conversation-title/job-settled? title-job)))
+         [line]
+         (do
+           (vreset! watching? false)
+           (if-let [event (conversation-title/ready-title-event title-job conversation-id)]
+             [line (self.core/format-sse-event event)]
+             [line])))))))
+
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
 
@@ -187,7 +204,7 @@
   `:state` is the reconstructed [[metabot.persistence/conversation-state]] —
   it seeds the agent loop as the immutable baseline for this turn's state."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?
-           eval-session-id assistant-msg-id external-id user-external-id]}]
+           eval-session-id assistant-msg-id external-id user-external-id title-job]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
                                                                   :profile-id (keyword profile-id)})
         messages         (concat history [message])]
@@ -204,7 +221,8 @@
             xf         (comp (u/tee-xf parts-atom)
                              (self.core/parts->aisdk-sse-xf
                               (cond-> {:message-id external-id}
-                                user-external-id (assoc :message-metadata {:userMessageId user-external-id}))))]
+                                user-external-id (assoc :message-metadata {:userMessageId user-external-id})))
+                             (inject-title-events-xf title-job conversation-id))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan canceled?)
@@ -212,6 +230,7 @@
                       (cond-> {:messages        messages
                                :state           state
                                :metabot-id      metabot-id
+                               :conversation-id conversation-id
                                :profile-id      (keyword profile-id)
                                :context         enriched-context
                                :eval-session-id eval-session-id
@@ -314,7 +333,13 @@
           deleted?  (set message-ids)
           live      (remove #(deleted? (:id %)) messages)
           history   (metabot.persistence/history live)
-          state     (metabot.persistence/conversation-state live)]
+          state     (metabot.persistence/conversation-state live)
+          first-msg (or (:content (metabot.persistence/first-valid-user-message live))
+                        (:content message))
+          title-job (conversation-title/ensure-title!
+                     conversation_id
+                     (metabot.usage/valid-usage-profile-id profile-id)
+                     first-msg)]
       (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
       (native-agent-streaming-request
        {:metabot-id       metabot-id
@@ -328,7 +353,8 @@
         :eval-session-id  eval_session_id
         :assistant-msg-id assistant-msg-id
         :external-id      assistant-external-id
-        :user-external-id user-external-id}))))
+        :user-external-id user-external-id
+        :title-job        title-job}))))
 
 (defn- legacy->modern-query
   [query]

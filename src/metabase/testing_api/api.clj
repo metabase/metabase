@@ -349,7 +349,7 @@
   (t2/insert! :model/MetabotConversation
               {:id         id
                :user_id    user-id
-               :summary    "E2E usage auditing conversation"
+               :title      "E2E usage auditing conversation"
                :created_at created-at
                :ip_address ip-address})
   (doseq [role roles]

@@ -414,7 +414,7 @@
 
 (defn- init-agent
   "Initialize agent state."
-  [{:keys [messages state metabot-id profile-id context tracking-opts]
+  [{:keys [messages state metabot-id profile-id context tracking-opts conversation-id]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
         ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
@@ -427,7 +427,8 @@
                          (seed-state context)
                          (seed-chart-configs context)
                          (seed-charts context))
-        memory       (memory/initialize messages seeded context)
+        memory       (assoc (memory/initialize messages seeded context)
+                            :conversation-id conversation-id)
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
     (log/info "Starting agent" {:profile  profile-id
@@ -624,6 +625,7 @@
             [:messages ::messages]
             [:profile-id ::profile-id]
             [:metabot-id {:optional true} [:maybe :string]]
+            [:conversation-id {:optional true} [:maybe :string]]
             [:state {:optional true} [:maybe ::metabot.schema/state]]
             [:context {:optional true} [:maybe ::context]]
             [:tracking-opts {:optional true} [:maybe ::tracking-opts]]

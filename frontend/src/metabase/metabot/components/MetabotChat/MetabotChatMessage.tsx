@@ -47,6 +47,7 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "data-navigate_to" }, () => true)
     .with({ type: "data-code_edit" }, () => true)
     .with({ type: "data-generated_entity" }, () => true)
+    .with({ type: "data-entity_saved" }, () => true)
     .with({ type: "data-adhoc_viz" }, () => false)
     .with({ type: "data-static_viz" }, () => false)
     .exhaustive();
@@ -69,7 +70,7 @@ const isUserVisibleMessage = (message: MetabotChatMessage): boolean =>
     .with({ type: "tool_call" }, () => false)
     .with({ type: "turn_aborted" }, () => true)
     .with({ type: "turn_errored" }, () => true)
-    .with({ type: "turn_in_progress" }, () => true)
+    .with({ type: "turn_in_progress" }, () => false)
     .exhaustive();
 
 interface BaseMessageProps extends Omit<FlexProps, "onCopy"> {
@@ -175,12 +176,15 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   message: MetabotAgentChatMessage;
   debug: boolean;
   readonly: boolean;
+  conversationId: string;
   onRetry?: (messageId: string) => void;
+  onRefreshConversation?: () => void;
   getCopyText: () => string;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
   onInternalLinkClick?: (link: string) => void;
   extraActions?: ReactNode;
+  isStreaming?: boolean;
 }
 
 export const AgentMessage = ({
@@ -188,13 +192,16 @@ export const AgentMessage = ({
   className,
   debug,
   readonly,
+  conversationId,
   getCopyText,
   onRetry,
+  onRefreshConversation,
   setFeedbackMessage,
   submittedFeedback,
   onInternalLinkClick,
   hideActions,
   extraActions,
+  isStreaming = false,
   ...props
 }: AgentMessageProps) => {
   const messageId = "externalId" in message ? (message.externalId ?? "") : "";
@@ -210,12 +217,18 @@ export const AgentMessage = ({
           <AIMarkdown
             className={Styles.message}
             onInternalLinkClick={onInternalLinkClick}
+            isStreaming={isStreaming}
           >
             {m.message}
           </AIMarkdown>
         ))
         .with({ type: "data_part" }, (m) => (
-          <AgentDataPartMessage message={m} debug={debug} readonly={readonly} />
+          <AgentDataPartMessage
+            message={m}
+            debug={debug}
+            readonly={readonly}
+            conversationId={conversationId}
+          />
         ))
         .with({ type: "tool_call" }, (m) => (
           <AgentToolCallMessage message={m} />
@@ -224,17 +237,19 @@ export const AgentMessage = ({
           <AbortedTurnAlert messageId={m.id} debug={debug} onRetry={onRetry} />
         ))
         .with({ type: "turn_errored" }, (m) => (
-          <AgentErroredTurnAlert message={m} debug={debug} />
+          <AgentErroredTurnAlert
+            message={m}
+            debug={debug}
+            onRefreshConversation={onRefreshConversation}
+          />
         ))
         .with({ type: "turn_in_progress" }, () => (
-          <Flex align="center" gap="sm" className={Styles.message}>
-            <Loader
-              type="dots"
-              size="sm"
-              data-testid="metabot-response-in-progress"
-            />
-            <Text c="text-secondary">{t`Response in progress…`}</Text>
-          </Flex>
+          <Loader
+            type="dots"
+            size="lg"
+            color="core-brand"
+            data-testid="metabot-response-loader"
+          />
         ))
         .exhaustive()}
       {!hideActions && (
@@ -351,21 +366,40 @@ const AgentTurnAlert = ({
 const AgentErroredTurnAlert = ({
   message,
   debug,
+  onRefreshConversation,
 }: {
   message: MetabotAgentTurnErroredMessage;
   debug: boolean;
-}) => (
-  <AgentTurnAlert
-    variant="error"
-    message={message.display?.message ?? t`Something went wrong`}
-    footer={
-      message.error.type === "metabase_ai_managed_locked" && (
-        <MetabotManagedProviderLimitActions inline />
-      )
-    }
-    debugDetails={debug ? message.error : undefined}
-  />
-);
+  onRefreshConversation?: () => void;
+}) => {
+  const isOutOfSync = message.error.type === "conversation_out_of_sync";
+
+  return (
+    <AgentTurnAlert
+      variant="error"
+      message={message.display?.message ?? t`Something went wrong`}
+      cta={
+        isOutOfSync && onRefreshConversation ? (
+          <Button
+            variant="default"
+            size="compact-xs"
+            fz="xs"
+            onClick={onRefreshConversation}
+            data-testid="metabot-chat-message-refresh"
+          >
+            {t`Refresh`}
+          </Button>
+        ) : undefined
+      }
+      footer={
+        message.error.type === "metabase_ai_managed_locked" && (
+          <MetabotManagedProviderLimitActions inline />
+        )
+      }
+      debugDetails={debug ? message.error : undefined}
+    />
+  );
+};
 
 const AbortedTurnAlert = ({
   messageId,
@@ -429,17 +463,21 @@ export const getFullAgentReply = (
 export const Messages = ({
   messages,
   onRetryMessage,
+  onRefreshConversation,
   isDoingScience,
   debug,
   readonly = false,
+  conversationId,
   onInternalLinkClick,
   getExtraActions,
 }: {
   messages: MetabotChatMessage[];
   onRetryMessage?: (messageId: string) => void;
+  onRefreshConversation?: () => void;
   isDoingScience: boolean;
   debug: boolean;
   readonly?: boolean;
+  conversationId: string;
   onInternalLinkClick?: (navigateToPath: string) => void;
   getExtraActions?: (messageId: string) => ReactNode;
 }) => {
@@ -507,7 +545,9 @@ export const Messages = ({
             message={message}
             debug={debug}
             readonly={readonly}
+            conversationId={conversationId}
             onRetry={isLastUserMessage ? onRetryMessage : undefined}
+            onRefreshConversation={onRefreshConversation}
             getCopyText={() => getAgentReplyCopyText(message.id)}
             setFeedbackMessage={(data) =>
               setFeedbackState((prev) => ({ ...prev, modal: data }))
@@ -520,6 +560,7 @@ export const Messages = ({
             hideActions={next?.role === "agent" || (isDoingScience && !next)}
             extraActions={getExtraActions?.(message.id)}
             onInternalLinkClick={onInternalLinkClick}
+            isStreaming={isDoingScience && !next}
           />
         ) : (
           <UserMessage

@@ -9,7 +9,7 @@ redirect_from:
 
 You can style your embedded [Metabase components](./components.md) with a **theme**.
 
-![Embed share button](./images/embed-share-button.png)
+![Share button to embed dashboard](./images/sharing-embed.png)
 
 On OSS and Starter plans, embeds come with two theme presets: [light and dark](#dark-mode-and-light-mode).
 

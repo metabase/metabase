@@ -64,11 +64,6 @@ const elements = [
   createElement({ type: "shared", name: "data-grid" }),
   createElement({ type: "shared", name: "databases" }),
   createElement({ type: "shared", name: "detail-view" }),
-  createElement({
-    type: "shared",
-    name: "embed",
-    pattern: "frontend/src/embed/**",
-  }),
   // embedding-iframe-sdk, embedding-iframe-sdk-setup and mcp-app must come before
   // shared/embedding: their patterns are subfolders of
   // frontend/src/metabase/embedding/, and the first matching element wins.
@@ -136,16 +131,10 @@ const elements = [
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
   createElement({ type: "shared", name: "forms" }),
-  createElement({ type: "shared", name: "history" }),
   createElement({ type: "shared", name: "hoc" }),
   createElement({ type: "feature", name: "home" }),
   createElement({ type: "shared", name: "hooks" }),
   createElement({ type: "shared", name: "content-translation" }),
-  createElement({
-    type: "shared",
-    name: "metabase-shared",
-    pattern: "frontend/src/metabase-shared/**",
-  }),
   createElement({ type: "shared", name: "metabot" }),
   createElement({ type: "shared", name: "metadata" }),
   createElement({ type: "feature", name: "models" }),
@@ -161,6 +150,7 @@ const elements = [
   createElement({ type: "shared", name: "questions" }),
   createElement({ type: "shared", name: "redux" }),
   createElement({ type: "shared", name: "rich_text_editing" }),
+  createElement({ type: "shared", name: "route-guards" }),
   createElement({ type: "shared", name: "router" }),
   createElement({
     type: "shared",
@@ -275,6 +265,7 @@ const elements = [
     "frontend/src/metabase/reducers-common.ts",
     "frontend/src/metabase/reducers-public.ts",
     "frontend/src/metabase/routes.tsx",
+    "frontend/src/metabase/routes.unit.spec.tsx",
     "frontend/src/metabase/routes-embed.tsx",
     "frontend/src/metabase/LoadCurrentUser.tsx",
     "frontend/src/metabase/LoadCurrentUser.unit.spec.tsx",
@@ -381,17 +372,6 @@ const rules = [
   },
   {
     from: ["app/*"],
-    allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
-  },
-  // TEMP(content-optimizer): the Monitor space is mid-migration — source files are
-  // being relocated here from admin/ and data-studio/ before their routes and
-  // dependencies are moved, so monitor currently imports heavily from feature
-  // modules (admin, etc.). We allow it to import from anywhere until the migration
-  // is complete.
-  // TODO (@stasgavrylov 24/06/26): remove this rule and give monitor proper boundaries once the
-  // Monitor migration is complete.
-  {
-    from: ["shared/monitor"],
     allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
   },
   // Whitelisted cross-tier edges. Keep this list short; every entry should

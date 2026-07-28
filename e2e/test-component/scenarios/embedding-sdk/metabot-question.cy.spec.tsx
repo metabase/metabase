@@ -20,10 +20,17 @@ const query = {
   breakout: [["field", ORDERS.PRODUCT_ID, null]],
   limit: 2,
 };
+const generatedCard = {
+  type: "card",
+  id: "card-1",
+  title: "Question",
+  query: { id: "query-1", query: { database: 1, type: "query", query } },
+  display: "table",
+};
 const adHocQuestionPath = `/question#${btoa(
   JSON.stringify({
-    dataset_query: { database: 1, type: "query", query },
-    display: "table",
+    dataset_query: generatedCard.query.query,
+    display: generatedCard.display,
     displayIsLocked: true,
     visualization_settings: {},
   }),
@@ -32,25 +39,29 @@ const adHocQuestionPath = `/question#${btoa(
 const metabotResponse = H.createMetabotSSEBody(
   H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
 );
-const metabotResponseWithNavigateTo = H.createMetabotSSEBody(
+// Metabot surfaces a chart to the SDK via a `generated_entity` card data part.
+const metabotResponseWithChart = H.createMetabotSSEBody(
   H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
-  H.metabotDataPart("navigate_to", adHocQuestionPath),
+  H.metabotDataPart("generated_entity", generatedCard),
+);
+
+const metabotResponseWithSqlEditor = H.createMetabotSSEBody(
+  H.metabotTextPart(
+    "I'll write a SQL query for the most popular products so you can tweak it in the SQL editor!",
+  ),
+  H.metabotDataPart("generated_entity", {
+    type: "card",
+    id: "card-sql",
+    title: "SQL query",
+    query: {
+      id: "query-sql",
+      query: { database: 1, type: "native", native: { query: "" } },
+    },
+  }),
 );
 
 const metabotRetryResponse = H.createMetabotSSEBody(
   H.metabotTextPart(`Retry: Here is the [question link](${adHocQuestionPath})`),
-);
-
-// navigate_to response captured from a real embedding Metabot session
-// (database id swapped from 2 to 1 to match this env's Sample Database).
-const metabotResponseWithSqlEditor = H.createMetabotSSEBody(
-  H.metabotTextPart(
-    "I'll direct you to the SQL editor for the Sample Database so you can write a query for the most popular products!",
-  ),
-  H.metabotDataPart(
-    "navigate_to",
-    "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJ0eXBlIjoibmF0aXZlIiwibmF0aXZlIjp7InF1ZXJ5IjoiIn19fQ==",
-  ),
 );
 
 describe("scenarios > embedding-sdk > metabot-question", () => {
@@ -89,7 +100,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
     mockAuthProviderAndJwtSignIn();
   };
 
-  it("should show the SQL editor when Metabot navigates to the SQL editor page", () => {
+  it("should show the SQL editor when Metabot generates a native query", () => {
     setup(metabotResponseWithSqlEditor);
 
     mountSdkContent(<MetabotQuestion />);
@@ -101,7 +112,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
   });
 
   it("should show drill-through results after drilling from a metabot question", () => {
-    setup(metabotResponseWithNavigateTo);
+    setup(metabotResponseWithChart);
 
     mountSdkContent(<MetabotQuestion />);
 
@@ -125,7 +136,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
   });
 
   it("should automatically show the ad-hoc question for the last agent message containing ad-hoc question link", () => {
-    setup(metabotResponseWithNavigateTo);
+    setup(metabotResponseWithChart);
 
     mountSdkContent(<MetabotQuestion />);
 
@@ -139,7 +150,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
   it("should allow saving a question", () => {
     cy.intercept("POST", "/api/card").as("postCard");
 
-    setup(metabotResponseWithNavigateTo);
+    setup(metabotResponseWithChart);
 
     cy.get("@collectionId").then((collectionId) => {
       mountSdkContent(

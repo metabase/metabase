@@ -16,9 +16,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
-   (java.sql PreparedStatement ResultSet)
-   (java.time Instant)
-   (java.time.temporal ChronoUnit)))
+   (java.sql PreparedStatement ResultSet)))
 
 (set! *warn-on-reflection* true)
 
@@ -125,80 +123,10 @@
     (into [] (map :name) (jdbc/reducible-query (no-db-connection-spec)
                                                [query days-ago]))))
 
-(defn- orphan-isolation-schemas
-  "Return a collection of schema names with mb__isolation_ prefix that are more than 3 hours old,
-   along with their database names."
-  []
-  (sql-jdbc.execute/do-with-connection-with-options
-   :snowflake
-   (no-db-connection-spec)
-   {:write? false}
-   (fn [^java.sql.Connection conn]
-     (with-open [stmt (.createStatement conn)
-                 ;; Prefix must match driver.u/workspace-isolated-prefix
-                 rs (.executeQuery stmt "SHOW SCHEMAS LIKE 'mb__isolation_%' IN ACCOUNT")]
-       (let [three-hours-ago (-> (Instant/now)
-                                 (.minus 3 ChronoUnit/HOURS)
-                                 java.util.Date/from)]
-         (loop [results []]
-           (if (.next rs)
-             (let [schema-name (.getString rs "name")
-                   db-name (.getString rs "database_name")
-                   created-on (.getTimestamp rs "created_on")]
-               (if (and created-on (.before created-on three-hours-ago))
-                 (recur (conj results {:schema-name schema-name :database-name db-name}))
-                 (recur results)))
-             results)))))))
-
-(defn- old-snowflake-objects
-  "Return a vector of names matching `like-pattern` (a `SHOW <kind> LIKE ...` argument) that are
-  more than 3 hours old. `kind` is the SQL noun -- one of `USERS`, `ROLES`. Snowflake's `SHOW`
-  result sets expose `name` and `created_on` columns for both.
-
-  Filters to the iso-prefixed set up front so the result set stays small even on a long-lived
-  account. We only return *expired* entries -- entries within the 3h threshold may belong to a
-  parallel-running test job."
-  [^String kind ^String like-pattern]
-  (sql-jdbc.execute/do-with-connection-with-options
-   :snowflake
-   (no-db-connection-spec)
-   {:write? false}
-   (fn [^java.sql.Connection conn]
-     (with-open [stmt (.createStatement conn)
-                 rs   (.executeQuery stmt (format "SHOW %s LIKE '%s'" kind like-pattern))]
-       (let [threshold (-> (Instant/now) (.minus 3 ChronoUnit/HOURS) java.util.Date/from)]
-         (loop [results []]
-           (if (.next rs)
-             (let [name       (.getString rs "name")
-                   created-on (.getTimestamp rs "created_on")]
-               (if (and created-on (.before created-on threshold))
-                 (recur (conj results name))
-                 (recur results)))
-             results)))))))
-
-(defn- orphan-isolation-users
-  "Return iso usernames (`mb__isolation_*`) older than 3 hours."
-  []
-  ;; Prefix must match driver.u/workspace-isolated-prefix.
-  (old-snowflake-objects "USERS" "mb__isolation_%"))
-
-(defn- orphan-isolation-roles
-  "Return iso role names older than 3 hours. NOTE: roles use a different prefix
-   (`MB_ISOLATION_ROLE_`) than schemas/users -- see `isolation-role-name` in
-   `metabase.driver.snowflake`."
-  []
-  (old-snowflake-objects "ROLES" "MB_ISOLATION_ROLE_%"))
-
 ;;; --------------------------------- Destruction ----------------------------------
 ;;;
-;;; The fns below are split into pure enumerators (above: `orphan-isolation-*`)
-;;; and destructive drops. This lets you preview from a REPL:
-;;;
-;;;     (#'sf-tx/orphan-isolation-users)
-;;;     ;; => ["mb__isolation_..." ...]
-;;;
-;;; without firing the destructive side. The whole-orchestration entry point
-;;; ([[delete-old-test-data!]]) is the glue and gets called from `tx/create-db!`.
+;;; The whole-orchestration entry point ([[delete-old-test-data!]]) is the glue
+;;; and gets called from `tx/create-db!`.
 
 (defn- with-write-stmt!
   "Open a write-capable Snowflake connection + Statement, call `f` with the stmt,
@@ -233,64 +161,9 @@
               #_{:clj-kondo/ignore [:discouraged-var]}
               (println "[Snowflake] Error deleting old dataset:" (ex-message e)))))))))
 
-(defn- drop-orphan-isolation-schemas!
-  "Drop iso schemas (`mb__isolation_*`) older than 3 hours."
-  []
-  (when-let [old-schemas (not-empty (orphan-isolation-schemas))]
-    (with-write-stmt!
-      (fn [^java.sql.Statement stmt]
-        (doseq [{:keys [schema-name database-name]} old-schemas]
-          #_{:clj-kondo/ignore [:discouraged-var]}
-          (println "[Snowflake] Deleting old isolation schema:" database-name "." schema-name)
-          (try
-            (.execute stmt (format "DROP SCHEMA IF EXISTS \"%s\".\"%s\";" database-name schema-name))
-            (catch Throwable e
-              #_{:clj-kondo/ignore [:discouraged-var]}
-              (println "[Snowflake] Error deleting old isolation schema:" (ex-message e)))))))))
-
-(defn- drop-orphan-isolation-users!
-  "Drop iso users (`mb__isolation_*`) older than 3 hours. Per-entry try/catch:
-  never let one orphan block the others."
-  []
-  (when-let [old-users (not-empty (orphan-isolation-users))]
-    (with-write-stmt!
-      (fn [^java.sql.Statement stmt]
-        (doseq [username old-users]
-          #_{:clj-kondo/ignore [:discouraged-var]}
-          (println "[Snowflake] Deleting old isolation user:" username)
-          (try
-            (.execute stmt (format "DROP USER IF EXISTS \"%s\";" username))
-            (catch Throwable e
-              #_{:clj-kondo/ignore [:discouraged-var]}
-              (println "[Snowflake] Error deleting old isolation user:" (ex-message e)))))))))
-
-(defn- drop-orphan-isolation-roles!
-  "Drop iso roles (`MB_ISOLATION_ROLE_*`) older than 3 hours. Note the
-  different prefix vs schemas/users -- see `isolation-role-name` in
-  `metabase.driver.snowflake`."
-  []
-  (when-let [old-roles (not-empty (orphan-isolation-roles))]
-    (with-write-stmt!
-      (fn [^java.sql.Statement stmt]
-        (doseq [role-name old-roles]
-          #_{:clj-kondo/ignore [:discouraged-var]}
-          (println "[Snowflake] Deleting old isolation role:" role-name)
-          (try
-            (.execute stmt (format "DROP ROLE IF EXISTS \"%s\";" role-name))
-            (catch Throwable e
-              #_{:clj-kondo/ignore [:discouraged-var]}
-              (println "[Snowflake] Error deleting old isolation role:" (ex-message e)))))))))
-
 (defn- delete-old-test-data!
-  "Delete old test data:
-   - Datasets (databases) prefixed by sha_ that haven't been accessed in a while
-   - Isolation schemas prefixed by mb__isolation_ that are more than 3 hours old
-   - Isolation users prefixed by mb__isolation_ that are more than 3 hours old
-   - Isolation roles prefixed by MB_ISOLATION_ROLE_ that are more than 3 hours old
-
-   Glue. Each drop step is independent; a failure in one doesn't block the
-   others. To preview from a REPL, call the corresponding `orphan-isolation-*`
-   enumerator instead."
+  "Delete old test data: datasets (databases) prefixed by sha_ that haven't been
+   accessed in a while."
   []
   ;; the printlns are on purpose because we want them to show up when running tests, even on CI, to make sure this
   ;; stuff is working correctly. We can change it to `log` in the future when we're satisfied everything is working as
@@ -305,10 +178,7 @@
   ;; local testing shows that identifying old datasets works correctly, but
   ;; sometimes randomly in CI it seems to decide that datasets are old and
   ;; deletes them even tho they are not old.
-  ;; (drop-old-datasets!)
-  (drop-orphan-isolation-schemas!)
-  (drop-orphan-isolation-users!)
-  (drop-orphan-isolation-roles!))
+  #_(drop-old-datasets!))
 
 (defonce ^:private deleted-old-test-data?
   (atom false))
@@ -333,7 +203,7 @@
   [driver db-def & options]
   ;; qualify the DB name with the unique prefix
   (let [db-def (assoc db-def :database-name (qualified-db-name db-def))]
-    ;; clean up any old test data (datasets and isolation schemas)
+    ;; clean up any old test data (datasets)
     (delete-old-test-data-if-needed!)
     ;; Snowflake by default uses America/Los_Angeles timezone. See https://docs.snowflake.com/en/sql-reference/parameters#timezone.
     ;; We expect UTC in tests. Hence fixing [[metabase.query-processor.timezone/database-timezone-id]] (PR #36413)

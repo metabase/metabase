@@ -344,7 +344,7 @@ Columns:
 - Conversation ID
 - Created At
 - User ID
-- Summary
+- Title
 - User Display Name
 - Message Count
 - User Message Count
@@ -427,6 +427,7 @@ Columns:
 - Action Qualified ID
 - Query
 - Embedding Client
+- Embedding Client Identifier
 - Is Preview
 - Embedding SDK Package Version
 - Metabase Version
@@ -530,6 +531,7 @@ Columns:
 - Entity ID
 - Entity Qualified ID
 - Embedding Client
+- Embedding Client Identifier
 - Auth Method
 - Is Preview
 - Metabase Version

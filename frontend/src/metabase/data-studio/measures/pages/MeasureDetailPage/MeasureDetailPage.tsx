@@ -8,7 +8,6 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useSelector } from "metabase/redux";
-import type { Route } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -21,7 +20,6 @@ import { useMeasureQuery } from "../../hooks/use-measure-query";
 import type { MeasureTabUrls } from "../../types";
 
 type MeasureDetailPageProps = {
-  route: Route;
   measure: Measure;
   tabUrls: MeasureTabUrls;
   breadcrumbs: ReactNode;
@@ -29,7 +27,6 @@ type MeasureDetailPageProps = {
 };
 
 export function MeasureDetailPage({
-  route,
   measure,
   tabUrls,
   breadcrumbs,
@@ -133,7 +130,6 @@ export function MeasureDetailPage({
       {canWriteMeasures && (
         <LeaveRouteConfirmModal
           key={measure.id}
-          route={route}
           isEnabled={isDirty && !isSaving}
         />
       )}
