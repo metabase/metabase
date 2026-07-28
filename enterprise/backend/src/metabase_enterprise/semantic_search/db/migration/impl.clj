@@ -24,14 +24,16 @@
   #{"core_user" "metabase_database"})
 
 (def ^:private dlq-table-pattern
-  "One dead-letter queue per index, `dlq_<index-id>` (see [[semantic.dlq/dlq-table-name-kw]])."
+  "One dead-letter queue per index, `dlq_<index-id>`
+  (see [[metabase-enterprise.semantic-search.dlq/dlq-table-name-kw]])."
   #"\Adlq_\d+\z")
 
 (def ^:private repair-table-pattern
-  "Repair's scratch tables, `repair_<millis>_<6 chars>` (see `semantic.repair/repair-table-name`)."
+  "Repair's scratch tables, `repair_<millis>_<6 chars>`
+  (see [[metabase-enterprise.semantic-search.repair/repair-table-name]])."
   #"\Arepair_\d+_[a-z0-9]{6}\z")
 
-(defn- ours?
+(defn- semantic-search-table?
   "Whether a bare table name is one this module creates: a control table, an index table, a DLQ, or a
   repair scratch table.
   Name *shapes*, not prefixes — a dedicated store's default schema is shared, and a cohabitant is free to
@@ -51,9 +53,9 @@
   When index-metadata carries a `:schema` (shared app-db mode) ONLY tables inside that schema may be
   dropped — the application's tables live in other schemas and must never be touched here.
   Without a `:schema` the database is assumed dedicated to semantic search and its default schema is
-  swept, but only for tables [[ours?]] recognizes — library retrieval keeps its index there too. Refuses
-  outright when the database looks like a Metabase app db (MB_PGVECTOR_DB_URL pointed at the application
-  database would otherwise destroy it here, on first init)."
+  swept, but only for tables [[semantic-search-table?]] recognizes — library retrieval keeps its index
+  there too. Refuses outright when the database looks like a Metabase app db (MB_PGVECTOR_DB_URL pointed
+  at the application database would otherwise destroy it here, on first init)."
   [index-metadata tx]
   (let [schema (:schema index-metadata)
         tables (jdbc/execute! tx
@@ -78,11 +80,11 @@
                            " tables. Point MB_PGVECTOR_DB_URL at a dedicated pgvector database, or unset it to"
                            " share the application database in the isolated semantic_search schema.")
                       {:type ::refused-app-db-wipe})))
-    (doseq [{:keys [schemaname tablename]} (cond->> tables
-                                             ;; the module's own schema holds nothing else, so a reset
-                                             ;; there is free to clear leftovers from older naming
-                                             ;; schemes. A dedicated store's default schema is shared.
-                                             (nil? schema) (filter (partial ours? index-metadata)))]
+    (doseq [{:keys [schemaname tablename]}
+            (cond->> tables
+              ;; the module's own schema holds nothing else, so a reset there is free to clear leftovers
+              ;; from older naming schemes. A dedicated store's default schema is shared.
+              (nil? schema) (filter (partial semantic-search-table? index-metadata)))]
       (jdbc/execute! tx
                      (sql/format
                       {:drop-table [[[:raw (str (semantic.util/quote-ident schemaname) "."

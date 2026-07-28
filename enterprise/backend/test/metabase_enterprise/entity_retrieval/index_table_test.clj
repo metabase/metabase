@@ -73,7 +73,16 @@
           (reset! exists #{"library_retrieval.library_entity_index"
                            "library_retrieval.library_entity_index_meta"})
           (#'index-table/adopt-legacy-tables! ::tx)
-          (is (empty? @statements)))))))
+          (is (empty? @statements)))
+        (testing "a qualified table standing beside a leftover legacy one keeps its rows"
+          (reset! statements [])
+          (reset! exists #{"library_entity_index"
+                           "library_entity_index_meta"
+                           "library_retrieval.library_entity_index"
+                           "library_retrieval.library_entity_index_meta"})
+          (#'index-table/adopt-legacy-tables! ::tx)
+          (is (empty? @statements)
+              "SET SCHEMA onto an occupied name errors, aborting the whole ensure-tables! transaction"))))))
 
 (deftest reconcile-watermark-precedes-appdb-read-test
   (let [events (atom [])]
