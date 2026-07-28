@@ -23,9 +23,7 @@
   When both the token and the query are present we compare lenses strictly. Two degenerate cases
   make that comparison impossible, and both deny (the viewer here is a non-admin):
 
-    - a `nil` `:data_access_token`. The write path never persists a snapshot without a token
-      ([[metabase.explorations.runner]] fails the query instead), so this is a bug worth an ERROR
-      log, not a state to adjudicate.
+    - a `nil` `:data_access_token`. The write path never persists a snapshot without a token.
     - token computation throwing (the viewer is missing a routing/impersonation attribute the
       snapshot's database requires, or the query's source-card chain can no longer be resolved to
       its underlying tables). An expected condition for some viewers — such a viewer could not run
@@ -71,10 +69,8 @@
   Throws when `stored-result` has no `:dataset_query` (this should never happen).
 
   Superusers pass unconditionally — \"superusers see every exploration\" is a deliberate product
-  exemption from the same-lens rule (a superuser's own execution would hit the router db /
-  default connection, not necessarily return these rows), decided over locking admins out of
-  routed or impersonated creators' explorations. They hold every data perm, so the bypass skips
-  nothing the data-perms check would catch.
+  exemption from the same-lens rule. They hold every data perm, so the bypass skips nothing
+  the data-perms check would catch.
 
   Reasons (in priority order):
     `:no-data-perms`        — current user lacks the data perms required to run the underlying query.

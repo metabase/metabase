@@ -218,9 +218,7 @@
 
 (deftest unsandboxed-viewer-blocked-from-sandboxed-result-test
   (testing "a NON-ADMIN unsandboxed viewer with data perms is BLOCKED from a sandboxed creator's
-            result: a sandboxed creator's snapshot is served only to viewers with the exact same
-            sandbox, even though a filter sandbox's rows are a subset of the raw table this viewer
-            could query directly (a superuser still streams it, via the bypass)"
+            result"
     (met/with-gtaps-for-user! :rasta (price-sandbox)
       (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
         ;; `with-gtaps-for-user!` revokes All Users' data perms (that is what makes rasta's sandbox
@@ -473,9 +471,7 @@
             (testing "a viewer routed to a different destination is blocked"
               (sandbox.tu/with-user-attributes! :rasta {"db_name" "sr-dest-b"}
                 (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query)))))
-            (testing "a non-admin __METABASE_ROUTER__ viewer is blocked — they resolve to the router
-                      db, whose contents are unconstrained relative to any destination's, so a routed
-                      creator's rows are ones this viewer's own execution could never return"
+            (testing "a non-admin __METABASE_ROUTER__ viewer is blocked"
               (sandbox.tu/with-user-attributes! :rasta {"db_name" "__METABASE_ROUTER__"}
                 (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query)))))
             (testing "a superuser streams the cached result (bypass — superusers see every exploration)"

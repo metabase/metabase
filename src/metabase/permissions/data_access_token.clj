@@ -107,11 +107,12 @@
   This gate only ever adjudicates non-superusers — superusers bypass it upstream
   ([[metabase.queries.cached-result]]), by the rule that superusers may see every exploration.
 
-  Absence (unsandboxed / unimpersonated / resolves-to-the-router-db) is itself a lens, only
-  compatible with the same absence. In particular an unsandboxed viewer is NOT relaxed against a
-  sandboxed creator's entry, even though a plain filter sandbox's rows are a subset of a table
-  the viewer could query directly — a sandboxed creator's snapshot is served only to viewers with
-  the exact same sandbox. Bare equality is sound because [[data-access-token]] emits exactly one
-  representation per lens (empty dimensions are omitted)."
+  Absence is not a wildcard: unsandboxed matches only unsandboxed, unimpersonated only
+  unimpersonated, router-db only router-db. There is deliberately no subset reasoning. It is
+  intended that an unsandboxed viewer be denied a sandboxed creator's snapshot (even though
+  the sandbox's rows are a subset of a table they could query directly).
+  
+  Bare equality suffices because [[data-access-token]] emits one canonical representation per lens,
+  with empty dimensions omitted."
   [creator-token viewer-token]
   (= creator-token viewer-token))
