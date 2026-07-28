@@ -11,6 +11,10 @@ import { useCallback, useEffect, useState } from "react";
 import { type CardDisplayType, isCardDisplayType } from "metabase-types/api";
 
 import { fetchQueryByHandle } from "../api";
+import {
+  getMcpQueryFetchErrorMessage,
+  getMcpQueryFetchErrorType,
+} from "../utils/getMcpQueryFetchError";
 
 export interface McpAppState {
   query: string | null;
@@ -26,6 +30,13 @@ export interface McpAppState {
    * visualization infers one from the result shape.
    */
   display: CardDisplayType | null;
+
+  /**
+   * Why the query could not be resolved, when it could not be. The route has no
+   * other signal to render — without one it would sit on the loading indicator
+   * forever.
+   */
+  queryError: string | null;
 
   hostContext: McpUiHostContext | null;
   app: App | null;
@@ -70,6 +81,7 @@ export function useMcpApp(): McpAppState {
   const [query, setQuery] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<string | null>(null);
   const [display, setDisplay] = useState<CardDisplayType | null>(null);
+  const [queryError, setQueryError] = useState<string | null>(null);
   const [hostContext, setHostContext] = useState<McpUiHostContext | null>(null);
 
   const applyPayload = useCallback(
@@ -95,23 +107,35 @@ export function useMcpApp(): McpAppState {
         return;
       }
 
+      // Cleared up front so the retry the host sends on `ontoolresult` can
+      // recover from a failed `ontoolinput` resolution.
+      setQueryError(null);
+
       const { instanceUrl, sessionToken, mcpSessionId } =
         // Unjustified type cast. FIXME
         (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
 
       if (!instanceUrl || !sessionToken || !mcpSessionId) {
+        setQueryError(getMcpQueryFetchErrorMessage("network"));
         return;
       }
 
-      const resolved = await fetchQueryByHandle({
-        instanceUrl,
-        sessionToken,
-        mcpSessionId,
-        queryHandle,
-      });
+      try {
+        const resolved = await fetchQueryByHandle({
+          instanceUrl,
+          sessionToken,
+          mcpSessionId,
+          queryHandle,
+        });
 
-      setQuery(resolved.query);
-      setPrompt(resolved.prompt ?? prompt ?? null);
+        setQuery(resolved.query);
+        setPrompt(resolved.prompt ?? prompt ?? null);
+      } catch (error) {
+        console.error("Error resolving MCP query handle", error);
+        setQueryError(
+          getMcpQueryFetchErrorMessage(getMcpQueryFetchErrorType(error)),
+        );
+      }
     },
     [],
   );
@@ -171,5 +195,5 @@ export function useMcpApp(): McpAppState {
     }
   }, [app]);
 
-  return { query, prompt, display, hostContext, app };
+  return { query, prompt, display, queryError, hostContext, app };
 }

@@ -1,6 +1,8 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import { getMcpQueryFetchErrorMessage } from "../utils/getMcpQueryFetchError";
+
 import { useMcpApp } from "./useMcpApp";
 
 type ToolHandlers = {
@@ -110,6 +112,67 @@ describe("useMcpApp", () => {
 
       await waitFor(() => expect(result.current.query).toBe(ENCODED_QUERY));
       expect(result.current.display).toBeNull();
+    });
+  });
+
+  describe("handle resolution failures (GHY-4157)", () => {
+    // A handle that can't be resolved leaves `query` null, and the route has no
+    // other signal to render — without an error it sits on the loading
+    // indicator forever.
+    it("reports an expired handle rather than resolving to nothing", async () => {
+      fetchMock.get("path:/api/embed-mcp/queries/reaped", 404);
+
+      const { result, handlers } = setup();
+
+      handlers.ontoolresult?.({
+        structuredContent: { query_handle: "reaped" },
+      });
+
+      await waitFor(() =>
+        expect(result.current.queryError).toBe(
+          getMcpQueryFetchErrorMessage("expired"),
+        ),
+      );
+      expect(result.current.query).toBeNull();
+    });
+
+    it("tells an expired embedding session apart from an unreachable instance", async () => {
+      fetchMock.get("path:/api/embed-mcp/queries/stale", 401);
+
+      const { result, handlers } = setup();
+
+      handlers.ontoolresult?.({ structuredContent: { query_handle: "stale" } });
+
+      await waitFor(() =>
+        expect(result.current.queryError).toBe(
+          getMcpQueryFetchErrorMessage("auth"),
+        ),
+      );
+    });
+
+    it("recovers when the tool result retries a handle the tool input could not resolve", async () => {
+      // The host sends both notifications, so a transient failure on the first
+      // must not leave a stale error over a visualization that did render.
+      let attempts = 0;
+
+      fetchMock.get("path:/api/embed-mcp/queries/flaky", () =>
+        attempts++ === 0 ? 503 : { query: ENCODED_QUERY, prompt: null },
+      );
+
+      const { result, handlers } = setup();
+
+      handlers.ontoolinput?.({ arguments: { query_handle: "flaky" } });
+
+      await waitFor(() =>
+        expect(result.current.queryError).toBe(
+          getMcpQueryFetchErrorMessage("network"),
+        ),
+      );
+
+      handlers.ontoolresult?.({ structuredContent: { query_handle: "flaky" } });
+
+      await waitFor(() => expect(result.current.query).toBe(ENCODED_QUERY));
+      expect(result.current.queryError).toBeNull();
     });
   });
 

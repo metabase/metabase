@@ -32,6 +32,7 @@ interface McpUiAppRouteContentProps {
   display: McpAppState["display"];
   prompt: McpAppState["prompt"];
   query: McpAppState["query"];
+  queryError: McpAppState["queryError"];
   sessionToken: string;
 }
 
@@ -49,7 +50,7 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { app, display, hostContext, prompt, query } = useMcpApp();
+  const { app, display, hostContext, prompt, query, queryError } = useMcpApp();
 
   const { instanceUrl = "", sessionToken = "" } =
     // Unjustified type cast. FIXME
@@ -87,6 +88,7 @@ export function McpUiAppRoute() {
         instanceUrl={instanceUrl}
         prompt={prompt}
         query={query}
+        queryError={queryError}
         sessionToken={sessionToken}
       />
     </ComponentProvider>
@@ -100,6 +102,7 @@ function McpUiAppRouteContent({
   instanceUrl,
   prompt,
   query,
+  queryError,
   sessionToken,
 }: McpUiAppRouteContentProps) {
   const handleDrillThrough = useHandleMcpDrillThrough(app);
@@ -136,10 +139,10 @@ function McpUiAppRouteContent({
   useEffect(() => {
     // Remove the loading indicator on the HTML page once the app is ready or
     // when initialization fails and the route can render its own error.
-    if (isReady || userAndSettingsFetchError) {
+    if (isReady || userAndSettingsFetchError || queryError) {
       document.getElementById("mcp-loading")?.remove();
     }
-  }, [isReady, userAndSettingsFetchError]);
+  }, [isReady, userAndSettingsFetchError, queryError]);
 
   const height = `calc(${MCP_CONTENT_HEIGHT} + ${FOOTER_HEIGHT})`;
 
@@ -230,6 +233,10 @@ function McpUiAppRouteContent({
   const renderContentView = () => {
     if (userAndSettingsFetchError) {
       return <SdkError message={userAndSettingsFetchError} />;
+    }
+
+    if (queryError) {
+      return <SdkError message={queryError} />;
     }
 
     if (!isReady) {

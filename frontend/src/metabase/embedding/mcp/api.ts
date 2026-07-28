@@ -92,8 +92,13 @@ export async function fetchQueryByHandle({
   );
 
   if (!response.ok) {
-    throw new Error(
-      `fetchQueryByHandle failed: ${response.status} ${response.statusText}`,
+    // `status` carries the reason the iframe shows the user — an expired handle
+    // and an unreachable instance need different messages.
+    throw Object.assign(
+      new Error(
+        `fetchQueryByHandle failed: ${response.status} ${response.statusText}`,
+      ),
+      { status: response.status },
     );
   }
 
