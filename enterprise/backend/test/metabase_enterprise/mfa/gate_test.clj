@@ -158,7 +158,7 @@
       (mt/with-premium-features #{}
         (mfa.settings/mfa-enforcement! :off)
         (is (= :off (mfa.settings/mfa-enforcement)))))
-    (testing "setting :required is rejected even with the feature — reserved for a future release"
+    (testing "setting :required counts as enforcement"
       (mt/with-premium-features #{:multi-factor-auth}
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reserved"
-                              (mfa.settings/mfa-enforcement! :required)))))))
+        (mfa.settings/mfa-enforcement! :required)
+        (is (= :required (mfa.settings/mfa-enforcement)))))))
