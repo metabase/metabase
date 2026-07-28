@@ -6,6 +6,7 @@ import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
 import { connect, useDispatch } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
+import { useParams } from "metabase/router";
 
 import PublicAction from "./PublicAction";
 import {
@@ -13,30 +14,27 @@ import {
   LoadingAndErrorWrapper,
 } from "./PublicAction.styled";
 
-interface OwnProps {
-  params: { uuid: string };
-}
-
 interface DispatchProps {
   setErrorPage: (error: any) => void;
 }
 
-type Props = OwnProps & DispatchProps;
+type Props = DispatchProps;
 
 const mapDispatchToProps = {
   setErrorPage,
 };
 
-function PublicActionLoader({ params, setErrorPage }: Props) {
+function PublicActionLoader({ setErrorPage }: Props) {
+  const { uuid = "" } = useParams<{ uuid: string }>();
   const dispatch = useDispatch();
   const [{ value: action, error }, fetchAction] = useAsyncFn(
     () =>
       runRtkEndpoint(
-        { uuid: params.uuid },
+        { uuid: uuid },
         dispatch,
         publicApi.endpoints.getPublicAction,
       ),
-    [params.uuid, dispatch],
+    [uuid, dispatch],
   );
 
   useMount(() => {
@@ -55,14 +53,10 @@ function PublicActionLoader({ params, setErrorPage }: Props) {
     }
     return (
       <ContentContainer>
-        <PublicAction
-          action={action}
-          publicId={params.uuid}
-          onError={setErrorPage}
-        />
+        <PublicAction action={action} publicId={uuid} onError={setErrorPage} />
       </ContentContainer>
     );
-  }, [action, params.uuid, setErrorPage]);
+  }, [action, uuid, setErrorPage]);
 
   return (
     <SyncedEmbedFrame footerVariant="large">

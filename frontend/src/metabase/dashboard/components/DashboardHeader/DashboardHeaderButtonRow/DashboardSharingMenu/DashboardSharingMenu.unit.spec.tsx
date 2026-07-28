@@ -258,9 +258,8 @@ describe("DashboardSharingMenu", () => {
             "http://localhost:3000/dashboard/1-my-cool-dashboard",
           ),
         );
-        expect(
-          await screen.findByText("Link copied to clipboard"),
-        ).toBeInTheDocument();
+        expect(await screen.findByText("Copied")).toBeInTheDocument();
+        expect(screen.queryByText("Copy link")).not.toBeInTheDocument();
       });
 
       it("should copy the public link when clicking 'Copy public link'", async () => {
