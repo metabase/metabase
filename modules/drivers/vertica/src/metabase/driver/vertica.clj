@@ -36,6 +36,7 @@
                               :describe-is-nullable             true
                               :expression-literals              true
                               :identifiers-with-spaces          true
+                              :native-pivot-tables              true
                               :now                              true
                               :percentile-aggregations          false
                               :regex/lookaheads-and-lookbehinds false

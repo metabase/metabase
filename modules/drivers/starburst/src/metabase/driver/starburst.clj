@@ -67,6 +67,7 @@
                               :convert-timezone                true
                               :connection/multiple-databases   true
                               :metadata/key-constraints        false
+                              :native-pivot-tables             true
                               :now                             true
                               :database-routing                true
                               :connection-impersonation        true}]

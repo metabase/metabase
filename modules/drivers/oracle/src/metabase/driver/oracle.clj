@@ -59,6 +59,7 @@
                               :expression-literals              true
                               :expressions/date                 false
                               :identifiers-with-spaces          true
+                              :native-pivot-tables              true
                               :now                              true
                               ;; these don't seem to ERROR on Oracle but they don't work as expected either, see
                               ;; https://github.com/metabase/metabase/pull/66982#issuecomment-3667113995

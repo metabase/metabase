@@ -63,6 +63,7 @@
                               :regex                                  false
                               :test/jvm-timezone-setting              false
                               :metadata/table-existence-check         true
+                              :native-pivot-tables                    true
                               :transforms/python                      true
                               :transforms/table                       true
                               :transforms/index-ddl                   true
