@@ -64,27 +64,24 @@ export const getCollectionIdSlugFromReference = createSelector(
     personalCollectionId,
     tenantCollectionId,
     collectionReference,
-  ): CollectionId => {
-    return (
-      match(collectionReference)
-        // Unjustified type cast. FIXME
-        .with("personal", () => personalCollectionId as RegularCollectionId)
-        .with("tenant", () => {
-          if (!tenantCollectionId) {
-            throw new Error(
-              "You must be a tenant member to access the tenant collection.",
-            );
-          }
-
-          return tenantCollectionId;
-        })
-        .with("root", () => "root" as const)
-        .with(P.union(P.number, P.string), (id) => id)
-        .otherwise(() => {
+  ): CollectionId | undefined => {
+    return match(collectionReference)
+      .with("personal", () => personalCollectionId)
+      .with("tenant", () => {
+        if (!tenantCollectionId) {
           throw new Error(
-            "Invalid collection id, expected `number | string | 'root' | 'personal' | 'tenant'`",
+            "You must be a tenant member to access the tenant collection.",
           );
-        })
-    );
+        }
+
+        return tenantCollectionId;
+      })
+      .with("root", () => "root" as const)
+      .with(P.union(P.number, P.string), (id) => id)
+      .otherwise(() => {
+        throw new Error(
+          "Invalid collection id, expected `number | string | 'root' | 'personal' | 'tenant'`",
+        );
+      });
   },
 );

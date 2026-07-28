@@ -66,6 +66,28 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
+  it("should not request a collection the current user does not have", () => {
+    // The question's Save affordance asks whether the user can write to the
+    // target collection. With no `targetCollection` that resolves to
+    // "personal" — which resolves to nothing for a user without a personal
+    // collection, and building a URL from that hits `/api/collection/undefined`.
+    cy.intercept("GET", "/api/user/current", (req) => {
+      req.continue((res) => {
+        delete res.body.personal_collection_id;
+      });
+    });
+    cy.intercept("GET", "/api/collection/undefined*").as("unresolvedCollection");
+
+    mountInteractiveQuestion();
+
+    getSdkRoot().within(() => {
+      cy.findByText("Product ID").should("be.visible");
+      cy.findByText("Max of Quantity").should("be.visible");
+    });
+
+    cy.get("@unresolvedCollection.all").should("have.length", 0);
+  });
+
   it("should not show the expand button (metabase#68975)", () => {
     mountInteractiveQuestion();
 
