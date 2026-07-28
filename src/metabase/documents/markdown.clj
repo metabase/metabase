@@ -603,18 +603,47 @@
   (let [[segments _] (scan-segments (str/split-lines (or markdown-string "")) 0 nil)]
     (resolve-smart-links (into [] (mapcat segment->nodes) segments))))
 
+(defn- wrap-loose-embeds
+  "Give every top-level `cardEmbed`/`flexContainer` its `resizeNode` wrapper. A chart's height
+  lives on that wrapper and nowhere else — everything inside it is `height: 100%` — so an embed
+  sitting directly in the document body renders collapsed to nothing. The editor's own
+  insertion paths (`wrapCardEmbed` in
+  `frontend/src/metabase/rich_text_editing/tiptap/extensions/shared/layout.ts`, and every drop
+  handler) hold the same invariant, which is why an explicit `::: resize` fence is optional in
+  the Markdown. Applies at document level only: inside a `::: resize` or `::: flex` the wrapper
+  is either already there or forbidden by the container's content model."
+  [content]
+  (mapv (fn [{:keys [type] :as node}]
+          (if (#{"cardEmbed" "flexContainer"} type)
+            {:type    "resizeNode"
+             :attrs   {:height    resize-node-default-height
+                       :minHeight resize-node-default-min-height}
+             :content [node]}
+            node))
+        content))
+
+(defn- ensure-trailing-paragraph
+  "A document's last block is always a paragraph. The editor's `trailingNode` plugin appends an
+  empty one the moment a document whose last block is anything else is loaded (see
+  `@tiptap/extensions`, configured through `CustomStarterKit`), so a document stored without one
+  is rewritten on open and shows up as unsaved changes nobody made. Also floors an empty
+  document to a single paragraph, which `doc`'s `block+` content model requires."
+  [content]
+  (cond-> content
+    (not= "paragraph" (:type (peek content)))
+    (conj {:type "paragraph" :attrs {:_id (mint-id)}})))
+
 (defn parse
   "Metabase-flavored Markdown string -> ProseMirror AST map, i.e. the value that goes in a
   Document's `:document` column: `{:type \"doc\" :content [...]}`. Mints a fresh `:_id` on
-  every node type that carries one. Malformed structure (unclosed fences, invalid container
-  content, bad card tokens) throws a 400 `ex-info` whose message names the fix; a smart-link
-  id that doesn't resolve keeps the node and logs a warning instead."
+  every node type that carries one, wraps a bare top-level card embed or flex container in
+  the `resizeNode` that gives it a height, and closes the body with a paragraph. Malformed
+  structure (unclosed fences, invalid container content, bad card tokens) throws a 400 `ex-info`
+  whose message names the fix; a smart-link id that doesn't resolve keeps the node and logs a
+  warning instead."
   [markdown-string]
-  (let [content (parse-content markdown-string)]
-    {:type    "doc"
-     :content (if (seq content)
-                content
-                [{:type "paragraph" :attrs {:_id (mint-id)}}])}))
+  {:type    "doc"
+   :content (-> (parse-content markdown-string) wrap-loose-embeds ensure-trailing-paragraph)})
 
 ;;; ------------------------------------------------ Serialize: inline ---------------------------------------------
 
@@ -1048,9 +1077,8 @@
     (when-not (and (int? start) (int? end) (<= 0 start end (count fresh-markdown)))
       (throw (teaching-error (format "Invalid splice span [%s %s) for a %d-character document."
                                      start end (count fresh-markdown)))))
-    (let [content (splice-level (:content old-ast) extents fresh-markdown
-                                start end (or replacement-text "") "doc")]
-      (assoc old-ast :content
-             (if (seq content)
-               content
-               [{:type "paragraph" :attrs {:_id (mint-id)}}])))))
+    (assoc old-ast :content
+           (-> (splice-level (:content old-ast) extents fresh-markdown
+                             start end (or replacement-text "") "doc")
+               wrap-loose-embeds
+               ensure-trailing-paragraph))))

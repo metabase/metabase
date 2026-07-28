@@ -43,8 +43,10 @@
                                                           :target "_blank"
                                                           :rel    "noopener noreferrer nofollow"}}]}
                            {:type "text" :text "."}]}
-                {:type "cardEmbed" :attrs {:id 118 :name "Revenue by region" :_id "c1"}}
-                {:type "cardEmbed" :attrs {:id 119 :name nil :_id "c2"}}
+                {:type "resizeNode" :attrs {:height 442 :minHeight 280}
+                 :content [{:type "cardEmbed" :attrs {:id 118 :name "Revenue by region" :_id "c1"}}]}
+                {:type "resizeNode" :attrs {:height 300 :minHeight 200}
+                 :content [{:type "cardEmbed" :attrs {:id 119 :name nil :_id "c2"}}]}
                 {:type "bulletList" :attrs {:_id "l1"}
                  :content [{:type "listItem" :content [(para "first")]}
                            {:type "listItem" :content [(para "second")]}]}
@@ -59,7 +61,8 @@
                  :content [{:type "flexContainer" :attrs {:columnWidths [60 40]}
                             :content [{:type "supportingText" :attrs {:_id "st1"}
                                        :content [(para "Supporting prose.")]}
-                                      {:type "cardEmbed" :attrs {:id 120 :name "Trend" :_id "c3"}}]}]}]}
+                                      {:type "cardEmbed" :attrs {:id 120 :name "Trend" :_id "c3"}}]}]}
+                {:type "paragraph" :attrs {:_id "pz"}}]}
           {m1 :markdown} (md/serialize ast)
           reparsed       (md/parse m1)
           expected       (strip-ids (update ast :content (fn [c] (vec (remove #(= "metabot" (:type %)) c)))))]
@@ -83,7 +86,7 @@
   (testing "a childless node omits :content, the way ProseMirror's own toJSON does"
     (is (= [{:type "paragraph" :attrs {}}]
            (strip-ids (:content (md/parse "")))))
-    (is (= [{:type "codeBlock" :attrs {:language nil}}]
+    (is (= [{:type "codeBlock" :attrs {:language nil}} {:type "paragraph" :attrs {}}]
            (strip-ids (:content (md/parse "```\n```"))))))
   (testing "every attribute the editor's schema declares is present, so no default is filled in on load"
     (is (= {:start 1 :type nil}
@@ -91,20 +94,74 @@
     (is (= {:href "https://example.com" :target "_blank" :rel "noopener noreferrer nofollow"}
            (-> (md/parse "[x](https://example.com)") :content first :content first :marks first :attrs)))))
 
+(deftest ^:parallel body-ends-in-a-paragraph-test
+  (testing "a body whose last block isn't a paragraph gets an empty one, the way the editor's trailingNode plugin would"
+    (doseq [markdown ["# Heading"
+                      "> quoted"
+                      "- a\n- b"
+                      "```\ncode\n```"
+                      "---"
+                      "{% card id=118 %}"
+                      "::: flex {columns=[60,40]}\n{% card id=1 %}\n{% card id=2 %}\n:::"]]
+      (is (= {:type "paragraph" :attrs {}}
+             (strip-ids (peek (:content (md/parse markdown)))))
+          markdown)))
+  (testing "a body already ending in a paragraph is left alone"
+    (is (= ["heading" "paragraph"]
+           (mapv :type (:content (md/parse "# Heading\n\nProse."))))))
+  (testing "an edit that leaves a non-paragraph last gets one appended, and re-editing doesn't stack them up"
+    (let [ast     (md/parse "Intro.\n\nOutro.")
+          ser     (md/serialize ast)
+          start   (str/index-of (:markdown ser) "Outro.")
+          spliced (md/splice ast ser start (+ start (count "Outro.")) "# Heading")]
+      (is (= ["paragraph" "heading" "paragraph"] (mapv :type (:content spliced))))
+      (let [ser (md/serialize spliced)]
+        (is (= ["paragraph" "heading" "paragraph"]
+               (mapv :type (:content (md/splice spliced ser 0 (count "Intro.") "Preamble."))))))))
+  (testing "an empty body is floored to a single paragraph"
+    (is (= [{:type "paragraph" :attrs {}}]
+           (strip-ids (:content (md/parse "")))))))
+
+(deftest ^:parallel loose-embeds-get-a-resize-wrapper-test
+  (testing "a bare card token becomes a resize-wrapped embed — the wrapper is the only thing carrying a height"
+    (is (= [{:type    "resizeNode"
+             :attrs   {:height 442 :minHeight 280}
+             :content [{:type "cardEmbed" :attrs {:id 118 :name "Revenue"}}]}
+            {:type "paragraph" :attrs {}}]
+           (strip-ids (:content (md/parse "{% card id=118 name=\"Revenue\" %}"))))))
+  (testing "a bare flex container gets one too"
+    (is (= ["resizeNode" "paragraph"]
+           (mapv :type (:content (md/parse "::: flex {columns=[60,40]}\n{% card id=1 %}\n{% card id=2 %}\n:::"))))))
+  (testing "an explicit ::: resize fence keeps its own dimensions and is not double-wrapped"
+    (is (= [{:type    "resizeNode"
+             :attrs   {:height 600 :minHeight 300}
+             :content [{:type "cardEmbed" :attrs {:id 118 :name nil}}]}
+            {:type "paragraph" :attrs {}}]
+           (strip-ids (:content (md/parse "::: resize {height=600 minHeight=300}\n{% card id=118 %}\n:::"))))))
+  (testing "an edit that introduces a card token wraps it, leaving untouched blocks alone"
+    (let [ast      (md/parse "Intro.\n\nOutro.")
+          ser      (md/serialize ast)
+          start    (str/index-of (:markdown ser) "Outro.")
+          spliced  (md/splice ast ser start (+ start (count "Outro.")) "{% card id=118 %}")]
+      (is (= ["paragraph" "resizeNode" "paragraph"] (mapv :type (:content spliced))))
+      (is (= (get-in ast [:content 0 :attrs :_id])
+             (get-in spliced [:content 0 :attrs :_id]))))))
+
 ;;; ------------------------------------------------ Token scanning ------------------------------------------------
 
 (deftest ^:parallel code-block-token-opacity-test
   (testing "card tokens and container fences inside a fenced code block are content, not structure"
     (let [ast {:type "doc"
                :content [{:type "codeBlock" :attrs {:language nil :_id "cb"}
-                          :content [{:type "text" :text "{% card id=118 %}\n::: flex\ntext"}]}]}
+                          :content [{:type "text" :text "{% card id=118 %}\n::: flex\ntext"}]}
+                         {:type "paragraph" :attrs {:_id "pz"}}]}
           {m :markdown} (md/serialize ast)
           reparsed      (md/parse m)]
       (is (= (strip-ids ast) (strip-ids reparsed)))
-      (is (= ["codeBlock"] (mapv :type (:content reparsed))))))
+      (is (= ["codeBlock" "paragraph"] (mapv :type (:content reparsed))))))
   (testing "a tilde fence is opaque too"
     (let [reparsed (md/parse "~~~\n{% card id=118 %}\n~~~")]
-      (is (= ["codeBlock"] (mapv :type (:content reparsed)))))))
+      (is (= ["codeBlock" "paragraph"] (mapv :type (:content reparsed)))))))
 
 (deftest ^:parallel unclosed-token-never-overflows-test
   (testing "a very long unclosed token parses as plain text instead of overflowing the regex engine"
@@ -195,8 +252,8 @@
     (let [ast {:type "doc" :content [{:type "cardEmbed" :attrs {:id 5 :name "back\\slash\" q\nnewline" :_id "c"}}]}
           {m :markdown} (md/serialize ast)
           reparsed      (md/parse m)]
-      (is (= ["cardEmbed"] (mapv :type (:content reparsed))))
-      (is (= "back\\slash\" q newline" (get-in reparsed [:content 0 :attrs :name]))))))
+      (is (= ["cardEmbed"] (mapv :type (get-in reparsed [:content 0 :content]))))
+      (is (= "back\\slash\" q newline" (get-in reparsed [:content 0 :content 0 :attrs :name]))))))
 
 (deftest ^:parallel heading-single-line-test
   (testing "hardBreak renders as a space inside a heading"
@@ -206,7 +263,7 @@
                                                 {:type "text" :text "two"}]}]}
           {m :markdown} (md/serialize ast)
           reparsed      (md/parse m)]
-      (is (= ["heading"] (mapv :type (:content reparsed))))
+      (is (= ["heading" "paragraph"] (mapv :type (:content reparsed))))
       (is (= "one two" (get-in reparsed [:content 0 :content 0 :text])))))
   (testing "a trailing hash run is not stripped as an ATX closing sequence"
     (let [ast {:type "doc" :content [{:type "heading" :attrs {:level 1 :_id "h"}
@@ -217,10 +274,11 @@
 (deftest ^:parallel adjacent-same-type-lists-test
   (let [li  (fn [t] {:type "listItem" :content [(para t)]})
         ast {:type "doc" :content [{:type "bulletList" :attrs {:_id "l1"} :content [(li "a") (li "b")]}
-                                   {:type "bulletList" :attrs {:_id "l2"} :content [(li "c")]}]}
+                                   {:type "bulletList" :attrs {:_id "l2"} :content [(li "c")]}
+                                   {:type "paragraph" :attrs {:_id "pz"}}]}
         {m :markdown} (md/serialize ast)
         reparsed      (md/parse m)]
-    (is (= ["bulletList" "bulletList"] (mapv :type (:content reparsed))))
+    (is (= ["bulletList" "bulletList" "paragraph"] (mapv :type (:content reparsed))))
     (is (= (strip-ids ast) (strip-ids reparsed)))))
 
 (deftest ^:parallel serialize-coerces-or-rejects-attr-types-test
