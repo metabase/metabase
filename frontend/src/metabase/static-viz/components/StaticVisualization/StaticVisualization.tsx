@@ -1,4 +1,3 @@
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import { getVisualizationTransformed } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -17,6 +16,8 @@ import { ScatterPlot } from "../ScatterPlot/ScatterPlot";
 import { SmartScalar } from "../SmartScalar";
 import { TreemapChart } from "../TreemapChart";
 import { WaterfallChart } from "../WaterfallChart/WaterfallChart";
+
+import { CustomStaticVisualization } from "./CustomStaticVisualization";
 
 registerStaticVisualizations();
 
@@ -75,28 +76,16 @@ export const StaticVisualization = ({
   }
 
   if (isCustomVizDisplay(display)) {
-    const customViz = PLUGIN_CUSTOM_VIZ.customVizRegistry.get(display);
-    if (customViz?.StaticVisualizationComponent) {
-      const { StaticVisualizationComponent } = customViz;
-      const customVizRenderingContext = {
-        getColor: renderingContext.getColor,
-        measureTextWidth: renderingContext.measureText,
-        measureTextHeight: renderingContext.measureTextHeight,
-        fontFamily: renderingContext.fontFamily,
-      };
-      return (
-        <StaticVisualizationComponent
-          series={rawSeries}
-          renderingContext={customVizRenderingContext}
-          settings={settings}
-          isStorybook={isStorybook}
-          hasDevWatermark={hasDevWatermark}
-        />
-      );
-    }
-
-    // Return null so the Clojure side gets an empty string and falls back to table.
-    return null;
+    return (
+      <CustomStaticVisualization
+        rawSeries={rawSeries}
+        renderingContext={renderingContext}
+        isStorybook={isStorybook}
+        hasDevWatermark={hasDevWatermark}
+        width={width}
+        height={height}
+      />
+    );
   }
 
   throw new Error(`Unsupported display type: ${display}`);

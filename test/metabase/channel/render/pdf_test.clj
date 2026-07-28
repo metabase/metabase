@@ -979,3 +979,21 @@
         (is (= (get-in part [:result :error]) @too-large-msg)))
       (testing "and the no-results placeholder was not used"
         (is (false? @no-results-called))))))
+
+(deftest ^:parallel chart-fills-cell?-test
+  (let [fills? #'pdf/chart-fills-cell?]
+    (testing "rectangular visualizations always fill"
+      (is (true? (boolean (fills? :bar :javascript_visualization 300 200))))
+      (is (true? (boolean (fills? :line :javascript_visualization 100 400))))
+      (is (true? (boolean (fills? :treemap :javascript_visualization 300 200)))))
+    (testing "custom viz fills when it renders statically (:javascript_visualization)"
+      (is (true? (boolean (fills? :custom:heatmap :javascript_visualization 300 200)))))
+    (testing "custom viz that falls back to a table (no static support) does not fill"
+      (is (false? (boolean (fills? :custom:heatmap :table 300 200)))))
+    (testing "pie fills only when the body area is square-or-wider"
+      (is (true? (boolean (fills? :pie :javascript_visualization 300 200))))
+      (is (false? (boolean (fills? :pie :javascript_visualization 100 400)))))
+    (testing "fixed-size displays (scalar, gauge, funnel) never fill"
+      (is (false? (boolean (fills? :scalar :javascript_visualization 300 200))))
+      (is (false? (boolean (fills? :gauge :javascript_visualization 300 200))))
+      (is (false? (boolean (fills? :funnel :javascript_visualization 300 200)))))))

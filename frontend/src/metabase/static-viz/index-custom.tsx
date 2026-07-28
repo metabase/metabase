@@ -2,7 +2,7 @@ import ReactDOMServer from "react-dom/server";
 
 import "metabase/utils/dayjs";
 
-import { StaticVisualizationCustom } from "metabase/static-viz/components/StaticVisualization/StaticVisualizationCustom";
+import { CustomStaticVisualization } from "metabase/static-viz/components/StaticVisualization/CustomStaticVisualization";
 import {
   getRawSeriesWithDashcardSettings,
   initializeContext,
@@ -52,7 +52,7 @@ function RenderChart(
   const hasDevWatermark = Boolean(options.tokenFeatures.development_mode);
 
   return ReactDOMServer.renderToStaticMarkup(
-    <StaticVisualizationCustom
+    <CustomStaticVisualization
       rawSeries={rawSeriesWithRemappings}
       renderingContext={renderingContext}
       hasDevWatermark={hasDevWatermark}
