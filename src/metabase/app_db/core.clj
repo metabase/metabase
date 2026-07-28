@@ -40,7 +40,8 @@
   do-after-commit
   in-transaction?
   quoting-style
-  unique-identifier]
+  unique-identifier
+  with-unshared-connection]
  [mdb.connection-pool-setup
   recent-activity?]
  [mdb.data-source
