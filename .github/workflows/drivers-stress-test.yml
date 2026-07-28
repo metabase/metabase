@@ -575,7 +575,7 @@ jobs:
       run: while ! nc -z localhost ${{ env.MB_PRESTO_JDBC_TEST_PORT }}; do sleep 0.1; done
       timeout-minutes: 15
     - name: Create temp cacerts file based on bundled JDK one
-      run: cp $JAVA_HOME/lib/security/cacerts /tmp/cacerts-with-presto-ssl.jks
+      run: cp "$JAVA_HOME/lib/security/cacerts" /tmp/cacerts-with-presto-ssl.jks
     - name: Capture Presto server self signed CA
       run: |
           while [[ ! -s /tmp/presto-ssl-ca.pem ]];
@@ -789,9 +789,11 @@ jobs:
 
         REGISTRY="$(aws sts get-caller-identity --query Account --output text).dkr.ecr.us-east-1.amazonaws.com"
 
-        echo "docker_username=AWS" >> $GITHUB_OUTPUT
-        echo "docker_password=$PASSWORD" >> $GITHUB_OUTPUT
-        echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
+        {
+          echo "docker_username=AWS"
+          echo "docker_password=$PASSWORD"
+          echo "registry=$REGISTRY"
+        } >> "$GITHUB_OUTPUT"
     outputs:
       registry: ${{ steps.login-ecr.outputs.registry }}
       docker_username: ${{ steps.login-ecr.outputs.docker_username }}
