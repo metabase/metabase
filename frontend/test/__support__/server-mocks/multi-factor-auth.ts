@@ -3,7 +3,9 @@ import fetchMock from "fetch-mock";
 import type {
   MfaAdminOverview,
   MfaEnrollResponse,
+  MfaEnrolledUser,
   MfaStatus,
+  MfaUserListResponse,
 } from "metabase-types/api";
 
 export function setupMfaStatusEndpoint(status: MfaStatus) {
@@ -42,6 +44,28 @@ export function setupMfaRecoveryCodesEndpointError() {
 
 export function setupMfaAdminOverviewEndpoint(overview: MfaAdminOverview) {
   fetchMock.get("path:/api/ee/mfa/admin/overview", overview);
+}
+
+export function setupMfaEnrolledUsersEndpoint(users: MfaEnrolledUser[]) {
+  const response: MfaUserListResponse<MfaEnrolledUser> = {
+    data: users,
+    total: users.length,
+    limit: null,
+    offset: null,
+  };
+  fetchMock.get("path:/api/ee/mfa/admin/enrolled-users", response);
+}
+
+export function setupMfaEnrolledUsersEndpointError() {
+  fetchMock.get("path:/api/ee/mfa/admin/enrolled-users", 500);
+}
+
+export function setupMfaAdminRemoveEndpoint() {
+  fetchMock.post("path:/api/ee/mfa/admin/remove", 204);
+}
+
+export function setupMfaAdminRemoveEndpointError() {
+  fetchMock.post("path:/api/ee/mfa/admin/remove", 500);
 }
 
 export function setupMfaVerifyEndpoint() {

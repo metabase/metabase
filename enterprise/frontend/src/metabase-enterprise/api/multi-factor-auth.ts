@@ -1,7 +1,12 @@
 import type {
   MfaAdminOverview,
+  MfaAdminUser,
   MfaEnrollResponse,
+  MfaEnrolledUser,
   MfaStatus,
+  MfaUserListRequest,
+  MfaUserListResponse,
+  UserId,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -15,6 +20,36 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/mfa/admin/overview",
       }),
       providesTags: () => provideMfaStatusTags(),
+    }),
+    listEnrolledMfaUsers: builder.query<
+      MfaUserListResponse<MfaEnrolledUser>,
+      MfaUserListRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/mfa/admin/enrolled-users",
+        params,
+      }),
+      providesTags: () => provideMfaStatusTags(),
+    }),
+    listUnenrolledMfaUsers: builder.query<
+      MfaUserListResponse<MfaAdminUser>,
+      MfaUserListRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/mfa/admin/unenrolled-users",
+        params,
+      }),
+      providesTags: () => provideMfaStatusTags(),
+    }),
+    removeUserMfa: builder.mutation<void, { user_id: UserId }>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/mfa/admin/remove",
+        body,
+      }),
+      invalidatesTags: (_, error) => invalidateTags(error, [tag("mfa-status")]),
     }),
     verifyMfa: builder.mutation<
       { id: string },
@@ -85,6 +120,9 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useGetMfaAdminOverviewQuery,
+  useListEnrolledMfaUsersQuery,
+  useListUnenrolledMfaUsersQuery,
+  useRemoveUserMfaMutation,
   useVerifyMfaMutation,
   useGetMfaStatusQuery,
   useEnrollMfaMutation,
