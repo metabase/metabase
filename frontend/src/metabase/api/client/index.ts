@@ -9,9 +9,7 @@ export {
   PLUGIN_API,
   embeddingIframeSdkRequestHooks,
   embeddingSdkRequestHooks,
-  reinitializeEmbeddingIframeSdkRequestHooks,
-  reinitializeEmbeddingSdkRequestHooks,
-  reinitializePluginApi,
+  reinitializeRequestHooks,
 } from "./request-hooks";
 export type { RequestClientInfo, RequestOptions } from "./types";
 export { setLocaleHeader } from "./locale";

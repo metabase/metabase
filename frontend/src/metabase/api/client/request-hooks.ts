@@ -35,14 +35,6 @@ const setEmbeddedHeader: OnBeforeRequestHandler = async () => {
 
 /**
  * The api client's request-extension slots.
- *
- * These objects are owned by the api client (which composes them, in a fixed
- * order, in `middleware.ts`) rather than by `metabase/plugins`, so that the
- * client never has to import the plugin graph — the plugin graph reaches into
- * app modules that themselves import `metabase/api`, which would be a circular
- * import. Feature code (embedding flows, SDK auth, EE plugins) installs
- * behavior by assigning to the named slots; the aggregate plugin
- * `reinitialize` resets them through the reinitialize functions below.
  */
 const getDefaultPluginApi = () => ({
   onBeforeRequestHandlers: {
@@ -70,10 +62,6 @@ const getDefaultPluginApi = () => ({
 
 export const PLUGIN_API = getDefaultPluginApi();
 
-export function reinitializePluginApi() {
-  Object.assign(PLUGIN_API, getDefaultPluginApi());
-}
-
 const getDefaultEmbeddingSdkRequestHooks = () => ({
   getOrRefreshSessionHandler: noop,
   getOrRefreshGuestSessionHandler: noop,
@@ -81,30 +69,25 @@ const getDefaultEmbeddingSdkRequestHooks = () => ({
   reactSdkEmbedReferrer: noop,
 });
 
-/**
- * `PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers`, by reference. Reset it with
- * the reinitialize function below (which mutates it in place) — replacing the
- * object would split it from the plugin object.
- */
+/** The embedding SDK's handler slots. */
 export const embeddingSdkRequestHooks = getDefaultEmbeddingSdkRequestHooks();
-
-export function reinitializeEmbeddingSdkRequestHooks() {
-  Object.assign(embeddingSdkRequestHooks, getDefaultEmbeddingSdkRequestHooks());
-}
 
 const getDefaultEmbeddingIframeSdkRequestHooks = () => ({
   embedReferrer: noop,
 });
 
-/**
- * `PLUGIN_EMBEDDING_IFRAME_SDK.onBeforeRequestHandlers`, by reference. Reset
- * it with the reinitialize function below (which mutates it in place) —
- * replacing the object would split it from the plugin object.
- */
 export const embeddingIframeSdkRequestHooks =
   getDefaultEmbeddingIframeSdkRequestHooks();
 
-export function reinitializeEmbeddingIframeSdkRequestHooks() {
+/**
+ * Reset every request-hook slot to its default. The bags are mutated in
+ * place: installers and the middleware hold references to these exact
+ * objects, so swapping in fresh ones would strand those references on stale
+ * bags. Called by the aggregate plugin `reinitialize` in `metabase/plugins`.
+ */
+export function reinitializeRequestHooks() {
+  Object.assign(PLUGIN_API, getDefaultPluginApi());
+  Object.assign(embeddingSdkRequestHooks, getDefaultEmbeddingSdkRequestHooks());
   Object.assign(
     embeddingIframeSdkRequestHooks,
     getDefaultEmbeddingIframeSdkRequestHooks(),

@@ -1,5 +1,3 @@
-import { reinitializeEmbeddingIframeSdkRequestHooks } from "metabase/api/client";
-
 const getDefaultPluginEmbeddingIframeSdk = () => ({
   isEnabled: () => false,
 });
@@ -14,8 +12,4 @@ export function reinitialize() {
     PLUGIN_EMBEDDING_IFRAME_SDK,
     getDefaultPluginEmbeddingIframeSdk(),
   );
-  // The iframe SDK's request handlers live with the api client (see
-  // `embeddingIframeSdkRequestHooks`), but they are still part of this
-  // plugin's reset surface.
-  reinitializeEmbeddingIframeSdkRequestHooks();
 }

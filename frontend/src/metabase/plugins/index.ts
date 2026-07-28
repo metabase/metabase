@@ -188,10 +188,7 @@ export type {
   SyncedCollectionsSidebarSectionProps,
 } from "./types";
 
-// Export a single reinitialize function that calls all individual reinitialize functions
-// The api client owns its request-hook slots (see
-// `metabase/api/client/request-hooks`), so their reset comes from there.
-import { reinitializePluginApi as reinitializeApi } from "metabase/api/client";
+import { reinitializeRequestHooks } from "metabase/api/client";
 
 import { reinitialize as reinitializeAiControls } from "./oss/ai-controls";
 import { reinitialize as reinitializeAudit } from "./oss/audit";
@@ -241,7 +238,7 @@ export function reinitialize() {
   reinitializeNotificationsSdk();
 
   reinitializeAiControls();
-  reinitializeApi();
+  reinitializeRequestHooks();
   reinitializeAudit();
   reinitializeAuth();
   reinitializeCaching();
