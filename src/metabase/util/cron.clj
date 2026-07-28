@@ -98,14 +98,16 @@
   "Convert the frontend schedule map into a cron string."
   [{day-of-week :schedule_day, hour :schedule_hour, minute :schedule_minute,
     frame :schedule_frame,  schedule-type :schedule_type} :- ScheduleMap]
+  ;; An omitted hour means midnight, not "every hour": leaving it out of a daily/weekly/monthly
+  ;; schedule would otherwise leave the cron hours field as `*` and fire 24 times a day.
   (cron-string (case (keyword schedule-type)
                  :hourly  {:minutes minute}
                  :daily   {:hours (or hour 0)}
-                 :weekly  {:hours       hour
-                           :day-of-week (day-of-week->cron day-of-week)
+                 :weekly  {:hours        (or hour 0)
+                           :day-of-week  (day-of-week->cron day-of-week)
                            :day-of-month "?"}
                  :monthly (assoc (frame->cron frame day-of-week)
-                                 :hours hour))))
+                                 :hours (or hour 0)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          CRON STRING -> SCHEDULE MAP                                           |

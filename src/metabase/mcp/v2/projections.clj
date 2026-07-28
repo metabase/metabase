@@ -12,9 +12,13 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]))
+   [metabase.notification.models :as models.notification]
+   [metabase.permissions.core :as perms]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -254,3 +258,94 @@
  :dashboard dashboard-concise-keys
  :detailed-keys dashboard-detailed-keys
  :sample dashboard-sample)
+
+;;; ----------------------------------------------- notification ---------------------------------------------------
+
+(defn- notification-recipient-row
+  [recipient]
+  (m/remove-vals nil?
+                 {:type                 (some-> (:type recipient) u/qualified-name)
+                  :user_id              (:user_id recipient)
+                  :email                (or (get-in recipient [:user :email])
+                                            (get-in recipient [:details :value]))
+                  :permissions_group_id (:permissions_group_id recipient)}))
+
+(defn- notification-handler-rows
+  "Projected handler rows with the same recipient redaction `/api/pulse` applies: sandboxed or
+   impersonated callers see only themselves among user recipients, non-superusers never see
+   cross-tenant users, and when `strip-recipients?` (the caller can read the notification only
+   as creator/recipient, not its payload) the recipient lists are removed entirely."
+  [handlers strip-recipients?]
+  (mapv (fn [handler]
+          (m/remove-vals
+           nil?
+           {:id           (:id handler)
+            :channel_type (some-> (:channel_type handler) u/qualified-name)
+            :channel_id   (:channel_id handler)
+            :recipients   (when-not strip-recipients?
+                            (cond->> (:recipients handler)
+                              (perms/sandboxed-or-impersonated-user?)
+                              (filter #(or (nil? (:user_id %)) (= (:user_id %) api/*current-user-id*)))
+
+                              (not api/*is-superuser?*)
+                              (filter #(or (nil? (:user_id %))
+                                           (= (some-> % :user :tenant_id) (:tenant_id @api/*current-user*))))
+
+                              true
+                              (mapv notification-recipient-row)))}))
+        handlers))
+
+(defn hydrate-notification-row
+  "The [[models.notification/hydrate-notification]] hydration, without its output schema —
+   which rejects `payload_type: notification/dashboard` rows, readable here by design."
+  [notification]
+  (t2/hydrate notification
+              :payload
+              :subscriptions
+              [:handlers :channel [:recipients :recipients-detail]]))
+
+(defn notification-row
+  "The projection row for `notification`, hydrated by [[hydrate-notification-row]]. Recipients are
+   redacted against the current user, so this must be called as the requesting user. Both the
+   `:concise` and `:detailed` `:alert` projections select from this shape."
+  [notification]
+  (let [strip? (and (= :notification/card (:payload_type notification))
+                    (not (models.notification/current-user-can-read-payload? notification)))]
+    (m/remove-vals
+     nil?
+     {:id            (:id notification)
+      :payload_type  (some-> (:payload_type notification) u/qualified-name)
+      :active        (:active notification)
+      :creator_id    (:creator_id notification)
+      :created_at    (:created_at notification)
+      :updated_at    (:updated_at notification)
+      :payload       (not-empty
+                      (m/remove-vals nil? (select-keys (:payload notification)
+                                                       [:card_id :send_condition :send_once])))
+      :subscriptions (mapv #(m/remove-vals nil?
+                                           {:type            (some-> (:type %) u/qualified-name)
+                                            :cron_schedule   (:cron_schedule %)
+                                            :ui_display_type (some-> (:ui_display_type %) u/qualified-name)})
+                           (:subscriptions notification))
+      :handlers      (notification-handler-rows (:handlers notification) strip?)})))
+
+(def alert-concise-keys
+  "Keys of the `:alert` concise projection. Also selected by the notification-backed half of the
+   `:subscription` projection, whose rows are [[notification-row]] output too."
+  [:id :active :payload :subscriptions :handlers :creator_id])
+
+(def alert-detailed-keys
+  "Keys of the `:alert` detailed projection."
+  (into alert-concise-keys [:payload_type :created_at :updated_at]))
+
+(def alert-sample
+  "A representative detailed `:alert` row, for `fields` catalog generation."
+  (-> (zipmap alert-detailed-keys (repeat "x"))
+      (assoc :payload {:card_id 1 :send_condition "x" :send_once true}
+             :subscriptions [{:type "x" :cron_schedule "x" :ui_display_type "x"}]
+             :handlers [{:id 1 :channel_type "x" :channel_id 1
+                         :recipients [{:type "x" :user_id 1 :email "x" :permissions_group_id 1}]}])))
+
+(register-key-projection! :alert alert-concise-keys
+                          :detailed-keys alert-detailed-keys
+                          :sample alert-sample)

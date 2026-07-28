@@ -96,7 +96,17 @@
     (testing "the opt-in scope is kept out of the default grant"
       (is (not (contains? (set (registry/registered-scopes)) "agent:snippets:read"))))
     (testing "the opt-in scope is advertised via registered-opt-in-scopes"
-      (is (set/subset? #{"agent:snippets:read"} (set (registry/registered-opt-in-scopes)))))))
+      (is (set/subset? #{"agent:snippets:read"} (set (registry/registered-opt-in-scopes))))))
+  (testing "GHY-4151: :required-scopes are mandatory, not opt-in — the handler hard-fails without
+            them, so they must reach the default grant or the tool advertises a capability no
+            default-grant client can reach. `agent:document:create` is the canary: duplicate_content
+            is the only v2 tool that needs it, so nothing else puts it in the grant."
+    (is (set/subset? #{"agent:question:create" "agent:dashboard:create" "agent:document:create"}
+                     (set (registry/registered-scopes))))
+    (testing "and they stay out of the opt-in set, which would leave them ungranted"
+      (is (empty? (set/intersection #{"agent:question:create" "agent:dashboard:create"
+                                      "agent:document:create"}
+                                    (set (registry/registered-opt-in-scopes))))))))
 
 (deftest ^:parallel tools-hash-test
   (testing "tools-hash is a stable 8-char hex string that reflects scope-visible tools"

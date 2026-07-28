@@ -30,12 +30,9 @@
    [metabase.metabot.tools.shared.content-store :as content-store]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
-   [metabase.notification.models :as models.notification]
-   [metabase.permissions.core :as perms]
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
    [metabase.transforms.core :as transforms]
-   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -245,66 +242,6 @@
 
 ;;; ----------------------------------------------------- alert ----------------------------------------------------
 
-(defn- notification-recipient-row
-  [recipient]
-  (compact {:type                 (some-> (:type recipient) u/qualified-name)
-            :user_id              (:user_id recipient)
-            :email                (or (get-in recipient [:user :email])
-                                      (get-in recipient [:details :value]))
-            :permissions_group_id (:permissions_group_id recipient)}))
-
-(defn- notification-handler-rows
-  "Projected handler rows with the same recipient redaction `/api/pulse` applies: sandboxed or
-   impersonated callers see only themselves among user recipients, non-superusers never see
-   cross-tenant users, and when `strip-recipients?` (the caller can read the notification only
-   as creator/recipient, not its payload) the recipient lists are removed entirely."
-  [handlers strip-recipients?]
-  (mapv (fn [handler]
-          (compact
-           {:id           (:id handler)
-            :channel_type (some-> (:channel_type handler) u/qualified-name)
-            :channel_id   (:channel_id handler)
-            :recipients   (when-not strip-recipients?
-                            (cond->> (:recipients handler)
-                              (perms/sandboxed-or-impersonated-user?)
-                              (filter #(or (nil? (:user_id %)) (= (:user_id %) api/*current-user-id*)))
-
-                              (not api/*is-superuser?*)
-                              (filter #(or (nil? (:user_id %))
-                                           (= (some-> % :user :tenant_id) (:tenant_id @api/*current-user*))))
-
-                              true
-                              (mapv notification-recipient-row)))}))
-        handlers))
-
-(defn- hydrate-notification-row
-  "The [[models.notification/hydrate-notification]] hydration, without its output schema —
-   which rejects `payload_type: notification/dashboard` rows, readable here by design."
-  [notification]
-  (t2/hydrate notification
-              :payload
-              :subscriptions
-              [:handlers :channel [:recipients :recipients-detail]]))
-
-(defn- notification-content-row
-  [notification]
-  (let [strip? (and (= :notification/card (:payload_type notification))
-                    (not (models.notification/current-user-can-read-payload? notification)))]
-    (compact
-     {:id            (:id notification)
-      :payload_type  (some-> (:payload_type notification) u/qualified-name)
-      :active        (:active notification)
-      :creator_id    (:creator_id notification)
-      :created_at    (:created_at notification)
-      :updated_at    (:updated_at notification)
-      :payload       (not-empty
-                      (compact (select-keys (:payload notification) [:card_id :send_condition :send_once])))
-      :subscriptions (mapv #(compact {:type            (some-> (:type %) u/qualified-name)
-                                      :cron_schedule   (:cron_schedule %)
-                                      :ui_display_type (some-> (:ui_display_type %) u/qualified-name)})
-                           (:subscriptions notification))
-      :handlers      (notification-handler-rows (:handlers notification) strip?)})))
-
 (defn- fetch-notification
   "Fetch + read-check one notification row of `payload-type` by numeric id. Notifications have
    no entity_id column, so entity_id strings are a teaching error for these types."
@@ -315,24 +252,7 @@
   (let [notification (t2/select-one :model/Notification :id id-or-eid :payload_type payload-type)]
     (when-not (and notification (mi/can-read? notification))
       (common/throw-not-found (keyword tool-type) id-or-eid))
-    (notification-content-row (hydrate-notification-row notification))))
-
-(def ^:private alert-concise-keys
-  [:id :active :payload :subscriptions :handlers :creator_id])
-
-(def ^:private alert-detailed-keys
-  (into alert-concise-keys [:payload_type :created_at :updated_at]))
-
-(def ^:private alert-sample
-  (-> (zipmap alert-detailed-keys (repeat "x"))
-      (assoc :payload {:card_id 1 :send_condition "x" :send_once true}
-             :subscriptions [{:type "x" :cron_schedule "x" :ui_display_type "x"}]
-             :handlers [{:id 1 :channel_type "x" :channel_id 1
-                         :recipients [{:type "x" :user_id 1 :email "x" :permissions_group_id 1}]}])))
-
-(projections/register-key-projection! :alert alert-concise-keys
-                                      :detailed-keys alert-detailed-keys
-                                      :sample alert-sample)
+    (projections/notification-row (projections/hydrate-notification-row notification))))
 
 ;;; ------------------------------------------------- subscription -------------------------------------------------
 
@@ -385,7 +305,7 @@
                                               :id id-or-eid
                                               :payload_type :notification/dashboard)]
               (when (and notification (mi/can-read? notification))
-                (notification-content-row (hydrate-notification-row notification)))))
+                (projections/notification-row (projections/hydrate-notification-row notification)))))
           (common/throw-not-found :subscription id-or-eid)))))
 
 (def ^:private subscription-pulse-concise-keys
@@ -408,17 +328,17 @@
  :subscription
  {:concise  (fn [row]
               (if (:handlers row)
-                (compact (select-keys row alert-concise-keys))
+                (compact (select-keys row projections/alert-concise-keys))
                 (compact (select-keys row subscription-pulse-concise-keys))))
   :detailed (fn [row]
               (if (:handlers row)
-                (compact (select-keys row alert-detailed-keys))
+                (compact (select-keys row projections/alert-detailed-keys))
                 (compact (select-keys row subscription-pulse-detailed-keys))))
   :sample   subscription-sample
   ;; The projection dispatches on row shape (pulse-backed vs. notification-backed), so no single
   ;; sample captures it — the `fields` catalog is the union of both shapes' detailed paths.
   :catalog  (vec (sort (distinct (concat (projections/paths-from-sample subscription-sample)
-                                         (projections/paths-from-sample alert-sample)))))})
+                                         (projections/paths-from-sample projections/alert-sample)))))})
 
 ;;; --------------------------------------------------- transform --------------------------------------------------
 
