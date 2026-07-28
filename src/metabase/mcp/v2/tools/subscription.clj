@@ -326,9 +326,7 @@
                                          "the trash, false restores it. This is the only removal path.")}]]]])
 
 (def ^:private subscription-write-entry
-  {:tool-name       "subscription_write"
-   :update-scope    metabot.scope/agent-subscription-write
-   :create-required [:dashboard_id :schedule]})
+  {:create-required [:dashboard_id :schedule]})
 
 (registry/deftool subscription-write
   "Create or update a dashboard subscription — scheduled delivery of a whole dashboard, e.g. \"send me this dashboard
@@ -343,13 +341,12 @@
   A subscription that already delivers to both email and Slack needs channel to say which to edit. This is for
   dashboards on a schedule — use alert_write for a question that fires on a condition. Requires read permission on
   the dashboard; only its creator (or an admin) can update it."
-  {:name         "subscription_write"
-   :scope        metabot.scope/agent-dashboard-subscribe
-   :update-scope metabot.scope/agent-subscription-write
-   :annotations  {:readOnlyHint false :destructiveHint false}
-   :args         subscription-write-args-schema}
-  [args {:keys [token-scopes]}]
-  (let [[op a b] (common/dispatch-write subscription-write-entry token-scopes args)
+  {:name        "subscription_write"
+   :scope       metabot.scope/agent-subscription-write
+   :annotations {:readOnlyHint false :destructiveHint false}
+   :args        subscription-write-args-schema}
+  [args _]
+  (let [[op a b] (common/dispatch-write subscription-write-entry args)
         id       (case op
                    :create (create! a)
                    :update (update! a b))]
