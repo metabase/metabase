@@ -12,6 +12,7 @@
    [metabase-enterprise.content-diagnostics.task.scan :as task.scan]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
+   [metabase.queries.schema :as queries.schema]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -427,6 +428,50 @@
                 (is (= #{transform-fid} (ids :entity-types "transform"))))
               (testing "multiple values → union of the given types"
                 (is (= #{card-fid dash-fid} (ids :entity-types ["card" "dashboard"])))))))))))
+
+(deftest api-card-type-test
+  (testing "GET /stale exposes each card's type as a top-level card_type - on card findings only"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       ;; transforms only go in the :transforms collection namespace
+                       :model/Collection {tcoll-id :id} {:namespace "transforms"}
+                       :model/Card {question-id :id} {:collection_id coll-id :type :question}
+                       :model/Card {model-id :id}    {:collection_id coll-id :type :model}
+                       :model/Card {metric-id :id}   {:collection_id coll-id :type :metric}
+                       :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                       :model/Document {doc-id :id} {:collection_id coll-id}
+                       :model/Transform {xform-id :id} {:collection_id tcoll-id}]
+          (let [prefix          (scope-prefix)
+                card-id-by-type {:question question-id :model model-id :metric metric-id}
+                insert!         (fn [etype eid]
+                                  (t2/insert! :model/ContentDiagnosticsFinding
+                                              {:scan_id      "ct"
+                                               :entity_type  etype
+                                               :entity_id    eid
+                                               :entity_name  (str prefix "-" (name etype) "-" eid)
+                                               :finding_type :stale
+                                               :details      {}}))]
+            (testing "the card fixtures cover every card type the app defines"
+              ;; drives the per-type assertions below - a newly added card type fails here rather
+              ;; than silently going uncovered
+              (is (= queries.schema/card-types (set (keys card-id-by-type)))))
+            (doseq [card-id (vals card-id-by-type)]
+              (insert! :card card-id))
+            (doseq [[etype eid] [[:dashboard dash-id] [:document doc-id] [:transform xform-id]]]
+              (insert! etype eid))
+            (let [by-id (into {} (map (juxt (juxt :entity_type :entity_id) identity))
+                              (:data (mt/user-http-request :crowberto :get 200
+                                                           "ee/content-diagnostics/stale" :query prefix)))]
+              (testing "every card type is served verbatim; entity_type stays \"card\""
+                (doseq [[card-type card-id] card-id-by-type]
+                  (is (=? {:entity_type "card" :card_type (name card-type)} (by-id ["card" card-id]))
+                      (str card-type " finding should carry its card_type"))))
+              (testing "dashboard/document/transform findings carry no card_type key at all"
+                (doseq [k [["dashboard" dash-id] ["document" doc-id] ["transform" xform-id]]]
+                  (let [finding (get by-id k)]
+                    (is (some? finding) (str k " should be served"))
+                    (is (not (contains? finding :card_type)))))))))))))
 
 (deftest api-transform-owner-hydration-test
   (testing "GET /stale hydrates the transform owner - a Metabase user or an external email, exclusively"

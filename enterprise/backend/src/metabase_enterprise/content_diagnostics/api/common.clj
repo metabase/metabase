@@ -193,6 +193,29 @@
                      :effective_ancestors (mapv #(select-keys % [:id :name]) (:effective_ancestors c))}]))
             colls))))
 
+(defn- root-breadcrumb
+  "The root-collection sentinel used as a root-resident entity's `collection` breadcrumb, normalized to the
+  `{:id :name :effective_ancestors}` shape the nested-collection breadcrumbs use. `:id` is the literal
+  \"root\" (the app-wide root id - the FE detects root by id, never by the localized name); `:name` is the
+  namespace-scoped root label (\"Our analytics\", or \"Transforms\" for a transform, whose collections live in
+  the `:transforms` namespace). Root has no ancestors. Mirrors how the rest of the app links root as a
+  breadcrumb (`collection/hydrate-root-collection` / the root head of `:effective_ancestors`)."
+  [entity-type]
+  (let [root (collection/root-collection-with-ui-details (when (= entity-type :transform) :transforms))]
+    {:id (:id root) :name (:name root) :effective_ancestors []}))
+
+(defn- entity-breadcrumb
+  "One finding's `collection` breadcrumb from its hydrated `entity` context row: the parent-collection
+  object when the entity lives in a readable collection; the namespaced root sentinel when it is
+  root-resident (nil parent - every covered subject is placeable, so a nil parent means \"at the root of its
+  tree\", never \"no collection concept\"); nil when the parent is unreadable (degrades leak-safe, visually
+  like root) or the entity was deleted post-scan (absent from `entity`)."
+  [entity-type entity breadcrumbs]
+  (when entity
+    (if-let [parent-id (:collection_id entity)]
+      (get breadcrumbs parent-id)
+      (root-breadcrumb entity-type))))
+
 (defn- readable-entities-where
   "HoneySQL WHERE keeping only the rows in `ids` the caller may read at hydration time: caller visibility
   (the same gate as `visible-findings-clause`) always, plus the personal-collection exclusion when
@@ -336,7 +359,8 @@
   "Project stored findings into the response shape: flat identity + denormalized display fields, plus a
   nested `details` = stored verdict + {collection, description, owner, creator, view_count?}. `view_count`
   is the entity's live usage counter, present only for types that have the column (all but transform).
-  Batched, page-size-independent.
+  A card finding also carries a top-level `card_type` (question/model/metric). Batched,
+  page-size-independent.
 
   The finding-type-specific tail - the hoisted native column(s) and any `details` rewrite (slow culprits /
   duplicated peers) - is dispatched per row on each finding's `finding_type` via [[finalize-finding]], so a
@@ -357,25 +381,27 @@
         ctx         {:culprits culprits :entities entities}]
     (mapv (fn [{:keys [id finding_type entity_type entity_id detected_at entity_created_at
                        entity_name entity_creator_id entity_creator_name details] :as row}]
-            (let [entity   (get-in ctx-by-type [entity_type entity_id])
-                  details* (merge details
-                                  {:collection  (get breadcrumbs (:collection_id entity))
-                                   :description (:description entity)
-                                   ;; only transforms have owner columns; null for the rest.
-                                   :owner       (normalized-owner entity)
-                                   ;; creator denormalized (id + common_name) - no live :creator hydrate.
-                                   :creator     (when entity_creator_id
-                                                  {:id entity_creator_id :name entity_creator_name :type :user})}
-                                  (when-some [view-count (:view_count entity)]
-                                    {:view_count view-count}))
-                  base     {:id                  id
-                            :finding_type        finding_type
-                            :entity_type         entity_type
-                            :entity_id           entity_id
-                            :detected_at         detected_at
-                            :entity_display_name entity_name
-                            :created_at          entity_created_at
-                            :details             details*}]
+            (let [entity    (get-in ctx-by-type [entity_type entity_id])
+                  details*  (merge details
+                                   {:collection  (entity-breadcrumb entity_type entity breadcrumbs)
+                                    :description (:description entity)
+                                    ;; only transforms have owner columns; null for the rest.
+                                    :owner       (normalized-owner entity)
+                                    ;; creator denormalized (id + common_name) - no live :creator hydrate.
+                                    :creator     (when entity_creator_id
+                                                   {:id entity_creator_id :name entity_creator_name :type :user})}
+                                   (when-some [view-count (:view_count entity)]
+                                     {:view_count view-count}))
+                  card-type (when (= entity_type :card) (:type entity))
+                  base      (cond-> {:id                  id
+                                     :finding_type        finding_type
+                                     :entity_type         entity_type
+                                     :entity_id           entity_id
+                                     :detected_at         detected_at
+                                     :entity_display_name entity_name
+                                     :created_at          entity_created_at
+                                     :details             details*}
+                              card-type (assoc :card_type card-type))]
               (finalize-finding finding_type base row ctx)))
           findings)))
 

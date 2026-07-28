@@ -10,7 +10,8 @@
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
    [metabase-enterprise.content-diagnostics.checkers.duplicated :as checkers.duplicated]
    [metabase-enterprise.content-diagnostics.common :as common]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest entity-type->model-is-an-invertible-source-of-truth-test
   (testing "entity-type->model and model->entity-type are mutual inverses over every covered type"
@@ -82,6 +83,23 @@
     (testing "invoking a multimethod with an unregistered finding-type throws at dispatch"
       (is (thrown? IllegalArgumentException
                    (@#'api.common/finalize-finding :not-a-finding-type {} {} {}))))))
+
+(deftest hydrate-findings-tolerates-a-deleted-card-test
+  (testing "a card finding whose entity is gone hydrates without card_type, rather than throwing"
+    ;; Not reachable over HTTP - `visible-findings-clause` already drops a finding whose entity row is gone -
+    ;; so the hydrator's guard is pinned directly here. It still fires in the wild: a card can be deleted
+    ;; between the findings query and the hydration query.
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card {card-id :id} {:collection_id coll-id :type :model}]
+      (t2/delete! :model/Card :id card-id)
+      (let [[row] (api.common/hydrate-findings [{:id           1
+                                                 :finding_type :stale
+                                                 :entity_type  :card
+                                                 :entity_id    card-id
+                                                 :details      {}}]
+                                               nil)]
+        (is (some? row))
+        (is (not (contains? row :card_type)))))))
 
 (deftest attach-entity-attrs-stamps-denormalized-columns-test
   (testing "each finding is stamped with its entity's name/created_at/creator across multiple entity types"

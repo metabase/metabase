@@ -394,6 +394,8 @@
                 (let [f (by-id ["card" slow-card])]
                   (is (some? f))
                   (is (= "Full Orders Export" (:entity_display_name f)))
+                  (testing "the flagged card carries its own type as a top-level card_type"
+                    (is (= "model" (:card_type f))))
                   (is (= 25000 (:duration_ms f)))
                   (is (= 10000 (get-in f [:details :threshold_ms])))
                   (is (= coll-id (get-in f [:details :collection :id])))
@@ -700,6 +702,27 @@
                 (let [stale-ids (ids "ee/content-diagnostics/stale")]
                   (is (contains? stale-ids stale-fid))
                   (is (not (contains? stale-ids slow-fid))))))))))))
+
+(deftest slow-api-transform-root-breadcrumb-test
+  (testing "GET /slow: a root-resident transform's breadcrumb is the Transforms-namespaced root sentinel"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-temporary-setting-values [content-diagnostics-slow-transform-threshold-seconds 10]
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (let [now (t/offset-date-time)]
+            (mt/with-temp
+              ;; no :collection_id → the transform sits at the root of the :transforms tree
+              [:model/Transform    {xform :id} {}
+               :model/TransformRun _ {:transform_id xform :status :succeeded
+                                      :start_time (t/minus now (t/minutes 2))
+                                      :end_time   (t/minus now (t/minutes 1))}]
+              (scan/scan!)
+              (let [resp  (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/slow")
+                    by-id (into {} (map (juxt (juxt :entity_type :entity_id) identity)) (:data resp))
+                    f     (by-id ["transform" xform])]
+                (is (some? f))
+                (testing "root sentinel is namespaced to Transforms, not the default \"Our analytics\""
+                  (is (= {:id "root" :name "Transforms" :effective_ancestors []}
+                         (get-in f [:details :collection]))))))))))))
 
 (deftest slow-api-feature-gated-test
   (testing "GET /slow is gated on the :content-diagnostics premium feature (premium-handler)"

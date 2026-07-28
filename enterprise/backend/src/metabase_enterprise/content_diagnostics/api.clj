@@ -4,7 +4,7 @@
   shared read/hydration layer in `api.common` and pins its own param + response schema. The scan runs on a
   Quartz job.
 
-  Response shape: a flat identity (`id, finding_type, entity_type, entity_id, detected_at,
+  Response shape: a flat identity (`id, finding_type, entity_type, card_type?, entity_id, detected_at,
   entity_display_name`) plus a nested typed `details` merging the stored verdict with live-hydrated
   `collection`, `description`, `owner`, `creator`, and `view_count` (the entity's usage counter, present
   for every type but transform)."
@@ -49,6 +49,8 @@
    [:id                  :int]
    [:finding_type        :keyword]
    [:entity_type         :keyword]
+   ;; card findings only; live from `report_card.type` (question/model/metric), not denormalized
+   [:card_type           {:optional true} [:maybe :keyword]]
    [:entity_id           :int]
    [:detected_at         ms/TemporalInstant]
    [:entity_display_name [:maybe :string]]
@@ -218,7 +220,9 @@
       [:last_scan_at [:maybe ms/TemporalInstant]]]
   "List **stale** findings - the latest valid `stale` finding per entity, permission-filtered
   for the current user. Each item is a flat identity + a nested `details` (collection, `description`, `owner`,
-  `creator`, `threshold_days`). Paginated via `limit`/`offset`; `total` is the full valid count.
+  `creator`, `threshold_days`). Card items also carry a top-level `card_type`
+  (`question`|`model`|`metric`) - card findings only, live-hydrated. Paginated via `limit`/`offset`;
+  `total` is the full valid count.
 
   Params: `include-personal-collections` (default false) - when false, entities currently in a personal
   collection are excluded. `entity-types` (repeatable; `card`|`dashboard`|`document`|`transform`, omitted =
@@ -267,8 +271,9 @@
   "List **slow** findings - the latest valid `slow` finding per entity, permission-filtered for the
   current user. Each item is a flat identity + a top-level `duration_ms` + a nested `details`. `details`
   varies by `entity_type`: leaves (card/transform) freeze `threshold_ms`; containers (dashboard/document)
-  carry the hydrated `slow_entities` culprit cards. Paginated via `limit`/`offset`; `total` is the full
-  valid count.
+  carry the hydrated `slow_entities` culprit cards. Card items also carry a top-level `card_type`
+  (`question`|`model`|`metric`) - card findings only, live-hydrated. Paginated via `limit`/`offset`;
+  `total` is the full valid count.
 
   Params: `include-personal-collections` (default false) - when false, entities currently in a personal
   collection are excluded and personal-collection culprit cards are omitted from `slow_entities`.
@@ -318,8 +323,9 @@
   "List **duplicated** findings - the latest valid `duplicated` finding per entity, permission-filtered
   for the current user. Each item is a flat identity + a top-level `duplicate_count` (the number of other
   same-type entities sharing the normalized name) + a nested `details` (collection, `description`,
-  `owner`, `creator`, `normalized_name`, and the hydrated same-type `duplicate_entities` peers).
-  Paginated via `limit`/`offset`; `total` is the full valid count.
+  `owner`, `creator`, `normalized_name`, and the hydrated same-type `duplicate_entities` peers). Card
+  items also carry a top-level `card_type` (`question`|`model`|`metric`) - card findings only,
+  live-hydrated. Paginated via `limit`/`offset`; `total` is the full valid count.
 
   Params: `include-personal-collections` (default false) - when false, entities currently in a personal
   collection are excluded and personal-collection peers are omitted from `duplicate_entities`.
