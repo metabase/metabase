@@ -227,7 +227,7 @@
       (when (= (mdb.connection/db-type) :h2)
         (force-release-locks! liquibase))
       (catch Exception e
-        (log/error "Unable to release the Liquibase lock:" (ex-message e))))))
+        (log/errorf "Unable to release the Liquibase lock: %s" (ex-message e))))))
 
 (defn- lock-service ^LockService [^Liquibase liquibase]
   (.getLockService (LockServiceFactory/getInstance) (.getDatabase liquibase)))

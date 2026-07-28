@@ -243,8 +243,8 @@
         (jdbc/execute! tx [(str "CREATE SCHEMA IF NOT EXISTS " (quoted/postgres app-db-schema))])))
     true
     (catch Exception e
-      (log/debug "Semantic search: the application database user cannot provision the pgvector store:"
-                 (ex-message e))
+      (log/debugf "Semantic search: the application database user cannot provision the pgvector store: %s"
+                  (ex-message e))
       false)))
 
 (defn check-app-db-pgvector-support

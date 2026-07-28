@@ -142,5 +142,5 @@
                 (transforms-base.u/complete-execution! transform {})
                 {:run_id run-id :result result}))))))
     (catch Throwable t
-      (log/error "Error executing Python transform:" (ex-message t))
+      (log/errorf "Error executing Python transform: %s" (ex-message t))
       (throw t))))

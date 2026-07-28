@@ -35,7 +35,7 @@
     (catch Exception e
       ;; Invalidate the shared snapshot when the producing job fails.
       (semantic.health/report-repair-metrics! nil)
-      (log/error "Failed to complete semantic search index repair:" (ex-message e)))))
+      (log/errorf "Failed to complete semantic search index repair: %s" (ex-message e)))))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Runs repair-index! to maintain semantic search consistency"}

@@ -296,7 +296,7 @@
        :content      (.. temp-file toURI toURL)
        :description  (format "PDF of dashboard '%s'" (or dashboard-name "dashboard"))})
     (catch Throwable e
-      (log/error "Error rendering dashboard subscription PDF; skipping PDF attachment:" (ex-message e))
+      (log/errorf "Error rendering dashboard subscription PDF; skipping PDF attachment: %s" (ex-message e))
       nil)))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
@@ -328,7 +328,7 @@
                                     (when-not attachment_only
                                       (conj html-contents (html content)))])
                                  (catch Throwable e
-                                   (log/error "Error rendering dashboard subscription part; substituting error placeholder:" (ex-message e))
+                                   (log/errorf "Error rendering dashboard subscription part; substituting error placeholder: %s" (ex-message e))
                                    [merged-attachments
                                     result-attachments
                                     (when-not attachment_only

@@ -168,4 +168,4 @@
     (try
       (watch-directory! (io/file (io/resource types-dir)) handle-file-change!)
       (catch Exception e
-        (log/warn "Could not watch UserKeyValue schema directory!" (ex-message e))))))
+        (log/warnf "Could not watch UserKeyValue schema directory!: %s" (ex-message e))))))

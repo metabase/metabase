@@ -137,7 +137,7 @@
                          (try
                            (params.dates/date-string->filter value field-id)
                            (catch Throwable e
-                             (log/error "Error creating filter for date string:" (ex-message e))
+                             (log/errorf "Error creating filter for date string: %s" (ex-message e))
                              nil))
                          ;; we don't want to skip our value, even if its nil
                          (let [values (if (nil? value) [nil] (u/one-or-many value))]

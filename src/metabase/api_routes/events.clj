@@ -22,4 +22,4 @@
       (rebuild-fn routes/routes)
       (log/debug "No build function provided to rebuild OpenAPI docs"))
     (catch Throwable e
-      (log/debug "Failed to trigger OpenAPI regeneration:" (ex-message e)))))
+      (log/debugf "Failed to trigger OpenAPI regeneration: %s" (ex-message e)))))

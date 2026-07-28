@@ -125,7 +125,7 @@
                      (reset! recording-atom new-recording)
                      (log/infof "Performance info written to: %s" (str output-file)))
                    (catch Throwable e
-                     (log/warn "Error during rolling performance dump:" (ex-message e)))))
+                     (log/warnf "Error during rolling performance dump: %s" (ex-message e)))))
      interval-minutes
      interval-minutes
      TimeUnit/MINUTES)
@@ -159,7 +159,7 @@
               (start-periodic-dump! recording output-path (save-rate-minutes 5))
               (log/infof "Performance monitoring started. Output file: %s" (str output-path)))))))
     (catch Throwable e
-      (log/warn "Failed to start performance monitoring:" (ex-message e)))))
+      (log/warnf "Failed to start performance monitoring: %s" (ex-message e)))))
 
 (defn stop-monitoring!
   "Stops and closes the JFR recording if one is active."
@@ -180,4 +180,4 @@
       (reset! recording-atom nil)
       (log/info "Performance monitoring stopped")
       (catch Throwable e
-        (log/warn "Error stopping performance monitoring:" (ex-message e))))))
+        (log/warnf "Error stopping performance monitoring: %s" (ex-message e))))))

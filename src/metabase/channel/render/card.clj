@@ -228,10 +228,10 @@
 
           (:card-error data)
           (do
-            (log/error "Pulse card query error:" (ex-message e))
+            (log/errorf "Pulse card query error: %s" (ex-message e))
             (body/render :card-error nil nil nil nil nil))
           :else (do
-                  (log/error "Pulse card render error:" (ex-message e))
+                  (log/errorf "Pulse card render error: %s" (ex-message e))
                   (body/render :render-error nil nil nil nil nil)))))))
 
 (mu/defn error-rendered-part :- ::body/RenderedPartCard

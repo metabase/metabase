@@ -110,7 +110,7 @@
   (try
     (fetch-tile* template z x y)
     (catch Throwable e
-      (log/warn "Failed to fetch map tile:" (ex-message e))
+      (log/warnf "Failed to fetch map tile: %s" (ex-message e))
       nil)))
 
 ;;; ------------------------------------------------ color (HCL) ------------------------------------------------
@@ -260,7 +260,7 @@
         (.toByteArray out))
       ;; Return nil on failure so the caller can degrade to a table rather than email a blank/partial map.
       (catch Throwable e
-        (log/warn "Failed to render map:" (ex-message e))
+        (log/warnf "Failed to render map: %s" (ex-message e))
         nil)
       (finally
         (.dispose g)))))

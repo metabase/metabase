@@ -169,7 +169,7 @@
   (reify resolve/SerdesImportResolver
     (resolve/import-fk       [_ eid model]            (try (resolve/import-fk default-import-resolver eid model)
                                                            (catch ExceptionInfo e
-                                                             (log/warn "Failed to import FK:" (ex-message e))
+                                                             (log/warnf "Failed to import FK: %s" (ex-message e))
                                                              nil)))
     (resolve/import-fk-keyed [_ portable model field] (resolve/import-fk-keyed default-import-resolver portable model field))
     (resolve/import-user     [_ email]                (resolve/import-user default-import-resolver email))

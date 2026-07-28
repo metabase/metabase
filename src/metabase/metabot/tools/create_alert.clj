@@ -158,5 +158,5 @@ NEVER tell the user you have created an alert without actually calling the creat
           {:output (:error result)}
           {:output (or (:output result) "Alert created successfully.")}))
       (catch Exception e
-        (log/error "Failed to create alert:" (ex-message e))
+        (log/errorf "Failed to create alert: %s" (ex-message e))
         {:output (str "Failed to create alert: " (or (ex-message e) "Unknown error"))}))))

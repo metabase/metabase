@@ -198,7 +198,7 @@
   NOTE: the encryption-check setting is not managed like most settings with 'defsetting' so we can manage checking the raw values in the database"
   []
   (let [raw (try (t2/select-one-fn :value :setting :key "encryption-check")
-                 (catch Throwable e (log/warn "Error checking encryption status, assuming unencrypted:" (ex-message e))))
+                 (catch Throwable e (log/warnf "Error checking encryption status, assuming unencrypted: %s" (ex-message e))))
         looks-encrypted (not= raw "unencrypted")]
     (log/debug "Checking encryption configuration")
     (when-not (nil? raw)

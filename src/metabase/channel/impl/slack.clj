@@ -161,7 +161,7 @@
     (try
       (slack/upload-file-to-channel! (:bytes pdf) (:filename pdf) channel (:comment pdf))
       (catch Throwable e
-        (log/error "Error sharing dashboard subscription PDF to Slack; posting summary without the PDF:" (ex-message e))
+        (log/errorf "Error sharing dashboard subscription PDF to Slack; posting summary without the PDF: %s" (ex-message e))
         (when (:comment pdf)
           (slack/post-chat-message! {:channel channel :text (:comment pdf)}))))))
 
@@ -275,7 +275,7 @@
                      (or "dashboard")
                      (str ".pdf"))})
     (catch Throwable e
-      (log/error "Error rendering dashboard subscription PDF for Slack; skipping PDF attachment:" (ex-message e))
+      (log/errorf "Error rendering dashboard subscription PDF for Slack; skipping PDF attachment: %s" (ex-message e))
       nil)))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
@@ -298,7 +298,7 @@
                                            (try
                                              (part->sections! all-params part)
                                              (catch Throwable e
-                                               (log/error "Error rendering dashboard subscription part for Slack; substituting error placeholder:" (ex-message e))
+                                               (log/errorf "Error rendering dashboard subscription part for Slack; substituting error placeholder: %s" (ex-message e))
                                                [(text->markdown-section (str (tru "An error occurred while displaying this card.")))])))
                                          (:dashboard_parts payload))]
                                 flatten

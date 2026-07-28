@@ -116,7 +116,7 @@
                 public-key (keys/jwk->public-key key-data)]
             (jwt/unsign token public-key {:alg alg})))))
     (catch Exception e
-      (log/warn "JWT signature verification failed:" (ex-message e))
+      (log/warnf "JWT signature verification failed: %s" (ex-message e))
       nil)))
 
 (defn- validate-expiry

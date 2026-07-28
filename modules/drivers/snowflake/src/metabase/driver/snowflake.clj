@@ -861,7 +861,7 @@
         first
         some?)
     (catch SnowflakeSQLException e
-      (log/warn "Failed to check if table is dynamic:" (ex-message e))
+      (log/warnf "Failed to check if table is dynamic: %s" (ex-message e))
       ;; query will fail if schema doesn't exist
       false)))
 

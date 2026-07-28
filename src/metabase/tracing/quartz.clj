@@ -168,7 +168,7 @@
                 ^Scope scope (.makeCurrent span)]
             (.set listener-state {:span span :scope scope}))
           (catch Throwable t
-            (log/error "Error starting quartz tracing span:" (ex-message t))))))
+            (log/errorf "Error starting quartz tracing span: %s" (ex-message t))))))
 
     (jobExecutionVetoed [_ _])
 
@@ -182,7 +182,7 @@
           (.close scope)
           (.end span)
           (catch Throwable t
-            (log/error "Error ending quartz tracing span:" (ex-message t))))))))
+            (log/errorf "Error ending quartz tracing span: %s" (ex-message t))))))))
 
 ;;; ------------------------------------------- Initialization -------------------------------------------------------
 

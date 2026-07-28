@@ -277,7 +277,7 @@
         :else
         (recur (conj acc col) aggregation-index more)))
     (catch #?(:clj Throwable :cljs :default) e
-      (log/error "Error adding :lib/source-uuid to cols:" (ex-message e))
+      (log/errorf "Error adding :lib/source-uuid to cols: %s" (ex-message e))
       cols)))
 
 (defmethod ->mbql5 :mbql.stage/mbql

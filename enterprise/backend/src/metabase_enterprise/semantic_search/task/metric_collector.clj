@@ -78,7 +78,7 @@
     (catch InterruptedException e
       (throw e))
     (catch Exception e
-      (log/error "Semantic search metric collector errored:" (ex-message e))))
+      (log/errorf "Semantic search metric collector errored: %s" (ex-message e))))
   ;; Registered collectors self-gate, so refreshing them is a cheap no-op when their feature is off.
   ;; Keep this outside the try: ordinary failures continue here, while interruption and fatal errors exit.
   (search.index-health/refresh-search-index-metrics!))

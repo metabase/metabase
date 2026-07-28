@@ -661,7 +661,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug "Error setting prepared statement fetch direction to FETCH_FORWARD:" (ex-message e))))
+          (log/debugf "Error setting prepared statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
       (sql-jdbc.execute/set-parameters! driver stmt params)
       stmt
       (catch Throwable e
@@ -677,7 +677,7 @@
     (try
       (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
       (catch Throwable e
-        (log/debug "Error setting statement fetch direction to FETCH_FORWARD:" (ex-message e))))
+        (log/debugf "Error setting statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
     stmt))
 
 (defn- pooled-conn->presto-conn

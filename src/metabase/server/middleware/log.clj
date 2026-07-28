@@ -143,7 +143,7 @@
                 log-options)]
       (log-fn (u/format-color color (format-info info opts))))
     (catch Throwable e
-      (log/error "Error logging API request:" (ex-message e)))))
+      (log/errorf "Error logging API request: %s" (ex-message e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Async Logging                                                  |

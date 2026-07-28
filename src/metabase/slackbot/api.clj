@@ -73,7 +73,7 @@
         (when ok
           permalink))
       (catch Exception e
-        (log/warn "Unable to fetch Slack permalink for metabot conversation:" (ex-message e))
+        (log/warnf "Unable to fetch Slack permalink for metabot conversation: %s" (ex-message e))
         nil))))
 
 ;; ------------------------- VALIDATION ----------------------------------
@@ -371,7 +371,7 @@
                                            :source   "reaction"
                                            :reaction reaction))))
     (catch Exception e
-      (log/error "[slackbot] Error handling delete reaction:" (ex-message e)))))
+      (log/errorf "[slackbot] Error handling delete reaction: %s" (ex-message e)))))
 
 (defn- assert-setup-complete
   "Asserts that all required Slack settings have been configured."

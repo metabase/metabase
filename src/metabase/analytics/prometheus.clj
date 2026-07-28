@@ -991,7 +991,7 @@
              (alter-var-root #'system (constantly nil))
              (log/info "Prometheus web-server shut down")
              (catch Exception e
-               (log/warn "Error stopping prometheus web-server:" (ex-message e))))))))
+               (log/warnf "Error stopping prometheus web-server: %s" (ex-message e))))))))
 
 (defn observe!
   "Call iapetos.core/observe on the metric in the global registry.

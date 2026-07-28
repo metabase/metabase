@@ -187,7 +187,7 @@
   (try
     (migrated-segment-definition segment)
     (catch Throwable e
-      (log/error "Error upgrading segment definition:" (ex-message e))
+      (log/errorf "Error upgrading segment definition: %s" (ex-message e))
       nil)))
 
 (t2/define-after-select :model/Segment
@@ -202,7 +202,7 @@
     (try
       (lib/describe-top-level-key definition :filters)
       (catch Throwable e
-        (log/error "Error calculating Segment description:" (ex-message e))
+        (log/errorf "Error calculating Segment description: %s" (ex-message e))
         nil))))
 
 (methodical/defmethod t2.hydrate/batched-hydrate [:model/Segment :definition_description]

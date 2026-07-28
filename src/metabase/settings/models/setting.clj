@@ -783,9 +783,8 @@
        ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
        ;; existing value and log a warning
        (catch Throwable e
-         (log/warn "Error inserting a new Setting:\n"
-                   (ex-message e) "\n"
-                   "Assuming Setting already exists in DB and updating existing value.")
+         (log/warnf "Error inserting a new Setting: %s. Assuming Setting already exists in DB and updating existing value."
+                    (ex-message e))
          (update-setting! setting-name new-value))))
 
 (defn- obfuscated-value? [v]
@@ -1528,7 +1527,7 @@
      :value          (try
                        (m/mapply user-facing-value setting options)
                        (catch Throwable e
-                         (log/error "Error fetching value of Setting:" (ex-message e))))
+                         (log/errorf "Error fetching value of Setting: %s" (ex-message e))))
      :is_env_setting from-env?
      :env_name       (env-var-name setting)
      :description    (str (description))
@@ -1671,7 +1670,7 @@
   (cond
     (instance? JsonEOFException ex) false
     (instance? JsonParseException ex) true
-    :else (do (log/warn "Unexpected exception while parsing JSON:" (ex-message ex))
+    :else (do (log/warnf "Unexpected exception while parsing JSON: %s" (ex-message ex))
               ;; err on the side of caution
               true)))
 

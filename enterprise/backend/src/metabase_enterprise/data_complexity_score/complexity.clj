@@ -392,7 +392,7 @@
           pairs         (synonym-pair-count known-vectors synonym-similarity-threshold)]
       (component-score :synonym-pair pairs))
     (catch Throwable t
-      (log/warn "Complexity score: synonym detection failed; cascading nil through aggregates:" (ex-message t))
+      (log/warnf "Complexity score: synonym detection failed; cascading nil through aggregates: %s" (ex-message t))
       (let [msg (some-> (.getMessage t) str/trim)
             err (if (str/blank? msg)
                   (or (some-> (class t) .getName) "synonym detection failed")
@@ -528,7 +528,7 @@
              {::snowplow-published? (boolean (try
                                                (emit-snowplow! score)
                                                (catch Throwable t
-                                                 (log/warn "Failed to re-publish cached complexity score to Snowplow:" (ex-message t)))))}))
+                                                 (log/warnf "Failed to re-publish cached complexity score to Snowplow: %s" (ex-message t)))))}))
 
 (defn score-from-entities
   "Pure: compute the full complexity score from pre-built entity vectors and an embedder. No DB
@@ -635,7 +635,7 @@
                                              (try
                                                (emit-snowplow! result)
                                                (catch Throwable t
-                                                 (log/warn "Failed to publish complexity score to Snowplow:" (ex-message t))))))))]
+                                                 (log/warnf "Failed to publish complexity score to Snowplow: %s" (ex-message t))))))))]
         (with-meta result {::snowplow-published? published?}))
       (finally
         (analytics.interface/observe! :metabase-data-complexity/scoring-duration-ms

@@ -50,5 +50,5 @@
                          (catch InterruptedException _
                            (.interrupt (Thread/currentThread)))
                          (catch Exception e
-                           (log/warn "quick-task threw exception:" (ex-message e))))))]
+                           (log/warnf "quick-task threw exception: %s" (ex-message e))))))]
     (.submit ^ExecutorService @executor ^Callable wrapped)))

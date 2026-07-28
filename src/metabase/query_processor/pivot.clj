@@ -194,7 +194,7 @@
                       (seq info) (qp/userland-query info))]
           (qp/process-query query rff))
         (catch Throwable e
-          (log/error "Error processing additional pivot table query:" (ex-message e))
+          (log/errorf "Error processing additional pivot table query: %s" (ex-message e))
           (throw e))))))
 
 (mu/defn- process-queries-append-results

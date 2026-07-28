@@ -173,7 +173,7 @@
                                                          :location [:like (str "/" root-id "/%")]))]
       [coll-id root-type])
     (catch Exception e
-      (log/warn "Skipping Library forest backfill — appdb lookup failed:" (ex-message e))
+      (log/warnf "Skipping Library forest backfill — appdb lookup failed: %s" (ex-message e))
       {})))
 
 (defn- add-root-collection-type-column!
@@ -239,7 +239,7 @@
     (catch Exception e
       (when-not config/is-test?
         (throw e))
-      (log/warn "Skipping semantic table curation backfill — appdb unavailable (test):" (ex-message e))
+      (log/warnf "Skipping semantic table curation backfill — appdb unavailable (test): %s" (ex-message e))
       nil)))
 
 (defn- official-collection-dashboard-ids
@@ -259,7 +259,7 @@
     (catch Exception e
       (when-not config/is-test?
         (throw e))
-      (log/warn "Skipping semantic dashboard curation backfill — appdb unavailable (test):" (ex-message e))
+      (log/warnf "Skipping semantic dashboard curation backfill — appdb unavailable (test): %s" (ex-message e))
       nil)))
 
 (defn- index-empty?

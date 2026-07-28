@@ -66,15 +66,15 @@
       (fetch/sync-advisories!)
       (settings/security-center-last-synced-at! (t/offset-date-time))
       (catch Exception e
-        (log/warn "Error fetching advisories from HM:" (ex-message e))))
+        (log/warnf "Error fetching advisories from HM: %s" (ex-message e))))
     (try
       (matching/evaluate-all-advisories!)
       (catch Exception e
-        (log/warn "Error re-evaluating advisories:" (ex-message e))))
+        (log/warnf "Error re-evaluating advisories: %s" (ex-message e))))
     (try
       (send-repeat-notifications!)
       (catch Exception e
-        (log/warn "Error sending repeat notifications:" (ex-message e))))
+        (log/warnf "Error sending repeat notifications: %s" (ex-message e))))
     (metrics/refresh-metrics!)))
 
 (task/defjob ^{:doc "Periodically fetch and re-evaluate security advisories."

@@ -40,5 +40,5 @@
   (try
     {:output (str/join "\n\n" (map load-one ids))}
     (catch Exception e
-      (log/error "Failed to load skill(s):" (ex-message e))
+      (log/errorf "Failed to load skill(s): %s" (ex-message e))
       {:output (str "Failed to load skill(s): " (or (ex-message e) "Unknown error"))})))

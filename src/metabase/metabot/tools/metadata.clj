@@ -98,7 +98,7 @@
                            :metrics metrics
                            :errors errors}})
     (catch Exception e
-      (log/error "Failed to fetch metadata:" (ex-message e))
+      (log/errorf "Failed to fetch metadata: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to fetch metadata: " (or (ex-message e) "Unknown error"))}))))

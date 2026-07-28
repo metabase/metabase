@@ -215,5 +215,5 @@
                    (count config-errors) (str/join "; " config-errors)))
       result)
     (catch Throwable e
-      (log/warn "[data-app] sync from remote-sync snapshot failed:" (ex-message e))
+      (log/warnf "[data-app] sync from remote-sync snapshot failed: %s" (ex-message e))
       nil)))

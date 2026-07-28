@@ -85,7 +85,7 @@
                 (try
                   (freeze! os obj)
                   (catch Throwable e
-                    (log/trace "Caught error when freezing object:" (ex-message e))
+                    (log/tracef "Caught error when freezing object: %s" (ex-message e))
                     (reset! error e))))
               nil)
             (fn result* []

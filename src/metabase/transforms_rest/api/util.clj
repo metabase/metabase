@@ -42,7 +42,7 @@
        (start! start-promise)
        (catch Throwable t
          ;; post-start failures: the run row was already failed by the runner; this is a fallback log
-         (log/error "Async run failed:" (ex-message t)))))
+         (log/errorf "Async run failed: %s" (ex-message t)))))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise

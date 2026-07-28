@@ -42,7 +42,7 @@
       :else
       (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME (OffsetDateTime/now)))
     (catch Exception e
-      (log/error "Error formatting current time:" (ex-message e))
+      (log/errorf "Error formatting current time: %s" (ex-message e))
       (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME (OffsetDateTime/now)))))
 
 ;;; SQL Dialect Extraction
@@ -387,7 +387,7 @@
                             :email    email-address
                             :glossary glossary}))
     (catch Exception e
-      (log/error "Error formatting current user info:" (ex-message e))
+      (log/errorf "Error formatting current user info: %s" (ex-message e))
       nil)))
 
 ;;; Context Enrichment

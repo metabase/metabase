@@ -218,12 +218,12 @@
                 (try
                   (create-table! table-name)
                   (catch Exception e
-                    (log/error "Error creating pending index table, cleaning up metadata:" (ex-message e))
+                    (log/errorf "Error creating pending index table, cleaning up metadata: %s" (ex-message e))
                     (try
                       (t2/with-connection [safe-conn (mdb/app-db)]
                         (t2/delete! :conn safe-conn :model/SearchIndexMetadata :index_name (name table-name)))
                       (catch Exception del-e
-                        (log/warn "Error clearing out search metadata after failure:" (ex-message del-e))))
+                        (log/warnf "Error clearing out search metadata after failure: %s" (ex-message del-e))))
                     (sync-tracking-atoms!))))
               (let [pending (:pending (sync-tracking-atoms!))]
                 (log/infof "New pending index %s" pending)

@@ -137,7 +137,7 @@
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e
-        (log/error "Failed to connect to Database:" (ex-message e))
+        (log/errorf "Failed to connect to Database: %s" (ex-message e))
         (throw (if-let [humanized-message (some->> (u/all-ex-messages e)
                                                    (driver/humanize-connection-error-message driver))]
                  (let [error-data (cond
@@ -154,7 +154,7 @@
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e
-        (log/error "Failed to connect to database:" (ex-message e))
+        (log/errorf "Failed to connect to database: %s" (ex-message e))
         false))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

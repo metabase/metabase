@@ -287,7 +287,7 @@
     (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
       (search.index/activate-table!))
     (catch Throwable e
-      (log/error "Error during reindexing:" (ex-message e))
+      (log/errorf "Error during reindexing: %s" (ex-message e))
       (throw e))))
 
 (derive :event/setting-update ::settings-changed-event)

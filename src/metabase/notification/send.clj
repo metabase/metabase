@@ -88,9 +88,9 @@
                                    :on-retry (fn [_ ex]
                                                (vswap! retry-errors conj {:message   (u/strip-error ex)
                                                                           :timestamp (t/offset-date-time)})
-                                               (log/warn "Failed to send, retrying:" (ex-message ex)))
+                                               (log/warnf "Failed to send, retrying: %s" (ex-message ex)))
                                    :on-failure (fn [_ ex]
-                                                 (log/warn "Failed to send, not retrying:" (ex-message ex))))
+                                                 (log/warnf "Failed to send, not retrying: %s" (ex-message ex))))
             (channel/send! channel message))
           (log/debugf "Sent with %d retries" (count @retry-errors))
           (log/info "Sent successfully")))
@@ -99,7 +99,7 @@
       (catch Throwable e
         (analytics/inc! :metabase-notification/channel-send-error {:payload-type payload-type
                                                                    :channel-type channel-type})
-        (log/warn "Failed to send:" (ex-message e))))))
+        (log/warnf "Failed to send: %s" (ex-message e))))))
 
 (defn- hydrate-notification
   [notification-info]
@@ -192,7 +192,7 @@
               (do-after-notification-sent hydrated-notification notification-payload (some? skip-reason))
               (analytics/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
         (catch Exception e
-          (log/error "Failed to send:" (ex-message e))
+          (log/errorf "Failed to send: %s" (ex-message e))
           (analytics/inc! :metabase-notification/send-error {:payload-type payload_type})
           (throw e))
         (finally
@@ -390,7 +390,7 @@
                                                    (log/warn "Notification worker interrupted, shutting down")
                                                    (throw (InterruptedException.)))
                                                  (catch Throwable e
-                                                   (log/error "Error in notification worker:" (ex-message e))))))))
+                                                   (log/errorf "Error in notification worker: %s" (ex-message e))))))))
         ensure-enough-workers! (fn []
                                  (dotimes [i (- pool-size (.getActiveCount ^ThreadPoolExecutor executor))]
                                    (log/debugf "Not enough workers, starting a new one %d/%d"
@@ -502,4 +502,4 @@
           ((:shutdown-fn @worker) default-shutdown-timeout-ms))
         (log/info "All notification workers shut down successfully")
         (catch Exception e
-          (log/error "Error shutting down notification workers:" (ex-message e)))))))
+          (log/errorf "Error shutting down notification workers: %s" (ex-message e)))))))

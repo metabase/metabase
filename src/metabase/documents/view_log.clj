@@ -39,7 +39,7 @@
                             :updated_at :updated_at} ;; setting last_viewed_at should not update the updated_at column
                    :where  [:in :id (keys document-id->timestamp)]}))
       (catch Exception e
-        (log/error "Failed to update document last_viewed_at:" (ex-message e))))))
+        (log/errorf "Failed to update document last_viewed_at: %s" (ex-message e))))))
 
 (def ^:private update-document-last-viewed-at-queue
   (delay (grouper/start!

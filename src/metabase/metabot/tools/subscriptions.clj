@@ -120,7 +120,7 @@ If any required information is missing, ask the user for it rather than assuming
           {:output (:error result)}
           {:output (or (:output result) "Dashboard subscription created successfully.")}))
       (catch Exception e
-        (log/error "Failed to create dashboard subscription:" (ex-message e))
+        (log/errorf "Failed to create dashboard subscription: %s" (ex-message e))
         {:output (str "Failed to create dashboard subscription: " (or (ex-message e) "Unknown error"))}))))
 
 (def ^:private subscription-schema
@@ -159,7 +159,7 @@ If any required information is missing, ask the user for it rather than assuming
                           (:day_of_month schedule) (-> (assoc :day-of-month (keyword (:day_of_month schedule)))
                                                        (dissoc :day_of_month))))})
     (catch Exception e
-      (log/error "Error creating dashboard subscription:" (ex-message e))
+      (log/errorf "Error creating dashboard subscription: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to create dashboard subscription: " (or (ex-message e) "Unknown error"))}))))

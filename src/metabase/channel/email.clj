@@ -211,7 +211,7 @@
   (try
     (send-email-retrying! msg-args)
     (catch Throwable e
-      (log/warn "Failed to send email:" (ex-message e))
+      (log/warnf "Failed to send email: %s" (ex-message e))
       {::error e})))
 
 (def ^:private SMTPSettings
@@ -244,7 +244,7 @@
         (.connect transport host port user pass)))
     {::error nil}
     (catch Throwable e
-      (log/error "Error testing SMTP connection:" (ex-message e))
+      (log/errorf "Error testing SMTP connection: %s" (ex-message e))
       {::error e})))
 
 (def ^:private email-security-order [:tls :starttls :ssl])

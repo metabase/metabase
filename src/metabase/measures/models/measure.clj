@@ -161,7 +161,7 @@
     (try
       (assoc measure :definition (lib-be/normalize-query definition))
       (catch Throwable e
-        (log/error "Error normalizing measure definition:" (ex-message e))
+        (log/errorf "Error normalizing measure definition: %s" (ex-message e))
         measure))
     measure))
 
@@ -176,7 +176,7 @@
     (try
       (lib/describe-top-level-key definition :aggregation)
       (catch Throwable e
-        (log/error "Error calculating Measure description:" (ex-message e))
+        (log/errorf "Error calculating Measure description: %s" (ex-message e))
         nil))))
 
 (methodical/defmethod t2.hydrate/batched-hydrate [:model/Measure :definition_description]

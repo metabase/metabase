@@ -565,7 +565,7 @@
         (.write w (json/encode debug-log {:pretty true})))
       (log/debug "Wrote debug log to" debug-log-file)
       (catch Exception e
-        (log/warn "Failed to write debug log file:" (ex-message e))))))
+        (log/warnf "Failed to write debug log file: %s" (ex-message e))))))
 
 (defn- debug-log-part
   "Create a data part containing the complete debug log.

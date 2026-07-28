@@ -85,4 +85,4 @@
     (try
       (setter db-type)
       (catch Throwable t
-        (log/warn "A registered Quartz JDBC property setter failed; continuing:" (ex-message t))))))
+        (log/warnf "A registered Quartz JDBC property setter failed; continuing: %s" (ex-message t))))))

@@ -624,7 +624,7 @@
       (let [{:keys [status-code agent-error?]} (ex-data e)]
         ;; Agent-facing errors (bad input, not-found) are expected; only log genuine failures.
         (when-not agent-error?
-          (log/error "Failed to fetch measure details:" (ex-message e)))
+          (log/errorf "Failed to fetch measure details: %s" (ex-message e)))
         (if (= status-code 404)
           {:output (ex-message e) :status-code 404}
           (metabot.tools.u/handle-agent-error e))))))
@@ -641,7 +641,7 @@
       (let [{:keys [status-code agent-error?]} (ex-data e)]
         ;; Agent-facing errors (bad input, not-found) are expected; only log genuine failures.
         (when-not agent-error?
-          (log/error "Failed to fetch segment details:" (ex-message e)))
+          (log/errorf "Failed to fetch segment details: %s" (ex-message e)))
         (if (= status-code 404)
           {:output (ex-message e) :status-code 404}
           (metabot.tools.u/handle-agent-error e))))))

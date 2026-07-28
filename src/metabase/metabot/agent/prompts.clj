@@ -67,7 +67,7 @@
   (try
     (selmer/render template context)
     (catch Exception e
-      (log/error "Error rendering system prompt template:" (ex-message e))
+      (log/errorf "Error rendering system prompt template: %s" (ex-message e))
       ;; Return template as-is on error
       template)))
 

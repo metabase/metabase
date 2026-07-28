@@ -138,7 +138,7 @@
   ;; check whether we can connect by seeing whether listing datasets succeeds
   (let [[success? datasets] (try [true (list-datasets details)]
                                  (catch Exception e
-                                   (log/error "Exception caught in :bigquery-cloud-sdk can-connect?" (ex-message e))
+                                   (log/errorf "Exception caught in :bigquery-cloud-sdk can-connect?: %s" (ex-message e))
                                    [false nil]))]
     (cond
       (not success?)
@@ -1273,7 +1273,7 @@
            {:rows-affected (or (and table-result (.getTotalRows table-result))
                                0)})))
       (catch Exception e
-        (log/error "Error executing BigQuery DDL:" (ex-message e))
+        (log/errorf "Error executing BigQuery DDL: %s" (ex-message e))
         (throw e)))))
 
 (defmethod driver/drop-transform-target! [:bigquery-cloud-sdk :table]

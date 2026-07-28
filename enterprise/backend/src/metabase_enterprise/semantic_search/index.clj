@@ -222,7 +222,7 @@
     (->> (index-size connectable table-name)
          (analytics/set-gauge! :metabase-search/semantic-index-size))
     (catch Exception e
-      (log/warn "Failed to set :metabase-search/semantic-index-size metric:" (ex-message e)))))
+      (log/warnf "Failed to set :metabase-search/semantic-index-size metric: %s" (ex-message e)))))
 
 (defn- batch-update!
   [connectable table-name records->sql documents]
@@ -1162,7 +1162,7 @@
                       {:strategy strategy :plan-node (or (:node-type scan) "unknown")} 1)
       (assoc scan :prefilter-pool-size pool))
     (catch Exception e
-      (log/warn "Failed to record vector-search instrumentation:" (ex-message e))
+      (log/warnf "Failed to record vector-search instrumentation: %s" (ex-message e))
       nil)))
 
 (defn- time-waterfall

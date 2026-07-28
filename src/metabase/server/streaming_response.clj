@@ -114,7 +114,7 @@
 
 (defn- log-skipped-error! [obj]
   (if (instance? Throwable obj)
-    (log/error "Async context already completed, cannot write error to client:" (ex-message obj))
+    (log/errorf "Async context already completed, cannot write error to client: %s" (ex-message obj))
     (log/errorf "Async context already completed, cannot write error to client: %s"
                 (if (map? obj) (or (:message obj) (:error obj) (:status obj)) obj))))
 
@@ -147,7 +147,7 @@
         ;; `.complete` the async context, instead of leaving the request to hang until
         ;; Jetty's async timeout fires.
         (.set ^AtomicBoolean *completed?* false)
-        (log/error "Error aborting streaming connection after mid-stream error:" (ex-message e))))))
+        (log/errorf "Error aborting streaming connection after mid-stream error: %s" (ex-message e))))))
 
 (defn- write-error-to-stream!
   "Serialize `obj` as a JSON error body onto `os` and close the stream. Used when there is no
@@ -163,7 +163,7 @@
           (json/encode-to obj writer {})))
       (catch EofException _)
       (catch Throwable e
-        (log/error "Error writing error to output stream:" (ex-message e))))))
+        (log/errorf "Error writing error to output stream: %s" (ex-message e))))))
 
 (defn write-error!
   "Handle an error that occurred while producing a streaming response.
@@ -243,7 +243,7 @@
                  (try
                    (do-f* f os finished-chan canceled-chan)
                    (catch Throwable e
-                     (log/error "Caught unexpected Exception in streaming response body:" (ex-message e))
+                     (log/errorf "Caught unexpected Exception in streaming response body: %s" (ex-message e))
                      (a/>!! finished-chan :unexpected-error)
                      (write-error! os e nil))
                    (finally
@@ -342,7 +342,7 @@
     (catch ClosedChannelException _ true)
     (catch SocketException _ true)
     (catch Throwable e
-      (log/error "Error determining whether HTTP request was canceled:" (ex-message e))
+      (log/errorf "Error determining whether HTTP request was canceled: %s" (ex-message e))
       false)))
 
 (def ^:private async-cancellation-poll-timeout-ms
@@ -385,7 +385,7 @@
                       (when (.compareAndSet completed? false true)
                         (.complete async-context)))
                     (onError [_ event]
-                      (log/warn "Jetty async context error, completing request:" (ex-message (.getThrowable ^AsyncEvent event)))
+                      (log/warnf "Jetty async context error, completing request: %s" (ex-message (.getThrowable ^AsyncEvent event)))
                       (when (.compareAndSet completed? false true)
                         (.complete async-context)))
                     (onComplete [_ _event])
@@ -416,11 +416,11 @@
           (start-async-cancel-loop! request finished-chan canceled-chan)
           (do-f-async async-context response request f delay-os finished-chan canceled-chan completed?)))
       (catch Throwable e
-        (log/error "Unexpected exception in do-f-async:" (ex-message e))
+        (log/errorf "Unexpected exception in do-f-async: %s" (ex-message e))
         (try
           (.sendError response 500 (.getMessage e))
           (catch Throwable e
-            (log/error "Unexpected exception writing error response:" (ex-message e))))
+            (log/errorf "Unexpected exception writing error response: %s" (ex-message e))))
         (a/>!! finished-chan :unexpected-error)
         (a/close! finished-chan)
         (a/close! canceled-chan)

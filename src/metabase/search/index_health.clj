@@ -177,7 +177,7 @@
       (submit-gauge-refresh! refresh-search-index-gauges!)
       (catch Exception e
         (reset! gauge-refresh-running? false)
-        (log/error "Could not schedule search index gauge refresh:" (ex-message e)))))
+        (log/errorf "Could not schedule search index gauge refresh: %s" (ex-message e)))))
   nil)
 
 ;; Prometheus scrapes every Metabase process, whereas the scheduled metric job may run on only one member of

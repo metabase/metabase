@@ -108,7 +108,7 @@
                               :persisted-infos persisted-infos
                               :trigger         (:trigger task-details)}))
     (catch Exception e
-      (log/error "Error sending persist refresh email:" (ex-message e)))))
+      (log/errorf "Error sending persist refresh email: %s" (ex-message e)))))
 
 (defn- save-task-history!
   "Create a task history entry with start, end, and duration. :task will be `task-type`, `db-id` is optional,

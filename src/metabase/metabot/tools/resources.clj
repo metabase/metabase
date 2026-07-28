@@ -1006,5 +1006,5 @@
   (try
     (read-resource {:uris uris})
     (catch Exception e
-      (log/error "Error in read_resource tool:" (ex-message e))
+      (log/errorf "Error in read_resource tool: %s" (ex-message e))
       {:output (str "Failed to read resources: " (or (ex-message e) "Unknown error"))})))

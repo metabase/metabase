@@ -229,7 +229,7 @@
                         :content-type :json
                         :throw-exceptions false})
             (catch Throwable e
-              (log/error "Error sending metering events:" (ex-message e)))))))))
+              (log/errorf "Error sending metering events: %s" (ex-message e)))))))))
 
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 
@@ -407,7 +407,7 @@
     (try
       (premium-features.settings/locked-meters! (extract-locks (:meters result)))
       (catch Throwable t
-        (log/warn "Failed to mirror :locked-meters from token-check response:" (ex-message t))))))
+        (log/warnf "Failed to mirror :locked-meters from token-check response: %s" (ex-message t))))))
 
 (def ^:dynamic *testing-only-call-after-refresh*
   "When non-nil, a zero-arg function called after async background refresh completes.
@@ -464,7 +464,7 @@
                           (try
                             (do-refresh! token token-hash)
                             (catch Exception e
-                              (log/error "Background premium features refresh failed:" (ex-message e)))
+                              (log/errorf "Background premium features refresh failed: %s" (ex-message e)))
                             (finally
                               (reset! refresh-in-progress? false)
                               (when-let [after *testing-only-call-after-refresh*]
@@ -594,7 +594,7 @@
     (setting/set-value-of-type! :string :premium-embedding-token new-value)
     (events/publish-event! :event/set-premium-embedding-token {})
     (catch Throwable e
-      (log/error "Error setting premium features token:" (ex-message e))
+      (log/errorf "Error setting premium features token: %s" (ex-message e))
       ;; merge in error-details if present
       (throw (ex-info (.getMessage e) (merge
                                        {:message (.getMessage e), :status-code 400}
@@ -608,7 +608,7 @@
 (let [cached-logger (memoize/ttl
                      ^{::memoize/args-fn (fn [[token _e]] [token])}
                      (fn [_token e]
-                       (log/error "Error validating token:" (ex-message e)))
+                       (log/errorf "Error validating token: %s" (ex-message e)))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
   (mu/defn ^:dynamic *token-features* :- [:set ms/NonBlankString]

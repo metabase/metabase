@@ -68,7 +68,7 @@
                  (log/debug "Reloading handlebars default helpers")
                  (handlebars-helper/register-helpers @default-hbs new-default-helpers)
                  (catch Exception e
-                   (log/warn "Error reloading default helpers:" (ex-message e)))))))
+                   (log/warnf "Error reloading default helpers: %s" (ex-message e)))))))
 
 (defn valid-template-name?
   "True iff `template-name` is a well-formed relative template name: non-blank,

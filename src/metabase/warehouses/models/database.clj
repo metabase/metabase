@@ -241,7 +241,7 @@
     (when (should-auto-sync? database)
       ((requiring-resolve 'metabase.sync.task.sync-databases/check-and-schedule-tasks-for-db!) database))
     (catch Throwable e
-      (log/error "Error scheduling tasks for DB:" (ex-message e)))))
+      (log/errorf "Error scheduling tasks for DB: %s" (ex-message e)))))
 
 (defn maybe-test-and-migrate-details!
   "When a driver has db-details to test and migrate:
@@ -369,7 +369,7 @@
   (try
     ((requiring-resolve 'metabase.sync.task.sync-databases/unschedule-tasks-for-db!) database)
     (catch Throwable e
-      (log/error "Error unscheduling tasks for DB:" (ex-message e)))))
+      (log/errorf "Error unscheduling tasks for DB: %s" (ex-message e)))))
 
 ;; TODO -- consider whether this should live HERE or inside the `permissions` module.
 (defn- set-new-database-permissions!
@@ -476,7 +476,7 @@
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
-      (log/error "Error sending database deletion notification:" (ex-message e)))))
+      (log/errorf "Error sending database deletion notification: %s" (ex-message e)))))
 
 (defn- maybe-disable-uploads-for-all-dbs!
   "This function maintains the invariant that only one database can have uploads_enabled=true."

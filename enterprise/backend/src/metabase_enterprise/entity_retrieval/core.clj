@@ -79,7 +79,7 @@
       (catch InterruptedException e
         (throw e))
       (catch Exception e
-        (log/debug "The application database user cannot host the library retrieval schema:" (ex-message e))
+        (log/debugf "The application database user cannot host the library retrieval schema: %s" (ex-message e))
         false))))
 
 (defonce ^{:doc "Set once [[app-db-schema-usable?*]] has answered yes. Rebound by tests."}
@@ -170,7 +170,7 @@
         {:status :missing}
         ;; DEBUG: entity-retrieval-available? probes per tool-offering request, so a pgvector outage would
         ;; WARN-flood the logs; the :unreachable status and the health check already carry the signal.
-        (do (log/debug "entity-retrieval index probe failed:" (ex-message e))
+        (do (log/debugf "entity-retrieval index probe failed: %s" (ex-message e))
             {:status :unreachable, :error (ex-message e)})))))
 
 (defn retrieval-status
@@ -412,7 +412,7 @@
                         ;; reports the search as unavailable rather than as an empty library.
                         (case (.getSQLState e)
                           "42P01" []
-                          "22000" (do (log/warn "library entity index incompatible with the query vector; returning no results:" (ex-message e))
+                          "22000" (do (log/warnf "library entity index incompatible with the query vector; returning no results: %s" (ex-message e))
                                       [])
                           (do (analytics/inc! :metabase-entity-retrieval/search-failed)
                               (throw e)))))]

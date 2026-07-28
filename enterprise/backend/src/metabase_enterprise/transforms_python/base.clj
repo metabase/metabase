@@ -131,7 +131,7 @@
                                                       source-table-name table-name})
       (transforms-base.u/drop-table! driver db-id temp-table-name)
       (catch Exception e
-        (log/error "Failed to transfer data using rename-tables strategy:" (ex-message e))
+        (log/errorf "Failed to transfer data using rename-tables strategy: %s" (ex-message e))
         (try
           (transforms-base.u/drop-table! driver db-id source-table-name)
           (catch Exception _))
@@ -147,7 +147,7 @@
       (transforms-base.u/drop-table! driver db-id table-name)
       (driver/rename-table! driver db-id source-table-name table-name)
       (catch Exception e
-        (log/error "Failed to transfer data using create-drop-rename strategy:" (ex-message e))
+        (log/errorf "Failed to transfer data using create-drop-rename strategy: %s" (ex-message e))
         (try
           (transforms-base.u/drop-table! driver db-id source-table-name)
           (catch Exception _))
@@ -161,7 +161,7 @@
     (transforms-base.u/drop-table! driver db-id table-name)
     (create-table-and-insert-data! driver db-id (table-schema table-name metadata indexes) data-source)
     (catch Exception e
-      (log/error "Failed to transfer data using drop-create fallback strategy:" (ex-message e))
+      (log/errorf "Failed to transfer data using drop-create fallback strategy: %s" (ex-message e))
       (throw e))))
 
 (defn- upsert-with-merge-strategy!
@@ -317,7 +317,7 @@
                 (finally
                   (.delete temp-file))))
             (catch Exception e
-              (log/error "Failed to create resulting table:" (ex-message e))
+              (log/errorf "Failed to create resulting table: %s" (ex-message e))
               (throw (ex-info "Failed to create the resulting table"
                               {:transform-message (or (:transform-message (ex-data e))
                                                       (i18n/tru "Failed to create the resulting table"))}
@@ -410,7 +410,7 @@
 
             :else
             (do
-              (log/error "Error executing Python transform:" (ex-message e))
+              (log/errorf "Error executing Python transform: %s" (ex-message e))
               {:status :failed
                :error e
                :logs (str logs "\n" error-message)})))))))

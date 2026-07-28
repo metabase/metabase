@@ -145,7 +145,7 @@
   (let [advisories (try
                      (fetch-advisories-from-store)
                      (catch Exception e
-                       (log/warn "Error fetching advisories from MetaStore:" (ex-message e))))]
+                       (log/warnf "Error fetching advisories from MetaStore: %s" (ex-message e))))]
     (if (seq advisories)
       (let [total    (count advisories)
             failures (reduce (fn [n advisory]

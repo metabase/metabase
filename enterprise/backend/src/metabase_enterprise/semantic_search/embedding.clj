@@ -202,7 +202,7 @@
   ;; :continue so an unexpected action error can't wedge the agent for the process lifetime.
   (agent nil
          :error-mode :continue
-         :error-handler (fn [_agent e] (log/error "Embedder circuit hook runner errored:" (ex-message e)))))
+         :error-handler (fn [_agent e] (log/errorf "Embedder circuit hook runner errored: %s" (ex-message e)))))
 
 (defn- on-embedder-circuit-state-change!
   "Run the registered [[embedder-circuit-state-change-hooks]] off the failsafe callback thread -- one
@@ -226,7 +226,7 @@
          (catch InterruptedException e
            (throw e))
          (catch Exception e
-           (log/error "Embedder circuit state-change hook failed:" (ex-message e))))))))
+           (log/errorf "Embedder circuit state-change hook failed: %s" (ex-message e))))))))
 
 (defn- new-embedder-circuit-breaker []
   (dh.cb/circuit-breaker
@@ -381,7 +381,7 @@
                       {:headers {"Content-Type" "application/json"}
                        :body    (json/encode {:model model-name})}))
     (catch Exception e
-      (log/error "Failed to pull embedding model:" (ex-message e))
+      (log/errorf "Failed to pull embedding model: %s" (ex-message e))
       (throw e))))
 
 ;; Ollama is not used in production. Token tracking is not implemented.

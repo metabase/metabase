@@ -71,7 +71,7 @@
                          (= (.getHost redirect) our-host)))
       redirect-url)
     (catch Exception e
-      (log/error "Invalid redirect URL:" (ex-message e))
+      (log/errorf "Invalid redirect URL: %s" (ex-message e))
       (throw (ex-info (tru "Invalid redirect URL")
                       {:status-code  400
                        :redirect-url redirect-url})))))

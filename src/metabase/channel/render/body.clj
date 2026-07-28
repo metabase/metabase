@@ -740,7 +740,7 @@
         (when-let [content (pivot-table-content card dashcard data)]
           {:content content :attachments nil})
         (catch Throwable e
-          (log/warn "Failed to render pivot table; falling back to a flat table:" (ex-message e))
+          (log/warnf "Failed to render pivot table; falling back to a flat table: %s" (ex-message e))
           nil))
       ;; Native pivots, field-ref splits, or assembly errors degrade to the existing flat table.
       (render :table render-type timezone-id card dashcard data)))

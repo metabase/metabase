@@ -205,7 +205,7 @@
                    (when-let [db (t2/select-one :model/Database :id db-id)]
                      (driver.u/supports? (driver.u/database->driver db) :nested-queries db))
                    (catch Throwable e
-                     (log/error "Error determining whether Database supports nested queries:" (ex-message e)))))
+                     (log/errorf "Error determining whether Database supports nested queries: %s" (ex-message e)))))
                (t2/select-pks-set :model/Database))))
 
 (mu/defn- source-query-cards

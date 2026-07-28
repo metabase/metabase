@@ -63,7 +63,7 @@
                                                                           cnt->ids))]}
                        :where  [:in :id (apply concat (vals cnt->ids))]})))))
     (catch Exception e
-      (log/error "Failed to increment view counts:" (ex-message e)))))
+      (log/errorf "Failed to increment view counts: %s" (ex-message e)))))
 
 (def ^:private increment-view-count-interval-seconds 20)
 
@@ -90,7 +90,7 @@
   (try
     (t2/insert! :model/ViewLog views)
     (catch Exception e
-      (log/error "Failed to record views:" (ex-message e)))))
+      (log/errorf "Failed to record views: %s" (ex-message e)))))
 
 (defonce ^:private record-view-queue
   (delay (grouper/start!
@@ -187,7 +187,7 @@
                             :updated_at :updated_at}
                    :where  [:in :id (keys dashboard-id->timestamp)]}))
       (catch Exception e
-        (log/error "Failed to update dashboard last_viewed_at:" (ex-message e))))))
+        (log/errorf "Failed to update dashboard last_viewed_at: %s" (ex-message e))))))
 
 (def ^:private update-dashboard-last-viewed-at-queue
   (delay (grouper/start!

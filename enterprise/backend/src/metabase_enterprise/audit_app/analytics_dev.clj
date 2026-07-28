@@ -311,7 +311,7 @@
             (import-analytics-content! (:email admin-user))
             (log/info "Analytics dev environment ready")))
         (catch Exception e
-          (log/error "Failed to set up analytics dev environment:" (ex-message e)))))))
+          (log/errorf "Failed to set up analytics dev environment: %s" (ex-message e)))))))
 
 (defmethod startup/def-startup-logic! ::analytics-dev-mode-setup
   [_] (analytics-dev-mode-setup))

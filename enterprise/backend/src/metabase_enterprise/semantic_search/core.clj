@@ -68,7 +68,7 @@
         (semantic.pgvector-api/ensure-active-hnsw-index! (semantic.env/get-pgvector-datasource!)
                                                          (semantic.env/get-index-metadata))
         (catch Throwable t
-          (log/error "Failed to build HNSW index for semantic search:" (ex-message t)))
+          (log/errorf "Failed to build HNSW index for semantic search: %s" (ex-message t)))
         (finally
           (reset! hnsw-index-build-running? false)))))
   nil)
@@ -127,7 +127,7 @@
                                        (into [] (comp (map t2.realize/realize)
                                                       (take total-limit))))
                                      (catch Throwable t
-                                       (log/warn "Semantic search fallback errored, ignoring:" (ex-message t))
+                                       (log/warnf "Semantic search fallback errored, ignoring: %s" (ex-message t))
                                        []))
                   fallback-results (take total-limit fallback-results)
                   _                (analytics/observe! :metabase-search/semantic-fallback-results-usage (count fallback-results))
@@ -135,7 +135,7 @@
                   deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
               (take total-limit deduped-results)))))
       (catch Exception e
-        (log/error "Error executing semantic search, falling back to appdb:" (ex-message e))
+        (log/errorf "Error executing semantic search, falling back to appdb: %s" (ex-message e))
         (let [fallback (fallback-engine)]
           (analytics/inc! :metabase-search/semantic-error-fallback {:fallback-engine fallback})
           (if fallback

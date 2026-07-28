@@ -54,7 +54,7 @@
     (when-let [epoch (last-sync-epoch-seconds)]
       (analytics/set-gauge! :metabase-security-center/last-sync-timestamp-seconds epoch))
     (catch Exception e
-      (log/warn "Failed to set :metabase-security-center/last-sync-timestamp-seconds metric:" (ex-message e))))
+      (log/warnf "Failed to set :metabase-security-center/last-sync-timestamp-seconds metric: %s" (ex-message e))))
   (try
     (let [counts (vulnerable-counts)]
       (doseq [label vulnerable-advisory-labels]
@@ -62,4 +62,4 @@
                               label
                               (get counts label 0))))
     (catch Exception e
-      (log/warn "Failed to set :metabase-security-center/vulnerable-advisories metric:" (ex-message e)))))
+      (log/warnf "Failed to set :metabase-security-center/vulnerable-advisories metric: %s" (ex-message e)))))

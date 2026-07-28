@@ -62,7 +62,7 @@
       (prevent-upgrade? current-major (-> raw-version-info :latest) upgrade-threshold-value)
       (dissoc :latest))
     (catch Exception e
-      (log/error "Error processing version info:" (ex-message e))
+      (log/errorf "Error processing version info: %s" (ex-message e))
       raw-version-info)))
 
 (defsetting version-info

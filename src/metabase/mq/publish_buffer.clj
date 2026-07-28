@@ -119,7 +119,7 @@
   (try
     (flush-publish-buffer!)
     (catch Throwable t
-      (log/error "Unexpected error in publish-buffer flush; flusher continues:" (ex-message t)))))
+      (log/errorf "Unexpected error in publish-buffer flush; flusher continues: %s" (ex-message t)))))
 
 (defn start-publish-buffer-flush!
   "Starts a daemon thread that flushes the publish buffer every 100ms. Idempotent.

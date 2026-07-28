@@ -14,7 +14,7 @@
   (try
     (slack-connect-integration/sso-initiate request)
     (catch Throwable e
-      (log/error "Error initiating Slack Connect SSO:" (ex-message e))
+      (log/errorf "Error initiating Slack Connect SSO: %s" (ex-message e))
       (throw e))))
 
 ;; GET /auth/sso/slack-connect/callback
@@ -26,7 +26,7 @@
   (try
     (slack-connect-integration/sso-callback request)
     (catch Throwable e
-      (log/error "Error handling Slack Connect callback:" (ex-message e))
+      (log/errorf "Error handling Slack Connect callback: %s" (ex-message e))
       (throw e))))
 
 (def ^{:arglists '([request respond raise])} routes

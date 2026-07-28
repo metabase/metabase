@@ -417,7 +417,7 @@
                    {:success-handler     (fn [_result _duration _]
                                            (track-queue-size!))
                     :err-handler        (fn [err _]
-                                          (log/error "Error indexing search entries:" (ex-message err))
+                                          (log/errorf "Error indexing search entries: %s" (ex-message err))
                                           (analytics/inc! :metabase-search/index-error)
                                           (track-queue-size!))
                     ;; Note that each message can correspond to multiple documents,

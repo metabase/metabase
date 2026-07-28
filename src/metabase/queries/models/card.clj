@@ -1278,7 +1278,7 @@
     (try
       (update-associated-parameters! card-before-update card-updates)
       (catch Throwable e
-        (log/error "Update of dependent card parameters failed!" (ex-message e))))
+        (log/errorf "Update of dependent card parameters failed!: %s" (ex-message e))))
     (collection/check-for-remote-sync-update card-before-update))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one :model/Card :id (:id card-before-update))]

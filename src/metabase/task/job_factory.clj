@@ -19,7 +19,7 @@
 (defn- no-op-job
   "Logs the exception and returns a no-op job."
   ^Job [e]
-  (log/error "Failed to load a job class. Usually this means an old version of metabase tried to run a job from a newer version:" (ex-message e))
+  (log/errorf "Failed to load a job class. Usually this means an old version of metabase tried to run a job from a newer version: %s" (ex-message e))
   (->NoOpJob))
 
 (defn create

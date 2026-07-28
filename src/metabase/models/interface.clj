@@ -157,7 +157,7 @@
     (try
       (json/decode s keywordize-keys?)
       (catch Throwable e
-        (log/error "Error parsing JSON:" (ex-message e))
+        (log/errorf "Error parsing JSON: %s" (ex-message e))
         s))
     s))
 
@@ -315,7 +315,7 @@
         (if (or (encryption/possibly-encrypted-string? decrypted)
                 (encryption/possibly-encrypted-bytes? decrypted))
           (log/error "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
-          (log/error "Error parsing JSON:" (ex-message e)))  ; same message as in `json-out`
+          (log/errorf "Error parsing JSON: %s" (ex-message e)))  ; same message as in `json-out`
         v))))
 
 ;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)

@@ -508,7 +508,7 @@
                             [[schema name] comment])))
                   (jdbc/reducible-result-set rs {})))))
       (catch Throwable e
-        (log/debug "Failed to read table comments from system.metadata.table_comments:" (ex-message e))
+        (log/debugf "Failed to read table comments from system.metadata.table_comments: %s" (ex-message e))
         {}))))
 
 (defmethod driver/describe-database* :starburst
@@ -607,7 +607,7 @@
        (try
          (.setReadOnly conn true)
          (catch Throwable e
-           (log/warn "Error setting starburst connection to read-only:" (ex-message e))))
+           (log/warnf "Error setting starburst connection to read-only: %s" (ex-message e))))
        ;; as with statement and prepared-statement, cannot set holdability on the connection level
        conn
        (catch Throwable e
@@ -791,7 +791,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug "Error setting prepared statement fetch direction to FETCH_FORWARD:" (ex-message e))))
+          (log/debugf "Error setting prepared statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
       (if (.useExplicitPrepare ^TrinoConnection (.unwrap conn TrinoConnection))
         (proxy-prepared-statement driver conn stmt params)
         (proxy-optimized-prepared-statement driver conn stmt params))
@@ -808,7 +808,7 @@
     (try
       (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
       (catch Throwable e
-        (log/debug "Error setting statement fetch direction to FETCH_FORWARD:" (ex-message e))))
+        (log/debugf "Error setting statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
     (proxy [java.sql.Statement] []
       (execute [sql]
         (try

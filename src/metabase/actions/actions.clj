@@ -204,7 +204,7 @@
                   info (with-meta info (merge (meta info) {:exception e}))]
               ;; Need to think about how we learn about already performed effects this way, since we don't get a context.
               (actions.events/publish-action-failure! action-kw context-before msg info)
-              (log/error "Failed to perform action:" (ex-message e))
+              (log/errorf "Failed to perform action: %s" (ex-message e))
               (throw e))))))))
 
 (defn perform-nested-action!

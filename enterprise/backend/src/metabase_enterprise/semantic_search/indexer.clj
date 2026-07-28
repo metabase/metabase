@@ -181,7 +181,7 @@
           (log/debugf "Processed %d gate documents successfully in normal mode for index %s" (count gate-docs) (:table-name index))
           (catch InterruptedException ie (throw ie))
           (catch Throwable t
-            (log/debug "Indexing failure caught in normal mode:" (ex-message t))
+            (log/debugf "Indexing failure caught in normal mode: %s" (ex-message t))
             (log/warnf "Indexing failed in normal mode for index %s, marking as stalled: %s" (:table-name index) (.getMessage t))
             (mark-stalled! pgvector index-metadata index)
             (throw t)))

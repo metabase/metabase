@@ -339,7 +339,7 @@
    (try
      (check-403 (mi/can-read? obj))
      (catch clojure.lang.ExceptionInfo e
-       (log/error "Read permissions failure:" (ex-message e))
+       (log/errorf "Read permissions failure: %s" (ex-message e))
        (events/publish-event! :event/read-permission-failure {:user-id    *current-user-id*
                                                               :object     obj
                                                               :has-access false})

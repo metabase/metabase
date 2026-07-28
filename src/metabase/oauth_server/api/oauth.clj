@@ -278,7 +278,7 @@
                               :oauth-params oauth-params})}
                   (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600))))
             (catch ExceptionInfo e
-              (log/warn "OAuth authorize request failed:" (ex-message e))
+              (log/warnf "OAuth authorize request failed: %s" (ex-message e))
               {:status  400
                :headers {"Content-Type" "application/json"}
                :body    {:error             "invalid_request"
@@ -321,7 +321,7 @@
                          :body    {:error "params_tampered"}}
                         (redirect-authorization-decision provider parsed approved request)))
                     (catch ExceptionInfo e
-                      (log/warn "OAuth authorization decision failed:" (ex-message e))
+                      (log/warnf "OAuth authorization decision failed: %s" (ex-message e))
                       {:status  400
                        :headers {"Content-Type" "application/json"}
                        :body    {:error             "invalid_request"
@@ -349,7 +349,7 @@
                              "Pragma"        "no-cache"}
                    :body    response})
                 (catch ExceptionInfo e
-                  (log/warn "OAuth token request failed:" (ex-message e))
+                  (log/warnf "OAuth token request failed: %s" (ex-message e))
                   (let [data  (ex-data e)
                         error (or (:error data) "invalid_request")]
                     {:status  (if (= error "invalid_client") 401 400)

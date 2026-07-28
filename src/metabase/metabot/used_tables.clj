@@ -77,7 +77,7 @@
     (lib/query metadata-providerable raw-query)
     (catch Exception e
       (record-extraction-warning! :query-build)
-      (log/warn "Failed to convert query to MBQL 5:" (ex-message e))
+      (log/warnf "Failed to convert query to MBQL 5: %s" (ex-message e))
       nil)))
 
 (defn- native-tables
@@ -93,7 +93,7 @@
           (into #{} (keep :table-id) (:tables result))))
       (catch Exception e
         (record-extraction-warning! :native-parse)
-        (log/warn "Failed to extract tables from native SQL:" (ex-message e))
+        (log/warnf "Failed to extract tables from native SQL: %s" (ex-message e))
         #{}))
     #{}))
 
@@ -112,7 +112,7 @@
        :cards  (set/union (:card ids) (:metric ids))})
     (catch Exception e
       (record-extraction-warning! :query-walk)
-      (log/warn "Failed to walk query for used-table extraction:" (ex-message e))
+      (log/warnf "Failed to walk query for used-table extraction: %s" (ex-message e))
       {:tables #{} :cards #{}})))
 
 (defn- card-query

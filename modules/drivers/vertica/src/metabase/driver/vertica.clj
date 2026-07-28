@@ -294,7 +294,7 @@
   (try (set (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                         ["SELECT TABLE_SCHEMA AS \"schema\", TABLE_NAME AS \"name\" FROM V_CATALOG.VIEWS;"]))
        (catch Throwable e
-         (log/error "Failed to fetch materialized views for this database:" (ex-message e)))))
+         (log/errorf "Failed to fetch materialized views for this database: %s" (ex-message e)))))
 
 (defmethod driver/describe-database* :vertica
   [driver database]

@@ -108,7 +108,7 @@
           {:output (format-validation-error-output instr)
            :instructions instr})))
     (catch Exception e
-      (log/error "Error creating SQL query:" (ex-message e))
+      (log/errorf "Error creating SQL query: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to create SQL query: " (or (ex-message e) "Unknown error"))}))))
@@ -186,7 +186,7 @@
           {:output (format-validation-error-output instr)
            :instructions instr})))
     (catch Exception e
-      (log/error "Error editing SQL query:" (ex-message e))
+      (log/errorf "Error editing SQL query: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))}))))
@@ -235,7 +235,7 @@
           {:output (format-validation-error-output instr)
            :instructions instr})))
     (catch Exception e
-      (log/error "Error replacing SQL query:" (ex-message e))
+      (log/errorf "Error replacing SQL query: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))}))))

@@ -21,7 +21,7 @@
     (catch InterruptedException e
       (throw e))
     (catch Exception e
-      (log/debug "Embedding service health probe failed:" (ex-message e))
+      (log/debugf "Embedding service health probe failed: %s" (ex-message e))
       {:reachable? false, :error (ex-message e)})))
 
 (def ^:private embedding-service-reachable?*
@@ -87,7 +87,7 @@
     (catch InterruptedException e
       (throw e))
     (catch Exception e
-      (log/debug "Embedding service circuit recovery probe failed:" (ex-message e)))
+      (log/debugf "Embedding service circuit recovery probe failed: %s" (ex-message e)))
     (finally
       (swap! recovery-state assoc :running? false)))
   ;; A still-untrusted breaker needs another delayed trial even when no user traffic or health consumer runs.
@@ -107,7 +107,7 @@
       (schedule-recovery! recover-circuit!)
       (catch Exception e
         (swap! recovery-state assoc :running? false)
-        (log/error "Failed to schedule embedding service circuit recovery:" (ex-message e)))))
+        (log/errorf "Failed to schedule embedding service circuit recovery: %s" (ex-message e)))))
   nil)
 
 (defn- clear-probe-cache-on-recovery! [state]

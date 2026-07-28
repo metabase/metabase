@@ -74,7 +74,7 @@
         :http
         (http-action/execute-http-action! action request-parameters))
       (catch Exception e
-        (log/error "Error executing action:" (ex-message e))
+        (log/errorf "Error executing action: %s" (ex-message e))
         (if-let [ed (ex-data e)]
           (let [ed (cond-> ed
                      (and (nil? (:status-code ed))

@@ -149,7 +149,7 @@
           {:status :cancelled
            :error e}
           (do
-            (log/error "Error executing transform:" (ex-message e))
+            (log/errorf "Error executing transform: %s" (ex-message e))
             {:status :failed
              :error e}))))))
 

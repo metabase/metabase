@@ -131,7 +131,7 @@
     (try
       {:status 200 :body (make-public-store-request! "/plan")}
       (catch Exception e
-        (log/warn "Error fetching plans information:" (ex-message e))
+        (log/warnf "Error fetching plans information: %s" (ex-message e))
         (handle-store-api-error e)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -150,7 +150,7 @@
     (try
       {:status 200 :body (make-public-store-request! "/addons")}
       (catch Exception e
-        (log/warn "Error fetching addons information:" (ex-message e))
+        (log/warnf "Error fetching addons information: %s" (ex-message e))
         (handle-store-api-error e)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

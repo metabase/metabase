@@ -33,7 +33,7 @@
                     :job-name (.. ctx getJobDetail getKey toString)}]
           (analytics/inc! :metabase-tasks/quartz-tasks-executed tags))
         (catch Throwable e
-          (log/error "Failed to record Prometheus metric for Quartz job completion:" (ex-message e)))))))
+          (log/errorf "Failed to record Prometheus metric for Quartz job completion: %s" (ex-message e)))))))
 
 ;; +----------------------------------------------------------------------------------------------------------------+
 ;; |                                             Trigger Listener                                                   |
@@ -84,7 +84,7 @@
                                 {:state state}
                                 count))
         (catch Throwable e
-          (log/error "Failed to record Prometheus metrics for Quartz trigger completion:" (ex-message e)))))))
+          (log/errorf "Failed to record Prometheus metrics for Quartz trigger completion: %s" (ex-message e)))))))
 
 (defn add-listeners-to-scheduler!
   "Add triggers to the quartz scheduler, must be initialized before adding."

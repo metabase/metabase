@@ -182,5 +182,5 @@
              (write-image! "png" os))
          (.toByteArray os)))
      (catch Throwable e
-       (log/error "Error rendering Pulse:" (ex-message e))
+       (log/errorf "Error rendering Pulse: %s" (ex-message e))
        (throw e)))))

@@ -102,5 +102,5 @@
       ;; `Exception`, not `Throwable`, so JVM `Error`s and `InterruptedException` still propagate —
       ;; this runs in the span's `finally`, often on a tool virtual thread.
       (catch Exception t
-        (log/warn "ai-tracing: failed to serialize/emit eval span:" (ex-message t)))))
+        (log/warnf "ai-tracing: failed to serialize/emit eval span: %s" (ex-message t)))))
   nil)

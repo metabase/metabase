@@ -224,7 +224,7 @@
           (try
             (.setReadOnly conn false)
             (catch Throwable e
-              (log/debug "Error setting connection to readwrite:" (ex-message e))))
+              (log/debugf "Error setting connection to readwrite: %s" (ex-message e))))
           (with-open [stmt (.createStatement conn)]
             (.execute stmt sql)
             (log/tracef "Successfully set timezone for %s database to %s" driver timezone-id)))
@@ -439,7 +439,7 @@
             (log/trace (pr-str '(.setAutoCommit conn true)))
             (.setAutoCommit conn true)
             (catch Throwable e
-              (log/debug "Error enabling connection autoCommit:" (ex-message e))))
+              (log/debugf "Error enabling connection autoCommit: %s" (ex-message e))))
 
           ;; Postgres/Redshift buffer the *entire* ResultSet unless autoCommit is false (then they use a server-side
           ;; cursor honoring the statement fetch size). So for streamed reads (`:stream?` -- sync metadata reads,
@@ -449,18 +449,18 @@
             (log/trace (pr-str '(.setAutoCommit conn false)))
             (.setAutoCommit conn false)
             (catch Throwable e
-              (log/debug "Error setting connection autoCommit to false:" (ex-message e)))))
+              (log/debugf "Error setting connection autoCommit to false: %s" (ex-message e)))))
     (try
       ;; setNetworkTimeout sets Socket.setSoTimeout() which releases from blocked socker reads.
       ;; This is necessary because .close() doesn't interrupt threads stuck in native socket reads
       (.setNetworkTimeout conn @network-timeout-executor driver.settings/*network-timeout-ms*)
       (catch Throwable e
-        (log/debug "Error setting network timeout for connection:" (ex-message e))))
+        (log/debugf "Error setting network timeout for connection: %s" (ex-message e))))
     (try
       (log/trace (pr-str '(.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)))
       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
       (catch Throwable e
-        (log/debug "Error setting default holdability for connection:" (ex-message e))))))
+        (log/debugf "Error setting default holdability for connection: %s" (ex-message e))))))
 
 (defmethod do-with-connection-with-options :sql-jdbc
   [driver db-or-id-or-spec options f]
@@ -553,12 +553,12 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug "Error setting prepared statement fetch direction to FETCH_FORWARD:" (ex-message e))))
+          (log/debugf "Error setting prepared statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
       (try
         (when (zero? (.getFetchSize stmt))
           (.setFetchSize stmt (driver.settings/sql-jdbc-fetch-size)))
         (catch Throwable e
-          (log/debug "Error setting prepared statement fetch size to fetch-size:" (ex-message e))))
+          (log/debugf "Error setting prepared statement fetch size to fetch-size: %s" (ex-message e))))
       (set-parameters! driver stmt params)
       stmt
       (catch Throwable e
@@ -575,12 +575,12 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug "Error setting statement fetch direction to FETCH_FORWARD:" (ex-message e))))
+          (log/debugf "Error setting statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
       (try
         (when (zero? (.getFetchSize stmt))
           (.setFetchSize stmt (driver.settings/sql-jdbc-fetch-size)))
         (catch Throwable e
-          (log/debug "Error setting statement fetch size to fetch-size:" (ex-message e))))
+          (log/debugf "Error setting statement fetch size to fetch-size: %s" (ex-message e))))
       stmt
       (catch Throwable e
         (.close stmt)
@@ -610,7 +610,7 @@
     (try
       (u.connection/set-query-timeout! stmt (long (/ driver.settings/*query-timeout-ms* 1000)))
       (catch Throwable e
-        (log/debug "Error setting statement query timeout:" (ex-message e))))))
+        (log/debugf "Error setting statement query timeout: %s" (ex-message e))))))
 
 (defn- prepared-statement*
   ^PreparedStatement [driver conn sql params canceled-chan]
@@ -875,7 +875,7 @@
                              (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
                                         (name driver)))
                            (catch Throwable e
-                             (log/info "Statement cancelation failed:" (ex-message e))))))))))))))
+                             (log/infof "Statement cancelation failed: %s" (ex-message e))))))))))))))
 
 (defn reducible-query
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the
@@ -1050,5 +1050,5 @@
           (set! *resilient-connection-ctx* {:db db :conn conn})
           conn)
         (catch Throwable e
-          (log/warn "Failed obtaining a new resilient connection:" (ex-message e))
+          (log/warnf "Failed obtaining a new resilient connection: %s" (ex-message e))
           connection)))))

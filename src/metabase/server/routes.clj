@@ -61,7 +61,7 @@
          {:status 200, :body {:status "ok"}}
          {:status 503 :body {:status "Unable to get app-db connection"}})
        (catch Exception e
-         (log/warn "Error in api/health database check:" (ex-message e))
+         (log/warnf "Error in api/health database check: %s" (ex-message e))
          {:status 503 :body {:status "Error getting app-db connection"}}))
      {:status 503, :body {:status "initializing", :progress (init-status/progress)}}))
 

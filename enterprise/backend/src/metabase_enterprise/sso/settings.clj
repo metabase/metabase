@@ -64,7 +64,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   (try
     (instance? java.security.cert.X509Certificate (saml/->X509Certificate idp-cert-str))
     (catch Throwable e
-      (log/error "Error parsing SAML identity provider certificate:" (ex-message e))
+      (log/errorf "Error parsing SAML identity provider certificate: %s" (ex-message e))
       (throw
        (Exception. (tru "Invalid identity provider certificate. Certificate should be a base-64 encoded string."))))))
 

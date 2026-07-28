@@ -204,7 +204,7 @@
           (when (pos? deleted-count)
             (log/infof "Cleaned up %d old tombstone records from gate table" deleted-count)))))
     (catch Exception e
-      (log/error "Failed to clean up tombstone records from gate table:" (ex-message e)))))
+      (log/errorf "Failed to clean up tombstone records from gate table: %s" (ex-message e)))))
 
 (defn- drop-index-table!
   "Drops one stale/orphaned index table, isolating failures: one undroppable table (e.g. one with a

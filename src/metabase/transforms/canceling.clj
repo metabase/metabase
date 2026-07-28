@@ -145,7 +145,7 @@
           (catch Throwable t
             (log/error (str "Error recording completion for transform run " run-id ": " (ex-message t)))))))
     (catch Throwable t
-      (log/error "Error force-canceling stale transform runs:" (ex-message t))
+      (log/errorf "Error force-canceling stale transform runs: %s" (ex-message t))
       ;; Transaction rolled back — the row count is unrecoverable, so emit one aggregate error so the failure
       ;; is at least visible in metrics. Magnitude can be inferred from log volume if needed.
       (analytics/inc! :metabase-transforms/cancelation-completed {:outcome "error"}))))
@@ -199,4 +199,4 @@
                                          (log/error (str "Error canceling " id ": " (ex-message t)))))))
                                  (wr.cancelation/reducible-canceled-local-runs))
                            (catch Throwable t
-                             (log/error "Error while canceling a transform run:" (ex-message t)))) 0 20 TimeUnit/SECONDS))
+                             (log/errorf "Error while canceling a transform run: %s" (ex-message t)))) 0 20 TimeUnit/SECONDS))

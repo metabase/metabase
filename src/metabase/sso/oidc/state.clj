@@ -213,7 +213,7 @@
            :else
            state-map))
        (catch Exception e
-         (log/warn "Failed to decrypt OIDC state:" (ex-message e))
+         (log/warnf "Failed to decrypt OIDC state: %s" (ex-message e))
          nil)))))
 
 ;;; -------------------------------------------------- Cookie Management --------------------------------------------------

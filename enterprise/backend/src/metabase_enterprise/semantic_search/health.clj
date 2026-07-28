@@ -140,7 +140,7 @@
       (catch InterruptedException e
         (throw e))
       (catch Exception e
-        (log/debug "semantic active-index lookup failed for a metric collector:" (ex-message e))
+        (log/debugf "semantic active-index lookup failed for a metric collector: %s" (ex-message e))
         nil))))
 
 (def ^:private active-index
@@ -295,4 +295,4 @@
      (catch InterruptedException e
        (throw e))
      (catch Exception e
-       (log/warn "Failed to report semantic repair metrics:" (ex-message e))))))
+       (log/warnf "Failed to report semantic repair metrics: %s" (ex-message e))))))

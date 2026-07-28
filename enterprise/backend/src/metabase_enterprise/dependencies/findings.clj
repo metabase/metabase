@@ -61,7 +61,7 @@
         (let [mp (lib-be/application-database-metadata-provider db-id)
               results (try (deps.analysis/check-entity mp entity-type instance-id)
                            (catch Exception e
-                             (log/error "Error analyzing entity:" (ex-message e))
+                             (log/errorf "Error analyzing entity: %s" (ex-message e))
                              [(lib/validation-exception-error (.getMessage e))]))
               success (empty? results)]
           (deps.analysis-finding/upsert-analysis! entity-type instance-id success results))

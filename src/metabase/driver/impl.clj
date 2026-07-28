@@ -76,7 +76,7 @@
     (try
       (apply classloader/require expected-ns require-options)
       (catch Throwable e
-        (log/error "Error loading driver namespace:" (ex-message e))
+        (log/errorf "Error loading driver namespace: %s" (ex-message e))
         (throw (Exception. (tru "Could not load {0} driver." driver) e))))))
 
 (mu/defn load-driver-namespace-if-needed!

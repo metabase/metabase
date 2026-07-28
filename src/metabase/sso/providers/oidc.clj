@@ -63,7 +63,7 @@
             (log/errorf "Token exchange failed with status %s" (:status response))
             nil)))
       (catch Exception e
-        (log/error "Token exchange failed:" (ex-message e))
+        (log/errorf "Token exchange failed: %s" (ex-message e))
         nil))))
 
 ;;; -------------------------------------------------- User Data Extraction --------------------------------------------------

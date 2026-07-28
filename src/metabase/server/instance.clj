@@ -78,11 +78,11 @@
                                     (.setTimeout timeout))
             request-map           (servlet/build-request-map request)
             raise                 (fn raise [^Throwable e]
-                                    (log/error "Unexpected exception in endpoint:" (ex-message e))
+                                    (log/errorf "Unexpected exception in endpoint: %s" (ex-message e))
                                     (try
                                       (.sendError response 500 (.getMessage e))
                                       (catch Throwable e
-                                        (log/error "Unexpected exception writing error response:" (ex-message e))))
+                                        (log/errorf "Unexpected exception writing error response: %s" (ex-message e))))
                                     (.complete context))]
         (try
           (handler
@@ -95,7 +95,7 @@
                                                              :response-map  response-map}))
            raise)
           (catch Throwable e
-            (log/error "Unexpected Exception in API request handler:" (ex-message e))
+            (log/errorf "Unexpected Exception in API request handler: %s" (ex-message e))
             (raise e))
           (finally
             (.setHandled base-request true)))))))

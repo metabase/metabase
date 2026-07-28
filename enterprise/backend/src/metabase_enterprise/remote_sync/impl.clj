@@ -1456,7 +1456,7 @@
        (let [result (try
                       (sync-fn task-id)
                       (catch Exception e
-                        (log/error "Remote sync task failed:" (ex-message e))
+                        (log/errorf "Remote sync task failed: %s" (ex-message e))
                         {:status :error
                          :message (source-error-message e)}))]
          (handle-task-result! result task-id branch)
@@ -1464,7 +1464,7 @@
            (try
              (on-success task-id result)
              (catch Exception e
-               (log/error "Remote sync task :on-success function failed:" (ex-message e))))))))
+               (log/errorf "Remote sync task :on-success function failed: %s" (ex-message e))))))))
     task))
 
 (defn async-import!

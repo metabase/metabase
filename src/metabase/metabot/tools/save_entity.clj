@@ -233,7 +233,7 @@
                              :card_id     (:id card)
                              :destination saved-destination})]})
     (catch Exception e
-      (log/error "Error saving entity:" (ex-message e))
+      (log/errorf "Error saving entity: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to save: " (or (ex-message e) "Unknown error"))}))))

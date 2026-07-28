@@ -176,7 +176,7 @@
     (let [{:keys [cols vals]} (objects->columns+values target-db-type chunkk)]
       (jdbc/insert-multi! target-db-conn-spec table-name cols vals {:transaction? false}))
     (catch SQLException e
-      (log/error "Error inserting chunk:" (ex-message e))
+      (log/errorf "Error inserting chunk: %s" (ex-message e))
       (throw e))))
 
 (def ^:dynamic *copy-h2-database-details*

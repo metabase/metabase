@@ -186,7 +186,7 @@
                          (str " (chosen randomly from " (count triggers) " existing ones)"))))
           (.rescheduleJob scheduler replaced-key new-trigger))))
     (catch Throwable e
-      (log/error "Error rescheduling job:" (ex-message e)))))
+      (log/errorf "Error rescheduling job: %s" (ex-message e)))))
 
 (mu/defn reschedule-trigger!
   "Reschedule a trigger with the same key as the given trigger.

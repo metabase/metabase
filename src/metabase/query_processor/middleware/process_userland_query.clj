@@ -57,7 +57,7 @@
       (try
         (query/save-queries-and-update-average-execution-times! entries)
         (catch Throwable e
-          (log/error "Error updating query average execution times:" (ex-message e)))))
+          (log/errorf "Error updating query average execution times: %s" (ex-message e)))))
     (try
       (let [{with-context true, no-context false} (group-by (comp some? :context) query-executions)]
         (when (seq no-context)
@@ -65,7 +65,7 @@
         (when (seq with-context)
           (t2/insert! :model/QueryExecution (map #(dissoc % :json_query) with-context))))
       (catch Throwable e
-        (log/error "Error saving query execution info:" (ex-message e))))))
+        (log/errorf "Error saving query execution info: %s" (ex-message e))))))
 
 (defonce ^:private save-execution-metadata-queue
   (delay (grouper/start!

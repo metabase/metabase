@@ -108,7 +108,7 @@
       (sync/sync-database! db))
     (log/debug "Finished adding Sample Database.")
     (catch Throwable e
-      (log/error "Failed to load sample database:" (ex-message e)))))
+      (log/errorf "Failed to load sample database: %s" (ex-message e)))))
 
 (defn- table-schema-for-engine
   "The schema value the sync process assigns to the sample database's tables for a given engine: H2 puts

@@ -69,7 +69,7 @@
     (when (and config/dev-available? (not *compile-files*))
       (requiring-resolve 'dev.server.middleware.proxy/wrap-remote-api-proxy))
     (catch Exception e
-      (log/warn "Failed to load dev remote API proxy middleware:" (ex-message e))
+      (log/warnf "Failed to load dev remote API proxy middleware: %s" (ex-message e))
       nil)))
 
 (def ^:private middleware

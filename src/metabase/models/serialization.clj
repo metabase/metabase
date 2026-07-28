@@ -1282,7 +1282,7 @@
         (normalize-mbql-ref x)
         (lib/normalize x))
       (catch Throwable e
-        (log/warn "Error normalizing imported MBQL:" (ex-message e))
+        (log/warnf "Error normalizing imported MBQL: %s" (ex-message e))
         x))))
 
 (defn- import-mbql*

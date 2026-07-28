@@ -177,7 +177,7 @@
                                        (when-let [expr (try
                                                          (lib.expression/resolve-expression query expression-name)
                                                          (catch #?(:clj Throwable :cljs :default) e
-                                                           (log/error "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342):" (ex-message e))
+                                                           (log/errorf "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342): %s" (ex-message e))
                                                            nil))]
                                          (match/match-one expr
                                            [:convert-timezone _opts _expr source-tz & _]

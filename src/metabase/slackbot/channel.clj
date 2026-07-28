@@ -106,7 +106,7 @@
             (post-viz-error! client channel thread-ts e))))
       (catch Exception e
         (cancel-prefetched-viz! prefetched-viz)
-        (log/error "[slackbot] Error in channel response:" (ex-message e))
+        (log/errorf "[slackbot] Error in channel response: %s" (ex-message e))
         (set-status! nil)
         (let [res (slackbot.client/post-thread-reply client message-ctx
                                                      "Something went wrong. Please try again.")]

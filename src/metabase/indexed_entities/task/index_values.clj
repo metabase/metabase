@@ -110,7 +110,7 @@
                                                   (keep #(get-in % [:data "model-index-id"]))
                                                   set)
                                              (catch Exception e
-                                               (log/warn "Error fetching existing triggers from Quartz, will recreate all triggers:" (ex-message e))
+                                               (log/warnf "Error fetching existing triggers from Quartz, will recreate all triggers: %s" (ex-message e))
                                                #{}))
           missing-trigger-model-indexes (if (seq existing-trigger-model-index-ids)
                                           (t2/select :model/ModelIndex :id [:not-in existing-trigger-model-index-ids])
@@ -124,7 +124,7 @@
             (catch Exception e
               (log/errorf "Error re-adding indexing job for model-index: %d: %s" (:id model-index) (ex-message e)))))))
     (catch Exception e
-      (log/error "Error during model index trigger recreation:" (ex-message e)))))
+      (log/errorf "Error during model index trigger recreation: %s" (ex-message e)))))
 
 (defn- job-init!
   []

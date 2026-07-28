@@ -271,7 +271,7 @@
     (when (config/config-bool :mb-jetty-join)
       (.join (server/instance)))
     (catch Throwable e
-      (log/error "Metabase Initialization FAILED:" (ex-message e))
+      (log/errorf "Metabase Initialization FAILED: %s" (ex-message e))
       (System/exit 1))))
 
 (defn- run-cmd [cmd init-fn args]
