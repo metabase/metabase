@@ -1006,7 +1006,6 @@
                               :index/inline-create              true
                               :metadata/key-constraints         false
                               :metadata/table-existence-check   true
-                              :native-pivot-tables              true
                               :nested-fields                    true
                               :now                              true
                               :percentile-aggregations          true
