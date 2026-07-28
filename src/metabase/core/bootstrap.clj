@@ -48,24 +48,48 @@
   [mode args]
   (let [startup (case mode
                   "complexity-score" 'metabase-enterprise.data-complexity-score.cli/entrypoint
+                  "preview"          'metabase.core.preview/entrypoint
                   nil)]
     (if startup
       ((requiring-resolve startup) args)
       (do (binding [*out* *err*]
             (output! (str "Unknown mode: " mode))
-            (output! "Available modes: complexity-score"))
+            (output! "Available modes: complexity-score, preview"))
           (System/exit 1)))))
+
+(def ^:private mode->disabled-subsystems-preset
+  "Disabled-subsystems presets installed before any metabase namespace loads. preview is a
+  standalone mode whose entrypoint never starts these subsystems itself, but its lazily-loaded
+  API namespaces can reach code that consults the disabled-subsystems config, so the preset
+  stays as insurance."
+  {"preview" "scheduler,health-check,queue-listeners,audit-db"})
+
+(defn- install-disabled-subsystems-preset!
+  "Install the mode's disabled-subsystems preset, unioned with anything already in MB_DISABLED_SUBSYSTEMS, as a
+  system property for the config system to pick up. environ captures system properties once, at load time, and
+  gives them precedence over environment variables — so this must run before ANY metabase namespace loads,
+  including the classloader, whose require chain reaches metabase.config.core and loads environ."
+  [mode]
+  (let [preset   (mode->disabled-subsystems-preset mode)
+        from-env (System/getenv "MB_DISABLED_SUBSYSTEMS")
+        combined (cond-> preset
+                   (seq from-env) (str "," from-env))]
+    (System/setProperty "mb.disabled.subsystems" combined)
+    (output! (str "Starting Metabase in " mode " mode (disabled subsystems: " combined ")"))))
 
 (defn -main
   "Main entrypoint. Invokes [[metabase.core.core/entrypoint]]"
   [& args]
-  ;; We need to install the classloader here before other namespaces are loaded since they could launch threads on load.
-  ;; If a thread is spun up and put back into a pool before this happens that pool will have a poisoned thread unable to
-  ;; see classes in our classloader.
-  ((requiring-resolve 'metabase.classloader.core/the-classloader))
-  ;; Check for standalone modes first - these skip loading metabase.core.core
   (let [{:keys [options]} (cli/parse-opts args [[nil "--mode MODE"]])
         mode              (:mode options)]
+    ;; Must happen before the classloader (or anything else) loads a metabase namespace — see the docstring.
+    (when (contains? mode->disabled-subsystems-preset mode)
+      (install-disabled-subsystems-preset! mode))
+    ;; We need to install the classloader here before other namespaces are loaded since they could launch threads on
+    ;; load. If a thread is spun up and put back into a pool before this happens that pool will have a poisoned thread
+    ;; unable to see classes in our classloader.
+    ((requiring-resolve 'metabase.classloader.core/the-classloader))
     (if mode
+      ;; standalone modes skip loading metabase.core.core
       (run-standalone-mode mode args)
       (apply (requiring-resolve 'metabase.core.core/entrypoint) args))))

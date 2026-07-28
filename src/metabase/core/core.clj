@@ -157,11 +157,50 @@
         (catch Exception e
           (log/warnf e "Failed to register signal handler for SIG%s" signal-name))))))
 
+(def ^:private toggleable-subsystems
+  "Subsystems that can be turned off at startup via a comma-separated `MB_DISABLED_SUBSYSTEMS` list, e.g.
+  `MB_DISABLED_SUBSYSTEMS=scheduler,audit-db`. Intended for ephemeral instances (PR previews, CI) that want a
+  smaller, quieter Metabase.
+
+    :scheduler       -- Quartz is never initialized: no job registration, no background tasks (sync, subscriptions,
+                        alerts). All `task/schedule-task!`-family calls become no-ops. Unlike `MB_DISABLE_SCHEDULER`,
+                        which initializes the scheduler into standby but never starts it.
+    :health-check    -- warehouse connection health checks at startup
+    :queue-listeners -- in-process queue listeners (search indexing, etc.)
+    :audit-db        -- installing the audit / instance-analytics content
+
+  `java -jar metabase.jar --mode preview` presets all of these (see [[metabase.core.bootstrap]])."
+  #{:scheduler :health-check :queue-listeners :audit-db})
+
+(defn- disabled-subsystems
+  "The set of subsystems disabled via `MB_DISABLED_SUBSYSTEMS`."
+  []
+  (let [subsystems (into #{}
+                         (comp (map str/trim)
+                               (remove str/blank?)
+                               (map keyword))
+                         (some-> (config/config-str :mb-disabled-subsystems)
+                                 (str/split #",")))]
+    (when-let [unknown (not-empty (remove toggleable-subsystems subsystems))]
+      (log/warnf "Ignoring unknown subsystem(s) in MB_DISABLED_SUBSYSTEMS: %s (known subsystems: %s)"
+                 (str/join ", " (map name unknown))
+                 (str/join ", " (sort (map name toggleable-subsystems)))))
+    (set (filter toggleable-subsystems subsystems))))
+
+(def ^:private disabled-subsystems*
+  (delay (disabled-subsystems)))
+
+(defn- subsystem-enabled?
+  [subsystem]
+  (not (@disabled-subsystems* subsystem)))
+
 (defn- init!*
   "General application initialization function which should be run once at application startup."
   []
   (log/infof "Starting Metabase version %s ..." config/mb-version-string)
   (log/infof "System info:\n %s" (u/pprint-to-str (u.system-info/system-info)))
+  (when-let [disabled (not-empty @disabled-subsystems*)]
+    (log/infof "Disabled subsystems: %s" (str/join ", " (sort (map name disabled)))))
   (perf/maybe-enable-monitoring!)
   (init-signal-logging!)
   (init-status/set-progress! 0.1)
@@ -195,8 +234,9 @@
   (init-status/set-progress! 0.4)
   (analytics.core/observe-initial-values)
   (init-status/set-progress! 0.5)
-  (task/init-scheduler!)
-  (analytics.core/add-listeners-to-scheduler!)
+  (when (subsystem-enabled? :scheduler)
+    (task/init-scheduler!)
+    (analytics.core/add-listeners-to-scheduler!))
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (setup/has-user-setup))]
@@ -223,7 +263,8 @@
       ;; currently enabled. Otherwise just refresh its connection details.
       (sample-data/update-sample-database-if-needed!))
     (init-status/set-progress! 0.8))
-  (ensure-audit-db-installed!)
+  (when (subsystem-enabled? :audit-db)
+    (ensure-audit-db-installed!))
   (notification/seed-notification!)
 
   (init-status/set-progress! 0.85)
@@ -231,12 +272,15 @@
   (llm.startup/check-and-sync-settings-on-startup!)
   (init-status/set-progress! 0.9)
   (setting/migrate-encrypted-settings!)
-  (database/check-health!)
+  (when (subsystem-enabled? :health-check)
+    (database/check-health!))
   (startup/run-startup-logic!)
   (setting/log-deprecated-env-var-usage!)
   (init-status/set-progress! 0.95)
-  (task/start-scheduler!)
-  (queue/start-listeners!)
+  (when (subsystem-enabled? :scheduler)
+    (task/start-scheduler!))
+  (when (subsystem-enabled? :queue-listeners)
+    (queue/start-listeners!))
   (init-status/set-complete!)
   (log/info "Metabase Initialization COMPLETE"))
 
