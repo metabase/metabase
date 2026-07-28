@@ -574,7 +574,7 @@
   implementation."
   [driver conn catalog schema]
   (let [sql (describe-schema-sql driver catalog schema)]
-    (log/tracef "Running statement in describe-schema: %s" sql)
+    (log/tracef "Running statement in describe-schema for %s.%s" catalog schema)
     (into #{} (comp (filter (fn [{table-name :table}]
                               (have-select-privilege? driver conn schema table-name)))
                     (map (fn [{table-name :table}]
@@ -587,7 +587,7 @@
   implementation."
   [driver conn catalog]
   (let [sql (describe-catalog-sql driver catalog)]
-    (log/tracef "Running statement in all-schemas: %s" sql)
+    (log/tracef "Running statement in all-schemas for catalog %s" catalog)
     (into []
           (map (fn [{:keys [schema]}]
                  (when-not (contains? excluded-schemas schema)
@@ -623,7 +623,7 @@
      nil
      (fn [^Connection conn]
        (let [sql (describe-table-sql driver catalog schema table-name)]
-         (log/tracef "Running statement in describe-table: %s" sql)
+         (log/tracef "Running statement in describe-table for %s.%s.%s" catalog schema table-name)
          {:schema schema
           :name   table-name
           :fields (into
@@ -661,7 +661,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e "Error setting prepared statement fetch direction to FETCH_FORWARD")))
+          (log/debug "Error setting prepared statement fetch direction to FETCH_FORWARD:" (ex-message e))))
       (sql-jdbc.execute/set-parameters! driver stmt params)
       stmt
       (catch Throwable e
@@ -677,7 +677,7 @@
     (try
       (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
       (catch Throwable e
-        (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
+        (log/debug "Error setting statement fetch direction to FETCH_FORWARD:" (ex-message e))))
     stmt))
 
 (defn- pooled-conn->presto-conn
@@ -703,7 +703,7 @@
       (try
         (.setReadOnly conn read-only?)
         (catch Throwable e
-          (log/debugf e "Error setting connection read-only to %s" (pr-str read-only?)))))))
+          (log/debugf "Error setting connection read-only to %s: %s" (pr-str read-only?) (ex-message e)))))))
 
 (defmethod sql-jdbc.execute/do-with-connection-with-options :presto-jdbc
   [driver db-or-id-or-spec options f]

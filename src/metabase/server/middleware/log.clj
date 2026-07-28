@@ -88,11 +88,6 @@
   (when include-stats?
     (stats diag-info-fn)))
 
-(defn- format-error-info [{{:keys [body]} :response} {:keys [error?]}]
-  (when (and error?
-             (or (string? body) (coll? body)))
-    (str "\n" (u/pprint-to-str body))))
-
 (defn- format-log-context [{:keys [log-context]} _]
   (pr-str log-context))
 
@@ -100,8 +95,7 @@
   (str/join " " (filter some? [(format-status-info info)
                                (format-performance-info info)
                                (format-threads-info info opts)
-                               (format-log-context info opts)
-                               (format-error-info info opts)])))
+                               (format-log-context info opts)])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Logging the Info                                                |
@@ -149,7 +143,7 @@
                 log-options)]
       (log-fn (u/format-color color (format-info info opts))))
     (catch Throwable e
-      (log/error e "Error logging API request"))))
+      (log/error "Error logging API request:" (ex-message e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Async Logging                                                  |

@@ -65,8 +65,8 @@
                          exported (repr.resolve/export-query mp definition shared.content-store/default-store)]
                      (get-in exported ["stages" 0 (name definition-key)]))
                    (catch Exception e
-                     (log/warn e "Failed to export measure/segment definition to portable form"
-                               {:id (:id metadata) :key definition-key})
+                     (log/warn "Failed to export measure/segment definition to portable form"
+                               {:id (:id metadata) :key definition-key :error (ex-message e)})
                      nil)))))))
 
 (defn verified-review?
@@ -621,10 +621,10 @@
         (throw (ex-info "Invalid measure_id format" {:agent-error? true :status-code 400})))
       {:structured-output (assoc (measure-or-segment-details :measure measure-id) :result-type :entity)})
     (catch Exception e
-      (let [{:keys [status-code agent-error?] :as data} (ex-data e)]
+      (let [{:keys [status-code agent-error?]} (ex-data e)]
         ;; Agent-facing errors (bad input, not-found) are expected; only log genuine failures.
         (when-not agent-error?
-          (log/error e "Failed to fetch measure details" data))
+          (log/error "Failed to fetch measure details:" (ex-message e)))
         (if (= status-code 404)
           {:output (ex-message e) :status-code 404}
           (metabot.tools.u/handle-agent-error e))))))
@@ -638,10 +638,10 @@
         (throw (ex-info "Invalid segment_id format" {:agent-error? true :status-code 400})))
       {:structured-output (assoc (measure-or-segment-details :segment segment-id) :result-type :entity)})
     (catch Exception e
-      (let [{:keys [status-code agent-error?] :as data} (ex-data e)]
+      (let [{:keys [status-code agent-error?]} (ex-data e)]
         ;; Agent-facing errors (bad input, not-found) are expected; only log genuine failures.
         (when-not agent-error?
-          (log/error e "Failed to fetch segment details" data))
+          (log/error "Failed to fetch segment details:" (ex-message e)))
         (if (= status-code 404)
           {:output (ex-message e) :status-code 404}
           (metabot.tools.u/handle-agent-error e))))))

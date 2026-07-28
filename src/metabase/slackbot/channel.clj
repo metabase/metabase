@@ -42,7 +42,7 @@
                                                     :thread-ts  thread-ts
                                                     :loading-messages [(or status "")]})
                 (catch Exception e
-                  (log/warnf e "[slackbot] set-status failed (channel=%s thread-ts=%s)" channel thread-ts))))]
+                  (log/warnf "[slackbot] set-status failed (channel=%s thread-ts=%s): %s" channel thread-ts (ex-message e)))))]
       {:on-text       (bound-fn* (fn [text]
                                    (when (seq text)
                                      (swap! current-text str text))))
@@ -106,7 +106,7 @@
             (post-viz-error! client channel thread-ts e))))
       (catch Exception e
         (cancel-prefetched-viz! prefetched-viz)
-        (log/error e "[slackbot] Error in channel response")
+        (log/error "[slackbot] Error in channel response:" (ex-message e))
         (set-status! nil)
         (let [res (slackbot.client/post-thread-reply client message-ctx
                                                      "Something went wrong. Please try again.")]

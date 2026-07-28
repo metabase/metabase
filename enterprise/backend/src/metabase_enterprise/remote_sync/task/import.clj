@@ -45,7 +45,7 @@
                       (impl/publish-sync-event! :event/remote-sync-import task-id
                                                 {:branch branch :auto true} nil)
                       (catch Exception e
-                        (log/error e "Failed to publish remote-sync audit event")))))))))))))
+                        (log/error "Failed to publish remote-sync audit event:" (ex-message e))))))))))))))
 
 (task/defjob ^{:doc "Auto-imports any remote collections."} AutoImport [_]
   (auto-import!))

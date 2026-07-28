@@ -92,7 +92,7 @@
          (catch ObjectAlreadyExistsException _e
            (log/info (u/format-color :red "Index already present for model: %s" (:model_id model-index))))
          (catch Exception e
-           (log/warnf e "Error scheduling indexing for model: %s" (:model_id model-index))))))
+           (log/warnf "Error scheduling indexing for model: %s: %s" (:model_id model-index) (ex-message e))))))
 
 (defn remove-indexing-job
   "Public API to remove an indexing job on a model."
@@ -110,7 +110,7 @@
                                                   (keep #(get-in % [:data "model-index-id"]))
                                                   set)
                                              (catch Exception e
-                                               (log/warn e "Error fetching existing triggers from Quartz, will recreate all triggers")
+                                               (log/warn "Error fetching existing triggers from Quartz, will recreate all triggers:" (ex-message e))
                                                #{}))
           missing-trigger-model-indexes (if (seq existing-trigger-model-index-ids)
                                           (t2/select :model/ModelIndex :id [:not-in existing-trigger-model-index-ids])
@@ -122,9 +122,9 @@
           (try
             (add-indexing-job model-index)
             (catch Exception e
-              (log/errorf e "Error re-adding indexing job for model-index: %d" (:id model-index)))))))
+              (log/errorf "Error re-adding indexing job for model-index: %d: %s" (:id model-index) (ex-message e)))))))
     (catch Exception e
-      (log/error e "Error during model index trigger recreation"))))
+      (log/error "Error during model index trigger recreation:" (ex-message e)))))
 
 (defn- job-init!
   []

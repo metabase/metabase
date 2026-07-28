@@ -77,8 +77,7 @@
     (lib/query metadata-providerable raw-query)
     (catch Exception e
       (record-extraction-warning! :query-build)
-      (log/warn e "Failed to convert query to MBQL 5")
-      (log/debugf "Failed to convert query to MBQL 5: %s" (pr-str raw-query))
+      (log/warn "Failed to convert query to MBQL 5:" (ex-message e))
       nil)))
 
 (defn- native-tables
@@ -90,13 +89,11 @@
         (if (:error result)
           (do (record-extraction-warning! :native-parse)
               (log/warnf "tables-for-native error: %s" (:error result))
-              (log/debugf "tables-for-native error: %s; query: %s" (:error result) (pr-str query))
               #{})
           (into #{} (keep :table-id) (:tables result))))
       (catch Exception e
         (record-extraction-warning! :native-parse)
-        (log/warn e "Failed to extract tables from native SQL")
-        (log/debugf "Failed to extract tables from native SQL: %s" (pr-str query))
+        (log/warn "Failed to extract tables from native SQL:" (ex-message e))
         #{}))
     #{}))
 
@@ -115,8 +112,7 @@
        :cards  (set/union (:card ids) (:metric ids))})
     (catch Exception e
       (record-extraction-warning! :query-walk)
-      (log/warn e "Failed to walk query for used-table extraction")
-      (log/debugf "Failed to walk query for used-table extraction: %s" (pr-str query))
+      (log/warn "Failed to walk query for used-table extraction:" (ex-message e))
       {:tables #{} :cards #{}})))
 
 (defn- card-query
@@ -131,7 +127,7 @@
           nil))
     (catch Exception e
       (record-extraction-warning! :card-lookup)
-      (log/warnf e "Failed to look up card %s for used-table extraction" card-id)
+      (log/warnf "Failed to look up card %s for used-table extraction: %s" card-id (ex-message e))
       nil)))
 
 (defn- collect-tables
@@ -185,8 +181,7 @@
               (lib/native-query (lib.metadata/->metadata-provider metadata-providerable db-id) sql)
               (catch Exception e
                 (record-extraction-warning! :native-build)
-                (log/warnf e "Failed to build native query for %s from raw SQL on database %s" tool-name db-id)
-                (log/debugf "Failed to build native query for %s from raw SQL on database %s: %s" tool-name db-id sql)
+                (log/warnf "Failed to build native query for %s from raw SQL on database %s: %s" tool-name db-id (ex-message e))
                 nil)))))))
 
 (defn- transform-sql-starting-query
@@ -392,7 +387,7 @@
         (when (seq rows)
           (t2/insert! :model/MetabotUsedTable rows)))
       (catch Exception e
-        (log/warn e "Failed to record metabot used tables for message" message-id)))))
+        (log/warn "Failed to record metabot used tables for message" message-id (ex-message e))))))
 
 (defn record-used-tables!
   "Extract used tables from `parts` and persist `metabot_used_table` rows for `message-id`.

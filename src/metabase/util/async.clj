@@ -34,7 +34,7 @@
                       (let [result (try
                                      (thunk)
                                      (catch Throwable e
-                                       (log/trace e "cancelable-thread-call: caught exception in f")
+                                       (log/trace "cancelable-thread-call: caught exception in f:" (ex-message e))
                                        e))]
                         (a/close! done-chan)
                         (when (some? result)

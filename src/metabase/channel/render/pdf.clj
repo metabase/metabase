@@ -1401,7 +1401,7 @@
                            #(draw-markdown-in-cell! doc cs x top-y cell-w % (:align-h cell) (:align-v cell) (:text cell)))
                 nil)
               (catch Throwable e
-                (log/error e "Error rendering dashboard PDF cell; substituting placeholder")
+                (log/error "Error rendering dashboard PDF cell; substituting placeholder:" (ex-message e))
                 (draw-text-block! cs (font/face :regular) 10.0 nil x top-y cell-w cell-h
                                   "[Unable to render this card]")))))
         (finally
@@ -1513,7 +1513,7 @@
              (try
                (run! #(some-> % :result :data :rows notification.payload/cleanup!) parts)
                (catch Throwable e
-                 (log/warn e "Error cleaning up temp files for dashboard PDF"))))))))))
+                 (log/warn "Error cleaning up temp files for dashboard PDF:" (ex-message e)))))))))))
 
 (defn render-dashboard-to-pdf-file
   "Convenience wrapper for the REPL: render the dashboard to PDF and write it to `path`."

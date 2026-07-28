@@ -99,7 +99,7 @@
         (try
           (messages/send-creator-sentiment-email! creator (blob creator))
           (catch Throwable e
-            (log/error e "Problem sending creator sentiment email:")))))))
+            (log/error "Problem sending creator sentiment email:" (ex-message e))))))))
 
 (task/defjob ^{:doc "Sends out a monthly survey to a portion of the creators."} CreatorSentimentEmail [_]
   (let [current-week (.get (t/local-date) (.weekOfWeekBasedYear (WeekFields/of (Locale/getDefault))))]

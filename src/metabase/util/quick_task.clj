@@ -2,7 +2,6 @@
   "Namespace with helpers for quick tasks. Intended for quick, one-off tasks like re-syncing a table,
   fingerprinting a field, etc."
   (:require
-   [clojure.string :as str]
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.util :as u]
@@ -46,12 +45,10 @@
                        (try
                          (.get fut timeout-ms TimeUnit/MILLISECONDS)
                          (catch TimeoutException _
-                           (log/warnf "quick-task exceeded timeout of %d ms, cancelling. Stuck thread stack trace:\n%s"
-                                      timeout-ms
-                                      (str/join "\n" (map #(str "  " %) (.getStackTrace t))))
+                           (log/warnf "quick-task exceeded timeout of %d ms, cancelling" timeout-ms)
                            (.cancel fut true))
                          (catch InterruptedException _
                            (.interrupt (Thread/currentThread)))
                          (catch Exception e
-                           (log/warn e "quick-task threw exception")))))]
+                           (log/warn "quick-task threw exception:" (ex-message e))))))]
     (.submit ^ExecutorService @executor ^Callable wrapped)))

@@ -77,7 +77,7 @@
             (into #{} (map :id) matched-tables))
           #{}))
       (catch Exception e
-        (log/warn e "Failed to extract tables from source SQL")
+        (log/warn "Failed to extract tables from source SQL:" (ex-message e))
         #{}))
     #{}))
 

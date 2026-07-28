@@ -31,7 +31,7 @@
       (try
         (messages/send-follow-up-email! (:email admin))
         (catch Throwable e
-          (log/error e "Problem sending follow-up email:"))
+          (log/error "Problem sending follow-up email:" (ex-message e)))
         (finally
           (product-feedback.settings/follow-up-email-sent! true))))))
 

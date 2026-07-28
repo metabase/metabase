@@ -27,7 +27,7 @@
           (let [[info] (login-history/human-friendly-infos [history-record])]
             (messages/send-login-from-new-device-email! info))
           (catch Throwable e
-            (log/error e "Error sending 'login from new device' notification email")))))))
+            (log/error "Error sending 'login from new device' notification email:" (ex-message e))))))))
 
 (mu/defn record-login-history!
   "Record login history for a user, and send them an email if this is their first time logging in from this device."

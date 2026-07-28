@@ -39,7 +39,7 @@
       (when-let [version-info (get-version-info)]
         (version.settings/version-info! version-info))
       (catch Throwable e
-        (log/error e "Error fetching version info; setting version-info value to nil")
+        (log/error "Error fetching version info; setting version-info value to nil:" (ex-message e))
         (version.settings/version-info! nil)))))
 
 (def ^:private job-key     "metabase.task.upgrade-checks.job")

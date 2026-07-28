@@ -39,7 +39,7 @@
                             :updated_at :updated_at} ;; setting last_viewed_at should not update the updated_at column
                    :where  [:in :id (keys document-id->timestamp)]}))
       (catch Exception e
-        (log/error e "Failed to update document last_viewed_at")))))
+        (log/error "Failed to update document last_viewed_at:" (ex-message e))))))
 
 (def ^:private update-document-last-viewed-at-queue
   (delay (grouper/start!
@@ -68,4 +68,4 @@
       ;; Update recent views alongside existing view log functionality
       (activity-feed/update-users-recent-views! user-id :model/Document object-id :view)
       (catch Throwable e
-        (log/warnf e "Failed to process document view event. %s" topic)))))
+        (log/warnf "Failed to process document view event. %s: %s" topic (ex-message e))))))

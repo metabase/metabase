@@ -132,7 +132,7 @@
         ;; meantime -- see
         ;; https://metaboat.slack.com/archives/C0645JP1W81/p1757457633926199?thread_ts=1757457374.178329&cid=C0645JP1W81
         (do
-          (log/error e)
+          (log/error (ex-message e))
           (mapv merge-col
                 initial-cols
                 ;; `util.perf/mapv` checks the `count` of all args, so it's NSFIS - Not Safe For Infinite Seqs.
@@ -177,8 +177,7 @@
                                        (when-let [expr (try
                                                          (lib.expression/resolve-expression query expression-name)
                                                          (catch #?(:clj Throwable :cljs :default) e
-                                                           (log/error e "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
-                                                           (log/debugf "In query:\n%s" (u/pprint-to-str query))
+                                                           (log/error "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342):" (ex-message e))
                                                            nil))]
                                          (match/match-one expr
                                            [:convert-timezone _opts _expr source-tz & _]

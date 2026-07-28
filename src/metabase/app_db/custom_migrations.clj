@@ -125,7 +125,7 @@
     (try
       (json/decode s keywordize-keys?)
       (catch Throwable e
-        (log/error e "Error parsing JSON")
+        (log/error "Error parsing JSON:" (ex-message e))
         s))
     s))
 
@@ -142,8 +142,8 @@
       (catch Throwable e
         (if (or (encryption/possibly-encrypted-string? decrypted)
                 (encryption/possibly-encrypted-bytes? decrypted))
-          (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
-          (log/error e "Error parsing JSON"))  ; same message as in `json-out`
+          (log/error "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?" (ex-message e))
+          (log/error "Error parsing JSON:" (ex-message e)))  ; same message as in `json-out`
         v))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

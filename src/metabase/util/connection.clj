@@ -84,7 +84,7 @@
             (not (str/includes? (str (.getDatabaseProductVersion md)) "MariaDB"))
             (>= (.getDatabaseMajorVersion md) 10)))
      (catch Throwable e
-       (log/debug e "Could not read server version; assuming statement timeouts work")
+       (log/debug "Could not read server version; assuming statement timeouts work:" (ex-message e))
        false))))
 
 (defn set-query-timeout!

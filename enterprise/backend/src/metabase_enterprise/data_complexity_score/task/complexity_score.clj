@@ -66,10 +66,10 @@
           (data-complexity-score/record-score! claim-fingerprint "appdb" result)
           (maybe-advance-last-fingerprint! claim-fingerprint result)
           (catch Throwable t
-            (log/warn t "Data Complexity Score: failed to persist score snapshot; leaving fingerprint unchanged so the next boot or cron retries")))
+            (log/warn "Data Complexity Score: failed to persist score snapshot; leaving fingerprint unchanged so the next boot or cron retries:" (ex-message t))))
         result)
       (catch Throwable t
-        (log/warn t "Data Complexity Score run failed")
+        (log/warn "Data Complexity Score run failed:" (ex-message t))
         nil))
     (log/debug "Data Complexity Score run skipped — scoring-active? is false")))
 
@@ -184,7 +184,7 @@
             (settings/data-complexity-scoring-claim! "")
             (log/info "Data Complexity Score: skipping claim release — persisted claim no longer belongs to this node (sibling takeover after TTL)")))))
     (catch Throwable t
-      (log/warn t "Data Complexity Score: failed to clear scoring claim; it will expire via TTL"))))
+      (log/warn "Data Complexity Score: failed to clear scoring claim; it will expire via TTL:" (ex-message t)))))
 
 (defn- with-scoring-claim!
   "Acquire a scoring claim, invoke `f` with the claim map, then release the claim via
@@ -246,7 +246,7 @@
         (log/info "Data Complexity Score: fingerprint changed, emitting boot-time score")
         (run-scoring! fingerprint)))
     (catch Throwable t
-      (log/warn t "Data Complexity Score: boot-time emission failed"))))
+      (log/warn "Data Complexity Score: boot-time emission failed:" (ex-message t)))))
 
 (defmethod task/init! ::DataComplexityScoring [_]
   (let [job     (jobs/build

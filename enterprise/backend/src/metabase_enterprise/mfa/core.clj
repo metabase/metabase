@@ -63,7 +63,7 @@
     (try
       (messages/send-mfa-login-code-email! user-email code)
       (catch Throwable e
-        (log/warn e "Failed to send MFA email OTP")
+        (log/warn "Failed to send MFA email OTP:" (ex-message e))
         ;; don't tell an unauthenticated caller "the code exists but the email failed"
         (throw (ex-info (tru "Failed to send the sign-in code. Please try again or contact your administrator.")
                         {:status-code 500}))))))

@@ -138,14 +138,14 @@
 
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
-  [{display-type :display card-name :name :as card} maybe-dashcard {:keys [cols rows] :as data}]
+  [{display-type :display :as card} maybe-dashcard {:keys [cols rows] :as data}]
   (let [col-sample-count  (delay (count (take 3 cols)))
         row-sample-count  (delay (count (take 2 rows)))
         display-type      (or (render.util/visualizer-display-type maybe-dashcard) display-type)
         map-type          (map-chart-type display-type card maybe-dashcard data)]
     (letfn [(chart-type [tyype reason & args]
               (log/tracef "Detected chart type %s for Card %s because %s"
-                          tyype (pr-str card-name) (apply format reason args))
+                          tyype (:id card) (apply format reason args))
               tyype)]
       (cond
         (or (empty? rows)
@@ -228,10 +228,10 @@
 
           (:card-error data)
           (do
-            (log/error e "Pulse card query error")
+            (log/error "Pulse card query error:" (ex-message e))
             (body/render :card-error nil nil nil nil nil))
           :else (do
-                  (log/error e "Pulse card render error")
+                  (log/error "Pulse card render error:" (ex-message e))
                   (body/render :render-error nil nil nil nil nil)))))))
 
 (mu/defn error-rendered-part :- ::body/RenderedPartCard

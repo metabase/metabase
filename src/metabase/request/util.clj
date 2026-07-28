@@ -159,5 +159,5 @@
             result)
           (catch Throwable e
             (analytics/inc! :metabase-geocoding/errors)
-            (log/error e "Error geocoding IP addresses" {:url url})
+            (log/error "Error geocoding IP addresses:" (ex-message e))
             nil))))))

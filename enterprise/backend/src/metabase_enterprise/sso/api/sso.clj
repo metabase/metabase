@@ -67,7 +67,7 @@
   (try
     (sso.i/sso-post request)
     (catch Throwable e
-      (log/error e "Error logging in")
+      (log/error "Error logging in:" (ex-message e))
       (sso-error-page e :in))))
 
 ;; ------------------------------ Single Logout aka SLO ------------------------------
@@ -147,7 +147,7 @@
       (throw (ex-info "SAML Single Logout is not enabled, request forbidden."
                       {:status-code 403})))
     (catch Throwable e
-      (log/error e "Error handling SLO")
+      (log/error "Error handling SLO:" (ex-message e))
       (sso-error-page e :out))))
 
 ;; Key schema that excludes `/` so /:key does not greedily match /:key/callback
@@ -164,7 +164,7 @@
   (try
     (oidc-integration/sso-initiate provider-key request)
     (catch Throwable e
-      (log/error e "Error initiating OIDC SSO")
+      (log/error "Error initiating OIDC SSO:" (ex-message e))
       (throw e))))
 
 ;; GET /auth/sso/:key/callback
@@ -177,5 +177,5 @@
   (try
     (oidc-integration/sso-callback provider-key request)
     (catch Throwable e
-      (log/error e "Error handling OIDC callback")
+      (log/error "Error handling OIDC callback:" (ex-message e))
       (throw e))))

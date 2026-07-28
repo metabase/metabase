@@ -76,7 +76,7 @@
     (try
       (apply classloader/require expected-ns require-options)
       (catch Throwable e
-        (log/error e "Error loading driver namespace")
+        (log/error "Error loading driver namespace:" (ex-message e))
         (throw (Exception. (tru "Could not load {0} driver." driver) e))))))
 
 (mu/defn load-driver-namespace-if-needed!
@@ -207,7 +207,6 @@
           (doseq [parent (parents hierarchy driver)]
             (initialize-if-needed! parent init-fn))
           (log/info (u/format-color :yellow "Initializing driver %s..." driver))
-          (log/debug "Reason:" (u/pprint-to-str :blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
           (init-fn driver)
           (swap! initialized-drivers conj driver))))))
 

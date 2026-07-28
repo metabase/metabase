@@ -14,7 +14,6 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -47,7 +46,7 @@
   (letfn [(qp* [query _rff]
             (let [query (substitute-params query)]
               ;; ok, now execute the query.
-              (log/debugf "Executing query\n\n%s" (u/pprint-to-str query))
+              (log/debug "Executing write query")
               (driver/execute-write-query! driver/*driver* (lib/->legacy-MBQL query))))]
     (apply-middleware qp* (concat execution-middleware qp/around-middleware))))
 

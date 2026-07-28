@@ -34,7 +34,7 @@
             refs   (sql-tools/referenced-tables-raw driver sql)]
         (->> refs (map :table) (remove nil?) distinct vec))
       (catch Throwable e
-        (log/warn e "Failed to extract referenced tables from generated SQL")
+        (log/warn "Failed to extract referenced tables from generated SQL:" (ex-message e))
         []))
     []))
 

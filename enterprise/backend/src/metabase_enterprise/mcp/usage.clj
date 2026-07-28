@@ -69,7 +69,7 @@
                             :client_version (truncate (:version client-info) client-version-max-length)}
                            pii))))
     (catch Throwable e
-      (log/warn e "Failed to record MCP session"))))
+      (log/warn "Failed to record MCP session:" (ex-message e)))))
 
 (defenterprise record-mcp-session-end!
   "EE: stamp `ended_at` on the session row at teardown. Best-effort; the row may be absent
@@ -80,7 +80,7 @@
     (when session-id
       (t2/update! :model/McpSessionLog :id session-id {:ended_at :%now}))
     (catch Throwable e
-      (log/warn e "Failed to record MCP session end"))))
+      (log/warn "Failed to record MCP session end:" (ex-message e)))))
 
 (defn- resolve-client-identity
   "Client identity for a tool-call row, denormalized so `v_mcp_tool_calls` needs no session join.
@@ -132,4 +132,4 @@
                                              (truncate error-message error-message-max-length))}
                          pii)))
     (catch Throwable e
-      (log/warn e "Failed to record MCP tool call"))))
+      (log/warn "Failed to record MCP tool call:" (ex-message e)))))

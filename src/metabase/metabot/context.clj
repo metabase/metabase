@@ -149,7 +149,7 @@
             (table-utils/used-tables query))
       [])
     (catch Exception e
-      (log/error e "Error getting database tables for context")
+      (log/error "Error getting database tables for context:" (ex-message e))
       [])))
 
 (defn- python-transform-db-and-table-ids
@@ -169,7 +169,7 @@
     (when (and database-id (seq table-ids))
       (not-empty (mapv table-stub (table-utils/used-tables-from-ids database-id table-ids))))
     (catch Exception e
-      (log/error e "Error getting Python transform tables for context")
+      (log/error "Error getting Python transform tables for context:" (ex-message e))
       [])))
 
 (defn- mbql-source-table-ids
@@ -207,7 +207,7 @@
                   (map table-stub))
             raw-tables))
     (catch Exception e
-      (log/error e "Error getting MBQL source tables for context")
+      (log/error "Error getting MBQL source tables for context:" (ex-message e))
       nil)))
 
 (defn- enhance-context-with-schema
@@ -249,7 +249,7 @@
                                :source_type (transforms-base.u/transform-source-type (:source transform))))
                       item)
                     (catch Exception e
-                      (log/error e "Error annotating transform source type for metabot context")
+                      (log/error "Error annotating transform source type for metabot context:" (ex-message e))
                       item)))
                 user-viewing)]
       (assoc context :user_is_viewing annotated-viewing))
@@ -317,7 +317,7 @@
                              (assoc :type item-type))))
                      (take 5 recents)))))
     (catch Exception e
-      (log/error e "Error adding recent views to metabot context")
+      (log/error "Error adding recent views to metabot context:" (ex-message e))
       context)))
 
 (defn- set-user-time

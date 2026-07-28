@@ -188,7 +188,7 @@
         (driver/drop-table! driver (:id database) old-temp)
         result)
       (catch Exception e
-        (log/error e "Failed to run transform using rename-tables strategy")
+        (log/error "Failed to run transform using rename-tables strategy:" (ex-message e))
         (try (driver/drop-table! driver (:id database) new-temp) (catch Exception _))
         (throw e)))))
 
@@ -202,7 +202,7 @@
         (driver/rename-table! driver (:id database) tmp-table output-table)
         result)
       (catch Exception e
-        (log/error e "Failed to run transform using create-drop-rename strategy")
+        (log/error "Failed to run transform using create-drop-rename strategy:" (ex-message e))
         (try (driver/drop-table! driver (:id database) tmp-table) (catch Exception _))
         (throw e)))))
 
@@ -212,7 +212,7 @@
     (driver/drop-table! driver (:id database) output-table)
     (create-table-and-insert-data! driver transform-details conn-spec)
     (catch Exception e
-      (log/error e "Failed to run transform using drop-create strategy")
+      (log/error "Failed to run transform using drop-create strategy:" (ex-message e))
       (throw e))))
 
 ;; Follows similar logic to `transfer-file-to-db :table`
@@ -355,7 +355,7 @@
                             (sql-tools/is-single-stmt-of-type? driver (:native stage) stmt-type)]
                         (cond error
                               (do
-                                (log/warnf "Failed to parse native query: %s\n: Query: %s" error (:native stage))
+                                (log/warnf "Failed to parse native query: %s" error)
                                 (throw (ex-info (tru "Unable to parse native query. There might be something wrong with your query.")
                                                 {:type qp.error-type/invalid-query
                                                  :sql  (:native stage)})))

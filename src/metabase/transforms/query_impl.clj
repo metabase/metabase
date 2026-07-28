@@ -63,7 +63,7 @@
      (catch Throwable t
        (if (= :already-running (:error (ex-data t)))
          (log/warnf "Transform %d is already running" id)
-         (log/error t "Error executing transform"))
+         (log/error "Error executing transform:" (ex-message t)))
        (throw t)))))
 
 (defmethod transforms.i/execute! :query [transform opts]

@@ -80,7 +80,6 @@
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -138,7 +137,7 @@
                          (try
                            (params.dates/date-string->filter value field-id)
                            (catch Throwable e
-                             (log/error e "Error creating filter for date string")
+                             (log/error "Error creating filter for date string:" (ex-message e))
                              nil))
                          ;; we don't want to skip our value, even if its nil
                          (let [values (if (nil? value) [nil] (u/one-or-many value))]
@@ -147,12 +146,12 @@
                             :options  options
                             :args     (cons field values)}))]
     (when filter-op
-      (log/tracef "Adding filter clause: %s" (pr-str filter-op)))
+      (log/tracef "Adding filter clause with operator %s" (pr-str (:operator filter-op))))
     (cond-> query
       filter-op (lib/filter filter-op))))
 
 (defn- name-for-logging [model id]
-  (format "%s %d %s" (name model) id (u/format-color 'blue (pr-str (t2/select-one-fn :name model :id id)))))
+  (format "%s %d" (name model) id))
 
 (defn- format-join-for-logging [join]
   (format "%s %s -> %s %s"
@@ -183,10 +182,9 @@
          (if (or (= field-table-id source-table-id)
                  (contains? joined-table-ids field-table-id))
            (do
-             (log/tracef "Added filter clause for %s %s with constraint %s"
+             (log/tracef "Added filter clause for %s %s"
                          (name-for-logging :model/Table field-table-id)
-                         (name-for-logging :model/Field field-id)
-                         (pr-str constraint))
+                         (name-for-logging :model/Field field-id))
              (add-filter query source-table-id id->field constraint))
            (do
              (log/tracef "Not adding filter clause for %s %s because we did not join against its Table"
@@ -402,8 +400,8 @@
                                                          (lib/with-join-alias (joined-table-alias lhs-table-id)))
                                                        (-> rhs-field
                                                            (lib/with-join-alias (joined-table-alias rhs-table-id))))]))]
-         (log/tracef "Adding join against %s\n%s"
-                     (name-for-logging :model/Table rhs-table-id) (u/cprint-to-str join))
+         (log/tracef "Adding join against %s"
+                     (name-for-logging :model/Table rhs-table-id))
          (lib/join query join)))
      query
      joins)))
@@ -448,7 +446,7 @@
   [field-id                          :- ::lib.schema.id/field
    constraints                       :- [:maybe ::constraints]
    {:keys [original-field-id limit]} :- [:maybe ::options]]
-  (log/tracef "Chain filter %s with constraints %s" (name-for-logging :model/Field field-id) (u/cprint-to-str constraints))
+  (log/tracef "Chain filter %s with %d constraint(s)" (name-for-logging :model/Field field-id) (count constraints))
   ;; `field-id->database-id` is the one place we still bootstrap from a raw field-id: we need the Database before we
   ;; can build a (per-Database) metadata provider. Every other table-id/db-id below comes from `mp`.
   (let [database-id       (field/field-id->database-id field-id)
@@ -481,7 +479,7 @@
                   (name-for-logging :model/Field original-field-id)))
     (when (seq joins)
       (log/tracef "Generating joins and filters for source %s with joins info\n%s"
-                  (name-for-logging :model/Table source-table-id) (u/cprint-to-str joins)))
+                  (name-for-logging :model/Table source-table-id) (pr-str joins)))
     (-> (lib/query mp (lib.metadata/table mp source-table-id))
         ;; return the lesser of limit (if set) or max results
         (lib/limit ((fnil min Integer/MAX_VALUE) limit max-results))
@@ -520,17 +518,11 @@
    constraints :- [:maybe ::constraints]
    options     :- [:maybe ::options]]
   (let [mbql-query (chain-filter-mbql-query field-id constraints options)]
-    (log/debugf "Chain filter MBQL query:\n%s" (u/cprint-to-str mbql-query))
     (try
       (let [query-limit (lib/current-limit mbql-query)
             ;; FIXME: this can OOM for text column if each value are too large. See #46411
             ;; Consider using the [[field-values/distinct-text-field-rff] rff]
             values      (qp/process-query mbql-query (constantly conj))]
-        (try ; Feature issue #46888: log chain filter query.
-          (log/debugf "Chain filter native query: `%s`."
-                      (:query (qp.compile/compile mbql-query)))
-          (catch Throwable _
-            (log/error "Chain filter log failed!")))
         {:values          values
          ;; It's unlikely that we don't have a query-limit, but better safe than sorry and default it true
          ;; so that calling chain-filter-search on the same field will search from DB.

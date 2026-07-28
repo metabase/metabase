@@ -78,7 +78,7 @@
                      :request_id             request-id
                      :ai_proxied             ai-proxied}))
       (catch Exception e
-        (log/warn e "Failed to log LLM usage to ai_usage_log")))))
+        (log/warn "Failed to log LLM usage to ai_usage_log:" (ex-message e))))))
 
 (defn- period-start
   "Return the start of the current billing period as an Instant, based on the reset rate setting."

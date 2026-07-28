@@ -214,7 +214,7 @@
           (throw (ex-info (or (str (:message login-result)) "SAML authentication failed")
                           {:status-code 401}))))
       (catch Throwable e
-        (log/error e "SAML response validation failed")
+        (log/error "SAML response validation failed:" (ex-message e))
         (throw (ex-info (tru "Unable to log in: SAML response validation failed")
                         {:status-code 401}
                         e))))))

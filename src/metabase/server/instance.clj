@@ -7,7 +7,6 @@
    [metabase.config.core :as config]
    [metabase.server.protocols :as server.protocols]
    [metabase.server.statistics-handler :as statistics-handler]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.adapter.jetty :as ring-jetty]
@@ -52,10 +51,10 @@
                                              (merge (jetty-ssl-config)))))
 
 (defn- log-config [jetty-config]
-  (log/info "Launching Embedded Jetty Webserver with config:\n"
-            (u/pprint-to-str (m/filter-keys
-                              #(not (str/includes? % "password"))
-                              jetty-config))))
+  (log/info "Launching Embedded Jetty Webserver with config:"
+            (pr-str (m/filter-keys
+                     #(not (str/includes? % "password"))
+                     jetty-config))))
 
 (defonce ^:private instance*
   (atom nil))
@@ -79,11 +78,11 @@
                                     (.setTimeout timeout))
             request-map           (servlet/build-request-map request)
             raise                 (fn raise [^Throwable e]
-                                    (log/error e "Unexpected exception in endpoint")
+                                    (log/error "Unexpected exception in endpoint:" (ex-message e))
                                     (try
                                       (.sendError response 500 (.getMessage e))
                                       (catch Throwable e
-                                        (log/error e "Unexpected exception writing error response")))
+                                        (log/error "Unexpected exception writing error response:" (ex-message e))))
                                     (.complete context))]
         (try
           (handler
@@ -96,7 +95,7 @@
                                                              :response-map  response-map}))
            raise)
           (catch Throwable e
-            (log/error e "Unexpected Exception in API request handler")
+            (log/error "Unexpected Exception in API request handler:" (ex-message e))
             (raise e))
           (finally
             (.setHandled base-request true)))))))

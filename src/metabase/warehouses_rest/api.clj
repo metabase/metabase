@@ -205,7 +205,7 @@
                    (when-let [db (t2/select-one :model/Database :id db-id)]
                      (driver.u/supports? (driver.u/database->driver db) :nested-queries db))
                    (catch Throwable e
-                     (log/error e "Error determining whether Database supports nested queries"))))
+                     (log/error "Error determining whether Database supports nested queries:" (ex-message e)))))
                (t2/select-pks-set :model/Database))))
 
 (mu/defn- source-query-cards
@@ -827,7 +827,7 @@
                 substring (autocomplete-suggestions id (str "%" substring "%"))
                 prefix    (autocomplete-suggestions id (str prefix "%")))}
     (catch Throwable e
-      (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
+      (log/warnf "Error with autocomplete: %s" (ex-message e)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -854,7 +854,7 @@
          (filter mi/can-read?)
          (map #(select-keys % [:id :name :type :collection_name])))
     (catch Throwable e
-      (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
+      (log/warnf "Error with autocomplete: %s" (ex-message e)))))
 
 ;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
 

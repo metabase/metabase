@@ -76,11 +76,9 @@
    'metabase.models.serialization])
 
 (defn- log-export-error!
-  "Log a serialization export error, honoring `full-stacktrace` (full trace vs stripped one-liner)."
-  [e full-stacktrace]
-  (if full-stacktrace
-    (log/error e "Error during serialization export")
-    (log/error (u/strip-error e "Error during serialization export"))))
+  "Log a serialization export error as a stripped one-liner."
+  [e _full-stacktrace]
+  (log/error (u/strip-error e "Error during serialization export")))
 
 (defn- extract-entities!
   "Run eager extraction (target resolution, escape analysis) before streaming starts. It must run
@@ -140,7 +138,6 @@
 
 (defn- unpack&import [^File file & [{:keys [size
                                             continue-on-error
-                                            full-stacktrace
                                             reindex?]}]]
   (let [dst      (io/file parent-dir (u.random/random-name))
         log-file (io/file dst "import.log")
@@ -160,16 +157,14 @@
                                           :dst    (.getPath dst)
                                           :count  cnt
                                           :files  (.listFiles dst)})))
-                       (log/infof "In total %s entries unpacked, detected source dir: %s" cnt (.getName path))
+                       (log/infof "In total %s entries unpacked, source dir detected" cnt)
                        (serdes/with-cache
                          (-> (v2.ingest/ingest-yaml (.getPath path))
                              (v2.load/load-metabase! {:continue-on-error continue-on-error
                                                       :reindex?          reindex?}))))
                      (catch Exception e
                        (reset! err e)
-                       (if full-stacktrace
-                         (log/error e "Error during serialization import")
-                         (log/error (u/strip-error e "Error during serialization import"))))))]
+                       (log/error (u/strip-error e "Error during serialization import")))))]
     {:log-file      log-file
      :status        (:status (ex-data @err))
      :error-message (when @err

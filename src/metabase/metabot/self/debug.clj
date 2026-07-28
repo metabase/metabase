@@ -49,7 +49,7 @@
           (.write w ^String (json/encode entry {:pretty true})))
         (log/debugf "Wrote AI request log to %s" (.getPath f)))
       (catch Exception e
-        (log/warn e "Failed to write AI request log")))))
+        (log/warn "Failed to write AI request log:" (ex-message e))))))
 
 (defn capture-stream
   "Wrap an SSE reducible so every raw provider event is teed into a vector while

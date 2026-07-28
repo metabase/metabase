@@ -49,7 +49,7 @@
                         ((requiring-resolve 'metabase.search.task.search-index/trigger-init-for-newly-active-engines!)
                          before)
                         (catch Throwable t
-                          (log/error t "Failed to trigger search index init for newly active engines")))))
+                          (log/error "Failed to trigger search index init for newly active engines:" (ex-message t))))))
                   result))
   :doc        false)
 

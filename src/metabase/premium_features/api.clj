@@ -36,7 +36,7 @@
           (when-not (<= 200 (:status response) 299)
             (log/warnf "LLM proxy token cache invalidation failed with status %s" (:status response))))
         (catch Exception e
-          (log/warn e "Failed to invalidate LLM proxy token cache"))))))
+          (log/warn "Failed to invalidate LLM proxy token cache:" (ex-message e)))))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/token/refresh"

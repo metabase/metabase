@@ -60,10 +60,10 @@
         (if (= 200 (:status response))
           (oidc.common/parse-token-response (:body response))
           (do
-            (log/errorf "Token exchange failed: %s" (:body response))
+            (log/errorf "Token exchange failed with status %s" (:status response))
             nil)))
       (catch Exception e
-        (log/error e "Token exchange failed")
+        (log/error "Token exchange failed:" (ex-message e))
         nil))))
 
 ;;; -------------------------------------------------- User Data Extraction --------------------------------------------------

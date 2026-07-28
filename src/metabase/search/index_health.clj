@@ -114,7 +114,7 @@
           (catch InterruptedException e
             (throw e))
           (catch Exception e
-            (log/error e "Search index metric collector errored" {:check check-name})
+            (log/error "Search index metric collector errored" {:check check-name :error (ex-message e)})
             {:health 0, :message (str "Metric collector errored: " (ex-message e))}))]
     (set-index-gauge! gauge-key index value)
     (when health
@@ -148,7 +148,7 @@
     (catch InterruptedException e
       (throw e))
     (catch Exception e
-      (log/error e "Search index health-row persist errored" {:check check-name}))))
+      (log/error "Search index health-row persist errored" {:check check-name :error (ex-message e)}))))
 
 (defonce ^:private gauge-refresh-running? (atom false))
 
@@ -161,7 +161,7 @@
     (catch InterruptedException e
       (throw e))
     (catch Exception e
-      (log/error e "Search index gauge refresh errored" {:check check-name}))))
+      (log/error "Search index gauge refresh errored" {:check check-name :error (ex-message e)}))))
 
 (defn- refresh-search-index-gauges!
   []
@@ -177,7 +177,7 @@
       (submit-gauge-refresh! refresh-search-index-gauges!)
       (catch Exception e
         (reset! gauge-refresh-running? false)
-        (log/error e "Could not schedule search index gauge refresh"))))
+        (log/error "Could not schedule search index gauge refresh:" (ex-message e)))))
   nil)
 
 ;; Prometheus scrapes every Metabase process, whereas the scheduled metric job may run on only one member of

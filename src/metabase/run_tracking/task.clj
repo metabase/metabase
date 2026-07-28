@@ -56,7 +56,7 @@
          (heartbeat-fn)
          (catch InterruptedException e (throw e))
          (catch Throwable t
-           (log/error t "Error sending run-tracking heartbeat")))
+           (log/error "Error sending run-tracking heartbeat:" (ex-message t))))
        (Thread/sleep (long (u/minutes->ms interval-minutes)))
        (recur))
      (catch InterruptedException _ nil))))

@@ -243,7 +243,8 @@
         (jdbc/execute! tx [(str "CREATE SCHEMA IF NOT EXISTS " (quoted/postgres app-db-schema))])))
     true
     (catch Exception e
-      (log/debug e "Semantic search: the application database user cannot provision the pgvector store")
+      (log/debug "Semantic search: the application database user cannot provision the pgvector store:"
+                 (ex-message e))
       false)))
 
 (defn check-app-db-pgvector-support
@@ -312,8 +313,9 @@
                  false))
              (catch Exception e
                (reset! probe-cooldown-timer (u/start-timer))
-               (log/warn e (str "Semantic search: pgvector support check on the application database failed;"
-                                " will retry after the cooldown."))
+               (log/warn (str "Semantic search: pgvector support check on the application database failed;"
+                              " will retry after the cooldown:")
+                         (ex-message e))
                false))))))))
 
 (defn pgvector-mode

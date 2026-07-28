@@ -62,7 +62,7 @@
                              :title       title
                              :description description})]})
     (catch Exception e
-      (log/error e "Error creating chart")
+      (log/error "Error creating chart:" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to create chart: " (or (ex-message e) "Unknown error"))}))))
@@ -110,7 +110,7 @@
                       :title       title
                       :description description})]})
     (catch Exception e
-      (log/error e "Error editing chart")
+      (log/error "Error editing chart:" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to edit chart: " (or (ex-message e) "Unknown error"))}))))

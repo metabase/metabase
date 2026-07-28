@@ -137,7 +137,7 @@
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e
-        (log/error e "Failed to connect to Database")
+        (log/error "Failed to connect to Database:" (ex-message e))
         (throw (if-let [humanized-message (some->> (u/all-ex-messages e)
                                                    (driver/humanize-connection-error-message driver))]
                  (let [error-data (cond
@@ -154,7 +154,7 @@
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e
-        (log/error e "Failed to connect to database")
+        (log/error "Failed to connect to database:" (ex-message e))
         false))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -210,7 +210,7 @@
     (u/with-timeout supports?-timeout-ms
       (driver/database-supports? driver feature database))
     (catch Throwable e
-      (log/error e (u/format-color 'red "Failed to check feature '%s' for database '%s'" (u/qualified-name feature) (:name database)))
+      (log/error (u/format-color 'red "Failed to check feature '%s' for database %s: %s" (u/qualified-name feature) (:id database) (ex-message e)))
       false)))
 
 (def ^:private memoized-supports?*
@@ -367,7 +367,7 @@
   (let [content (or placeholder
                     (try (getter)
                          (catch Throwable e
-                           (log/errorf e "Error invoking getter for connection property %s" (:name conn-prop)))))]
+                           (log/errorf "Error invoking getter for connection property %s: %s" (:name conn-prop) (ex-message e)))))]
     (when (string? content)
       (-> conn-prop
           (assoc :placeholder content)
@@ -378,7 +378,7 @@
   [{:keys [check] :as conn-prop}]
   (if (try (check)
            (catch Throwable e
-             (log/errorf e "Error invoking getter for connection property %s" (:name conn-prop))))
+             (log/errorf "Error invoking getter for connection property %s: %s" (:name conn-prop) (ex-message e))))
     [(-> conn-prop
          (assoc :type "section")
          (dissoc :check))]
@@ -618,7 +618,7 @@
                                  (->> (driver/connection-properties driver)
                                       (connection-props-server->client driver))
                                  (catch Throwable e
-                                   (log/errorf e "Unable to determine connection properties for driver %s" driver)))]
+                                   (log/errorf "Unable to determine connection properties for driver %s: %s" driver (ex-message e))))]
                  ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
                  (assoc! acc driver {:source         {:type    (driver-source (name driver))
                                                       :contact (driver/contact-info driver)}

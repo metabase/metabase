@@ -397,7 +397,7 @@
                   qp.reducible/default-rff)]
       {:values (-> result :data :rows)})
     (catch Throwable e
-      (log/error e "Error fetching field values")
+      (log/error "Error fetching field values:" (ex-message e))
       nil)))
 
 (defn- delete-duplicates-and-return-latest!

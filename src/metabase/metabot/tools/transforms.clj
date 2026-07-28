@@ -57,7 +57,7 @@
                        (seq (:bad_questions structured_output))))
           structured_output))
       (catch Exception e
-        (log/error e "Dependency check failed for transform" transform-id)
+        (log/error "Dependency check failed for transform" transform-id (ex-message e))
         nil))))
 
 (defn- format-dependency-warnings

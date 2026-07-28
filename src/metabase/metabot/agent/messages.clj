@@ -33,7 +33,7 @@
     (try
       (json/decode+kw arguments)
       (catch Exception e
-        (log/warn e "Failed to decode tool call arguments" {:arguments arguments})
+        (log/warn "Failed to decode tool call arguments:" (ex-message e))
         arguments))
     arguments))
 

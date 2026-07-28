@@ -526,7 +526,7 @@
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
      (letfn [(raise' [e]
-               (log/error e "Authentication endpoint error")
+               (log/error "Authentication endpoint error:" (ex-message e))
                (raise e))]
        (handler request respond raise')))
    (fn [prefix]

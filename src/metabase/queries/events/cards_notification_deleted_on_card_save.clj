@@ -48,4 +48,4 @@
                                                   (throw (ex-info "Unknown recipient type" {:recipient recipient}))))))]
       (send-message! card recipients recipients-with-no-links actor))
     (catch Throwable e
-      (log/error e "Error sending notification email"))))
+      (log/error "Error sending notification email:" (ex-message e)))))

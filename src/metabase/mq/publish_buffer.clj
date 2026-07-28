@@ -68,12 +68,12 @@
   (try
     (q.outbox/insert-batch! channel (payload/encode messages))
     (analytics/inc! :metabase-mq/batches-retried {:channel (name channel) :reason "publish-outbox-handoff"})
-    (log/warnf e "Backend publish failed for %s; handed %d message(s) to the durable outbox for recovery"
-               channel (count messages))
+    (log/warnf "Backend publish failed for %s; handed %d message(s) to the durable outbox for recovery: %s"
+               channel (count messages) (ex-message e))
     (catch Exception oe
       (analytics/inc! :metabase-mq/batches-dropped {:channel (name channel) :reason "outbox-handoff-failed"})
-      (log/errorf oe "Backend publish AND outbox handoff both failed for %s; dropping %d message(s). Publish error: %s"
-                  channel (count messages) (ex-message e)))))
+      (log/errorf "Backend publish AND outbox handoff both failed for %s; dropping %d message(s). Publish error: %s; outbox error: %s"
+                  channel (count messages) (ex-message e) (ex-message oe)))))
 
 (defn- flush-accumulation!
   "Drains accumulation entries past their deadline (or all of them when `force?`) and publishes each.
@@ -119,7 +119,7 @@
   (try
     (flush-publish-buffer!)
     (catch Throwable t
-      (log/error t "Unexpected error in publish-buffer flush; flusher continues"))))
+      (log/error "Unexpected error in publish-buffer flush; flusher continues:" (ex-message t)))))
 
 (defn start-publish-buffer-flush!
   "Starts a daemon thread that flushes the publish buffer every 100ms. Idempotent.

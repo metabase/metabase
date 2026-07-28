@@ -59,9 +59,9 @@
 
 (methodical/defmethod perform-action!* :around :default
   [action context inputs]
-  (log/tracef "In action %s\nScope: %s\nInvocation stack:%s\nInputs: %s" action (:scope context) (:invocation-stack context) (pr-str inputs))
+  (log/tracef "In action %s\nScope: %s\nInvocation stack:%s" action (:scope context) (:invocation-stack context))
   (u/prog1 (next-method action context inputs)
-    (log/tracef "Out action %s: %s" action (pr-str <>))))
+    (log/tracef "Out action %s" action)))
 
 (defn- known-implicit-actions
   "Set of all known legacy actions."
@@ -187,7 +187,6 @@
         (log/debug "Started perform action")
         (actions.events/publish-action-invocation! action-kw context-before inputs)
         (try
-          (log/tracef "perform action inputs: %s" (pr-str inputs))
           (u/prog1 (perform-action!* action-kw context-before inputs)
             (let [{context-after :context, :keys [outputs]} <>]
               (doseq [k [:invocation-id :invocation-stack :user-id]]
@@ -205,7 +204,7 @@
                   info (with-meta info (merge (meta info) {:exception e}))]
               ;; Need to think about how we learn about already performed effects this way, since we don't get a context.
               (actions.events/publish-action-failure! action-kw context-before msg info)
-              (log/error e "Failed to perform action")
+              (log/error "Failed to perform action:" (ex-message e))
               (throw e))))))))
 
 (defn perform-nested-action!
@@ -239,11 +238,6 @@
   [table-id]
   (assert table-id "Id cannot be nil")
   (cached-database (:db_id (cached-value [:table-by-db-ids table-id] #(t2/select-one [:model/Table :db_id] table-id)))))
-
-(defn- log-before-after
-  [level context before after]
-  (log/logf level "%s %s => %s" context before after)
-  after)
 
 (mu/defn- check-permissions
   [policy   :- :keyword
@@ -281,8 +275,7 @@
                           (= "data-editing" (namespace action-kw))  :data-editing
                           :else                                     :ad-hoc-invocation))
           spec      (actions.args/action-arg-map-schema action-kw)
-          arg-maps  (log-before-after :trace "normalize map" arg-maps
-                                      (map (partial actions.args/normalize-action-arg-map action-kw) arg-maps))
+          arg-maps  (map (partial actions.args/normalize-action-arg-map action-kw) arg-maps)
           _        (actions.args/validate-inputs! action-kw arg-maps)
           errors   (for [arg-map arg-maps
                          :when (not (mr/validate spec arg-map))]

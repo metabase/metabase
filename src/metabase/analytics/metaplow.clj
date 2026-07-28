@@ -101,7 +101,7 @@
                 :connection-manager @connection-manager})
     (catch Throwable e
       (analytics/inc! :metabase-metaplow/errors {:stage :send-event!})
-      (log/warn e "Connection failure sending Metaplow event")
+      (log/warn "Connection failure sending Metaplow event:" (ex-message e))
       {:status -1})))
 
 (defn- retryable-response?
@@ -123,7 +123,7 @@
     :sent
     (catch Throwable e
       (analytics/inc! :metabase-metaplow/errors {:stage :send-event-with-retries!})
-      (log/warn e "Error sending Metaplow event")
+      (log/warn "Error sending Metaplow event:" (ex-message e))
       :error)))
 
 (defonce ^:private
@@ -171,7 +171,7 @@
         (enqueue! (build-payload schema data))
         (catch Throwable e
           (analytics/inc! :metabase-metaplow/errors {:stage :track-event!})
-          (log/warn e "Error queueing Metaplow event")
+          (log/warn "Error queueing Metaplow event:" (ex-message e))
           false))))))
 
 (comment

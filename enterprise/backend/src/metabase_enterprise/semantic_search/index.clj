@@ -222,7 +222,7 @@
     (->> (index-size connectable table-name)
          (analytics/set-gauge! :metabase-search/semantic-index-size))
     (catch Exception e
-      (log/warn e "Failed to set :metabase-search/semantic-index-size metric"))))
+      (log/warn "Failed to set :metabase-search/semantic-index-size metric:" (ex-message e)))))
 
 (defn- batch-update!
   [connectable table-name records->sql documents]
@@ -335,9 +335,7 @@
                     (if embedding
                       (map #(assoc % :embedding embedding) (get text->docs text))
                       (when-let [docs (get text->docs text)]
-                        (log/warn "No embedding found for" (count docs) "documents with searchable text:"
-                                  {:searchable_text text
-                                   :document_count (count docs)}))))
+                        (log/warn "No embedding found for" (count docs) "documents"))))
                   text->embedding)]
       (batch-update!
        connectable
@@ -1164,7 +1162,7 @@
                       {:strategy strategy :plan-node (or (:node-type scan) "unknown")} 1)
       (assoc scan :prefilter-pool-size pool))
     (catch Exception e
-      (log/warn e "Failed to record vector-search instrumentation")
+      (log/warn "Failed to record vector-search instrumentation:" (ex-message e))
       nil)))
 
 (defn- time-waterfall

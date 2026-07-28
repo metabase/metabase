@@ -61,7 +61,7 @@
         {:message (tru "Unable to connect to database.")})
       (catch Throwable e
         (when (and log-exception (not (some->> e ex-cause ex-data ::driver/can-connect-message?)))
-          (log/error e "Cannot connect to Database"))
+          (log/error "Cannot connect to Database:" (ex-message e)))
         (if (-> e ex-data :message)
           (ex-data e)
           {:message (ex-message e)})))))

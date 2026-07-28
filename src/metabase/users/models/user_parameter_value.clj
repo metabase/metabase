@@ -63,7 +63,7 @@
           (m/index-by (juxt :user_id :dashboard_id :parameter_id))
           vals))
     (catch Exception e
-      (log/error e "Error saving user parameters for a dashboard"))))
+      (log/error "Error saving user parameters for a dashboard:" (ex-message e)))))
 
 (defonce ^:private user-parameter-value-queue
   (delay (grouper/start!

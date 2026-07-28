@@ -39,5 +39,5 @@
       (when (= (:purpose claims) "mfa-challenge")
         claims))
     (catch Exception e
-      (log/debug e "Invalid MFA challenge token")
+      (log/debug "Invalid MFA challenge token:" (ex-message e))
       nil)))

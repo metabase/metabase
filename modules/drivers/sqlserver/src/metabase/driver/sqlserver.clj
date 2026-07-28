@@ -968,7 +968,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
+          (log/debug "Error setting statement fetch direction to FETCH_FORWARD:" (ex-message e))))
       stmt
       (catch Throwable e
         (.close stmt)

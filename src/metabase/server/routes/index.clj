@@ -76,7 +76,7 @@
     (stencil/render-file path variables)
     (catch IllegalArgumentException e
       (let [message (trs "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?" path)]
-        (log/error e message)
+        (log/error message (ex-message e))
         (throw (Exception. message e))))))
 
 (defn- template-parameters

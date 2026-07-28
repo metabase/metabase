@@ -181,7 +181,7 @@
           (log/debugf "Processed %d gate documents successfully in normal mode for index %s" (count gate-docs) (:table-name index))
           (catch InterruptedException ie (throw ie))
           (catch Throwable t
-            (log/debug t "Indexing failure caught in normal mode")
+            (log/debug "Indexing failure caught in normal mode:" (ex-message t))
             (log/warnf "Indexing failed in normal mode for index %s, marking as stalled: %s" (:table-name index) (.getMessage t))
             (mark-stalled! pgvector index-metadata index)
             (throw t)))
@@ -476,5 +476,5 @@
             (analytics/inc! :metabase-search/semantic-indexer-loop-ms (u/since-ms loop-start-time)))
           (catch InterruptedException ie (throw ie))
           (catch Throwable t
-            (log/errorf t "An exception was caught during the indexing loop for index %s" (:table-name metadata-row))
+            (log/errorf "An exception was caught during the indexing loop for index %s: %s" (:table-name metadata-row) (ex-message t))
             (throw t)))))))

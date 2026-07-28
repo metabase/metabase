@@ -64,7 +64,7 @@
   (try
     (supported?)
     (catch Exception e
-      (log/warn e "Semantic search engine not supported")
+      (log/warn "Semantic search engine not supported:" (ex-message e))
       false)))
 
 (defmethod search.engine/dependencies :search.engine/semantic [_]
@@ -87,7 +87,7 @@
   (try
     (update-index! document-reducible)
     (catch Exception e
-      (log/error e "Error updating semantic search engine")
+      (log/error "Error updating semantic search engine:" (ex-message e))
       {})))
 
 (defmethod search.engine/delete! :search.engine/semantic
@@ -95,7 +95,7 @@
   (try
     (delete-from-index! model ids)
     (catch Exception e
-      (log/error e "Error deleting from semantic search engine")
+      (log/error "Error deleting from semantic search engine:" (ex-message e))
       {})))
 
 (defmethod search.engine/init! :search.engine/semantic
@@ -104,7 +104,7 @@
     (log/debug "Initializing semantic search engine")
     (init! (search.ingestion/searchable-documents) opts)
     (catch Exception e
-      (log/error e "Error initializing semantic search engine")
+      (log/error "Error initializing semantic search engine:" (ex-message e))
       (throw e))))
 
 (defmethod search.engine/reindex! :search.engine/semantic

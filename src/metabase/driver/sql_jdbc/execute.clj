@@ -220,16 +220,16 @@
     (when-let [format-string (sql-jdbc.execute.old/set-timezone-sql driver)]
       (try
         (let [sql (format format-string (str \' timezone-id \'))]
-          (log/debugf "Setting %s database timezone with statement: %s" driver (pr-str sql))
+          (log/debugf "Setting %s database timezone to %s" driver timezone-id)
           (try
             (.setReadOnly conn false)
             (catch Throwable e
-              (log/debug e "Error setting connection to readwrite")))
+              (log/debug "Error setting connection to readwrite:" (ex-message e))))
           (with-open [stmt (.createStatement conn)]
             (.execute stmt sql)
             (log/tracef "Successfully set timezone for %s database to %s" driver timezone-id)))
         (catch Throwable e
-          (log/errorf e "Failed to set timezone '%s' for %s database" timezone-id driver))))))
+          (log/errorf "Failed to set timezone '%s' for %s database: %s" timezone-id driver (ex-message e)))))))
 
 (defenterprise set-role-if-supported!
   "OSS no-op implementation of `set-role-if-supported!`."
@@ -253,7 +253,7 @@
           (try
             (.setTransactionIsolation conn level)
             (catch Throwable e
-              (log/debugf e "Error setting transaction isolation level for %s database to %s" (name driver) level-name))))
+              (log/debugf "Error setting transaction isolation level for %s database to %s: %s" (name driver) level-name (ex-message e)))))
 
         (seq more)
         (recur more)))))
@@ -425,7 +425,7 @@
         (log/trace (pr-str (list '.setReadOnly 'conn read-only?)))
         (.setReadOnly conn read-only?)
         (catch Throwable e
-          (log/debugf e "Error setting connection readOnly to %s" (pr-str read-only?)))))
+          (log/debugf "Error setting connection readOnly to %s: %s" (pr-str read-only?) (ex-message e)))))
     ;; If this is (supposedly) a read-only connection, we would prefer enable auto-commit
     ;; so this IS NOT ran inside of a transaction, but without transaction the read-only
     ;; flag has no effect for most of the drivers.
@@ -439,7 +439,7 @@
             (log/trace (pr-str '(.setAutoCommit conn true)))
             (.setAutoCommit conn true)
             (catch Throwable e
-              (log/debug e "Error enabling connection autoCommit")))
+              (log/debug "Error enabling connection autoCommit:" (ex-message e))))
 
           ;; Postgres/Redshift buffer the *entire* ResultSet unless autoCommit is false (then they use a server-side
           ;; cursor honoring the statement fetch size). So for streamed reads (`:stream?` -- sync metadata reads,
@@ -449,18 +449,18 @@
             (log/trace (pr-str '(.setAutoCommit conn false)))
             (.setAutoCommit conn false)
             (catch Throwable e
-              (log/debug e "Error setting connection autoCommit to false"))))
+              (log/debug "Error setting connection autoCommit to false:" (ex-message e)))))
     (try
       ;; setNetworkTimeout sets Socket.setSoTimeout() which releases from blocked socker reads.
       ;; This is necessary because .close() doesn't interrupt threads stuck in native socket reads
       (.setNetworkTimeout conn @network-timeout-executor driver.settings/*network-timeout-ms*)
       (catch Throwable e
-        (log/debug e "Error setting network timeout for connection")))
+        (log/debug "Error setting network timeout for connection:" (ex-message e))))
     (try
       (log/trace (pr-str '(.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)))
       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
       (catch Throwable e
-        (log/debug e "Error setting default holdability for connection")))))
+        (log/debug "Error setting default holdability for connection:" (ex-message e))))))
 
 (defmethod do-with-connection-with-options :sql-jdbc
   [driver db-or-id-or-spec options f]
@@ -477,12 +477,12 @@
 
 (defn- set-object
   ([^PreparedStatement prepared-statement, ^Integer index, object]
-   (log/tracef "(set-object prepared-statement %d ^%s %s)" index (some-> object class .getName) (pr-str object))
+   (log/tracef "(set-object prepared-statement %d ^%s)" index (some-> object class .getName))
    (.setObject prepared-statement index object))
 
   ([^PreparedStatement prepared-statement, ^Integer index, object, ^Integer target-sql-type]
-   (log/tracef "(set-object prepared-statement %d ^%s %s java.sql.Types/%s)" index (some-> object class .getName)
-               (pr-str object) (.getName (JDBCType/valueOf target-sql-type)))
+   (log/tracef "(set-object prepared-statement %d ^%s java.sql.Types/%s)" index (some-> object class .getName)
+               (.getName (JDBCType/valueOf target-sql-type)))
    (.setObject prepared-statement index object target-sql-type)))
 
 (defmethod set-parameter :default
@@ -538,7 +538,7 @@
   (dorun
    (map-indexed
     (fn [i param]
-      (log/tracef "Set param %d -> %s" (inc i) (pr-str param))
+      (log/tracef "Set param %d ^%s" (inc i) (some-> param class .getName))
       (set-parameter driver stmt (inc i) param))
     params)))
 
@@ -553,12 +553,12 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e "Error setting prepared statement fetch direction to FETCH_FORWARD")))
+          (log/debug "Error setting prepared statement fetch direction to FETCH_FORWARD:" (ex-message e))))
       (try
         (when (zero? (.getFetchSize stmt))
           (.setFetchSize stmt (driver.settings/sql-jdbc-fetch-size)))
         (catch Throwable e
-          (log/debug e "Error setting prepared statement fetch size to fetch-size")))
+          (log/debug "Error setting prepared statement fetch size to fetch-size:" (ex-message e))))
       (set-parameters! driver stmt params)
       stmt
       (catch Throwable e
@@ -575,12 +575,12 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
+          (log/debug "Error setting statement fetch direction to FETCH_FORWARD:" (ex-message e))))
       (try
         (when (zero? (.getFetchSize stmt))
           (.setFetchSize stmt (driver.settings/sql-jdbc-fetch-size)))
         (catch Throwable e
-          (log/debug e "Error setting statement fetch size to fetch-size")))
+          (log/debug "Error setting statement fetch size to fetch-size:" (ex-message e))))
       stmt
       (catch Throwable e
         (.close stmt)
@@ -610,7 +610,7 @@
     (try
       (u.connection/set-query-timeout! stmt (long (/ driver.settings/*query-timeout-ms* 1000)))
       (catch Throwable e
-        (log/debug e "Error setting statement query timeout")))))
+        (log/debug "Error setting statement query timeout:" (ex-message e))))))
 
 (defn- prepared-statement*
   ^PreparedStatement [driver conn sql params canceled-chan]
@@ -875,7 +875,7 @@
                              (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
                                         (name driver)))
                            (catch Throwable e
-                             (log/info e "Statement cancelation failed.")))))))))))))
+                             (log/info "Statement cancelation failed:" (ex-message e))))))))))))))
 
 (defn reducible-query
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the
@@ -1050,5 +1050,5 @@
           (set! *resilient-connection-ctx* {:db db :conn conn})
           conn)
         (catch Throwable e
-          (log/warn e "Failed obtaining a new resilient connection")
+          (log/warn "Failed obtaining a new resilient connection:" (ex-message e))
           connection)))))

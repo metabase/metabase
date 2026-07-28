@@ -218,7 +218,7 @@
                                         :app_id)
                                     (catch Exception e
                                       ;; bots.info requires users:read scope which may not be present
-                                      (log/warn e "Failed to fetch app_id from bots.info (may require users:read scope)")
+                                      (log/warn "Failed to fetch app_id from bots.info (may require users:read scope):" (ex-message e))
                                       nil)))
                 scopes-header   (get-in auth-response [:metabase.channel.slack/headers "x-oauth-scopes"])
                 actual-scopes   (if (str/blank? scopes-header)

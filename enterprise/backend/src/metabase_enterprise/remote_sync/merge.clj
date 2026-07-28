@@ -37,7 +37,7 @@
       ;; A serialized entity that won't parse is abnormal (malformed/partially-written file) and demotes
       ;; this side to a path key while the other side stays identity-keyed — which reads as a phantom
       ;; add+remove rather than an update. Warn so it's visible rather than silently mis-merged.
-      (log/warn e "Could not parse serialized content during merge; treating it as a non-serdes (path-keyed) file")
+      (log/warn "Could not parse serialized content during merge; treating it as a non-serdes (path-keyed) file:" (ex-message e))
       nil)))
 
 (defn- file-key

@@ -34,7 +34,7 @@
     (try
       (usage-metadata.batch/run-batch!)
       (catch Throwable e
-        (log/error e "Error processing usage metadata batch")
+        (log/error "Error processing usage metadata batch:" (ex-message e))
         (throw e)))))
 
 (defn- job []

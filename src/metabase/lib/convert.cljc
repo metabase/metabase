@@ -1,7 +1,7 @@
 (ns metabase.lib.convert
   (:refer-clojure :exclude [mapv some select-keys not-empty #?(:clj doseq) #?(:clj for)])
   (:require
-   [clojure.data :as data]
+   #?@(:cljs [[clojure.data :as data]])
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.error :as me]
@@ -75,10 +75,9 @@
                                              :diff (first (data/diff almost-stage new-stage))})))
           #?(:cljs (js/console.warn "Clean: Removing bad clause due to error!" error-location error-desc
                                     (u/pprint-to-str (first (data/diff almost-stage new-stage))))
-             :clj  (log/warnf "Clean: Removing bad clause in %s due to error %s:\n%s"
+             :clj  (log/warnf "Clean: Removing bad clause in %s due to error %s"
                               (u/colorize :yellow (pr-str error-location))
-                              (u/colorize :yellow error-desc)
-                              (u/colorize :red (u/pprint-to-str (first (data/diff almost-stage new-stage))))))
+                              (u/colorize :yellow error-desc)))
           (if (= new-stage almost-stage)
             almost-stage
             (recur new-stage (conj removals [error-type error-location]))))
@@ -278,7 +277,7 @@
         :else
         (recur (conj acc col) aggregation-index more)))
     (catch #?(:clj Throwable :cljs :default) e
-      (log/error e "Error adding :lib/source-uuid to cols")
+      (log/error "Error adding :lib/source-uuid to cols:" (ex-message e))
       cols)))
 
 (defmethod ->mbql5 :mbql.stage/mbql

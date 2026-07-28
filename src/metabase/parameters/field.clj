@@ -67,7 +67,7 @@
            limit        (or maybe-limit default-max-field-search-limit)]
        (search-values-query/search-values-query field search-field value limit))
      (catch Throwable e
-       (log/error e "Error searching field values")
+       (log/error "Error searching field values:" (ex-message e))
        []))))
 
 (mu/defn field->values :- ms/FieldValuesResult
@@ -133,5 +133,5 @@
                      [:data :rows])))
     ;; as with fn above this error can usually be safely ignored which is why log level is log/debug
     (catch Throwable e
-      (log/debug e "Error searching for remapping")
+      (log/debug "Error searching for remapping:" (ex-message e))
       nil)))

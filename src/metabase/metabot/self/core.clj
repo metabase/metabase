@@ -110,7 +110,7 @@
 
                 :else
                 (do
-                  (log/warn "SSE unexpected line" {:line line})
+                  (log/warn "SSE unexpected line" {:line-len (count line)})
                   (recur acc)))
               acc)))))
 
@@ -544,7 +544,7 @@
                              arguments (or (coerce-stringified-json arguments) {})
                              decode    (tool-decode-fn tool)
                              arguments (cond-> arguments decode decode)]
-                         (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
+                         (log/debug "Executing tool" {:tool-name tool-name})
                          (when (ait/capture-active?)
                            (ait/record! {:ai/tool-args arguments}))
                          (let [tool-fn (tool-call-fn tool)
@@ -554,7 +554,7 @@
                        (catch Exception e
                          (if (:agent-error? (ex-data e))
                            (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
-                           (log/warn e "Tool execution failed" {:tool-name tool-name}))
+                           (log/warn "Tool execution failed" {:tool-name tool-name :error (ex-message e)}))
                          [{:type         :tool-output-available
                            :toolCallId   tool-call-id
                            :toolName     tool-name
@@ -759,11 +759,8 @@
                       (body-preview (:body res)))
             msg     (cond-> base
                       preview (str " — " preview))]
-        ;; warnf (not warn) so the body renders into the message string, not as MDC.
-        ;; body-for-log caps the pr-str so a near-cap slurped stream can't flood the logs;
-        ;; the full body still survives in ex-data below.
-        (log/warnf "Provider API request failed: provider=%s status=%s body=%s"
-                   provider (:status res) (body-for-log (:body res)))
+        (log/warnf "Provider API request failed: provider=%s status=%s"
+                   provider (:status res))
         ;; Allow-list explicitly — clj-http responses carry :http-client (a Closeable),
         ;; :trace-redirects, :orig-content-encoding, etc., none of which should propagate downstream.
         ;; :headers is included so the retry path in metabase.metabot.self/parse-retry-after-header

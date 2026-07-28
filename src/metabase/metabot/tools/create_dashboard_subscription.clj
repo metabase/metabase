@@ -117,5 +117,5 @@ If any required information is missing, ask the user for it rather than assuming
           {:output (:error result)}
           {:output (or (:output result) "Dashboard subscription created successfully.")}))
       (catch Exception e
-        (log/error e "Failed to create dashboard subscription")
+        (log/error "Failed to create dashboard subscription:" (ex-message e))
         {:output (str "Failed to create dashboard subscription: " (or (ex-message e) "Unknown error"))}))))

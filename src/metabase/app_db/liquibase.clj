@@ -227,7 +227,7 @@
       (when (= (mdb.connection/db-type) :h2)
         (force-release-locks! liquibase))
       (catch Exception e
-        (log/error e "Unable to release the Liquibase lock")))))
+        (log/error "Unable to release the Liquibase lock:" (ex-message e))))))
 
 (defn- lock-service ^LockService [^Liquibase liquibase]
   (.getLockService (LockServiceFactory/getInstance) (.getDatabase liquibase)))
@@ -589,7 +589,7 @@
            (let [change-listener (proxy [liquibase.changelog.visitor.AbstractChangeExecListener] []
                                    (rollbackFailed [^ChangeSet change-set _dbchangelog _db ^Exception e]
                                      (swap! error-ids conj (.getId change-set))
-                                     (log/errorf e "Error rolling back migration %s" (.getId change-set))))]
+                                     (log/errorf "Error rolling back migration %s: %s" (.getId change-set) (ex-message e))))]
              (AbstractRollbackCommandStep/doRollback lb-db
                                                      changelog-file
                                                      nil
