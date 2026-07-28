@@ -44,6 +44,15 @@
                :phase           :unsupported-schema}]
              (mapv #(dissoc % :exception) (:errors feed)))))))
 
+(deftest ^:parallel feed-envelope-forward-compatibility-test
+  (testing "ignores unknown feed metadata"
+    (is (= ["first"]
+           (->> (product-notifications/normalized-feed
+                 {:generated_at  "2026-07-28T00:00:00Z"
+                  :notifications [(feed-notification "first")]})
+                :notifications
+                (mapv :notification_id))))))
+
 (deftest ^:parallel invalid-notifications-do-not-block-valid-notifications-test
   (let [feed (product-notifications/normalized-feed
               {:notifications [(feed-notification "same")
@@ -76,12 +85,13 @@
     (is (some #(nil? (:notification-id %)) (:errors feed)))))
 
 (deftest ^:parallel eligibility-test
-  (let [base    {:active      true
-                 :audience    :all_users
-                 :deployment  :any
-                 :edition     :any
-                 :starts_at   (t/offset-date-time "2026-01-01T00:00:00Z")
-                 :ends_at     (t/offset-date-time "2027-01-01T00:00:00Z")}
+  (let [base    {:schema_version 1
+                 :active         true
+                 :audience       :all_users
+                 :deployment     :any
+                 :edition        :any
+                 :starts_at      (t/offset-date-time "2026-01-01T00:00:00Z")
+                 :ends_at        (t/offset-date-time "2027-01-01T00:00:00Z")}
         context {:now          (t/offset-date-time "2026-07-01T00:00:00Z")
                  :superuser?   false
                  :hosted?      false
@@ -114,4 +124,6 @@
         (is (not (product-notifications/eligible? bounded (assoc context :version "v0.65.0"))))
         (is (not (product-notifications/eligible? bounded (assoc context :version "vLOCAL_DEV"))))))
     (testing "an unknown version can match an unbounded notification"
-      (is (product-notifications/eligible? base (assoc context :version "vLOCAL_DEV"))))))
+      (is (product-notifications/eligible? base (assoc context :version "vLOCAL_DEV"))))
+    (testing "unknown notification schemas fail closed"
+      (is (not (product-notifications/eligible? (assoc base :schema_version 2) context))))))

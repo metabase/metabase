@@ -10,7 +10,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private supported-schema-version 1)
+(def ^:private schema-version-v1 1)
 
 (def ^:private GenericNotification
   [:map
@@ -36,14 +36,17 @@
 (def ^:private NotificationV1
   [:map {:closed true}
    [:id ms/NonBlankString]
-   [:schema_version [:= supported-schema-version]]
+   [:schema_version [:= schema-version-v1]]
    [:title ms/NonBlankString]
    [:content ms/NonBlankString]
    [:icon {:optional true} [:maybe ms/NonBlankString]]
    [:conditions ConditionsV1]])
 
+(def ^:private notification-schemas
+  {schema-version-v1 NotificationV1})
+
 (def ^:private Feed
-  [:map {:closed true}
+  [:map
    [:notifications [:vector :any]]])
 
 (defn- parsed-version
@@ -79,8 +82,8 @@
   notification)
 
 (defn- normalized-notification
-  [position notification]
-  (mu/validate-throw NotificationV1 notification)
+  [schema position notification]
+  (mu/validate-throw schema notification)
   (let [conditions  (:conditions notification)
         audience    (:audience conditions)
         deployment  (:deployment conditions)
@@ -133,16 +136,15 @@
                (ex-info "Duplicate product notification ID"
                         {:notification-id (:id notification)}))}
 
-      (not= supported-schema-version (:schema_version notification))
-      {:error (notification-error
-               notification
-               :unsupported-schema
-               (ex-info "Unsupported product notification schema"
-                        {:notification-id (:id notification)
-                         :schema-version  (:schema_version notification)}))}
-
       :else
-      {:notification (normalized-notification position notification)})
+      (if-let [schema (notification-schemas (:schema_version notification))]
+        {:notification (normalized-notification schema position notification)}
+        {:error (notification-error
+                 notification
+                 :unsupported-schema
+                 (ex-info "Unsupported product notification schema"
+                          {:notification-id (:id notification)
+                           :schema-version  (:schema_version notification)}))}))
     (catch Exception e
       {:error (notification-error notification :validation e)})))
 
@@ -189,17 +191,26 @@
         (and (or (nil? minimum) (.isGreaterThanOrEqualTo current minimum))
              (or (nil? maximum) (.isLowerThan current maximum)))))))
 
+(defn- eligible-v1?
+  [{:keys [active audience deployment edition] :as notification}
+   {:keys [now superuser? hosted? enterprise? version]}]
+  (and active
+       (time-matches? notification now)
+       (or (= audience :all_users)
+           (and (= audience :admins) superuser?))
+       (or (= deployment :any)
+           (= deployment (if hosted? :cloud :self_hosted)))
+       (or (= edition :any)
+           (= edition (if enterprise? :ee :oss)))
+       (version-matches? notification version)))
+
+(def ^:private eligibility-evaluators
+  {schema-version-v1 eligible-v1?})
+
 (mu/defn eligible? :- :boolean
-  "Whether a persisted product notification applies to the supplied instance and person."
-  [{:keys [active audience deployment edition] :as notification} :- :map
-   {:keys [now superuser? hosted? enterprise? version]} :- :map]
+  "Whether a supported persisted product notification applies to the supplied instance and person."
+  [notification :- :map
+   context :- :map]
   (boolean
-   (and active
-        (time-matches? notification now)
-        (or (= audience :all_users)
-            (and (= audience :admins) superuser?))
-        (or (= deployment :any)
-            (= deployment (if hosted? :cloud :self_hosted)))
-        (or (= edition :any)
-            (= edition (if enterprise? :ee :oss)))
-        (version-matches? notification version))))
+   (when-let [evaluator (eligibility-evaluators (:schema_version notification))]
+     (evaluator notification context))))
