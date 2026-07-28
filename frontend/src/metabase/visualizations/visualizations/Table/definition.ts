@@ -28,6 +28,7 @@ import {
 import type {
   ColumnSettingDefinition,
   ComputedVisualizationSettings,
+  FormattableColumn,
   VisualizationDefinition,
 } from "metabase/visualizations/types";
 import {
@@ -43,7 +44,6 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
-  DatasetColumn,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -273,7 +273,7 @@ export const TABLE_DEFINITION = {
     },
   },
 
-  columnSettings: (column: DatasetColumn) => {
+  columnSettings: (column: FormattableColumn) => {
     const settings: Record<
       string,
       ColumnSettingDefinition<unknown, unknown>

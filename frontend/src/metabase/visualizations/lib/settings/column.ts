@@ -29,6 +29,7 @@ import {
 } from "metabase/visualizations/shared/settings/column";
 import type {
   ComputedVisualizationSettings,
+  FormattableColumn,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import {
@@ -472,7 +473,7 @@ const COMMON_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
 
 export function getSettingDefinitionsForColumn(
   series: Series,
-  column: DatasetColumn,
+  column: FormattableColumn,
 ) {
   // ColumnSettings passes an empty fake series when formatting outside a viz;
   // fall back to the default visualization's column settings in that case
