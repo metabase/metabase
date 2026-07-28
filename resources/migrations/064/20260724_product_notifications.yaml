@@ -40,7 +40,7 @@ databaseChangeLog:
                   name: icon
                   type: varchar(255)
               - column:
-                  name: evaluation_options
+                  name: conditions
                   type: ${text.type}
                   constraints:
                     nullable: false

@@ -37,10 +37,10 @@
       (is (= ["first" "third"] (mapv :notification_id (:notifications feed))))
       (is (= [0 2] (mapv :position (:notifications feed))))
       (is (= ["all_users" "admins"]
-             (mapv #(get-in % [:evaluation_options :audience]) (:notifications feed))))
+             (mapv #(get-in % [:conditions :audience]) (:notifications feed))))
       (is (= "star" (get-in feed [:notifications 1 :icon])))
       (is (= "2026-02-01T00:00:00Z"
-             (get-in feed [:notifications 1 :evaluation_options :starts_at])))
+             (get-in feed [:notifications 1 :conditions :starts_at])))
       (is (= [{:notification-id "future"
                :phase           :unsupported-schema}]
              (mapv #(dissoc % :exception) (:errors feed)))))))
@@ -88,7 +88,7 @@
 (deftest ^:parallel eligibility-test
   (let [base    {:schema_version 1
                  :active         true
-                 :evaluation_options
+                 :conditions
                  {:audience   "all_users"
                   :deployment "any"
                   :edition    "any"
@@ -108,20 +108,20 @@
                 (assoc context :now (t/offset-date-time "2027-01-01T00:00:00Z"))))))
     (testing "matches explicit audience, deployment, and edition"
       (is (not (product-notifications/eligible?
-                (assoc-in base [:evaluation_options :audience] "admins")
+                (assoc-in base [:conditions :audience] "admins")
                 context)))
       (is (product-notifications/eligible?
-           (assoc-in base [:evaluation_options :audience] "admins")
+           (assoc-in base [:conditions :audience] "admins")
            (assoc context :superuser? true)))
       (is (not (product-notifications/eligible?
-                (assoc-in base [:evaluation_options :deployment] "cloud")
+                (assoc-in base [:conditions :deployment] "cloud")
                 context)))
       (is (not (product-notifications/eligible?
-                (assoc-in base [:evaluation_options :edition] "ee")
+                (assoc-in base [:conditions :edition] "ee")
                 context))))
     (testing "matches combined targeting"
-      (let [notification (assoc base :evaluation_options
-                                (assoc (:evaluation_options base)
+      (let [notification (assoc base :conditions
+                                (assoc (:conditions base)
                                        :audience "admins"
                                        :deployment "cloud"
                                        :edition "ee"))
@@ -130,7 +130,7 @@
         (is (not (product-notifications/eligible? notification
                                                   (assoc matching :hosted? false))))))
     (testing "normalizes OSS and EE version prefixes and applies half-open bounds"
-      (let [bounded (update base :evaluation_options assoc :min_version "64.2" :max_version "65.0")]
+      (let [bounded (update base :conditions assoc :min_version "64.2" :max_version "65.0")]
         (is (product-notifications/eligible? bounded context))
         (is (product-notifications/eligible? bounded (assoc context :version "v1.64.2")))
         (is (not (product-notifications/eligible? bounded (assoc context :version "v0.65.0"))))
@@ -139,7 +139,7 @@
       (is (product-notifications/eligible? base (assoc context :version "vLOCAL_DEV"))))
     (testing "unknown notification schemas fail closed"
       (is (not (product-notifications/eligible? (assoc base :schema_version 2) context))))
-    (testing "invalid stored evaluation options fail closed"
+    (testing "invalid stored conditions fail closed"
       (is (not (product-notifications/eligible?
-                (assoc-in base [:evaluation_options :starts_at] "not-a-time")
+                (assoc-in base [:conditions :starts_at] "not-a-time")
                 context))))))

@@ -2248,12 +2248,11 @@
     :title           "Product notifications are ready"
     :content         "This notification is visible to everyone. Dismiss it to try the per-user dismissal flow."
     :icon            "sparkles"
-    :evaluation_options
-    (json/encode {:audience   "all_users"
-                  :deployment "any"
-                  :edition    "any"
-                  :starts_at  "2026-01-01T00:00:00Z"
-                  :ends_at    "2099-01-01T00:00:00Z"})
+    :conditions      (json/encode {:audience   "all_users"
+                                   :deployment "any"
+                                   :edition    "any"
+                                   :starts_at  "2026-01-01T00:00:00Z"
+                                   :ends_at    "2099-01-01T00:00:00Z"})
     :position        0
     :active          true
     :retired_at      nil
@@ -2265,12 +2264,11 @@
     :title           "An admin-only notification"
     :content         "Only admins can see this one. It demonstrates audience targeting and display order."
     :icon            "join_full_outer"
-    :evaluation_options
-    (json/encode {:audience   "admins"
-                  :deployment "any"
-                  :edition    "any"
-                  :starts_at  "2026-01-01T00:00:00Z"
-                  :ends_at    "2099-01-01T00:00:00Z"})
+    :conditions      (json/encode {:audience   "admins"
+                                   :deployment "any"
+                                   :edition    "any"
+                                   :starts_at  "2026-01-01T00:00:00Z"
+                                   :ends_at    "2099-01-01T00:00:00Z"})
     :position        1
     :active          true
     :retired_at      nil

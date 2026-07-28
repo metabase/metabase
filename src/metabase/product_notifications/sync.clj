@@ -18,7 +18,7 @@
    :title
    :content
    :icon
-   :evaluation_options])
+   :conditions])
 
 (defn- immutable-view
   [notification]

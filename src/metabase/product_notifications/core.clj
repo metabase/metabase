@@ -23,7 +23,7 @@
 (def ^:private UtcTemporalString
   [:and ms/TemporalString [:re #".*Z$"]])
 
-(def ^:private EvaluationOptionsV1
+(def ^:private ConditionsV1
   [:map {:closed true}
    [:audience [:enum "admins" "all_users"]]
    [:deployment [:enum "cloud" "self_hosted" "any"]]
@@ -40,7 +40,7 @@
    [:title ms/NonBlankString]
    [:content ms/NonBlankString]
    [:icon {:optional true} [:maybe ms/NonBlankString]]
-   [:conditions EvaluationOptionsV1]])
+   [:conditions ConditionsV1]])
 
 (def ^:private notification-schemas
   {schema-version-v1 NotificationV1})
@@ -91,13 +91,13 @@
       (throw (ex-info "Product notification start must be before its end"
                       {:id notification-id})))
     (validate-version-range! notification-id conditions)
-    {:notification_id   notification-id
-     :schema_version    (:schema_version notification)
-     :title             (:title notification)
-     :content           (:content notification)
-     :icon              (:icon notification)
-     :evaluation_options conditions
-     :position          position}))
+    {:notification_id notification-id
+     :schema_version  (:schema_version notification)
+     :title           (:title notification)
+     :content         (:content notification)
+     :icon            (:icon notification)
+     :conditions      conditions
+     :position        position}))
 
 (defn- valid-notification-id
   [notification]
@@ -182,19 +182,19 @@
              (or (nil? maximum) (.isLowerThan current maximum)))))))
 
 (defn- eligible-v1?
-  [{:keys [active evaluation_options]}
+  [{:keys [active conditions]}
    {:keys [now superuser? hosted? enterprise? version]}]
-  (mu/validate-throw EvaluationOptionsV1 evaluation_options)
-  (let [{:keys [audience deployment edition]} evaluation_options]
+  (mu/validate-throw ConditionsV1 conditions)
+  (let [{:keys [audience deployment edition]} conditions]
     (and active
-         (time-matches? evaluation_options now)
+         (time-matches? conditions now)
          (or (= audience "all_users")
              (and (= audience "admins") superuser?))
          (or (= deployment "any")
              (= deployment (if hosted? "cloud" "self_hosted")))
          (or (= edition "any")
              (= edition (if enterprise? "ee" "oss")))
-         (version-matches? evaluation_options version))))
+         (version-matches? conditions version))))
 
 (def ^:private eligibility-evaluators
   {schema-version-v1 eligible-v1?})
@@ -202,7 +202,7 @@
 (mu/defn eligible? :- :boolean
   "Whether a persisted product notification applies to the supplied instance and person.
 
-  Unsupported schemas and invalid evaluation options are ineligible."
+  Unsupported schemas and invalid conditions are ineligible."
   [notification :- :map
    context :- :map]
   (boolean

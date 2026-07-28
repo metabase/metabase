@@ -14,4 +14,4 @@
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/ProductNotification
-  {:evaluation_options mi/transform-json})
+  {:conditions mi/transform-json})

@@ -22,7 +22,7 @@
              :schema_version  1
              :title           (str "Title " notification-id)
              :content         (str "Content " notification-id)
-             :evaluation_options
+             :conditions
              {:audience   "all_users"
               :deployment "any"
               :edition    "any"
@@ -37,7 +37,7 @@
   (mt/with-model-cleanup [:model/ProductNotificationDismissal :model/ProductNotification]
     (insert-notification! "second" 1 {:icon "star"})
     (insert-notification! "first" 0)
-    (insert-notification! "admins" 2 {:evaluation_options
+    (insert-notification! "admins" 2 {:conditions
                                       {:audience   "admins"
                                        :deployment "any"
                                        :edition    "any"
@@ -86,14 +86,14 @@
 (deftest ineligible-product-notification-cannot-be-dismissed-test
   (mt/with-model-cleanup [:model/ProductNotificationDismissal :model/ProductNotification]
     (let [now (t/offset-date-time)]
-      (insert-notification! "admins" 0 {:evaluation_options
+      (insert-notification! "admins" 0 {:conditions
                                         {:audience   "admins"
                                          :deployment "any"
                                          :edition    "any"
                                          :starts_at  "2026-01-01T00:00:00Z"
                                          :ends_at    "2099-01-01T00:00:00Z"}})
       (insert-notification! "inactive" 1 {:active false})
-      (insert-notification! "expired" 2 {:evaluation_options
+      (insert-notification! "expired" 2 {:conditions
                                          {:audience   "all_users"
                                           :deployment "any"
                                           :edition    "any"

@@ -45,7 +45,7 @@
                                :model/ProductNotification
                                {:order-by [[:position :asc]]})))
       (is (= (:conditions (feed-notification "first" "First"))
-             (t2/select-one-fn :evaluation_options
+             (t2/select-one-fn :conditions
                                :model/ProductNotification
                                :notification_id "first"))))
     (testing "retires missing rows without deleting notification or dismissal state"
