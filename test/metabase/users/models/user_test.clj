@@ -712,6 +712,6 @@
             (testing "only once, no matter how many Settings are written in the same request"
               (is (= 1 (count msgs))))
             (is (str/includes? (str (first msgs))
-                               (str "Discarding unreadable settings for User " user-id)))
+                               (str "Discarding unreadable settings for user " user-id)))
             (testing "without leaking the unreadable column contents, which are user data"
               (is (not (str/includes? (str (first msgs)) "not-decryptable-and-not-json"))))))))))

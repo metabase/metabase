@@ -379,7 +379,7 @@
 (defn- warn-discarding-unreadable-settings!
   [user-local-values]
   (when (core/get (meta @user-local-values) unreadable-user-settings-key)
-    (log/warnf (str "Discarding unreadable settings for user %s: the `settings` column could neither be decrypted nor parsed and is being overwritten.")
+    (log/warnf "Discarding unreadable settings for user %s: the `settings` column could neither be decrypted nor parsed and is being overwritten."
                api/*current-user-id*)
     (swap! user-local-values vary-meta dissoc unreadable-user-settings-key)))
 
