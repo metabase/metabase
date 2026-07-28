@@ -1,4 +1,4 @@
-import FakeTimers from "@sinonjs/fake-timers";
+import FakeTimers, { type Clock } from "@sinonjs/fake-timers";
 import Cookie from "js-cookie";
 
 import { logout, refreshSession } from "metabase/redux/auth";
@@ -20,7 +20,7 @@ jest.mock("metabase/router", () => ({
   replace: jest.fn(),
 }));
 
-let clock;
+let clock: Clock;
 
 const actionStub = { type: "ANY_ACTION" };
 
@@ -34,21 +34,23 @@ const actionStub = { type: "ANY_ACTION" };
  *
  * NOTE: This does not change the origin which would result in a security exception.
  */
-function changeJSDOMURL(url) {
+function changeJSDOMURL(url: string) {
   const newURL = new URL(url);
   const href = `${window.origin}${newURL.pathname}${newURL.search}${newURL.hash}`;
-  history.replaceState(history.state, null, href);
+  history.replaceState(history.state, "", href);
 }
 
 const setup = () => {
   const dispatchMock = jest.fn();
-  const storeMock = { dispatch: dispatchMock };
+  const storeMock = { dispatch: dispatchMock, getState: jest.fn() };
   const nextMock = jest.fn();
 
-  const sessionMiddleware = createSessionMiddleware(
-    [],
-    clock.setInterval.bind(clock),
-  );
+  // fake-timers ids are not NodeJS.Timeouts, but they only flow back into clearInterval, which accepts both
+  const setIntervalMock = clock.setInterval.bind(
+    clock,
+  ) as unknown as typeof global.setInterval;
+
+  const sessionMiddleware = createSessionMiddleware([], setIntervalMock);
 
   return {
     handleAction: sessionMiddleware(storeMock)(nextMock),
@@ -120,8 +122,6 @@ describe("createSessionMiddleware", () => {
   });
 
   describe("logged in redirect", () => {
-    beforeEach(() => {});
-
     it("should not redirect to the redirectUrl if visiting login page", async () => {
       changeJSDOMURL(
         "https://metabase.com/auth/login?redirect=%2Fquestion%2F1%3Fquery%3D5%23hash",
