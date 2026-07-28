@@ -86,7 +86,7 @@
   resident builtin + plugin pair still pushes past this, the isolate fails closed (a resource-exhausted
   render → error card), never OOM-kills the pod. Must stay strictly above the per-context [[max-heap-memory]]
   (GraalVM requires it)."
-  "500MB")
+  "512MB")
 
 (def ^:private max-heap-memory
   "`sandbox.MaxHeapMemory`: per-context guest-heap cap. GraalVM requires it strictly below the engine-wide
