@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { focusOutlineStyle } from "metabase/common/style/input";
+import { focusOutlineStyle } from "metabase/common/style/focus-outline";
 
 interface TextAreaRootProps {
   readOnly?: boolean;
@@ -42,7 +42,7 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
   ${(props) =>
     props.hasError &&
     css`
-      border-color: var(--mb-color-error);
+      border-color: var(--mb-color-feedback-negative);
     `};
 
   ${(props) =>

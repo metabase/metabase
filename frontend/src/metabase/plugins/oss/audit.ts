@@ -44,10 +44,14 @@ export interface InsightsMenuItemProps {
 const getDefaultPluginAudit = () => ({
   isEnabled: false,
   isAuditDb: (_db: DatabaseType) => false,
+  // Unjustified type cast. FIXME
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
+  // Unjustified type cast. FIXME
   InsightsMenuItem: PluginPlaceholder as ComponentType<InsightsMenuItemProps>,
   getMetabotAnalyticsNavItems: (): ReactNode => null,
   getAiAnalyticsRoutes: (): ReactNode => null,
+  getMcpAnalyticsRoutes: (): ReactNode => null,
+  // Unjustified type cast. FIXME
   handleMetabotSlashCommand: ((_args) => false) as MetabotSlashCommandHandler,
 });
 

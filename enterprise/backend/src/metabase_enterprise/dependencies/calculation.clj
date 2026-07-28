@@ -83,12 +83,12 @@
 
 (defmethod calculate-deps* :transform
   [_ {{:keys [query]} :source :as transform}]
-  (let [source-type (transforms-base.u/transform-type transform)]
-    (case source-type
-      :query (upstream-deps:query query)
-      :python (upstream-deps:python-transform transform)
-      (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'" (:id transform) source-type)
-          {}))))
+  (cond
+    (transforms-base.u/query-transform? transform)  (upstream-deps:query query)
+    (transforms-base.u/python-transform? transform) (upstream-deps:python-transform transform)
+    :else (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'"
+                         (:id transform) (-> transform :source :type))
+              {})))
 
 (defmethod calculate-deps* :snippet
   [_ {:keys [template_tags] :as _snippet}]

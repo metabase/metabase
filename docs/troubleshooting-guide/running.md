@@ -8,9 +8,9 @@ Metabase runs on the Java Virtual Machine (JVM), and depending on how it's confi
 
 ## Java version
 
-Metabase should be run on Java version 21 (older versions are unsupported).
+Metabase should be run on Java version 25 (older versions are unsupported).
 
-When searching for versions of Java, always use the latest minor version of the major version you're choosing. E.g., when choosing between Java 21.0.1 and Java 21.0.4, choose the latest version (in this case, 21.0.4).
+When searching for versions of Java, always use the latest minor version of the major version you're choosing. E.g., when choosing between Java 25.0.1 and Java 25.0.3, choose the latest version (in this case, 25.0.3).
 
 We recommend running only one version of Java on a single server, because running more than one version of Java on a single server can cause application problems. If you need to run multiple applications that each require a different java version, consider using containers (as containers were meant to solve this problem). Otherwise, just make sure that you can run all your applications with a single Java version.
 

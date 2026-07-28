@@ -85,6 +85,7 @@ export const UserInput = ({
       searchable
       searchValue={search}
       renderOption={(item) => {
+        // Unjustified type cast. FIXME
         const option = item.option as Option;
         return (
           <Flex align="center" gap="sm" p="sm" w="100%">
@@ -131,6 +132,7 @@ function getData(
     },
     ...users.map((user) => ({
       label: user.common_name,
+      // Unjustified type cast. FIXME
       value: stringifyValue(user.id) as string,
       type: "user" as const,
     })),

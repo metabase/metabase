@@ -49,7 +49,8 @@ export const DERIVED_COLOR_KEYS = [
   "core-filter",
   "core-summarize",
 ] as const;
-type DerivedColorKey = (typeof DERIVED_COLOR_KEYS)[number];
+
+export type DerivedColorKey = (typeof DERIVED_COLOR_KEYS)[number];
 
 /**
  * Metabase color keys without colors that are automatically derived.

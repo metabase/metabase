@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 
-import type { OptionsType } from "metabase/utils/formatting/types";
 import { isLatitude, isLongitude } from "metabase-lib/v1/types/utils/isa";
+import type { ColumnSettings } from "metabase-types/api";
 
 const DECIMAL_DEGREES_FORMATTER = d3.format(".08f");
 const DECIMAL_DEGREES_FORMATTER_COMPACT = d3.format(".02f");
@@ -9,7 +9,7 @@ const BINNING_DEGREES_FORMATTER = (value: number, binWidth: number) => {
   return d3.format(`.0${decimalCount(binWidth)}f`)(value);
 };
 
-export function formatCoordinate(value: number, options: OptionsType = {}) {
+export function formatCoordinate(value: number, options: ColumnSettings = {}) {
   const binWidth = options.column?.binning_info?.bin_width;
 
   let direction = "";

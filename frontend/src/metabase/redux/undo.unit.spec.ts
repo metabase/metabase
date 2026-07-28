@@ -162,5 +162,6 @@ const createMockStore = () => {
     // @ts-expect-error rework undo reducer to RTK
     reducer: { undo: undoReducer },
   });
+  // Unjustified type cast. FIXME
   return store as typeof store & { dispatch: Dispatch };
 };

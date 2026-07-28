@@ -31,7 +31,7 @@ import { QuestionSharingMenu } from "./QuestionSharingMenu/QuestionSharingMenu";
 
 interface ViewTitleHeaderRightSideProps {
   question: Question;
-  result: Dataset;
+  result?: Dataset;
   queryBuilderMode: QueryBuilderMode;
   isBookmarked: boolean;
   isModelOrMetric: boolean;

@@ -41,6 +41,7 @@ export const PushChangesModal = ({
   ] = useExportChangesMutation();
 
   const { errorMessage } = useMemo(
+    // Unjustified type cast. FIXME
     () => parseSyncError(exportError as SyncError),
     [exportError],
   );
@@ -77,7 +78,12 @@ export const PushChangesModal = ({
     >
       <Box pt="md">
         {errorMessage && (
-          <Alert mb="md" variant="error" icon={<Icon name="warning" />}>
+          <Alert
+            size="compact"
+            mb="md"
+            color="error"
+            icon={<Icon name="warning" />}
+          >
             {errorMessage}
           </Alert>
         )}

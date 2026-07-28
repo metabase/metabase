@@ -53,7 +53,7 @@ const getDatabaseId = (
   } else if (dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID && !includeVirtual) {
     return undefined;
   } else {
-    return dbId as DatabaseId;
+    return dbId;
   }
 };
 

@@ -113,6 +113,7 @@ describe("SettingsLdapForm", () => {
   });
 
   it("can remove a nullable field", async () => {
+    // Unjustified type cast. FIXME
     setup(ATTRS as Partial<LdapSettings>);
 
     await userEvent.clear(await screen.findByLabelText(/First name attribute/));

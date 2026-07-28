@@ -17,7 +17,6 @@ import CS from "metabase/css/core/index.css";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import type Question from "metabase-lib/v1/Question";
-import type { CardDisplayType } from "metabase-types/api";
 
 import { useSdkQuestionContext } from "../context";
 
@@ -60,7 +59,7 @@ export const QuestionVisualization = ({
 
   useEffect(() => {
     if (display && onVisualizationChange) {
-      onVisualizationChange(display as CardDisplayType);
+      onVisualizationChange(display);
     }
   }, [display, onVisualizationChange]);
 

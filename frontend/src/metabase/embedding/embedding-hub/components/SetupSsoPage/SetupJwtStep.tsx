@@ -40,7 +40,7 @@ export const SetupJwtStep = ({ onSuccess }: { onSuccess: () => void }) => {
     } catch (error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`Failed to enable JWT authentication`,
       });
     }

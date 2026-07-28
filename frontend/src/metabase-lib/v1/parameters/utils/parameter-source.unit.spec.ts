@@ -26,10 +26,15 @@ const metadata = createMockMetadata({
   ],
 });
 
+// Unjustified type cast. FIXME
 const listField = metadata.field(LIST_FIELD_ID) as Field;
+// Unjustified type cast. FIXME
 const listField2 = metadata.field(LIST_FIELD_2_ID) as Field;
+// Unjustified type cast. FIXME
 const searchField = metadata.field(SEARCH_FIELD_ID) as Field;
+// Unjustified type cast. FIXME
 const searchField2 = metadata.field(SEARCH_FIELD_2_ID) as Field;
+// Unjustified type cast. FIXME
 const noValuesField = metadata.field(NO_VALUES_FIELD_ID) as Field;
 
 describe("getQueryType", () => {

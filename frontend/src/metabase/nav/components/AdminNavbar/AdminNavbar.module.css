@@ -33,6 +33,6 @@
   }
 
   &:hover {
-    background-color: var(--mb-color-admin-navbar-inverse);
+    background-color: var(--mb-color-navbar-admin-inverse);
   }
 }

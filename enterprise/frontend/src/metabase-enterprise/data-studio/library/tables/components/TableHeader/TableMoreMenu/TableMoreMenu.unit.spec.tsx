@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
@@ -16,11 +15,8 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { CollectionPickerModalProps } from "metabase/common/components/Pickers/CollectionPicker/CollectionPickerModal";
 import { createMockState } from "metabase/redux/store/mocks";
-import type {
-  CollectionItem,
-  EnterpriseSettings,
-  TokenFeatures,
-} from "metabase-types/api";
+import { Route } from "metabase/router";
+import type { EnterpriseSettings, TokenFeatures } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -77,6 +73,7 @@ const setup = ({ table, remoteSyncType, onMoved }: SetupOpts = {}) => {
       id: 1,
       db_id: 1,
       schema: "PUBLIC",
+      // Unjustified type cast. FIXME
       collection_id: dataCollection.id as number,
     });
 
@@ -121,6 +118,7 @@ const setup = ({ table, remoteSyncType, onMoved }: SetupOpts = {}) => {
     collection: { id: 6464 },
     collectionItems: [
       createMockCollectionItem({
+        // Unjustified type cast. FIXME
         id: dataCollection.id as number,
         name: dataCollection.name,
         model: "collection",
@@ -138,11 +136,13 @@ const setup = ({ table, remoteSyncType, onMoved }: SetupOpts = {}) => {
     collection: dataCollection,
     collectionItems: [
       createMockCollectionItem({
+        // Unjustified type cast. FIXME
         id: destinationCollection.id as number,
         name: destinationCollection.name,
         model: "collection",
         type: destinationCollection.type,
         can_write: destinationCollection.can_write,
+        // Unjustified type cast. FIXME
         collection_id: dataCollection.id as number,
         location: "/6464/10/",
         here: ["table"],
@@ -155,7 +155,7 @@ const setup = ({ table, remoteSyncType, onMoved }: SetupOpts = {}) => {
   renderWithProviders(
     <Route
       path="/"
-      component={() => <TableMoreMenu table={tableData} onMoved={onMoved} />}
+      element={<TableMoreMenu table={tableData} onMoved={onMoved} />}
     />,
     {
       withRouter: true,
@@ -195,7 +195,7 @@ describe("TableMoreMenu", () => {
         name: "Orders",
         database_id: 1,
         collection_id: 10,
-      }) as CollectionItem;
+      });
 
       setup({ table: collectionItem });
       await userEvent.click(
@@ -219,7 +219,7 @@ describe("TableMoreMenu", () => {
         name: "Orders",
         database_id: undefined,
         collection_id: 10,
-      }) as CollectionItem;
+      });
 
       setup({ table: collectionItem });
       await userEvent.click(
@@ -244,8 +244,9 @@ describe("TableMoreMenu", () => {
       model: "table",
       name: "Orders",
       database_id: 1,
+      // Unjustified type cast. FIXME
       collection_id: dataCollection.id as number,
-    }) as CollectionItem;
+    });
 
     setup({ table, onMoved });
     await userEvent.click(

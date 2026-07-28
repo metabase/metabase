@@ -387,7 +387,6 @@
 
 ;;; this is a proof-of-concept to make sure this stuff works for non-SQL drivers, that's why we're hardcoding `:mongo`
 ;;; below.
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel card-id->source-query-and-metadata-test
   (testing "card-id->source-query-and-metadata-test should preserve non-SQL native queries"
     (let [query {:type     :native
@@ -400,6 +399,8 @@
       ;; this doesn't actually need to load Mongo code, there is special casing for `:mongo`
       ;; in [[metabase.query-processor.middleware.fetch-source-query/source-query]]
       (qp.store/with-metadata-provider (-> meta/metadata-provider
+                                           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+                                           #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
                                            (lib.tu/merged-mock-metadata-provider {:database {:engine :mongo}})
                                            (lib.tu/metadata-provider-with-cards-for-queries [query]))
         (is (=? {:stages            [{:lib/type                     :mbql.stage/native
@@ -416,7 +417,6 @@
 
 ;;; this is a proof-of-concept to make sure this stuff works for non-SQL drivers, that's why we're hardcoding `:mongo`
 ;;; below.
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel card-id->source-query-and-metadata-test-2
   (testing "card-id->source-query-and-metadata-test should preserve mongodb native queries in string format (#30112)"
     (let [query-str (str "[{\"$project\":\n"
@@ -429,6 +429,8 @@
                                 :collection "checkins"}
                      :database (meta/id)}]
       (qp.store/with-metadata-provider (-> meta/metadata-provider
+                                           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+                                           #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
                                            (lib.tu/merged-mock-metadata-provider {:database {:engine :mongo}})
                                            (lib.tu/metadata-provider-with-cards-for-queries [query]))
         (is (=? {:stages [{:lib/type   :mbql.stage/native

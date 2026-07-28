@@ -812,3 +812,64 @@
       "Between"  :between
       "Is empty" :is-null
       "Not empty" :not-null)))
+
+(deftest ^:parallel cross-field-comparison-filter-display-names-test
+  (testing "#15748 a comparison filter between two field refs renders both field names"
+    (check-display-names
+     [{:clause [:< (meta/field-metadata :orders :total) (meta/field-metadata :orders :subtotal)]
+       :name "Total is less than Subtotal"}
+      {:clause [:> (meta/field-metadata :orders :total) (meta/field-metadata :orders :subtotal)]
+       :name "Total is greater than Subtotal"}])))
+
+(deftest ^:parallel multi-value-and-include-current-display-names-test
+  (testing "multi-value equality renders an \"N selections\" display name"
+    (let [city (meta/field-metadata :people :city)]
+      (check-display-names
+       [{:clause [:= city "Indiantown" "Indian Valley"], :name "City is 2 selections"}])))
+  (testing "an include-current relative interval renders the composed column-prefixed sentence"
+    (let [created-at (meta/field-metadata :products :created-at)]
+      (check-display-names
+       [{:clause [:time-interval created-at -1 :month], :options {:include-current true}
+         :name "Created At is in the previous month or this month"}]))))
+
+(deftest ^:parallel max-of-string-column-is-text-typed-test
+  (testing "#21973 #22154 a plain max/min aggregation over a Text column stays Text-typed in a later stage
+            (so the FE offers string filter operators)"
+    (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                      (lib/aggregate (lib/max (meta/field-metadata :people :name)))
+                      (lib/breakout (meta/field-metadata :people :source))
+                      lib/append-stage)
+          max-col (m/find-first (comp #{"max"} :name) (lib/filterable-columns query))]
+      (is (some? max-col))
+      (is (= :type/Text (lib/type-of query max-col))))))
+
+(deftest ^:parallel distinct-aggregation-and-breakout-filterable-column-test
+  (testing "#36508 a distinct aggregation column is numeric-typed (so the FE offers numeric filter operators)"
+    (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                           (lib/aggregate (lib/distinct (meta/field-metadata :people :email)))
+                           (lib/breakout (meta/field-metadata :people :source))
+                           lib/append-stage)
+          distinct-col (m/find-first (comp #{"count"} :name) (lib/filterable-columns query))]
+      (is (some? distinct-col))
+      (is (isa? (lib/type-of query distinct-col) :type/Number))))
+  (testing "#25927 a breakout column stays filterable when the stage carries an expression over an aggregation"
+    (let [base      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/breakout (meta/field-metadata :orders :product-id))
+                        (lib/aggregate (lib/count))
+                        lib/append-stage)
+          count-col (m/find-first (comp #{"count"} :name) (lib/visible-columns base))
+          query     (lib/expression base "x2" (lib/* 2 count-col))]
+      (is (some (comp #{"Product ID"} :display-name) (lib/filterable-columns query))))))
+
+(deftest ^:parallel filterable-columns-layered-on-card-source-test
+  (testing "an expression layered on a structured card source is offered as a filterable column"
+    (let [base     (lib.tu/query-with-source-card)
+          user-id  (m/find-first (comp #{"USER_ID"} :name) (lib/visible-columns base))
+          query    (lib/expression base "Total100" (lib/+ user-id 100))]
+      (is (some (comp #{"Total100"} :name) (lib/filterable-columns query)))))
+  (testing "an explicit join layered on a card source exposes the joined table's columns for filtering"
+    (let [base    (lib.tu/query-with-source-card)
+          user-id (m/find-first (comp #{"USER_ID"} :name) (lib/visible-columns base))
+          query   (lib/join base (lib/join-clause (meta/table-metadata :venues)
+                                                  [(lib/= user-id (meta/field-metadata :venues :id))]))]
+      (is (some (comp #{"PRICE"} :name) (lib/filterable-columns query))))))

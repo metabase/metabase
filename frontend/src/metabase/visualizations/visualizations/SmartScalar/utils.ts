@@ -330,7 +330,9 @@ function getMaxPeriodsAgo({
     return null;
   }
 
+  // Unjustified type cast. FIXME
   const latestNonEmptyDate = latestNonEmptyRow[dimensionIndex] as string;
+  // Unjustified type cast. FIXME
   const earliestNonEmptyDate = earliestNonEmptyRow[dimensionIndex] as string;
 
   if (latestNonEmptyDate === null || earliestNonEmptyDate === null) {

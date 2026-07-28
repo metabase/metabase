@@ -23,6 +23,7 @@ export const CollectionDropTarget = DropTarget(
     },
     canDrop(props: CollectionDropTargetOwnProps, monitor: DropTargetMonitor) {
       const { collection } = props;
+      // Unjustified type cast. FIXME
       const { item } = monitor.getItem() as { item: CollectionItem };
       if (
         !isRootTrashCollection(collection) &&

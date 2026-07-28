@@ -16,6 +16,7 @@ const hideJekyllTemplateIncludes = (element: HTMLElement) => {
   element.querySelectorAll("p").forEach((element) => {
     // Check if the element's text content contains "{%" and it has no child elements
     if (element.textContent?.includes("{%") && element.children.length === 0) {
+      // Unjustified type cast. FIXME
       (element as HTMLElement).style.display = "none";
     }
   });
@@ -33,6 +34,7 @@ const hideIntroductoryElements = (element: HTMLElement) => {
 
     while (prevSibling) {
       prevSibling.style.display = "none";
+      // Unjustified type cast. FIXME
       prevSibling = prevSibling.previousElementSibling as HTMLElement;
     }
 
@@ -44,6 +46,7 @@ const hideIntroductoryElements = (element: HTMLElement) => {
       nextSibling?.tagName === "P"
     ) {
       nextSibling.style.display = "none";
+      // Unjustified type cast. FIXME
       nextSibling = nextSibling.nextElementSibling as HTMLElement;
     }
   }

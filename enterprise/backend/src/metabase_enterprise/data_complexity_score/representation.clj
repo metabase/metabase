@@ -2,7 +2,7 @@
   "Load a serdes export directory into the shape the complexity scorer expects.
 
   Format: the official Metabase serdes/representation YAML, byte-compatible with what
-  `serdes/store` emits and what `metabase-enterprise.checker` parses.
+  `serdes/store` emits.
 
   Layout (subset that the scorer reads):
 
@@ -18,8 +18,8 @@
   Library membership is derived from `Collection.type = \"library\"` plus the `parent_id` chain.
 
   Caveats vs. the live appdb scorer in [[metabase-enterprise.data-complexity-score.complexity]]:
-    - `:metabot` catalog: requires premium-feature gates and a Metabot config row that aren't in
-      an export. The CLI flags `:metabot` as a universe fallback (see `cli/run-cli`)."
+    - `:metabot` catalog: requires a Metabot config row that isn't in an export. The CLI flags
+      `:metabot` as a universe fallback (see `cli/run-cli`)."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]

@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
@@ -11,6 +10,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
 import {
   createMockCollection,
@@ -74,15 +74,17 @@ function setup({ databaseId, schema }: SetupOpts) {
 
   const onSchemaChange = jest.fn();
   const { history } = renderWithProviders(
+    // Catch-all so the picker stays mounted after it navigates to select a
+    // schema; the test reopens it and checks the database list.
     <Route
-      path="/"
-      component={() => (
+      path="*"
+      element={
         <SchemaPickerInput
           databaseId={databaseId}
           schema={schema}
           onSchemaChange={onSchemaChange}
         />
-      )}
+      }
     />,
     { withRouter: true },
   );

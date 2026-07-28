@@ -6,6 +6,7 @@ import { getHostedBundleStoryDecorator } from "embedding-sdk-package/test/getHos
 
 import { MetabaseProvider } from "./MetabaseProvider";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 const config = getStorybookSdkAuthConfigForUser("admin");
 

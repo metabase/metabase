@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 
 import type { DragEndEvent } from "metabase/common/components/Sortable";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Box } from "metabase/ui";
 import type {
   DatasetColumn,

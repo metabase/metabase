@@ -42,7 +42,9 @@ const defaultProps = {
   cols: { desktop: 12, mobile: 6 },
   width: 1200,
   margin: {
+    // Unjustified type cast. FIXME
     desktop: [10, 10] as [number, number],
+    // Unjustified type cast. FIXME
     mobile: [5, 5] as [number, number],
   },
   rowHeight: 100,

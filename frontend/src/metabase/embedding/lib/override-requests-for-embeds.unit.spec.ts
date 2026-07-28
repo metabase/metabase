@@ -1,5 +1,5 @@
-import { api } from "metabase/api/client";
 import { isEmbedPreview } from "metabase/embedding/config";
+import { PLUGIN_API, reinitialize } from "metabase/plugins";
 
 import {
   matchUrlPattern,
@@ -16,6 +16,8 @@ const mockIsEmbedPreview = jest.mocked(isEmbedPreview);
 
 afterEach(() => {
   mockIsEmbedPreview.mockReset();
+  // Reset any plugin request handlers installed by a test.
+  reinitialize();
 });
 
 describe("matchUrlPattern", () => {
@@ -148,27 +150,49 @@ describe("overrideRequests", () => {
     expect(result.url).toBe("/api/embed/card/:token/query");
     expect(result.method).toBe("GET");
   });
+
+  it("drops the real cardId so it isn't leaked as a querystring param", async () => {
+    const result = await overrideRequests({
+      embedType: "public",
+      method: "GET",
+      url: "/api/card/:cardId/params/:paramId/remapping",
+      data: { cardId: 123, paramId: "p1", entityIdentifier: "uuid-1" },
+    });
+
+    expect(result.url).toBe(
+      "/api/public/card/:entityIdentifier/params/:paramId/remapping",
+    );
+    expect(result.data).not.toHaveProperty("cardId");
+    expect(result.data.entityIdentifier).toBe("uuid-1");
+  });
+
+  it("drops the real dashId for dashboard parameter endpoints", async () => {
+    const result = await overrideRequests({
+      embedType: "guest",
+      method: "GET",
+      url: "/api/dashboard/:dashId/params/:paramId/values",
+      data: { dashId: 7, paramId: "p1", entityIdentifier: "uuid-2" },
+    });
+
+    expect(result.url).toBe(
+      "/api/embed/dashboard/:entityIdentifier/params/:paramId/values",
+    );
+    expect(result.data).not.toHaveProperty("dashId");
+    expect(result.data.entityIdentifier).toBe("uuid-2");
+  });
 });
 
 describe("setupEmbedPreviewRewrite", () => {
-  // The embed route registers `usePublicEndpoints` on a parent of the dashboard
-  // fetcher, and React runs child effects before parent effects, so this must be
-  // called synchronously (not from an effect) to catch the first embed request.
-  it("registers rewriteEmbedPreviewUrl on the shared client, idempotently", () => {
-    const before = api.beforeRequestHandlers.filter(
-      (handler) => handler === rewriteEmbedPreviewUrl,
-    ).length;
-
-    expect(before).toBe(0);
+  it("installs rewriteEmbedPreviewUrl into the PLUGIN_API slot", () => {
+    expect(PLUGIN_API.onBeforeRequestHandlers.rewriteEmbedPreviewUrl).not.toBe(
+      rewriteEmbedPreviewUrl,
+    );
 
     setupEmbedPreviewRewrite();
-    setupEmbedPreviewRewrite();
 
-    const after = api.beforeRequestHandlers.filter(
-      (handler) => handler === rewriteEmbedPreviewUrl,
-    ).length;
-
-    expect(after).toBe(1);
+    expect(PLUGIN_API.onBeforeRequestHandlers.rewriteEmbedPreviewUrl).toBe(
+      rewriteEmbedPreviewUrl,
+    );
   });
 });
 

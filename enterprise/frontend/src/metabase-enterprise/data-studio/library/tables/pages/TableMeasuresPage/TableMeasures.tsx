@@ -36,6 +36,7 @@ export function TableMeasures({ table }: TableMeasuresProps) {
             ? {
                 label: t`New measure`,
                 trackClickEvent: () =>
+                  // Unjustified type cast. FIXME
                   trackMeasureCreateStarted(table.id as ConcreteTableId),
                 url: Urls.dataStudioPublishedTableMeasureNew(table.id),
               }

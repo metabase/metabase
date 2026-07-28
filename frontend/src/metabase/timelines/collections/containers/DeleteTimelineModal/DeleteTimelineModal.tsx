@@ -1,13 +1,12 @@
-import { push } from "react-router-redux";
-
 import {
   skipToken,
   useDeleteTimelineMutation,
   useGetTimelineQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import DeleteTimelineModal from "metabase/timelines/common/components/DeleteTimelineModal";
 import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";

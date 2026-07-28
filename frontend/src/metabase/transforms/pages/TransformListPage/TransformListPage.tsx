@@ -1,13 +1,5 @@
 import type { Row } from "@tanstack/react-table";
-import {
-  type PropsWithChildren,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import type { WithRouterProps } from "react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -27,6 +19,7 @@ import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { Link, Outlet, useRouter } from "metabase/router";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
@@ -37,6 +30,7 @@ import {
   Flex,
   Group,
   Icon,
+  type RenderRowLink,
   Stack,
   TextInput,
   TreeTable,
@@ -46,7 +40,7 @@ import {
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
-import { type NamedUser, getUserName } from "metabase/utils/user";
+import { getUserName } from "metabase/utils/user";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import { CreateTransformMenu } from "./CreateTransformMenu";
@@ -79,6 +73,24 @@ const isRowDisabled = (row: Row<TreeNode>) => {
   return row.original.can_read === false;
 };
 
+const getRowHref = (row: Row<TreeNode>) => {
+  if (isRowDisabled(row)) {
+    return null;
+  }
+  if (row.original.nodeType === "transform" && row.original.transformId) {
+    return Urls.transform(row.original.transformId);
+  }
+  if (row.original.nodeType === "library" && row.original.url) {
+    return row.original.url;
+  }
+  return null;
+};
+
+const renderRowLink: RenderRowLink<TreeNode> = (row, props) => {
+  const href = getRowHref(row);
+  return href ? <Link to={href} {...props} /> : props.children;
+};
+
 const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
   folder: "text-secondary",
   transform: "core-brand",
@@ -101,12 +113,8 @@ const globalFilterFn = (
   );
 };
 
-type TransformListPageProps = WithRouterProps & PropsWithChildren;
-
-export const TransformListPage = ({
-  children,
-  location,
-}: TransformListPageProps) => {
+export const TransformListPage = () => {
+  const { location } = useRouter();
   const { transformsDatabases = [], isLoadingDatabases } =
     useTransformPermissions();
   const targetCollectionId =
@@ -216,7 +224,7 @@ export const TransformListPage = ({
           const hasUserName = owner?.first_name || owner?.last_name;
 
           if (hasUserName) {
-            const displayName = getUserName(owner as NamedUser);
+            const displayName = getUserName(owner);
             return <Ellipsified>{displayName}</Ellipsified>;
           }
 
@@ -269,19 +277,6 @@ export const TransformListPage = ({
       },
     ];
   }, [hasPythonTransformsFeature, warningsByTransformId, getNodeSyncColor]);
-
-  const getRowHref = useCallback((row: Row<TreeNode>) => {
-    if (isRowDisabled(row)) {
-      return null;
-    }
-    if (row.original.nodeType === "transform" && row.original.transformId) {
-      return Urls.transform(row.original.transformId);
-    }
-    if (row.original.nodeType === "library" && row.original.url) {
-      return row.original.url;
-    }
-    return null;
-  }, []);
 
   const treeTableInstance = useTreeTableInstance({
     data: treeData,
@@ -363,13 +358,13 @@ export const TransformListPage = ({
               }
               onRowClick={handleRowClick}
               isRowDisabled={isRowDisabled}
-              getRowHref={getRowHref}
+              renderRowLink={renderRowLink}
               classNames={{ rowDisabled: S.rowDisabled }}
             />
           )}
         </Card>
       </Stack>
-      {children}
+      <Outlet />
     </PageContainer>
   );
 };

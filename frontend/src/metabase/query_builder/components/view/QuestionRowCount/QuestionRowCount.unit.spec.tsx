@@ -51,6 +51,7 @@ function patchQuestion(question: Question) {
     const nextQuery = Lib.orderBy(query, 0, sampleColumn);
     return question.setQuery(nextQuery);
   } else {
+    // Unjustified type cast. FIXME
     const query = question.legacyNativeQuery() as NativeQuery;
     return query.setQueryText("SELECT * FROM __ORDERS__").question();
   }

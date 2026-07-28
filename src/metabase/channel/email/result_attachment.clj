@@ -1,6 +1,7 @@
 (ns metabase.channel.email.result-attachment
   (:require
    [clojure.java.io :as io]
+   [metabase.channel.render.util :as render.util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -92,7 +93,7 @@
 (defn result-attachment
   "Create result attachments for an email. `creator-id` is the subscription creator, whose download
   permissions gate the attachment at send time."
-  [{{original-card-name :name format-rows :format_rows pivot-results :pivot_results :as card} :card
+  [{{format-rows :format_rows pivot-results :pivot_results :as card} :card
     dashcard :dashcard
     result :result
     :as part}
@@ -102,9 +103,9 @@
              (not= (perms/download-perms-level (:dataset_query card) creator-id) :no))
     (let [maybe-realize-data-rows (requiring-resolve 'metabase.channel.shared/maybe-realize-data-rows)
           result            (:result (maybe-realize-data-rows part))
-          visualizer-title (when (and dashcard (get-in dashcard [:visualization_settings :visualization]))
-                             (not-empty (get-in dashcard [:visualization_settings :visualization :settings :card.title])))
-          filename-prefix  (or visualizer-title original-card-name)]
+          ;; the dashboard-level title override (incl. the visualizer's) names the attachment, matching the card's
+          ;; displayed title; falls back to the card's own name (see [[render.util/dashcard-title]]).
+          filename-prefix  (render.util/dashcard-title card dashcard)]
       (when-not (:render/too-large? result)
         (->>
          [(when-let [temp-file (and (:include_csv card)

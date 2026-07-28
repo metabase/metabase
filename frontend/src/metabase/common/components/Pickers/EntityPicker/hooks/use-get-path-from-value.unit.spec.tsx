@@ -268,7 +268,7 @@ describe("useGetPathFromValue", () => {
           createMockCollectionItem({
             id: card.id,
             model: "card",
-          } as CollectionItem),
+          }),
         ],
       });
 
@@ -313,6 +313,7 @@ describe("useGetPathFromValue", () => {
       setupCollectionItemsEndpoint({
         collection: { id: "root" },
         collectionItems: [
+          // Unjustified type cast. FIXME
           createMockCollectionItem({
             ...parentCollection,
             model: "collection",
@@ -323,6 +324,7 @@ describe("useGetPathFromValue", () => {
       setupCollectionItemsEndpoint({
         collection: parentCollection,
         collectionItems: [
+          // Unjustified type cast. FIXME
           createMockCollectionItem({
             ...childCollection,
             model: "collection",
@@ -337,13 +339,13 @@ describe("useGetPathFromValue", () => {
             id: 123,
             name: "Grandchild card",
             model: "card",
-          } as CollectionItem),
+          }),
           createMockCollectionItem({
             id: 1234,
             name: "Grandchild collection",
             location: "/16/26/",
             model: "collection",
-          } as CollectionItem),
+          }),
         ],
       });
 
@@ -396,6 +398,7 @@ describe("useGetPathFromValue", () => {
       setupCollectionItemsEndpoint({
         collection: { id: "root" },
         collectionItems: [
+          // Unjustified type cast. FIXME
           createMockCollectionItem({
             ...parentCollection,
             model: "collection",
@@ -406,10 +409,12 @@ describe("useGetPathFromValue", () => {
       setupCollectionItemsEndpoint({
         collection: parentCollection,
         collectionItems: [
+          // Unjustified type cast. FIXME
           createMockCollectionItem({
             ...childCollection,
             model: "collection",
           } as CollectionItem),
+          // Unjustified type cast. FIXME
           createMockCollectionItem({
             id: grandchildCollection.id,
             name: grandchildCollection.name,
@@ -427,7 +432,8 @@ describe("useGetPathFromValue", () => {
             id: 123,
             name: "Grandchild card",
             model: "card",
-          } as CollectionItem),
+          }),
+          // Unjustified type cast. FIXME
           createMockCollectionItem({
             id: grandchildCollection.id,
             name: grandchildCollection.name,
@@ -445,7 +451,7 @@ describe("useGetPathFromValue", () => {
             id: 12333,
             name: "great Grandchild card",
             model: "card",
-          } as CollectionItem),
+          }),
         ],
       });
 
@@ -599,6 +605,7 @@ describe("useGetPathFromValue", () => {
       const table = testDb.tables?.[0];
       const value: OmniPickerValue = {
         model: "table",
+        // Unjustified type cast. FIXME
         id: table?.id as number,
       };
 
@@ -624,6 +631,7 @@ describe("useGetPathFromValue", () => {
       const { result } = setup({
         value: {
           model: "table",
+          // Unjustified type cast. FIXME
           id: table?.id as number,
         },
         databases: [testDb, testDbSingleSchema],
@@ -653,6 +661,7 @@ describe("useGetPathFromValue", () => {
         collection: personalCollection,
         collectionItems: [
           createMockCollectionItem({
+            // Unjustified type cast. FIXME
             id: childCollection.id as number,
             name: childCollection.name,
             model: "collection",
@@ -759,6 +768,7 @@ describe("useGetPathFromValue", () => {
       setupCollectionItemsEndpoint({
         collection: otherPersonal,
         collectionItems: [
+          // Unjustified type cast. FIXME
           createMockCollectionItem({
             ...nestedPersonal,
             model: "collection",
@@ -769,6 +779,7 @@ describe("useGetPathFromValue", () => {
       setupCollectionItemsEndpoint({
         collection: nestedPersonal,
         collectionItems: [
+          // Unjustified type cast. FIXME
           createMockCollectionItem({
             ...moreNestedPersonal,
             model: "collection",
@@ -827,6 +838,7 @@ describe("useGetPathFromValue", () => {
       setupCollectionItemsEndpoint({
         collection: { id: "root" },
         collectionItems: [
+          // Unjustified type cast. FIXME
           createMockCollectionItem({
             ...parentCollection,
             model: "collection",
@@ -840,6 +852,7 @@ describe("useGetPathFromValue", () => {
         () => {
           return {
             data: [
+              // Unjustified type cast. FIXME
               createMockCollectionItem({
                 ...childCollection,
                 model: "collection",
@@ -857,13 +870,13 @@ describe("useGetPathFromValue", () => {
             id: 123,
             name: "Grandchild card",
             model: "card",
-          } as CollectionItem),
+          }),
           createMockCollectionItem({
             id: 1234,
             name: "Grandchild collection",
             location: "/16/26/",
             model: "collection",
-          } as CollectionItem),
+          }),
         ],
       });
 
@@ -951,6 +964,7 @@ describe("useGetPathFromValue", () => {
     }, 10_000);
 
     it("should return transform path with a provided transform collection", async () => {
+      // Unjustified type cast. FIXME
       const parentCollection = createMockCollection({
         id: 6262,
         name: "My Transforms",
@@ -960,6 +974,7 @@ describe("useGetPathFromValue", () => {
         here: ["table", "dataset"],
       } as unknown as Collection);
 
+      // Unjustified type cast. FIXME
       const childCollection = createMockCollection({
         id: 6363,
         name: "More Transforms",
@@ -973,6 +988,7 @@ describe("useGetPathFromValue", () => {
       setupCollectionItemsEndpoint({
         collection: { id: "root" },
         collectionItems: [
+          // Unjustified type cast. FIXME
           createMockCollectionItem({
             ...parentCollection,
             model: "collection",
@@ -983,6 +999,7 @@ describe("useGetPathFromValue", () => {
       setupCollectionItemsEndpoint({
         collection: parentCollection,
         collectionItems: [
+          // Unjustified type cast. FIXME
           createMockCollectionItem({
             ...childCollection,
             model: "collection",
@@ -997,7 +1014,7 @@ describe("useGetPathFromValue", () => {
             id: 12345,
             name: "Cool Transform",
             model: "transform",
-          } as CollectionItem),
+          }),
         ],
       });
 
@@ -1020,6 +1037,7 @@ describe("useGetPathFromValue", () => {
     });
 
     it("should return library collection path with no provided value", async () => {
+      // Unjustified type cast. FIXME
       const libraryCollection = createMockCollection({
         id: 6464,
         name: "Library",
@@ -1027,6 +1045,7 @@ describe("useGetPathFromValue", () => {
         below: ["collection"],
       } as unknown as Collection);
 
+      // Unjustified type cast. FIXME
       const childCollection = createMockCollection({
         id: 6565,
         name: "Data",
@@ -1037,6 +1056,7 @@ describe("useGetPathFromValue", () => {
       setupCollectionItemsEndpoint({
         collection: libraryCollection,
         collectionItems: [
+          // Unjustified type cast. FIXME
           createMockCollectionItem({
             ...childCollection,
             model: "collection",
@@ -1060,6 +1080,7 @@ describe("useGetPathFromValue", () => {
     });
 
     it("should return a shared tenant collection path", async () => {
+      // Unjustified type cast. FIXME
       const parentCollection = createMockCollection({
         id: 6262,
         name: "shared stuff",
@@ -1069,6 +1090,7 @@ describe("useGetPathFromValue", () => {
         here: ["table", "dataset", "collection"],
       } as unknown as Collection);
 
+      // Unjustified type cast. FIXME
       const childCollection = createMockCollection({
         id: 6363,
         name: "More shared stuff",
@@ -1082,6 +1104,7 @@ describe("useGetPathFromValue", () => {
       setupCollectionItemsEndpoint({
         collection: { id: "root" },
         collectionItems: [
+          // Unjustified type cast. FIXME
           createMockCollectionItem({
             ...parentCollection,
             model: "collection",
@@ -1092,6 +1115,7 @@ describe("useGetPathFromValue", () => {
       setupCollectionItemsEndpoint({
         collection: parentCollection,
         collectionItems: [
+          // Unjustified type cast. FIXME
           createMockCollectionItem({
             ...childCollection,
             model: "collection",
@@ -1106,7 +1130,7 @@ describe("useGetPathFromValue", () => {
             id: 12345,
             name: "Cool Card",
             model: "card",
-          } as CollectionItem),
+          }),
         ],
       });
 
@@ -1133,6 +1157,7 @@ describe("useGetPathFromValue", () => {
     });
 
     it("should return a tenant specific collection path", async () => {
+      // Unjustified type cast. FIXME
       const parentCollection = createMockCollection({
         id: 6262,
         name: "specific stuff",
@@ -1142,6 +1167,7 @@ describe("useGetPathFromValue", () => {
         here: ["table", "dataset", "collection"],
       } as unknown as Collection);
 
+      // Unjustified type cast. FIXME
       const childCollection = createMockCollection({
         id: 6363,
         name: "More specific stuff",
@@ -1155,6 +1181,7 @@ describe("useGetPathFromValue", () => {
       setupCollectionItemsEndpoint({
         collection: { id: "root" },
         collectionItems: [
+          // Unjustified type cast. FIXME
           createMockCollectionItem({
             ...parentCollection,
             model: "collection",
@@ -1165,6 +1192,7 @@ describe("useGetPathFromValue", () => {
       setupCollectionItemsEndpoint({
         collection: parentCollection,
         collectionItems: [
+          // Unjustified type cast. FIXME
           createMockCollectionItem({
             ...childCollection,
             model: "collection",
@@ -1179,7 +1207,7 @@ describe("useGetPathFromValue", () => {
             id: 12345,
             name: "Cool Card",
             model: "card",
-          } as CollectionItem),
+          }),
         ],
       });
 

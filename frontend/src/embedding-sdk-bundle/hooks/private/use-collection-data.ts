@@ -24,7 +24,7 @@ export const useCollectionData = (
 
   const effectiveCollectionId = useMemo(() => {
     if (isGlobalBreadcrumbEnabled && currentLocation?.type === "collection") {
-      return currentLocation.id as CollectionId;
+      return currentLocation.id;
     }
 
     return internalCollectionId;

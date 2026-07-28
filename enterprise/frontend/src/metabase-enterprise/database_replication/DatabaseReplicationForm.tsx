@@ -168,6 +168,7 @@ export const DatabaseReplicationForm = ({
                 label={t`Select schemas to replicate`}
                 onChange={(value) =>
                   setSchemaFiltersType(
+                    // Unjustified type cast. FIXME
                     value as typeof initialValues.schemaFiltersType,
                   )
                 }
@@ -194,7 +195,7 @@ export const DatabaseReplicationForm = ({
                     }
                   />
                   {previewResponse?.errors?.invalidSchemaFiltersPattern && (
-                    <Text c="error" fz="sm" mt="xs">
+                    <Text c="feedback-negative" fz="sm" mt="xs">
                       {t`Invalid schema filters pattern`}
                     </Text>
                   )}

@@ -1,10 +1,10 @@
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useDocsUrl, useHasEmailSetup } from "metabase/common/hooks";
+import { Link } from "metabase/router";
 import {
   Anchor,
   Card,

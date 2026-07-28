@@ -1,5 +1,6 @@
 (ns ^:synchronous metabase-enterprise.custom-viz-plugin.api-test
   (:require
+   [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
@@ -649,6 +650,29 @@
             (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"})]
               (is (= "gated-dev" (:identifier resp))))))))))
+
+(deftest dev-sse-proxy-test
+  (mt/with-premium-features #{:custom-viz}
+    (with-dev-mode-enabled
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier     "dev-sse-proxy"
+                                                      :display_name   "dev-sse-proxy"
+                                                      :status         :active
+                                                      :dev_bundle_url "http://localhost:5199"}]
+        (testing "GET /:id/dev-sse returns 404 when no dev server URL is configured"
+          (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly nil)]
+            (is (re-find #"No dev server URL configured"
+                         (str (mt/user-http-request :crowberto :get 404 (str "ee/custom-viz-plugin/" id "/dev-sse")))))))
+        (testing "GET /:id/dev-sse forwards Server-Sent Events from the dev server"
+          (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly "http://localhost:5199")
+                                      http/get (fn [_url _opts]
+                                                 {:body (java.io.ByteArrayInputStream.
+                                                         (.getBytes "data: hello\n\n" "UTF-8"))})]
+            (let [resp (mt/user-http-request-full-response
+                        :crowberto :get 200 (str "ee/custom-viz-plugin/" id "/dev-sse"))]
+              (testing "response is served as an event stream"
+                (is (str/starts-with? (get-in resp [:headers "Content-Type"]) "text/event-stream")))
+              (testing "the dev server's event is forwarded to the browser"
+                (is (str/includes? (str (:body resp)) "data: hello"))))))))))
 
 (deftest list-excludes-dev-plugins-when-dev-mode-disabled-test
   (mt/with-premium-features #{:custom-viz}

@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { setupSettingEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -8,6 +7,7 @@ import {
   createMockRoutingState,
   createMockSettingsState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
@@ -46,7 +46,7 @@ const setup = async ({
     settingValue: versionInfo,
   });
 
-  renderWithProviders(<Route path="*" component={SettingsNav} />, {
+  renderWithProviders(<Route path="*" element={<SettingsNav />} />, {
     withRouter: true,
     initialRoute,
     storeInitialState: {

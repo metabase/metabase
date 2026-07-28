@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type FileRejection, useDropzone } from "react-dropzone";
-import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -42,6 +41,7 @@ import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { MAX_UPLOAD_SIZE, MAX_UPLOAD_STRING } from "metabase/redux/uploads";
+import { push } from "metabase/router";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -55,6 +55,7 @@ import UploadOverlay from "../UploadOverlay";
 
 import { CollectionMain, CollectionRoot } from "./CollectionContent.styled";
 import { CollectionItemsTable } from "./CollectionItemsTable";
+import { useCollectionChartPaste } from "./use-collection-chart-paste";
 
 const itemKeyFn = (item: CollectionItem) => `${item.id}:${item.model}`;
 
@@ -85,6 +86,8 @@ export const CollectionContentView = ({
 }) => {
   const dispatch = useDispatch();
   const [deleteCollection] = useDeleteCollectionMutation();
+
+  useCollectionChartPaste(collection);
 
   const { data: pinnedItemsData, isLoading: loading } =
     useListCollectionItemsQuery({
@@ -165,7 +168,7 @@ export const CollectionContentView = ({
       if (rejected.length > 1) {
         sendToast({
           message: t`Please upload files individually`,
-          toastColor: "error",
+          toastColor: "feedback-negative",
           icon: "warning",
         });
         return;
@@ -186,7 +189,7 @@ export const CollectionContentView = ({
 
       sendToast({
         message: errorMessage,
-        toastColor: "error",
+        toastColor: "feedback-negative",
         icon: "warning",
       });
     },

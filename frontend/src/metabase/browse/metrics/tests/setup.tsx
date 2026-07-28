@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardEndpoints,
@@ -14,6 +12,7 @@ import {
   createMockSetupState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
@@ -243,6 +242,7 @@ export function setup({
 
   const mockMetricResults = mockMetrics.map(createMockMetricResult);
   const mockRecentMetrics = mockMetrics.map((metric) =>
+    // Unjustified type cast. FIXME
     createMockRecentMetric(metric as RecentMetric),
   );
 
@@ -264,10 +264,10 @@ export function setup({
 
   return renderWithProviders(
     <>
-      <Route path="/" component={() => <BrowseMetrics />} />
+      <Route path="/" element={<BrowseMetrics />} />
       <Route
         path="/metric/:cardId"
-        component={() => <div data-testid="metric-detail-page" />}
+        element={<div data-testid="metric-detail-page" />}
       />
     </>,
     {

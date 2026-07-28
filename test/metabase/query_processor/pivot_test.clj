@@ -9,12 +9,21 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.order-by :as lib.order-by]
+   [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
+   [metabase.lib.util :as lib.util]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp.core]
+   [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
+   [metabase.query-processor.middleware.normalize-query :as qp.middleware.normalize]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
@@ -28,6 +37,12 @@
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
+
+;; Every pivot test in this namespace runs under [[qp.pivot.test-util/with-pivot-parity-check]]. For drivers that
+;; support `:native-pivot-tables`, any call to `qp.pivot/run-pivot-query` inside a test automatically runs both
+;; the multi-query and native paths, comparing result row multisets and failing the test on mismatch. Tests that
+;; don't call `run-pivot-query` see the fixture as a no-op.
+(use-fixtures :each (fn [thunk] (qp.pivot.test-util/do-with-pivot-parity-check thunk)))
 
 (deftest ^:parallel powerset-test
   (is (= [[]]
@@ -224,6 +239,529 @@
                                                (:pivot-cols pivot-options)
                                                (:show-row-totals pivot-options)
                                                (:show-column-totals pivot-options)))))))
+
+;;; ---- apply-pivot-viz-settings ----
+
+(defn- two-breakout-query []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+      (lib/aggregate (lib/count))
+      (lib/breakout (meta/field-metadata :orders :created-at))
+      (lib/breakout (meta/field-metadata :orders :user-id))))
+
+(defn- breakout-uuid [query i]
+  (-> query lib/breakouts (nth i) lib.options/uuid))
+
+(defn- pivot-of
+  "Read the `:pivot` clause from the last stage of `query`."
+  [query]
+  (:pivot (lib.util/query-stage query -1)))
+
+(deftest ^:parallel apply-pivot-viz-settings-column-name-test
+  (testing "column-name viz-settings resolve to breakout :lib/uuid values"
+    (let [q     (two-breakout-query)
+          cols  (filter :lib/breakout? (lib/returned-columns q))
+          viz   {:pivot_table.column_split {:rows    [(:name (first cols))]
+                                            :columns [(:name (second cols))]}}]
+      (is (= {:rows               [(breakout-uuid q 0)]
+              :columns            [(breakout-uuid q 1)]
+              :show-row-totals    true
+              :show-column-totals true}
+             (pivot-of (qp.pivot/apply-pivot-viz-settings q viz)))))))
+
+(deftest ^:parallel apply-pivot-viz-settings-field-ref-test
+  (testing "legacy field-ref viz-settings resolve to breakout :lib/uuid values"
+    (let [q   (two-breakout-query)
+          viz {:pivot_table.column_split {:rows    [[:field (meta/id :orders :created-at) nil]]
+                                          :columns [[:field (meta/id :orders :user-id) nil]]}}]
+      (is (= {:rows               [(breakout-uuid q 0)]
+              :columns            [(breakout-uuid q 1)]
+              :show-row-totals    true
+              :show-column-totals true}
+             (pivot-of (qp.pivot/apply-pivot-viz-settings q viz)))))))
+
+(deftest ^:parallel apply-pivot-viz-settings-idempotent-test
+  (testing "second invocation on the result yields the same query"
+    (let [q     (two-breakout-query)
+          cols  (filter :lib/breakout? (lib/returned-columns q))
+          viz   {:pivot_table.column_split {:rows [(:name (first cols))] :columns []}}
+          once  (qp.pivot/apply-pivot-viz-settings q viz)
+          twice (qp.pivot/apply-pivot-viz-settings once viz)]
+      (is (= once twice)))))
+
+(deftest ^:parallel apply-pivot-viz-settings-noop-when-pivot-already-present-test
+  (testing "if :pivot is already attached to the last stage, viz-settings are ignored"
+    (let [q          (two-breakout-query)
+          cols       (filter :lib/breakout? (lib/returned-columns q))
+          existing   {:rows [(breakout-uuid q 0)] :columns [] :show-row-totals false :show-column-totals false}
+          with-pivot (lib.util/update-query-stage q -1 assoc :pivot existing)
+          viz        {:pivot_table.column_split {:rows    []
+                                                 :columns [(:name (second cols))]}}
+          out        (qp.pivot/apply-pivot-viz-settings with-pivot viz)]
+      (is (= existing (:pivot (lib.util/query-stage out -1)))))))
+
+(deftest ^:parallel apply-pivot-viz-settings-noop-when-viz-settings-missing-test
+  (testing "no-op when viz-settings is nil or empty"
+    (let [q (two-breakout-query)]
+      (is (= q (qp.pivot/apply-pivot-viz-settings q nil)))
+      (is (= q (qp.pivot/apply-pivot-viz-settings q {}))))))
+
+(deftest ^:parallel apply-pivot-viz-settings-noop-when-no-refs-resolve-test
+  (testing "if every ref fails to resolve, no :pivot is attached"
+    (let [q   (two-breakout-query)
+          viz {:pivot_table.column_split {:rows ["NOT_A_COLUMN"] :columns ["ALSO_NOT"]}}]
+      (is (nil? (pivot-of (qp.pivot/apply-pivot-viz-settings q viz)))))))
+
+(deftest ^:parallel apply-pivot-viz-settings-drops-unresolvable-refs-test
+  (testing "unresolvable refs are silently dropped; resolvable ones survive"
+    (let [q    (two-breakout-query)
+          cols (filter :lib/breakout? (lib/returned-columns q))
+          viz  {:pivot_table.column_split {:rows    [(:name (first cols)) "NOT_A_COLUMN"]
+                                           :columns []}}]
+      (is (= [(breakout-uuid q 0)]
+             (-> q (qp.pivot/apply-pivot-viz-settings viz) pivot-of :rows))))))
+
+(deftest ^:parallel apply-pivot-viz-settings-respects-totals-flags-test
+  (testing "totals flags default to true when absent and preserve explicit false"
+    (let [q       (two-breakout-query)
+          name0   (:name (first (filter :lib/breakout? (lib/returned-columns q))))
+          base-vs {:pivot_table.column_split {:rows [name0] :columns []}}]
+      (testing "defaults"
+        (is (=? {:show-row-totals true :show-column-totals true}
+                (pivot-of (qp.pivot/apply-pivot-viz-settings q base-vs)))))
+      (testing "explicit false (keyword keys)"
+        (is (=? {:show-row-totals false :show-column-totals false}
+                (pivot-of (qp.pivot/apply-pivot-viz-settings q
+                                                             (assoc base-vs
+                                                                    :pivot.show_row_totals    false
+                                                                    :pivot.show_column_totals false))))))
+      (testing "explicit false (string keys)"
+        (is (=? {:show-row-totals false :show-column-totals false}
+                (pivot-of (qp.pivot/apply-pivot-viz-settings q
+                                                             (assoc base-vs
+                                                                    "pivot.show_row_totals"    false
+                                                                    "pivot.show_column_totals" false)))))))))
+
+;;; ---- apply-legacy-pivot-keys ----
+
+(defn- two-breakout-query-with-legacy-pivot-keys
+  "Build the same two-breakout MBQL5 query as [[two-breakout-query]], then assoc legacy top-level pivot keys."
+  [extra]
+  (merge (two-breakout-query) extra))
+
+(deftest ^:parallel apply-legacy-pivot-keys-kebab-case-test
+  (testing "kebab-case legacy indices resolve to breakout :lib/uuid values"
+    (let [q (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [1 0] :pivot-cols [0]})]
+      (is (=? {:rows               [(breakout-uuid q 1) (breakout-uuid q 0)]
+               :columns            [(breakout-uuid q 0)]
+               :show-row-totals    true
+               :show-column-totals true}
+              (pivot-of (qp.pivot/apply-legacy-pivot-keys q)))))))
+
+(deftest ^:parallel apply-legacy-pivot-keys-snake-case-test
+  (testing "snake_case legacy indices resolve to the same UUIDs"
+    (let [q (two-breakout-query-with-legacy-pivot-keys {:pivot_rows [1] :pivot_cols [0]})]
+      (is (=? {:rows    [(breakout-uuid q 1)]
+               :columns [(breakout-uuid q 0)]}
+              (pivot-of (qp.pivot/apply-legacy-pivot-keys q)))))))
+
+(deftest ^:parallel apply-legacy-pivot-keys-totals-flags-test
+  (testing "totals flags default to true and preserve explicit false (both shapes)"
+    (let [q-defaults (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [0]})
+          q-kebab    (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [0]
+                                                                 :show-row-totals false :show-column-totals false})
+          q-snake    (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [0]
+                                                                 :show_row_totals false :show_column_totals false})]
+      (is (=? {:show-row-totals true  :show-column-totals true}  (pivot-of (qp.pivot/apply-legacy-pivot-keys q-defaults))))
+      (is (=? {:show-row-totals false :show-column-totals false} (pivot-of (qp.pivot/apply-legacy-pivot-keys q-kebab))))
+      (is (=? {:show-row-totals false :show-column-totals false} (pivot-of (qp.pivot/apply-legacy-pivot-keys q-snake)))))))
+
+(deftest ^:parallel apply-legacy-pivot-keys-drops-out-of-range-indices-test
+  (testing "out-of-range indices are silently dropped (matching legacy)"
+    (let [q (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [0 5] :pivot-cols [99]})]
+      (is (=? {:rows [(breakout-uuid q 0)] :columns []}
+              (pivot-of (qp.pivot/apply-legacy-pivot-keys q))))))
+  (testing "no :pivot attached when every index is out of range"
+    (let [q   (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [5] :pivot-cols [99]})
+          out (qp.pivot/apply-legacy-pivot-keys q)]
+      (is (nil? (:pivot out))))))
+
+(deftest ^:parallel apply-legacy-pivot-keys-strips-all-legacy-keys-test
+  (testing "all 10 legacy key variants are stripped, including :pivot-measures"
+    (let [q   (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [0] :pivot_rows [0]
+                                                          :pivot-cols [1] :pivot_cols [1]
+                                                          :pivot-measures [0] :pivot_measures [0]
+                                                          :show-row-totals true :show_row_totals true
+                                                          :show-column-totals true :show_column_totals true})
+          out (qp.pivot/apply-legacy-pivot-keys q)]
+      (doseq [k [:pivot-rows :pivot_rows :pivot-cols :pivot_cols
+                 :pivot-measures :pivot_measures
+                 :show-row-totals :show_row_totals
+                 :show-column-totals :show_column_totals]]
+        (testing (str "stripped: " k)
+          (is (not (contains? out k))))))))
+
+(deftest ^:parallel apply-legacy-pivot-keys-noop-when-pivot-already-present-test
+  (testing "existing :pivot on the last stage is preserved; legacy keys still get stripped"
+    (let [q        (two-breakout-query)
+          existing {:rows [(breakout-uuid q 0)] :columns [] :show-row-totals false :show-column-totals false}
+          input    (-> q
+                       (lib.util/update-query-stage -1 assoc :pivot existing)
+                       (assoc :pivot-rows [1] :pivot-cols [0]))
+          output   (qp.pivot/apply-legacy-pivot-keys input)]
+      (is (= existing (pivot-of output)))
+      (is (not (contains? output :pivot-rows)))
+      (is (not (contains? output :pivot-cols))))))
+
+(deftest ^:parallel apply-legacy-pivot-keys-noop-when-no-legacy-keys-test
+  (testing "no legacy keys → query passes through unchanged"
+    (let [q (two-breakout-query)]
+      (is (= q (qp.pivot/apply-legacy-pivot-keys q))))))
+
+;;; ---- native-pivot-compatible? ----
+
+(deftest ^:parallel native-pivot-compatible?-test
+  (let [base (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                 (lib/breakout (meta/field-metadata :orders :created-at)))]
+    (testing "queries without window-function aggregations are compatible"
+      (is (qp.pivot/native-pivot-compatible? (lib/aggregate base (lib/count)))))
+    (testing ":cum-count aggregation is not compatible"
+      (is (not (qp.pivot/native-pivot-compatible? (lib/aggregate base (lib/cum-count))))))
+    (testing ":cum-sum aggregation is not compatible"
+      (is (not (qp.pivot/native-pivot-compatible?
+                (lib/aggregate base (lib/cum-sum (meta/field-metadata :orders :total)))))))
+    (testing ":offset aggregation is not compatible"
+      (is (not (qp.pivot/native-pivot-compatible?
+                (lib/aggregate base (lib/offset (lib/count) -1))))))
+    (testing "window-function aggregation nested inside an arithmetic clause is not compatible"
+      (let [total (meta/field-metadata :orders :total)
+            diff  (lib/expression-clause :- [(lib/sum total) (lib/offset (lib/sum total) -1)] nil)]
+        (is (not (qp.pivot/native-pivot-compatible? (lib/aggregate base diff)))))))
+  (testing "nested-field (e.g. JSON-unfolded) breakouts are compatible"
+    (let [json-mp (lib.tu/mock-metadata-provider
+                   {:database (assoc meta/database :id 1)
+                    :tables   [(merge (meta/table-metadata :venues)
+                                      {:id 1 :db-id 1 :name "json_table"})]
+                    :fields   [(merge (meta/field-metadata :venues :id)
+                                      {:id            1
+                                       :table-id      1
+                                       :name          "category"
+                                       :nfc-path      ["payload" "category"]
+                                       :database-type "text"})]})
+          query   (-> (lib/query json-mp (lib.metadata/table json-mp 1))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib.metadata/field json-mp 1)))]
+      (is (qp.pivot/native-pivot-compatible? query))))
+  (testing "metric whose definition is a window-function aggregation is incompatible"
+    (let [metric-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/aggregate (lib/cum-sum (meta/field-metadata :orders :total))))
+          metric-card  {:lib/type      :metadata/card
+                        :id            10000
+                        :entity-id     (apply str (repeat 21 "X"))
+                        :database-id   (meta/id)
+                        :name          "Cumulative Total"
+                        :type          :metric
+                        :dataset-query metric-query}
+          mp           (lib.tu/mock-metadata-provider meta/metadata-provider {:cards [metric-card]})
+          query        (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                           (lib/aggregate (lib.options/ensure-uuid [:metric {} (:id metric-card)]))
+                           (lib/breakout (lib.metadata/field mp (meta/id :orders :created-at))))]
+      (is (not (qp.pivot/native-pivot-compatible? query)))))
+  (testing "source card with a window-function aggregation"
+    (let [card-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/breakout (meta/field-metadata :orders :created-at))
+                         (lib/aggregate (lib/cum-sum (meta/field-metadata :orders :total))))
+          card       {:lib/type      :metadata/card
+                      :id            10001
+                      :entity-id     (apply str (repeat 21 "Y"))
+                      :database-id   (meta/id)
+                      :name          "Cumulative by Day"
+                      :type          :question
+                      :dataset-query card-query}
+          mp         (lib.tu/mock-metadata-provider meta/metadata-provider {:cards [card]})
+          query      (-> (lib/query mp (lib.metadata/card mp (:id card)))
+                         (lib/aggregate (lib/count)))]
+      (testing "outer aggregations don't inherit the card's window-fn, so the pivot is compatible"
+        (is (qp.pivot/native-pivot-compatible? query))))))
+
+(defn- capture-first-query
+  "Return `[p stub]` where `stub` is a `qp/process-query` replacement that delivers its first-received query to
+  the promise `p` and returns a benign completed result."
+  []
+  (let [p    (promise)
+        stub (fn [query _rff]
+               (deliver p query)
+               {:status :completed})]
+    [p stub]))
+
+(deftest ^:parallel candidate-must-not-invoke-callers-result-fn-test
+  (testing (str "The experiment candidate must not invoke qp.pipeline/*result*. In production the caller binds "
+                "*result* to a fn that finalizes and closes the streaming response; a second invocation from the "
+                "candidate would try to close an already-closed Jackson generator.")
+    (mt/dataset test-data
+      (qp.store/with-metadata-provider (mt/id)
+        (let [invocations (atom 0)
+              counting-result-fn (fn [result]
+                                   (swap! invocations inc)
+                                   (qp.pipeline/default-result-handler result))]
+          (binding [qp.pipeline/*result* counting-result-fn]
+            (qp.pivot/run-pivot-query (qp.pivot.test-util/pivot-query)))
+          (is (= 1 @invocations)))))))
+
+(deftest ^:parallel native-and-multi-pivot-paths-stash-same-pivot-options-test
+  (testing "the two pivot paths stash the same [:middleware :pivot-options] on the query given to qp/process-query"
+    (mt/dataset test-data
+      (qp.store/with-metadata-provider (mt/id)
+        (let [query                        (-> (qp.pivot.test-util/pivot-query)
+                                               qp.middleware.normalize/normalize-preprocessing-middleware)
+              [multi-p multi-stub]         (capture-first-query)
+              [native-p native-stub]       (capture-first-query)]
+          (mt/with-dynamic-fn-redefs [qp.core/process-query multi-stub]
+            (#'qp.pivot/run-pivot-query-multi query nil))
+          (mt/with-dynamic-fn-redefs [qp.core/process-query native-stub]
+            (#'qp.pivot/run-native-pivot-query query nil))
+          (is (some? (get-in @multi-p [:middleware :pivot-options])))
+          (is (= (get-in @multi-p  [:middleware :pivot-options])
+                 (get-in @native-p [:middleware :pivot-options]))))))))
+
+(deftest ^:mb/driver-tests pivot-with-expression-referencing-breakout-e2e-test
+  (testing "pivot with a breakout that references an expression"
+    (mt/test-drivers (conj (mt/normal-drivers-with-feature :native-pivot-tables) :h2)
+      (mt/dataset test-data
+        (let [mp       (mt/metadata-provider)
+              products (lib.metadata/table mp (mt/id :products))
+              price    (lib.metadata/field mp (mt/id :products :price))
+              category (lib.metadata/field mp (mt/id :products :category))
+              q        (-> (lib/query mp products)
+                           (lib/expression "doubled" (lib/* price 2))
+                           (as-> q (lib/breakout q category)
+                             (lib/breakout q (lib/expression-ref q "doubled")))
+                           (lib/aggregate (lib/count)))
+              q        (assoc q :pivot_rows [0] :pivot_cols [1])
+              result   (qp.pivot/run-pivot-query q)
+              rows     (get-in result [:data :rows])
+              pgs      (mapv #(nth % 2) rows)]
+          (is (pos? (:row_count result)))
+          (is (= (sort pgs) pgs)
+              "rows should appear in non-decreasing pivot-grouping order"))))))
+
+;;; ---- wrap-nested-field-breakouts ----
+
+(def ^:private json-mock-metadata-provider
+  "Mock metadata provider with a table whose first field is JSON-unfolded (i.e. has `:nfc-path`)."
+  (lib.tu/mock-metadata-provider
+   {:database (assoc meta/database :id 1)
+    :tables   [(merge (meta/table-metadata :venues)
+                      {:id 1 :db-id 1 :name "json_table" :schema nil})]
+    :fields   [(merge (meta/field-metadata :venues :id)
+                      {:id            1
+                       :table-id      1
+                       :name          "category"
+                       :nfc-path      ["payload" "category"]
+                       :base-type     :type/Text
+                       :effective-type :type/Text
+                       :database-type "text"})
+               (merge (meta/field-metadata :venues :name)
+                      {:id 2 :table-id 1 :name "region"})]}))
+
+(def ^:private json-pivot-query
+  "Single-stage MBQL5 pivot query against [[json-mock-metadata-provider]] with breakouts on the JSON field
+  and the regular field and a `count` aggregation. Pivot rows := first breakout, columns := second."
+  (let [json-col (lib.metadata/field json-mock-metadata-provider 1)
+        reg-col  (lib.metadata/field json-mock-metadata-provider 2)
+        base     (-> (lib/query json-mock-metadata-provider
+                                (lib.metadata/table json-mock-metadata-provider 1))
+                     (lib/breakout json-col)
+                     (lib/breakout reg-col)
+                     (lib/aggregate (lib/count)))
+        bks      (lib/breakouts base)]
+    (lib.util/update-query-stage base -1 assoc :pivot
+                                 {:rows               [(lib.options/uuid (first bks))]
+                                  :columns            [(lib.options/uuid (second bks))]
+                                  :show-row-totals    true
+                                  :show-column-totals true})))
+
+(deftest ^:parallel wrap-nested-field-breakouts-noop-test
+  (testing "queries with no nested-field breakouts are returned unchanged"
+    (let [q (two-breakout-query)]
+      (is (= q (nest-for-pivot/wrap-nested-field-breakouts q))))))
+
+(deftest ^:parallel wrap-nested-field-breakouts-shape-test
+  (let [wrapped (nest-for-pivot/wrap-nested-field-breakouts json-pivot-query)
+        [og-json-bo og-region-bo] (lib/breakouts json-pivot-query)]
+    (testing "the result has exactly two stages"
+      (is (= 2 (lib/stage-count wrapped))))
+    (testing "inner stage has the nested-field breakout moved to :expressions and is otherwise empty"
+      (is (= [(-> og-json-bo
+                  (lib.options/update-options assoc
+                                              :lib/uuid (-> (lib/expressions wrapped 0) first lib.options/uuid)
+                                              :lib/expression-name "__mb_pivot_nfc"))]
+             (lib/expressions wrapped 0)))
+      (is (empty? (lib/breakouts wrapped 0)))
+      (is (empty? (lib/aggregations wrapped 0)))
+      (is (empty? (lib/order-bys wrapped 0)))
+      (is (nil? (:pivot (lib.util/query-stage wrapped 0)))))
+    (testing "outer stage has the rewritten breakouts, original aggregations, and original :pivot"
+      (is (= [[:field {:lib/uuid       (lib.options/uuid og-json-bo)
+                       :base-type      :type/Text
+                       :effective-type :type/Text}
+               "__mb_pivot_nfc"]
+              [:field {:lib/uuid       (lib.options/uuid og-region-bo)
+                       :base-type      :type/Text
+                       :effective-type :type/Text}
+               "region"]]
+             (lib/breakouts wrapped)))
+      (is (= (lib/aggregations json-pivot-query)
+             (lib/aggregations wrapped)))
+      (is (= (:pivot (lib.util/query-stage json-pivot-query -1))
+             (:pivot (lib.util/query-stage wrapped -1)))))))
+
+(deftest ^:parallel wrap-nested-field-breakouts-with-expression-test
+  (testing "wrap correctly handles a query that has a user-defined :expression referenced by an aggregation"
+    (let [mp        lib.tu/metadata-provider-with-nfc-path
+          pid-col   (lib.metadata/field mp (meta/id :orders :product-id))
+          total-col (lib.metadata/field mp (meta/id :orders :total))
+          q (as-> (lib/query mp (lib.metadata/table mp (meta/id :orders))) q
+              (lib/expression q "doubled" (lib/* total-col 2))
+              (lib/breakout q pid-col)
+              (lib/aggregate q (lib/sum (lib/expression-ref q "doubled"))))
+          bks (lib/breakouts q)
+          pivot-q (lib.pivot/with-pivot q
+                    {:rows               [(lib.options/uuid (first bks))]
+                     :columns            []
+                     :show-row-totals    true
+                     :show-column-totals true})
+          wrapped (nest-for-pivot/wrap-nested-field-breakouts pivot-q)
+          agg (first (lib/aggregations wrapped))
+          inner-arg (last agg)]
+      (testing "the aggregation's argument should be a name-based :field ref to the inner stage's expression"
+        (is (lib.util/field-clause? inner-arg))
+        (is (= "doubled" (last inner-arg)))))))
+
+(deftest ^:parallel nest-for-pivot-handles-remap-to-nested-field-test
+  (testing "wrapping a pivot query where the remap *target* is itself a nested-field column preserves the
+  remap pair on the outer stage. The query has no explicit nested-field breakout — the nested-field column
+  only appears via add-remaps."
+    (let [;; Override people.name to be a nested-field column AND remap orders.user-id to it.
+          mp        (-> lib.tu/metadata-provider-with-nfc-path
+                        (lib.tu/mock-metadata-provider
+                         {:fields [(merge (meta/field-metadata :people :name)
+                                          {:nfc-path       ["payload" "name"]
+                                           :base-type      :type/Text
+                                           :effective-type :type/Text
+                                           :database-type  "text"})]})
+                        (lib.tu/remap-metadata-provider (meta/id :orders :user-id)
+                                                        (meta/id :people :name)))
+          uid-col   (lib.metadata/field mp (meta/id :orders :user-id))
+          q (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                (lib/breakout uid-col)
+                (lib/aggregate (lib/count)))
+          bks (lib/breakouts q)
+          pivot-q (lib.pivot/with-pivot q
+                    {:rows               [(lib.options/uuid (first bks))]
+                     :columns            []
+                     :show-row-totals    true
+                     :show-column-totals true})
+          with-remaps (qp.add-remaps/add-remapped-columns pivot-q)
+          wrapped (nest-for-pivot/nest-for-pivot with-remaps)
+          outer-breakouts (lib/breakouts wrapped)]
+      (testing "two-stage shape with :pivot preserved"
+        (is (= 2 (lib/stage-count wrapped)))
+        (is (lib.pivot/has-pivot? wrapped)))
+      (testing "the remap pair survives the wrap (the SQL compiler's remap-aware GROUPING-SETS logic still applies)"
+        (is (some #(get (lib.options/options %)
+                        :metabase.query-processor.middleware.add-remaps/new-field-dimension-id)
+                  outer-breakouts))
+        (is (some #(get (lib.options/options %)
+                        :metabase.query-processor.middleware.add-remaps/original-field-dimension-id)
+                  outer-breakouts))))))
+
+(deftest ^:parallel nest-for-pivot-handles-remap-with-nested-field-breakout-test
+  (testing "wrapping a pivot query that has both a nested-field breakout and a FK-remap-paired breakout
+  preserves the remap pair on the outer stage (so the SQL compiler's remap-aware GROUPING-SETS logic still applies)"
+    (let [mp        (-> lib.tu/metadata-provider-with-nfc-path
+                        (lib.tu/remap-metadata-provider (meta/id :orders :user-id)
+                                                        (meta/id :people :name)))
+          pid-col   (lib.metadata/field mp (meta/id :orders :product-id)) ; JSON-unfolded
+          uid-col   (lib.metadata/field mp (meta/id :orders :user-id))     ; remap-paired
+          q (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                (lib/breakout pid-col)
+                (lib/breakout uid-col)
+                (lib/aggregate (lib/count)))
+          bks (lib/breakouts q)
+          pivot-q (lib.pivot/with-pivot q
+                    {:rows               [(lib.options/uuid (first bks))]
+                     :columns            [(lib.options/uuid (second bks))]
+                     :show-row-totals    true
+                     :show-column-totals true})
+          with-remaps (qp.add-remaps/add-remapped-columns pivot-q)
+          wrapped (nest-for-pivot/nest-for-pivot with-remaps)
+          outer-breakouts (lib/breakouts wrapped)]
+      (testing "two-stage shape with :pivot preserved on the outer stage"
+        (is (= 2 (lib/stage-count wrapped)))
+        (is (lib.pivot/has-pivot? wrapped)))
+      (testing "the outer stage has a remap-paired breakout (one with the new-field-dimension-id key)"
+        (is (some #(get (lib.options/options %)
+                        :metabase.query-processor.middleware.add-remaps/new-field-dimension-id)
+                  outer-breakouts))))))
+
+(deftest ^:parallel wrap-nested-field-breakouts-aggregation-order-by-test
+  (testing "an :aggregation order-by survives the wrap, since aggregation UUIDs are preserved on the outer stage"
+    (let [mp        lib.tu/metadata-provider-with-nfc-path
+          pid-col   (lib.metadata/field mp (meta/id :orders :product-id))
+          q (as-> (lib/query mp (lib.metadata/table mp (meta/id :orders))) q
+              (lib/breakout q pid-col)
+              (lib/aggregate q (lib/count))
+              (lib/order-by q (lib/aggregation-ref q 0) :desc))
+          bks (lib/breakouts q)
+          og-agg-uuid (lib.options/uuid (first (lib/aggregations q)))
+          og-order-by (first (lib.order-by/order-bys q))
+          pivot-q (lib.pivot/with-pivot q
+                    {:rows               [(lib.options/uuid (first bks))]
+                     :columns            []
+                     :show-row-totals    true
+                     :show-column-totals true})
+          wrapped (nest-for-pivot/wrap-nested-field-breakouts pivot-q)
+          [new-direction _new-opts new-agg-ref] (first (lib.order-by/order-bys wrapped))
+          new-agg-uuid (lib.options/uuid (first (lib/aggregations wrapped)))
+          [og-direction _og-opts og-agg-ref]    og-order-by]
+      (testing "outer aggregation preserves the original aggregation's :lib/uuid"
+        (is (= og-agg-uuid new-agg-uuid)))
+      (testing "outer order-by has the original direction and points at the original aggregation"
+        (is (= og-direction new-direction))
+        (is (= og-agg-ref new-agg-ref))))))
+
+(deftest ^:parallel wrap-nested-field-breakouts-with-join-test
+  (testing "wrap correctly handles a query that joins another table and aggregates over a joined column"
+    (let [mp        lib.tu/metadata-provider-with-nfc-path
+          pid-col   (lib.metadata/field mp (meta/id :orders :product-id))
+          state-col (lib.metadata/field mp (meta/id :people :state))
+          total-col (lib.metadata/field mp (meta/id :orders :total))
+          q (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                (lib/join (lib/join-clause
+                           (lib.metadata/table mp (meta/id :people))
+                           [(lib/= (lib.metadata/field mp (meta/id :orders :user-id))
+                                   (lib.metadata/field mp (meta/id :people :id)))]))
+                (lib/breakout pid-col)
+                (lib/breakout state-col)
+                (lib/aggregate (lib/sum total-col)))
+          bks (lib/breakouts q)
+          pivot-q (lib.pivot/with-pivot q
+                    {:rows               [(lib.options/uuid (first bks))]
+                     :columns            [(lib.options/uuid (second bks))]
+                     :show-row-totals    true
+                     :show-column-totals true})
+          wrapped (nest-for-pivot/wrap-nested-field-breakouts pivot-q)]
+      (testing "outer breakouts are name-based refs with no :join-alias"
+        (doseq [bo (lib/breakouts wrapped)]
+          (is (lib.util/field-clause? bo))
+          (is (string? (last bo)))
+          (is (not (contains? (lib.options/options bo) :join-alias)))))
+      (testing "the aggregation's inner field ref is a name-based ref with no :join-alias"
+        (let [agg (first (lib/aggregations wrapped))
+              field-ref (last agg)]
+          (is (lib.util/field-clause? field-ref))
+          (is (string? (last field-ref)))
+          (is (not (contains? (lib.options/options field-ref) :join-alias))))))))
 
 (deftest ^:parallel nested-question-pivot-options-test
   (testing "#35025"
@@ -511,6 +1049,31 @@
                  {:expressions {"Product Rating + 1" [:+ $product_id->products.rating 1]}
                   :aggregation [[:count]]
                   :breakout    [$user_id->people.source [:expression "Product Rating + 1"]]})))))))
+
+(deftest ^:parallel measure-in-pivot-table-test
+  (testing "a :measure clause used inside a pivot query executes like the equivalent inline aggregation"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      (let [mp         (mt/metadata-provider)
+            total      (lib.metadata/field mp (mt/id :orders :total))
+            quantity   (lib.metadata/field mp (mt/id :orders :quantity))
+            definition (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/sum total)))
+            mp         (lib.tu/mock-metadata-provider
+                        mp
+                        {:measures [{:id         1
+                                     :name       "Sum of Total"
+                                     :table-id   (mt/id :orders)
+                                     :definition definition}]})
+            pivot      (fn [agg]
+                         (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                             (lib/aggregate agg)
+                             (lib/breakout quantity)))
+            measure-pivot (pivot (lib.metadata/measure mp 1))
+            inline-pivot  (pivot (lib/sum total))]
+        ;; the spliced measure must produce the same pivot output (leaf + grand-total rows) as
+        ;; the equivalent inline sum aggregation
+        (is (= (mt/rows (qp.pivot/run-pivot-query inline-pivot))
+               (mt/rows (qp.pivot/run-pivot-query measure-pivot))))))))
 
 (deftest pivot-query-should-work-without-data-permissions-test
   (testing "Pivot queries should work if the current user only has permissions to view the Card -- no data perms (#14989)"
@@ -833,61 +1396,203 @@
 
 (deftest ^:parallel pivot-query-uses-custom-limit-test
   (testing "Pivot queries use a custom higher limit instead of the caller's constraints, so data stays consistent"
-    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
-      ;; The pivot-query has 2 aggregations (count, sum-of-quantity), so the pivot limit is 200k/2 = 100k.
-      ;; Even though we pass max-results=50, the pivot limit overrides it, so all rows come through.
-      (let [query   (qp.pivot.test-util/pivot-query)
-            query   (assoc query :constraints {:max-results 50})
-            results (qp.pivot/run-pivot-query query)
-            rows    (mt/formatted-rows [str str str int int int] results)
-            ;; pivot-grouping is column index 3 (state, source, category, pivot-grouping, count, sum)
-            ;; Group 0 = all breakouts (detail rows)
-            ;; Group 7 = grand total (no breakouts)
-            detail-rows       (filter #(zero? (nth % 3)) rows)
-            grand-total-row   (first (filter #(= 7 (nth % 3)) rows))
-            detail-count-sum  (reduce + (map #(nth % 4) detail-rows))
-            grand-total-count (nth grand-total-row 4)]
-        (testing "All detail rows are returned (not truncated to caller's max-results)"
-          (is (> (count detail-rows) 50)
-              "Detail rows should exceed the caller's max-results=50 because the pivot limit overrides it"))
-        (testing "The grand total row exists"
-          (is (some? grand-total-row)))
-        (testing "Detail rows sum to the grand total — data is consistent"
-          (is (= detail-count-sum grand-total-count)
-              (str "Detail count sum (" detail-count-sum ") should equal grand total ("
-                   grand-total-count ") because pivot uses its own higher limit")))))))
+    ;; The multi-query path overrides the caller's `:constraints :max-results` with `pivot-query-max-rows`; the native
+    ;; single-query path doesn't, so results legitimately diverge — this test is multi-query-only.
+    (qp.pivot.test-util/without-pivot-parity-check
+     (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+       ;; The pivot-query has 2 aggregations (count, sum-of-quantity), so the pivot limit is 200k/2 = 100k.
+       ;; Even though we pass max-results=50, the pivot limit overrides it, so all rows come through.
+       (let [query   (qp.pivot.test-util/pivot-query)
+             query   (assoc query :constraints {:max-results 50})
+             results (qp.pivot/run-pivot-query query)
+             rows    (mt/formatted-rows [str str str int int int] results)
+             ;; pivot-grouping is column index 3 (state, source, category, pivot-grouping, count, sum)
+             ;; Group 0 = all breakouts (detail rows)
+             ;; Group 7 = grand total (no breakouts)
+             detail-rows       (filter #(zero? (nth % 3)) rows)
+             grand-total-row   (first (filter #(= 7 (nth % 3)) rows))
+             detail-count-sum  (reduce + (map #(nth % 4) detail-rows))
+             grand-total-count (nth grand-total-row 4)]
+         (testing "All detail rows are returned (not truncated to caller's max-results)"
+           (is (> (count detail-rows) 50)
+               "Detail rows should exceed the caller's max-results=50 because the pivot limit overrides it"))
+         (testing "The grand total row exists"
+           (is (some? grand-total-row)))
+         (testing "Detail rows sum to the grand total — data is consistent"
+           (is (= detail-count-sum grand-total-count)
+               (str "Detail count sum (" detail-count-sum ") should equal grand total ("
+                    grand-total-count ") because pivot uses its own higher limit"))))))))
 
 (deftest ^:parallel pivot-query-short-circuits-when-master-hits-limit-test
   (testing "When the master pivot query hits the row limit, remaining sub-queries are skipped and truncation is signaled"
-    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
-      ;; Use the standard pivot-query but override the pivot limit to be very small.
-      ;; The master query (state × source × category) produces ~200+ rows.
-      ;; With *pivot-max-result-rows* 20, the limit is 20/2=10 per sub-query.
-      (binding [qp.pivot/*pivot-max-result-rows* 20]
-        (let [query   (qp.pivot.test-util/pivot-query)
-              results (qp.pivot/run-pivot-query query)
-              rows    (mt/rows results)]
-          (testing "Only master query rows are returned (no subtotals/totals since sub-queries were skipped)"
-            ;; All rows should be pivot-grouping=0 (the master query's group)
-            (is (every? #(zero? (nth % 3)) rows)
-                "All rows should be from the master query (pivot-grouping=0)"))
-          (testing "The result includes pivot_rows_truncated flag"
-            (is (= 10 (get-in results [:data :pivot_rows_truncated]))
-                "Should signal truncation with the row count")))))))
+    ;; The native pivot path is a single GROUPING SETS query, so the per-sub-query row cap doesn't apply — this test
+    ;; intentionally exercises multi-query-only behavior.
+    (qp.pivot.test-util/without-pivot-parity-check
+     (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+       ;; Use the standard pivot-query but override the pivot limit to be very small.
+       ;; The master query (state × source × category) produces ~200+ rows.
+       ;; With *pivot-max-result-rows* 20, the limit is 20/2=10 per sub-query.
+       (binding [qp.pivot/*pivot-max-result-rows* 20]
+         (let [query   (qp.pivot.test-util/pivot-query)
+               results (qp.pivot/run-pivot-query query)
+               rows    (mt/rows results)]
+           (testing "Only master query rows are returned (no subtotals/totals since sub-queries were skipped)"
+             ;; All rows should be pivot-grouping=0 (the master query's group)
+             (is (every? #(zero? (nth % 3)) rows)
+                 "All rows should be from the master query (pivot-grouping=0)"))
+           (testing "The result includes pivot_rows_truncated flag"
+             (is (= 10 (get-in results [:data :pivot_rows_truncated]))
+                 "Should signal truncation with the row count"))))))))
 
 (deftest pivot-query-with-high-unaggregated-row-limit-test
   (testing "Pivot queries don't fail when MB_UNAGGREGATED_QUERY_ROW_LIMIT exceeds the pivot row limit (#72157)"
-    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
-      ;; pivot-query has 2 aggregations, so pivot-limit = 20/2 = 10.
-      ;; Setting unaggregated-query-row-limit to 15 means max-results-bare-rows (15) > max-results (10),
-      ;; which violates the constraint schema without the fix.
-      ;; Pre-set :constraints like the API layer does (see qp.api/run-query-async+pivot).
-      (binding [qp.pivot/*pivot-max-result-rows* 20]
-        (mt/with-temporary-setting-values [qp.settings/unaggregated-query-row-limit 15]
+    ;; This exercises the multi-query path's per-sub-query constraint plumbing; the native path doesn't use it.
+    (qp.pivot.test-util/without-pivot-parity-check
+     (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+       ;; pivot-query has 2 aggregations, so pivot-limit = 20/2 = 10.
+       ;; Setting unaggregated-query-row-limit to 15 means max-results-bare-rows (15) > max-results (10),
+       ;; which violates the constraint schema without the fix.
+       ;; Pre-set :constraints like the API layer does (see qp.api/run-query-async+pivot).
+       (binding [qp.pivot/*pivot-max-result-rows* 20]
+         (mt/with-temporary-setting-values [qp.settings/unaggregated-query-row-limit 15]
+           (let [query   (-> (qp.pivot.test-util/pivot-query)
+                             (assoc :constraints (qp.constraints/default-query-constraints)))
+                 results (qp.pivot/run-pivot-query query)]
+             (is (<= 2 (count (get-in query [:query :aggregation])))
+                 "Sanity check: pivot-query should have at least 2 aggregations")
+             (is (not= :failed (:status results))
+                 "Pivot query should not fail with a constraint violation"))))))))
+
+(deftest ^:parallel native-pivot-honors-max-results-constraint-test
+  (testing "Native pivot path honors the caller's :constraints :max-results — no special pivot-only cap"
+    (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
+      ;; pivot-query produces ~1000 detail rows plus rollups, comfortably exceeding 50.
+      (let [max-results 50]
+        (qp.store/with-metadata-provider (mt/id)
           (let [query   (-> (qp.pivot.test-util/pivot-query)
-                            (assoc :constraints (qp.constraints/default-query-constraints)))
-                results (qp.pivot/run-pivot-query query)]
-            (is (<= 2 (count (get-in query [:query :aggregation])))
-                "Sanity check: pivot-query should have at least 2 aggregations")
-            (is (not= :failed (:status results))
-                "Pivot query should not fail with a constraint violation")))))))
+                            (assoc :constraints {:max-results max-results})
+                            qp.middleware.normalize/normalize-preprocessing-middleware)
+                results (#'qp.pivot/run-native-pivot-query query nil)]
+            (testing "row count matches the requested cap"
+              (is (= max-results (count (mt/rows results)))))
+            (testing "result emits :pivot_rows_truncated (not :rows_truncated) so the FE pivot truncation warning fires"
+              (is (= max-results (get-in results [:data :pivot_rows_truncated])))
+              (is (not (contains? (:data results) :rows_truncated))))))))))
+
+(deftest ^:parallel filters-query-test
+  (testing "Pivot queries with a filter on a breakout column complete successfully"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      (is (=? {:status :completed}
+              (qp.pivot/run-pivot-query (qp.pivot.test-util/filters-query)))))))
+
+(deftest ^:parallel show-totals-flags-test
+  (testing "show-row-totals / show-column-totals flags select which grouping sets are returned end-to-end"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      (let [base      (qp.pivot.test-util/pivot-query false)
+            run       (fn [r? c?]
+                        (qp.pivot/run-pivot-query
+                         (merge base {:pivot-rows         [1 0]
+                                      :pivot-cols         [2]
+                                      :show-row-totals    r?
+                                      :show-column-totals c?})))
+            groupings (fn [result] (into #{} (map #(nth % 3)) (mt/rows result)))]
+        ;; For 3 breakouts with `:pivot-rows [1 0] :pivot-cols [2]`, breakout-combinations produces six grouping
+        ;; sets selectively driven by the two totals flags. The pivot-grouping bitmask values for each:
+        (testing "both totals on → all six grouping sets present"
+          (is (= #{0 1 3 4 5 7} (groupings (run true true)))))
+        (testing "show-column-totals false → subtotal-row and grand-total sets absent"
+          (is (= #{0 4} (groupings (run true false)))))
+        (testing "show-row-totals false → row-totals column and its subtotals absent"
+          (is (= #{0 1 3} (groupings (run false true)))))
+        (testing "both totals off → only the detail grouping set"
+          (is (= #{0} (groupings (run false false)))))))))
+
+(deftest ^:parallel pivoting-same-name-breakouts-end-to-end-test
+  (testing "Pivot queries with same-named breakout columns produce results with both columns intact (#52769)"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      (let [mp     (mt/metadata-provider)
+            orders (lib.metadata/table mp (mt/id :orders))
+            base   (-> (lib/query mp orders)
+                       (lib/aggregate (lib/count))
+                       (lib/breakout (lib.metadata/field mp (mt/id :orders :id)))
+                       (lib/filter (lib/< (lib.metadata/field mp (mt/id :orders :id)) 5)))
+            ;; second breakout is people.id reached via the orders.user_id FK — its display-name is also "ID".
+            people-id-fk (lib.tu.notebook/find-col-with-spec
+                          base
+                          (lib/breakoutable-columns base)
+                          {:display-name "User"}
+                          {:display-name "ID"})
+            query  (-> base
+                       (lib/breakout people-id-fk)
+                       (merge {:pivot-rows [0] :pivot-cols [1]}))
+            result (qp.pivot/run-pivot-query query)
+            names  (map :name (mt/cols result))]
+        (is (=? {:status :completed} result))
+        (testing "result has two distinct ID-like column names (dedup applied)"
+          (is (= 2 (count (filter #(re-find #"(?i)^id(_\d+)?$" %) names)))
+              (str "names: " (pr-str names))))))))
+
+(deftest ^:parallel pivot-with-many-aggregation-types-test
+  (testing "Pivot queries with one aggregation per type (count, sum, min, max, distinct) compile and execute through both paths"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      (let [mp       (mt/metadata-provider)
+            orders   (lib.metadata/table mp (mt/id :orders))
+            quantity (lib.metadata/field mp (mt/id :orders :quantity))
+            query    (-> (lib/query mp orders)
+                         (lib/aggregate (lib/count))
+                         (lib/aggregate (lib/sum quantity))
+                         (lib/aggregate (lib/min quantity))
+                         (lib/aggregate (lib/max quantity))
+                         (lib/aggregate (lib/distinct quantity))
+                         (lib.tu.notebook/add-breakout {:display-name "User"} {:display-name "Source"})
+                         (lib.tu.notebook/add-breakout {:display-name "Product"} {:display-name "Category"})
+                         (merge {:pivot-rows [0] :pivot-cols [1]}))]
+        (is (=? {:status :completed}
+                (qp.pivot/run-pivot-query query)))))))
+
+(deftest ^:parallel pivot-with-earlier-stage-summarization-test
+  (testing "Pivot queries work when an earlier stage has its own aggregation + breakouts"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      (let [mp         (mt/metadata-provider)
+            orders     (lib.metadata/table mp (mt/id :orders))
+            ;; Stage 1: aggregate count, breakout on people.source × products.category.
+            with-stage (-> (lib/query mp orders)
+                           (lib/aggregate (lib/count))
+                           (lib.tu.notebook/add-breakout {:display-name "User"} {:display-name "Source"})
+                           (lib.tu.notebook/add-breakout {:display-name "Product"} {:display-name "Category"})
+                           lib/append-stage)
+            count-col  (lib.tu.notebook/find-col-with-spec
+                        with-stage
+                        (lib/aggregable-columns with-stage nil)
+                        {:is-main-group true}
+                        {:display-name "Count"})
+            ;; Stage 2: re-aggregate the previous stage's count, pivot on source × category.
+            query      (-> with-stage
+                           (lib/aggregate (lib/sum count-col))
+                           (lib.tu.notebook/add-breakout {:is-main-group true} {:display-name "User → Source"})
+                           (lib.tu.notebook/add-breakout {:is-main-group true} {:display-name "Product → Category"})
+                           (merge {:pivot-rows [0] :pivot-cols [1]}))]
+        (is (=? {:status :completed}
+                (qp.pivot/run-pivot-query query)))))))
+
+(deftest ^:parallel pivot-with-remapped-breakout-end-to-end-test
+  (testing "Pivot queries with FK-remapped breakout columns return remapped values in detail rows (#46919)"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      (let [mp     (-> (mt/metadata-provider)
+                       (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                       (mt/id :products :title)))
+            orders (lib.metadata/table mp (mt/id :orders))
+            ;; Use `count` (integer) rather than `sum(total)` so parity comparison isn't perturbed by float
+            ;; summation order differences between the multi-query and native paths.
+            query  (-> (lib/query mp orders)
+                       (lib/aggregate (lib/count))
+                       (lib/breakout (lib.metadata/field mp (mt/id :orders :product_id)))
+                       (merge {:pivot-rows [0] :pivot-cols []}))
+            result (qp.pivot/run-pivot-query query)
+            rows   (mt/rows result)]
+        (is (=? {:status :completed} result))
+        (testing "detail rows expose remapped title strings (not raw product_id integers)"
+          ;; row layout: [title, product_id, pivot-grouping, count]
+          (let [first-detail (first (filter #(zero? (nth % 2)) rows))]
+            (is (string? (first first-detail))
+                (str "first detail row: " (pr-str first-detail)))))))))

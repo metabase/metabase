@@ -13,9 +13,11 @@ const UNITS_WITH_HOUR_SET = new Set(UNITS_WITH_HOUR);
 const UNITS_WITH_DAY_SET = new Set(UNITS_WITH_DAY);
 
 export const hasDay = (unit: DatetimeUnit | undefined) =>
+  // Unjustified type cast. FIXME
   unit == null || UNITS_WITH_DAY_SET.has(unit as UNITS_WITH_DAY_TYPE);
 
 export const hasHour = (unit: DatetimeUnit | undefined) =>
+  // Unjustified type cast. FIXME
   unit == null || UNITS_WITH_HOUR_SET.has(unit as UNITS_WITH_HOUR_TYPE);
 
 export function getTimeFormatFromStyle(

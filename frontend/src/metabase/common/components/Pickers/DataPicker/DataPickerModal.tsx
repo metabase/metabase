@@ -2,7 +2,12 @@ import { useCallback, useMemo } from "react";
 
 import { useSetting } from "metabase/common/hooks";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { DatabaseId, RecentContexts, TableId } from "metabase-types/api";
+import type {
+  DatabaseId,
+  RecentContexts,
+  SearchRequest,
+  TableId,
+} from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
@@ -13,7 +18,7 @@ import { EntityPickerModal } from "../EntityPicker";
 
 import type { DataPickerValue } from "./types";
 import { isDataPickerValue } from "./types";
-import { shouldDisableItemNotInDb } from "./utils";
+import { getItemNotInDbTooltip, shouldDisableItemNotInDb } from "./utils";
 
 interface Props {
   title: string;
@@ -52,12 +57,13 @@ export const DataPickerModal = ({
     [hasNestedQueriesEnabled, passedModels],
   );
 
-  const searchParams = useMemo(() => {
+  const searchParams: Partial<SearchRequest> = useMemo(() => {
     const tableParams = onlyDatabaseId
       ? { table_db_id: onlyDatabaseId }
       : undefined;
     return {
       include_dashboard_questions: true,
+      filter_items_in_personal_collection: "exclude-others",
       ...tableParams,
     };
   }, [onlyDatabaseId]);
@@ -68,6 +74,12 @@ export const DataPickerModal = ({
     return (i: OmniPickerItem) =>
       shouldDisableFn(i) || Boolean(shouldDisableItem && shouldDisableItem(i));
   }, [onlyDatabaseId, shouldDisableItem]);
+
+  const getItemTooltip = useMemo(() => {
+    const getNotInDbTooltip = getItemNotInDbTooltip(onlyDatabaseId);
+    return (item: OmniPickerItem): string | undefined =>
+      passedOptions?.getItemTooltip?.(item) ?? getNotInDbTooltip(item);
+  }, [onlyDatabaseId, passedOptions]);
 
   const handleItemSelect = useCallback(
     (item: OmniPickerItem) => {
@@ -96,6 +108,7 @@ export const DataPickerModal = ({
         hasConfirmButtons: false,
         hasPersonalCollections: true,
         ...passedOptions,
+        getItemTooltip,
       }}
       recentsContext={RECENTS_CONTEXT}
       searchParams={searchParams}

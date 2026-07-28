@@ -1,7 +1,7 @@
-import type { Location } from "history";
 import type { ComponentType } from "react";
 
 import type { SearchFilterKeys } from "metabase/common/search/constants";
+import type { Location } from "metabase/router";
 import type { EnabledSearchModel, IconName, UserId } from "metabase-types/api";
 
 export type TypeFilterProps = EnabledSearchModel[];

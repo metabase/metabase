@@ -16,7 +16,6 @@ import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import type {
-  ChannelApiResponse,
   Notification,
   NotificationChannel,
   UserListResult,
@@ -285,6 +284,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
+      // Unjustified type cast. FIXME
       const subscription = JSON.parse(requestBody as string).subscriptions[0];
 
       // Verify the cron schedule is for 8am daily
@@ -330,6 +330,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
+      // Unjustified type cast. FIXME
       const subscription = JSON.parse(requestBody as string).subscriptions[0];
 
       // Verify the cron schedule is for 8am daily
@@ -444,6 +445,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
+      // Unjustified type cast. FIXME
       const subscription = JSON.parse(requestBody as string).subscriptions[0];
 
       // Verify the cron schedule is for Tuesday at 2pm (day 3)
@@ -530,6 +532,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
+      // Unjustified type cast. FIXME
       expect(JSON.parse(requestBody as string).creator_id).toBe(7);
     });
   });
@@ -582,7 +585,7 @@ function setup({
     slack: { configured: isSlackSetup },
     email: { configured: isEmailSetup },
     http: { configured: isHttpSetup },
-  } as ChannelApiResponse["channels"]);
+  });
 
   setupWebhookChannelsEndpoint(webhooksResult);
   setupUserRecipientsEndpoint({ users: [] });

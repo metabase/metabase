@@ -226,7 +226,7 @@ describe("issue 64368", () => {
 
     cy.findByTestId("click-behavior-sidebar").button("Done").click();
 
-    H.saveDashboard({ waitMs: 250 });
+    H.saveDashboard();
 
     cy.log("Set dashboard filter to contain all values");
     cy.findAllByTestId("parameter-widget").click();

@@ -224,7 +224,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
       </Paper>
       {hasRemovals && (
         <Text
-          c="error"
+          c="feedback-negative"
           fz="sm"
           lh="sm"
           mt="sm"

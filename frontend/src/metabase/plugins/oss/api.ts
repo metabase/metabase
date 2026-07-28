@@ -1,44 +1,41 @@
-import type { RequestMethod } from "metabase/api/client";
-import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
+/* eslint-disable metabase/no-literal-metabase-strings -- request header names */
+import type { OnBeforeRequestHandler } from "metabase/api/client";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { isWithinIframe } from "metabase/utils/iframe";
 
-export type OnBeforeRequestHandlerConfig = {
-  method: RequestMethod;
-  url: string;
-  headers?: Record<string, string>;
-  // URL `:tag` params (and querystring leftovers). For the legacy GET/POST
-  // helpers this holds the whole request bag.
-  data: Record<string, unknown>;
-  // The JSON-body bag, kept as a separate channel from `data`. Exposed to
-  // handlers so embed URL `:tag`s — notably the guest-embed `:token` — can be
-  // filled from body fields, and so the refresh handler can swap a stale body
-  // token. `undefined` for GETs, raw (FormData/URLSearchParams) bodies, and the
-  // legacy helpers (which pack everything into `data`).
-  body?: Record<string, unknown>;
+const noop: OnBeforeRequestHandler = async () => {};
+
+// Tag requests from a non-SDK app running inside an iframe (interactive /
+// static / public embedding) so the backend knows it's embedded. Lives here
+// rather than in `metabase/api` so the client stays free of SDK imports.
+const setEmbeddedHeader: OnBeforeRequestHandler = async () => {
+  if (isWithinIframe() && !isEmbeddingSdk()) {
+    return { headers: { "X-Metabase-Embedded": "true" } };
+  }
 };
-
-export type OnBeforeRequestHandler = (
-  data: OnBeforeRequestHandlerConfig,
-) => Promise<void | Partial<OnBeforeRequestHandlerConfig>>;
 
 const getDefaultPluginApi = () => ({
   onBeforeRequestHandlers: {
-    overrideRequestsForPublicEmbeds: async (
-      _data: OnBeforeRequestHandlerConfig,
-    ): Promise<OnBeforeRequestHandlerConfig | void> => {},
-    overrideRequestsForStaticEmbeds: async (
-      _data: OnBeforeRequestHandlerConfig,
-    ): Promise<OnBeforeRequestHandlerConfig | void> => {},
+    overrideRequestsForPublicEmbeds: noop,
+    rewriteEmbedPreviewUrl: noop,
+    setEmbeddedHeader,
+    // Emit the embedding client headers (`X-Metabase-Client` / `-Version`). A
+    // no-op slot: the embedding setup flow installs `setRequestClientHeaders`
+    // here, closing over the active client (see `embedding-request-auth`).
+    // Untouched in the normal app — keeping these embedding-only headers out of
+    // the generic api client.
+    setRequestClientHeaders: noop,
+    // Emit the embed-preview header (`X-Metabase-Embedded-Preview`). A no-op
+    // slot: the public and SDK embed flows install `setEmbedPreviewHeader` here,
+    // which tags requests when running inside an embed preview (see
+    // `embedding-request-auth`).
+    setEmbedPreviewHeader: noop,
+    // Emit the embedding auth header (`X-Api-Key` or `X-Metabase-Session`). A
+    // no-op slot: the embedding auth flow installs exactly one strategy here —
+    // `setApiKeyHeader` or `setSessionTokenHeader` — based on the auth method in
+    // use (see `embedding-request-auth`).
+    setEmbeddingRequestAuthHeaders: noop,
   },
-  getRemappedCardParameterValueUrl: (
-    cardId: CardId | string | undefined,
-    parameterId: ParameterId,
-  ) =>
-    `/api/card/${cardId}/params/${encodeURIComponent(parameterId)}/remapping`,
-  getRemappedDashboardParameterValueUrl: (
-    dashboardId: DashboardId | undefined,
-    parameterId: ParameterId,
-  ) =>
-    `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
 });
 
 export const PLUGIN_API = getDefaultPluginApi();

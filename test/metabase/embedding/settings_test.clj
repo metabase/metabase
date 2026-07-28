@@ -55,6 +55,20 @@
                          :user-id (str (mt/user->id :crowberto))}]
                        (filter embedding-event? (snowplow-test/pop-event-data-and-user-id!))))))))))))
 
+(deftest enabling-embedding-generates-secret-key-test
+  (testing "Enabling embedding auto-generates embedding-secret-key when blank, and preserves an existing key"
+    (mt/with-test-user :crowberto
+      (mt/with-premium-features #{:embedding}
+        (snowplow-test/with-fake-snowplow-collector
+          (mt/with-temporary-setting-values [enable-embedding-simple false enable-embedding-static false embedding-secret-key nil]
+            (embed.settings/enable-embedding-simple! true)
+            (is (true? (embed.settings/enable-embedding-simple)))
+            (is (not (str/blank? (embed.settings/embedding-secret-key))))
+            (let [generated-key (embed.settings/embedding-secret-key)]
+              (embed.settings/enable-embedding-static! true)
+              (is (= generated-key (embed.settings/embedding-secret-key))
+                  "an existing secret key is preserved, not regenerated"))))))))
+
 (def ^:private other-ip "1.2.3.4:5555")
 
 (deftest enable-embedding-SDK-true-ignores-localhosts

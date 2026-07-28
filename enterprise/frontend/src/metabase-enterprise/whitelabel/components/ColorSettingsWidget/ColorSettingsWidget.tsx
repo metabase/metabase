@@ -18,6 +18,7 @@ export const ColorSettingsWidget = () => {
   const themeColors = Object.fromEntries(
     Object.entries(theme.colors).map(([colorName, color]) => [
       colorName,
+      // Unjustified type cast. FIXME
       color[theme.primaryShade as number],
     ]),
   );

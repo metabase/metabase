@@ -34,17 +34,13 @@
       (t2/insert! :model/FieldUserSettings {:field_id id}))
     (t2/update! :model/FieldUserSettings id filtered-settings)))
 
-(defmethod serdes/hash-fields :model/FieldUserSettings
-  [_field-values]
-  [(serdes/hydrated-hash :field)])
-
 (defmethod serdes/entity-id "FieldUserSettings" [_ _] nil)
 
 (defmethod serdes/generate-path "FieldUserSettings" [_ {:keys [field_id]}]
   (conj (serdes/generate-path "Field" {:id field_id})
         {:model "FieldUserSettings" :id "1"}))
 
-(defmethod serdes/dependencies "FieldUserSettings" [fv]
+(defmethod serdes/deserialization-dependencies "FieldUserSettings" [fv]
   (let [db-path (first (serdes/path fv))]
     [[db-path]]))
 

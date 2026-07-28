@@ -66,6 +66,9 @@ describe("FormFieldEditor", () => {
     expect(screen.getByPlaceholderText(field.placeholder)).toBeInTheDocument();
     expect(screen.getByLabelText("Field settings")).toBeInTheDocument();
     expect(getIcon("grabber")).toBeInTheDocument();
+    expect(
+      screen.getByRole("radiogroup", { name: "Field type" }),
+    ).toBeInTheDocument();
   });
 
   it("handles field type change", async () => {

@@ -272,19 +272,19 @@ export function MetabaseAIProviderSetup({
       )}
 
       {metabaseManagedAiPurchaseError && (
-        <Text size="sm" c="error">
+        <Text size="sm" c="feedback-negative">
           {metabaseManagedAiPurchaseError}
         </Text>
       )}
 
       {updateMetabotSettingsError && (
-        <Text size="sm" c="error">
+        <Text size="sm" c="feedback-negative">
           {updateMetabotSettingsError}
         </Text>
       )}
 
       {removeMetabaseManagedAiError && (
-        <Text size="sm" c="error">
+        <Text size="sm" c="feedback-negative">
           {removeMetabaseManagedAiError}
         </Text>
       )}

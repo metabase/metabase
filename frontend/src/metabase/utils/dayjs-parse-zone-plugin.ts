@@ -50,6 +50,7 @@ const pluginFunc: PluginFunc = (_option, _dayjsClass, dayjsFactory) => {
         date,
         {
           utc: true,
+          // Unjustified type cast. FIXME
           ...(parsedFormat as object),
         },
         locale,
@@ -75,6 +76,7 @@ const pluginFunc: PluginFunc = (_option, _dayjsClass, dayjsFactory) => {
       {
         // @ts-expect-error $offset is not defined in type definition, we'll keep it for guaranteed compatibility after migrating to ts
         $offset: offset,
+        // Unjustified type cast. FIXME
         ...(parsedFormat as object),
       },
       locale,

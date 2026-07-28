@@ -29,6 +29,7 @@ function assertsValidGeoJson(
     throw new Error(t`Invalid custom GeoJSON`);
   }
 
+  // Unjustified type cast. FIXME
   const validatedData = rawGeoJsonData as any; // We'll validate the structure step by step
 
   if (!validatedData.type) {

@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.agent-api.settings :as agent-api.settings]
+   [metabase.ai-tracing.core :as ait]
    [metabase.api.macros.scope :as scope]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
@@ -269,18 +270,45 @@
           delete-response (mcp-delete {"mcp-session-id" session-id})]
       (is (= 200 (:status delete-response))))))
 
+(deftest ^:parallel eval-session-override-test
+  (testing "the x-eval-session-id header is honored only when it's a safe trace-file name"
+    (let [override #'mcp.api/eval-session-override]
+      (testing "a bare uuid (what the harness mints) is honored"
+        (is (= "1ae768c9-5773-48dd-afca-c75780dae84c"
+               (override {:headers {"x-eval-session-id" "1ae768c9-5773-48dd-afca-c75780dae84c"}}))))
+      (testing "a safe slug is honored"
+        (is (= "evalprobe_1.2" (override {:headers {"x-eval-session-id" "evalprobe_1.2"}}))))
+      (testing "path traversal / unsafe chars are rejected (fall back to the Mcp-Session-Id)"
+        (is (nil? (override {:headers {"x-eval-session-id" "../etc/passwd"}})))
+        (is (nil? (override {:headers {"x-eval-session-id" "a/b"}})))
+        (is (nil? (override {:headers {"x-eval-session-id" ".hidden"}}))))
+      (testing "a value over max-session-id-length is rejected even though every char is safe"
+        ;; 201 chars: regex-safe but one past the real cap — the boundary a looser copy of the
+        ;; contract would wrongly accept (and then 500 downstream in checked-session-id).
+        (is (= 200 ait/max-session-id-length))
+        (is (nil? (override {:headers {"x-eval-session-id" (apply str (repeat 201 "a"))}})))
+        (testing "the id exactly at the cap is honored, returned verbatim"
+          (let [id (apply str (repeat 200 "a"))]
+            (is (= id (override {:headers {"x-eval-session-id" id}}))))))
+      (testing "absent header yields nil"
+        (is (nil? (override {:headers {}})))))))
+
 (def ^:private all-tool-names
   #{"construct_query"
+    "construct_native_query"
     "create_collection"
     "create_dashboard"
+    "create_metric"
     "create_question"
     "execute_query"
+    "execute_question"
     "execute_sql"
     "query"
     "read_resource"
     "render_drill_through"
     "search"
     "update_dashboard"
+    "update_metric"
     "update_question"
     "visualize_query"})
 
@@ -658,10 +686,10 @@
    below) — the test compares this set against the Agent API-backed tools and
    fails when they diverge, ensuring no Agent API tool ships without a basic
    invocation check."
-  #{"search" "construct_query" "query" "execute_query" "execute_sql"
+  #{"search" "construct_query" "construct_native_query" "query" "execute_query" "execute_sql"
     "read_resource"
-    "create_question" "create_dashboard"
-    "update_question" "update_dashboard" "create_collection"})
+    "create_question" "execute_question" "create_metric" "create_dashboard"
+    "update_question" "update_metric" "update_dashboard" "create_collection"})
 
 (deftest tools-call-smoke-test-covers-all-agent-api-backed-tools-test
   (testing "every Agent API-backed tool is exercised by the smoke test"
@@ -684,9 +712,15 @@
                                 :stages   [{:lib/type     "mbql.stage/mbql"
                                             :source-table [db-name "PUBLIC" "ORDERS"]
                                             :limit        5}]}
+                ;; A metric needs exactly one aggregation — `create_metric` rejects a plain query.
+                metric-query   {:lib/type "mbql/query"
+                                :stages   [{:lib/type     "mbql.stage/mbql"
+                                            :source-table [db-name "PUBLIC" "ORDERS"]
+                                            :aggregation  [["count" {}]]}]}
                 ;; Track write-tool outputs in atoms so the `finally` cleanup runs even if an
                 ;; assertion in `call-tool` fails partway through the sequence.
                 question-id    (atom nil)
+                metric-id      (atom nil)
                 dash-id        (atom nil)
                 coll-id        (atom nil)]
             (try
@@ -694,6 +728,10 @@
                     _              (call-tool session-id "search" {:term_queries ["orders"]})
                     ;; Query construction + execution
                     construct-data (call-tool session-id "construct_query" {:query orders-query})
+                    native-data    (call-tool session-id "construct_native_query"
+                                              {:database_id (mt/id)
+                                               :sql         "SELECT 1"})
+                    _              (is (uuid? (parse-uuid (:query_handle native-data))))
                     _              (call-tool session-id "query" {:query orders-query})
                     _              (call-tool session-id "execute_query"
                                               {:query_handle (:query_handle construct-data)})
@@ -719,19 +757,34 @@
                     _              (call-tool session-id "update_question"
                                               {:id          (:id question-data)
                                                :description "Smoke updated description"})
+                    metric-handle  (call-tool session-id "construct_query" {:query metric-query})
+                    metric-data    (call-tool session-id "create_metric"
+                                              {:name         "Smoke Metric Card"
+                                               :query_handle (:query_handle metric-handle)})
+                    _              (reset! metric-id (:id metric-data))
+                    _              (is (= "scalar" (:display metric-data)))
+                    _              (call-tool session-id "update_metric"
+                                              {:id          (:id metric-data)
+                                               :description "Smoke updated metric"})
+                    _              (call-tool session-id "execute_question"
+                                              {:id (:id question-data)})
                     dash-data      (call-tool session-id "create_dashboard"
                                               {:name "Smoke Dashboard"})
                     _              (reset! dash-id (:id dash-data))
                     _              (is (= (format "https://stats.metabase.test/dashboard/%d" @dash-id)
                                           (:url dash-data)))
-                    _              (call-tool session-id "update_dashboard"
+                    dash-update    (call-tool session-id "update_dashboard"
                                               {:id          (:id dash-data)
-                                               :description "Smoke updated dashboard"})
+                                               :description "Smoke updated dashboard"
+                                               :dashcards   [{:action "add_heading" :text "Smoke Section"}
+                                                             {:action "add_text" :text "Smoke *narrative*"}]})
+                    _              (is (= 2 (count (:dashcard_ids dash-update))))
                     coll-data      (call-tool session-id "create_collection"
                                               {:name "Smoke Collection"})]
                 (reset! coll-id (:id coll-data)))
               (finally
                 (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
+                (when-let [mid @metric-id]   (t2/delete! :model/Card :id mid))
                 (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did))
                 (when-let [cid @coll-id]     (t2/delete! :model/Collection :id cid))))))))))
 
@@ -1289,7 +1342,7 @@
 
 (defn- dispatch-initialized-request [msg token-scopes]
   (let [session-id (str (random-uuid))]
-    (#'mcp.api/dispatch-request msg session-id token-scopes)))
+    (#'mcp.api/dispatch-request msg session-id token-scopes nil nil)))
 
 (defn- with-scoped-test-resource! [f]
   (let [registry @#'mcp.resources/registry
@@ -1335,7 +1388,9 @@
         (let [response (#'mcp.api/dispatch-request
                         (jsonrpc-request "resources/list")
                         "session-id"
-                        #{"agent:other"})
+                        #{"agent:other"}
+                        nil
+                        nil)
               uris    (set (map :uri (get-in response [:result :resources])))]
           (is (contains? uris construct-query-uri)
               "public construct-query reference is still listed")
@@ -1347,7 +1402,9 @@
         (let [response (#'mcp.api/dispatch-request
                         (jsonrpc-request "resources/list")
                         "session-id"
-                        #{"agent:search"})
+                        #{"agent:search"}
+                        nil
+                        nil)
               uris    (set (map :uri (get-in response [:result :resources])))]
           (is (contains? uris scoped-test-uri)))))))
 

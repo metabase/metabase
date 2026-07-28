@@ -9,7 +9,7 @@
 
 (def ^:private valid-chart-types
   "Valid chart types supported by Metabase."
-  #{:table :bar :line :pie :sunburst :area :combo :row :pivot
+  #{:table :bar :line :pie :sunburst :treemap :area :combo :row :pivot
     :scatter :waterfall :sankey :scalar :smartscalar :gauge
     :progress :funnel :object :map})
 

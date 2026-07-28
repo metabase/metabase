@@ -72,6 +72,14 @@
         (is (= "output-available" (:state part)))
         (is (contains? part :output))
         (is (= {} (:output part)))))
+    (testing "the result map passes through verbatim, not trimmed like new writes"
+      (let [[part] (migrate/migrate-v1-native->v2
+                    [tool-input {:type "tool-output" :id "tc1"
+                                 :result {:output            "rows"
+                                          :structured-output {:query-id 7}
+                                          :resources         [{:blob "big"}]}}])]
+        (is (= {:output "rows" :structured-output {:query-id 7} :resources [{:blob "big"}]}
+               (:output part)))))
     (testing "tool-output with a string :error becomes output-error with :errorText and no :output"
       (let [[part] (migrate/migrate-v1-native->v2
                     [tool-input {:type "tool-output" :id "tc1" :result {} :error "boom"}])]

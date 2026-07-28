@@ -183,7 +183,7 @@ export const getMetabotManagedProviderLimitToastProps = () => ({
   id: METABOT_MANAGED_PROVIDER_LIMIT_TOAST_ID,
   dark: false,
   icon: null,
-  toastColor: "error",
+  toastColor: "feedback-negative" as const,
   dismissIconColor: "text-secondary" as const,
   timeout: 0,
   style: {

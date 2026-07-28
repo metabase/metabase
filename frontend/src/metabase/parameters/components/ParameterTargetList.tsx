@@ -55,6 +55,7 @@ export const ParameterTargetList = ({
       itemIsSelected={(item: ParameterMappingOption) =>
         item === selectedMappingOption
       }
+      // Unjustified type cast. FIXME
       renderItemIcon={(item: ParameterMappingOption) => (
         <Icon name={(item.icon as IconName) || "unknown"} size={18} />
       )}

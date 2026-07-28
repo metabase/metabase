@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 
-import register from "metabase/visualizations/register";
+import { registerVisualizations as register } from "metabase/visualizations/register";
 
 import { useGetIcon } from "./use-icon";
 

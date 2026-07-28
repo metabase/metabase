@@ -23,7 +23,6 @@ const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 // and then immediately editing it again. After saving,
 // we exit the edit mode and that can happen after
 // `H.editDashboard` is called for some reason
-const DASHBOARD_SAVE_WAIT_TIME = 450;
 
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
@@ -1099,7 +1098,7 @@ describe("scenarios > dashboard", () => {
         );
 
         cy.log("should not be visible (below the fold)");
-        cy.visit(`/dashboard/${dashboard.id}}`);
+        cy.visit(`/dashboard/${dashboard.id}`);
         cy.findByText(TARGET_TEXT).should("not.be.visible");
 
         cy.log("should scroll into view w/ scrollTo hash param");
@@ -1211,7 +1210,7 @@ describe("scenarios > dashboard", () => {
           .eq(0);
       dragOnXAxis(card(), 100);
       assertPreventLeave();
-      H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
+      H.saveDashboard();
 
       // remove
       H.editDashboard();
@@ -1259,7 +1258,7 @@ describe("scenarios > dashboard", () => {
       // can be a side effect
       cy.url().should("include", "tab-1");
       assertPreventLeave();
-      H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
+      H.saveDashboard();
 
       // rename tab
       H.editDashboard();
@@ -1519,7 +1518,7 @@ describe("scenarios > dashboard", () => {
 
 function checkOptionsForFilter(filter) {
   cy.findByText("Available filters").parent().contains(filter).click();
-  H.popover()
+  H.selectDropdown()
     .should("contain", "Columns")
     .and("contain", "COUNT(*)")
     .and("not.contain", "Dashboard filters");

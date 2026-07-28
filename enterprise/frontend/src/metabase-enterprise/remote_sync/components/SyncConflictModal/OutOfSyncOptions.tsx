@@ -98,6 +98,7 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
     <Box mt="xl">
       <Text fw="bold" mb="sm" pb="xs">{t`Choose how to proceed:`}</Text>
       <Radio.Group
+        // Unjustified type cast. FIXME
         onChange={(value) => handleOptionChange(value as OptionValue)}
         value={optionValue}
       >
@@ -129,7 +130,7 @@ const OptionGroup = ({ title, options, destructive }: OptionGroupProps) => (
     <Text
       size="sm"
       fw="bold"
-      c={destructive ? "error" : "text-secondary"}
+      c={destructive ? "feedback-negative" : "text-secondary"}
       mb="sm"
     >
       {title}

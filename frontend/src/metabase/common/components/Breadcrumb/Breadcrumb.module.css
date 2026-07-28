@@ -5,7 +5,7 @@
 
 .content {
   --color: var(--mb-color-text-disabled);
-  --active-color: var(--mb-color-brand);
+  --active-color: var(--mb-color-core-brand);
 }
 
 .icon,

@@ -92,6 +92,7 @@ describe("CloudPanel", () => {
     await userEvent.click(cancelButton);
 
     await expectCancelConfirmationModal();
+    // Unjustified type cast. FIXME
     expect((store.getState() as any).undo).toHaveLength(0);
     await userEvent.click(
       within(
@@ -106,6 +107,7 @@ describe("CloudPanel", () => {
         }),
       ).toBeTruthy();
     });
+    // Unjustified type cast. FIXME
     expect((store.getState() as any).undo).toHaveLength(1);
 
     fetchMockCloudMigrationGetSequence([CANCELED_RESPONSE]);

@@ -6,4 +6,5 @@ import type {
 export const isRestrictedLinkEntity = (
   value: LinkEntity,
 ): value is RestrictedLinkEntity =>
+  // Unjustified type cast. FIXME
   !!(value as RestrictedLinkEntity)?.restricted;

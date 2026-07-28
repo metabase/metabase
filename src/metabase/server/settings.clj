@@ -42,7 +42,7 @@ x.com")
   :export?    true)
 
 (defsetting csp-img-allowed-hosts
-  (deferred-tru "Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance.")
+  (deferred-tru "Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations.")
   :encryption :no
   :default    ""
   :audit      :getter

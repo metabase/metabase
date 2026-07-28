@@ -10,6 +10,10 @@ const argTypes = {
     options: ["horizontal", "vertical"],
     control: { type: "inline-radio" },
   },
+  variant: {
+    options: ["default", "pills"],
+    control: { type: "inline-radio" },
+  },
   listBorder: {
     control: { type: "boolean" },
   },
@@ -48,6 +52,7 @@ const IconsTemplate = (args: TabsProps) => (
           key={tab.value}
           value={tab.value}
           disabled={tab.disabled}
+          // Unjustified type cast. FIXME
           leftSection={<Icon name={tab.icon as keyof typeof Icon} />}
         >
           {tab.label}
@@ -98,5 +103,20 @@ export const NoListBorder = {
   name: "Without list border",
   args: {
     listBorder: false,
+  },
+};
+
+export const Pills = {
+  render: DefaultTemplate,
+  args: {
+    variant: "pills",
+  },
+};
+
+export const PillsIcons = {
+  render: IconsTemplate,
+  name: "Pills, icons",
+  args: {
+    variant: "pills",
   },
 };

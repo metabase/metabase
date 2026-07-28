@@ -43,7 +43,6 @@
      nil))
 
 ;; These helpers only mutate the temp local AppDb.
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 ;; TODO make this a :once fixture so that we avoid so much setup and tear down
 (defmacro with-index
   "Ensure a clean, small index."

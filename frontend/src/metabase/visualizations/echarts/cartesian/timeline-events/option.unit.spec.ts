@@ -1,11 +1,11 @@
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
-import { getTimelineEventsSeries } from "./option";
+import { getTimelineEventsSelectionSeries } from "./option";
+import type { TimelineEventsModel } from "./types";
 
-const mockRenderingContext: RenderingContext = {
+const renderingContext: RenderingContext = {
   getColor: (name) => name,
   measureText: () => 0,
   measureTextHeight: () => 0,
@@ -13,45 +13,67 @@ const mockRenderingContext: RenderingContext = {
   theme: DEFAULT_VISUALIZATION_THEME,
 };
 
-describe("getTimelineEventsSeries", () => {
-  it("returns null when the model is empty", () => {
-    const result = getTimelineEventsSeries([], [], mockRenderingContext);
-    expect(result).toBeNull();
+const timelineEventsModel: TimelineEventsModel = [
+  {
+    date: "2025-01-01T00:00:00Z",
+    events: [createMockTimelineEvent({ id: 1 })],
+  },
+  {
+    date: "2025-02-01T00:00:00Z",
+    events: [
+      createMockTimelineEvent({ id: 2 }),
+      createMockTimelineEvent({ id: 3 }),
+    ],
+  },
+];
+
+describe("getTimelineEventsSelectionSeries", () => {
+  it("returns null when nothing is selected", () => {
+    expect(
+      getTimelineEventsSelectionSeries(
+        timelineEventsModel,
+        [],
+        renderingContext,
+      ),
+    ).toBeNull();
   });
 
-  it("positions the label at the bottom of the split panel (bottomY first, topY second) #74005", () => {
-    const timelineEventsModel: TimelineEventsModel = [
-      {
-        date: "2027-10-01T00:00:00Z",
-        events: [
-          createMockTimelineEvent({ id: 1, name: "RC1" }),
-          createMockTimelineEvent({ id: 2, name: "RC2" }),
-        ],
-      },
-    ];
-
-    const result = getTimelineEventsSeries(
+  it("returns a markLine for each group containing a selected event", () => {
+    const series = getTimelineEventsSelectionSeries(
       timelineEventsModel,
-      [],
-      mockRenderingContext,
-      { topY: 0, bottomY: 300 },
+      [3],
+      renderingContext,
     );
 
-    expect(result).not.toBeNull();
-    const markLineData = result!.markLine!.data as unknown[][];
-    expect(markLineData).toHaveLength(1);
+    expect(series?.markLine?.data).toEqual([{ xAxis: "2025-02-01T00:00:00Z" }]);
+  });
 
-    const [startPoint, endPoint] = markLineData[0] as Array<{
-      y: number;
-      xAxis: string;
-      symbol: string;
-    }>;
+  it("draws a line per selected date across distinct groups", () => {
+    const series = getTimelineEventsSelectionSeries(
+      timelineEventsModel,
+      [1, 2],
+      renderingContext,
+    );
 
-    expect(startPoint.y).toBe(300);
-    expect(startPoint.xAxis).toBe("2027-10-01T00:00:00Z");
-    expect(startPoint.symbol).not.toBe("none");
-    expect(endPoint.y).toBe(0);
-    expect(endPoint.xAxis).toBe("2027-10-01T00:00:00Z");
-    expect(endPoint.symbol).toBe("none");
+    expect(series?.markLine?.data).toEqual([
+      { xAxis: "2025-01-01T00:00:00Z" },
+      { xAxis: "2025-02-01T00:00:00Z" },
+    ]);
+  });
+
+  it("uses two-point segments spanning the panel extent for split panels", () => {
+    const series = getTimelineEventsSelectionSeries(
+      timelineEventsModel,
+      [1],
+      renderingContext,
+      { topY: 10, bottomY: 200 },
+    );
+
+    expect(series?.markLine?.data).toEqual([
+      [
+        { xAxis: "2025-01-01T00:00:00Z", y: 200 },
+        { xAxis: "2025-01-01T00:00:00Z", y: 10, symbol: "none" },
+      ],
+    ]);
   });
 });

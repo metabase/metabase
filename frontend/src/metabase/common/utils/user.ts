@@ -1,37 +1,27 @@
 import { isEmail } from "metabase/utils/email";
-import type { BaseUser, Group } from "metabase-types/api";
+import type { BaseUser, Group, Tenant } from "metabase-types/api";
 
+// Requires at least an `email` or `common_name` (mirroring `isUser` below), so
+// name-only objects like a tenant's `{ name }` can't be passed as first_name alone.
 export type PartialUser = Partial<
   Pick<BaseUser, "first_name" | "last_name" | "email" | "common_name">
->;
+> &
+  (Pick<BaseUser, "email"> | Pick<BaseUser, "common_name">);
 export type PartialGroup = Pick<Group, "name">;
 
-const isUser = (user: PartialUser | PartialGroup): user is PartialUser => {
-  return "common_name" in user || "email" in user;
-};
+export type PartialTenant = Pick<Tenant, "name">;
 
-export function userInitials(user: PartialGroup | PartialUser) {
-  const initials = nameInitials(user);
+export type Named = PartialUser | PartialGroup | PartialTenant;
 
-  if (initials) {
-    return initials;
-  } else if (isUser(user)) {
-    return emailInitials(user);
-  }
-
-  return null;
-}
-
-function nameInitials(user: PartialUser | PartialGroup) {
-  if (isUser(user)) {
-    return initial(user.first_name) + initial(user.last_name);
+export function prepareInitials(namedParty: Named): string | null {
+  if (isUser(namedParty)) {
+    return (
+      initial(namedParty.first_name) + initial(namedParty.last_name) ||
+      emailInitials(namedParty)
+    );
   } else {
-    // render group
-    return initial(user.name);
+    return initial(namedParty.name) || null;
   }
-}
-export function initial(name?: string | null) {
-  return name ? name.charAt(0).toUpperCase() : "";
 }
 
 function emailInitials(user: PartialUser) {
@@ -44,4 +34,12 @@ function emailInitials(user: PartialUser) {
   }
 
   return null;
+}
+
+const isUser = (user: Named): user is PartialUser => {
+  return "common_name" in user || "email" in user;
+};
+
+function initial(name?: string | null) {
+  return name ? name.charAt(0).toUpperCase() : "";
 }

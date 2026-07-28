@@ -389,3 +389,30 @@
                                                  :updated_by_id          (mt/user->id :crowberto)}]
     (is (nil? (mt/user-http-request :crowberto :delete 204 (format "api-key/%d" api-key-id))))
     (is (true? (t2/select-one-fn :is_active :model/User :id (mt/user->id :crowberto))))))
+
+(deftest api-key-endpoints-are-admin-only-test
+  (testing "every /api/api-key endpoint rejects non-admins with a 403"
+    (doseq [[method path body] [[:get    "api-key"               nil]
+                                [:get    "api-key/count"         nil]
+                                [:post   "api-key"               {:group_id 1 :name "x"}]
+                                [:put    "api-key/1"             {:name "x"}]
+                                [:put    "api-key/1/regenerate"  nil]
+                                [:delete "api-key/1"             nil]]]
+      (testing (format "%s /%s" method path)
+        (is (= "You don't have permissions to do that."
+               (if body
+                 (mt/user-http-request :rasta method 403 path body)
+                 (mt/user-http-request :rasta method 403 path))))))))
+
+(deftest api-key-attributes-revisions-test
+  (testing "content created via an API key attributes the revision to the API key's backing user"
+    (mt/with-model-cleanup [:model/ApiKey :model/Dashboard :model/User]
+      (let [{k :unmasked_key, api-key-id :id} (mt/user-http-request :crowberto :post 200 "api-key"
+                                                                    {:group_id (:id (perms-group/admin))
+                                                                     :name     (str (random-uuid))})
+            api-user-id (t2/select-one-fn :user_id :model/ApiKey :id api-key-id)
+            dashboard   (client/client :post 200 "dashboard"
+                                       {:request-options {:headers {"x-api-key" k}}}
+                                       {:name "API key dashboard"})]
+        (is (= api-user-id
+               (t2/select-one-fn :user_id :model/Revision :model "Dashboard" :model_id (:id dashboard))))))))

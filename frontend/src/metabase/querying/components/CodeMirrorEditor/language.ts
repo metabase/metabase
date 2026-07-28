@@ -337,6 +337,7 @@ export function source(engine?: string | null): Source {
     case "h2":
     default: {
       const dialect =
+        // Unjustified type cast. FIXME
         engineToDialect[engine as keyof typeof engineToDialect] ?? StandardSQL;
 
       const words =

@@ -166,7 +166,7 @@ Use the dev namespace to see what the config should contain:
 
 ```clojure
 (dev.model-boundary-config/compute-model-boundaries) ;; returns data
-(dev.model-boundary-config/update-config!)           ;; rewrite config.edn
+(dev.modules-config/update-config!)                  ;; rewrite config.edn
 ```
 
 ## Limitations and future directions

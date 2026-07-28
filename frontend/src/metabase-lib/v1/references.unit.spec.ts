@@ -125,6 +125,7 @@ describe("normalizeReferenceOptions", () => {
   it("should recursively normalize maps options", () => {
     expect(
       normalizeReferenceOptions({
+        // Unjustified type cast. FIXME
         binning: { strategy: "default", other: null } as any,
       }),
     ).toStrictEqual({

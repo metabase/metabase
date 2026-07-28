@@ -1,14 +1,16 @@
-import { useDisclosure, useElementSize } from "@mantine/hooks";
-import cx from "classnames";
+import { useElementSize } from "@mantine/hooks";
 import { useLayoutEffect, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDependencyDiagnosticsEntitySelected } from "metabase/common/data-studio/analytics";
-import { Center, Flex, Stack } from "metabase/ui";
+import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
+import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
+import { Center, Flex } from "metabase/ui";
 import type * as Urls from "metabase/urls";
 import {
-  useListBreakingGraphNodesQuery,
-  useListUnreferencedGraphNodesQuery,
+  useLazyListBreakingGraphNodesQuery,
+  useLazyListUnreferencedGraphNodesQuery,
 } from "metabase-enterprise/api";
 import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "metabase-enterprise/dependencies/constants";
 import type {
@@ -22,7 +24,6 @@ import {
 } from "metabase-enterprise/dependencies/utils";
 import type { DependencyEntry } from "metabase-types/api";
 
-import S from "./DependencyDiagnostics.module.css";
 import { DiagnosticsFilterBar } from "./DiagnosticsFilterBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
@@ -57,14 +58,12 @@ export function DependencyDiagnostics({
   onParamsChange,
 }: DependencyDiagnosticsProps) {
   const { ref: containerRef, width: containerWidth } = useElementSize();
-  const [isResizing, { open: startResizing, close: stopResizing }] =
-    useDisclosure();
   const [selectedEntry, setSelectedEntry] = useState<DependencyEntry>();
 
-  const useListGraphNodesQuery =
+  const useLazyListGraphNodesQuery =
     mode === "broken"
-      ? useListBreakingGraphNodesQuery
-      : useListUnreferencedGraphNodesQuery;
+      ? useLazyListBreakingGraphNodesQuery
+      : useLazyListUnreferencedGraphNodesQuery;
 
   const {
     page = 0,
@@ -80,7 +79,8 @@ export function DependencyDiagnostics({
     isFetching: isFetchingNodes,
     isLoading: isLoadingNodes,
     error,
-  } = useListGraphNodesQuery(
+  } = useAbortableQuery(
+    useLazyListGraphNodesQuery,
     {
       types: getDependencyTypes(groupTypes),
       "card-types": getCardTypes(groupTypes),
@@ -166,13 +166,8 @@ export function DependencyDiagnostics({
   };
 
   return (
-    <Flex
-      className={cx({ [S.resizing]: isResizing })}
-      ref={containerRef}
-      h="100%"
-      wrap="nowrap"
-    >
-      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
+    <Flex ref={containerRef} h="100%" wrap="nowrap">
+      <MonitorMain>
         <DiagnosticsHeader />
         <DiagnosticsFilterBar
           mode={mode}
@@ -191,7 +186,9 @@ export function DependencyDiagnostics({
           <DiagnosticsTable
             nodes={nodes}
             mode={mode}
+            page={page}
             sortOptions={getSortOptions(params)}
+            isFetching={isFetching}
             isLoading={isLoading}
             onSelect={onRowClick}
             onSortOptionsChange={handleSortOptionsChange}
@@ -205,16 +202,15 @@ export function DependencyDiagnostics({
             onPageChange={handlePageChange}
           />
         )}
-      </Stack>
+      </MonitorMain>
       {selectedNode != null && (
-        <DiagnosticsSidebar
-          node={selectedNode}
-          mode={mode}
-          containerWidth={containerWidth}
-          onResizeStart={startResizing}
-          onResizeStop={stopResizing}
-          onClose={() => setSelectedEntry(undefined)}
-        />
+        <Sidebar containerWidth={containerWidth}>
+          <DiagnosticsSidebar
+            node={selectedNode}
+            mode={mode}
+            onClose={() => setSelectedEntry(undefined)}
+          />
+        </Sidebar>
       )}
     </Flex>
   );

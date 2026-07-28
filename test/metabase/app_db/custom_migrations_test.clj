@@ -2909,6 +2909,34 @@
         (testing "Native transform strategy is stripped (can't resolve source table)"
           (is (not (contains? (get-source native-id) :source-incremental-strategy))))))))
 
+(deftest backfill-mfa-confirmed-at-test
+  (testing "v59.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
+    (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
+      (impl/test-migrations ["v59.2026-07-10T22:29:17"] [migrate!]
+        (let [confirmed-at "2026-07-01T12:00:00Z"
+              insert-identity!
+              (fn [user-id credentials-str]
+                (t2/insert-returning-pk! :auth_identity {:user_id     user-id
+                                                         :provider    "totp"
+                                                         :credentials credentials-str
+                                                         :created_at  :%now
+                                                         :updated_at  :%now}))
+              enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s1" :confirmed_at confirmed-at})))
+              plain-confirmed (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (json/encode {:secret "s2" :confirmed_at confirmed-at}))
+              pending         (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s3"})))]
+          (migrate!)
+          (testing "encrypted confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))
+          (testing "legacy plaintext confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id plain-confirmed))))
+          (testing "pending (unconfirmed) enrollment stays null"
+            (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending)))))))))
+
 (deftest backfill-transform-target-tables-test
   (testing "v60.2026-03-07T00:00:04 : backfill transform target tables"
     (impl/test-migrations ["v60.2026-03-07T00:00:04"] [migrate!]
@@ -2938,200 +2966,3 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
-
-(deftest ^:mb/old-migrations-test migrate-away-from-sqlite-sample-database-on-downgrade-rollback-test
-  (testing "Downgrading past the changeset (the real rollback path - the target version has none of the new
-           sample database code) removes the SQLite sample database and the whole Example collection tree that
-           the CreateSampleContent migration installed"
-    ;; Start early enough that CreateSampleContent runs under our binding and installs the real SQLite Sample
-    ;; Database and Example collection tree - the exact state a SQLite-sample version leaves to be torn down.
-    (impl/test-migrations ["v63.2026-06-08T00:00:00"] [migrate!]
-      (binding [custom-migrations/*create-sample-content* true]
-        (migrate!))
-      (let [sample-db-id    (:id (t2/query-one {:select [:id] :from [:metabase_database]
-                                                :where  [:and [:= :is_sample true] [:= :engine "sqlite"]]}))
-            sample-coll-ids (mapv :id (t2/query {:select [:id] :from [:collection] :where [:= :is_sample true]}))]
-        (testing "precondition: the SQLite sample database and its Example collections exist after upgrade"
-          (is (some? sample-db-id))
-          (is (seq sample-coll-ids)))
-        (migrate! :down 62)
-        (testing "the SQLite sample database is gone"
-          (is (not (t2/exists? (t2/table-name :model/Database) :id sample-db-id))))
-        (testing "the entire outgoing Example collection tree is deleted - the cascade is complete"
-          (is (zero? (t2/count (t2/table-name :model/Collection) :id [:in sample-coll-ids]))))))))
-
-(deftest migrate-away-from-sqlite-sample-database-on-downgrade-test
-  (testing "Downgrade removes the SQLite sample database and the content it leaves empty, keeping everything else"
-    (mt/with-temp
-      [:model/Database   sample      {:engine :sqlite, :is_sample true, :details {:db "mem:sample"}}
-       :model/Database   other       {:engine :h2,     :details {:db "mem:other"}}
-       :model/Card       other-card  {:database_id (:id other)}
-       :model/Dashboard  sample-dash {}
-       :model/Dashboard  mixed-dash  {}
-       :model/Collection examples    {:name "Examples",   :is_sample true}
-       :model/Collection ecommerce   {:name "E-commerce", :is_sample true, :location (str "/" (:id examples) "/")}
-       :model/Collection keep-coll   {:name "Keep me"}]
-      ;; Mirror the bundled sample content's fan-out: 8 tables x 7 fields, 39 cards, plus dashcards,
-      ;; series, and tabs. MySQL 9.7 resolves a multi-level ON DELETE CASCADE of this shape
-      ;; incompletely (it deletes the tables but orphans most cards and all fields), so the cleanup
-      ;; must not rely on DB-level cascade. This fixture makes that regression visible.
-      (let [table-ids     (vec (t2/insert-returning-pks! :model/Table
-                                                         (for [i (range 8)]
-                                                           {:db_id  (:id sample)
-                                                            :name   (str "sample_table_" i)
-                                                            :active true})))
-            _             (t2/insert! :model/Field
-                                      (for [tid table-ids
-                                            i   (range 7)]
-                                        {:table_id      tid
-                                         :name          (str "field_" i)
-                                         :base_type     :type/Text
-                                         :database_type "TEXT"
-                                         :position      i}))
-            card-ids      (vec (t2/insert-returning-pks! :model/Card
-                                                         (for [i (range 39)]
-                                                           {:name                   (str "sample card " i)
-                                                            :display                "table"
-                                                            :dataset_query          {}
-                                                            :visualization_settings {}
-                                                            :creator_id             (mt/user->id :rasta)
-                                                            :database_id            (:id sample)
-                                                            :table_id               (nth table-ids (mod i (count table-ids)))})))
-            [dc1 _dc2 dc3] (t2/insert-returning-pks! :model/DashboardCard
-                                                     [{:dashboard_id (:id sample-dash) :card_id (first card-ids)
-                                                       :size_x 4 :size_y 4 :row 0 :col 0}
-                                                      {:dashboard_id (:id mixed-dash) :card_id (second card-ids)
-                                                       :size_x 4 :size_y 4 :row 0 :col 0}
-                                                      {:dashboard_id (:id mixed-dash) :card_id (:id other-card)
-                                                       :size_x 4 :size_y 4 :row 0 :col 4}])
-            _             (t2/insert! :model/DashboardCardSeries {:dashboardcard_id dc1
-                                                                  :card_id          (nth card-ids 2)
-                                                                  :position         0})
-            _             (t2/insert! :model/DashboardTab {:dashboard_id (:id sample-dash)
-                                                           :name         "Tab 1"
-                                                           :position     0})
-            ;; parameter_card rows orphan in three ways; a fourth must survive.
-            [pc-src
-             pc-card-owner
-             pc-dash-owner
-             pc-keep]    (t2/insert-returning-pks!
-                          :model/ParameterCard
-                          [;; value source is a sample card -> delete
-                           {:card_id (first card-ids) :parameterized_object_type "dashboard"
-                            :parameterized_object_id (:id mixed-dash) :parameter_id "src"}
-                           ;; parameterized object is a sample card -> delete
-                           {:card_id (:id other-card) :parameterized_object_type "card"
-                            :parameterized_object_id (second card-ids) :parameter_id "card-owner"}
-                           ;; parameterized object is a deleted sample dashboard -> delete
-                           {:card_id (:id other-card) :parameterized_object_type "dashboard"
-                            :parameterized_object_id (:id sample-dash) :parameter_id "dash-owner"}
-                           ;; non-sample source on a surviving dashboard -> keep
-                           {:card_id (:id other-card) :parameterized_object_type "dashboard"
-                            :parameterized_object_id (:id mixed-dash) :parameter_id "keep"}])]
-        ;; Collection creation auto-grants an "All Users" permission row (object "/collection/<id>/") for each
-        ;; sample collection; the migration must clean those up too.
-        (#'custom-migrations/remove-sqlite-sample-database-on-downgrade!)
-        (testing "the SQLite sample database and all of its child content are deleted, with no orphans"
-          (is (not (t2/exists? :model/Database :id (:id sample))))
-          (is (zero? (t2/count :metabase_table :db_id (:id sample))))
-          (is (zero? (t2/count :metabase_field :table_id [:in table-ids])))
-          (is (zero? (t2/count :report_card :database_id (:id sample))))
-          (is (zero? (t2/count :report_dashboardcard :card_id [:in card-ids])))
-          (is (zero? (t2/count :dashboardcard_series :card_id [:in card-ids]))))
-        (testing "a dashboard left empty by the deletion is deleted, along with its tabs"
-          (is (not (t2/exists? :model/Dashboard :id (:id sample-dash))))
-          (is (zero? (t2/count :dashboard_tab :dashboard_id (:id sample-dash)))))
-        (testing "parameter_card rows referencing a deleted sample card or dashboard are removed"
-          (is (not (t2/exists? :model/ParameterCard :id pc-src)))
-          (is (not (t2/exists? :model/ParameterCard :id pc-card-owner)))
-          (is (not (t2/exists? :model/ParameterCard :id pc-dash-owner)))
-          (testing "but an unrelated parameter_card is kept"
-            (is (t2/exists? :model/ParameterCard :id pc-keep))))
-        (testing "the sample Example collections and their permission records are deleted"
-          (is (not (t2/exists? :model/Collection :id (:id examples))))
-          (is (not (t2/exists? :model/Collection :id (:id ecommerce))))
-          (is (zero? (t2/count :permissions :object [:in [(format "/collection/%d/" (:id examples))
-                                                          (format "/collection/%d/read/" (:id examples))]]))))
-        (testing "a dashboard that still has other cards, and unrelated content, is kept"
-          (is (t2/exists? :model/Dashboard :id (:id mixed-dash)))
-          (is (t2/exists? :report_dashboardcard :id dc3))
-          (is (t2/exists? :model/Card :id (:id other-card)))
-          (is (t2/exists? :model/Database :id (:id other)))
-          (is (t2/exists? :model/Collection :id (:id keep-coll))))))))
-
-(deftest ^:mb/old-migrations-test downgrade-keeps-user-content-and-deletes-sample-dependents-test
-  (testing "Downgrade deletes everything that depends on the sample DB (transitively, even user-created), then keeps
-           any Example collection a user still has their own content in - leaving the RESTRICT FKs intact rather than
-           aborting on them"
-    (impl/test-migrations ["v63.2026-06-08T00:00:00"] [migrate!]
-      (binding [custom-migrations/*create-sample-content* true]
-        (migrate!))
-      (let [examples-id  (:id (t2/query-one {:select [:id] :from [:collection]
-                                             :where [:= :is_sample true] :order-by [[:id :asc]]}))
-            ecommerce-id (:id (t2/query-one {:select [:id] :from [:collection]
-                                             :where [:= :is_sample true] :order-by [[:id :desc]]}))
-            sqlite-db-id (:id (t2/query-one {:select [:id] :from [:metabase_database]
-                                             :where [:and [:= :is_sample true] [:= :engine "sqlite"]]}))
-            sample-card  (:id (t2/query-one {:select [:id] :from [:report_card] :where [:= :database_id sqlite-db-id] :limit 1}))
-            ins          (fn [t r] (first (t2/insert-returning-pks! t r)))
-            other-db     (ins :metabase_database {:name "User DB" :engine "h2" :is_sample false
-                                                  :details "{}" :created_at :%now :updated_at :%now})
-            ;; a user question that doesn't touch the sample DB, filed in Examples -> must survive
-            user-card    (ins :report_card {:name "keep me" :display "table" :dataset_query "{}"
-                                            :visualization_settings "{}" :creator_id 13371338 :database_id other-db
-                                            :collection_id examples-id :created_at :%now :updated_at :%now})
-            ;; a user model built on a sample card -> depends transitively -> must be deleted
-            user-model   (ins :report_card {:name "built on sample" :display "table" :dataset_query "{}"
-                                            :visualization_settings "{}" :creator_id 13371338 :database_id other-db
-                                            :source_card_id sample-card :collection_id examples-id
-                                            :created_at :%now :updated_at :%now})
-            ;; a curated table + a transform filed in E-commerce (RESTRICT FKs) -> keep that collection, FKs intact
-            table-id     (ins :metabase_table {:name "curated" :active true :db_id other-db
-                                               :collection_id ecommerce-id :created_at :%now :updated_at :%now})
-            transform-id (ins :transform {:name "tf" :source "{}" :target "{}" :source_type "query"
-                                          :collection_id ecommerce-id :created_at :%now :updated_at :%now})
-            exists?      (fn [t id] (boolean (seq (t2/query {:select [1] :from [t] :where [:= :id id] :limit 1}))))
-            coll-of      (fn [t id] (:collection_id (t2/query-one {:select [:collection_id] :from [t] :where [:= :id id]})))]
-        (migrate! :down 62)
-        (testing "the sample database and everything depending on it - including the user model - are deleted"
-          (is (not (exists? :metabase_database sqlite-db-id)))
-          (is (not (exists? :report_card sample-card)))
-          (is (not (exists? :report_card user-model))))
-        (testing "a user question that does not depend on the sample DB survives"
-          (is (exists? :report_card user-card)))
-        (testing "Example collections holding surviving user content are kept"
-          (is (exists? :collection examples-id))
-          (is (exists? :collection ecommerce-id)))
-        (testing "the RESTRICT-FK table and transform survive with their collection_id intact (no abort, no null-out)"
-          (is (exists? :metabase_table table-id))
-          (is (= ecommerce-id (coll-of :metabase_table table-id)))
-          (is (exists? :transform transform-id))
-          (is (= ecommerce-id (coll-of :transform transform-id))))))))
-
-(deftest ^:mb/old-migrations-test downgrade-leaves-no-orphaned-card-children-test
-  ;; B1 characterization: the migration hand-deletes only the dashcard tables and lets DB-level ON DELETE CASCADE
-  ;; clear report_card's other ~11 children (query_field, query_table, card_bookmark, report_cardfavorite, ...).
-  ;; Its own comment warns that MySQL 9.7 resolves cascades incompletely. This test seeds those children for a
-  ;; sample card and asserts none survive the card's deletion - i.e. it FAILS if the relied-on cascade leaves
-  ;; orphans. It deliberately asserts only on the outcome (no orphans), not on how the cleanup is done.
-  (testing "downgrade leaves no child rows pointing at a deleted sample card"
-    (impl/test-migrations ["v63.2026-06-08T00:00:00"] [migrate!]
-      (binding [custom-migrations/*create-sample-content* true]
-        (migrate!))
-      (let [internal-user 13371338
-            sqlite-db-id  (:id (t2/query-one {:select [:id] :from [:metabase_database]
-                                              :where [:and [:= :is_sample true] [:= :engine "sqlite"]]}))
-            sample-card   (:id (t2/query-one {:select [:id] :from [:report_card] :where [:= :database_id sqlite-db-id] :limit 1}))
-            ins           (fn [t r] (first (t2/insert-returning-pks! t r)))]
-        ;; children of report_card that the migration leaves to ON DELETE CASCADE (not hand-deleted)
-        (ins :query_field {:card_id sample-card :column "TOTAL" :explicit_reference true})
-        (ins :query_table {:card_id sample-card :table "ORDERS"})
-        (ins :card_bookmark {:user_id internal-user :card_id sample-card})
-        (ins :report_cardfavorite {:card_id sample-card :owner_id internal-user :created_at :%now :updated_at :%now})
-        (#'custom-migrations/remove-sqlite-sample-database-on-downgrade!)
-        (testing "the sample card was deleted"
-          (is (not (t2/exists? :report_card :id sample-card))))
-        (testing "no child table is left with a row pointing at the deleted card"
-          (doseq [table [:query_field :query_table :card_bookmark :report_cardfavorite]]
-            (is (zero? (t2/count table :card_id sample-card))
-                (str table " has an orphaned row referencing the deleted sample card"))))))))

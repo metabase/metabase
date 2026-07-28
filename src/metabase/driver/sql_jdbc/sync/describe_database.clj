@@ -11,6 +11,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.util.connection :as u.connection]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -78,9 +79,8 @@
     ;; attempting to execute the SQL statement will throw an Exception if we don't have permissions; otherwise it will
     ;; truthy whether or not it returns a ResultSet, but we can ignore that since we have enough info to proceed at
     ;; this point.
-    (doto stmt
-      (.setQueryTimeout *select-probe-query-timeout-seconds*)
-      (.execute))))
+    (u.connection/set-query-timeout! stmt *select-probe-query-timeout-seconds*)
+    (.execute stmt)))
 
 (defn- pr-table [table-schema table-name]
   (str (when table-schema

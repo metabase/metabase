@@ -298,7 +298,6 @@
                                            site-name "test"]
           (with-successful-oidc!
             ;; client-real-response hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
-            #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
             (with-redefs [auth-identity/login!
                           (fn [_provider _request]
                             {:success? false

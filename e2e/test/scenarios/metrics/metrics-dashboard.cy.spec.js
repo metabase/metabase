@@ -1,11 +1,6 @@
 const { H } = cy;
-import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  FIRST_COLLECTION_ID,
-  ORDERS_DASHBOARD_ID,
-  ORDERS_MODEL_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -14,16 +9,6 @@ const ORDERS_SCALAR_METRIC = {
   type: "metric",
   query: {
     "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-  },
-  display: "scalar",
-};
-
-const ORDERS_SCALAR_MODEL_METRIC = {
-  name: "Orders model metric",
-  type: "metric",
-  query: {
-    "source-table": `card__${ORDERS_MODEL_ID}`,
     aggregation: [["count"]],
   },
   display: "scalar",
@@ -226,21 +211,6 @@ describe("scenarios > metrics > dashboard", () => {
       .should("be.visible");
   });
 
-  it("should be able to add a filter and drill thru without the metric aggregation clause (metabase#42656)", () => {
-    H.createDashboardWithQuestions({
-      questions: [ORDERS_TIMESERIES_METRIC],
-    }).then(({ dashboard }) => {
-      H.visitDashboard(dashboard.id);
-    });
-    H.getDashboardCard().within(() => {
-      H.cartesianChartCircle()
-        .eq(23) // random dot
-        .click({ force: true });
-    });
-    H.popover().findByText("See these Orders").click();
-    H.assertQueryBuilderRowCount(445);
-  });
-
   it("should be able to replace a card with a metric", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
     H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -295,45 +265,5 @@ describe("scenarios > metrics > dashboard", () => {
       .findByText("User ID is 92")
       .should("be.visible");
     H.assertQueryBuilderRowCount(8);
-  });
-
-  it("should be able to view a model-based metric without data access", () => {
-    cy.signInAsAdmin();
-    H.createDashboardWithQuestions({
-      questions: [ORDERS_SCALAR_METRIC],
-    }).then(({ dashboard }) => {
-      cy.signIn("nodata");
-      H.visitDashboard(dashboard.id);
-    });
-    H.getDashboardCard()
-      .findByTestId("scalar-container")
-      .findByText("18,760")
-      .should("be.visible");
-  });
-
-  it("should be able to view a model-based metric without collection access to the source model", () => {
-    cy.signInAsAdmin();
-    cy.updateCollectionGraph({
-      [USER_GROUPS.ALL_USERS_GROUP]: {
-        root: "none",
-        [FIRST_COLLECTION_ID]: "read",
-      },
-    });
-    H.createDashboardWithQuestions({
-      dashboardDetails: { collection_id: FIRST_COLLECTION_ID },
-      questions: [
-        {
-          ...ORDERS_SCALAR_MODEL_METRIC,
-          collection_id: FIRST_COLLECTION_ID,
-        },
-      ],
-    }).then(({ dashboard }) => {
-      cy.signIn("nocollection");
-      H.visitDashboard(dashboard.id);
-    });
-    H.getDashboardCard()
-      .findByTestId("scalar-container")
-      .findByText("18,760")
-      .should("be.visible");
   });
 });

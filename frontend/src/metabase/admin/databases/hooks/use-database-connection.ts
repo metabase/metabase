@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
@@ -6,6 +5,7 @@ import { getDefaultEngineKey } from "metabase/databases/utils/engine";
 import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/constants";
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import type { DatabaseId, Engine, EngineKey } from "metabase-types/api";
 
 interface UseDatabaseConnectionProps {

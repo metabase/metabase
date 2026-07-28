@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   findRequests,
@@ -13,6 +12,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { SetupSsoPage } from "./SetupSsoPage";
@@ -51,7 +51,10 @@ const setup = ({
   });
 
   return renderWithProviders(
-    <Route path="/admin/embedding/setup-guide/sso" component={SetupSsoPage} />,
+    <Route
+      path="/admin/embedding/setup-guide/sso"
+      element={<SetupSsoPage />}
+    />,
     {
       storeInitialState: createMockState({
         settings: createMockSettingsState(settings),

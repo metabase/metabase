@@ -42,6 +42,23 @@
       (is (every? #(<= 1 (count %) 50) @block-inputs))
       (is (= 423 (reduce + (map count @block-inputs)))))))
 
+(deftest pdf-share-failure-fallback-test
+  (let [pdf {:bytes (byte-array [1 2 3]) :filename "dash.pdf" :comment "the caption"}]
+    (testing "when sharing the PDF into a channel fails, send! posts the caption as a fallback summary"
+      (let [posted (atom [])]
+        (mt/with-dynamic-fn-redefs [slack/upload-file-to-channel! (fn [& _] (throw (ex-info "boom" {})))
+                                    slack/post-chat-message!      (fn [m] (swap! posted conj m))]
+          (channel/send! {:type :channel/slack}
+                         {:channel "C0CHANNEL" :blocks [] :pdf pdf})
+          (is (= [{:channel "C0CHANNEL" :text "the caption"}] @posted)))))
+    (testing "the same fallback applies to a DM, where the caption is never posted ahead of the file"
+      (let [posted (atom [])]
+        (mt/with-dynamic-fn-redefs [slack/upload-file-to-channel! (fn [& _] (throw (ex-info "boom" {})))
+                                    slack/post-chat-message!      (fn [m] (swap! posted conj m))]
+          (channel/send! {:type :channel/slack}
+                         {:channel "U0USER123" :blocks [] :pdf pdf})
+          (is (= [{:channel "U0USER123" :text "the caption"}] @posted)))))))
+
 (deftest mkdwn-link-escaping-test
   (let [parts [{:type :card
                 :card {:id   1

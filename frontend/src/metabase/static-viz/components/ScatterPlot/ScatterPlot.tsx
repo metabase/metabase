@@ -67,6 +67,7 @@ export function ScatterPlot({
   const option = getScatterPlotOption(
     chartModel,
     chartLayout,
+    false,
     null,
     [],
     settings,
@@ -77,6 +78,7 @@ export function ScatterPlot({
   chart.setOption(option);
 
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+  chart.dispose();
 
   return (
     <svg

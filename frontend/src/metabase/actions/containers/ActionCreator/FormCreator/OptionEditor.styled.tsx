@@ -20,7 +20,7 @@ export const AddMorePrompt = styled.div<{ isVisible: boolean }>`
 export const ErrorMessage = styled.div`
   text-align: center;
   font-size: 0.875rem;
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
 `;
 
 export const TextArea = styled.textarea`

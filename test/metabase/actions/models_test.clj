@@ -120,6 +120,25 @@
                        (->> (action/select-action :id action-id)
                             :parameters (map :id) set)))))))))))
 
+(deftest hydrate-implicit-action-test-3
+  (testing "Implicit actions do not map parameters to binary fields, the same way JSON fields are excluded"
+    (mt/test-driver :postgres
+      (mt/dataset (mt/dataset-definition
+                   "binary-field-dataset"
+                   [["binary_table"
+                     [{:field-name "name", :base-type :type/Text}
+                      {:field-name "bytea_col", :base-type {:native "bytea"}, :effective-type :type/*}]
+                     [["Row One" (byte-array [0 1])]
+                      ["Row Two" (byte-array [2 3])]]]])
+        (mt/with-actions-enabled
+          (mt/with-actions [_ {:type :model :dataset_query (mt/mbql-query binary_table)}
+                            {action-id :action-id} {:type :implicit}]
+            (let [parameter-ids (->> (action/select-action :id action-id) :parameters (map :id) set)]
+              (testing "the non-binary column is still a valid parameter"
+                (is (contains? parameter-ids "name")))
+              (testing "the binary column is excluded"
+                (is (not (contains? parameter-ids "bytea_col")))))))))))
+
 (deftest hydrate-creator-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-test-data-and-actions-enabled

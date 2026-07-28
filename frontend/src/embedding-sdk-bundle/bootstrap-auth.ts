@@ -14,7 +14,7 @@ import {
   jwtDefaultRefreshTokenFunction,
   validateSession,
 } from "embedding/auth-common";
-import * as MetabaseError from "embedding-sdk-bundle/errors";
+import * as MetabaseError from "embedding-sdk-shared/errors";
 
 type SdkAuthState = {
   status: "idle" | "in-progress" | "completed" | "error" | "skipped";
@@ -162,6 +162,7 @@ async function performFullAuthFlow(config: {
     ? { method: "jwt" as const, url: config.jwtProviderUri }
     : await connectToInstanceAuthSso(config.metabaseInstanceUrl, {
         headers,
+        // Unjustified type cast. FIXME
         preferredAuthMethod: config.preferredAuthMethod as
           | "jwt"
           | "saml"

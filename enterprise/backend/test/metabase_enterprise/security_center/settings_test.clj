@@ -47,7 +47,7 @@
                               {:value [{:type "notification-recipient/user" :user_id (mt/user->id :crowberto) :details nil}]}))))
   (testing "requires premium feature"
     (mt/with-premium-features #{}
-      (mt/user-http-request :crowberto :put 500 "setting/security-center-email-recipients"
+      (mt/user-http-request :crowberto :put 402 "setting/security-center-email-recipients"
                             {:value [{:type "notification-recipient/user" :user_id (mt/user->id :crowberto) :details nil}]}))))
 
 (deftest security-center-slack-channel-test
@@ -73,5 +73,5 @@
                                 {:value "#security"})))))
   (testing "requires premium feature"
     (mt/with-premium-features #{}
-      (mt/user-http-request :crowberto :put 500 "setting/security-center-slack-channel"
+      (mt/user-http-request :crowberto :put 402 "setting/security-center-slack-channel"
                             {:value "#security"}))))

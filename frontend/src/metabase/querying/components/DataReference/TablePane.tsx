@@ -75,7 +75,8 @@ export function TablePane({
                       id:
                         typeof field.id === "number"
                           ? field.id
-                          : (field.getUniqueId() as UniqueFieldId),
+                          : // Unjustified type cast. FIXME
+                            (field.getUniqueId() as UniqueFieldId),
                     });
                   }}
                 />

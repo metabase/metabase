@@ -88,6 +88,18 @@ const defaultSchedule: ScheduleSettings = {
 };
 export const defaultCron = scheduleSettingsToCron(defaultSchedule);
 
+export const toCronString = (schedule: ScheduleSettings): string => {
+  const { schedule_type } = schedule;
+  const keepDay = schedule_type === "weekly" || schedule_type === "monthly";
+  const keepHour = keepDay || schedule_type === "daily";
+  return scheduleSettingsToCron({
+    ...schedule,
+    schedule_day: keepDay ? schedule.schedule_day : null,
+    schedule_frame: keepDay ? schedule.schedule_frame : null,
+    schedule_hour: keepHour ? schedule.schedule_hour : null,
+  });
+};
+
 /** Returns null if we can't convert the cron expression to a ScheduleSettings object */
 export const cronToScheduleSettings_unmemoized = (
   cron: string | null | undefined,
@@ -143,7 +155,7 @@ export const cronToScheduleSettings_unmemoized = (
         );
       }
       const day = parseInt(dayStr);
-      schedule_day = weekdays[day - 1]?.value as ScheduleDayType;
+      schedule_day = weekdays[day - 1]?.value;
       if (dayOfMonth === Cron.AllValues) {
         // Match the part after the '#' in a string like '6#1' or the letter in '6L'
         const frameInCronFormat = weekday
@@ -161,7 +173,7 @@ export const cronToScheduleSettings_unmemoized = (
     }
   } else {
     if (weekday !== Cron.AllValues) {
-      schedule_day = weekdays[parseInt(weekday) - 1]?.value as ScheduleDayType;
+      schedule_day = weekdays[parseInt(weekday) - 1]?.value;
     }
   }
 

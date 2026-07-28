@@ -248,7 +248,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("My Param").click());
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    H.popover().within(() => cy.findByText("MY_STRING").click());
+    H.selectDropdown().within(() => cy.findByText("MY_STRING").click());
 
     // set the text template
     cy.findByPlaceholderText("E.x. Details for {{Column Name}}").type(
@@ -328,7 +328,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("My Param").click());
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    H.popover().within(() => cy.findByText("MY_STRING").click());
+    H.selectDropdown().within(() => cy.findByText("MY_STRING").click());
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 

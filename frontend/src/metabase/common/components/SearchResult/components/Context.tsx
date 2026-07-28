@@ -1,8 +1,6 @@
 // I think it's very likely that this is a dead codepath: RL 2023-06-21
 
-import { color } from "metabase/ui/utils/colors";
-
-import { ContextContainer, ContextText } from "./Context.styled";
+import { Box, Text, rem } from "metabase/ui";
 
 export function Context({ context }: { context: any[] }) {
   if (!context) {
@@ -10,21 +8,21 @@ export function Context({ context }: { context: any[] }) {
   }
 
   return (
-    <ContextContainer>
-      <ContextText>
+    <Box ml={rem(42)} mt={rem(12)} maw={rem(620)}>
+      <Text component="p" c="text-secondary" lh="lg">
         {context.map(({ is_match, text }, i: number) => {
           if (!is_match) {
             return <span key={i}> {text}</span>;
           }
 
           return (
-            <strong key={i} style={{ color: color("core-brand") }}>
+            <Box component="strong" key={i} c="core-brand">
               {" "}
               {text}
-            </strong>
+            </Box>
           );
         })}
-      </ContextText>
-    </ContextContainer>
+      </Text>
+    </Box>
   );
 }

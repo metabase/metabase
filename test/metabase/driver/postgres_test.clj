@@ -31,10 +31,12 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.driver.sql.util :as sql.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
@@ -42,7 +44,10 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
+   [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.reducible :as qp.reducible]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
@@ -597,6 +602,118 @@
                   "  ) AS \"__mb_source\""]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
 
+(deftest ^:parallel nested-field-pivot-compile-test
+  (mt/test-driver :postgres
+    (testing "Pivot with a nested-field (JSON-unfolded) breakout compiles to a derived table that pre-computes the JSON path expression and references plain identifiers in GROUPING SETS / GROUPING"
+      (let [mp       (lib.tu/mock-metadata-provider
+                      {:database (assoc meta/database :engine :postgres :id 1)
+                       :tables   [(merge (meta/table-metadata :venues)
+                                         {:id 1 :db-id 1 :name "json_table" :schema nil})]
+                       :fields   [(merge (meta/field-metadata :venues :id)
+                                         {:id            1
+                                          :table-id      1
+                                          :name          "category"
+                                          :nfc-path      ["payload" "category"]
+                                          :base-type     :type/Text
+                                          :effective-type :type/Text
+                                          :database-type "text"})
+                                  (merge (meta/field-metadata :venues :name)
+                                         {:id 2 :table-id 1 :name "region"})]})
+            json-col (lib.metadata/field mp 1)
+            reg-col  (lib.metadata/field mp 2)
+            base     (-> (lib/query mp (lib.metadata/table mp 1))
+                         (lib/breakout json-col)
+                         (lib/breakout reg-col)
+                         (lib/aggregate (lib/count)))
+            bks      (lib/breakouts base)
+            pivot-q  (lib.pivot/with-pivot base
+                       {:rows               [(lib.options/uuid (first bks))]
+                        :columns            [(lib.options/uuid (second bks))]
+                        :show-row-totals    true
+                        :show-column-totals true})]
+        (qp.store/with-metadata-provider mp
+          (let [sql (:query (qp.compile/compile (nest-for-pivot/wrap-nested-field-breakouts pivot-q)))]
+            (is (= ["SELECT"
+                    "  \"__mb_source\".\"__mb_pivot_nfc\" AS \"__mb_pivot_nfc\","
+                    "  \"__mb_source\".\"region\" AS \"region\","
+                    "  GROUPING("
+                    "    \"__mb_source\".\"region\","
+                    "    \"__mb_source\".\"__mb_pivot_nfc\""
+                    "  ) AS \"pivot-grouping\","
+                    "  COUNT(*) AS \"count\""
+                    "FROM"
+                    "  ("
+                    "    SELECT"
+                    "      (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"category\","
+                    "      \"json_table\".\"region\" AS \"region\","
+                    "      (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"__mb_pivot_nfc\""
+                    "    FROM"
+                    "      \"json_table\""
+                    "  ) AS \"__mb_source\""
+                    "GROUP BY"
+                    "  GROUPING SETS ("
+                    "    ("
+                    "      \"__mb_source\".\"__mb_pivot_nfc\","
+                    "      \"__mb_source\".\"region\""
+                    "    ),"
+                    "    (\"__mb_source\".\"region\"),"
+                    "    (\"__mb_source\".\"__mb_pivot_nfc\"),"
+                    "    ()"
+                    "  )"
+                    "ORDER BY"
+                    "  GROUPING("
+                    "    \"__mb_source\".\"region\","
+                    "    \"__mb_source\".\"__mb_pivot_nfc\""
+                    "  ) ASC,"
+                    "  \"__mb_source\".\"__mb_pivot_nfc\" ASC,"
+                    "  \"__mb_source\".\"region\" ASC"]
+                   (str/split-lines (driver/prettify-native-form :postgres sql))))))))))
+
+(deftest nested-field-pivot-e2e-test
+  (mt/test-driver :postgres
+    (mt/dataset json
+      (testing "pivot with a nested-field (JSON-unfolded) breakout executes end-to-end and the native path agrees with the multi-query path"
+        (let [mp        (mt/metadata-provider)
+              json-tbl  (lib.metadata/table mp (mt/id :json))
+              q-base    (lib/query mp json-tbl)
+              cols      (lib/breakoutable-columns q-base)
+              doop-col  (m/find-first #(= (:name %) "json_bit → doop") cols)
+              bloop-col (m/find-first #(= (:name %) "bloop") cols)]
+          (assert (and doop-col bloop-col)
+                  "expected json_bit → doop and bloop columns from json dataset")
+          (let [pivot-q (-> q-base
+                            (lib/breakout doop-col)
+                            (lib/breakout bloop-col)
+                            (lib/aggregate (lib/count))
+                            ;; Use the legacy positional pivot keys — same shape as what dashboards and the
+                            ;; REST API send. `apply-legacy-pivot-keys` in the native path will convert these
+                            ;; to a `:pivot` clause; the multi-query path reads them directly.
+                            (assoc :pivot-rows [0] :pivot-cols [1]))]
+            (qp.pivot.test-util/with-pivot-parity-check
+              (let [results (qp.pivot/run-pivot-query pivot-q)
+                    rows    (mt/rows results)
+                    pgs     (mapv #(nth % 2) rows)]
+                (is (= #{;; pivot-grouping = 0  base detail rows
+                         ["boop" "doopdoopy" 0 1]
+                         ["boop" "moopywoop" 0 1]
+                         ["boop" "woopywoop" 0 1]
+                         ["boop" "zoopyzoop" 0 1]
+                         [nil    "doopyboop" 0 1]
+                         ;; pivot-grouping = 1  per-bloop subtotals (doop dropped)
+                         [nil    "doopdoopy" 1 1]
+                         [nil    "doopyboop" 1 1]
+                         [nil    "moopywoop" 1 1]
+                         [nil    "woopywoop" 1 1]
+                         [nil    "zoopyzoop" 1 1]
+                         ;; pivot-grouping = 2  per-doop subtotals (bloop dropped)
+                         ["boop" nil 2 4]
+                         [nil    nil 2 1]
+                         ;; pivot-grouping = 3  grand total
+                         [nil    nil 3 5]}
+                       (set rows)))
+                (is (= (sort pgs) pgs)
+                    "rows should appear in non-decreasing pivot-grouping order")))))))))
+
 ;;; Postgres `:contains`/`:starts-with`/`:ends-with` must produce SQL that the PostgreSQL JDBC
 ;;; driver can prepare regardless of the server's `standard_conforming_strings` setting. With
 ;;; that setting off, PGJDBC's parser treats `\` as an escape inside string literals, so the
@@ -1008,6 +1125,37 @@
                                    :limit        10}})
                       :data
                       (select-keys [:rows :native_form]))))))))))
+
+(deftest enum-field-filter-test
+  (mt/test-driver :postgres
+    (do-with-enums-db!
+     (fn [db]
+       (let [mp            (lib.metadata.jvm/application-database-metadata-provider (u/the-id db))
+             table-id      (t2/select-one-pk :model/Table :db_id (u/the-id db) :name "birds")
+             type-field-id (t2/select-one-pk :model/Field :table_id table-id :name "type")
+             type-field    (lib.metadata/field mp type-field-id)]
+         (testing "an MBQL string/= param on a postgres enum column filters correctly (#40396)"
+           (is (= [["Rasta" "good bird" "sad bird" "toucan"]]
+                  (mt/rows
+                   (qp/process-query
+                    (assoc (lib/query mp (lib.metadata/table mp table-id))
+                           :parameters [{:type   :string/=
+                                         :target [:dimension (lib.convert/->legacy-MBQL (lib/ref type-field))]
+                                         :value  ["toucan"]}]))))))
+         (testing "a native field filter over a postgres enum column filters correctly (#63537)"
+           (is (= [["Rasta" "good bird" "sad bird" "toucan"]]
+                  (mt/rows
+                   (qp/process-query
+                    (assoc (-> (lib/native-query mp "SELECT * FROM birds WHERE {{type}}")
+                               (lib/with-template-tags
+                                 {"type" {:name         "type"
+                                          :display-name "Type"
+                                          :type         :dimension
+                                          :dimension    (lib/ref type-field)
+                                          :widget-type  :string/=}}))
+                           :parameters [{:type   :string/=
+                                         :target [:dimension [:template-tag "type"]]
+                                         :value  ["toucan"]}])))))))))))
 
 (deftest enums-test-3
   (mt/test-driver :postgres
@@ -2335,193 +2483,6 @@
             (is (=? {:type :missing-column
                      :name "xix"}
                     (first (driver/validate-native-query-fields :postgres broken-query))))))))))
-
-;;; ---------------------------------------- Workspace provisioning ----------------------------------------------
-
-(defmacro ^:private with-drop-schema!
-  "Run `body`, ensuring `schema` is dropped (CASCADE) on `admin-spec` afterward."
-  [admin-spec schema & body]
-  `(try
-     ~@body
-     (finally
-       (jdbc/execute! ~admin-spec
-                      [(format "DROP SCHEMA IF EXISTS %s CASCADE"
-                               (sql.u/quote-name :postgres :schema ~schema))]))))
-
-(defmacro ^:private with-drop-role!
-  "Run `body`, ensuring `role` is dropped on `admin-spec` afterward."
-  [admin-spec role & body]
-  `(try
-     ~@body
-     (finally
-       (jdbc/execute! ~admin-spec
-                      [(format "DROP ROLE IF EXISTS %s"
-                               (sql.u/quote-name :postgres :field ~role))]))))
-
-(deftest workspace-precondition-usage-grant-option-test
-  (mt/test-driver :postgres
-    (testing "assert-has-usage-grant-option! throws when current_user lacks USAGE WITH GRANT OPTION on the schema"
-      (mt/with-empty-db
-        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-              role       "ws_pre_usage_role"
-              schema     "ws_pre_usage_schema"
-              password   (str (random-uuid))]
-          (with-drop-role! admin-spec role
-            (with-drop-schema! admin-spec schema
-              (let [qrole   (sql.u/quote-name :postgres :field role)
-                    qschema (sql.u/quote-name :postgres :schema schema)]
-                (jdbc/execute! admin-spec
-                               [(format (str "CREATE ROLE %s WITH LOGIN PASSWORD '%s'; "
-                                             "CREATE SCHEMA %s; "
-                                             ;; USAGE without WITH GRANT OPTION
-                                             "GRANT USAGE ON SCHEMA %s TO %s;")
-                                        qrole password qschema qschema qrole)])
-                (sql-jdbc.conn/with-connection-spec-for-testing-connection
-                 [user-spec [:postgres (assoc (:details (mt/db)) :user role :password password)]]
-                  (testing "fails when grant option is missing"
-                    (is (thrown-with-msg?
-                         clojure.lang.ExceptionInfo
-                         #"USAGE WITH GRANT OPTION"
-                         (postgres/assert-has-usage-grant-option! user-spec schema))))
-                  (testing "passes once WITH GRANT OPTION is granted"
-                    (jdbc/execute! admin-spec
-                                   [(format "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION"
-                                            qschema qrole)])
-                    (is (nil? (postgres/assert-has-usage-grant-option! user-spec schema)))))))))))))
-
-(deftest workspace-precondition-table-grant-option-test
-  (mt/test-driver :postgres
-    (testing "assert-has-grant-option! throws when current_user lacks SELECT WITH GRANT OPTION on a schema table"
-      (mt/with-empty-db
-        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-              role       "ws_pre_table_role"
-              schema     "ws_pre_table_schema"
-              table      "ws_pre_table_t"
-              password   (str (random-uuid))]
-          (with-drop-role! admin-spec role
-            (with-drop-schema! admin-spec schema
-              (let [qrole   (sql.u/quote-name :postgres :field role)
-                    qschema (sql.u/quote-name :postgres :schema schema)
-                    qtable  (sql.u/quote-name :postgres :table table)
-                    qobject (str qschema "." qtable)]
-                (jdbc/execute! admin-spec
-                               [(format (str "CREATE ROLE %s WITH LOGIN PASSWORD '%s'; "
-                                             "CREATE SCHEMA %s; "
-                                             "CREATE TABLE %s (id INT); "
-                                             ;; Pass the schema-USAGE precondition so we test the table check in isolation.
-                                             "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION; "
-                                             ;; SELECT *without* WITH GRANT OPTION
-                                             "GRANT SELECT ON %s TO %s;")
-                                        qrole password qschema qobject qschema qrole qobject qrole)])
-                (sql-jdbc.conn/with-connection-spec-for-testing-connection
-                 [user-spec [:postgres (assoc (:details (mt/db)) :user role :password password)]]
-                  (testing "fails and names the offending table"
-                    (is (thrown-with-msg?
-                         clojure.lang.ExceptionInfo
-                         #"SELECT WITH GRANT OPTION"
-                         (postgres/assert-has-grant-option! user-spec schema))))
-                  (testing "passes once SELECT WITH GRANT OPTION is granted"
-                    (jdbc/execute! admin-spec
-                                   [(format "GRANT SELECT ON %s TO %s WITH GRANT OPTION"
-                                            qobject qrole)])
-                    (is (nil? (postgres/assert-has-grant-option! user-spec schema)))))))))))))
-
-(deftest workspace-precondition-alter-default-privileges-test
-  (mt/test-driver :postgres
-    (testing "assert-can-alter-default-privileges! throws when an object owner is not a role the current_user belongs to"
-      (mt/with-empty-db
-        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-              role       "ws_pre_adp_role"
-              owner      "ws_pre_adp_other_owner"
-              schema     "ws_pre_adp_schema"
-              table      "ws_pre_adp_t"
-              password   (str (random-uuid))]
-          (with-drop-role! admin-spec role
-            (with-drop-role! admin-spec owner
-              (with-drop-schema! admin-spec schema
-                (let [qrole   (sql.u/quote-name :postgres :field role)
-                      qowner  (sql.u/quote-name :postgres :field owner)
-                      qschema (sql.u/quote-name :postgres :schema schema)
-                      qobject (str qschema "." (sql.u/quote-name :postgres :table table))]
-                  (jdbc/execute! admin-spec
-                                 [(format (str "CREATE ROLE %s WITH LOGIN PASSWORD '%s'; "
-                                               "CREATE ROLE %s; "
-                                               "CREATE SCHEMA %s; "
-                                               "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION; "
-                                               "CREATE TABLE %s (id INT); "
-                                               "ALTER TABLE %s OWNER TO %s;")
-                                          qrole password qowner qschema qschema qrole qobject qobject qowner)])
-                  (sql-jdbc.conn/with-connection-spec-for-testing-connection
-                   [user-spec [:postgres (assoc (:details (mt/db)) :user role :password password)]]
-                    (testing "fails and names the unmemberable owner"
-                      (is (thrown-with-msg?
-                           clojure.lang.ExceptionInfo
-                           #"not a member of \d+ role"
-                           (postgres/assert-can-alter-default-privileges! user-spec schema))))
-                    (testing "passes once the current_user becomes a member of the owner role"
-                      (jdbc/execute! admin-spec
-                                     [(format "GRANT %s TO %s" qowner qrole)])
-                      (is (nil? (postgres/assert-can-alter-default-privileges! user-spec schema))))))))))))))
-
-(deftest ^:synchronized workspace-destroy-survives-foreign-grantor-default-priv-test
-  ;; PostgreSQL counterpart to Redshift's GHY-3709 destroy fix. The Redshift
-  ;; driver had to grow explicit `pg_default_acl` discovery + per-grantor
-  ;; REVOKEs because Redshift's `DROP OWNED BY` semantics differ from PG. PG's
-  ;; destroy issues `DROP OWNED BY <iso-user>` which removes default-priv ACL
-  ;; entries where the iso-user appears as a grantee, regardless of who granted
-  ;; them. This test pins that contract: seed a foreign-grantor default-priv
-  ;; row targeting the iso-user and confirm `destroy-workspace-isolation!`
-  ;; still cleans up without raising "user cannot be dropped because some
-  ;; objects depend on it".
-  (mt/test-driver :postgres
-    (testing "destroy succeeds when a non-current_user grantor seeded a default-priv targeting the iso-user"
-      (mt/with-empty-db
-        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-              grantor    "ws_destroy_foreign_grantor"
-              schema     "ws_destroy_foreign_schema"
-              qgrantor   (sql.u/quote-name :postgres :field grantor)
-              qschema    (sql.u/quote-name :postgres :schema schema)
-              workspace  {:id   (rand-int Integer/MAX_VALUE)
-                          :name "wsd-foreign-destroy"}]
-          (with-drop-role! admin-spec grantor
-            (with-drop-schema! admin-spec schema
-              (jdbc/execute! admin-spec
-                             [(format (str "CREATE ROLE %s WITH LOGIN PASSWORD 'pwd'; "
-                                           "GRANT %s TO CURRENT_USER; "
-                                           "CREATE SCHEMA %s AUTHORIZATION %s;")
-                                      qgrantor qgrantor qschema qgrantor)])
-              (let [init-result   (driver/init-workspace-isolation! :postgres (mt/db) workspace)
-                    iso-user      (-> init-result :database_details :user)
-                    qiso          (sql.u/quote-name :postgres :field iso-user)
-                    workspace+det (merge workspace init-result)]
-                (try
-                  ;; Seed the foreign-grantor default-priv: set the grantor role and
-                  ;; issue ALTER DEFAULT PRIVILEGES so the resulting pg_default_acl
-                  ;; row is owned by the grantor, not by current_user.
-                  (jdbc/execute! admin-spec
-                                 [(format (str "SET ROLE %s; "
-                                               "ALTER DEFAULT PRIVILEGES IN SCHEMA %s "
-                                               "GRANT SELECT ON TABLES TO %s; "
-                                               "RESET ROLE;")
-                                          qgrantor qschema qiso)])
-                  (testing "destroy completes without error"
-                    (is (some? (driver/destroy-workspace-isolation! :postgres (mt/db) workspace+det))))
-                  (testing "the iso-user has been dropped"
-                    (is (empty? (jdbc/query admin-spec
-                                            ["SELECT 1 FROM pg_roles WHERE rolname = ?" iso-user]))))
-                  (finally
-                    ;; If destroy raised, the iso-user may still exist -- clean up so the
-                    ;; with-drop-role!/with-drop-schema! frames don't fail on the schema.
-                    ;; Log instead of swallowing so CI surfaces orphan-role accumulation
-                    ;; rather than masking it behind a failed schema drop downstream.
-                    (try (jdbc/execute! admin-spec
-                                        [(format "DROP OWNED BY %s CASCADE" qiso)])
-                         (catch Throwable t
-                           (log/warnf t "Test cleanup: DROP OWNED BY %s failed" qiso)))
-                    (try (jdbc/execute! admin-spec
-                                        [(format "DROP USER IF EXISTS %s" qiso)])
-                         (catch Throwable t
-                           (log/warnf t "Test cleanup: DROP USER %s failed" qiso)))))))))))))
 
 (deftest ^:synchronized reducible-query-streams-large-result-set-test
   (testing "reducible-query streams large result sets via a server-side cursor (autoCommit=false)"

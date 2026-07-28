@@ -6,7 +6,10 @@ import {
   embedModalEnableEmbedding,
   legacyStaticEmbeddingButton,
 } from "e2e/support/helpers/e2e-embedding-iframe-sdk-setup-helpers";
-import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+import {
+  modal,
+  selectDropdown,
+} from "e2e/support/helpers/e2e-ui-elements-helpers";
 import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
 
 import { openSharingMenu } from "./e2e-sharing-helpers";
@@ -318,11 +321,11 @@ export function getParametersContainer() {
 
 export function setEmbeddingParameter(name, value) {
   getParametersContainer().findByLabelText(name).click();
-  popover().contains(value).click();
+  selectDropdown().contains(value).click();
 }
 
 export function assertEmbeddingParameter(name, value) {
-  getParametersContainer().findByLabelText(name).should("have.text", value);
+  getParametersContainer().findByLabelText(name).should("have.value", value);
 }
 
 // @param {("card"|"dashboard")} resourceType - The type of resource we are sharing

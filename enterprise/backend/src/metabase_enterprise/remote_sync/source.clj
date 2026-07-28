@@ -1,11 +1,14 @@
 (ns metabase-enterprise.remote-sync.source
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.ingestable :as ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
@@ -15,6 +18,24 @@
    (java.io File)))
 
 (set! *warn-on-reflection* true)
+
+(defn paths->children
+  "The immediate children of directory `path` implied by a flat collection of file `paths`. For snapshots
+  that hold their whole file list in memory and so have no tree objects to walk; the git source overrides
+  this with a real subtree read."
+  [paths ^String path]
+  ;; the root is the empty prefix — snapshot paths are repo-relative, so they never start with a slash
+  (let [prefix (if (str/blank? path) "" (str path "/"))]
+    (->> paths
+         (keep (fn [^String p]
+                 (when (str/starts-with? p prefix)
+                   (let [child (subs p (count prefix))]
+                     (str prefix (if-let [idx (str/index-of child "/")]
+                                   (subs child 0 idx)
+                                   child))))))
+         distinct
+         sort
+         vec)))
 
 ;; A read-only, path-filtered view over a snapshot, used to scope ingestion to a set of path regexes:
 ;; files (and reads) outside the filters are omitted. It is not a write target — exports write to the
@@ -27,14 +48,16 @@
               (some (fn [path-filter] (re-matches path-filter file-path)) path-filters))
             (source.p/list-files original-snapshot)))
 
+  ;; Derived from this view's own (filtered) file list rather than delegated, so a child filtered out of
+  ;; `list-files` can't reappear here.
+  (list-dir [this path]
+    (paths->children (source.p/list-files this) path))
+
   (read-file [_ path]
     (when (some (fn [path-filter] (re-matches path-filter path)) path-filters)
       (source.p/read-file original-snapshot path)))
 
-  (write-files! [_ _message _files]
-    (throw (UnsupportedOperationException. "WrappingSnapshot is a read-only ingestion view, not a write target.")))
-
-  (apply-changes! [_ _message _upserts _delete-paths]
+  (open-commit [_]
     (throw (UnsupportedOperationException. "WrappingSnapshot is a read-only ingestion view, not a write target.")))
 
   (version [_]
@@ -47,20 +70,38 @@
                                             (atom nil) (atom []))
     (seq root-dependencies) (ingestable/wrap-root-dep-ingestable root-dependencies)))
 
-(defn- remote-sync-path
+(defn entity->path
+  "The repo-relative path an extracted `entity` serializes to, using storage context `opts`."
   [opts entity]
   (let [resolved (serialization/resolve-storage-path opts entity)
         dirnames (drop-last resolved)
         basename (str (last resolved) ".yaml")]
     (str/join File/separator (concat dirnames [basename]))))
 
+(defn entity->content
+  "The serialized YAML string for an extracted `entity`."
+  [entity]
+  (yaml/generate-string (serialization/serialization-deep-sort entity)
+                        {:dumper-options {:flow-style :block :split-lines false}}))
+
 (defn entity->file-spec
   "Serializes a single extracted entity into a `{:path :content}` file spec, using storage context
   `opts` (from `serdes/storage-base-context`)."
   [opts entity]
-  {:path    (remote-sync-path opts entity)
-   :content (yaml/generate-string (serialization/serialization-deep-sort entity)
-                                  {:dumper-options {:flow-style :block :split-lines false}})})
+  {:path    (entity->path opts entity)
+   :content (entity->content entity)})
+
+(defn content-hash
+  "SHA-256 (hex) of a serialized YAML `content` string."
+  [^String content]
+  (codecs/bytes->hex (buddy-hash/sha256 content)))
+
+(defn row->content-hash
+  "SHA-256 (hex) of the serialized YAML for the entity named by `row` ({:model_type :model_id}), or nil if it
+  can't be extracted. Hashes the live DB serialization (never on-disk bytes), so it's stable across sync points."
+  [row]
+  (when-let [entity (first (spec/extract-entities-for-rows [row]))]
+    (content-hash (:content (entity->file-spec (serdes/storage-base-context) entity)))))
 
 (defn serialize-specs
   "Serializes a stream of entities into an eager vector of `{:path :content}` file specs. Reports progress
@@ -81,31 +122,6 @@
                               task-id (-> (inc idx) (/ stream-count) (* 0.65) (+ 0.3))))
                            spec)))
           stream)))
-
-(defn store!
-  "Stores serialized entities from a stream to a remote source and commits the changes.
-
-  Takes a stream (a sequence of serialized entities to be stored), a snapshot (the remote source
-  implementing the SourceSnapshot protocol where files will be written), a task-id (the RemoteSyncTask
-  identifier used to track progress updates), and a message (the commit message to use when writing
-  files to the source).
-
-  Returns `{:version <written-version> :entries [{:model_type :entity_id :path} ...]}`."
-  [stream snapshot task-id message]
-  (let [opts         (serdes/storage-base-context)
-        stream-count (bounded-count 10000 stream)
-        entries      (volatile! [])
-        version      (->> stream
-                          (map-indexed (fn [idx entity]
-                                         (let [spec (entity->file-spec opts entity)]
-                                           (vswap! entries conj {:model_type (-> entity :serdes/meta last :model)
-                                                                 :entity_id  (:entity_id entity)
-                                                                 :path       (:path spec)})
-                                           (remote-sync.task/update-progress!
-                                            task-id (-> (min (inc idx) stream-count) (/ stream-count) (* 0.65) (+ 0.3)))
-                                           spec)))
-                          (source.p/write-files! snapshot message))]
-    {:version version :entries @entries}))
 
 (defn- snapshot->specs
   "Reads a snapshot's managed-directory files into a sequence of `{:path :content}` specs, matching the
@@ -140,18 +156,18 @@
 
 (defn specs->snapshot
   "Builds an in-memory read-only SourceSnapshot backed by `specs` (a seq of `{:path :content}`), so merged
-  content can be loaded into the app DB without writing it to git. `write-files!` is unsupported."
+  content can be loaded into the app DB without writing it to git. Writing is unsupported."
   [specs]
   (let [by-path (into {} (map (juxt :path :content)) specs)]
     (reify source.p/SourceSnapshot
       (list-files [_] (vec (keys by-path)))
+      (list-dir [_ path] (paths->children (keys by-path) path))
       (read-file [_ path] (get by-path path))
-      (write-files! [_ _ _] (throw (ex-info "in-memory merge snapshot is read-only" {})))
-      (apply-changes! [_ _ _ _] (throw (ex-info "in-memory merge snapshot is read-only" {})))
+      (open-commit [_] (throw (ex-info "in-memory merge snapshot is read-only" {})))
       (version [_] nil))))
 
 (defn preview-merge
-  "Dry-run of [[merge-and-store!]]: computes the 3-way merge without writing anything. Returns
+  "Dry-run of the export merge: computes the 3-way merge without writing anything. Returns
   `{:clean? bool :conflicts [labels] :summary {:added :updated :removed}
     :force-push-casualties {:deleted [labels] :overwritten [labels]}}`. The casualties are the remote
   content a force push (rather than a merge) would discard. Pass nil for `task-id` to skip progress
@@ -173,24 +189,6 @@
   `snapshot` the rewritten remote tip (theirs)."
   [stream snapshot]
   (remote-sync.merge/force-push-casualties [] (serialize-specs stream nil) (snapshot->specs snapshot)))
-
-(defn merge-and-store!
-  "Like [[store!]], but reconciles the freshly serialized local state against a remote branch that has
-  advanced beyond the last sync. Performs an entity-identity 3-way merge of:
-  - the merge base (`base-snapshot`, the last successfully synced state),
-  - the local state (serialized from `stream`),
-  - the current remote tip (`snapshot`).
-
-  On a clean merge, writes the merged file set (which fast-forwards onto the remote tip) and returns
-  `{:status :success :version <sha> :summary {:added :updated :removed}}`. When the same entity changed
-  on both sides, returns `{:status :conflict :conflicts [..] :summary {..}}` without writing anything."
-  [stream snapshot base-snapshot task-id message]
-  (let [{:keys [merged conflicts summary]} (compute-merge stream snapshot base-snapshot task-id)]
-    (if (seq conflicts)
-      {:status :conflict :conflicts conflicts :summary summary}
-      {:status  :success
-       :version (source.p/write-files! snapshot message merged)
-       :summary summary})))
 
 (defn source-from-settings
   "Creates a git source from the current remote sync settings.

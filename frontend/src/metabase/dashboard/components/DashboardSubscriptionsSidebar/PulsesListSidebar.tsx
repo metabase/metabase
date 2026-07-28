@@ -109,8 +109,7 @@ function _PulsesListSidebar({
               shadow="none"
               withBorder
               onClick={() =>
-                canEdit &&
-                editPulse(pulse, pulse.channels[0].channel_type as ChannelType)
+                canEdit && editPulse(pulse, pulse.channels[0].channel_type)
               }
             >
               <div

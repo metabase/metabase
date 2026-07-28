@@ -180,6 +180,7 @@ export const addCardToDashboard =
     );
 
     const dashcardId = generateTemporaryDashcardId();
+    // Unjustified type cast. FIXME
     const dashcard = dispatch(
       addDashCardToDashboard({
         dashId,
@@ -309,6 +310,7 @@ export const addCardWithVisualization =
     const [mainCard, ...secondaryCards] = cards;
 
     const dashcardId = generateTemporaryDashcardId();
+    // Unjustified type cast. FIXME
     const dashcard = dispatch(
       addDashCardToDashboard({
         dashId: getState().dashboard.dashboardId!,

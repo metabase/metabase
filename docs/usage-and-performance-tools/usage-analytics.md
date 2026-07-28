@@ -1,5 +1,8 @@
 ---
 title: Usage analytics
+redirect-from:
+    - /docs/latest/enterprise-guide/audit
+    - /docs/latest/usage-and-performance-tools/audit
 ---
 
 # Usage analytics

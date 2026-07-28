@@ -1,11 +1,10 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen, within } from "__support__/ui";
 import {
   createMockLocation,
   createMockRoutingState,
   createMockSettingsState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -26,7 +25,7 @@ const setup = ({
     }),
   });
 
-  renderWithProviders(<Route path="*" component={EmbeddingNav} />, {
+  renderWithProviders(<Route path="*" element={<EmbeddingNav />} />, {
     withRouter: true,
     initialRoute,
     storeInitialState: {

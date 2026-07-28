@@ -469,6 +469,7 @@ describe("AI controls > AI usage limits", () => {
       // Note: the membership API is keyed by user_id, with each entry
       // containing a group_id property.
       cy.request("GET", "/api/permissions/membership").then(({ body }) => {
+        // Unjustified type cast. FIXME
         const memberships = body[String(NORMAL_USER_ID)] as
           | Array<{ group_id: number }>
           | undefined;

@@ -1,7 +1,7 @@
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 
-import { getParameters, getTabHiddenParameterSlugs } from "../../../selectors";
+import { getHiddenParameterSlugs, getParameters } from "../../../selectors";
 
 import { AddEditEmailSidebar as AddEditEmailSidebarComponent } from "./AddEditEmailSidebar";
 import { AddEditSlackSidebar as AddEditSlackSidebarComponent } from "./AddEditSlackSidebar";
@@ -9,7 +9,7 @@ import { AddEditSlackSidebar as AddEditSlackSidebarComponent } from "./AddEditSl
 const mapStateToProps = (state: State) => {
   return {
     parameters: getParameters(state),
-    hiddenParameters: getTabHiddenParameterSlugs(state),
+    hiddenParameters: getHiddenParameterSlugs(state),
   };
 };
 

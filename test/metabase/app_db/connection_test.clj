@@ -5,11 +5,11 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.connection :as t2.connection]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.jdbc.options :as t2.jdbc.options])
   (:import
    (java.sql Connection)
-   (java.util.concurrent Semaphore)
-   (javax.sql DataSource)))
+   (java.util.concurrent Semaphore)))
 
 (set! *warn-on-reflection* true)
 
@@ -63,10 +63,7 @@
         (t2/with-transaction [_t-conn conn]
           ;; dummy op
           (is (false? (.getAutoCommit conn))))
-        ;; On a Postgres app DB the connection runs with autoCommit off for its whole scope (so SELECTs stream from a
-        ;; cursor); on H2/MySQL the transaction restores the JDBC default of true.
-        (is (= (not= (mdb.connection/db-type) :postgres)
-               (.getAutoCommit conn)))))
+        (is (true? (.getAutoCommit conn)))))
     (testing "throw error when trying to create nested transaction when nested-transaction-rule=:prohibit"
       (t2/with-connection [conn]
         (t2/with-transaction [t-conn conn]
@@ -139,6 +136,78 @@
       (is (= java.sql.Connection/TRANSACTION_READ_COMMITTED
              (.getTransactionIsolation conn))))))
 
+(deftest after-commit-callback-runs-outside-transaction-bindings-test
+  (let [callback-state (promise)]
+    (t2/with-transaction [_conn]
+      (mdb.connection/do-after-commit
+       #(deliver callback-state
+                 {:current-connectable t2.connection/*current-connectable*
+                  :in-transaction?     (mdb.connection/in-transaction?)})))
+    (is (= {:current-connectable nil
+            :in-transaction?     false}
+           (deref callback-state 1000 ::timed-out)))))
+
+(deftest after-commit-callback-does-not-leak-transaction-bindings-into-async-work-test
+  ;; a future conveys dynamic bindings: neither the transaction connection nor the callback accumulator may
+  ;; leak into async work a callback starts, or the future would reuse a pooled-back connection and an async
+  ;; do-after-commit would enqueue into the already-drained accumulator and never run
+  (let [conveyed-connectable (promise)
+        async-callback-ran   (promise)]
+    (t2/with-transaction [_conn]
+      (mdb.connection/do-after-commit
+       (fn []
+         (future
+           (deliver conveyed-connectable t2.connection/*current-connectable*)
+           (mdb.connection/do-after-commit #(deliver async-callback-ran true))))))
+    (is (nil? (deref conveyed-connectable 1000 ::timed-out)))
+    (is (true? (deref async-callback-ran 1000 ::timed-out)))))
+
+(deftest after-commit-callbacks-from-rolled-back-nested-transaction-are-discarded-test
+  (let [calls         (atom [])
+        rollback-ex   (ex-info "Rollback nested transaction" {})
+        register-call #(mdb.connection/do-after-commit (fn [] (swap! calls conj %)))]
+    (t2/with-transaction [conn]
+      (register-call :outer-before)
+      (is (thrown?
+           Exception
+           (t2/with-transaction [_ conn]
+             (register-call :nested)
+             (throw rollback-ex))))
+      (register-call :outer-after))
+    (is (= [:outer-before :outer-after] @calls))))
+
+(deftest after-commit-callbacks-discarded-even-when-savepoint-rollback-throws-test
+  (let [calls     (atom [])
+        mock-conn (reify Connection
+                    (rollback [_ _savepoint] (throw (ex-info "Rollback error" {})))
+                    (setAutoCommit [_ _])
+                    (getAutoCommit [_] true)
+                    (setSavepoint [_])
+                    (commit [_]))]
+    (binding [t2.connection/*current-connectable* mock-conn]
+      (t2/with-transaction [_conn]
+        (mdb.connection/do-after-commit (fn [] (swap! calls conj :outer)))
+        ;; the nested body registers a callback then throws; its savepoint rollback also throws
+        (is (thrown?
+             Exception
+             (t2/with-transaction [_]
+               (mdb.connection/do-after-commit (fn [] (swap! calls conj :nested)))
+               (throw (ex-info "boom" {})))))))
+    ;; the nested callback is discarded even though the rollback threw — only :outer survives to run
+    (is (= [:outer] @calls))))
+
+(deftest after-commit-callback-registering-another-runs-it-immediately-test
+  (let [calls (atom [])]
+    (t2/with-transaction [_conn]
+      (mdb.connection/do-after-commit
+       (fn []
+         (swap! calls conj :a)
+         ;; the run binds *after-commit-callbacks* to nil, so a do-after-commit here runs immediately (we are
+         ;; logically outside the transaction) rather than enqueuing for a later pass
+         (mdb.connection/do-after-commit (fn [] (swap! calls conj :nested-from-a)))))
+      (mdb.connection/do-after-commit (fn [] (swap! calls conj :b))))
+    (is (= [:a :nested-from-a :b] @calls))))
+
 (deftest rollback-error-handling
   (testing "rollback error handling"
     (let [mock-conn (reify Connection
@@ -177,82 +246,184 @@
           (is (= msg (ex-message e))))
         (is (true? @autocommit-reset-called))))))
 
-(deftest ^:synchronized reducible-query-streams-large-result-set-test
-  (testing "when using a Postgres app DB, [[t2/reducible-query]] streams via a server-side cursor (autoCommit=false + fetch size)"
-    (when (= (mdb.connection/db-type) :postgres)
-      (let [n      Integer/MAX_VALUE
-            result (t2/reducible-query [(format "SELECT generate_series(1, %d) AS i" n)])]
-        (testing "only the first rows are pulled, not all ~2 billion"
-          (is (= [1 2 3] (into [] (comp (take 3) (map :i)) result))))))))
+;;; ------------------------------ before-commit + transaction-state ------------------------------
+;;; The mq transactional outbox relies on this machinery: it inserts its rows from a before-commit
+;;; callback (so they commit atomically with the business transaction) and stashes the ids in
+;;; transaction-state to publish them from an after-commit callback once the commit lands.
 
-(deftest ^:synchronized postgres-app-db-runs-with-autocommit-off-test
-  (testing "when using a Postgres app DB, toucan2 connections run with autoCommit off and we commit manually"
-    (when (= (mdb.connection/db-type) :postgres)
-      (testing "a connection handed out by toucan2 has autoCommit disabled for its whole scope"
-        (t2/with-connection [^java.sql.Connection conn]
-          (is (false? (.getAutoCommit conn)))))
-      (testing "writes are still committed (manually, at the end of the connection scope) and survive"
-        (let [email (mt/random-email)]
-          (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
-          (is (true? (t2/exists? :model/User :email email))))))))
+(deftest do-before-commit-runs-immediately-outside-transaction-test
+  (let [calls (atom [])]
+    (mdb.connection/do-before-commit (fn [] (swap! calls conj :ran)))
+    (is (= [:ran] @calls) "outside a transaction do-before-commit runs the thunk immediately")))
 
-(defn- recording-connection
-  "A bare [[Connection]] that starts at `initial-autocommit` and appends a marker for each setAutoCommit/commit/rollback/
-  close call to the `calls` volatile (holding a vector). Lets us assert the exact side effects
-  [[mdb.connection/do-with-app-db-connection]] performs against a connection without needing a real database."
-  ^Connection [initial-autocommit calls]
-  (let [autocommit (volatile! initial-autocommit)]
-    (reify Connection
-      (getAutoCommit [_] @autocommit)
-      (setAutoCommit [_ v] (vswap! calls conj [:set-autocommit v]) (vreset! autocommit v))
-      (commit        [_] (vswap! calls conj :commit))
-      (rollback      [_] (vswap! calls conj :rollback))
-      (close         [_] (vswap! calls conj :close)))))
+(deftest before-commit-callbacks-run-before-commit-and-commit-their-writes-test
+  (let [email (mt/random-email)
+        order (atom [])]
+    (try
+      (t2/with-transaction [_conn]
+        (mdb.connection/do-before-commit
+         (fn []
+           (swap! order conj :before-commit)
+           (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))))
+        (swap! order conj :body)
+        (is (= [:body] @order) "before-commit callback has not run during the body"))
+      (is (= [:body :before-commit] @order)
+          "before-commit runs after the body returns, as part of the commit sequence")
+      (is (t2/exists? :model/User :email email)
+          "a row inserted from a before-commit callback commits with the transaction")
+      (finally
+        (t2/delete! :model/User :email email)))))
 
-(defn- mock-app-db
-  "An [[mdb.connection/ApplicationDB]] of `db-type` (no pool) that always hands out `conn`."
-  [db-type ^Connection conn]
-  (mdb.connection/application-db db-type (reify DataSource (getConnection [_] conn))))
+(deftest before-commit-callbacks-not-run-on-rollback-test
+  (let [calls (atom [])]
+    (is (thrown?
+         Exception
+         (t2/with-transaction [_conn]
+           (mdb.connection/do-before-commit (fn [] (swap! calls conj :should-not-run)))
+           (throw (ex-info "force rollback" {})))))
+    (is (= [] @calls) "before-commit callbacks do not run when the transaction rolls back")))
 
-(deftest do-with-app-db-connection-postgres-test
-  (testing "when using a Postgres app DB, we flip autoCommit off for the scope, then commit/rollback and reset it before returning to the pool"
-    (testing "happy path: autoCommit off -> commit -> reset to true -> close"
-      (let [calls  (volatile! [])
-            conn   (recording-connection true calls)
-            result (#'mdb.connection/do-with-app-db-connection
-                    (mock-app-db :postgres conn)
-                    (fn [^Connection c]
-                      (is (false? (.getAutoCommit c)) "autoCommit is off while f runs")
-                      :result))]
-        (is (= :result result))
-        (is (= [[:set-autocommit false] :commit [:set-autocommit true] :close] @calls))))
-    (testing "error path: rolls back, still resets autoCommit, and propagates the original exception"
-      (let [calls (volatile! [])
-            conn  (recording-connection true calls)
-            boom  (ex-info "boom" {})]
-        (is (identical? boom
-                        (try
-                          (#'mdb.connection/do-with-app-db-connection
-                           (mock-app-db :postgres conn)
-                           (fn [_] (throw boom)))
-                          (catch clojure.lang.ExceptionInfo e e))))
-        (is (= [[:set-autocommit false] :rollback [:set-autocommit true] :close] @calls))))
-    (testing "a connection that comes back already in manual-commit mode is taken over and reset (self-healing)"
-      (let [calls (volatile! [])
-            conn  (recording-connection false calls)]
-        (is (= :result
-               (#'mdb.connection/do-with-app-db-connection
-                (mock-app-db :postgres conn)
-                (fn [_] :result))))
-        (is (= [[:set-autocommit false] :commit [:set-autocommit true] :close] @calls))))))
+(deftest throwing-before-commit-rolls-back-the-transaction-test
+  (let [email (mt/random-email)]
+    (try
+      (is (thrown-with-msg?
+           Exception #"boom"
+           (t2/with-transaction [_conn]
+             (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
+             (is (t2/exists? :model/User :email email) "row is visible inside the transaction")
+             (mdb.connection/do-before-commit (fn [] (throw (ex-info "boom" {})))))))
+      (is (not (t2/exists? :model/User :email email))
+          "the business write rolls back when a before-commit callback throws")
+      (finally
+        (t2/delete! :model/User :email email)))))
 
-(deftest do-with-app-db-connection-non-postgres-test
-  (testing "when using a non-Postgres app DB, autoCommit is never touched -- the connection is just used and closed"
-    (doseq [db-type [:h2 :mysql]]
-      (let [calls (volatile! [])
-            conn  (recording-connection true calls)]
-        (is (= :result
-               (#'mdb.connection/do-with-app-db-connection
-                (mock-app-db db-type conn)
-                (fn [_] :result))))
-        (is (= [:close] @calls) (str "db-type " db-type))))))
+(deftest before-commit-callbacks-from-rolled-back-nested-transaction-are-discarded-test
+  (let [calls (atom [])]
+    (t2/with-transaction [conn]
+      (mdb.connection/do-before-commit (fn [] (swap! calls conj :outer)))
+      (is (thrown?
+           Exception
+           (t2/with-transaction [_ conn]
+             (mdb.connection/do-before-commit (fn [] (swap! calls conj :nested-should-not-run)))
+             (throw (ex-info "force savepoint rollback" {}))))))
+    (is (= [:outer] @calls)
+        "only the outer before-commit callback runs; the rolled-back nested one is discarded")))
+
+(deftest before-commit-can-schedule-after-commit-test
+  ;; the mq transactional outbox works this way: a before-commit callback does its DB write, then
+  ;; schedules the post-commit publish over what it just wrote.
+  (let [order (atom [])]
+    (t2/with-transaction [_conn]
+      (mdb.connection/do-before-commit
+       (fn []
+         (swap! order conj :before)
+         (mdb.connection/do-after-commit (fn [] (swap! order conj :after))))))
+    (is (= [:before :after] @order)
+        "an after-commit scheduled from a before-commit runs after the transaction commits")))
+
+(deftest transaction-state-shared-across-nested-transactions-test
+  (t2/with-transaction [conn]
+    (let [outer-state mdb.connection/*transaction-state*]
+      (is (some? outer-state) "transaction-state is bound inside a transaction")
+      (t2/with-transaction [_ conn]
+        (is (identical? outer-state mdb.connection/*transaction-state*)
+            "nested transactions share the same transaction-state atom"))))
+  (is (nil? mdb.connection/*transaction-state*) "transaction-state is nil outside a transaction"))
+
+(deftest transaction-state-from-rolled-back-nested-transaction-is-discarded-test
+  (t2/with-transaction [conn]
+    (swap! mdb.connection/*transaction-state* assoc :outer-key "outer-val")
+    (is (thrown?
+         Exception
+         (t2/with-transaction [_ conn]
+           (swap! mdb.connection/*transaction-state* assoc :inner-key "inner-val")
+           (throw (ex-info "force savepoint rollback" {})))))
+    (is (= {:outer-key "outer-val"} @mdb.connection/*transaction-state*)
+        "data stashed by a rolled-back nested transaction is discarded from transaction-state")))
+
+(deftest unshared-connection-not-bound-during-use-test
+  (mdb.connection/with-unshared-connection [conn]
+    (testing "explicitly passing the unshared connection works, but it is never bound as *current-connectable*"
+      (let [rows (reduce (fn [acc row]
+                           ;; the contract is nil, not merely "not this connection": while an unshared
+                           ;; connection is in use there is no ambient connection at all
+                           (is (nil? t2.connection/*current-connectable*)
+                               "ambient resolution must be suppressed mid-reduction")
+                           (conj acc (into {} row)))
+                         []
+                         (t2/reducible-query conn ["select 1 as x"]))]
+        (is (= 1 (count rows)))))
+    (testing "a transaction opened while the unshared connection is in use gets its own connection"
+      (reduce (fn [_ _row]
+                (t2/with-transaction [tx-conn]
+                  (is (not (identical? tx-conn conn)))))
+              nil
+              (t2/reducible-query conn ["select 1 as x"])))))
+
+(deftest unshared-connection-borrower-work-commits-independently-test
+  (let [email (mt/random-email)]
+    (try
+      (testing "toucan work while the unshared connection is in use commits on its own connection"
+        (mdb.connection/with-unshared-connection [conn]
+          ;; open a transaction on the unshared connection that is never committed: if the insert below
+          ;; wrongly rode this connection, it would be rolled back at pool check-in and the user would not exist
+          (.setAutoCommit ^Connection conn false)
+          (reduce (fn [_ _row]
+                    (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email)))
+                  nil
+                  (t2/reducible-query conn ["select 1 as x"])))
+        (is (t2/exists? :model/User :email email)))
+      (finally
+        (t2/delete! :model/User :email email)))))
+
+(deftest unshared-connection-postgres-portal-survival-test
+  ;; postgres streams a result set through a portal that dies if anything commits on the connection
+  ;; mid-iteration -- the failure mode that forced the revert of #76645. Other appdbs buffer, so there is
+  ;; nothing to kill.
+  (when (= (mdb.connection/db-type) :postgres)
+    (let [portal-death? (fn [e]
+                          (loop [e e]
+                            (cond
+                              (nil? e)                                    false
+                              (re-find #"portal" (str (ex-message e)))    true
+                              :else                                       (recur (ex-cause e)))))
+          stream!       (fn [^Connection conn]
+                          ;; fetch-size + autocommit off = pg streams through a portal
+                          (.setAutoCommit conn false)
+                          (binding [t2.jdbc.options/*options* {:fetch-size 50}]
+                            (reduce (fn [n _row]
+                                      ;; unrelated toucan work mid-stream, resolved ambiently, that commits
+                                      (when (= n 30)
+                                        (t2/with-transaction [_]
+                                          (t2/query ["select 1"])))
+                                      (inc n))
+                                    0
+                                    (t2/reducible-query conn ["select g from generate_series(1, 1000) g"]))))]
+      (testing "control: an ordinary connection is ambiently visible mid-reduction; the borrower commit kills the portal"
+        (with-open [^Connection raw (.getConnection (mdb.connection/data-source))]
+          (let [e (try (stream! raw) nil (catch Throwable e e))]
+            (is (portal-death? e)))
+          (.rollback raw)
+          (.setAutoCommit raw true)))
+      (testing "an unshared connection is invisible to the borrower; the portal survives"
+        (mdb.connection/with-unshared-connection [conn]
+          (is (= 1000 (stream! conn))))))))
+
+(deftest unshared-connection-uncommitted-work-rolls-back-on-close-test
+  ;; the with-unshared-connection docstring promises the pool resets state on check-in, rolling
+  ;; back any unresolved transaction — the same mechanism the detached cluster lock relies on to
+  ;; release its row locks after a body throw. Pin the rollback itself.
+  (let [lock-name "connection-test/unshared-rollback"]
+    (try
+      (mdb.connection/with-unshared-connection [conn]
+        (.setAutoCommit ^Connection conn false)
+        (t2/query-one conn {:insert-into :metabase_cluster_lock
+                            :columns     [:lock_name]
+                            :values      [[lock-name]]})
+        (testing "the write is visible on the unshared connection before close"
+          (is (= 1 (count (t2/query conn ["select * from metabase_cluster_lock where lock_name = ?"
+                                          lock-name]))))))
+      (testing "the uncommitted write vanished at pool check-in"
+        (is (not (t2/exists? :metabase_cluster_lock :lock_name lock-name))))
+      (finally
+        (t2/delete! :metabase_cluster_lock :lock_name lock-name)))))

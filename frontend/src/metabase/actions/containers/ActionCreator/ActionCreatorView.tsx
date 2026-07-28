@@ -89,7 +89,6 @@ export default function ActionCreatorView({
       <ActionCreatorBodyContainer>
         <ModalLeft>
           <ActionCreatorHeader
-            type="query"
             name={action.name ?? t`New Action`}
             canRename={canRename}
             isEditable={isEditable}

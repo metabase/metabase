@@ -1,6 +1,7 @@
 import type { Editor } from "@tiptap/react";
 
 export const createMockEditor = (overrides: Partial<Editor> = {}): Editor =>
+  // Unjustified type cast. FIXME
   ({
     on: jest.fn(),
     off: jest.fn(),

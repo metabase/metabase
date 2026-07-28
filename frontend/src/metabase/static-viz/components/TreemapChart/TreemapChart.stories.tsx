@@ -61,3 +61,14 @@ export const Watermark = {
     hasDevWatermark: true,
   },
 };
+
+export const GridCellWideShort = {
+  render: Template,
+  args: {
+    rawSeries: data.twoLevel,
+    renderingContext,
+    width: 1200,
+    height: 320,
+    fitWithinBounds: true,
+  },
+};

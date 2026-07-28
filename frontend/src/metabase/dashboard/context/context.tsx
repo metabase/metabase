@@ -16,6 +16,7 @@ import { isEqual, noop } from "underscore";
 import { isAbortError } from "metabase/api/client";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { getTabHiddenParameterSlugs } from "metabase/embedding/lib/tab-parameters";
+import type Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
   DashboardCard,
@@ -76,6 +77,12 @@ export type DashboardContextOwnProps = {
    * Forcing passing it isn't ideal since we only need to do this in a couple of places
    */
   onNewQuestion?: () => void;
+  // Lets a host override how "edit question" navigates from a dashcard.
+  // Defaults to the query builder route when unset (the SDK renders inline instead).
+  onEditQuestion?: (
+    question: Question,
+    mode?: "query" | "view" | "notebook",
+  ) => void;
   /**
    * When true, internal click behaviors (dashboard/question links) are preserved
    * instead of being filtered out. Used by the SDK for internal navigation.
@@ -131,6 +138,7 @@ const DashboardContextProviderInner = forwardRef(
       dashboardActions: initDashboardActions,
       isDashcardVisible,
       onNewQuestion,
+      onEditQuestion,
 
       children,
 
@@ -412,6 +420,7 @@ const DashboardContextProviderInner = forwardRef(
           dashcardMenu,
           dashboardActions,
           onNewQuestion,
+          onEditQuestion,
           isEditableDashboard,
 
           navigateToNewCardFromDashboard,

@@ -5,6 +5,7 @@ import {
   hourTo24HourFormat,
   hourToTwelveHourFormat,
   scheduleSettingsToCron,
+  toCronString,
 } from "./cron";
 
 describe("scheduleSettingsToCron", () => {
@@ -89,6 +90,62 @@ describe("scheduleSettingsToCron", () => {
     };
     const cron = scheduleSettingsToCron(settings);
     expect(cron).toEqual("0 * * * * ? *");
+  });
+});
+
+describe("toCronString", () => {
+  it("strips day, frame, and hour for hourly schedules", () => {
+    const cron = toCronString({
+      schedule_type: "hourly",
+      schedule_minute: 30,
+      schedule_hour: 8,
+      schedule_day: "mon",
+      schedule_frame: "first",
+    });
+    expect(cron).toEqual("0 30 * * * ? *");
+  });
+
+  it("strips day, frame, and hour for every_n_minutes schedules", () => {
+    const cron = toCronString({
+      schedule_type: "every_n_minutes",
+      schedule_minute: 10,
+      schedule_hour: 8,
+      schedule_day: "mon",
+      schedule_frame: "first",
+    });
+    expect(cron).toEqual("0 0/10 * * * ? *");
+  });
+
+  it("keeps hour but strips day and frame for daily schedules", () => {
+    const cron = toCronString({
+      schedule_type: "daily",
+      schedule_minute: 30,
+      schedule_hour: 14,
+      schedule_day: "mon",
+      schedule_frame: "first",
+    });
+    expect(cron).toEqual("0 30 14 * * ? *");
+  });
+
+  it("keeps day and hour for weekly schedules", () => {
+    const cron = toCronString({
+      schedule_type: "weekly",
+      schedule_day: "mon",
+      schedule_minute: 0,
+      schedule_hour: 12,
+    });
+    expect(cron).toEqual("0 0 12 ? * 2 *");
+  });
+
+  it("keeps day, frame, and hour for monthly schedules", () => {
+    const cron = toCronString({
+      schedule_type: "monthly",
+      schedule_day: "wed",
+      schedule_frame: "first",
+      schedule_minute: 15,
+      schedule_hour: 9,
+    });
+    expect(cron).toEqual("0 15 9 ? * 4#1 *");
   });
 });
 

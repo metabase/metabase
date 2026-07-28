@@ -109,6 +109,29 @@
                                        :strategy {:type     "schedule"
                                                   :schedule "0/2 * * * * ?"}}))))))))
 
+(deftest preemptive-refresh-automatically-roundtrip-test
+  (testing "PUT /api/cache serializes refresh_automatically to its own column and GET re-nests it"
+    (mt/with-model-cleanup [:model/CacheConfig]
+      (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
+        (mt/with-temp [:model/Database db {}
+                       :model/Card     card {:name          "card"
+                                             :database_id   (:id db)
+                                             :dataset_query (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1;")}]
+          (is (mt/user-http-request :crowberto :put 200 "cache/"
+                                    {:model    "question"
+                                     :model_id (:id card)
+                                     :strategy {:type "duration" :duration 24 :unit "hours" :refresh_automatically true}}))
+          (testing "flag is persisted to the top-level CacheConfig column"
+            (is (true? (t2/select-one-fn :refresh_automatically :model/CacheConfig
+                                         :model "question" :model_id (:id card)))))
+          (testing "GET re-nests the flag under strategy"
+            (is (=? {:data [{:model    "question"
+                             :model_id (:id card)
+                             :strategy {:type                  "duration"
+                                        :refresh_automatically true}}]}
+                    (mt/user-http-request :crowberto :get 200 "cache/"
+                                          :model "question" :id (:id card))))))))))
+
 (deftest cache-config-permissions-test
   (mt/with-model-cleanup [:model/CacheConfig]
     (mt/with-premium-features #{:cache-granular-controls :audit-app}
@@ -223,4 +246,10 @@
             (is (=? {:count pos-int?}
                     (invalidate! 200 :include :overrides :database (mt/id))))
             (is (=? {:cached nil :data some?}
-                    (run-query! card1-id {:dashboard_id (:id dash)})))))))))
+                    (run-query! card1-id {:dashboard_id (:id dash)}))))
+          (testing "calling without any target filter is a 400, not a misleading 404 (#66499)"
+            (is (re-find #"At least one of"
+                         (invalidate! 400)))
+            (testing "and `include=overrides` alone does not count as a target"
+              (is (re-find #"At least one of"
+                           (invalidate! 400 :include :overrides))))))))))

@@ -18,7 +18,7 @@ type MetricDimensionOptionsWithFieldValues = MetricDimensionOptions & {
 };
 
 function createDimension(options: MetricDimensionOptionsWithFieldValues) {
-  return createMockMetricDimension(options as MetricDimensionOptions);
+  return createMockMetricDimension(options);
 }
 
 describe("getDefaultDimensions", () => {

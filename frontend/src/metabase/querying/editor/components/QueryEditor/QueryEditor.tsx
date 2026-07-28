@@ -186,6 +186,7 @@ export function QueryEditor({
             }
             onChangeQuery={onChangeQuery}
             parametersAreUserVisible={parametersAreUserVisible}
+            canUseSampleDatabase={uiOptions?.canUseSampleDatabase}
           />
         )}
         {!isNative && uiState.sidebarType === "native-query" && (

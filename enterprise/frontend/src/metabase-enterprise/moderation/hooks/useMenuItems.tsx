@@ -38,6 +38,7 @@ export const useDashboardMenuItems = (
 
   return useMenuItems({
     reload,
+    // Unjustified type cast. FIXME
     moderated_item_id: dashboard.id as number,
     moderated_item_type: "dashboard",
     latestModerationReview,

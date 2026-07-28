@@ -20,12 +20,12 @@ export function SendTestEmailWidget() {
       await sendTestEmail().unwrap();
       sendToast({
         message: t`Email sent!`,
-        toastColor: "success",
+        toastColor: "feedback-positive",
       });
     } catch (error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: getTestEmailErrorMessage(error),
       });
     }
@@ -37,7 +37,7 @@ export function SendTestEmailWidget() {
         <Text
           role="alert"
           aria-label={getTestEmailErrorMessage(sendTestEmailResult.error)}
-          color="error"
+          color="feedback-negative"
           mb="1rem"
         >
           {getTestEmailErrorMessage(sendTestEmailResult.error)}

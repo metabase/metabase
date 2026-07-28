@@ -144,7 +144,6 @@ function createTestSegment(opts: { name?: string; description?: string } = {}) {
   H.createSegment({
     name,
     description,
-    table_id: ORDERS_ID,
     definition: {
       type: "query",
       database: SAMPLE_DB_ID,

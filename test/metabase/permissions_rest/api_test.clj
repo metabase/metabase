@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.permissions-rest.api :as api.permissions]
    [metabase.permissions-rest.api-test-util :as perm-test-util]
@@ -166,6 +167,61 @@
     (testing "requires superuers"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (format "permissions/group/%d" (:id (perms-group/all-users)))))))))
+
+(deftest invite-group-ids-test
+  (testing "GET /api/permissions/invite-group-ids"
+    (mt/with-temp [:model/Collection       coll      {}
+                   :model/Dashboard        dash      {:collection_id (u/the-id coll)}
+                   :model/PermissionsGroup readers   {:name "Readers"}
+                   :model/PermissionsGroup writers   {:name "Writers"}
+                   :model/PermissionsGroup no-access {:name "No access"}]
+      (perms/grant-collection-read-permissions! readers coll)
+      (perms/grant-collection-readwrite-permissions! writers coll)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+      (perms/grant-collection-read-permissions! (perms-group/data-analyst) coll)
+      (let [ids (set (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
+                                           :type "dashboard" :id (u/the-id dash)))]
+        (testing "includes ids of groups with read or read-write access to the item's collection"
+          (is (contains? ids (u/the-id readers)))
+          (is (contains? ids (u/the-id writers)))
+          (is (contains? ids (u/the-id (perms-group/all-users)))))
+        (testing "the ids are unfiltered: system-managed groups like Data Analysts are included when they hold a grant"
+          (is (contains? ids (u/the-id (perms-group/data-analyst)))))
+        (testing "excludes groups without access"
+          (is (not (contains? ids (u/the-id no-access)))))
+        (testing "excludes the Administrators group, whose access is implicit rather than granted"
+          (is (not (contains? ids (u/the-id (perms-group/admin))))))))
+    (testing "works for questions, resolving the card's collection"
+      (mt/with-temp [:model/Collection       coll {}
+                     :model/Card             card {:collection_id (u/the-id coll)}
+                     :model/PermissionsGroup g    {:name "Q Readers"}]
+        (perms/grant-collection-read-permissions! g coll)
+        (is (contains? (set (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
+                                                  :type "question" :id (u/the-id card)))
+                       (u/the-id g)))))
+    (testing "resolves the Root collection for items with no collection_id"
+      (mt/with-temp [:model/PermissionsGroup g    {:name "Root Readers"}
+                     :model/Dashboard        dash {:collection_id nil}
+                     :model/Permissions      _    {:group_id (u/the-id g), :object "/collection/root/read/"}]
+        (is (contains? (set (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
+                                                  :type "dashboard" :id (u/the-id dash)))
+                       (u/the-id g)))))
+    (testing "returns no ids for an item in a personal collection (no permission rows exist)"
+      (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
+        (mt/with-temp [:model/Dashboard dash {:collection_id (u/the-id personal-coll)}]
+          (is (= [] (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
+                                          :type "dashboard" :id (u/the-id dash)))))))
+    (testing "requires superuser, even for users who can read the item"
+      (mt/with-temp [:model/Collection coll {}
+                     :model/Dashboard  dash {:collection_id (u/the-id coll)}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "permissions/invite-group-ids"
+                                     :type "dashboard" :id (u/the-id dash))))))
+    (testing "returns 404 for a nonexistent item"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :get 404 "permissions/invite-group-ids"
+                                   :type "dashboard" :id Integer/MAX_VALUE))))))
 
 (deftest create-group-test
   (testing "POST /permissions/group"
@@ -396,6 +452,32 @@
                     "Please fetch new data and try again.")
                (do-perm-put "permissions/graph?force=false" 409)))
         (do-perm-put "permissions/graph?force=true" 200)))))
+
+;; NOTE: `oss-preserves-sandboxed-view-data-test` lives in
+;; `metabase-enterprise.sandbox.api.permissions-test`: it references the EE-only `:model/Sandbox` model,
+;; which is not on the OSS classpath. It exercises OSS-token graph semantics under `with-premium-features #{}`.
+
+(deftest oss-edit-create-queries-on-blocked-row-test
+  (testing "PUT /api/permissions/graph in OSS: a create-queries-only edit on a :blocked database returns 200 and bumps view-data to :unrestricted"
+    (mt/with-temp [:model/PermissionsGroup {gid :id} {}
+                   :model/Database {db-id :id} {}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (data-perms/set-database-permission! gid db-id :perms/view-data :blocked))
+      (mt/with-premium-features #{}
+        (mt/user-http-request
+         :crowberto :put 200 "permissions/graph"
+         (assoc-in (data-perms.graph/api-graph) [:groups gid db-id :create-queries] :query-builder-and-native))
+        (is (= :unrestricted (data-perms/table-permission-for-groups #{gid} :perms/view-data db-id nil)))))))
+
+(deftest update-graph-response-echoes-only-modified-groups-test
+  (testing "PUT /api/permissions/graph response :groups map contains only the request's modified group ids"
+    (mt/with-temp [:model/PermissionsGroup g1 {} :model/PermissionsGroup g2 {}]
+      (let [body (assoc-in (data-perms.graph/api-graph)
+                           [:groups (u/the-id g1) (mt/id) :view-data] :unrestricted)
+            resp (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                                       (update body :groups select-keys [(u/the-id g1)]))]
+        (is (= #{(u/the-id g1)} (set (keys (:groups resp)))))
+        (is (not (contains? (:groups resp) (u/the-id g2))))))))
 
 (deftest can-revoke-permsissions-via-graph-test
   (testing "PUT /api/permissions/graph"

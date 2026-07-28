@@ -1,11 +1,11 @@
-// NOTE: need to load visualizations first for getSettings to work
-import "metabase/visualizations";
-
 import {
   getClickBehaviorSettings,
   getComputedSettings,
-  getSettingsWidgets,
 } from "metabase/visualizations/lib/settings";
+import { getSettingsWidgets } from "metabase/visualizations/lib/widgets";
+import { registerVisualizations } from "metabase/visualizations/register";
+
+registerVisualizations();
 
 describe("settings framework", () => {
   const mockObject = "[mockObject]";

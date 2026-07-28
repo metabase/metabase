@@ -100,7 +100,7 @@
   "Output-token ceiling for a single generation. The answer itself is tiny, but reasoning models spend output tokens
   reasoning *before* emitting the forced structured_output tool call, so the cap must leave room for that or the call
   returns no tool call.  Non-reasoning providers stop well under this, so the higher ceiling costs them nothing."
-  2048)
+  4096)
 
 (defn- call-llm
   "Make a structured LLM call for example question generation.
@@ -165,7 +165,8 @@
                               (try
                                 {:ok (generate-fn item)}
                                 (catch Throwable e
-                                  (log/warn e "Example question generation failed for one item")
+                                  (when-not (= :api-key-missing (:error-code (ex-data e)))
+                                    (log/warn e "Example question generation failed for one item"))
                                   {:error e}))))
                           batch)]
         (mapv deref futures)))

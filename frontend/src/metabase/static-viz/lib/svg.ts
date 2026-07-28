@@ -1,8 +1,3 @@
-import type { Element, ElementContent } from "hast";
-import { fromHtml } from "hast-util-from-html";
-import { toHtml } from "hast-util-to-html";
-
-// FIXME: instead of Regex parse svg, update, serialize
 const transformSvgForOutline = (svgString: string) => {
   const regex =
     /<text([^>]*fill="([^"]+)"[^>]*stroke="([^"]+)"[^>]*)>(.*?)<\/text>/g;
@@ -27,34 +22,18 @@ const transformSvgForOutline = (svgString: string) => {
 };
 
 /**
- * Recursive ast traversal helper for `patchDominantBaseline`
- */
-function patchNode(node: ElementContent) {
-  if (node.type !== "element") {
-    return;
-  }
-
-  if (
-    node.tagName === "text" &&
-    node.properties.dominantBaseline === "central"
-  ) {
-    node.properties.dy = "0.5em";
-  }
-
-  node.children.forEach((child) => patchNode(child));
-}
-
-/**
  * Fixes `<text>` elements not being vertically centered due to Batik not
- * supporting the `dominant-baseline` property.
+ * supporting the `dominant-baseline` property. ECharts emits
+ * `dominant-baseline="central"`; we add an equivalent `dy` via a string
+ * transform instead of a full hast parse/serialize round-trip, which is very
+ * slow on large SVGs (~a quarter of a big chart's render time).
  */
 export function patchDominantBaseline(svgString: string) {
-  const svgElem = fromHtml(svgString, { fragment: true, space: "svg" })
-    .children[0] as Element;
-
-  patchNode(svgElem);
-
-  return toHtml(svgElem, { space: "svg" });
+  return svgString.replace(
+    /<text\b[^>]*\bdominant-baseline="central"[^>]*>/g,
+    (tag) =>
+      /\bdy=/.test(tag) ? tag : tag.replace(/(\/?)>$/, ' dy="0.5em"$1>'),
+  );
 }
 
 export const sanitizeSvgForBatik = (

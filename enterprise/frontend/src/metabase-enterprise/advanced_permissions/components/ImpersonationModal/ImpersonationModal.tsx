@@ -1,15 +1,13 @@
-import type { Location } from "history";
 import { useCallback } from "react";
-import { withRouter } from "react-router";
-import { push } from "react-router-redux";
 import { useMount } from "react-use";
 
 import { updateDataPermission } from "metabase/admin/permissions/permissions";
 import { DataPermissionType } from "metabase/admin/permissions/types";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useDatabaseQuery } from "metabase/common/hooks";
-import { getParentPath } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/redux";
+import { parseIntParam } from "metabase/urls";
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonation } from "metabase-enterprise/advanced_permissions/selectors";
 import type {
@@ -29,16 +27,10 @@ import {
 
 import { ImpersonationModalView } from "./ImpersonationModalView";
 
-interface ImpersonationModalProps {
-  params: ImpersonationModalParams;
-  location: Location;
-  route: {
-    path: string;
-  };
-}
-
 const parseParams = (params: ImpersonationModalParams): ImpersonationParams => {
-  const groupId = parseInt(params.groupId);
+  // NaN preserves the pre-conversion parseInt behavior for the
+  // route-guaranteed param
+  const groupId = parseIntParam(params.groupId) ?? NaN;
   const databaseId = getImpersonatedDatabaseId(params);
 
   return {
@@ -47,11 +39,10 @@ const parseParams = (params: ImpersonationModalParams): ImpersonationParams => {
   };
 };
 
-const ImpersonationModalInner = ({
-  route,
+export const ImpersonationModal = ({
   params,
-  location,
-}: ImpersonationModalProps) => {
+  onClose,
+}: ModalComponentProps) => {
   const { groupId, databaseId } = parseParams(params);
 
   const {
@@ -81,10 +72,6 @@ const ImpersonationModalInner = ({
 
   const dispatch = useDispatch();
 
-  const close = useCallback(() => {
-    dispatch(push(getParentPath(route, location)));
-  }, [dispatch, route, location]);
-
   const handleSave = useCallback(
     (attribute: UserAttributeKey) => {
       dispatch(
@@ -110,14 +97,10 @@ const ImpersonationModalInner = ({
         );
       }
 
-      close();
+      onClose();
     },
-    [close, databaseId, dispatch, groupId, selectedAttribute],
+    [onClose, databaseId, dispatch, groupId, selectedAttribute],
   );
-
-  const handleCancel = useCallback(() => {
-    dispatch(push(getParentPath(route, location)));
-  }, [dispatch, route, location]);
 
   useMount(() => {
     dispatch(fetchUserAttributes());
@@ -141,9 +124,7 @@ const ImpersonationModalInner = ({
       attributes={attributes}
       database={database}
       onSave={handleSave}
-      onCancel={handleCancel}
+      onCancel={onClose}
     />
   );
 };
-
-export const ImpersonationModal = withRouter(ImpersonationModalInner);

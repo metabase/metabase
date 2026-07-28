@@ -17,6 +17,7 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
@@ -24,6 +25,10 @@
    [java.util Base64]))
 
 (set! *warn-on-reflection* true)
+
+;; the token-tracking test hits the app db before any auto-initializing mt helper when it is the first
+;; db touch in a fresh JVM
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest test-get-provider
   (testing "get-active-model returns based on setting"
@@ -326,28 +331,32 @@
                              "tag"           "embedding_generation"}}]
                     events))))))))
 
-(deftest token-tracking-write-test
+(deftest ^:sequential token-tracking-write-test
   (mt/with-premium-features #{:semantic-search}
     (when (string? (not-empty (:mb-pgvector-db-url env/env)))
       (doseq [provider ["openai" "ai-service"]]
         (semantic.tu/with-test-db! {:mode :blank}
-          (let [mock-embedding (repeat 1024 1.0)
-                mock-response {:data [{:object "embedding"
-                                       :embedding (encode-floats-to-base64 mock-embedding)
-                                       :index 0}]
-                               :model "some-model"
-                               :usage {:prompt_tokens 1
-                                       :total_tokens 13}}]
+          (let [encoded-embedding (encode-floats-to-base64 (repeat 1024 1.0))]
             (with-redefs [semantic.settings/ee-embedding-provider           (constantly provider)
                           semantic.settings/ee-embedding-model              (constantly "mock-model")
                           semantic.settings/openai-api-key                  (constantly "xyz")
                           semantic.settings/openai-api-base-url             (constantly "xyz")
                           semantic.settings/ee-embedding-service-base-url   (constantly "http://mock-embedding-service")
                           semantic.settings/ee-embedding-service-api-key    (constantly "mock-key")
-                          http/post (fn post-mock [_url & _options]
-                                      {:status 200
-                                       :headers {"Content-Type" "application/json"}
-                                       :body (json/encode mock-response)})]
+                          http/post (fn post-mock [_url {:keys [body]}]
+                                      (let [inputs (:input (json/decode body true))]
+                                        {:status 200
+                                         :headers {"Content-Type" "application/json"}
+                                         :body (json/encode
+                                                {:data (map-indexed
+                                                        (fn [index _]
+                                                          {:object    "embedding"
+                                                           :embedding encoded-embedding
+                                                           :index     index})
+                                                        inputs)
+                                                 :model "some-model"
+                                                 :usage {:prompt_tokens 1
+                                                         :total_tokens 13}})}))]
               (let [pgvector (semantic.env/get-pgvector-datasource!)
                     index-metadata (semantic.env/get-index-metadata)
                     embedding-model (semantic.env/get-configured-embedding-model)
@@ -373,3 +382,23 @@
                         (t2/select-one :model/SemanticSearchTokenTracking)]
                     (is (= :query request_type))
                     (is (= 13 total_tokens))))))))))))
+
+(deftest embedding-supported?-test
+  (testing "ai-service: supported iff an embedding-service base URL or the ai-service base URL is set"
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://embed"]
+      (is (true? (embedding/embedding-supported? {:provider "ai-service"}))))
+    ;; ai-service-base-url is :enabled? only under the AI-managed / metabot-v3 features, so license one to
+    ;; exercise that branch (and to make the setting settable/restorable here).
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [ee-embedding-service-base-url nil ai-service-base-url "http://ai"]
+        (is (true? (embedding/embedding-supported? {:provider "ai-service"})))))
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url nil]
+      (is (false? (embedding/embedding-supported? {:provider "ai-service"})))))
+  (testing "openai: supported iff the API key is set"
+    (mt/with-temporary-setting-values [llm-openai-api-key "sk-test"]
+      (is (true? (embedding/embedding-supported? {:provider "openai"}))))
+    (mt/with-temporary-setting-values [llm-openai-api-key nil]
+      (is (false? (embedding/embedding-supported? {:provider "openai"})))))
+  (testing "ollama is always supported; an unrecognized provider is not (:default)"
+    (is (true?  (embedding/embedding-supported? {:provider "ollama"})))
+    (is (false? (embedding/embedding-supported? {:provider "no-embedder"})))))

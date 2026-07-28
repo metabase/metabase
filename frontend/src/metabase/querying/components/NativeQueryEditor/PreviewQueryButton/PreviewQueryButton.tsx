@@ -48,6 +48,7 @@ PreviewQueryButton.shouldRender = ({ question }: PreviewQueryButtonOpts) => {
     return false;
   }
 
+  // Unjustified type cast. FIXME
   const nativeQuestion = question.legacyNativeQuery() as NativeQuery;
 
   const hasVariableTemplateTags = nativeQuestion.hasVariableTemplateTags();

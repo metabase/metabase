@@ -28,5 +28,5 @@ function stripEmptyColors(settings: MetabaseTheme): MetabaseTheme {
     const { colors: _omit, ...rest } = settings;
     return rest;
   }
-  return { ...settings, colors: cleanedColors as MetabaseTheme["colors"] };
+  return { ...settings, colors: cleanedColors };
 }

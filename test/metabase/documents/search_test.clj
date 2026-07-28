@@ -133,7 +133,7 @@
     ;; the legacy in-place engine LIKE-matches the raw prose-mirror JSON.
     (mt/with-temp [:model/Document {doc-id :id} {:name "Annual Summary"
                                                  :document (documents.test-util/text->prose-mirror-ast "quarterly revenue projections and growth")}]
-      (search.tu/with-new-search-and-legacy-search
+      (search.tu/with-appdb-search-and-legacy-search
         (testing "found by a term that appears only in the body"
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q "projections" :models "document")]
             (is (contains? (set (map :id (:data results))) doc-id))))
@@ -153,7 +153,7 @@
                                           :content [{:type "text" :text "see"}
                                                     {:type "smartLink"
                                                      :attrs {:model "card" :entityId "abc" :label "Customer Retention"}}]}]}}]
-      (search.tu/with-new-search-and-legacy-search
+      (search.tu/with-appdb-search-and-legacy-search
         (testing "found by a term that appears only in the smart-link label"
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q "Retention" :models "document")]
             (is (contains? (set (map :id (:data results))) doc-id))))))))

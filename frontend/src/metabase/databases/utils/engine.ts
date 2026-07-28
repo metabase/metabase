@@ -59,6 +59,7 @@ export function getEngineNativeType(engine?: string): "sql" | "json" {
 }
 
 export function getNativeQueryLanguage(engine?: string) {
+  // Unjustified type cast. FIXME
   return getEngineNativeType(engine).toUpperCase() as "SQL" | "JSON";
 }
 

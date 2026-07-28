@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import type { AdminPathKey, State } from "metabase/redux/store";
+import { Link } from "metabase/router";
 import { getUser } from "metabase/selectors/user";
 import type {
   PermissionSubject,
@@ -63,12 +63,13 @@ export const getDataColumns = ({
     });
 
     if (showTransformPermissions) {
+      const transformsDescription = t`This lets users see, edit, and run transforms based on this database.`;
       allSubjectsColumns.push({
         name: t`Transforms`,
         hint:
           groupType === "analyst" || groupType === "admin"
-            ? null
-            : jt`Users must also be a member of the ${(
+            ? transformsDescription
+            : jt`${transformsDescription} Users must also be a member of the ${(
                 <Link
                   key="link"
                   to="/admin/people"

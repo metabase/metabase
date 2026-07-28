@@ -49,7 +49,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
             >
               <Icon
                 className={S.WarningIcon}
-                c="danger"
+                c="feedback-negative"
                 name="warning_round_filled"
                 size={10}
               />

@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDeleteThemeFlow } from "metabase/admin/embedding/hooks";
@@ -9,6 +8,7 @@ import {
 } from "metabase/api/embedding-theme";
 import { useHasTokenFeature, useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Loader, SimpleGrid, Stack, Text, Title } from "metabase/ui";
 
 import { EmbeddingThemeCard } from "./EmbeddingThemeCard";

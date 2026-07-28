@@ -955,3 +955,25 @@
             (data-perms/set-database-permission! pg (mt/id) :perms/create-queries :query-builder)
             (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price), :has_more_values false}
                    (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))))))
+
+(deftest update-has-field-values-test
+  (testing "PUT /api/field/:id can change has_field_values across the list/search/none filtering types"
+    (mt/with-temp [:model/Field {fid :id} {:base_type :type/Integer :has_field_values "list"}]
+      (doseq [v ["search" "none" "list"]]
+        (testing (format "has_field_values = %s" v)
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" fid) {:has_field_values v})
+          (is (= (keyword v)
+                 (t2/select-one-fn :has_field_values :model/Field :id fid))))))))
+
+(deftest discard-field-values-test
+  (testing "POST /api/field/:id/discard_values"
+    (mt/with-temp [:model/Field       {fid :id} {:table_id (mt/id :venues)}
+                   :model/FieldValues {fv :id}  {:field_id fid :values [1 2 3]}]
+      (testing "requires metadata write permissions"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 (format "field/%d/discard_values" fid))))
+        (is (t2/exists? :model/FieldValues :id fv)))
+      (testing "an admin can discard the cached field values"
+        (is (= {:status "success"}
+               (mt/user-http-request :crowberto :post 200 (format "field/%d/discard_values" fid))))
+        (is (not (t2/exists? :model/FieldValues :id fv)))))))

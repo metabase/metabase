@@ -318,5 +318,55 @@ describe("EditSandboxingModal", () => {
         table_id: 1,
       });
     });
+
+    describe("selected question menu", () => {
+      const policyWithCard: GroupTableAccessPolicy = {
+        id: 1,
+        table_id: 1,
+        group_id: 1,
+        card_id: TEST_CARD.id,
+        permission_id: 50,
+        attribute_remappings: {
+          foo: ["dimension", ["field", 13, null]],
+        },
+      };
+
+      it("should allow opening the selected question in a new tab", async () => {
+        await setup({ shouldMockQuestions: true, policy: policyWithCard });
+
+        await userEvent.click(screen.getByLabelText("Question options"));
+
+        const link = await screen.findByRole("menuitem", {
+          name: /Go to question/,
+        });
+        expect(link).toHaveAttribute("href", "/question/1-sandbox-question");
+        expect(link).toHaveAttribute("target", "_blank");
+      });
+
+      it("should allow choosing a different question from the menu", async () => {
+        await setup({ shouldMockQuestions: true, policy: policyWithCard });
+
+        await userEvent.click(screen.getByLabelText("Question options"));
+        await userEvent.click(
+          await screen.findByRole("menuitem", {
+            name: /Replace/,
+          }),
+        );
+
+        expect(
+          await screen.findByTestId("entity-picker-modal"),
+        ).toBeInTheDocument();
+      });
+
+      it("should open the question picker when clicking the button outside the menu trigger", async () => {
+        await setup({ shouldMockQuestions: true, policy: policyWithCard });
+
+        await userEvent.click(screen.getByTestId("custom-view-picker-button"));
+
+        expect(
+          await screen.findByTestId("entity-picker-modal"),
+        ).toBeInTheDocument();
+      });
+    });
   });
 });

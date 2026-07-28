@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCollectionsEndpoints,
@@ -19,6 +18,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { CollectionItem, RecentItem } from "metabase-types/api";
 import {
@@ -69,7 +69,7 @@ const setup = ({
   setupCollectionsEndpoints({ collections: [] });
 
   const { history } = renderWithProviders(
-    <Route path="*" component={SearchBar} />,
+    <Route path="*" element={<SearchBar />} />,
     {
       withRouter: true,
       initialRoute,
@@ -92,7 +92,7 @@ describe("SearchBar", () => {
       await userEvent.type(getSearchBar(), "BC{enter}");
 
       const location = history.getCurrentLocation();
-      expect(location.pathname).toEqual("search");
+      expect(location.pathname).toEqual("/search");
       expect(location.search).toEqual("?q=BC");
     });
 
@@ -154,6 +154,7 @@ describe("SearchBar", () => {
         await userEvent.tab();
 
         expect(
+          // Unjustified type cast. FIXME
           within(filteredElement as HTMLElement).getByText("Our analytics"),
         ).toHaveFocus();
       }
@@ -189,7 +190,7 @@ describe("SearchBar", () => {
 
       const location = history.getCurrentLocation();
 
-      expect(location.pathname).toEqual("search");
+      expect(location.pathname).toEqual("/search");
       expect(location.search).toEqual("?q=bar&type=card");
     });
 
@@ -203,7 +204,7 @@ describe("SearchBar", () => {
 
       const location = history.getCurrentLocation();
 
-      expect(location.pathname).toEqual("search");
+      expect(location.pathname).toEqual("/search");
       expect(location.search).toEqual("?q=bar");
     });
   });

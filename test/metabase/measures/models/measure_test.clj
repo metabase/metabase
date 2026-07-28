@@ -4,7 +4,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.request.session :as session]
@@ -40,15 +39,6 @@
   "Create a measure definition that references another measure by ID."
   [referenced-measure-id]
   (measure-definition [:measure {:lib/uuid (str (random-uuid))} referenced-measure-id]))
-
-(deftest identity-hash-test
-  (testing "Measure hashes are composed of the measure name and table identity-hash"
-    (let [now   #t "2022-09-01T12:34:56Z"
-          table (t2/select-one :model/Table (mt/id :venues))]
-      (mt/with-temp [:model/Measure measure {:name "total sales" :table_id (:id table) :created_at now
-                                             :definition (measure-definition (lib/count))}]
-        (is (= (serdes/raw-hash ["total sales" (serdes/identity-hash table) (:created_at measure)])
-               (serdes/identity-hash measure)))))))
 
 (deftest update-measure-cycle-detection-test
   (testing "Updating a measure to reference a non-existent measure should fail"

@@ -82,7 +82,7 @@ export const EntityNameLink = styled(Link)`
   display: inline;
   font-weight: 700;
   text-decoration: underline;
-  color: ${() => color("admin-navbar-inverse")};
+  color: ${() => color("navbar-admin-inverse")};
 `;
 
 export const HintIcon = styled(

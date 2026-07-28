@@ -4,6 +4,7 @@ import { getPluginAssetUrl } from "metabase/visualizations/custom-visualizations
 import { sdkCustomVizAssetManager } from "./initialize";
 
 const okResponse = () =>
+  // Unjustified type cast. FIXME
   ({
     ok: true,
     blob: async () => new Blob(["<svg/>"], { type: "image/svg+xml" }),

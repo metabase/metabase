@@ -35,16 +35,7 @@ const ChartSettingsWidgetList = ({
       return (
         <div key={`group-${groupIndex}`}>
           {group && (
-            <Badge
-              mb="lg"
-              ml="lg"
-              fz="0.75rem"
-              px="0.5rem"
-              tt="none"
-              radius="xs"
-              size="lg"
-              c="text-primary"
-            >
+            <Badge color="brand" mb="lg" ml="lg" size="sm" variant="light">
               {group}
             </Badge>
           )}

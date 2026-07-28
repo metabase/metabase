@@ -1,5 +1,5 @@
 import { useGetCardQuery } from "metabase/api";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { getName } from "metabase/utils/name";
 import type { CardId } from "metabase-types/api";
 

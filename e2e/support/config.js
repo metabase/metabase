@@ -26,6 +26,7 @@ import {
   startCustomVizDevServer,
   stopCustomVizDevServer,
 } from "./helpers/e2e-custom-viz-dev-server-tasks";
+import { buildDataApp } from "./helpers/e2e-data-app-tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
 import {
   startMockLlmServer,
@@ -33,15 +34,61 @@ import {
 } from "./helpers/e2e-mock-llm-tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
+const coverageTask = require("@cypress/code-coverage/task");
 const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
 const cypressSplit = require("cypress-split");
 
+const isInstrumented = process.env.INSTRUMENT_COVERAGE === "true";
+// The Cypress config process runs with cwd = this file's directory
+// (e2e/support), so @cypress/code-coverage writes .nyc_output/out.json here.
+// NYC_OUTPUT_FILE is anchored to __dirname to read from that same place;
+// COVERAGE_MANIFEST_RAW_DIR points at e2e/coverage-manifest-raw, which the
+// nightly workflow uploads.
+const COVERAGE_MANIFEST_RAW_DIR = path.resolve(
+  __dirname,
+  "../coverage-manifest-raw",
+);
+const NYC_OUTPUT_FILE = path.resolve(__dirname, ".nyc_output/out.json");
+
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 const isCI = !!process.env.CI;
 
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
+
+// Persists raw __coverage__ counters per spec. The manifest builder reads
+// these later, applies baseline subtraction, and maps surviving files to
+// modules. We delete .nyc_output/out.json between specs so each entry
+// reflects only that spec's execution — @cypress/code-coverage otherwise
+// accumulates.
+function writeSpecCoverageEntry(spec) {
+  if (!fs.existsSync(NYC_OUTPUT_FILE)) {
+    return;
+  }
+
+  const coverage = JSON.parse(fs.readFileSync(NYC_OUTPUT_FILE, "utf8"));
+
+  // The manifest builder only needs per-file function counters to compute the
+  // baseline greater-delta. Drop statement/branch maps and counters, and drop
+  // files where no function was invoked. Cuts each entry from ~25MB to <200KB.
+  const trimmed = {};
+  for (const [file, fc] of Object.entries(coverage)) {
+    if (!Object.values(fc.f || {}).some((c) => c > 0)) {
+      continue;
+    }
+    trimmed[file] = { f: fc.f };
+  }
+
+  fs.mkdirSync(COVERAGE_MANIFEST_RAW_DIR, { recursive: true });
+  const entryName = spec.relative.replace(/[\\/]/g, "__") + ".json";
+  fs.writeFileSync(
+    path.join(COVERAGE_MANIFEST_RAW_DIR, entryName),
+    JSON.stringify({ spec: spec.relative, coverage: trimmed }),
+  );
+
+  fs.unlinkSync(NYC_OUTPUT_FILE);
+}
 
 // docs say that tsconfig paths should handle aliases, but they don't
 const assetsResolverPlugin = {
@@ -73,6 +120,9 @@ const defaultConfig = {
     feHealthcheck: process.env["FE_HEALTHCHECK_URL"]
       ? { enabled: true, url: process.env["FE_HEALTHCHECK_URL"] }
       : undefined,
+    // Lets @cypress/code-coverage/support skip its hooks entirely on
+    // uninstrumented runs, instead of logging a warning on every spec.
+    coverage: isInstrumented,
   },
 
   allowCypressEnv: false,
@@ -166,6 +216,7 @@ const defaultConfig = {
       stopMockLlmServer,
       startCustomVizDevServer,
       stopCustomVizDevServer,
+      buildDataApp,
     });
 
     /********************************************************************
@@ -183,6 +234,10 @@ const defaultConfig = {
     if (isCI) {
       cypressSplit(on, config);
       collectFailingTests(on, config);
+    }
+
+    if (isInstrumented) {
+      coverageTask(on, config);
     }
 
     // Surface the resolved Cypress retry ceiling so the ci-conductor reporter
@@ -217,6 +272,19 @@ const defaultConfig = {
         if (results && results.video && results.stats.failures === 0) {
           // delete the video if the spec passed
           fs.unlinkSync(results.video);
+        }
+      }
+
+      if (isInstrumented) {
+        // Don't let a bad/partial coverage file abort the nightly shard - at
+        // worst we lose this spec's entry, not the whole run.
+        try {
+          writeSpecCoverageEntry(spec);
+        } catch (error) {
+          console.error(
+            "[coverage] failed to write spec entry (ignored)",
+            error,
+          );
         }
       }
     });

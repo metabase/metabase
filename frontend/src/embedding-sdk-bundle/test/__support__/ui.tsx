@@ -4,7 +4,7 @@ import _ from "underscore";
 import { getStore } from "__support__/entities-store";
 import { ComponentProviderInternal } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { sdkReducers } from "embedding-sdk-bundle/store";
-import type { SdkStore, SdkStoreState } from "embedding-sdk-bundle/store/types";
+import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
@@ -42,7 +42,7 @@ export function renderWithSDKProviders(
   initialState = _.pick(
     { sdk: createMockSdkState(), ...initialState },
     ...sdkReducerNames,
-  ) as SdkStoreState;
+  );
 
   // Enable the embedding_sdk premium feature and settings by default in SDK tests, unless explicitly disabled.
   // Without this, SDK components will not render due to missing token features and settings.
@@ -53,6 +53,7 @@ export function renderWithSDKProviders(
 
   const storeMiddleware = _.compact([Api.middleware]);
 
+  // Unjustified type cast. FIXME
   const store = getStore(
     sdkReducers,
     initialState,
@@ -66,6 +67,7 @@ export function renderWithSDKProviders(
 
   if (metabaseEmbeddingSdkBundleExports) {
     window.METABASE_EMBEDDING_SDK_BUNDLE =
+      // Unjustified type cast. FIXME
       metabaseEmbeddingSdkBundleExports as typeof window.METABASE_EMBEDDING_SDK_BUNDLE;
 
     ensureMetabaseProviderPropsStore().updateInternalProps({

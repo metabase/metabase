@@ -1,7 +1,7 @@
 import { useGetCollectionQuery } from "metabase/api";
 import { Breadcrumb } from "metabase/common/components/Breadcrumb";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { modelToUrl } from "metabase/urls/modelToUrl";
 import { getName } from "metabase/utils/name";

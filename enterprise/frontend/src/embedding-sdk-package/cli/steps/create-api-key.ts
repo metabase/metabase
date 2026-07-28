@@ -38,6 +38,7 @@ export const createApiKey: CliStepMethod = async (state) => {
     ];
   }
 
+  // Unjustified type cast. FIXME
   const { unmasked_key } = (await res.json()) as { unmasked_key: string };
 
   spinner.succeed();

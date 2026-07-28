@@ -12,7 +12,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest inspect-lens-not-found-test
-  (mt/with-premium-features #{:transforms-basic :transforms-python}
+  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
     (testing "GET /api/ee/transforms/:id/inspect/:lens-id returns 404 for a nonexistent lens"
       (mt/with-temp [:model/Transform {transform-id :id} {}]
         (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -24,7 +24,7 @@
 ;;; -------------------------------------------------- Inspector Query API --------------------------------------------------
 
 (deftest inspect-query-execute-test
-  (mt/with-premium-features #{:transforms-basic :transforms-python}
+  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (testing "POST /api/ee/transforms/:id/inspect/:lens-id/query executes a query with inspector context"
         (mt/with-temp [:model/Transform {transform-id :id} {}]
@@ -43,7 +43,7 @@
                   (is (= "transform-inspector" (:context result))))))))))))
 
 (deftest inspect-query-with-lens-params-test
-  (mt/with-premium-features #{:transforms-basic :transforms-python}
+  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (testing "POST /api/ee/transforms/:id/inspect/:lens-id/query passes lens_params through to query execution"
         (mt/with-temp [:model/Transform {transform-id :id} {}]
@@ -59,7 +59,7 @@
                 (is (= "transform-inspector" (:context result)))))))))))
 
 (deftest inspect-query-permissions-test
-  (mt/with-premium-features #{:transforms-basic :transforms-python}
+  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
     (testing "POST /api/ee/transforms/:id/inspect/:lens-id/query requires transforms permission"
       (mt/with-temp [:model/Transform {transform-id :id} {}]
         (let [mp (mt/metadata-provider)]
@@ -100,7 +100,7 @@
 ;; Each `testing` block uses a distinct (metric, labels) combo, so no `prometheus/clear!` is
 ;; needed to flush the metrics.
 (deftest inspect-metrics-test
-  (mt/with-premium-features #{:transforms-basic :transforms-python}
+  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
     (mt/with-prometheus-system! [_ system]
       (mt/with-temp [:model/Transform {transform-id :id} {}]
         (testing "Permission-denied failures do NOT bump inspector counters"

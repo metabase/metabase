@@ -25,6 +25,7 @@ export function SmartScalar({
   if (error || !trend) {
     throw new Error(
       `Failed to compute trend data for ${card.name}\: ${
+        // Unjustified type cast. FIXME
         (error as { message: string }).message
       }`,
     );

@@ -103,12 +103,14 @@ const schema = new Schema({
 });
 
 const buildEditor = (doc: ReturnType<Schema["node"]>) =>
+  // Unjustified type cast. FIXME
   ({ state: { doc } }) as unknown as Editor;
 
 const buildArgs = (
   editor: Editor | null,
   getPos: NodeViewProps["getPos"] | null,
 ) =>
+  // Unjustified type cast. FIXME
   ({ editor, getPos }) as unknown as Pick<NodeViewProps, "editor" | "getPos">;
 
 describe("isTopLevel", () => {
@@ -164,6 +166,7 @@ describe("isTopLevel", () => {
       false,
     );
     expect(
+      // Unjustified type cast. FIXME
       isTopLevel(buildArgs(buildEditor(doc), () => undefined as never)),
     ).toBe(false);
   });

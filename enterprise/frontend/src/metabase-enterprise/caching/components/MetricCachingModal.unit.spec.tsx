@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
@@ -11,6 +10,7 @@ import {
   selectCacheStrategy,
 } from "metabase/admin/performance/components/test-utils";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -43,13 +43,13 @@ function setup({ cardId = 19, cardName = "Number of Orders" }: SetupOpts = {}) {
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <MetricCachingModal
           cardId={cardId}
           cardName={cardName}
           onClose={onClose}
         />
-      )}
+      }
     />,
     { storeInitialState, withRouter: true, initialRoute: "/" },
   );

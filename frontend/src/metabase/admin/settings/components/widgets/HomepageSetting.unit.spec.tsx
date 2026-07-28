@@ -126,6 +126,7 @@ const setup = ({
 const findBulkPutBody = async () => {
   const requests = await findRequests("PUT");
   const bulk = requests.find(({ url }) => url.endsWith("/api/setting"));
+  // Unjustified type cast. FIXME
   return bulk?.body as Record<string, unknown> | undefined;
 };
 

@@ -13,6 +13,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.util :as driver.u]
+   [metabase.indexes.models.table-index :as table-index]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -103,7 +104,7 @@
 
 ;;; ------------------------------------------------- Scheduled Execution -------------------------------------------------
 
-(defn- duplicate-key-violation?
+(defn duplicate-key-violation?
   "Check if an exception is a duplicate key violation.
    Returns true for Postgres, MySQL/MariaDB, and H2 duplicate key errors."
   [e]
@@ -116,19 +117,22 @@
   "Start a transform run. Throws ex-info with {:error :already-running} if another
    run is already active (duplicate key violation). Other errors are rethrown.
    If `user-id` is provided, it will be stored with the run for attribution purposes.
-   If `job-run-id` is provided, it will be stored with the run to link it to its parent job run."
-  [id run-method user-id & {:keys [job-run-id]}]
-  (try
-    (transform-run/start-run! id (cond-> {:run_method run-method}
-                                   user-id    (assoc :user_id user-id)
-                                   job-run-id (assoc :job_run_id job-run-id)))
-    (catch Exception e
-      (if (duplicate-key-violation? e)
-        (throw (ex-info "Transform is already running"
-                        {:error        :already-running
-                         :transform-id id}
-                        e))
-        (throw e)))))
+   `parent-run`, when provided, links the run to its coordinating run as a `[type id]` tuple:
+   `[:job id]` is stored in `job_run_id`, `[:dag id]` in `dag_run_id`."
+  [id run-method user-id & {:keys [parent-run]}]
+  (let [[parent-type parent-id] parent-run]
+    (try
+      (transform-run/start-run! id (cond-> {:run_method run-method}
+                                     user-id                (assoc :user_id user-id)
+                                     (= parent-type :job)   (assoc :job_run_id parent-id)
+                                     (= parent-type :dag)   (assoc :dag_run_id parent-id)))
+      (catch Exception e
+        (if (duplicate-key-violation? e)
+          (throw (ex-info "Transform is already running"
+                          {:error        :already-running
+                           :transform-id id}
+                          e))
+          (throw e))))))
 
 (defn run-cancelable-transform!
   "Execute a transform with cancellation support and proper error handling.
@@ -147,6 +151,7 @@
       (try
         (let [source-range-params (transforms-base.u/get-source-range-params transform)
               full-incremental?   (transforms-base.u/full-incremental-run? transform)
+              full-create?        (transforms-base.u/full-create-run? transform)
               ;; Efficiency metrics (rows-available / rows-processed) are only meaningful when this run's
               ;; rows-affected count can be trusted. On drivers that declare
               ;; `:transforms/accurate-rows-affected` false, a full-rebuild (CTAS) run reports a bogus
@@ -172,8 +177,23 @@
                                 driver.settings/*query-timeout-ms*   transform-timeout-ms
                                 ;; Match the query timeout so a single slow socket read (or a driver that waits for
                                 ;; the full server-side query) does not get killed before the transform's own deadline.
-                                driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms* transform-timeout-ms)]
+                                driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms*
+                                                                          transform-timeout-ms)]
                         (run-transform! cancel-chan source-range-params)))]
+            (when full-create?
+              ;; Before the watermark/succeed mark, so a failure hits the catch below and fails the run (and a retry
+              ;; stays a full rebuild that re-attempts the index).
+              (let [running-indexes (table-index/mark-runnable-indexes-running!
+                                     (:index-request-ids (:target transform)))]
+                (try
+                  (transforms-base.u/apply-target-indexes! transform)
+                  (transforms-base.u/verify-managed-indexes! transform)
+                  (finally
+                    ;; Fail any request verification couldn't settle -- whether apply/verify threw or just left it
+                    ;; running. On a throw the exception still propagates to the run-level catch.
+                    (table-index/mark-unverified-running-indexes-failed!
+                     running-indexes
+                     "Index status could not be verified after the transform completed.")))))
             (transforms-base.u/save-watermark! (:id transform) source-range-params)
             (transform-run/succeed-started-run! run-id)
             ;; Narrow try/catch so an emission throw doesn't trigger the outer catch's

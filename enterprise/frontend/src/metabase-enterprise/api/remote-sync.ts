@@ -172,6 +172,7 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useGetRemoteSyncChangesQuery,
+  useLazyGetRemoteSyncChangesQuery,
   useGetRemoteSyncHasChangesQuery,
   useGetHasRemoteChangesQuery,
   useUpdateRemoteSyncSettingsMutation,

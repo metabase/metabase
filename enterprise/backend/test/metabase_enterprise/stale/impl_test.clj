@@ -386,6 +386,30 @@
                :sort-column    :name
                :sort-direction :asc}))))))
 
+(deftest models-arg-selects-which-models-are-searched
+  (with-stale-items [:model/Card {card-id :id} {:name "A card" :collection_id nil}
+                     :model/Dashboard {dash-id :id} {:name "B dash" :collection_id nil}]
+    (let [base {:collection-ids #{nil}
+                :cutoff-date    (date-months-ago 6)
+                :limit          10
+                :offset         0
+                :sort-column    :name
+                :sort-direction :asc}
+          rows #(:rows (stale/find-candidates %))]
+      (testing "default (no :models) searches Card + Dashboard"
+        (is (= [{:id card-id :model :model/Card}
+                {:id dash-id :model :model/Dashboard}]
+               (rows base))))
+      (testing "explicit :models restricts the search to the given models"
+        (is (= [{:id card-id :model :model/Card}]
+               (rows (assoc base :models #{:model/Card}))))
+        (is (= [{:id dash-id :model :model/Dashboard}]
+               (rows (assoc base :models #{:model/Dashboard})))))
+      (testing "a model with no registered staleness method fails loud (no silent drop)"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"No staleness method registered for"
+                              (rows (assoc base :models #{:model/Card :model/Collection}))))))))
+
 (deftest things-that-are-already-archived-do-not-appear
   (mt/with-temp [:model/Collection {col-id :id} {}
                  :model/Dashboard _ (stale-dashboard {:name          "A"

@@ -3,6 +3,7 @@ import { msgid, ngettext, t } from "ttag";
 import { useGetFieldValuesQuery } from "metabase/api";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import { Flex, Loader } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
@@ -11,7 +12,6 @@ import {
   Fade,
   FadeAndSlide,
   Li,
-  LoadingSpinner,
   NoWrap,
   RelativeContainer,
 } from "./GlobalFingerprint.styled";
@@ -115,7 +115,9 @@ function ShortenedFieldValuesList({
   return (
     <RelativeContainer height={isLoading ? "1.8em" : "1.5em"}>
       <Fade visible={isLoading}>
-        <LoadingSpinner />
+        <Flex justify="center">
+          <Loader size={18} color="core-brand" />
+        </Flex>
       </Fade>
       <FadeAndSlide visible={!isLoading}>
         <NoWrap>{shortenedValuesStr}</NoWrap>

@@ -438,6 +438,7 @@ export const NativeQueryModal = ({
             >
               <DataReference
                 dataReferenceStack={dataReferenceStack}
+                databaseId={modifiedQuestion.databaseId() ?? undefined}
                 onClose={() => setIsShowingDataReference(false)}
                 popDataReferenceStack={() => {
                   if (dataReferenceStack.length === 1) {

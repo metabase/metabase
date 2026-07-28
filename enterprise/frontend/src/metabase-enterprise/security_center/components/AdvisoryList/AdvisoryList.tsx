@@ -70,9 +70,7 @@ export function AdvisoryList({
       {affecting.length > 0 && (
         <Box>
           <Group gap="sm" mb="md" align="center">
-            <Badge size="sm" className={S.countBadge}>
-              {affecting.length}
-            </Badge>
+            <Badge size="sm">{affecting.length}</Badge>
             <Title order={4}>{t`Issues impacting your instance`}</Title>
           </Group>
           <AdvisorySection

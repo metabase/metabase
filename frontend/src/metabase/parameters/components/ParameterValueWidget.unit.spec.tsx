@@ -16,7 +16,7 @@ function setup({ parameter }: { parameter?: Partial<UiParameter> } = {}) {
     }),
     fields: [],
     ...parameter,
-  } as UiParameter;
+  };
 
   const setValue = jest.fn();
 

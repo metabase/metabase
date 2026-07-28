@@ -79,7 +79,7 @@ export function formatParameterValue(
       // which parameter the value is associated with, so we take
       // the first field for remapping
       const remap = Field.remappedField(fields) != null;
-      return formatValue(value as string, {
+      return formatValue(value, {
         column: firstField,
         maximumFractionDigits: 20,
         remap,

@@ -54,19 +54,19 @@ export const DataPermissionsHelp = () => {
             <Stack gap="1rem" py="1rem">
               <PermissionHelpDescription
                 icon="eye"
-                iconColor="success"
+                iconColor="feedback-positive"
                 name={t`Can view`}
                 description={t`The group can view all data for that database.`}
               />
               <PermissionHelpDescription
                 icon="permissions_limited"
-                iconColor="warning"
+                iconColor="feedback-warning"
                 name={t`Granular`}
                 description={t`The group can view select schemas and tables. Can be combined with user attributes to enable row and column security to control what data each person can view.`}
               />
               <PermissionHelpDescription
                 icon="database"
-                iconColor="warning"
+                iconColor="feedback-warning"
                 name={t`Impersonated (Pro)`}
                 description={t`The group can view data based on the database role you specify with a user attribute (manually or via SSO).`}
               />
@@ -80,7 +80,7 @@ export const DataPermissionsHelp = () => {
               )}
               <PermissionHelpDescription
                 icon="close"
-                iconColor="danger"
+                iconColor="feedback-negative"
                 name={t`Blocked (Pro)`}
                 description={t`The group cannot view any data from the data source, even if they have collection access to view questions or dashboards that draw from that data.`}
               />
@@ -97,7 +97,7 @@ export const DataPermissionsHelp = () => {
             <Stack gap="1rem" py="1rem">
               <PermissionHelpDescription
                 icon="check"
-                iconColor="success"
+                iconColor="feedback-positive"
                 name={t`Can view`}
                 description={t`The group can view all data for that schema or table.`}
               />
@@ -117,7 +117,7 @@ export const DataPermissionsHelp = () => {
               />
               <PermissionHelpDescription
                 icon="close"
-                iconColor="danger"
+                iconColor="feedback-negative"
                 name={t`Blocked (Pro)`}
                 description={
                   <>
@@ -152,26 +152,26 @@ export const DataPermissionsHelp = () => {
             <Stack gap="1rem" py="1rem">
               <PermissionHelpDescription
                 icon="check"
-                iconColor="success"
+                iconColor="feedback-positive"
                 name={t`Query builder and native`}
                 description={t`The group can use both the query builder and the native code editor to create questions and models.`}
               />
               <PermissionHelpDescription
                 icon="permissions_limited"
-                iconColor="warning"
+                iconColor="feedback-warning"
                 name={t`Query builder only`}
                 description={t`The group can use the query builder to create questions and models.`}
               />
               <PermissionHelpDescription
                 icon="permissions_limited"
-                iconColor="warning"
+                iconColor="feedback-warning"
                 name={t`Granular`}
                 description={t`The group can use the query builder to create questions and models for select schemas and tables.`}
               />
 
               <PermissionHelpDescription
                 icon="close"
-                iconColor="danger"
+                iconColor="feedback-negative"
                 name={t`No`}
                 description={t`The group cannot create or edit questions, including drill-through.`}
               />

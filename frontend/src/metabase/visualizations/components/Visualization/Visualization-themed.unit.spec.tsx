@@ -2,7 +2,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { getColorShades } from "metabase/ui/utils/colors";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Series } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -14,6 +14,7 @@ describe("Themed Visualization", () => {
   it("inherits the chart label color from the theme", async () => {
     const TEST_COLOR = "rgb(44, 55, 66)";
 
+    // Unjustified type cast. FIXME
     const series = [
       {
         card: createMockCard({ name: "Card", display: "bar" }),

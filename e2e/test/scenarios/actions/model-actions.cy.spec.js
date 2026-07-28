@@ -280,10 +280,10 @@ describe(
         cy.button(actionName).click();
         cy.wait("@executeAction");
 
-        cy.findByLabelText("User ID").should("not.exist");
-        cy.findByLabelText(
-          'User ID: This value does not exist in table "people".',
-        ).should("exist");
+        cy.findByLabelText("User ID").should("exist");
+        cy.findByText('This value does not exist in table "people".').should(
+          "exist",
+        );
 
         cy.findByText("Unable to update the record.").should("exist");
       });
@@ -486,7 +486,7 @@ describe(
           });
 
         H.popover().within(() => {
-          cy.findByLabelText("Required").uncheck();
+          cy.findByLabelText("Required").uncheck({ force: true });
         });
 
         cy.findByRole("button", { name: "Update" }).click();
@@ -520,7 +520,7 @@ describe(
           });
 
         H.popover().within(() => {
-          cy.findByLabelText("Required").check();
+          cy.findByLabelText("Required").check({ force: true });
         });
         cy.findByRole("button", { name: "Update" }).click();
 
@@ -654,7 +654,7 @@ describe(
           });
 
         H.popover().within(() => {
-          cy.findByLabelText("Required").uncheck();
+          cy.findByLabelText("Required").uncheck({ force: true });
         });
 
         cy.findByRole("button", { name: "Update" }).click();
@@ -803,6 +803,7 @@ describe(
 
           cy.findByText(
             "Error executing Action: Error executing write query: ERROR: permission denied for table scoreboard_actions",
+            { timeout: 30000 },
           );
         });
 

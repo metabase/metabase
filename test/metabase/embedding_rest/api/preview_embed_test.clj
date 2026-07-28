@@ -571,6 +571,19 @@
                       :has_more_values false}
                      (mt/user-http-request :rasta :get 200 url))))))))))
 
+(deftest preview-locked-linked-chain-filter-values-test
+  (testing "GET /api/preview_embed/dashboard/:token/params/:key/values constrains a linked enabled param by a locked param (#41635)"
+    (with-embedding-enabled-and-new-secret-key!
+      (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
+        (let [signed-token (dash-token dashboard {:_embedding_params {:category_id "enabled"
+                                                                      :category_name "enabled"
+                                                                      :price         "locked"}
+                                                  :params            {:price 4}})
+              url           (format "preview_embed/dashboard/%s/params/%s/values" signed-token "_CATEGORY_ID_")]
+          (is (= {:values          [[40 "Japanese"] [67 "Steakhouse"]]
+                  :has_more_values false}
+                 (mt/user-http-request :crowberto :get 200 url))))))))
+
 (deftest dashboard-params-search-test
   (testing "GET /api/preview_embed/dashboard/:token/params/:param-key/search/:prefix"
     (with-embedding-enabled-and-new-secret-key!

@@ -27,7 +27,7 @@ function getInvalidateRequestUrl(): URL {
   const invalidateCall = calls.find((call) =>
     call.url?.includes("/api/cache/invalidate"),
   );
-  return new URL(invalidateCall!.url!);
+  return new URL(invalidateCall!.url);
 }
 
 describe("useInvalidateTarget", () => {

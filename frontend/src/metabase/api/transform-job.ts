@@ -82,9 +82,10 @@ export const transformJobApi = Api.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [
           idTag("transform-job", id),
+          listTag("transform-job"),
+          listTag("transform-run"),
           tag("transform"),
           tag("table"),
-          listTag("table-remapping"),
         ]),
       onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
         const patchResult = dispatch(

@@ -51,6 +51,7 @@ export function MetabotIconField() {
     }
     const reader = new FileReader();
     reader.onload = async (readerEvent) => {
+      // Unjustified type cast. FIXME
       const dataUri = readerEvent.target?.result as string;
       if (!(await isFileIntact(dataUri))) {
         setIconError(
@@ -87,7 +88,7 @@ export function MetabotIconField() {
         {t`Upload a custom icon for the AI agent. For best results, use an SVG or PNG with a transparent background.`}
       </Text>
       {iconError && (
-        <Text fz="sm" c="error" mt="xs">
+        <Text fz="sm" c="feedback-negative" mt="xs">
           {iconError}
         </Text>
       )}

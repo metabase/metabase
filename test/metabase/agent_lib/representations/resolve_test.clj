@@ -15,10 +15,15 @@
   covered by `metabase.agent-lib.representations-test`; this suite focuses on resolution."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [clojure.walk :as walk]
    [metabase.agent-lib.representations :as repr]
+   [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -27,17 +32,26 @@
 ;;; Fixture metadata provider
 ;;; ============================================================
 
+(def ^:private mock-metadata
+  "Base warehouse shape shared by the fixture providers. Fixtures needing extra content
+  (cards, measures) `assoc` onto this and build their own flat provider — deliberately NOT
+  the 2-arity composing form of [[lib.tu/mock-metadata-provider]]: a composed provider
+  satisfies `cached-metadata-provider?`, which makes the resolver treat the application DB
+  as authoritative for table lookups. With this fixture's `db-id 1`, that resolves ORDERS
+  against whatever real database happens to have id 1 in the test-run's app DB instead of
+  the mock."
+  {:database {:id 1 :name "Sample" :dbms-version {:flavor "PostgreSQL"} :engine :postgres}
+   :tables   [{:id 10 :name "ORDERS"   :schema "PUBLIC" :db-id 1}
+              {:id 11 :name "PRODUCTS" :schema "PUBLIC" :db-id 1}]
+   :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+              {:id 101 :name "TOTAL"      :table-id 10 :base-type :type/Float}
+              {:id 102 :name "CREATED_AT" :table-id 10 :base-type :type/DateTime}
+              {:id 103 :name "PRODUCT_ID" :table-id 10 :base-type :type/Integer}
+              {:id 110 :name "ID"         :table-id 11 :base-type :type/Integer}
+              {:id 111 :name "CATEGORY"   :table-id 11 :base-type :type/Text}]})
+
 (def ^:private mp
-  (lib.tu/mock-metadata-provider
-   {:database {:id 1 :name "Sample" :dbms-version {:flavor "PostgreSQL"} :engine :postgres}
-    :tables   [{:id 10 :name "ORDERS"   :schema "PUBLIC" :db-id 1}
-               {:id 11 :name "PRODUCTS" :schema "PUBLIC" :db-id 1}]
-    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
-               {:id 101 :name "TOTAL"      :table-id 10 :base-type :type/Float}
-               {:id 102 :name "CREATED_AT" :table-id 10 :base-type :type/DateTime}
-               {:id 103 :name "PRODUCT_ID" :table-id 10 :base-type :type/Integer}
-               {:id 110 :name "ID"         :table-id 11 :base-type :type/Integer}
-               {:id 111 :name "CATEGORY"   :table-id 11 :base-type :type/Text}]}))
+  (lib.tu/mock-metadata-provider mock-metadata))
 
 (defn- schema-valid? [query]
   (nil? (mr/explain ::lib.schema/query query)))
@@ -132,6 +146,44 @@
       (is (= 50 (:limit st0))))
     (testing "query passes lib.schema/query"
       (is (schema-valid? q)))))
+
+;;; ============================================================
+;;; :absolute-datetime literal validation (fail-fast for the agent)
+;;; ============================================================
+
+(defn- resolve-absolute-datetime
+  "Resolve a query whose only filter is `[= CREATED_AT [absolute-datetime <literal> <unit>]]` and
+  return the (still-string) literal at position 2 of the resolved `:absolute-datetime` clause."
+  [literal unit]
+  (let [parsed {"lib/type" "mbql/query"
+                "database" "Sample"
+                "stages"   [{"lib/type"     "mbql.stage/mbql"
+                             "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                             "filters"      [["=" {}
+                                              ["field" {"temporal-unit" "month"}
+                                               ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+                                              ["absolute-datetime" {} literal unit]]]}]}
+        q      (repr.resolve/resolve-query mp parsed)]
+    (nth (get-in q [:stages 0 :filters 0 3]) 2)))
+
+(deftest validate-absolute-datetime-literals-accepts-all-formats-test
+  (testing "every valid :absolute-datetime string shape passes validation and is left as a string"
+    (doseq [[literal unit] [["2024-01-15"                "day"]
+                            ["2024-01-15T10:30:00"       "default"]
+                            ["2024-01-15T10:30:00+02:00" "default"]
+                            ["2024"                      "year"]
+                            ["2024-03"                   "month"]]]
+      (testing (str literal " / " unit)
+        ;; validation does not coerce — the string survives for the QP to parse at execution time
+        (is (= literal (resolve-absolute-datetime literal unit)))))))
+
+(deftest validate-absolute-datetime-literals-rejects-invalid-test
+  (testing "a structurally-ISO but out-of-range literal fails fast with an agent-facing error"
+    (let [ex (try (resolve-absolute-datetime "2024-13-45" "day") nil
+                  (catch clojure.lang.ExceptionInfo e e))]
+      (is (some? ex))
+      (is (re-find #"Invalid temporal literal" (ex-message ex)))
+      (is (true? (:agent-error? (ex-data ex)))))))
 
 ;;; ============================================================
 ;;; fields (projection)
@@ -344,6 +396,157 @@
       ;; the Float from the provider.
       (is (= :type/Float (:base-type opts))
           "inner field clause still gets provider type when it has none"))))
+
+;;; ============================================================
+;;; annotate-metric-and-measure-ref-types — effective-type stamping
+;;; ============================================================
+
+(def ^:private metric-entity-id "MetricRevenue_0000001")
+
+(def ^:private measure-entity-id "MeasureRevenue_000001")
+
+(def ^:private datetime-metric-entity-id "MetricLatest_00000001")
+
+(def ^:private revenue-definition
+  "A `sum(TOTAL)` definition query, shared by the fixture metric card and measure."
+  (-> (lib/query mp (lib.metadata/table mp 10))
+      (lib/aggregate (lib/sum (lib.metadata/field mp 101)))))
+
+(def ^:private mp-with-metric
+  "The base fixture warehouse plus a metric card and a measure, both summing ORDERS.TOTAL.
+  A flat provider (see [[mock-metadata]] for why not the composing form)."
+  (lib.tu/mock-metadata-provider
+   (assoc mock-metadata
+          :cards    [{:id            900
+                      :name          "Revenue"
+                      :database-id   1
+                      :table-id      10
+                      :type          :metric
+                      :entity-id     metric-entity-id
+                      :dataset-query revenue-definition}
+                     {:id            901
+                      :name          "No Aggregation"
+                      :database-id   1
+                      :table-id      10
+                      :type          :metric
+                      :dataset-query (lib/query mp (lib.metadata/table mp 10))}
+                     {:id            902
+                      :name          "Latest Order"
+                      :database-id   1
+                      :table-id      10
+                      :type          :metric
+                      :entity-id     datetime-metric-entity-id
+                      :dataset-query (-> (lib/query mp (lib.metadata/table mp 10))
+                                         (lib/aggregate (lib/max (lib.metadata/field mp 102))))}]
+          :measures [{:lib/type   :metadata/measure
+                      :id         77
+                      :name       "Revenue measure"
+                      :table-id   10
+                      :definition revenue-definition}])))
+
+(def ^:private metric-content-store
+  (reify resolve.mp/ContentStore
+    (card-by-entity-id    [_ eid] (get {metric-entity-id          {:id 900 :database_id 1}
+                                        datetime-metric-entity-id {:id 902 :database_id 1}}
+                                       eid))
+    (measure-by-entity-id [_ eid] (when (= eid measure-entity-id) {:id 77 :table_id 10}))
+    (segment-by-entity-id [_ _] nil)
+    (measure-by-id        [_ _] nil)
+    (segment-by-id        [_ _] nil)))
+
+(defn- collect-clauses [q tag]
+  (let [acc (volatile! [])]
+    (walk/postwalk (fn [x]
+                     (when (and (vector? x) (= tag (nth x 0 nil)) (map? (nth x 1 nil)))
+                       (vswap! acc conj x))
+                     x)
+                   (:stages q))
+    @acc))
+
+(defn- yoy-growth-parsed
+  "Portable query computing `(agg - offset(agg, -12)) / offset(agg, -12)` by month, where
+  `agg` is a `[\"metric\" ...]` or `[\"measure\" ...]` ref — the notebook shape for
+  year-over-year growth of a saved metric/measure."
+  [agg-ref]
+  (let [off ["offset" {} agg-ref -12]]
+    {"lib/type" "mbql/query"
+     "database" "Sample"
+     "stages"   [{"lib/type"     "mbql.stage/mbql"
+                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                  "aggregation"  [agg-ref
+                                  off
+                                  ["/" {} ["-" {} agg-ref off] off]]
+                  "breakout"     [["field" {"temporal-unit" "month"}
+                                   ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]]}]}))
+
+(deftest metric-refs-carry-effective-type-test
+  (testing "resolved :metric refs are stamped with :effective-type from the metric's definition"
+    (let [parsed (yoy-growth-parsed ["metric" {} metric-entity-id])
+          q      (repr.resolve/resolve-query mp-with-metric parsed metric-content-store)
+          refs   (collect-clauses q :metric)]
+      (is (= 5 (count refs)))
+      (is (every? #(= :type/Float (:effective-type (nth % 1))) refs))
+      (testing "so metric + offset growth arithmetic passes the expression-editor gate"
+        (is (= q (repr.repair/assert-editor-accepts-expressions! q))))
+      (testing "and the query is still schema-valid"
+        (is (schema-valid? q))))))
+
+(deftest measure-refs-carry-effective-type-test
+  (testing "resolved :measure refs are stamped with :effective-type from the measure's definition"
+    (let [parsed (yoy-growth-parsed ["measure" {} measure-entity-id])
+          q      (repr.resolve/resolve-query mp-with-metric parsed metric-content-store)
+          refs   (collect-clauses q :measure)]
+      (is (= 5 (count refs)))
+      (is (every? #(= :type/Float (:effective-type (nth % 1))) refs))
+      (testing "so measure + offset growth arithmetic passes the expression-editor gate"
+        (is (= q (repr.repair/assert-editor-accepts-expressions! q))))
+      (testing "and the query is still schema-valid"
+        (is (schema-valid? q))))))
+
+(deftest non-numeric-metric-arithmetic-rejected-test
+  (testing "stamping uses the metric's real type: a datetime metric (max of a datetime field)
+            in numeric arithmetic is stamped :type/DateTime and rejected by the expression-editor
+            gate, just as the FE editor rejects it for FE-authored typed refs"
+    (let [parsed {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "aggregation"  [["/" {}
+                                                ["metric" {} datetime-metric-entity-id]
+                                                100]]}]}
+          q      (repr.resolve/resolve-query mp-with-metric parsed metric-content-store)
+          refs   (collect-clauses q :metric)]
+      (is (= 1 (count refs)))
+      (is (= :type/DateTime (:effective-type (nth (first refs) 1))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"/ expects a number"
+                            (repr.repair/assert-editor-accepts-expressions! q))))))
+
+(deftest annotate-metric-ref-types-leaves-hard-cases-untouched-test
+  (let [agg-query (fn [agg]
+                    {:lib/type     :mbql/query
+                     :lib/metadata mp-with-metric
+                     :database     1
+                     :stages       [{:lib/type     :mbql.stage/mbql
+                                     :source-table 10
+                                     :aggregation  [agg]}]})]
+    (testing "a metric id unknown to the metadata provider is left untouched"
+      (let [q (agg-query [:metric {:lib/uuid (str (random-uuid))} 424242])]
+        (is (= q (#'repr.resolve/annotate-metric-and-measure-ref-types q)))))
+    (testing "a metric whose definition has no aggregation (`lib/type-of` falls back to :type/*)
+              is not stamped, so flat arithmetic over the ref keeps passing the gate via the
+              untyped-ref-to-number coercion — the FE's `ref-method :metadata/metric` skips
+              stamping there too"
+      (let [q  (agg-query [:/ {:lib/uuid (str (random-uuid))}
+                           [:metric {:lib/uuid (str (random-uuid))} 901]
+                           100])
+            q' (#'repr.resolve/annotate-metric-and-measure-ref-types q)]
+        (is (= q q'))
+        (is (= q' (repr.repair/assert-editor-accepts-expressions! q')))))
+    (testing "a ref that already carries :effective-type keeps its authored value"
+      (let [q (agg-query [:metric {:lib/uuid       (str (random-uuid))
+                                   :effective-type :type/Integer} 900])]
+        (is (= q (#'repr.resolve/annotate-metric-and-measure-ref-types q)))))))
 
 ;;; ============================================================
 ;;; try-export-query: structured + native + nil/error fallback

@@ -186,7 +186,9 @@ export const addDataSource = createAsyncThunk(
         fetchCardQuery({ cardId: sourceId }),
       );
 
+      // Unjustified type cast. FIXME
       const card = cardAction.payload as Card;
+      // Unjustified type cast. FIXME
       dataset = cardQueryAction.payload as Dataset;
       vizSettings = card.visualization_settings || null;
 
@@ -389,7 +391,6 @@ const visualizerSlice = createSlice({
         addColumnToFunnel(
           state,
           settings,
-          state.datasets as Record<string, Dataset>,
           column,
           columnRef,
           // Prevents "Type instantiation is excessively deep" error
@@ -403,8 +404,6 @@ const visualizerSlice = createSlice({
         addColumnToCartesianChart(
           state,
           settings,
-          state.datasets as Record<string, Dataset>,
-          dataset.data.cols,
           column,
           columnRef,
           dataSource,
@@ -419,12 +418,14 @@ const visualizerSlice = createSlice({
             state,
             columnRef,
             originalColumn,
+            // Unjustified type cast. FIXME
             dataset as Dataset,
             dataSource,
           );
         }
 
         if (isDimension && column.id) {
+          // Unjustified type cast. FIXME
           const datasetMap = _.omit(state.datasets, dataSource.id) as Record<
             string,
             Dataset
@@ -609,8 +610,10 @@ const visualizerSlice = createSlice({
 
         // `any` prevents the "Type instantiation is excessively deep" error
         if (index !== -1) {
+          // Unjustified type cast. FIXME
           state.cards[index] = card as any;
         } else {
+          // Unjustified type cast. FIXME
           state.cards.push(card as any);
         }
 
@@ -711,7 +714,13 @@ export const reducer = undoable(visualizerSlice.reducer, {
       addDataSource.fulfilled.type,
     ]),
     (action, nextState, { present }) => {
-      if (action.payload.forget === true) {
+      const payload = action.payload;
+      if (
+        payload != null &&
+        typeof payload === "object" &&
+        "forget" in payload &&
+        payload.forget === true
+      ) {
         return false;
       }
       if (action.type !== _handleDrop.type) {

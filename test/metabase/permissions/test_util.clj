@@ -52,13 +52,15 @@
       ;; TODO -- should this disabled the cache [[data-perms/*use-perms-cache?*]] ??
       (thunk)
       (finally
-        (let [existing-db-ids    (t2/select-pks-set :model/Database)
-              existing-table-ids (t2/select-pks-set :model/Table)
-              still-valid-perms  (filter
-                                  (fn [p] (and (contains? existing-db-ids (:db_id p))
-                                               (or (nil? (:table_id p))
-                                                   (contains? existing-table-ids (:table_id p)))))
-                                  original-perms)]
+        (let [existing-db-ids     (t2/select-pks-set :model/Database)
+              existing-table-ids  (t2/select-pks-set :model/Table)
+              destination-db-ids  (t2/select-pks-set :model/Database :router_database_id [:not= nil])
+              still-valid-perms   (filter
+                                   (fn [p] (and (contains? existing-db-ids (:db_id p))
+                                                (not (contains? destination-db-ids (:db_id p)))
+                                                (or (nil? (:table_id p))
+                                                    (contains? existing-table-ids (:table_id p)))))
+                                   original-perms)]
           (t2/delete! :model/DataPermissions {:where select-condition})
           (t2/insert! :model/DataPermissions still-valid-perms))))))
 
@@ -84,8 +86,9 @@
   ;; force creation of test-data if it is not already created
   (data/db)
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
+    ;; Skip destination databases: they must never carry data_permissions rows (reached only via routing).
     (doseq [[perm-type _] permissions.schema/data-permissions
-            db-id         (t2/select-pks-set :model/Database)]
+            db-id         (t2/select-pks-set :model/Database :router_database_id nil)]
       (data-perms/set-database-permission! (perms-group/all-users)
                                            db-id
                                            perm-type
@@ -105,8 +108,9 @@
   ;; make sure app DB is set up and test users are created
   (initialize/initialize-if-needed! :db :test-users)
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
+    ;; Skip destination databases: they must never carry data_permissions rows (reached only via routing).
     (doseq [[perm-type _] permissions.schema/data-permissions
-            db-id         (t2/select-pks-set :model/Database)]
+            db-id         (t2/select-pks-set :model/Database :router_database_id nil)]
       (data-perms/set-database-permission! (perms-group/all-users)
                                            db-id
                                            perm-type

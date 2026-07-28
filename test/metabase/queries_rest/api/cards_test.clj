@@ -34,6 +34,17 @@
                (->> (mt/user-http-request :rasta :post 200 "cards/dashboards" {:card_ids [card-id]})
                     (map #(update % :dashboards set)))))))))
 
+(deftest ^:parallel dashboards-for-cards-includes-series-only-test
+  (testing "POST /api/cards/dashboards reports a dashboard where the card appears only as a dashcard series"
+    (mt/with-temp [:model/Card series-card {}
+                   :model/Card primary-card {}
+                   :model/Dashboard {dash-id :id dash-name :name} {}
+                   :model/DashboardCard dc {:card_id (:id primary-card) :dashboard_id dash-id}
+                   :model/DashboardCardSeries _ {:dashboardcard_id (:id dc) :card_id (:id series-card) :position 0}]
+      (is (= [{:card_id (:id series-card)
+               :dashboards [{:id dash-id :name dash-name}]}]
+             (mt/user-http-request :rasta :post 200 "cards/dashboards" {:card_ids [(:id series-card)]}))))))
+
 (deftest ^:parallel bulk-move-endpoint-works
   (testing "a simple move"
     (mt/with-temp [:model/Card {card-id :id} {}

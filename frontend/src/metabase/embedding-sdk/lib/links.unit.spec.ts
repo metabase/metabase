@@ -1,3 +1,5 @@
+import type { VisualizationSettings } from "metabase-types/api";
+
 import { removeInternalClickBehaviors } from "./links";
 
 describe("removeInternalClickBehaviors", () => {
@@ -53,5 +55,28 @@ describe("removeInternalClickBehaviors", () => {
         "type": "link",
       }
     `);
+  });
+
+  it("does not crash on undefined column settings entries (EMB-1940)", () => {
+    // Unjustified type cast. FIXME
+    const settings = {
+      column_settings: {
+        // columns without stored settings can end up as `undefined` entries
+        '["name","TOTAL"]': undefined,
+        '["name","SUBTOTAL"]': {
+          click_behavior: {
+            type: "link",
+            linkType: "dashboard",
+            targetId: 1,
+          },
+        },
+      },
+    } as unknown as VisualizationSettings;
+
+    const result = removeInternalClickBehaviors(settings);
+
+    expect(
+      result.column_settings?.['["name","SUBTOTAL"]'].click_behavior,
+    ).toBeUndefined();
   });
 });

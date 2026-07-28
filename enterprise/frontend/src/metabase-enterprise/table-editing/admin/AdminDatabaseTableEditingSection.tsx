@@ -7,10 +7,9 @@ import {
   Label,
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
-import { Toggle } from "metabase/common/components/Toggle";
 import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { ALLOWED_ENGINES_FOR_TABLE_EDITING } from "metabase/databases/constants";
-import { Alert, Box, Flex, Icon } from "metabase/ui";
+import { Alert, Box, Flex, Icon, Switch } from "metabase/ui";
 import { getResponseErrorMessage } from "metabase/utils/errors";
 import type {
   Database,
@@ -105,10 +104,10 @@ export function AdminDatabaseTableEditingSection({
     >
       <Flex align="center" justify="space-between" mb="xs">
         <Label htmlFor="table-editing-toggle">{t`Editable tables`}</Label>
-        <Toggle
+        <Switch
           id="table-editing-toggle"
-          value={isEnabled}
-          onChange={handleToggle}
+          checked={isEnabled}
+          onChange={(e) => handleToggle(e.currentTarget.checked)}
           disabled={isSettingDisabled || (!isEnabled && databaseHasRouting)}
         />
       </Flex>
@@ -121,7 +120,12 @@ export function AdminDatabaseTableEditingSection({
       </Box>
 
       {databaseHasRouting && (
-        <Alert variant="light" color="info" icon={<Icon name="info" />} mb="md">
+        <Alert
+          size="compact"
+          variant="light"
+          icon={<Icon name="info" />}
+          mb="md"
+        >
           {t`Table editing can't be enabled when database routing is enabled.`}
         </Alert>
       )}

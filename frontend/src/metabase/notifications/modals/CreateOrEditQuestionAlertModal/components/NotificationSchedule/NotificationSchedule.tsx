@@ -62,6 +62,7 @@ export const NotificationSchedule = ({
       schedule: ScheduleSettings,
       cronExpression: string,
     ) {
+      // Unjustified type cast. FIXME
       if (PERIODIC_SCHEDULE_TYPES.includes(schedule.schedule_type as string)) {
         return null;
       }

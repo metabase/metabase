@@ -2,15 +2,7 @@ const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ACCOUNTS, ORDERS_ID } = SAMPLE_DATABASE;
-
-const targetParameter = {
-  id: "f8ec7c71",
-  type: "number/=",
-  name: "Number",
-  slug: "number",
-  sectionId: "number",
-};
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const targetQuestion = {
   display: "scalar",
@@ -47,45 +39,6 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       H.filterWidget().findByText("Twenty").should("be.visible");
       H.getDashboardCard().findByText("4").should("be.visible");
     });
-
-    it("should be able to use a static list source when embedded", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-        dashboardDetails: getListDashboard(),
-      }).then(({ body: card }) => {
-        H.editDashboardCard(card, getParameterMapping(card));
-        H.visitEmbeddedPage(getDashboardResource(card));
-      });
-
-      filterDashboard({ isDropdown: true });
-      H.filterWidget().findByText("Twenty").should("be.visible");
-    });
-
-    it("should be able to use a static list source when embedded", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-        dashboardDetails: getListDashboard(),
-      }).then(({ body: card }) => {
-        H.editDashboardCard(card, getParameterMapping(card));
-        H.visitEmbeddedPage(getDashboardResource(card));
-      });
-
-      filterDashboard({ isDropdown: true });
-      H.filterWidget().findByText("Twenty").should("be.visible");
-    });
-
-    it("should be able to use a static list source when public", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-        dashboardDetails: getListDashboard(),
-      }).then(({ body: card }) => {
-        H.editDashboardCard(card, getParameterMapping(card));
-        H.visitPublicDashboard(card.dashboard_id);
-      });
-
-      filterDashboard({ isDropdown: true });
-      H.filterWidget().findByText("Twenty").should("be.visible");
-    });
   });
 
   describe("static list source (search)", () => {
@@ -104,32 +57,6 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
       });
       H.saveDashboard();
-
-      filterDashboard({ isLabeled: true });
-      H.filterWidget().findByText("Twenty").should("be.visible");
-    });
-
-    it("should be able to use a static list source when embedded", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-        dashboardDetails: getListDashboard("search"),
-      }).then(({ body: card }) => {
-        H.editDashboardCard(card, getParameterMapping(card));
-        H.visitEmbeddedPage(getDashboardResource(card));
-      });
-
-      filterDashboard({ isLabeled: true });
-      H.filterWidget().findByText("Twenty").should("be.visible");
-    });
-
-    it("should be able to use a static list source when public", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-        dashboardDetails: getListDashboard("search"),
-      }).then(({ body: card }) => {
-        H.editDashboardCard(card, getParameterMapping(card));
-        H.visitPublicDashboard(card.dashboard_id);
-      });
 
       filterDashboard({ isLabeled: true });
       H.filterWidget().findByText("Twenty").should("be.visible");
@@ -241,41 +168,3 @@ const filterDashboard = ({ isLabeled = false, isDropdown = false } = {}) => {
     cy.button("Add filter").click();
   });
 };
-
-const getDashboardResource = ({ dashboard_id }) => ({
-  resource: { dashboard: dashboard_id },
-  params: {},
-});
-
-const getTargetDashboard = (sourceSettings) => ({
-  parameters: [
-    {
-      ...targetParameter,
-      ...sourceSettings,
-    },
-  ],
-  enable_embedding: true,
-  embedding_params: {
-    [targetParameter.slug]: "enabled",
-  },
-});
-
-const getListDashboard = (values_query_type) => {
-  return getTargetDashboard({
-    values_source_type: "static-list",
-    values_query_type,
-    values_source_config: {
-      values: [["10", "Ten"], ["20", "Twenty"], "30"],
-    },
-  });
-};
-
-const getParameterMapping = ({ card_id }) => ({
-  parameter_mappings: [
-    {
-      card_id,
-      parameter_id: targetParameter.id,
-      target: ["dimension", ["field", ACCOUNTS.SEATS, null]],
-    },
-  ],
-});

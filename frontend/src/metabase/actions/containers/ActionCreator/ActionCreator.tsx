@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { Route } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -16,6 +15,7 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import type { Route } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Modal } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -25,7 +25,6 @@ import type {
   DatabaseId,
   WritebackAction,
   WritebackActionId,
-  WritebackQueryAction,
 } from "metabase-types/api";
 
 import { isSavedAction } from "../../utils";
@@ -103,7 +102,7 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
         ...action,
         ...values,
         visualization_settings: formSettings,
-      } as WritebackQueryAction).unwrap();
+      }).unwrap();
 
       // Sync the editor state with data from save modal form
       handleActionChange(values);

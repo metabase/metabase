@@ -6,7 +6,7 @@ import {
 } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Filter/hooks/use-filter-data";
 import { BadgeList } from "embedding-sdk-bundle/components/private/SdkQuestion/components/util/BadgeList";
 import { useLocale } from "metabase/common/hooks";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 
 export const FilterBadgeList = ({

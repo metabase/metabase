@@ -116,7 +116,17 @@
           (is (=? {:errors ["Row 4: Invalid locale: xx"]}
                   (mt/user-http-request :crowberto :post 422 "ee/content-translation/upload-dictionary"
                                         {:request-options {:headers {"content-type" "multipart/form-data"}}}
-                                        {:file csv-with-invalid-locale}))))))))
+                                        {:file csv-with-invalid-locale}))))))
+    (testing "admin can upload a file with non-ASCII characters"
+      (ct-utils/with-clean-translations!
+        (mt/with-premium-features #{:content-translation}
+          (let [csv (.getBytes "Language,String,Translation\nar,Cat,قطة" "UTF-8")]
+            (is (=? {:success true}
+                    (mt/user-http-request :crowberto :post 200 "ee/content-translation/upload-dictionary"
+                                          {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                          {:file csv})))
+            (is (=? [{:locale "ar" :msgid "Cat" :msgstr "قطة"}]
+                    (t2/select :model/ContentTranslation)))))))))
 
 (defn random-embedding-secret-key [] (u.random/secure-hex 32))
 

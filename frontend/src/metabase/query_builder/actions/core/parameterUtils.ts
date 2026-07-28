@@ -125,8 +125,11 @@ export async function propagateDashboardParameters({
     await verifyMatchingDashcardAndParameters({
       dispatch,
       cardId,
+      // Unjustified type cast. FIXME
       dashboardId: dashboardId as number,
+      // Unjustified type cast. FIXME
       dashcardId: dashcardId as number,
+      // Unjustified type cast. FIXME
       parameters: parameters as Parameter[],
     });
     card.parameters = parameters;

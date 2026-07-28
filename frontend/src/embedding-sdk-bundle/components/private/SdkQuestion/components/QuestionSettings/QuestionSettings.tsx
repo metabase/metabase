@@ -5,7 +5,7 @@ import {
   BaseChartSettings,
   useChartSettingsState,
 } from "metabase/visualizations/components/ChartSettings";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/widgets";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 
@@ -40,8 +40,14 @@ const QuestionSettingsContent = ({
     ];
   }, [queryResults, question]);
 
-  const onChange = async (settings: VisualizationSettings) => {
-    await updateQuestion(question.updateSettings(settings).lockDisplay());
+  const onChange = async (
+    settings: VisualizationSettings,
+    nextQuestion?: Question,
+  ) => {
+    await updateQuestion(
+      (nextQuestion ?? question).updateSettings(settings).lockDisplay(),
+      { run: Boolean(nextQuestion) },
+    );
   };
 
   const { chartSettings, handleChangeSettings, transformedSeries } =

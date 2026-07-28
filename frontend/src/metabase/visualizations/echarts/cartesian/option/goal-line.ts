@@ -79,6 +79,7 @@ export function getGoalLineSeriesOption(
     renderItem: (params, api) => {
       const [_x, y] = api.coord([null, scaleTransformedGoalValue]);
       const coordSys =
+        // Unjustified type cast. FIXME
         params.coordSys as unknown as EChartsCartesianCoordinateSystem;
       const xStart = coordSys.x;
       const xEnd = coordSys.width + coordSys.x;

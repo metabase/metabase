@@ -5,6 +5,7 @@
    [clojure.edn :as edn]
    [clojure.set :as set]
    [clojure.string :as str]
+   [mage.be-dev :as be-dev]
    [mage.color :as c]
    [mage.util :as u]))
 
@@ -19,7 +20,7 @@
 (def modules-triggering-cloud-drivers
   "Modules not only trigger driver tests, but run cloud drivers as well. Can be duplicative to driver triggers."
   '#{query-processor transforms
-     enterprise/transforms enterprise/transforms-python enterprise/workspaces})
+     enterprise/transforms enterprise/transforms-python})
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
@@ -104,7 +105,6 @@
      collections
      config
      content-verification
-     curated-search
      custom-viz-plugin
      dashboards
      documents
@@ -116,6 +116,7 @@
      enterprise/sso
      enterprise/transforms
      enterprise/transforms-inspector
+     entity-retrieval
      events
      formatter
      geojson
@@ -126,6 +127,7 @@
      login-history
      mcp
      metabot
+     mq
      notification
      oauth-server
      permissions
@@ -143,6 +145,7 @@
      setup
      slackbot
      sso
+     staleness
      startup
      system
      task
@@ -155,8 +158,7 @@
      util
      version
      view-log
-     warehouse-schema
-     workspaces})
+     warehouse-schema})
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.
@@ -252,6 +254,28 @@
               (changes-important-file-for-drivers? git-ref) 1
               drivers-affected? 1
               :else 0))))
+
+;;;; =============================================================================
+;;;; Fix modules config
+;;;; =============================================================================
+(defn cli-fix-config
+  "Regenerate `.clj-kondo/config/modules/config.edn` so it passes `metabase.core.modules-test`.
+
+  Fast path: evaluate in the running dev nREPL (a few seconds). Fallback: spawn a cold JVM (~25s) when no
+  dev REPL is running."
+  [{:keys [options] :as _parsed}]
+  (let [port  (some-> (:port options) str str/trim parse-long)
+        timer (u/start-timer)
+        exit  (be-dev/eval-or-spawn
+               {:port       port
+                :nrepl-ns   "dev.modules-config"
+                :nrepl-code "(update-config!)"
+                :jvm-args   ["-X:dev" "dev.modules-config/fix-config!"]
+                :nrepl-msg  (c/green "Regenerating modules config via the running dev REPL...")
+                :jvm-msg    (c/yellow "No dev REPL found — starting a JVM (slower; start your dev REPL for ~5s runs)...")})]
+    (printf "\nFinished in %.1fs\n" (/ (u/since-ms timer) 1000.0))
+    (flush)
+    (u/exit (or exit 0))))
 
 ;;;; =============================================================================
 ;;;; Driver test decisions - consolidated logic for which drivers to run

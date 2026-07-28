@@ -314,6 +314,21 @@
             (is (not (some #(= (:msgstr %) "   ") translations)))
             (is (not (some #(= (:msgstr %) ",,,") translations)))))))))
 
+(deftest import-translations-failure-leaves-existing-untouched-test
+  (ct-utils/with-clean-translations!
+    (testing "A failed import leaves previously stored translations intact"
+      (mt/with-premium-features #{:content-translation}
+        (#'dictionary/import-translations! [["de" "Cat" "Katze"]])
+        (is (= 1 (count-translations)))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"The file could not be uploaded due to the following error"
+             (#'dictionary/import-translations! [["invalidlocale" "Dog" "Hund"]])))
+        (is (= 1 (count-translations)) "original row survives the failed import")
+        (let [translations (get-translations)]
+          (is (some #(and (= (:locale %) "de") (= (:msgid %) "Cat") (= (:msgstr %) "Katze")) translations))
+          (is (not (some #(= (:msgid %) "Dog") translations))))))))
+
 (deftest import-translations-error-test
   (ct-utils/with-clean-translations!
     (testing "Import fails with validation errors"

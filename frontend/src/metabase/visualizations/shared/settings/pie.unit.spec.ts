@@ -95,6 +95,7 @@ describe("getColors", () => {
       createMockColumn({ name: "Category" }),
       createMockColumn({ name: "Count" }),
     ];
+    // Unjustified type cast. FIXME
     const rawSeries = [
       {
         data: createMockDatasetData({
@@ -116,6 +117,7 @@ describe("getColors", () => {
         Gadget: "#00FF00",
         Gizmo: "#FFFFFF",
       },
+      // Unjustified type cast. FIXME
       "pie.rows": [
         {
           key: "Gadget",
@@ -150,6 +152,7 @@ describe("getColors", () => {
       createMockColumn({ name: "Category" }),
       createMockColumn({ name: "Count" }),
     ];
+    // Unjustified type cast. FIXME
     const rawSeries = [
       {
         data: createMockDatasetData({

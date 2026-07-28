@@ -187,18 +187,16 @@ describe("scenarios > home > homepage", () => {
       cy.visit("/");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Here are some explorations of the/);
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("public");
+      cy.findByTestId("xray-schema-name").should("have.text", "public");
       cy.findAllByRole("link").contains("sqlite");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("People").should("not.exist");
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("public").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("private").click();
+      cy.findByTestId("xray-schema-name").click();
+      cy.findByRole("option", { name: "private" }).click();
+      cy.findByTestId("xray-schema-name").should("have.text", "private");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("People");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage

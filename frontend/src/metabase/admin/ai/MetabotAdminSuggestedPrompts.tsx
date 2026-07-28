@@ -155,6 +155,7 @@ export const MetabotPromptSuggestionPane = ({
             ) : (
               <SuggestedPromptRow
                 key={row.id}
+                // Unjustified type cast. FIXME
                 row={row as SuggestedMetabotPrompt}
                 onDelete={() => handleDeletePrompt(row.id)}
                 metabotId={metabot.id}
@@ -163,7 +164,7 @@ export const MetabotPromptSuggestionPane = ({
           }
           emptyBody={
             error ? (
-              <Center my="lg" fw="bold" c="danger">
+              <Center my="lg" fw="bold" c="feedback-negative">
                 {t`Something went wrong.`}
               </Center>
             ) : data?.total === 0 ? (

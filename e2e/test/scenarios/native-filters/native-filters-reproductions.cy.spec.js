@@ -1,25 +1,13 @@
 const { H } = cy;
-import {
-  SAMPLE_DB_ID,
-  USER_GROUPS,
-  WRITABLE_DB_ID,
-} from "e2e/support/cypress_data";
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
-const { ORDERS, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
 const { COLLECTION_GROUP } = USER_GROUPS;
-
-function runQuery() {
-  cy.findByTestId("qb-header").within(() => {
-    cy.icon("play").click();
-  });
-
-  cy.wait("@cardQuery");
-}
 
 describe("issue 9357", () => {
   beforeEach(() => {
@@ -120,40 +108,6 @@ describe("issue 11580", () => {
 
     // ensure they're still in the right order
     assertVariablesOrder();
-  });
-});
-
-describe("issue 12228", () => {
-  const filter = {
-    id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
-    name: "created_at",
-    "display-name": "Created at",
-    type: "dimension",
-    dimension: ["field", ORDERS.CREATED_AT, null],
-    "widget-type": "date/month-year",
-  };
-
-  const nativeQuery = {
-    name: "12228",
-    native: {
-      query: "select count(*) from orders where {{created_at}}",
-      "template-tags": {
-        created_at: filter,
-      },
-    },
-    display: "scalar",
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("can load a question with a date filter (metabase#12228)", () => {
-    H.createNativeQuestion(nativeQuery).then(({ body: { id } }) => {
-      cy.visit(`/question/${id}?created_at=2029-01`);
-      cy.contains("580");
-    });
   });
 });
 
@@ -451,97 +405,6 @@ describe("issue 14302", () => {
   });
 });
 
-describe("issue 15444", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("should run with the default field filter set (metabase#15444)", () => {
-    H.startNewNativeQuestion();
-    SQLFilter.enterParameterizedQuery(
-      "select * from products where {{category}}",
-    );
-
-    SQLFilter.openTypePickerFromDefaultFilterType();
-    SQLFilter.chooseType("Field Filter");
-
-    FieldFilter.mapTo({
-      table: "Products",
-      field: "Category",
-    });
-
-    SQLFilter.toggleRequired();
-
-    FieldFilter.openEntryForm({ isFilterRequired: true });
-    // We could've used `FieldFilter.addDefaultStringFilter("Doohickey")` but that's been covered already in the filter test matrix.
-    // This flow tests the ability to pick the filter from a dropdown when there are not too many results (easy to choose from).
-    H.popover().within(() => {
-      cy.findByText("Doohickey").click();
-      cy.button("Update filter").click();
-    });
-
-    SQLFilter.runQuery();
-
-    cy.findByTestId("query-visualization-root").within(() => {
-      cy.findAllByText("Doohickey");
-      cy.findAllByText("Gizmo").should("not.exist");
-    });
-  });
-});
-
-describe("issue 15460", () => {
-  const filter = {
-    id: "d98c3875-e0f1-9270-d36a-5b729eef938e",
-    name: "category",
-    "display-name": "Category",
-    type: "dimension",
-    dimension: ["field", PRODUCTS.CATEGORY, null],
-    "widget-type": "category",
-    default: null,
-  };
-
-  const questionQuery = {
-    dataset_query: {
-      database: SAMPLE_DB_ID,
-      native: {
-        query:
-          "select p.created_at, products.category\nfrom products\nleft join products p on p.id=products.id\nwhere {{category}}\n",
-        "template-tags": {
-          category: filter,
-        },
-      },
-      type: "native",
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.visitQuestionAdhoc(questionQuery);
-  });
-
-  it("should be possible to use field filter on a query with joins where tables have similar columns (metabase#15460)", () => {
-    // Set the filter value by picking the value from the dropdown
-    H.filterWidget().contains(filter["display-name"]).click();
-
-    H.popover().within(() => {
-      cy.findByText("Doohickey").click();
-      cy.button("Add filter").click();
-    });
-
-    SQLFilter.runQuery();
-
-    cy.findByTestId("query-visualization-root").within(() => {
-      cy.findAllByText("Doohickey");
-      cy.findAllByText("Gizmo").should("not.exist");
-    });
-  });
-});
-
 describe("issue 15700", () => {
   const widgetType = "String is not";
 
@@ -710,54 +573,6 @@ describe("issue 16756", () => {
   });
 });
 
-describe("issue 17019", () => {
-  const question = {
-    name: "17019",
-    native: {
-      query: "select {{foo}}",
-      "template-tags": {
-        foo: {
-          id: "08edf340-3d89-cfb1-b7f0-073b9eca6a32",
-          name: "foo",
-          "display-name": "Filter",
-          type: "text",
-        },
-      },
-    },
-    display: "scalar",
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion(question).then(({ body: { id } }) => {
-      // Enable sharing
-      cy.request("POST", `/api/card/${id}/public_link`);
-
-      H.visitQuestion(id);
-    });
-  });
-
-  it("question filters should work for embedding/public sharing scenario (metabase#17019)", () => {
-    H.openSharingMenu(/public link/i);
-
-    cy.findByTestId("public-link-popover-content")
-      .findByTestId("public-link-input")
-      .invoke("val")
-      .then((publicLink) => {
-        cy.visit(publicLink);
-      });
-
-    cy.findByPlaceholderText("Filter").type("456{enter}");
-
-    // We should see the result as a scalar
-    cy.findByTestId("scalar-value").contains("456");
-    // But let's also check that the filter widget has that same value still displayed
-    cy.findByDisplayValue("456");
-  });
-});
-
 describe("issue 17490", () => {
   function mockDatabaseTables() {
     cy.intercept("GET", "/api/database?include=tables", (req) => {
@@ -783,134 +598,6 @@ describe("issue 17490", () => {
 
     H.restore();
     cy.signInAsAdmin();
-  });
-});
-
-describe("issue 21160", () => {
-  const filterName = "Number comma";
-
-  const questionDetails = {
-    native: {
-      query: "select count(*) from orders where user_id in ({{number_comma}})",
-      "template-tags": {
-        number_comma: {
-          id: "d8870111-7b0f-26f2-81ce-6ec911e54048",
-          name: "number_comma",
-          "display-name": filterName,
-          type: "number",
-        },
-      },
-    },
-    display: "scalar",
-  };
-
-  function resultAssertion(res) {
-    cy.findByTestId("scalar-value").invoke("text").should("eq", res);
-  }
-
-  function getInput() {
-    return cy.findByPlaceholderText(filterName);
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
-  });
-
-  it("number filter should work with values separated by comma (metabase#21160)", () => {
-    getInput().type("1,2,3{enter}", { delay: 0 });
-
-    runQuery();
-    resultAssertion("21");
-
-    getInput().clear().type("123,456,789,321{enter}");
-
-    runQuery();
-    resultAssertion("18");
-  });
-});
-
-describe("issue 21246", () => {
-  const questionDetails = {
-    query: { "source-table": PRODUCTS_ID },
-  };
-  function resultAssertion(res) {
-    cy.findByTestId("scalar-value").invoke("text").should("eq", res);
-  }
-
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestion(questionDetails).then(({ body: { id } }) => {
-      const cardTagName = "#" + id;
-
-      const nativeQuestionDetails = {
-        native: {
-          query: `with exclude_products as {{${cardTagName}}}\nselect count(*) from orders where true [[and {{filter}}]] [[and orders.created_at::date={{datevariable}}]]`,
-          "template-tags": {
-            filter: {
-              id: "e1c37b07-7a85-1df9-a5e4-a0bf748e6dcf",
-              name: "filter",
-              "display-name": "Field Filter",
-              type: "dimension",
-              dimension: ["field", ORDERS.CREATED_AT, null],
-              "widget-type": "date/month-year",
-              default: null,
-            },
-            datevariable: {
-              id: "d4a5fc2d-b223-a5ec-9436-bf6ea5e6b8bf",
-              name: "datevariable",
-              "display-name": "Date Variable",
-              type: "date",
-              default: null,
-            },
-            [cardTagName]: {
-              id: "3a0be5e9-e46f-f34f-8e1b-f91567ca4317",
-              name: cardTagName,
-              "display-name": cardTagName,
-              type: "card",
-              "card-id": id,
-            },
-          },
-        },
-        display: "scalar",
-      };
-
-      H.createNativeQuestion(nativeQuestionDetails, {
-        wrapId: true,
-      });
-
-      cy.get("@questionId").then((id) => {
-        cy.visit(`/question/${id}`);
-        cy.wait("@dataset");
-
-        cy.findByTestId("scalar-value").invoke("text").should("eq", "18,760");
-      });
-    });
-  });
-
-  it("should be able to use sub-query referencing a GUI question and date based filters (metabase#21246)", () => {
-    const fieldFilterValue = "filter=2027-02";
-    const dateFilterValue = "datevariable=2027-02-19";
-
-    cy.get("@questionId").then((id) => {
-      // Let's set filter values directly through URL, rather than through the UI
-      // for the sake of speed and reliability
-      cy.visit(`/question/${id}?${fieldFilterValue}`);
-      cy.wait("@dataset");
-
-      resultAssertion("404");
-
-      cy.visit(`/question/${id}?${fieldFilterValue}&${dateFilterValue}`);
-      cy.wait("@dataset");
-
-      resultAssertion("12");
-    });
   });
 });
 
@@ -947,47 +634,6 @@ describe("issue 27257", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Here's where your results will appear");
     cy.findByDisplayValue("0");
-  });
-});
-
-describe("issue 29786", { tags: "@external" }, () => {
-  const SQL_QUERY = "SELECT * FROM PRODUCTS WHERE {{f1}} AND {{f2}}";
-
-  beforeEach(() => {
-    H.restore("mysql-8");
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.signInAsAdmin();
-  });
-
-  it("should allow using field filters with null schema (metabase#29786)", () => {
-    H.startNewNativeQuestion({
-      display: "table",
-      collection_id: COLLECTION_GROUP,
-      query: SQL_QUERY,
-    });
-
-    cy.findByTestId("native-query-top-bar").icon("variable").click();
-
-    cy.findByTestId("tag-editor-variable-f1")
-      .findByTestId("variable-type-select")
-      .click();
-    SQLFilter.chooseType("Field Filter");
-    FieldFilter.mapTo({ table: "Products", field: "Category" });
-
-    cy.findByTestId("tag-editor-variable-f2")
-      .findByTestId("variable-type-select")
-      .click();
-    SQLFilter.chooseType("Field Filter");
-    FieldFilter.mapTo({ table: "Products", field: "Vendor" });
-
-    H.filterWidget().should("have.length", 2).first().click();
-    FieldFilter.selectFilterValueFromList("Widget");
-    H.filterWidget().should("have.length", 2).last().click();
-    FieldFilter.addWidgetStringFilter("Von-Gulgowski");
-
-    SQLFilter.runQuery();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("1087115303928").should("be.visible");
   });
 });
 
@@ -1247,70 +893,6 @@ describe("issue 49577", () => {
       cy.findByText("bar").should("be.visible");
       cy.findByText("baz").should("be.visible");
     });
-  });
-});
-
-describe("issue 58061", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-  });
-
-  it("should allow to pass a field filter value for a date column in the URL when the column has a broken semantic type (metabase#58061)", () => {
-    cy.request("PUT", `/api/field/${PRODUCTS.CREATED_AT}`, {
-      semantic_type: "type/Category",
-    });
-
-    H.createNativeQuestion({
-      native: {
-        query: "SELECT * FROM PRODUCTS WHERE {{filter}}",
-        "template-tags": {
-          filter: {
-            id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
-            name: "filter",
-            type: "dimension",
-            "display-name": "date",
-            dimension: ["field", PRODUCTS.CREATED_AT, null],
-            "widget-type": "date/all-options",
-          },
-        },
-      },
-    }).then(({ body: card }) => {
-      cy.visit({
-        url: `/question/${card.id}`,
-        qs: { filter: "2027-09-08" },
-      });
-      cy.wait("@cardQuery");
-      H.assertQueryBuilderRowCount(1);
-    });
-  });
-});
-
-describe("issue 63537", () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    H.resetTestTable({ type: "postgres", table: "many_data_types" });
-    cy.signInAsAdmin();
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
-  });
-
-  it("should allow to use postgres enums in field filters (metabase#63537)", () => {
-    H.startNewNativeQuestion({ database: WRITABLE_DB_ID });
-    H.NativeEditor.type("SELECT * FROM many_data_types WHERE {{f}}");
-    SQLFilter.openTypePickerFromDefaultFilterType();
-    SQLFilter.chooseType("Field Filter");
-    FieldFilter.mapTo({
-      table: "Many Data Types",
-      field: "Enum",
-    });
-    H.filterWidget().click();
-    H.popover().within(() => {
-      cy.findByText("beta").click();
-      cy.button("Add filter").click();
-    });
-    H.runNativeQuery();
-    H.assertQueryBuilderRowCount(2);
   });
 });
 

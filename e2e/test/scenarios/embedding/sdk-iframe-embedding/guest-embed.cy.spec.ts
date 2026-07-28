@@ -35,6 +35,7 @@ describe(
     it("shows a static question", () => {
       cy.get("@questionId").then(async (questionId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: questionId as unknown as number,
           resourceType: "question",
         });
@@ -63,6 +64,7 @@ describe(
     it("allows to download a static question as CSV", () => {
       cy.get("@questionId").then(async (questionId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: questionId as unknown as number,
           resourceType: "question",
         });

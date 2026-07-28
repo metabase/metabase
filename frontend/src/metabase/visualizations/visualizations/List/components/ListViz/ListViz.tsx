@@ -5,7 +5,6 @@ import { t } from "ttag";
 import { Box } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import { displayNameForColumn } from "metabase/utils/formatting";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
@@ -29,7 +28,7 @@ import {
   isString,
   isURL,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, Series } from "metabase-types/api";
+import type { ColumnSettings, DatasetColumn, Series } from "metabase-types/api";
 
 import { ListView } from "../ListView/ListView";
 
@@ -145,7 +144,7 @@ const vizDefinition: VisualizationDefinition = {
     }
 
     if (isString(column)) {
-      const canWrapText = (columnSettings: OptionsType) =>
+      const canWrapText = (columnSettings: ColumnSettings) =>
         columnSettings["view_as"] !== "image";
 
       settings["text_wrapping"] = {
@@ -252,7 +251,7 @@ const vizDefinition: VisualizationDefinition = {
   },
 };
 
-export const ListViz = ({
+const ListVizComponent = ({
   card,
   metadata,
   data,
@@ -332,4 +331,4 @@ export const ListViz = ({
   );
 };
 
-Object.assign(ListViz, vizDefinition);
+export const ListViz = Object.assign(ListVizComponent, vizDefinition);

@@ -19,7 +19,7 @@
      query
      (fn [query _path-type path clause]
        (match/match-one clause
-         [:field (:and opts {:temporal-unit temporal-unit}) _id-or-name]
+         [:field {:temporal-unit temporal-unit} _id-or-name]
          (let [effective-type (lib.walk/apply-f-for-stage-at-path lib/type-of query path clause)
                valid-units    (lib.temporal-bucket/valid-units-for-type effective-type)]
            (when-not (valid-units temporal-unit)

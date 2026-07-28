@@ -4,10 +4,12 @@
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.datasource]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.search.index-health :as search.index-health]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -65,11 +67,21 @@
     (log/warn "DLQ table does not exist. Index may not have been initialized.")))
 
 (defn- collect-metrics! []
-  (when (semantic.u/semantic-search-available?)
-    (let [pgvector (semantic.env/get-pgvector-datasource!)
-          index-metadata (semantic.env/get-index-metadata)]
-      (collect-gate-size! pgvector)
-      (collect-dlq-size! pgvector index-metadata))))
+  (try
+    ;; Active, not merely available: on an available-but-inactive instance the index tables never exist,
+    ;; and the collectors would warn about them on every run.
+    (when (semantic.u/semantic-search-active?)
+      (let [pgvector (semantic.env/get-pgvector-datasource!)
+            index-metadata (semantic.env/get-index-metadata)]
+        (collect-gate-size! pgvector)
+        (collect-dlq-size! pgvector index-metadata)))
+    (catch InterruptedException e
+      (throw e))
+    (catch Exception e
+      (log/error e "Semantic search metric collector errored")))
+  ;; Registered collectors self-gate, so refreshing them is a cheap no-op when their feature is off.
+  ;; Keep this outside the try: ordinary failures continue here, while interruption and fatal errors exit.
+  (search.index-health/refresh-search-index-metrics!))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Collect expensive semantic search metrics"}
@@ -80,7 +92,13 @@
 
 (defmethod task/init! ::SemanticMetricCollector
   [_]
-  (when (semantic.u/semantic-search-available?)
+  ;; Boot-safe gate: plain env/feature checks, never a DB probe (pgvector-configured? would resolve
+  ;; pgvector-mode, probing the app db and logging a pgvector-store line on instances that can't use the
+  ;; answer). The dedicated-URL arm schedules without the feature, so a token entered post-boot starts the
+  ;; search-index gauges without a restart; app-db-pgvector instances licensed post-boot need one, matching the
+  ;; other semantic tasks (see [[semantic.u/semantic-search-configured?]]).
+  (if (or (semantic.datasource/dedicated-url-configured?)
+          (semantic.u/semantic-search-configured?))
     (let [job (jobs/build
                (jobs/of-type SemanticMetricCollector)
                (jobs/with-identity collector-job-key))
@@ -92,4 +110,7 @@
                      (simple/with-interval-in-milliseconds job-interval-ms)
                      (simple/repeat-forever)))
                    (triggers/start-now))]
-      (task/schedule-task! job trigger))))
+      (task/schedule-task! job trigger))
+    ;; Quartz's job store is persistent, so a collector scheduled by an earlier deploy would otherwise
+    ;; keep firing (as a no-op) on an instance whose configuration went away.
+    (task/delete-task! collector-job-key collector-trigger-key)))

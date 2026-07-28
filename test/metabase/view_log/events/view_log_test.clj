@@ -71,6 +71,23 @@
         (is (= nil (latest-view (u/id user) (u/id card)))
             "view log entries should not be made in OSS")))))
 
+(deftest card-query-model-read-ee-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/User user     {}
+                   :model/Card model    {:type :model    :creator_id (u/id user)}
+                   :model/Card question {:type :question :creator_id (u/id user)}]
+      (testing "An ad-hoc card-query on a model is recorded as a card view (GDGT-2693)"
+        (events/publish-event! :event/card-query {:card-id (u/id model) :user-id (u/id user) :context :ad-hoc})
+        (is (partial= {:user_id (u/id user) :model "card" :model_id (u/id model) :context :question :has_access true}
+                      (latest-view (u/id user) (u/id model)))))
+      (testing "An ad-hoc card-query on a non-model card is not recorded (card-read handles questions)"
+        (events/publish-event! :event/card-query {:card-id (u/id question) :user-id (u/id user) :context :ad-hoc})
+        (is (nil? (latest-view (u/id user) (u/id question)))))
+      (testing "A non-ad-hoc card-query on a model is not recorded (downloads and card-read paths are excluded)"
+        (events/publish-event! :event/card-query {:card-id (u/id model) :user-id (u/id user) :context :csv-download})
+        (is (= 1 (t2/count :model/ViewLog :user_id (u/id user) :model_id (u/id model)))
+            "only the ad-hoc view is recorded")))))
+
 (deftest collection-read-ee-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/Collection coll {}]
@@ -167,6 +184,19 @@
           (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
           (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))))))))
 
+(deftest card-query-model-view-count-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-temp [:model/User user  {}
+                     :model/Card model {:type :model :creator_id (u/id user)}]
+        (testing "An ad-hoc card-query on a model increments its view_count (GDGT-2693)"
+          (is (= 0 (:view_count model))
+              "view_count should be 0 before the event is published")
+          (events/publish-event! :event/card-query {:card-id (u/id model) :user-id (u/id user) :context :ad-hoc})
+          (is (= 1 (t2/select-one-fn :view_count :model/Card (u/id model))))
+          (events/publish-event! :event/card-query {:card-id (u/id model) :user-id (u/id user) :context :ad-hoc})
+          (is (= 2 (t2/select-one-fn :view_count :model/Card (u/id model)))))))))
+
 (deftest dashboard-read-view-count-test
   (mt/test-helpers-set-global-values!
     (mt/with-temporary-setting-values [synchronous-batch-updates true]
@@ -245,6 +275,20 @@
           (mt/user-http-request :crowberto :post 202 (format "card/%s/query" (u/id card)))
           (is (partial= {:user_id (mt/user->id :crowberto), :model "card", :model_id (u/id card), :context :question}
                         (latest-view (mt/user->id :crowberto) (u/id card)))))))))
+
+(deftest model-dataset-query-view-log-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "Opening a model runs an ad-hoc card__<id> query that is recorded in the view_log (GDGT-2693)"
+      (mt/with-temp [:model/Card model {:name          "My Model"
+                                        :type          :model
+                                        :dataset_query (mt/mbql-query venues {:limit 1})}]
+        (testing "POST /api/dataset with a card__<model-id> source records a card view"
+          (mt/user-http-request :crowberto :post 202 "dataset"
+                                {:database (mt/id)
+                                 :type     :query
+                                 :query    {:source-table (str "card__" (u/id model))}})
+          (is (partial= {:user_id (mt/user->id :crowberto) :model "card" :model_id (u/id model) :context :question}
+                        (latest-view (mt/user->id :crowberto) (u/id model)))))))))
 
 (deftest get-dashboard-view-log-test
   (mt/with-premium-features #{:audit-app}

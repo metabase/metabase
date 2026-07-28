@@ -34,4 +34,5 @@ export type MetricGroup = {
 };
 
 export const isSegmentListItem = (item: FilterItem): item is SegmentListItem =>
+  // Unjustified type cast. FIXME
   (item as SegmentListItem).segment != null;

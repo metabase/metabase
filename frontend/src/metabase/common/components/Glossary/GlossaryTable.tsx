@@ -134,6 +134,7 @@ export function GlossaryTable({
         sortColumnName={sortColumnName}
         sortDirection={sortDirection}
         onSort={(column, dir) => {
+          // Unjustified type cast. FIXME
           setSortColumnName(column as keyof GlossaryItem);
           setSortDirection(dir);
         }}
@@ -156,6 +157,7 @@ export function GlossaryTable({
             );
           }
 
+          // Unjustified type cast. FIXME
           const item = row as GlossaryItem;
           const isEditing = editingId === item.id;
 

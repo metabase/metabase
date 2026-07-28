@@ -26,6 +26,7 @@ function setup({
           (query === "(hover: hover)" && hover),
       });
   } else {
+    // Unjustified type cast. FIXME
     (window as any).matchMedia = undefined;
   }
 

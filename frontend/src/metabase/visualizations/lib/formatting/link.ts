@@ -1,8 +1,7 @@
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
-import type { ParameterValueOrArray } from "metabase-types/api";
+import type { ColumnSettings, ParameterValueOrArray } from "metabase-types/api";
 import type { DatasetColumn, RowValue } from "metabase-types/api/dataset";
 
 import { formatDateTimeForParameter } from "./date";
@@ -38,7 +37,7 @@ function formatValueForLinkTemplate(value: Value, column: DatasetColumn) {
 // column header.
 function pickColumnFormattingOptions(
   settings: DatasetColumn["settings"] = {},
-): OptionsType {
+): ColumnSettings {
   const {
     view_as: _view_as,
     link_text: _link_text,

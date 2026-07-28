@@ -34,6 +34,7 @@ describe("QuestionInfoSidebar > enterprise", () => {
   describe("entity id display", () => {
     it("should not show entity ids without serialization feature", async () => {
       const card = createMockCard({
+        // Unjustified type cast. FIXME
         entity_id: "jenny8675309" as Card["entity_id"],
       });
       await setupEnterprise({ card });

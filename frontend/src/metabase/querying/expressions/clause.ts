@@ -47,6 +47,7 @@ const EXPRESSION_TO_MBQL_NAME = new Map(
   Object.entries(MBQL_CLAUSES).map(([mbql, { displayName }]) => [
     // case-insensitive
     displayName.toLowerCase(),
+    // Unjustified type cast. FIXME
     mbql as Lib.DefinedClauseName,
   ]),
 );

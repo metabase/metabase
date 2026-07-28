@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.metabot.models.metabot-group-limit :as group-limit]
    [metabase-enterprise.metabot.models.metabot-instance-limit :as instance-limit]
+   [metabase-enterprise.metabot.usage :as usage]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]))
@@ -25,8 +26,10 @@
    _query-params
    body :- [:map [:max_usage [:maybe nat-int?]]]]
   (api/check-superuser)
-  (or (some-> (instance-limit/set-instance-limit! nil (:max_usage body)) (dissoc :id :tenant_id))
-      {:max_usage nil}))
+  (let [result (or (some-> (instance-limit/set-instance-limit! nil (:max_usage body)) (dissoc :id :tenant_id))
+                   {:max_usage nil})]
+    (usage/clear-limit-cache!)
+    result))
 
 (api.macros/defendpoint :get "/tenant"
   :- [:sequential [:map [:tenant_id pos-int?] [:max_usage nat-int?]]]
@@ -50,8 +53,10 @@
    _query-params
    body :- [:map [:max_usage [:maybe nat-int?]]]]
   (api/check-superuser)
-  (or (without-id (instance-limit/set-instance-limit! tenant-id (:max_usage body)))
-      {:tenant_id tenant-id :max_usage nil}))
+  (let [result (or (without-id (instance-limit/set-instance-limit! tenant-id (:max_usage body)))
+                   {:tenant_id tenant-id :max_usage nil})]
+    (usage/clear-limit-cache!)
+    result))
 
 (api.macros/defendpoint :get "/group"
   :- [:sequential [:map [:group_id pos-int?] [:max_usage nat-int?]]]
@@ -75,8 +80,10 @@
    _query-params
    body :- [:map [:max_usage [:maybe nat-int?]]]]
   (api/check-superuser)
-  (or (without-id (group-limit/set-group-limit! group-id (:max_usage body)))
-      {:group_id group-id :max_usage nil}))
+  (let [result (or (without-id (group-limit/set-group-limit! group-id (:max_usage body)))
+                   {:group_id group-id :max_usage nil})]
+    (usage/clear-limit-cache!)
+    result))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/ai-controls/usage` routes."

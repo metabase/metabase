@@ -13,6 +13,7 @@ import { sdkListenerMiddleware } from "./listener-middleware";
 import { sdk } from "./reducer";
 import type { SdkDispatch, SdkStore } from "./types";
 
+// Unjustified type cast. FIXME
 export const sdkReducers = {
   ...commonReducers,
   pulse: combineReducers(pulse),
@@ -22,6 +23,7 @@ export const sdkReducers = {
 } as unknown as Record<string, Reducer>;
 
 export const getSdkStore = () =>
+  // Unjustified type cast. FIXME
   getStore(
     sdkReducers,
     null,
@@ -41,12 +43,14 @@ export const getSdkStore = () =>
 export const useSdkDispatch = () => {
   useCheckSdkReduxContext();
 
+  // Unjustified type cast. FIXME
   return useDispatch() as SdkDispatch;
 };
 
 export const useSdkStore = () => {
   useCheckSdkReduxContext();
 
+  // Unjustified type cast. FIXME
   return useStore() as SdkStore;
 };
 

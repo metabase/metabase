@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -10,6 +9,7 @@ import {
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
@@ -22,7 +22,9 @@ type DataModelSegmentPageParams = {
   segmentId: string;
 };
 
-export function useDataModelSegmentPage(params: DataModelSegmentPageParams) {
+export function useDataModelSegmentPage(
+  params: Partial<DataModelSegmentPageParams>,
+) {
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [updateSegment] = useUpdateSegmentMutation();

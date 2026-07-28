@@ -61,6 +61,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
               return null;
             }
 
+            // Unjustified type cast. FIXME
             const width = (element as HTMLElement).offsetWidth;
             return { columnId, width, type };
           })

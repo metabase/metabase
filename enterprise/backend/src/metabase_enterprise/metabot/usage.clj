@@ -39,6 +39,13 @@
     "transforms_codegen"
     "document-generate-content"})
 
+(defenterprise valid-usage-profile-id
+  "Return `profile-id` when it can be persisted to `ai_usage_log`, otherwise nil."
+  :feature :none
+  [profile-id]
+  (when (contains? known-profile-ids (some-> profile-id name))
+    profile-id))
+
 (defenterprise log-ai-usage!
   "Record an LLM API call in the ai_usage_log table."
   :feature :none
