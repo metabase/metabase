@@ -8,6 +8,7 @@ import * as Urls from "metabase/urls";
 
 import { ContentDiagnostics } from "../components";
 import type { ContentDiagnosticsParamsOptions } from "../components/types";
+import { getParamsWithoutDefaults } from "../components/utils";
 
 import {
   getUserParams,
@@ -43,16 +44,18 @@ export function StaleContentPage({ location }: StaleContentPageProps) {
     params: Urls.ContentDiagnosticsParams,
     { withSetLastUsedParams = false }: ContentDiagnosticsParamsOptions = {},
   ) => {
+    const paramsWithoutDefaults = getParamsWithoutDefaults(params);
+
     if (withSetLastUsedParams) {
-      setLastUsedParams(getUserParams(params));
+      setLastUsedParams(getUserParams(paramsWithoutDefaults));
     }
-    dispatch(replace(Urls.staleContent(params)));
+    dispatch(replace(Urls.staleContent(paramsWithoutDefaults)));
   };
 
   useEffect(() => {
     if (!isInitializingRef.current && !isLoadingParams) {
       isInitializingRef.current = true;
-      dispatch(replace(Urls.staleContent(params)));
+      dispatch(replace(Urls.staleContent(getParamsWithoutDefaults(params))));
     }
   }, [params, isLoadingParams, dispatch]);
 

@@ -7,6 +7,8 @@ import {
   SORT_DIRECTIONS,
 } from "metabase-types/api";
 
+import { getParamsWithoutDefaults } from "../components/utils";
+
 export function parseUrlParams(
   location: Location,
 ): Urls.ContentDiagnosticsParams {
@@ -63,5 +65,7 @@ export function parseUserParams(
 }
 
 export function isEmptyParams(location: Location): boolean {
-  return Object.values(location.query).every((value) => value == null);
+  return Object.values(
+    getParamsWithoutDefaults(parseUrlParams(location)),
+  ).every((value) => value == null);
 }

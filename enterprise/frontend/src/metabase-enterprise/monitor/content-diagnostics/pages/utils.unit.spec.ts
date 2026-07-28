@@ -1,6 +1,6 @@
 import type { Location } from "metabase/router";
 
-import { parseUrlParams } from "./utils";
+import { isEmptyParams, parseUrlParams } from "./utils";
 
 function createLocation(query: Location["query"]): Location {
   return {
@@ -75,5 +75,28 @@ describe("parseUrlParams", () => {
     );
     expect(params.sortColumn).toBeUndefined();
     expect(params.sortDirection).toBeUndefined();
+  });
+});
+
+describe("isEmptyParams", () => {
+  it("returns true for an empty query string", () => {
+    expect(isEmptyParams(createLocation({}))).toBe(true);
+  });
+
+  it("treats default params as empty", () => {
+    expect(
+      isEmptyParams(
+        createLocation({
+          page: "0",
+          "entity-types": ["card", "dashboard", "document", "transform"],
+          "include-personal-collections": "true",
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("returns false for non-default params", () => {
+    expect(isEmptyParams(createLocation({ page: "1" }))).toBe(false);
+    expect(isEmptyParams(createLocation({ query: "sales" }))).toBe(false);
   });
 });

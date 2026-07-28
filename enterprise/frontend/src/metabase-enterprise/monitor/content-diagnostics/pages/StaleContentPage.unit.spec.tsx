@@ -204,6 +204,19 @@ describe("StaleContentPage", () => {
     expect(history?.getCurrentLocation().query).toEqual({ page: "1" });
   });
 
+  it("clears the page parameter when navigating back to the first page", async () => {
+    const { history } = setup({
+      findings: FINDINGS,
+      total: 50,
+      urlParams: { page: 1 },
+    });
+    await waitForListToLoad();
+
+    await userEvent.click(screen.getByLabelText("Previous page"));
+
+    expect(history?.getCurrentLocation().query).toEqual({});
+  });
+
   it("refetches the stale endpoint with the next offset and renders the next page", async () => {
     const secondPageFinding = createMockContentDiagnosticsFinding({
       id: 3,

@@ -65,6 +65,19 @@ export function getEntityTypeLabel(finding: ContentDiagnosticsFinding): string {
   }
 }
 
+export function getEntityViewLabel(finding: ContentDiagnosticsFinding): string {
+  switch (finding.entity_type) {
+    case "card":
+      return getCardViewLabel(finding.card_type);
+    case "dashboard":
+      return t`View this dashboard`;
+    case "document":
+      return t`View this document`;
+    case "transform":
+      return t`View this transform`;
+  }
+}
+
 function getCardTypeLabel(cardType: CardType | null | undefined): string {
   switch (cardType) {
     case "model":
@@ -73,6 +86,17 @@ function getCardTypeLabel(cardType: CardType | null | undefined): string {
       return t`Metric`;
     default:
       return t`Question`;
+  }
+}
+
+function getCardViewLabel(cardType: CardType | null | undefined): string {
+  switch (cardType) {
+    case "model":
+      return t`View this model`;
+    case "metric":
+      return t`View this metric`;
+    default:
+      return t`View this question`;
   }
 }
 
@@ -237,6 +261,24 @@ export function getFilterParams(
     includePersonalCollections: isDefaultPersonal
       ? undefined
       : filterOptions.includePersonalCollections,
+  };
+}
+
+export function getParamsWithoutDefaults({
+  page,
+  entityTypes,
+  includePersonalCollections,
+  ...params
+}: Urls.ContentDiagnosticsParams): Urls.ContentDiagnosticsParams {
+  return {
+    ...params,
+    page: page === 0 ? undefined : page,
+    entityTypes:
+      entityTypes?.length === ALL_FILTER_TYPES.length ? undefined : entityTypes,
+    includePersonalCollections:
+      includePersonalCollections === DEFAULT_INCLUDE_PERSONAL_COLLECTIONS
+        ? undefined
+        : includePersonalCollections,
   };
 }
 

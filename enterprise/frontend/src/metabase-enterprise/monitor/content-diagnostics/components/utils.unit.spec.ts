@@ -11,7 +11,9 @@ import {
   getEntityTypeLabel,
   getEntityTypesParam,
   getEntityUrl,
+  getEntityViewLabel,
   getFilterTypeLabel,
+  getParamsWithoutDefaults,
   getSortOptions,
   getUserName,
 } from "./utils";
@@ -98,6 +100,35 @@ describe("content-diagnostics utils", () => {
     });
   });
 
+  describe("getEntityViewLabel", () => {
+    it("returns full translated labels per entity and card type", () => {
+      expect(
+        getEntityViewLabel(
+          finding({ entity_type: "card", card_type: "question" }),
+        ),
+      ).toBe("View this question");
+      expect(
+        getEntityViewLabel(
+          finding({ entity_type: "card", card_type: "model" }),
+        ),
+      ).toBe("View this model");
+      expect(
+        getEntityViewLabel(
+          finding({ entity_type: "card", card_type: "metric" }),
+        ),
+      ).toBe("View this metric");
+      expect(getEntityViewLabel(finding({ entity_type: "dashboard" }))).toBe(
+        "View this dashboard",
+      );
+      expect(getEntityViewLabel(finding({ entity_type: "document" }))).toBe(
+        "View this document",
+      );
+      expect(getEntityViewLabel(finding({ entity_type: "transform" }))).toBe(
+        "View this transform",
+      );
+    });
+  });
+
   describe("getEntityUrl", () => {
     it("links cards to the correct route per card type", () => {
       expect(
@@ -148,6 +179,42 @@ describe("content-diagnostics utils", () => {
 
     it("returns the selection when it is a strict subset", () => {
       expect(getEntityTypesParam(["card"])).toEqual(["card"]);
+    });
+  });
+
+  describe("getParamsWithoutDefaults", () => {
+    it("strips default params", () => {
+      expect(
+        getParamsWithoutDefaults({
+          page: 0,
+          entityTypes: ["card", "dashboard", "document", "transform"],
+          includePersonalCollections: true,
+        }),
+      ).toEqual({
+        page: undefined,
+        entityTypes: undefined,
+        includePersonalCollections: undefined,
+      });
+    });
+
+    it("preserves non-default params", () => {
+      expect(
+        getParamsWithoutDefaults({
+          page: 1,
+          query: "sales",
+          entityTypes: ["card"],
+          includePersonalCollections: false,
+          sortColumn: "name",
+          sortDirection: "asc",
+        }),
+      ).toEqual({
+        page: 1,
+        query: "sales",
+        entityTypes: ["card"],
+        includePersonalCollections: false,
+        sortColumn: "name",
+        sortDirection: "asc",
+      });
     });
   });
 

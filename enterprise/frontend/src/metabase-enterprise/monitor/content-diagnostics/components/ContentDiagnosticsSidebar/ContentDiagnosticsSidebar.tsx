@@ -24,6 +24,7 @@ import {
   getEntityName,
   getEntityTypeLabel,
   getEntityUrl,
+  getEntityViewLabel,
   getLastActiveLabel,
   getUserName,
 } from "../utils";
@@ -67,8 +68,7 @@ type SidebarHeaderProps = {
 
 function SidebarHeader({ finding, onClose }: SidebarHeaderProps) {
   const entityUrl = getEntityUrl(finding);
-  const entityType = getEntityTypeLabel(finding).toLowerCase();
-  const viewLabel = t`View ${entityType}`;
+  const viewLabel = getEntityViewLabel(finding);
 
   return (
     <Group
