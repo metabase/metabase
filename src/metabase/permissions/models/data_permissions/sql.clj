@@ -146,21 +146,27 @@
                            permission-mapping)
                active-only? (conj [:= :mt.active true])))})
 
-(mu/defn readable-table-filter-select
-  "Subquery selecting the ids of Tables whose metadata the given user can read. SQL parity with
+(mu/defn visible-table-exists-clause
+  "Correlated `EXISTS (SELECT 1 FROM metabase_table mt WHERE mt.id = <table-id-column> AND ...)` predicate: true
+  when `table-id-column` references a Table whose metadata the given user can read. SQL parity with
   `mi/can-read? :model/Table`: view-data `:unrestricted` AND (create-queries `:query-builder` OR access via a
   published collection), OR manage-table-metadata `:yes`. Callers are expected to short-circuit the superuser and
-  data-analyst fast paths (both can read every table) rather than generating this subquery."
-  [{:keys [user-id] :as user-info} :- UserInfo]
-  {:select [:mt.id]
-   :from   [[:metabase_table :mt]]
-   :where  [:or
-            [:and
-             (has-perms-for-table-as-honey-sql? user-id :perms/view-data :unrestricted)
-             [:or
-              (has-perms-for-table-as-honey-sql? user-id :perms/create-queries :query-builder)
-              (published-tables/published-table-visible-clause :mt.id user-info)]]
-            (has-perms-for-table-as-honey-sql? user-id :perms/manage-table-metadata :yes)]})
+  data-analyst fast paths (both can read every table) rather than generating this subquery. An EXISTS semi-join
+  rather than `IN (SELECT ...)`, which Postgres degrades to an O(n^2) subplan past work_mem (#78382);
+  `table-id-column` must be table-qualified whenever its bare name is also a `metabase_table` column."
+  [{:keys [user-id] :as user-info} :- UserInfo
+   table-id-column :- [:or :keyword [:sequential :any]]]
+  [:exists {:select [[[:inline 1]]]
+            :from   [[:metabase_table :mt]]
+            :where  [:and
+                     [:= :mt.id table-id-column]
+                     [:or
+                      [:and
+                       (has-perms-for-table-as-honey-sql? user-id :perms/view-data :unrestricted)
+                       [:or
+                        (has-perms-for-table-as-honey-sql? user-id :perms/create-queries :query-builder)
+                        (published-tables/published-table-visible-clause :mt.id user-info)]]
+                      (has-perms-for-table-as-honey-sql? user-id :perms/manage-table-metadata :yes)]]}])
 
 (mu/defn- permission-type-having-clause
   "Builds a HAVING clause condition for a single permission type using conditional aggregation."

@@ -363,7 +363,7 @@
   (assoc user :can_write_any_collection
          (or (:is_superuser user)
              (t2/exists? :model/Collection {:where (collection/visible-collection-filter-clause
-                                                    :id
+                                                    :collection.id
                                                     {:include-trash-collection? false
                                                      :include-archived-items :exclude
                                                      :permission-level :write})}))))

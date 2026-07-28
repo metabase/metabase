@@ -927,7 +927,9 @@
 (mu/defn visible-collection-filter-clause
   "Given a `CollectionVisibilityConfig`, return a HoneySQL filter clause ready for use in queries. Takes an optional
   `cte-name` in the visibility config which is used as the source for collection IDs if provided; otherwise, we filter
-  based on the results of `visible-collection-query` above."
+  based on the results of `visible-collection-query` above. Compiles to a correlated EXISTS semi-join rather than
+  `IN (SELECT ...)`, which Postgres degrades to an O(n^2) subplan past work_mem (#78382); `collection-id-field` must
+  be table-qualified whenever its bare name is `id`."
   ([]
    (visible-collection-filter-clause :collection_id))
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]]
@@ -946,11 +948,12 @@
       (when (should-display-root-collection? user-scope visibility-config)
         [:= collection-id-field nil])
       ;; the non-root collections are here. We're saying "let this row through if..."
-      [:in
-       collection-id-field
-       (if cte-name
-         {:select :id :from cte-name}
-         (visible-collection-query visibility-config user-scope))]])))
+      [:exists {:select [[[:inline 1]]]
+                :from   [[(if cte-name
+                            cte-name
+                            (visible-collection-query visibility-config user-scope))
+                          :visible_collection]]
+                :where  [:= :visible_collection.id collection-id-field]}]])))
 
 (defn- effective-child-of-filter-clause
   [parent-coll collection-table-alias visibility-config]
@@ -983,7 +986,7 @@
                            [(random-uuid) api/*current-user-id* visibility-config]))}
    (fn
      [visibility-config]
-     (cond-> (t2/select-pks-set :model/Collection {:where (visible-collection-filter-clause :id visibility-config)})
+     (cond-> (t2/select-pks-set :model/Collection {:where (visible-collection-filter-clause :collection.id visibility-config)})
        (should-display-root-collection? visibility-config)
        (conj "root")))
    ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
