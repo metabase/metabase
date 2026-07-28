@@ -180,6 +180,25 @@
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model (constantly {:provider "no-embedder"})]
             (is (false? (entity-retrieval.core/available?)))))))))
 
+(deftest app-db-schema-check-caching-test
+  (let [answers (atom nil)
+        probe   (fn [] (let [[answer & remaining] @answers]
+                         (reset! answers (vec remaining))
+                         answer))]
+    (testing "a confirmed yes latches: an app-db hiccup reads as no, and must not take retrieval offline"
+      (reset! answers [true false])
+      (with-redefs [entity-retrieval.core/app-db-schema-confirmed?  (atom false)
+                    entity-retrieval.core/retry-app-db-schema-probe probe]
+        (is (true? (#'entity-retrieval.core/app-db-schema-usable?)))
+        (is (true? (#'entity-retrieval.core/app-db-schema-usable?)))
+        (is (= [false] @answers) "the probe was not consulted again")))
+    (testing "a no is re-checked, so a privilege granted while we run gets picked up"
+      (reset! answers [false true])
+      (with-redefs [entity-retrieval.core/app-db-schema-confirmed?  (atom false)
+                    entity-retrieval.core/retry-app-db-schema-probe probe]
+        (is (false? (#'entity-retrieval.core/app-db-schema-usable?)))
+        (is (true? (#'entity-retrieval.core/app-db-schema-usable?)))))))
+
 (deftest entity-retrieval-availability-requires-a-closed-breaker-test
   (mt/with-premium-features #{:library-retrieval}
     (let [recovery-requested? (atom false)]

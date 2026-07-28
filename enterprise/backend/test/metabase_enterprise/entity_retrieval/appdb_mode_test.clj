@@ -82,6 +82,8 @@
                       semantic.db.datasource/app-db-pgvector-support (atom nil)
                       semantic.db.datasource/probe-cooldown-timer    (atom nil)
                       semantic.db.datasource/logged-pgvector-absent? (atom false)
+                      ;; latching a yes here would leak into every later test in this JVM
+                      entity-retrieval.core/app-db-schema-confirmed? (atom false)
                       semantic.embedding/get-configured-model        (fn [] semantic.tu/mock-embedding-model)]
           (let [app-db (mdb/data-source)]
             (try

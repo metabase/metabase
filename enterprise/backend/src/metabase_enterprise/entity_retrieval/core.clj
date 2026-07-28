@@ -82,10 +82,21 @@
         (log/debug e "The application database user cannot host the library retrieval schema")
         false))))
 
-(def ^:private app-db-schema-usable?
-  "Cached [[app-db-schema-usable?*]]: [[available?]] runs on every write nudge and every search, and this
-  can attempt DDL."
+(defonce ^{:doc "Set once [[app-db-schema-usable?*]] has answered yes. Rebound by tests."}
+  app-db-schema-confirmed?
+  (atom false))
+
+(def ^:private retry-app-db-schema-probe
+  "[[app-db-schema-usable?*]], re-run at most every five minutes."
   (memoize/ttl app-db-schema-usable?* :ttl/threshold (* 5 60 1000)))
+
+;; A latch that closes once we detect the necessary schema.
+;; This way we retry until the resource is ready, but don't leave it disabled for TTL on transient failures.
+(defn- app-db-schema-usable?
+  "Whether this role can hold the index, cached. [[available?]] asks on every write nudge and every search,
+  and the underlying check can attempt DDL."
+  []
+  (swap! app-db-schema-confirmed? #(or % (retry-app-db-schema-probe))))
 
 (defn pgvector-configured?
   "Whether a pgvector store is resolvable, dedicated or on the app db.
