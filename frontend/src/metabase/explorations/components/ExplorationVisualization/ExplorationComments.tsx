@@ -96,13 +96,50 @@ export function ExplorationComments({
   );
 
   const streamRef = useRef<HTMLDivElement>(null);
-  // Land on the latest activity; a copied-link hash wins and scrolls to its
-  // own comment instead (see the per-comment effect).
+  const streamContentRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    if (!hasHashTarget && streamRef.current) {
-      streamRef.current.scrollTop = streamRef.current.scrollHeight;
+    // Anchor the stream on open: to the copied-link comment when the URL carries
+    // one, otherwise to the latest activity. The comment bodies (tiptap editors)
+    // mount asynchronously and keep growing the stream after the first paint, so
+    // a one-shot scroll lands mid-stream — hold the anchor while the content is
+    // still growing and let go on the first user scroll.
+
+    const stream = streamRef.current;
+    const content = streamContentRef.current;
+    if (stream == null || content == null || commentsStream.length === 0) {
+      return;
     }
-  }, [commentsStream.length, hasHashTarget]);
+
+    let lastAppliedScrollTop = -1;
+
+    const applyAnchor = () => {
+      if (hash && hasHashTarget) {
+        document.getElementById(hash)?.scrollIntoView({ block: "center" });
+      } else {
+        stream.scrollTop = stream.scrollHeight;
+      }
+      lastAppliedScrollTop = stream.scrollTop;
+    };
+
+    const observer = new ResizeObserver(() => applyAnchor());
+
+    const handleScroll = () => {
+      if (Math.abs(stream.scrollTop - lastAppliedScrollTop) > 1) {
+        observer.disconnect();
+        stream.removeEventListener("scroll", handleScroll);
+      }
+    };
+
+    applyAnchor();
+    observer.observe(content);
+    stream.addEventListener("scroll", handleScroll);
+
+    return () => {
+      observer.disconnect();
+      stream.removeEventListener("scroll", handleScroll);
+    };
+  }, [commentsStream.length, hasHashTarget, hash]);
 
   useWindowEvent("keydown", (event) => {
     if (event.key === "Escape" && !event.defaultPrevented) {
@@ -140,23 +177,18 @@ export function ExplorationComments({
       <Box px="lg" pt="1.25rem" pb="sm">
         <Title order={3}>{t`Comments`}</Title>
       </Box>
-      <Stack
-        ref={streamRef}
-        flex={1}
-        gap="md"
-        px="md"
-        py="sm"
-        className={S.stream}
-      >
-        {commentsStream.map((comment) => (
-          <ExplorationComment
-            key={comment.id}
-            comment={comment}
-            pageId={pageId}
-            renderCommentTags={renderCommentTags}
-          />
-        ))}
-      </Stack>
+      <Box ref={streamRef} flex={1} px="md" py="sm" className={S.stream}>
+        <Stack ref={streamContentRef} gap="md">
+          {commentsStream.map((comment) => (
+            <ExplorationComment
+              key={comment.id}
+              comment={comment}
+              pageId={pageId}
+              renderCommentTags={renderCommentTags}
+            />
+          ))}
+        </Stack>
+      </Box>
       <Box px="lg" pb="lg" pt="xs" className={S.composer}>
         <CommentEditor
           autoFocus={commentsStream.length === 0 && !disableAutoFocus}
@@ -192,14 +224,6 @@ function ExplorationComment({
   const commentNodeId = getCommentNodeId(comment);
   const isTarget = location.hash?.substring(1) === commentNodeId;
   const isCurrentUsersComment = currentUser?.id === comment.creator?.id;
-
-  useEffect(() => {
-    if (isTarget) {
-      document.getElementById(commentNodeId)?.scrollIntoView({
-        block: "center",
-      });
-    }
-  }, [isTarget, commentNodeId]);
 
   const handleEditSubmit = async (newContent: DocumentContent) => {
     editingHandler.close();

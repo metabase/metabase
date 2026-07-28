@@ -15,7 +15,12 @@ export function useCommentUrl({ childTargetId }: UseCommentUrlOptions) {
   if (isExplorationUrl(pathname)) {
     const search = new URLSearchParams(location.search);
     search.set("comments", "true");
-    return `${pathname}?${search.toString()}`;
+    const basePathname = pathname.replace(/\/page\/[^/]*$/, "");
+    const pinnedPathname =
+      childTargetId != null
+        ? `${basePathname}/page/${encodeURIComponent(String(childTargetId))}`
+        : pathname;
+    return `${pinnedPathname}?${search.toString()}`;
   }
   const existingCommentIndex = pathname.lastIndexOf("/comments");
   const nextPathname =

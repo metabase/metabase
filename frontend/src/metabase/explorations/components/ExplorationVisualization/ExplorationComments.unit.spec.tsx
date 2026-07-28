@@ -233,6 +233,45 @@ describe("ExplorationComments", () => {
     expect(await screen.findByText("😂")).toBeInTheDocument();
   });
 
+  it("scrolls the deep-linked comment into view and marks it current", async () => {
+    const scrollIntoViewMock = jest.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      writable: true,
+      value: scrollIntoViewMock,
+    });
+    window.location.hash = "#comment-2";
+
+    try {
+      setup({
+        comments: [
+          commentWithText("First", {
+            id: 1,
+            created_at: "2026-01-01T00:00:00Z",
+          }),
+          commentWithText("Target", {
+            id: 2,
+            created_at: "2026-01-02T00:00:00Z",
+          }),
+          commentWithText("Last", {
+            id: 3,
+            created_at: "2026-01-03T00:00:00Z",
+          }),
+        ],
+      });
+
+      const rows = await screen.findAllByTestId("discussion-comment");
+      expect(rows[1]).toHaveAttribute("aria-current", "location");
+      await waitFor(() => {
+        expect(scrollIntoViewMock).toHaveBeenCalledWith({ block: "center" });
+      });
+      // The scroll targeted the deep-linked row itself.
+      expect(scrollIntoViewMock.mock.contexts).toContain(rows[1]);
+    } finally {
+      window.location.hash = "";
+    }
+  });
+
   it("closes on Escape", async () => {
     const { onClose } = setup({
       comments: [commentWithText("Hello", { id: 1 })],

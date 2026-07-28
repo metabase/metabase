@@ -22,7 +22,7 @@ function FullPageRedirect({ to }: { to: string }): null {
 }
 
 const loginUrlWithRedirect = (location: Omit<Location, "query" | "action">) => {
-  const from = `${location.pathname}${location.search}`;
+  const from = `${location.pathname}${location.search}${location.hash ?? ""}`;
   const query = new URLSearchParams({ redirect: from }).toString();
   return `/auth/login?${query}`;
 };

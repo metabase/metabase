@@ -1,5 +1,6 @@
 .stream {
   overflow-y: auto;
+  overflow-anchor: none;
 }
 
 /* User mentions (SmartLink user nodes) read as plain colored text here, not

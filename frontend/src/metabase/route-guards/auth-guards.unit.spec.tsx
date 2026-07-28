@@ -57,6 +57,39 @@ describe("route-guards", () => {
       );
       expect(location.search).toContain("redirect");
     });
+
+    it("keeps the URL hash in ?redirect= so deep links (e.g. shared comment links) survive the login bounce", async () => {
+      const state = createMockState({
+        currentUser: undefined,
+        settings: createMockSettingsState({ "has-user-setup": true }),
+      });
+
+      const { history } = renderWithProviders(
+        <>
+          <Route element={<IsAuthenticated />}>
+            <Route path="/dashboard/:slug" element={<Protected />} />
+          </Route>
+          <Route element={<IsNotAuthenticated />}>
+            <Route path="/auth/login" element={<LoginPage />} />
+          </Route>
+        </>,
+        {
+          storeInitialState: state,
+          withRouter: true,
+          initialRoute: "/dashboard/123?comments=true#comment-5",
+        },
+      );
+
+      await waitFor(() => {
+        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+      });
+
+      expect(history!.getCurrentLocation().query).toEqual(
+        expect.objectContaining({
+          redirect: "/dashboard/123?comments=true#comment-5",
+        }),
+      );
+    });
   });
 
   describe("IsAdmin", () => {
