@@ -115,8 +115,12 @@
   (deferred-tru "Render drill-through visualizations in the MCP UI"))
 
 ;; Alert
+;; agent:alert:create predates agent:alert:write and still gates the v1 create-alert tool; scopes
+;; are never renamed, so it stays. v2's alert_write gates on agent:alert:write.
 (api-scope/defscope agent-alert-create "agent:alert:create"
   (deferred-tru "Create alerts"))
+(api-scope/defscope agent-alert-write "agent:alert:write"
+  (deferred-tru "Create and edit alerts"))
 
 ;; Notification (alerts and dashboard subscriptions)
 (api-scope/defscope agent-notification-read "agent:notification:read"
