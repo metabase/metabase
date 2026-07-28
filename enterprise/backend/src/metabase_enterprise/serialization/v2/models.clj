@@ -151,7 +151,6 @@
    "SourceSegmentDaily"
    "SsoRelayState"
    "SupportAccessGrantLog"
-   "TableRemapping"
    "TaskHistory"
    "TaskRun"
    "Tenant"
@@ -163,6 +162,4 @@
    "User"
    "UserKeyValue"
    "UserParameterValue"
-   "ViewLog"
-   "Workspace"
-   "WorkspaceDatabase"])
+   "ViewLog"])

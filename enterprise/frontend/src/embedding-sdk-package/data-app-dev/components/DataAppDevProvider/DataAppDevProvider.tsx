@@ -1,8 +1,8 @@
 import { once } from "underscore";
 
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
-import { SdkThemeProvider } from "embedding-sdk-package/components/private/SdkThemeProvider/SdkThemeProvider";
 import { MetabaseProvider } from "embedding-sdk-package/components/public/MetabaseProvider/MetabaseProvider";
+import { SdkThemeProviderWithStore } from "embedding-sdk-package/data-app-dev/components/SdkThemeProviderWithStore/SdkThemeProviderWithStore";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 
 const registerDataAppDevContext = once((appSlug: string) => {
@@ -24,7 +24,9 @@ export const DataAppDevProvider = ({
 
   return (
     <MetabaseProvider {...props}>
-      <SdkThemeProvider theme={props.theme}>{children}</SdkThemeProvider>
+      <SdkThemeProviderWithStore theme={props.theme}>
+        {children}
+      </SdkThemeProviderWithStore>
     </MetabaseProvider>
   );
 };

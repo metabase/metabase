@@ -128,7 +128,6 @@
             :etl_connections_pg             false
             :dependencies                   false
             :schema-viewer                  false
-            :workspaces                     false
             :writable_connection            true}
            (mt/with-temporary-setting-values [csp-img-enabled true
                                               custom-viz-enabled true]
