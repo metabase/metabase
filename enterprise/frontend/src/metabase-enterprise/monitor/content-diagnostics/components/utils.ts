@@ -1,10 +1,10 @@
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import * as Urls from "metabase/urls";
 import type { Sorting } from "metabase/utils/sorting";
 import {
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
-  type CardType,
   type ContentDiagnosticsCollection,
   type ContentDiagnosticsEntityType,
   type ContentDiagnosticsFilterType,
@@ -21,19 +21,6 @@ const ALL_FILTER_TYPES: ContentDiagnosticsFilterType[] = [
   ...CONTENT_DIAGNOSTICS_FILTER_TYPES,
 ];
 
-const ENTITY_TYPE_ICONS: Record<ContentDiagnosticsEntityType, IconName> = {
-  card: "table2",
-  dashboard: "dashboard",
-  document: "document",
-  transform: "transform",
-};
-
-const CARD_TYPE_ICONS: Record<CardType, IconName> = {
-  question: "table2",
-  model: "model",
-  metric: "metric",
-};
-
 type ContentDiagnosticsCollectionBreadcrumbEntry =
   | ContentDiagnosticsCollection
   | ContentDiagnosticsCollection["effective_ancestors"][number];
@@ -46,72 +33,50 @@ export type ContentDiagnosticsBreadcrumbLink = {
 };
 
 export function getEntityIcon(finding: ContentDiagnosticsFinding): IconName {
-  if (finding.entity_type === "card" && finding.card_type != null) {
-    return CARD_TYPE_ICONS[finding.card_type];
-  }
-  return ENTITY_TYPE_ICONS[finding.entity_type];
+  return match(finding)
+    .with({ entity_type: "card", card_type: "model" }, () => "model" as const)
+    .with({ entity_type: "card", card_type: "metric" }, () => "metric" as const)
+    .with({ entity_type: "card" }, () => "table2" as const)
+    .with({ entity_type: "dashboard" }, () => "dashboard" as const)
+    .with({ entity_type: "document" }, () => "document" as const)
+    .with({ entity_type: "transform" }, () => "transform" as const)
+    .exhaustive();
 }
 
 export function getEntityTypeLabel(finding: ContentDiagnosticsFinding): string {
-  switch (finding.entity_type) {
-    case "card":
-      return getCardTypeLabel(finding.card_type);
-    case "dashboard":
-      return t`Dashboard`;
-    case "document":
-      return t`Document`;
-    case "transform":
-      return t`Transform`;
-  }
+  return match(finding)
+    .with({ entity_type: "card", card_type: "model" }, () => t`Model`)
+    .with({ entity_type: "card", card_type: "metric" }, () => t`Metric`)
+    .with({ entity_type: "card" }, () => t`Question`)
+    .with({ entity_type: "dashboard" }, () => t`Dashboard`)
+    .with({ entity_type: "document" }, () => t`Document`)
+    .with({ entity_type: "transform" }, () => t`Transform`)
+    .exhaustive();
 }
 
 export function getEntityViewLabel(finding: ContentDiagnosticsFinding): string {
-  switch (finding.entity_type) {
-    case "card":
-      return getCardViewLabel(finding.card_type);
-    case "dashboard":
-      return t`View this dashboard`;
-    case "document":
-      return t`View this document`;
-    case "transform":
-      return t`View this transform`;
-  }
-}
-
-function getCardTypeLabel(cardType: CardType | null | undefined): string {
-  switch (cardType) {
-    case "model":
-      return t`Model`;
-    case "metric":
-      return t`Metric`;
-    default:
-      return t`Question`;
-  }
-}
-
-function getCardViewLabel(cardType: CardType | null | undefined): string {
-  switch (cardType) {
-    case "model":
-      return t`View this model`;
-    case "metric":
-      return t`View this metric`;
-    default:
-      return t`View this question`;
-  }
+  return match(finding)
+    .with({ entity_type: "card", card_type: "model" }, () => t`View this model`)
+    .with(
+      { entity_type: "card", card_type: "metric" },
+      () => t`View this metric`,
+    )
+    .with({ entity_type: "card" }, () => t`View this question`)
+    .with({ entity_type: "dashboard" }, () => t`View this dashboard`)
+    .with({ entity_type: "document" }, () => t`View this document`)
+    .with({ entity_type: "transform" }, () => t`View this transform`)
+    .exhaustive();
 }
 
 export function getLastActiveLabel(
   entityType: ContentDiagnosticsEntityType,
 ): string {
-  switch (entityType) {
-    case "card":
-      return t`Last used`;
-    case "dashboard":
-    case "document":
-      return t`Last viewed`;
-    case "transform":
-      return t`Last run`;
-  }
+  return match(entityType)
+    .with("card", () => t`Last used`)
+    .with("dashboard", () => t`Last viewed`)
+    .with("document", () => t`Last viewed`)
+    .with("transform", () => t`Last run`)
+    .exhaustive();
 }
 
 export function getEntityName(finding: ContentDiagnosticsFinding): string {
@@ -124,29 +89,32 @@ export function getEntityUrl(finding: ContentDiagnosticsFinding): string {
     name: getEntityName(finding),
   };
 
-  switch (finding.entity_type) {
-    case "card":
+  return match(finding)
+    .with({ entity_type: "card" }, (finding) =>
       // Urls.card derives /question|/model|/metric from `type`; pass it so
       // models/metrics link directly instead of via the /question/ redirect.
-      return Urls.card({ ...entity, type: finding.card_type ?? undefined });
-    case "dashboard":
-      return Urls.dashboard(entity);
-    case "document":
-      return Urls.document({ id: finding.entity_id });
-    case "transform":
-      return Urls.transform(finding.entity_id);
-  }
+      Urls.card({ ...entity, type: finding.card_type ?? undefined }),
+    )
+    .with({ entity_type: "dashboard" }, () => Urls.dashboard(entity))
+    .with({ entity_type: "document" }, (finding) =>
+      Urls.document({ id: finding.entity_id }),
+    )
+    .with({ entity_type: "transform" }, (finding) =>
+      Urls.transform(finding.entity_id),
+    )
+    .exhaustive();
 }
 
 export function getCollectionPath(
   collection: ContentDiagnosticsCollection | null,
 ): string {
-  if (collection == null) {
-    return t`Our analytics`;
-  }
-  return [...collection.effective_ancestors, collection]
-    .map((entry) => entry.name)
-    .join(" / ");
+  return match(collection)
+    .with(null, () => t`Our analytics`)
+    .otherwise((collection) =>
+      [...collection.effective_ancestors, collection]
+        .map((entry) => entry.name)
+        .join(" / "),
+    );
 }
 
 function getCollectionBreadcrumbUrl(
@@ -158,49 +126,40 @@ function getCollectionBreadcrumbUrl(
 export function getBreadcrumbLinks(
   finding: ContentDiagnosticsFinding,
 ): ContentDiagnosticsBreadcrumbLink[] {
-  if (finding.details.collection == null) {
-    return [
+  return match(finding.details.collection)
+    .with(null, () => [
       {
         id: "root",
         label: t`Our analytics`,
         url: Urls.collection(),
         icon: "folder" as const,
       },
-    ];
-  }
-
-  return [
-    ...finding.details.collection.effective_ancestors,
-    finding.details.collection,
-  ].map((entry, index) => ({
-    id: String(entry.id),
-    label: entry.name,
-    url: getCollectionBreadcrumbUrl(entry),
-    icon: index === 0 ? ("folder" as const) : undefined,
-  }));
+    ])
+    .otherwise((collection) =>
+      [...collection.effective_ancestors, collection].map((entry, index) => ({
+        id: String(entry.id),
+        label: entry.name,
+        url: getCollectionBreadcrumbUrl(entry),
+        icon: index === 0 ? ("folder" as const) : undefined,
+      })),
+    );
 }
 
 export function getUserName(user: ContentDiagnosticsUser | null): string {
-  if (user == null) {
-    return "—";
-  }
-  if (user.type === "user") {
-    return user.name ?? user.email ?? "—";
-  }
-  return user.email ?? "—";
+  return match(user)
+    .with(null, () => "—")
+    .with({ type: "user" }, (user) => user.name ?? user.email ?? "—")
+    .with({ type: "external" }, (user) => user.email ?? "—")
+    .exhaustive();
 }
 
 export function getFilterTypeLabel(type: ContentDiagnosticsFilterType): string {
-  switch (type) {
-    case "card":
-      return t`Questions`;
-    case "dashboard":
-      return t`Dashboards`;
-    case "document":
-      return t`Documents`;
-    case "transform":
-      return t`Transforms`;
-  }
+  return match(type)
+    .with("card", () => t`Questions`)
+    .with("dashboard", () => t`Dashboards`)
+    .with("document", () => t`Documents`)
+    .with("transform", () => t`Transforms`)
+    .exhaustive();
 }
 
 export function getAvailableFilterTypes(): ContentDiagnosticsFilterType[] {
@@ -285,9 +244,12 @@ export function getParamsWithoutDefaults({
 export function getEntityTypesParam(
   entityTypes: ContentDiagnosticsFilterType[],
 ): ContentDiagnosticsFilterType[] | undefined {
-  return entityTypes.length === ALL_FILTER_TYPES.length
-    ? undefined
-    : entityTypes;
+  return match(entityTypes)
+    .when(
+      (entityTypes) => entityTypes.length === ALL_FILTER_TYPES.length,
+      () => undefined,
+    )
+    .otherwise((entityTypes) => entityTypes);
 }
 
 export function getSortOptions({
@@ -296,8 +258,11 @@ export function getSortOptions({
 }: Urls.ContentDiagnosticsParams):
   | Sorting<ContentDiagnosticsSortColumn>
   | undefined {
-  if (sortColumn == null || sortDirection == null) {
-    return undefined;
-  }
-  return { column: sortColumn, direction: sortDirection };
+  return match({ sortColumn, sortDirection })
+    .with({ sortColumn: P.nullish }, () => undefined)
+    .with({ sortDirection: P.nullish }, () => undefined)
+    .otherwise(({ sortColumn, sortDirection }) => ({
+      column: sortColumn,
+      direction: sortDirection,
+    }));
 }
