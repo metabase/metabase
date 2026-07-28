@@ -61,7 +61,8 @@ export const getIsDirty = createSelector(
 );
 
 export type CollectionIdProps = {
-  params: { collectionId: CollectionId };
+  // Either an extracted `CollectionId` or a raw route param, which is a string.
+  params: { collectionId?: CollectionId | string };
   namespace?: CollectionNamespace;
 };
 

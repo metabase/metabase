@@ -14,7 +14,6 @@
    [metabase.queries.core :as queries]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -183,20 +182,19 @@
   (t2/update! :model/Action id {:public_uuid nil, :made_public_by_id nil})
   {:status 204, :body nil})
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:action-id/execute"
-  "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
+(api.macros/defendpoint :post "/:action-id/execute/values" :- [:map-of :string :any]
+  "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
+
+  Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
   [{:keys [action-id]} :- [:map
                            [:action-id ms/PositiveInt]]
+   _query-params
    {:keys [parameters]} :- [:map
-                            [:parameters ms/JSONString]]]
+                            [:parameters [:map-of :string :any]]]]
   (actions/check-actions-enabled! action-id)
   (-> (actions/select-action :id action-id :archived false)
       api/read-check
-      (actions/fetch-values (json/decode parameters))))
+      (actions/fetch-values parameters)))
 
 (defn- remap-parameter-keys
   "Translate incoming `parameters` keys to the destination parameter `:id` the

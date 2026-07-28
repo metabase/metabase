@@ -10,7 +10,6 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
@@ -32,10 +31,6 @@
 (doto :model/PermissionsGroup
   (derive :metabase/model)
   (derive :hook/entity-id))
-
-(defmethod serdes/hash-fields :model/PermissionsGroup
-  [_user]
-  [:name])
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 

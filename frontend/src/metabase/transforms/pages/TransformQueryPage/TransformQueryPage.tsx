@@ -18,8 +18,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { Route, RouteProps } from "metabase/router";
-import { push } from "metabase/router";
+import { push, useLocation, useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -54,12 +53,10 @@ type TransformQueryPageParams = {
   transformId: string;
 };
 
-type TransformQueryPageProps = {
-  params: TransformQueryPageParams;
-  route: RouteProps;
-};
-
-export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
+export function TransformQueryPage() {
+  const params = useParams<TransformQueryPageParams>();
+  const { pathname } = useLocation();
+  const isEditRoute = pathname.endsWith("/edit");
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     data: transform,
@@ -82,10 +79,10 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
   return (
     <TransformQueryPageBody
       // Add key so the ui state gets reset when switching between edit and view
-      key={route.path}
+      key={String(isEditRoute)}
       transform={transform}
       databases={transformsDatabases}
-      route={route}
+      isEditRoute={isEditRoute}
       readOnly={readOnly}
     />
   );
@@ -94,14 +91,14 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
 type TransformQueryPageBodyProps = {
   transform: Transform;
   databases: Database[];
-  route: RouteProps;
+  isEditRoute: boolean;
   readOnly?: boolean;
 };
 
 function TransformQueryPageBody({
   transform,
   databases,
-  route,
+  isEditRoute,
   readOnly,
 }: TransformQueryPageBodyProps) {
   const {
@@ -125,7 +122,7 @@ function TransformQueryPageBody({
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const isEditMode = !readOnly && !!route.path?.includes("/edit");
+  const isEditMode = !readOnly && isEditRoute;
   const [
     isTurnOffIncrementalShown,
     { open: openTurnOffIncremental, close: closeTurnOffIncremental },
@@ -304,8 +301,6 @@ function TransformQueryPageBody({
         onClose={closeTurnOffIncremental}
       />
       <LeaveRouteConfirmModal
-        // Unjustified type cast. FIXME
-        route={route as Route}
         isEnabled={isDirty && !isSaving}
         onConfirm={rejectProposed}
       />

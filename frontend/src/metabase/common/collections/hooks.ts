@@ -1,10 +1,10 @@
-import type { Location } from "history";
 import { useMemo } from "react";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import type { Location } from "metabase/router";
 import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
 import * as Urls from "metabase/urls/collections";
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -15,6 +15,13 @@ export type UseInitialCollectionIdProps = {
   collectionId?: Collection["id"] | null;
   location?: Location;
   params?: { collectionId?: Collection["id"]; slug?: string };
+  /**
+   * When `true`, skips every lookup and returns `null`. Callers that already
+   * know the target collection (e.g. the SDK's `targetCollection` prop) use
+   * this to avoid an unused `GET /api/collection/root` — a request tenant users
+   * get a 403 for (EMB-2107).
+   */
+  disabled?: boolean;
 };
 
 const collectionIdParam = (id: Collection["id"] | undefined | null) =>
@@ -25,12 +32,13 @@ export function useInitialCollectionId({
   collectionId,
   location,
   params,
+  disabled = false,
 }: UseInitialCollectionIdProps = {}): CollectionId | null {
   const { data: fromCollectionId } = useGetCollectionQuery(
-    collectionIdParam(collectionId),
+    disabled ? skipToken : collectionIdParam(collectionId),
   );
   const { data: fromNavParam } = useGetCollectionQuery(
-    collectionIdParam(params?.collectionId),
+    disabled ? skipToken : collectionIdParam(params?.collectionId),
   );
 
   const idFromSlug =
@@ -38,7 +46,7 @@ export function useInitialCollectionId({
       ? Urls.extractCollectionId(params.slug)
       : undefined;
   const { data: fromSlug } = useGetCollectionQuery(
-    collectionIdParam(idFromSlug),
+    disabled ? skipToken : collectionIdParam(idFromSlug),
   );
 
   // Unjustified type cast. FIXME
@@ -46,16 +54,20 @@ export function useInitialCollectionId({
     | Collection["id"]
     | undefined;
   const { data: fromQuery } = useGetCollectionQuery(
-    collectionIdParam(idFromQuery),
+    disabled ? skipToken : collectionIdParam(idFromQuery),
   );
 
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const isAuthenticated = useSelector(getUser) != null;
   const { data: rootCollection } = useGetCollectionQuery(
-    isAuthenticated ? { id: ROOT_COLLECTION.id } : skipToken,
+    !disabled && isAuthenticated ? { id: ROOT_COLLECTION.id } : skipToken,
   );
 
   return useMemo(() => {
+    if (disabled) {
+      return null;
+    }
+
     const candidates = [
       fromCollectionId,
       fromNavParam,
@@ -74,6 +86,7 @@ export function useInitialCollectionId({
     }
     return canonicalCollectionId(personalCollectionId);
   }, [
+    disabled,
     fromCollectionId,
     fromNavParam,
     fromSlug,
@@ -83,21 +96,32 @@ export function useInitialCollectionId({
   ]);
 }
 
+export type GetDefaultCollectionIdOptions = {
+  /** When `true`, skips the lookup and returns `null`. Defaults to `false`. */
+  disabled?: boolean;
+};
+
 export const useOSSGetDefaultCollectionId = (
   sourceCollectionId?: CollectionId | null,
+  { disabled = false }: GetDefaultCollectionIdOptions = {},
 ): CollectionId | null => {
   return useInitialCollectionId({
     collectionId: sourceCollectionId ?? undefined,
+    disabled,
   });
 };
 
 export const useGetDefaultCollectionId = (
   sourceCollectionId?: CollectionId | null,
+  options: GetDefaultCollectionIdOptions = {},
 ): CollectionId | null => {
   if (PLUGIN_COLLECTIONS.useGetDefaultCollectionId) {
     // eslint-disable-next-line react-hooks/rules-of-hooks -- this won't change at runtime, so it's safe
-    return PLUGIN_COLLECTIONS.useGetDefaultCollectionId(sourceCollectionId);
+    return PLUGIN_COLLECTIONS.useGetDefaultCollectionId(
+      sourceCollectionId,
+      options,
+    );
   }
   // eslint-disable-next-line react-hooks/rules-of-hooks -- this won't change at runtime, so it's safe
-  return useOSSGetDefaultCollectionId(sourceCollectionId);
+  return useOSSGetDefaultCollectionId(sourceCollectionId, options);
 };

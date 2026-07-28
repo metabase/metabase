@@ -3,8 +3,29 @@
 ## cascades) are nulled out first.
 
 databaseChangeLog:
+  ## The cleanup originally shipped as changeSet v63.2026-07-14T00:00:00 with a Postgres/H2 query that used
+  ## NOT IN (SELECT id FROM metabase_field). NOT IN's null semantics keep Postgres from planning it as an
+  ## anti-join: it builds a hashed subplan, and when the id list outgrows work_mem it falls back to a
+  ## materialized subplan scanned linearly per row - O(rows^2) over metabase_field. On an instance with
+  ## 8.5M fields the statement ran for over an hour, tripped the appDB connection-pool timeout, rolled
+  ## back, and blocked the upgrade in a retry loop (#78271). v63.2026-07-22T12:00:01 below is the
+  ## equivalent replacement using NOT EXISTS, which always plans as a hash/merge anti-join and can spill
+  ## to disk instead of degrading quadratically. This changeSet retires the original's changelog entry so
+  ## instances that already ran it pick up the replacement (re-nulling already-clean data is a cheap
+  ## no-op); on instances where the original timed out, or that have never seen it, this DELETE is a
+  ## no-op. DATABASECHANGELOG is unquoted on purpose: it folds to the table's actual case on postgres
+  ## (lowercase) and h2 (uppercase), and matches it exactly on mysql/mariadb.
   - changeSet:
-      id: v63.2026-07-14T00:00:00
+      id: v63.2026-07-22T12:00:00
+      author: ranquild
+      comment: Retire the timeout-prone original of v63.2026-07-22T12:00:01 (#78271)
+      changes:
+        - sql:
+            sql: DELETE FROM DATABASECHANGELOG WHERE id = 'v63.2026-07-14T00:00:00';
+      rollback: # not necessary; the replacement changeSet is equivalent to the original
+
+  - changeSet:
+      id: v63.2026-07-22T12:00:01
       author: ranquild
       comment: Null out metabase_field.fk_target_field_id values that point to deleted fields
       changes:
@@ -18,10 +39,10 @@ databaseChangeLog:
         - sql:
             dbms: postgresql,h2
             sql: >-
-              UPDATE metabase_field
+              UPDATE metabase_field AS a
               SET fk_target_field_id = NULL
-              WHERE fk_target_field_id IS NOT NULL
-                AND fk_target_field_id NOT IN (SELECT id FROM metabase_field);
+              WHERE a.fk_target_field_id IS NOT NULL
+                AND NOT EXISTS (SELECT 1 FROM metabase_field b WHERE b.id = a.fk_target_field_id);
       rollback: # no change
 
   ## The index is created before the FK constraint below: MySQL/MariaDB require an index to back
@@ -56,8 +77,20 @@ databaseChangeLog:
   ## metabase_field_user_settings.fk_target_field_id mirrors metabase_field.fk_target_field_id
   ## (it stores the user-set override of the same reference) and had the same problem: nothing
   ## enforced it, so it gets the same cleanup + index + FK treatment.
+  ## Same NOT IN -> NOT EXISTS replacement as v63.2026-07-22T12:00:01 above: the subquery here is also
+  ## over metabase_field, so the original v63.2026-07-14T00:00:03 degraded the same way on instances with
+  ## millions of fields (#78271).
   - changeSet:
-      id: v63.2026-07-14T00:00:03
+      id: v63.2026-07-22T12:00:02
+      author: ranquild
+      comment: Retire the timeout-prone original of v63.2026-07-22T12:00:03 (#78271)
+      changes:
+        - sql:
+            sql: DELETE FROM DATABASECHANGELOG WHERE id = 'v63.2026-07-14T00:00:03';
+      rollback: # not necessary; the replacement changeSet is equivalent to the original
+
+  - changeSet:
+      id: v63.2026-07-22T12:00:03
       author: ranquild
       comment: Null out metabase_field_user_settings.fk_target_field_id values that point to deleted fields
       changes:
@@ -71,10 +104,10 @@ databaseChangeLog:
         - sql:
             dbms: postgresql,h2
             sql: >-
-              UPDATE metabase_field_user_settings
+              UPDATE metabase_field_user_settings AS a
               SET fk_target_field_id = NULL
-              WHERE fk_target_field_id IS NOT NULL
-                AND fk_target_field_id NOT IN (SELECT id FROM metabase_field);
+              WHERE a.fk_target_field_id IS NOT NULL
+                AND NOT EXISTS (SELECT 1 FROM metabase_field b WHERE b.id = a.fk_target_field_id);
       rollback: # no change
 
   - changeSet:

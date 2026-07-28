@@ -1,7 +1,8 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
-import { fireEvent, getIcon, screen } from "__support__/ui";
+import { fireEvent, getIcon, screen, waitFor } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
 import { METAKEY } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";
@@ -298,6 +299,26 @@ describe("DataStep", () => {
       expect(
         await screen.findByPlaceholderText(/search for tables and more/i),
       ).toBeInTheDocument();
+    });
+
+    it("should exclude other users' personal collections from the inline data-source search", async () => {
+      await setupEmptyQuery();
+
+      await userEvent.type(
+        await screen.findByPlaceholderText(/search for tables and more/i),
+        "accounts",
+      );
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.lastCall("path:/api/search")).toBeTruthy();
+      });
+
+      const call = fetchMock.callHistory.lastCall("path:/api/search");
+      const url = new URL(checkNotNull(call?.request?.url));
+      expect(url.searchParams.get("context")).toBe("data-picker");
+      expect(url.searchParams.get("filter_items_in_personal_collection")).toBe(
+        "exclude-others",
+      );
     });
 
     it("meta click should open the data source in a new window", async () => {

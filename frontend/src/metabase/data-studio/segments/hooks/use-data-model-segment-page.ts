@@ -22,7 +22,9 @@ type DataModelSegmentPageParams = {
   segmentId: string;
 };
 
-export function useDataModelSegmentPage(params: DataModelSegmentPageParams) {
+export function useDataModelSegmentPage(
+  params: Partial<DataModelSegmentPageParams>,
+) {
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [updateSegment] = useUpdateSegmentMutation();
