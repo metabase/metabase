@@ -72,11 +72,13 @@
 
 (defn add-table-where-clauses
   "Add a `WHERE` clause to the query to only return tables the current user has access to.
-   Also adds any CTEs required for permission filtering."
+   Also adds any CTEs required for permission filtering. The permitted-tables join key is CASE-guarded to table
+   rows: a hash join computes the key for every row, and casting a non-table row's model_id blows up."
   [search-ctx qry]
-  (let [model-id-col [:cast :search_index.model_id (case (mdb/db-type)
-                                                     :mysql :signed
-                                                     :integer)]
+  (let [model-id-col [:cast [:case [:= :search_index.model [:inline "table"]] :search_index.model_id]
+                      (case (mdb/db-type)
+                        :mysql :signed
+                        :integer)]
         {:keys [with left-join clause]} (search.permissions/permitted-tables-clause search-ctx model-id-col)]
     (cond-> qry
       (seq with) (update :with (fnil into []) with)
