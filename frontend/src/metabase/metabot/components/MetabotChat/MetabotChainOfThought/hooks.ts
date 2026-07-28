@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useRef, useState } from "react";
 import { useInterval } from "react-use";
 
@@ -10,17 +11,17 @@ export const useNow = (active: boolean) => {
 };
 
 export const useAutoCollapseOnSettle = (isStreaming: boolean) => {
-  const [open, setOpen] = useState(false);
+  const [open, { toggle, close }] = useDisclosure(false);
   const hasSettledRef = useRef(false);
 
   useEffect(() => {
     if (!isStreaming && !hasSettledRef.current) {
       hasSettledRef.current = true;
-      setOpen(false);
+      close();
     }
-  }, [isStreaming]);
+  }, [isStreaming, close]);
 
-  return { open, toggle: () => setOpen((prev) => !prev) };
+  return { open, toggle };
 };
 
 export const useMeteredLabel = (target: string): string => {
