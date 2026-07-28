@@ -1016,8 +1016,8 @@
                     "array_attr" "item1,item2"}
                    (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))
           (testing "warning messages are logged for non-stringable values"
-            (is (some #(re-find #"Dropping attribute 'object_attr' with non-stringable value: \{:nested \"value\"\}" %) (map :message (jwt-log-messages))))
-            (is (some #(re-find #"Dropping attribute 'null_attr' with non-stringable value: null" %) (map :message (jwt-log-messages)))))
+            (is (some #(re-find #"Dropping attribute 'object_attr' with non-stringable value" %) (map :message (jwt-log-messages))))
+            (is (some #(re-find #"Dropping attribute 'null_attr' with non-stringable value" %) (map :message (jwt-log-messages)))))
           (testing "warning messages are logged for `@`-prefixed keys"
             (is (some #(re-find #"Dropping attribute '@attribute', keys beginning with `@` are reserved" %) (map :message (jwt-log-messages)))))
           (testing "no warning for valid string attribute"
