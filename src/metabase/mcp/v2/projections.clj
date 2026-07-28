@@ -297,6 +297,12 @@
                                    (-> (select-keys channel [:id :channel_type :schedule_type
                                                              :schedule_hour :schedule_day
                                                              :schedule_frame :enabled :details])
+                                       ;; `details.emails` is where recipients who aren't Metabase
+                                       ;; users are stored; `:recipients` below already carries
+                                       ;; them as `{:email …}`. `mi/to-json` strips it for every
+                                       ;; REST consumer, but that encoder hook only fires on a
+                                       ;; Toucan instance and `select-keys` returns a plain map.
+                                       (m/dissoc-in [:details :emails])
                                        (assoc :recipients
                                               (some->> (:recipients channel)
                                                        (mapv #(compact (select-keys % [:id :email]))))))))

@@ -146,7 +146,13 @@
               channel (first (pulse-channels (:id result)))]
           (is (= [(mt/user->id :rasta)]
                  (t2/select-fn-vec :user_id :model/PulseChannelRecipient :pulse_channel_id (:id channel))))
-          (is (= ["ops@example.com"] (get-in channel [:details :emails]))))))))
+          (is (= ["ops@example.com"] (get-in channel [:details :emails])))
+          (testing "the stored `details.emails` doesn't reach the caller: it's the internal home for
+                    recipients who aren't Metabase users, and `recipients` already lists them, so
+                    echoing it would name the same person twice in two shapes"
+            (is (= [{:email "ops@example.com"} {:id (mt/user->id :rasta) :email "rasta@metabase.com"}]
+                   (-> result :channels first :recipients)))
+            (is (nil? (-> result :channels first :details)))))))))
 
 (deftest create-slack-subscription-test
   (testing "GHY-4156: channel \"slack\" resolves the channel name against Slack's cache and stores
@@ -227,6 +233,32 @@
                                                       :channel       "slack"
                                                       :slack_channel "data-team"
                                                       :recipients    ["ops@example.com"]}))))))))))
+
+(deftest empty-recipients-is-a-teaching-error-test
+  (testing "GHY-4156: an empty recipient list is the email analogue of an unresolvable Slack
+            channel — the subscription would deliver nowhere, so say so rather than scheduling it"
+    (mt/with-temp [:model/Card {card-id :id} {}
+                   :model/Dashboard {dash-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}
+                   :model/Pulse {pulse-id :id} {:name "Weekly" :dashboard_id dash-id
+                                                :creator_id (mt/user->id :crowberto)}
+                   :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
+                   :model/PulseChannel {pc-id :id} {:pulse_id pulse-id :channel_type :email
+                                                    :schedule_type :daily :schedule_hour 15}
+                   :model/PulseChannelRecipient _ {:pulse_channel_id pc-id
+                                                   :user_id (mt/user->id :rasta)}]
+      (is (re-find #"nobody"
+                   (tool-error (call-tool! :crowberto nil
+                                           (wire {:method       "create"
+                                                  :dashboard_id dash-id
+                                                  :schedule     {:schedule_type "hourly"}
+                                                  :recipients   []})))))
+      (testing "and on update, where it would empty a list that currently has people on it"
+        (is (re-find #"nobody"
+                     (tool-error (call-tool! :crowberto nil
+                                             (wire {:method "update" :id pulse-id :recipients []})))))
+        (is (= [(mt/user->id :rasta)]
+               (t2/select-fn-vec :user_id :model/PulseChannelRecipient :pulse_channel_id pc-id)))))))
 
 ;;; ------------------------------------------------ schedules -----------------------------------------------------
 
@@ -399,6 +431,66 @@
       (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))
       (tool-result (call-tool! :crowberto nil (wire {:method "update" :id pulse-id :archived false})))
       (is (false? (t2/select-one-fn :archived :model/Pulse :id pulse-id))))))
+
+(deftest archived-subscriptions-stay-paused-test
+  (testing "GHY-4156: a Pulse encodes \"archived\" by disabling its channels, and the channel write
+            lands after the Pulse write — so a channel edit in the same call, or any edit to an
+            already-archived subscription, must not leave a channel enabled. An enabled channel
+            re-registers the send trigger and the subscription keeps delivering from the trash."
+    (mt/with-temp [:model/Card {card-id :id} {}
+                   :model/Dashboard {dash-id :id} {}
+                   :model/Pulse {pulse-id :id} {:name "Weekly" :dashboard_id dash-id
+                                                :creator_id (mt/user->id :crowberto)}
+                   :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
+                   :model/PulseChannel {pc-id :id} {:pulse_id pulse-id :channel_type :email
+                                                    :schedule_type :daily :schedule_hour 15}
+                   :model/PulseChannel {sc-id :id} {:pulse_id pulse-id :channel_type :slack
+                                                    :details {:channel "#ops"}
+                                                    :schedule_type :daily :schedule_hour 15}]
+      (testing "archiving and editing a channel in one call disables every channel"
+        (tool-result (call-tool! :crowberto nil
+                                 (wire {:method   "update"
+                                        :id       pulse-id
+                                        :archived true
+                                        :channel  "email"
+                                        :schedule {:schedule_type "weekly" :schedule_hour 7
+                                                   :schedule_day "fri"}})))
+        (testing "including the channel that only rode along"
+          (is (= [false false]
+                 (mapv :enabled (sort-by :id [(t2/select-one :model/PulseChannel :id pc-id)
+                                              (t2/select-one :model/PulseChannel :id sc-id)]))))))
+      (testing "a later schedule-only edit doesn't quietly resume it"
+        (tool-result (call-tool! :crowberto nil
+                                 (wire {:method   "update"
+                                        :id       pulse-id
+                                        :channel  "email"
+                                        :schedule {:schedule_type "hourly"}})))
+        (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))
+        (is (false? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id))))
+      (testing "unarchiving re-enables the channels"
+        (tool-result (call-tool! :crowberto nil (wire {:method "update" :id pulse-id :archived false})))
+        (is (true? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))))))
+
+(deftest unarchiving-while-editing-a-channel-re-enables-it-test
+  (testing "GHY-4156: `archived` false alongside a channel edit resumes delivery — the channel
+            write must not restore the disabled state the Pulse write just cleared"
+    (mt/with-temp [:model/Card {card-id :id} {}
+                   :model/Dashboard {dash-id :id} {}
+                   :model/Pulse {pulse-id :id} {:name "Weekly" :dashboard_id dash-id
+                                                :creator_id (mt/user->id :crowberto)
+                                                :archived true}
+                   :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
+                   :model/PulseChannel {pc-id :id} {:pulse_id pulse-id :channel_type :email
+                                                    :enabled false
+                                                    :schedule_type :daily :schedule_hour 15}]
+      (tool-result (call-tool! :crowberto nil
+                               (wire {:method   "update"
+                                      :id       pulse-id
+                                      :archived false
+                                      :schedule {:schedule_type "weekly" :schedule_hour 7
+                                                 :schedule_day "fri"}})))
+      (is (false? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))
+      (is (true? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id))))))
 
 (deftest update-skip-if-empty-test
   (testing "GHY-4156: skip_if_empty suppresses the send when the dashboard has no results"

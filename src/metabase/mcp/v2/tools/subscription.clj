@@ -105,13 +105,21 @@
   "Merge the caller's delivery arguments onto `existing` (the subscription's current channel of
    this type, or nil when there isn't one yet). Only the arguments actually present change, so a
    caller who sends just a schedule keeps the channel's recipients — and its row, since the
-   preserved `:id` makes [[metabase.pulse.core/update-pulse!]] update rather than recreate it."
-  [existing channel-type {:keys [schedule recipients slack_channel] :as args}]
+   preserved `:id` makes [[metabase.pulse.core/update-pulse!]] update rather than recreate it.
+
+   `enabled?` must be the negation of the subscription's resulting `archived` state. A Pulse
+   encodes \"archived\" by disabling every one of its channels, and the channel write lands after
+   the Pulse write, so an `:enabled` that disagrees resurrects a trashed subscription: its Quartz
+   send trigger is re-registered and it keeps delivering from the trash."
+  [existing channel-type enabled? {:keys [schedule recipients slack_channel] :as args}]
   (when (and (= "slack" channel-type) (contains? args :recipients))
     (common/throw-teaching-error
      "A Slack subscription posts to a channel and has no recipient list — drop recipients, or use channel \"email\" to send to people."))
+  (when (and (= "email" channel-type) (contains? args :recipients) (empty? recipients))
+    (common/throw-teaching-error
+     "An empty recipients list would deliver this subscription to nobody — pass at least one user id or email address, or omit recipients to leave the current recipients alone."))
   (merge {:channel_type channel-type
-          :enabled      true}
+          :enabled      enabled?}
          (select-keys existing [:id])
          (effective-schedule existing schedule)
          (case channel-type
@@ -163,9 +171,15 @@
 
 (defn- subscription-cards
   "The pulse's `cards` list, assembled from the dashboard's dashcards as the subscription sidebar
-   does: every card-backed dashcard, in layout order, tied back to the dashcard it came from so
-   the send renders the dashboard's layout. Virtual dashcards (text, headings, links) have no
-   card and are skipped. Each card is read-checked, since subscribing to it delivers its results."
+   does: every card-backed dashcard, in layout order, tagged with the `dashboard_card_id` it came
+   from. Virtual dashcards (text, headings, links) have no card and are skipped. Each card is
+   read-checked, since subscribing to it delivers its results. A dashboard with no cards is a
+   teaching error.
+
+   This list does not decide what a send renders — the dashboard payload re-executes the whole
+   dashboard by id. It exists because [[metabase.pulse.core/create-pulse!]] requires at least one
+   card ref, and because `dashboard_card_id` is what the email channel matches per-card attachment
+   flags against for visualizer dashcards."
   [dashboard]
   (let [cards (for [{dashcard-id :id :keys [card]} (sort-by (juxt #(or (:row %) 0) #(or (:col %) 0))
                                                             (:dashcards dashboard))
@@ -184,7 +198,7 @@
                                                (fn [id] (api/read-check (t2/select-one :model/Dashboard :id id))))
                       (t2/hydrate [:dashcards :card]))
         cards     (subscription-cards dashboard)
-        channel   (build-channel nil (or channel "email") args)
+        channel   (build-channel nil (or channel "email") true args)
         ;; `collection_id` is deliberately nil rather than the dashboard's: the Pulse model derives
         ;; it from `dashboard_id`, and naming it here would make the create-check demand *write*
         ;; access to the dashboard's collection — anyone who can view a dashboard can subscribe to
@@ -217,16 +231,21 @@
 (defn- patched-channels
   "The subscription's full channel list with the targeted one replaced (or appended). The pulse
    update path treats `:channels` as definitive — anything omitted is deleted — so the channels
-   this call doesn't touch have to ride along unchanged."
-  [existing-channels channel args]
+   this call doesn't touch have to ride along unchanged, apart from `:enabled`: that one tracks
+   the subscription's archived state for every channel, not just the edited one (see
+   [[build-channel]])."
+  [existing-channels channel enabled? args]
   (let [channel-type (target-channel-type channel existing-channels)
         same-type?   #(= channel-type (name (:channel_type %)))]
-    (conj (vec (remove same-type? existing-channels))
-          (build-channel (m/find-first same-type? existing-channels) channel-type args))))
+    (conj (mapv #(assoc % :enabled enabled?) (remove same-type? existing-channels))
+          (build-channel (m/find-first same-type? existing-channels) channel-type enabled? args))))
 
 (defn- update!
   [id-or-eid {:keys [channel parameters skip_if_empty archived] :as args}]
   (let [subscription (fetch-subscription id-or-eid)
+        archived?    (if (contains? args :archived)
+                       (boolean archived)
+                       (boolean (:archived subscription)))
         updates      (cond-> {}
                        (contains? args :skip_if_empty) (assoc :skip_if_empty (boolean skip_if_empty))
                        (contains? args :archived)      (assoc :archived (boolean archived))
@@ -238,7 +257,8 @@
                                (t2/select-one-fn :parameters :model/Dashboard :id (:dashboard_id subscription))))
 
                        (channel-affecting? args)
-                       (assoc :channels (patched-channels (:channels subscription) channel args)))]
+                       (assoc :channels (patched-channels (:channels subscription) channel
+                                                          (not archived?) args)))]
     (when (empty? updates)
       (common/throw-teaching-error
        "Nothing to update — pass at least one of schedule, channel, slack_channel, recipients, parameters, skip_if_empty, or archived."))
