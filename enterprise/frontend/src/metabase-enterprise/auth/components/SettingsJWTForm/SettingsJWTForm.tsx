@@ -11,6 +11,7 @@ import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
 import { useGetAdminSettingsDetailsQuery } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -29,7 +30,6 @@ import type {
 
 export type JWTFormValues = Pick<
   EnterpriseSettings,
-  | "jwt-user-provisioning-enabled?"
   | "jwt-identity-provider-uri"
   | "jwt-shared-secret"
   | "jwt-attribute-email"
@@ -44,6 +44,7 @@ export const SettingsJWTForm = () => {
     refetch: refetchSettingDetails,
   } = useGetAdminSettingsDetailsQuery();
   const { value: jwtEnabled, updateSettings } = useAdminSetting("jwt-enabled");
+  const [sendToast] = useToast();
 
   const handleSubmit = async (values: Partial<JWTFormValues>) => {
     const { "jwt-shared-secret": jwtSecret, ...rest } = values;
@@ -66,6 +67,8 @@ export const SettingsJWTForm = () => {
     if (result.error) {
       throw new Error(t`Error saving JWT Settings`);
     }
+
+    sendToast({ message: t`Changes saved`, icon: "check_filled" });
   };
 
   if (isLoadingDetails) {
@@ -193,7 +196,6 @@ export const SettingsJWTForm = () => {
 
 const getFormValues = (settingDetails: SettingDefinitionMap): JWTFormValues => {
   const jwtSettings = _.pick(settingDetails, [
-    "jwt-user-provisioning-enabled?",
     "jwt-identity-provider-uri",
     "jwt-shared-secret",
     "jwt-group-sync",
@@ -203,14 +205,6 @@ const getFormValues = (settingDetails: SettingDefinitionMap): JWTFormValues => {
     "jwt-attribute-groups",
     "jwt-attribute-tenant",
   ]);
-
-  if (!jwtSettings["jwt-user-provisioning-enabled?"]?.value) {
-    // cast empty to false
-    jwtSettings["jwt-user-provisioning-enabled?"] = {
-      ...jwtSettings["jwt-user-provisioning-enabled?"],
-      value: false,
-    };
-  }
 
   // cast undefined to null
   return _.mapObject(jwtSettings, (val) => val?.value ?? null) as JWTFormValues;
