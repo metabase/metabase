@@ -111,7 +111,7 @@
   unimpersonated, router-db only router-db. There is deliberately no subset reasoning. It is
   intended that an unsandboxed viewer be denied a sandboxed creator's snapshot (even though
   the sandbox's rows are a subset of a table they could query directly).
-  
+
   Bare equality suffices because [[data-access-token]] emits one canonical representation per lens,
   with empty dimensions omitted."
   [creator-token viewer-token]

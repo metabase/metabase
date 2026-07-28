@@ -23,7 +23,9 @@
   When both the token and the query are present we compare lenses strictly. Two degenerate cases
   make that comparison impossible, and both deny (the viewer here is a non-admin):
 
-    - a `nil` `:data_access_token`. The write path never persists a snapshot without a token.
+    - a `nil` `:data_access_token` — either never captured (the write path fails the query
+      rather than persist a token-less snapshot) or stored but unreadable (the model transform
+      decodes an unparseable token to nil; see [[metabase.queries.models.stored-result]]).
     - token computation throwing (the viewer is missing a routing/impersonation attribute the
       snapshot's database requires, or the query's source-card chain can no longer be resolved to
       its underlying tables). An expected condition for some viewers — such a viewer could not run
@@ -34,7 +36,7 @@
   [stored-result]
   (if (nil? (:data_access_token stored-result))
     (do
-      (log/errorf "Cached result %s has no data_access_token; the write path should never persist one. Denying."
+      (log/errorf "Cached result %s has no readable data_access_token (never captured, or failed to parse). Denying."
                   (:id stored-result))
       false)
     (try

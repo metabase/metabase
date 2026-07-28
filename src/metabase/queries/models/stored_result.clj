@@ -15,21 +15,23 @@
 
 (defn- data-access-token-in
   "Serialize the effective-data-access token as EDN. JSON can't be used: the token is keyed by
-  integer table-id / database-id, and JSON mangles non-string map keys. `nil` (creator+admin-only)
-  is stored as SQL NULL rather than the string \"nil\"."
+  integer table-id / database-id, and JSON mangles non-string map keys. `nil` is stored as SQL
+  NULL rather than the string \"nil\"."
   [v]
   (when (some? v)
     (pr-str v)))
 
 (defn- data-access-token-out
-  "Read the EDN token back. An unreadable blob decodes to `nil`, which the read gate treats as
-  creator+admin-only — fail closed, never widen access on a parse error."
+  "Read the EDN token back. An unreadable blob decodes to `nil`, which the read gate
+  ([[metabase.queries.cached-result]]) denies to everyone but superusers — fail closed, never
+  widen access on a parse error. The write path never persists a token-less snapshot, so an
+  unreadable one here is a bug: logged at ERROR, like the denial it leads to."
   [s]
   (when (string? s)
     (try
       (edn/read-string {:readers {} :default (fn [_tag v] v)} s)
       (catch Throwable e
-        (log/warn e "Failed to parse stored_result.data_access_token; treating as creator+admin-only")
+        (log/error e "Failed to parse stored_result.data_access_token; the read gate will deny non-admins")
         nil))))
 
 (t2/deftransforms :model/StoredResult
