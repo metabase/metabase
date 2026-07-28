@@ -52,6 +52,54 @@ export async function storeDrillQuery({
   return response.json();
 }
 
+type FetchQueryByHandleRequest = {
+  instanceUrl: string;
+  sessionToken: string;
+  mcpSessionId: string;
+  queryHandle: string;
+};
+
+type FetchQueryByHandleResponse = {
+  query: string;
+  prompt: string | null;
+};
+
+/**
+ * Exchanges a query handle for the base64-encoded query it stands for.
+ *
+ * The v2 MCP tools return only a handle, so the query never enters the model's
+ * context; the iframe resolves it here with the embedding session token it was
+ * rendered with. Access is keyed on that (user, session) pair — a handle on its
+ * own is not a bearer credential.
+ *
+ * We cannot use RTK Query here as we are not in Metabase's React tree.
+ */
+export async function fetchQueryByHandle({
+  instanceUrl,
+  sessionToken,
+  mcpSessionId,
+  queryHandle,
+}: FetchQueryByHandleRequest): Promise<FetchQueryByHandleResponse> {
+  const response = await fetch(
+    `${instanceUrl}/api/embed-mcp/queries/${encodeURIComponent(queryHandle)}`,
+    {
+      headers: {
+        "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+        "X-Metabase-Session": sessionToken,
+        "Mcp-Session-Id": mcpSessionId,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `fetchQueryByHandle failed: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  return response.json();
+}
+
 export async function submitMcpFeedback({
   instanceUrl,
   sessionToken,

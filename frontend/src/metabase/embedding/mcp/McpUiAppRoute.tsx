@@ -29,6 +29,7 @@ interface McpUiAppRouteContentProps {
   app: McpAppState["app"];
   hostContext: McpAppState["hostContext"];
   instanceUrl: string;
+  display: McpAppState["display"];
   prompt: McpAppState["prompt"];
   query: McpAppState["query"];
   sessionToken: string;
@@ -48,7 +49,7 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { app, hostContext, prompt, query } = useMcpApp();
+  const { app, display, hostContext, prompt, query } = useMcpApp();
 
   const { instanceUrl = "", sessionToken = "" } =
     // Unjustified type cast. FIXME
@@ -82,6 +83,7 @@ export function McpUiAppRoute() {
       <McpUiAppRouteContent
         app={app}
         hostContext={hostContext}
+        display={display}
         instanceUrl={instanceUrl}
         prompt={prompt}
         query={query}
@@ -93,6 +95,7 @@ export function McpUiAppRoute() {
 
 function McpUiAppRouteContent({
   app,
+  display,
   hostContext,
   instanceUrl,
   prompt,
@@ -193,6 +196,7 @@ function McpUiAppRouteContent({
       <>
         <McpQuestionView
           queryKey={query}
+          requestedDisplay={display}
           safeAreaPaddingTop={safeAreaPadding.top}
         />
 

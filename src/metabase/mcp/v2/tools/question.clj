@@ -115,10 +115,6 @@
 
 ;;; ------------------------------------------------------ Create --------------------------------------------------
 
-(def ^:private card-display-enum
-  [:enum "table" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
-   "scalar" "smartscalar" "gauge" "progress" "funnel" "map" "waterfall" "sankey"])
-
 (defn- frontend-url
   "Prefix a `channel.urls` relative `path` with the configured site URL, returning it relative
    when site-url is unset so the tool never emits an absolute URL with an empty host."
@@ -314,7 +310,7 @@
    [:collection_id {:optional true} [:maybe [:or :int :string]]]
    [:dashboard_id {:optional true} [:maybe [:or :int :string]]]
    [:collection_position {:optional true} [:maybe :int]]
-   [:display {:optional true} [:maybe card-display-enum]]
+   [:display {:optional true} [:maybe common/card-display-enum]]
    [:visualization_settings {:optional true} [:maybe :map]]
    [:cache_ttl {:optional true} [:maybe :int]]
    [:archived {:optional true} [:maybe :boolean]]

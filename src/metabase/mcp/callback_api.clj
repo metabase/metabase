@@ -59,6 +59,25 @@
     (check-session-header! session-id api/*current-user-id*)
     {:handle (mcp.session/store-handle! session-id api/*current-user-id* encodedQuery)}))
 
+(api.macros/defendpoint :get "/queries/:handle" :- [:map
+                                                    [:query  ms/NonBlankString]
+                                                    [:prompt [:maybe :string]]]
+  "Resolve a query handle to the base64-encoded MBQL the iframe should render.
+
+   This is how the v2 MCP Apps tools keep result data out of the model context: `visualize_query`
+   and `render_drill_through` return only a handle, and the iframe exchanges it here using the
+   embedding session token it was rendered with. Access is keyed on that `(user, session)` pair —
+   the handle alone is not a bearer credential."
+  [{:keys [handle]} :- [:map [:handle ms/UUIDString]]
+   _query-params
+   _body
+   request]
+  (let [session-id (mcp-session-id-from-headers request)]
+    (check-session-header! session-id api/*current-user-id*)
+    (api/let-404 [{:keys [encoded_query prompt]}
+                  (mcp.session/resolve-query-handle session-id api/*current-user-id* handle)]
+      {:query encoded_query :prompt prompt})))
+
 (api.macros/defendpoint :post "/feedback" :- [:map
                                               [:status [:= 204]]
                                               [:body :nil]]
@@ -82,6 +101,7 @@
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes
-  "Iframe-callback routes mounted at `/api/embed-mcp`. MCP-feature gated; auth is
-   handled by the upstream `+auth` middleware in api-routes."
-  (mcp.validation/+mcp-enabled (api.macros/ns-handler *ns*)))
+  "Iframe-callback routes mounted at `/api/embed-mcp`. Gated on either MCP surface being enabled —
+   the iframe is shared by v1 and v2; auth is handled by the upstream `+auth` middleware in
+   api-routes."
+  (mcp.validation/+any-mcp-surface-enabled (api.macros/ns-handler *ns*)))
