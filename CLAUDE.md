@@ -1,5 +1,10 @@
 # Metabase Development Guide
 
+## Generated Design Documents
+
+Do not commit AI-generated design or implementation-plan documents. Keep generated artifacts such as
+`docs/superpowers/` local to your working copy.
+
 # Skills
 
 For detailed guidance on writing and reviewing code and documentation, see the skills in [.claude/skills/](.claude/skills/):
