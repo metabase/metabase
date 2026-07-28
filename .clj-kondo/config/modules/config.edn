@@ -1263,6 +1263,7 @@
            ai-tracing
            api
            app-db
+           bookmarks
            channel
            collections
            config
