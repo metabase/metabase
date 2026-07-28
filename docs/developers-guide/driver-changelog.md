@@ -6,6 +6,9 @@ title: Driver interface changelog
 
 ## Metabase 0.64.0
 
+- `metabase.driver.sql-jdbc.sync.interface/db-tables` is now a multimethod for retrieving JDBC metadata
+  tables. SQL JDBC drivers can override this method to customize which database objects are discovered during sync.
+
 - `metabase.driver/workspace-isolation-details` `[driver database workspace]` -- new workspace-isolation
   multimethod. Computes the isolation identifiers (`:schema`, and driver-specific `:database_details` such as
   user/password) for a workspace *before* any warehouse work happens; `init-workspace-isolation!`,
@@ -162,9 +165,6 @@ title: Driver interface changelog
   update it to pass in the `driver` parameter now. An example is in the Snowflake driver's `string-filter` function.
 
 - `driver/field-reference-mlv2`, deprecated in 0.57.0, has now been removed.
-
-- `metabase.driver.sql-jdbc.sync.interface/db-tables` is now a multimethod for retrieving JDBC metadata
-  tables. SQL JDBC drivers can override this method to customize which database objects are discovered during sync.
   
 - `metabase.driver.sql/set-role-statement` has been deprecated in favor of
   `metabase.driver.sql-jdbc/set-role-statement`, which takes an additional `java.sql.Connection` parameter, so you use
