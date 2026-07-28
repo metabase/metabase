@@ -599,5 +599,57 @@ export const defaultFontFiles = ({ baseUrl = "./" } = {}) => {
       font-style: normal;
       font-display: swap;
     }
+
+    /*
+     * RTL script coverage. Metabase's built-in fonts are Latin-only, so Arabic,
+     * Persian, Urdu and Hebrew text otherwise falls back to whatever the OS
+     * happens to provide. The unicode-range below keeps these files from being
+     * downloaded at all unless the page actually renders those scripts, so LTR
+     * users pay nothing.
+     *
+     * Note Urdu is covered glyph-wise but rendered in Naskh; readers who expect
+     * Nastaliq would need a dedicated face (e.g. Noto Nastaliq Urdu).
+     */
+    @font-face {
+      font-family: "IBM Plex Sans Arabic";
+      src: url("${basePath}/IBM_Plex_Sans_Arabic/IBM_Plex_Sans_Arabic-400.woff2")
+        format("woff2");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+      unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+08A0-08FF,
+        U+FB50-FDFF, U+FE70-FEFF;
+    }
+
+    @font-face {
+      font-family: "IBM Plex Sans Arabic";
+      src: url("${basePath}/IBM_Plex_Sans_Arabic/IBM_Plex_Sans_Arabic-700.woff2")
+        format("woff2");
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+      unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+08A0-08FF,
+        U+FB50-FDFF, U+FE70-FEFF;
+    }
+
+    @font-face {
+      font-family: "IBM Plex Sans Hebrew";
+      src: url("${basePath}/IBM_Plex_Sans_Hebrew/IBM_Plex_Sans_Hebrew-400.woff2")
+        format("woff2");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+      unicode-range: U+0590-05FF, U+FB1D-FB4F;
+    }
+
+    @font-face {
+      font-family: "IBM Plex Sans Hebrew";
+      src: url("${basePath}/IBM_Plex_Sans_Hebrew/IBM_Plex_Sans_Hebrew-700.woff2")
+        format("woff2");
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+      unicode-range: U+0590-05FF, U+FB1D-FB4F;
+    }
   `;
 };

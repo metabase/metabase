@@ -219,7 +219,25 @@ export const saveDashboardPdf = async ({
     pdfHeader.getBoundingClientRect().height + HEADER_MARGIN_BOTTOM;
   gridNode.removeChild(pdfHeader);
 
-  const contentWidth = gridNode.offsetWidth;
+  // The dashboard grid positions its cards absolutely, so a card can in principle
+  // paint outside the grid's own border box. html2canvas captures the node's box,
+  // which would clip anything that overflows — and under `dir="rtl"` an
+  // absolutely positioned card with no inset resolves against the right edge, so
+  // this is a real risk there. Measure what is actually painted and widen the
+  // capture to cover it. Both values are 0 in the normal case, so LTR output is
+  // byte-identical.
+  const gridBox = gridNode.getBoundingClientRect();
+  const paintedCards = Array.from(
+    gridNode.querySelectorAll<HTMLElement>(".react-grid-item"),
+  ).map((card) => card.getBoundingClientRect());
+  const overflowStart = paintedCards.length
+    ? Math.max(0, Math.round(gridBox.left - Math.min(...paintedCards.map((c) => c.left))))
+    : 0;
+  const overflowEnd = paintedCards.length
+    ? Math.max(0, Math.round(Math.max(...paintedCards.map((c) => c.right)) - gridBox.right))
+    : 0;
+
+  const contentWidth = gridNode.offsetWidth + overflowStart + overflowEnd;
   const width = contentWidth + PAGE_PADDING * 2;
 
   const size = getBrandingSize(width);
@@ -244,6 +262,8 @@ export const saveDashboardPdf = async ({
   const image = await html2canvas(gridNode, {
     height: contentHeight,
     width: contentWidth,
+    // start the capture where content actually begins (0 unless a card overflows)
+    x: -overflowStart,
     useCORS: true,
     backgroundColor,
     scale: Math.min(window.devicePixelRatio || 1, 2),
@@ -252,6 +272,10 @@ export const saveDashboardPdf = async ({
     cspNonce: getCspNonce(),
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
+      // html2canvas rebuilds the subtree in a fresh document, which drops the
+      // inherited `dir`. Direction-dependent rules (e.g. pinning grid cards to
+      // the physical left in RTL) key off an ancestor, so stamp it back on.
+      node.setAttribute("dir", getComputedStyle(gridNode).direction);
       node.style.height = `${contentHeight}px`;
       node.style.backgroundColor = backgroundColor;
 
