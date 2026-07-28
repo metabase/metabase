@@ -163,10 +163,10 @@
   (when (seq ids)
     (let [rows   (t2/select [:model/Collection :id :description :location :personal_owner_id]
                             :id [:in (set ids)])
-          ;; default-fields select: :common_name is computed from first/last name, not a real column
           owners (when-let [owner-ids (not-empty (into #{} (keep :personal_owner_id) rows))]
                    (t2/select-pk->fn #(select-keys % [:id :common_name :email])
-                                     :model/User :id [:in owner-ids]))]
+                                     [:model/User :id :email :first_name :last_name]
+                                     :id [:in owner-ids]))]
       (m/index-by :id
                   (for [{:keys [location personal_owner_id] :as row} rows]
                     (assoc row
