@@ -19,6 +19,7 @@
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.settings :as mcp.settings]
+   [metabase.mcp.ui-resource :as mcp.ui-resource]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as common]
    [metabase.premium-features.core :as premium-features]
@@ -131,12 +132,15 @@
    :openWorldHint   false})
 
 (defn- tool->manifest-entry
-  [{:keys [args annotations] :as tool}]
-  (assoc tool
-         :inputSchema (-> args
-                          tools-manifest/malli->json-schema
-                          tools-manifest/strict-tool-input-schema)
-         :annotations (merge default-annotations annotations)))
+  [{:keys [args annotations outputSchema] :as tool}]
+  (cond-> (assoc tool
+                 :inputSchema (-> args
+                                  tools-manifest/malli->json-schema
+                                  tools-manifest/strict-tool-input-schema)
+                 :annotations (merge default-annotations annotations))
+    ;; No strict transform on outputs — that rewrite exists to satisfy OpenAI's strict-tool rules
+    ;; for arguments the model produces, and outputs aren't constrained by them.
+    outputSchema (assoc :outputSchema (tools-manifest/malli->json-schema outputSchema))))
 
 (defn- generate-manifest
   []
@@ -161,20 +165,29 @@
       (premium-features/has-feature? feature)))
 
 (defn- visible?
-  [token-scopes disabled tool]
+  [token-scopes disabled supported tool]
   (and (not (contains? disabled (:name tool)))
        (feature-available? tool)
+       (not (mcp.ui-resource/missing-required-extensions tool supported))
        (mcp.scope/matches? token-scopes (:scope tool))))
 
 (defn list-tools
   "Return the tool definitions for the v2 MCP `tools/list` response, filtered by `token-scopes`,
-   the `mcp-v2-disabled-tools` setting, and EE feature availability."
-  [token-scopes]
-  (let [disabled (disabled-tool-names)]
-    (into []
-          (comp (filter #(visible? token-scopes disabled %))
-                (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations :_meta])))
-          (manifest))))
+   the `mcp-v2-disabled-tools` setting, EE feature availability, and the client extensions
+   `options` advertises (`:supports-mcp-ui?` — MCP Apps tools are hidden from clients that
+   can't render an iframe rather than failing at call time).
+
+   The 1-arity assumes full extension support: it backs [[tools-hash]], whose transport hook
+   sees only token scopes, so the hash must not depend on per-session capabilities."
+  ([token-scopes]
+   (list-tools token-scopes {:supports-mcp-ui? true}))
+  ([token-scopes options]
+   (let [disabled  (disabled-tool-names)
+         supported (mcp.ui-resource/supported-extensions options)]
+     (into []
+           (comp (filter #(visible? token-scopes disabled supported %))
+                 (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations :_meta])))
+           (manifest)))))
 
 (defn tools-hash
   "Stable 8-character hex hash of the tool list visible to `token-scopes`; polled by the
@@ -209,7 +222,9 @@
 
 (defn- dispatch-tool-call
   [token-scopes session-id tool-name arguments options]
-  (let [tool (get @tools* tool-name)]
+  (let [tool    (get @tools* tool-name)
+        missing (mcp.ui-resource/missing-required-extensions
+                 tool (mcp.ui-resource/supported-extensions options))]
     (cond
       (not (map? (or arguments {})))
       (common/error-content "Invalid arguments: expected a JSON object." common/error-code-invalid-params)
@@ -224,6 +239,12 @@
       (not (mcp.scope/matches? token-scopes (:scope tool)))
       (common/error-content (str "Insufficient scope to call tool: " tool-name)
                             common/error-code-invalid-request)
+
+      ;; A UI tool the client can't render is a caller error, not a hidden tool: unlike the
+      ;; scope/disabled cases it stays listed for capable clients, so name what's missing.
+      missing
+      (common/error-content (mcp.ui-resource/missing-extensions-error tool-name missing)
+                            common/error-code-invalid-params)
 
       :else
       (let [arguments (common/drop-nil-args (or arguments {}))]

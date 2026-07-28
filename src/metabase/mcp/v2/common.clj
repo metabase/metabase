@@ -344,6 +344,20 @@
 
     (throw-teaching-error (format "Invalid method %s — use \"create\" or \"update\"." (pr-str method)))))
 
+;;; ------------------------------------------------ Shared schemas ------------------------------------------------
+
+(def card-display-values
+  "Visualization types a card (or an MCP Apps visualization) can render as. Shared so the display
+   a tool saves and the display a tool renders can't drift apart. Callers that want a per-field
+   `:description` build their own enum from these — Malli properties can't be added to a built
+   schema without wrapping it in an `:and`, which publishes as JSON Schema `allOf`."
+  ["table" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
+   "scalar" "smartscalar" "gauge" "progress" "funnel" "map" "waterfall" "sankey"])
+
+(def card-display-enum
+  "[[card-display-values]] as an undescribed Malli enum."
+  (into [:enum] card-display-values))
+
 ;;; ------------------------------------------------ Portable queries ----------------------------------------------
 
 (defn ellipsize

@@ -15,6 +15,7 @@
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.mcp.transport :as mcp.transport]
+   [metabase.mcp.ui-resource :as mcp.ui-resource]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.search.test-util :as search.tu]
    [metabase.system.settings :as system.settings]
@@ -33,7 +34,7 @@
 ;; Backend-only test runs don't produce embed-mcp.html; install the inline fallback.
 (use-fixtures :each
   (fn [thunk]
-    (mcp.resources/with-fallback-template (thunk))))
+    (mcp.ui-resource/with-fallback-template (thunk))))
 
 ;;; --------------------------------------------------- Helpers ----------------------------------------------------
 

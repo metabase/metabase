@@ -5,6 +5,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.config.core :as config]
    [metabase.mcp.resources :as mcp.resources]
+   [metabase.mcp.ui-resource :as mcp.ui-resource]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [stencil.core :as stencil]))
@@ -84,7 +85,7 @@
 
 (deftest builtin-ui-resource-prefers-border-test
   (testing "the visualize query UI resource explicitly asks the host to provide a border"
-    (mcp.resources/with-fallback-template
+    (mcp.ui-resource/with-fallback-template
       (is (=? {:status   :ok
                :contents [{:uri      "ui://metabase/visualize-query.html"
                            :mimeType "text/html;profile=mcp-app"
@@ -99,7 +100,7 @@
       (is (contains? uris "ui://metabase/visualize-query.html"))
       (is (contains? uris "ui://metabase/render-drill-through.html"))))
   (testing "the two UI resources return byte-distinct HTML (ChatGPT's asset CDN appears to dedupe by body hash, so identical bodies cause the second asset to silently 404)"
-    (mcp.resources/with-fallback-template
+    (mcp.ui-resource/with-fallback-template
       (let [viz-html   (-> (mcp.resources/read-resource "ui://metabase/visualize-query.html"
                                                         #{"agent:viz:mcp-ui:query"} {})
                            :contents first :text)
@@ -122,7 +123,7 @@
           origin   "https://metabase.example.com"
           uri      "ui://metabase/visualize-query.html"
           read-ui  (fn []
-                     (mcp.resources/with-fallback-template
+                     (mcp.ui-resource/with-fallback-template
                        (mcp.resources/read-resource uri #{"agent:viz:mcp-ui:query"} {})))]
       (with-redefs [system/site-url (constantly site-url)]
         (testing "no request bound → CSP origins still emitted, :domain suppressed"

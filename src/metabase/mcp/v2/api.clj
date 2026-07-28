@@ -5,12 +5,16 @@
    [[metabase.mcp.v2.registry]] instead of the agent-api defendpoint manifest. Gated by
    `mcp-v2-enabled`, independent of the v1 `mcp-enabled?` setting."
   (:require
+   [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.api.routes.common :as routes.common]
    [metabase.llm.settings :as llm.settings]
+   [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.transport :as transport]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.resources :as v2.resources]
    [metabase.mcp.v2.tools.alert]
    [metabase.mcp.v2.tools.bookmark]
    [metabase.mcp.v2.tools.browse]
@@ -25,6 +29,7 @@
    [metabase.mcp.v2.tools.question]
    [metabase.mcp.v2.tools.search]
    [metabase.mcp.v2.tools.subscription]
+   [metabase.mcp.v2.tools.visualize]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.util.i18n :refer [tru]]))
 
@@ -47,35 +52,61 @@
 
 ;;; ------------------------------------------------ Method dispatch -----------------------------------------------
 
-(defn- handle-tools-list [id _params _session-id token-scopes]
-  (transport/jsonrpc-response id {:tools (registry/list-tools token-scopes)}))
+(defn- handle-tools-list [id _params session-id token-scopes]
+  (let [supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
+    (transport/jsonrpc-response id {:tools (registry/list-tools token-scopes
+                                                                {:supports-mcp-ui? supports-mcp-ui?})})))
 
 (defn- handle-tools-call [id params session-id token-scopes request-context]
-  (let [tool-name   (:name params)
-        arguments   (or (:arguments params) {})
+  (let [tool-name        (:name params)
+        arguments        (or (:arguments params) {})
         ;; RC clients carry their identity per-call in `_meta`; the usage recorder falls back to
         ;; the session's stored identity when it's absent.
-        client-info (get-in params [:_meta :io.modelcontextprotocol/clientInfo])]
+        client-info      (get-in params [:_meta :io.modelcontextprotocol/clientInfo])
+        supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
     (transport/jsonrpc-response id (registry/call-tool token-scopes
                                                        session-id
                                                        tool-name
                                                        arguments
-                                                       {:client-info     client-info
-                                                        :request-context request-context}))))
+                                                       {:client-info      client-info
+                                                        :supports-mcp-ui? supports-mcp-ui?
+                                                        :request-context  request-context}))))
+
+(defn- handle-resources-list [id _params token-scopes]
+  (transport/jsonrpc-response id (v2.resources/list-resources token-scopes)))
+
+(defn- handle-resources-read [id params session-id token-scopes]
+  (let [uri (:uri params)]
+    (if (or (not (string? uri)) (str/blank? uri))
+      (transport/jsonrpc-error id -32602 "Missing required parameter: uri")
+      ;; Reading the shell is what mints the embedding session key the iframe authenticates
+      ;; with — it is the only place the browser ever receives one.
+      (let [user-id     api/*current-user-id*
+            session-key (when user-id (mcp.session/get-or-create-session-key! session-id user-id))
+            result      (v2.resources/read-resource uri token-scopes {:session-key session-key
+                                                                      :session-id  session-id})]
+        (case (:status result)
+          ;; Collapsed so a scope-denied read can't be used to probe which resources exist.
+          (:not-found :scope-denied) (transport/jsonrpc-error id -32602 "Resource not found")
+          :ok                        (transport/jsonrpc-response id {:contents (:contents result)})
+          (transport/jsonrpc-error id -32603 (str "Unexpected resource status: " (:status result))))))))
 
 (defn- handle-ping [id _params]
   (transport/jsonrpc-response id {}))
 
 (defn- dispatch-method
   "Route a single JSON-RPC `method` to its v2 handler, returning a response map or nil
-  (notifications). `resources/*` and `prompts/*` land with the skills work; until then they
-  fall through to method-not-found. A handler that throws is turned into a JSON-RPC internal
-  error by the transport."
+  (notifications). `resources/*` serves the MCP Apps iframe shells only; documentation and skill
+  resources land with the skills work. `prompts/*` is still unimplemented and falls through to
+  method-not-found. A handler that throws is turned into a JSON-RPC internal error by the
+  transport."
   [id method params session-id token-scopes request-context]
   (case method
     "notifications/initialized" nil
     "tools/list"                (handle-tools-list id params session-id token-scopes)
     "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
+    "resources/list"            (handle-resources-list id params token-scopes)
+    "resources/read"            (handle-resources-read id params session-id token-scopes)
     "ping"                      (handle-ping id params)
     (if id
       (transport/jsonrpc-error id -32601 (str "Method not found: " method))
@@ -104,9 +135,8 @@
   "Ring async handler for the v2 MCP endpoint."
   (transport/make-handler
    {:dispatch-method-fn dispatch-method
-    ;; No :resources/:prompts — a surface must not advertise methods it answers with
-    ;; method-not-found.
-    :capabilities       {:tools {:listChanged true}}
+    ;; No :prompts — a surface must not advertise methods it answers with method-not-found.
+    :capabilities       {:tools {:listChanged true} :resources {}}
     :tools-hash-fn      registry/tools-hash
     :endpoint-paths     #{"/api/metabase-mcp/v2"}
     :default-path       "/api/metabase-mcp/v2"}))

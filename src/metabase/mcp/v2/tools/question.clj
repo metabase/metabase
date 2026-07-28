@@ -115,10 +115,6 @@
 
 ;;; ------------------------------------------------------ Create --------------------------------------------------
 
-(def ^:private card-display-enum
-  [:enum "table" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
-   "scalar" "smartscalar" "gauge" "progress" "funnel" "map" "waterfall" "sankey"])
-
 (defn- collection-path
   "Permission-filtered location breadcrumb of `collection-id`, e.g. \"Our analytics / Marketing
    / Q3\". Ancestors the caller can't read are omitted, matching the app breadcrumb. A `nil`
@@ -305,7 +301,7 @@
    [:collection_id {:optional true} [:maybe [:or :int :string]]]
    [:dashboard_id {:optional true} [:maybe [:or :int :string]]]
    [:collection_position {:optional true} [:maybe :int]]
-   [:display {:optional true} [:maybe card-display-enum]]
+   [:display {:optional true} [:maybe common/card-display-enum]]
    [:visualization_settings {:optional true} [:maybe :map]]
    [:cache_ttl {:optional true} [:maybe :int]]
    [:archived {:optional true} [:maybe :boolean]]
