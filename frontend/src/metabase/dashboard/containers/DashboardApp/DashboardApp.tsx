@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
@@ -82,6 +82,21 @@ export const DashboardApp = () => {
   const parameterQueryParams = location.query;
   // Unjustified type cast. FIXME
   const dashboardId = Urls.extractEntityId(params.slug) as DashboardId;
+
+  // A non-numeric slug (e.g. /dashboard/thisisinvalid) never resolves to an id, so the fetch effects
+  // below (which all guard on `dashboardId` being truthy) never fire and the page spins forever. Route
+  // straight to the 404 page instead, matching how the query builder handles the same situation for
+  // question/table slugs (metabase#78725).
+  useEffect(() => {
+    if (dashboardId == null) {
+      dispatch(
+        setErrorPage({
+          data: { error_code: "not-found" },
+          context: "dashboard",
+        }),
+      );
+    }
+  }, [dashboardId, dispatch]);
 
   useRegisterDashboardMetabotContext();
   useDashboardUrlQuery(router, location);

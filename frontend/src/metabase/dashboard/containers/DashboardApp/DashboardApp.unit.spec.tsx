@@ -1,3 +1,4 @@
+import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -27,6 +28,7 @@ import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
+import { getErrorPage } from "metabase/selectors/app";
 import { checkNotNull } from "metabase/utils/types";
 import type { Dashboard } from "metabase-types/api";
 import {
@@ -284,5 +286,44 @@ describe("DashboardApp", () => {
     await userEvent.paste("A".repeat(256));
 
     expect(input).toHaveValue("A".repeat(254));
+  });
+
+  it("dispatches a not-found error instead of spinning forever when the slug isn't a valid id (metabase#78725)", async () => {
+    const DashboardAppContainer = (props: any) => (
+      <main>
+        <link rel="icon" />
+        <DashboardApp {...props} />
+      </main>
+    );
+
+    const { store } = renderWithProviders(
+      <>
+        <Route path="/" element={<TestHome />} />
+        <Route path="/dashboard/:slug" element={<DashboardAppContainer />} />
+      </>,
+      {
+        initialRoute: "/dashboard/thisisinvalid",
+        withRouter: true,
+        storeInitialState: {
+          dashboard: createMockDashboardState(),
+          entities: createMockEntitiesState({}),
+        },
+      },
+    );
+
+    // The route component itself only dispatches the error -- rendering the actual 404 page in its
+    // place is AppComponent's job, which isn't part of this render tree, so we assert on the dispatched
+    // state directly (the same layer the equivalent query-builder behavior is tested at).
+    await waitFor(() => {
+      expect(getErrorPage(store.getState())).toEqual(
+        expect.objectContaining({ data: { error_code: "not-found" } }),
+      );
+    });
+
+    // No fetch was ever attempted for the bogus slug -- confirms the dashboard context's fetch effect
+    // was never given a chance to hang, rather than the error racing an eventual real fetch.
+    expect(
+      fetchMock.callHistory.calls("path:/api/dashboard/thisisinvalid"),
+    ).toHaveLength(0);
   });
 });
