@@ -245,6 +245,59 @@ describe("StaleContentPage", () => {
     expect(lastUrl.searchParams.get("offset")).toBe("25");
   });
 
+  it("sends table sort changes to the server and URL", async () => {
+    const { history } = setup({ findings: FINDINGS });
+    await waitForListToLoad();
+
+    await userEvent.click(screen.getByRole("columnheader", { name: /^Name/ }));
+
+    await waitFor(() => {
+      expect(getLastRequestUrl().searchParams.get("sort-column")).toBe("name");
+    });
+    expect(getLastRequestUrl().searchParams.get("sort-direction")).toBe("asc");
+    expect(history?.getCurrentLocation().query).toEqual({
+      "sort-column": "name",
+      "sort-direction": "asc",
+    });
+
+    await userEvent.click(screen.getByRole("columnheader", { name: /^Name/ }));
+
+    await waitFor(() => {
+      expect(getLastRequestUrl().searchParams.get("sort-direction")).toBe(
+        "desc",
+      );
+    });
+    expect(history?.getCurrentLocation().query).toEqual({
+      "sort-column": "name",
+      "sort-direction": "desc",
+    });
+  });
+
+  it("resets pagination when table sorting changes", async () => {
+    const { history } = setup({
+      findings: FINDINGS,
+      total: 50,
+      urlParams: { page: 1 },
+    });
+    await waitForListToLoad();
+
+    expect(getLastRequestUrl().searchParams.get("offset")).toBe("25");
+
+    await userEvent.click(screen.getByRole("columnheader", { name: "Type" }));
+
+    await waitFor(() => {
+      expect(getLastRequestUrl().searchParams.get("sort-column")).toBe(
+        "entity-type",
+      );
+    });
+    expect(getLastRequestUrl().searchParams.get("sort-direction")).toBe("asc");
+    expect(getLastRequestUrl().searchParams.get("offset")).toBe("0");
+    expect(history?.getCurrentLocation().query).toEqual({
+      "sort-column": "entity-type",
+      "sort-direction": "asc",
+    });
+  });
+
   it("shows the error state and suppresses the table when the stale request fails", async () => {
     setup({ error: true });
 
