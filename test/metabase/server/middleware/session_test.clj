@@ -548,7 +548,6 @@
     (let [session (#'mw.session/current-user-info-for-session session-key nil)]
       session)))
 
-(require '[metabase-enterprise.mfa.settings])
 (deftest mfa-password-test
   (testing "password"
     (testing "With feature flag off, password works"
@@ -559,41 +558,42 @@
           (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id)
                 session       (generate-session! user-id (:id auth-identity))]
             (is (some? session))))))
-    (testing "With feature flag on, password doesn't work"
-      (mt/with-premium-features
-       #{:multi-factor-auth}
-        (mt/with-temporary-setting-values
-          [mfa-enforcement :required
-           mfa-requirement-deadline nil]
-          (mt/with-temp
-            [:model/User {user-id :id} {}]
-            (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id)
-                  session       (generate-session! user-id (:id auth-identity))]
-              (is (nil? session)))))))
-    (testing "With feature flag on before deadline, password doesn't work"
-      (mt/with-premium-features
-       #{:multi-factor-auth}
-        (mt/with-temporary-setting-values
-          [mfa-enforcement :required
-           mfa-requirement-deadline (t/plus (t/offset-date-time)
-                                            (t/hours 16))]
-          (mt/with-temp
-            [:model/User {user-id :id} {}]
-            (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id)
-                  session       (generate-session! user-id (:id auth-identity))]
-              (is (some? session)))))))
-    (testing "With feature flag on after deadline, password doesn't work"
-      (mt/with-premium-features
-       #{:multi-factor-auth}
-        (mt/with-temporary-setting-values
-          [mfa-enforcement :required
-           mfa-requirement-deadline (t/minus (t/offset-date-time)
+    (mt/when-ee-available
+     (testing "With feature flag on, password doesn't work"
+       (mt/with-premium-features
+        #{:multi-factor-auth}
+         (mt/with-temporary-setting-values
+           [mfa-enforcement :required
+            mfa-requirement-deadline nil]
+           (mt/with-temp
+             [:model/User {user-id :id} {}]
+             (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id)
+                   session       (generate-session! user-id (:id auth-identity))]
+               (is (nil? session)))))))
+     (testing "With feature flag on before deadline, password doesn't work"
+       (mt/with-premium-features
+        #{:multi-factor-auth}
+         (mt/with-temporary-setting-values
+           [mfa-enforcement :required
+            mfa-requirement-deadline (t/plus (t/offset-date-time)
                                              (t/hours 16))]
-          (mt/with-temp
-            [:model/User {user-id :id} {}]
-            (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id)
-                  session       (generate-session! user-id (:id auth-identity))]
-              (is (nil? session)))))))))
+           (mt/with-temp
+             [:model/User {user-id :id} {}]
+             (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id)
+                   session       (generate-session! user-id (:id auth-identity))]
+               (is (some? session)))))))
+     (testing "With feature flag on after deadline, password doesn't work"
+       (mt/with-premium-features
+        #{:multi-factor-auth}
+         (mt/with-temporary-setting-values
+           [mfa-enforcement :required
+            mfa-requirement-deadline (t/minus (t/offset-date-time)
+                                              (t/hours 16))]
+           (mt/with-temp
+             [:model/User {user-id :id} {}]
+             (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id)
+                   session       (generate-session! user-id (:id auth-identity))]
+               (is (nil? session))))))))))
 
 (deftest mfa-providers-test
   (init-status/set-complete!)
@@ -612,45 +612,46 @@
                                                          :provider (name provider)}]
             (let [session (generate-session! user-id auth-identity-id)]
               (is (some? session))))))
-      (let [supports-mfa (isa? provider :metabase.auth-identity.provider/supports-mfa)]
-        (testing "With mfa is being enforced, methods that support mfa don't work"
-          (mt/with-premium-features
-           #{:multi-factor-auth}
-            (mt/with-temporary-setting-values
-              [mfa-enforcement :required
-               mfa-requirement-deadline nil]
-              (mt/with-temp
-                [:model/User {user-id :id} {}
-                 :model/AuthIdentity {auth-identity-id :id} {:user_id  user-id
-                                                             :provider (name provider)}]
-                (let [session (generate-session! user-id auth-identity-id)]
-                  (is ((if supports-mfa nil? some?) session)))))))
-        (testing "With mfa is being enforced but the enrollment deadline has not passed, methods that support mfa still work"
-          (mt/with-premium-features
-           #{:multi-factor-auth}
-            (mt/with-temporary-setting-values
-              [mfa-enforcement :required
-               mfa-requirement-deadline (t/plus (t/offset-date-time)
-                                                (t/hours 16))]
-              (mt/with-temp
-                [:model/User {user-id :id} {}
-                 :model/AuthIdentity {auth-identity-id :id} {:user_id  user-id
-                                                             :provider (name provider)}]
-                (let [session (generate-session! user-id auth-identity-id)]
-                  (is (some? session)))))))
-        (testing "With mfa is being enforced but the enrollment deadline has not passed, methods that support mfa don't work"
-          (mt/with-premium-features
-           #{:multi-factor-auth}
-            (mt/with-temporary-setting-values
-              [mfa-enforcement :required
-               mfa-requirement-deadline (t/minus (t/offset-date-time)
+      (mt/when-ee-evailable
+       (let [supports-mfa (isa? provider :metabase.auth-identity.provider/supports-mfa)]
+         (testing "With mfa is being enforced, methods that support mfa don't work"
+           (mt/with-premium-features
+            #{:multi-factor-auth}
+             (mt/with-temporary-setting-values
+               [mfa-enforcement :required
+                mfa-requirement-deadline nil]
+               (mt/with-temp
+                 [:model/User {user-id :id} {}
+                  :model/AuthIdentity {auth-identity-id :id} {:user_id  user-id
+                                                              :provider (name provider)}]
+                 (let [session (generate-session! user-id auth-identity-id)]
+                   (is ((if supports-mfa nil? some?) session)))))))
+         (testing "With mfa is being enforced but the enrollment deadline has not passed, methods that support mfa still work"
+           (mt/with-premium-features
+            #{:multi-factor-auth}
+             (mt/with-temporary-setting-values
+               [mfa-enforcement :required
+                mfa-requirement-deadline (t/plus (t/offset-date-time)
                                                  (t/hours 16))]
-              (mt/with-temp
-                [:model/User {user-id :id} {}
-                 :model/AuthIdentity {auth-identity-id :id} {:user_id  user-id
-                                                             :provider (name provider)}]
-                (let [session (generate-session! user-id auth-identity-id)]
-                  (is ((if supports-mfa nil? some?) session)))))))))))
+               (mt/with-temp
+                 [:model/User {user-id :id} {}
+                  :model/AuthIdentity {auth-identity-id :id} {:user_id  user-id
+                                                              :provider (name provider)}]
+                 (let [session (generate-session! user-id auth-identity-id)]
+                   (is (some? session)))))))
+         (testing "With mfa is being enforced but the enrollment deadline has not passed, methods that support mfa don't work"
+           (mt/with-premium-features
+            #{:multi-factor-auth}
+             (mt/with-temporary-setting-values
+               [mfa-enforcement :required
+                mfa-requirement-deadline (t/minus (t/offset-date-time)
+                                                  (t/hours 16))]
+               (mt/with-temp
+                 [:model/User {user-id :id} {}
+                  :model/AuthIdentity {auth-identity-id :id} {:user_id  user-id
+                                                              :provider (name provider)}]
+                 (let [session (generate-session! user-id auth-identity-id)]
+                   (is ((if supports-mfa nil? some?) session))))))))))))
 
 (deftest mfa-providers-list-test
   (testing "Ldap and password are the only ones that support mfa"
