@@ -28,7 +28,7 @@
    [toucan2.core :as t2])
   (:import
    (java.sql Connection PreparedStatement SQLIntegrityConstraintViolationException)
-   (java.util.concurrent ConcurrentHashMap)
+   (java.util.concurrent ConcurrentHashMap TimeUnit)
    (java.util.concurrent.locks Lock ReentrantReadWriteLock)
    (java.util.function Function)))
 
@@ -42,7 +42,8 @@
   ;; We can retry getting the cluster lock if either we tried to concurrently insert the pk
   ;; for the lock resulting in a SQLIntegrityConstraintViolationException or if the query
   ;; was cancelled via timeout waiting to get the SELECT FOR UPDATE lock
-  (or (instance? SQLIntegrityConstraintViolationException e)
+  (or (true? (::acquire-timeout? (ex-data e)))
+      (instance? SQLIntegrityConstraintViolationException e)
       (instance? SQLIntegrityConstraintViolationException (ex-cause e))
       ;; Postgres does just uses PSQLException, so we need to fall back to checking the message.
       (some-> (ex-message e) (str/includes? "duplicate key value violates unique constraint \"metabase_cluster_lock_pkey\""))
@@ -113,11 +114,16 @@
 
 (defn- do-with-cluster-locks*
   "Acquire all `locks` (each a `{:lock-name-str, :mode}` map) inside a single
-  transaction, then run `thunk`."
-  [locks timeout-seconds thunk]
+  transaction, then run `thunk`.
+
+  `entered` is set once every lock is held, so the caller can tell an acquisition failure apart from a
+  failure of `thunk` itself. It is reset on entry because each retry re-runs this fn."
+  [locks timeout-seconds entered thunk]
+  (vreset! entered false)
   (t2/with-transaction [conn]
     (doseq [{:keys [lock-name-str mode]} locks]
       (acquire-lock-row! conn lock-name-str timeout-seconds mode))
+    (vreset! entered true)
     (thunk)))
 
 ;; ---------- h2 in-process rw locks ----------
@@ -126,6 +132,11 @@
 ;; Metabase does not support multi-instance h2 deployments. So for h2 we take an
 ;; in-process `ReentrantReadWriteLock` keyed by lock-name. Shared mode → read lock,
 ;; exclusive mode → write lock. Still supports reentrancy within a single thread.
+;;
+;; Acquisition is *bounded* (tryLock with the caller's timeout) and goes through the same retry and
+;; error-wrapping path as the Postgres branch. An untimed `.lock()` would block indefinitely, which made
+;; the documented skip-on-contention behaviour false on h2 and left the Postgres path unreproducible in
+;; h2 tests.
 
 (defonce ^:private ^ConcurrentHashMap h2-locks (ConcurrentHashMap.))
 
@@ -134,15 +145,21 @@
                     (reify Function (apply [_ _] (ReentrantReadWriteLock.)))))
 
 (defn- do-with-h2-cluster-locks*
-  [locks thunk]
+  [locks timeout-seconds entered thunk]
+  (vreset! entered false)
   (let [^java.util.List held (java.util.ArrayList.)]
     (try
       (doseq [{:keys [lock-name-str mode]} locks]
         (let [rw (h2-rw-lock lock-name-str)
               ^Lock lock (if (= mode :share) (.readLock rw) (.writeLock rw))]
-          (.lock lock)
+          (when-not (.tryLock lock (long timeout-seconds) TimeUnit/SECONDS)
+            ;; Marked so `retryable?` treats this like the Postgres lock-wait timeout: retried by the
+            ;; shared retry config, then surfaced as the usual :lock-names ex-info.
+            (throw (ex-info (str "Timed out acquiring h2 cluster lock: " lock-name-str)
+                            {::acquire-timeout? true :lock-name lock-name-str})))
           (.add held lock)
           (log/debugf "Obtained h2 cluster lock: %s (%s)" lock-name-str mode)))
+      (vreset! entered true)
       (thunk)
       (finally
         (doseq [^Lock lock (reverse held)]
@@ -243,29 +260,30 @@
              [:retry-transient? {:optional true} :boolean]]]
    thunk :- ifn?]
   (let [{:keys [locks timeout-seconds retry-config retry-transient?]
-         :or   {timeout-seconds cluster-lock-timeout-seconds}} (parse-opts opts)]
-    (cond
-      ;; h2 does not respect the query timeout when taking the lock and is not cross-process,
-      ;; so we fall back to an in-process ReentrantReadWriteLock per lock name.
-      (= (mdb.connection/db-type) :h2)
-      (do-with-h2-cluster-locks* locks thunk)
-
-      :else
-      (let [config (assoc (merge default-retry-config retry-config)
-                          :retry-if (fn [_ e] (retry-if-error? retry-transient? e)))]
-        (try
-          (retry/with-retry config
-            (do-with-cluster-locks* locks timeout-seconds thunk))
-          (catch Throwable e
-            ;; only a genuine lock-acquisition failure gets the "Failed to obtain cluster lock" wrapper;
-            ;; an exhausted transient body error (e.g. deadlock) propagates raw so the message stays truthful.
-            (if (retryable? e)
-              (throw (ex-info (str "Failed to obtain cluster lock: "
-                                   (str/join ", " (map :lock-name-str locks)))
-                              {:lock-names (mapv :lock-name-str locks)
-                               :retries (:max-retries config)}
-                              e))
-              (throw e))))))))
+         :or   {timeout-seconds cluster-lock-timeout-seconds}} (parse-opts opts)
+        ;; Set once all locks are held, so the catch below can tell "could not acquire" from "the body
+        ;; failed". Without it a retryable error thrown by `thunk` — an appdb statement timeout, say — was
+        ;; wrapped as contention, and callers that skip on :lock-names dropped a genuine failure silently.
+        entered     (volatile! false)
+        acquire+run (if (= (mdb.connection/db-type) :h2)
+                      ;; h2 does not respect the query timeout when taking the lock and is not
+                      ;; cross-process, so we use an in-process ReentrantReadWriteLock per lock name.
+                      #(do-with-h2-cluster-locks* locks timeout-seconds entered thunk)
+                      #(do-with-cluster-locks* locks timeout-seconds entered thunk))
+        config      (assoc (merge default-retry-config retry-config)
+                           :retry-if (fn [_ e] (retry-if-error? retry-transient? e)))]
+    (try
+      (retry/with-retry config (acquire+run))
+      (catch Throwable e
+        ;; only a genuine lock-acquisition failure gets the "Failed to obtain cluster lock" wrapper;
+        ;; an exhausted transient body error (e.g. deadlock) propagates raw so the message stays truthful.
+        (if (and (retryable? e) (not @entered))
+          (throw (ex-info (str "Failed to obtain cluster lock: "
+                               (str/join ", " (map :lock-name-str locks)))
+                          {:lock-names (mapv :lock-name-str locks)
+                           :retries (:max-retries config)}
+                          e))
+          (throw e))))))
 
 (defmacro with-cluster-lock
   "Run `body` in a transaction that tries to take a lock from the metabase_cluster_lock table of

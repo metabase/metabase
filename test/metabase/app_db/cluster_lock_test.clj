@@ -9,7 +9,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (java.sql SQLException)
+   (java.sql SQLException SQLIntegrityConstraintViolationException)
    (java.util.concurrent CountDownLatch TimeUnit)))
 
 (set! *warn-on-reflection* true)
@@ -65,6 +65,60 @@
           ;; it's a genuine transient error; it propagated unretried only because we didn't opt in.
           (is (transient-error/transient-error? (mdb/db-type) e))
           (is (= 1 @attempts)))))))
+
+(deftest body-failure-not-reported-as-lock-contention-test
+  (testing "an error escaping the locked body is never wrapped as a failed acquisition"
+    ;; The catch used to wrap ANY retryable error in the :lock-names ex-info, including one thrown by the
+    ;; body. Callers keyed on :lock-names then logged a genuine failure as "already running elsewhere" and
+    ;; dropped it — no ERROR, no metric, and the work silently stopped happening.
+    (let [thrown (try
+                   (sut/do-with-cluster-lock
+                    {:lock ::body-failure-test :retry-config {:max-retries 0}}
+                    (fn [] (throw (SQLIntegrityConstraintViolationException. "body blew up"))))
+                   (catch Throwable t t))]
+      (is (not (contains? (ex-data thrown) :lock-names))
+          "a body failure must stay distinguishable from contention")
+      (is (instance? SQLIntegrityConstraintViolationException thrown)))))
+
+(deftest h2-contention-skips-rather-than-blocking-forever-test
+  ;; h2 acquired with an untimed Lock.lock(), so a second trigger blocked indefinitely: the documented
+  ;; skip-on-contention behaviour was false on one of the two supported appdbs, and no h2 test could
+  ;; reproduce the Postgres path.
+  (when (= :h2 (mdb/db-type))
+    (testing "a contended h2 lock fails with :lock-names instead of blocking"
+      (let [held    (CountDownLatch. 1)
+            release (CountDownLatch. 1)
+            holder  (future
+                      (sut/do-with-cluster-lock
+                       {:lock ::h2-contention-test}
+                       (fn [] (.countDown held) (.await release 30 TimeUnit/SECONDS))))]
+        (try
+          (is (.await held 10 TimeUnit/SECONDS) "holder acquired the lock")
+          (let [thrown (try
+                         (sut/do-with-cluster-lock
+                          {:lock ::h2-contention-test :timeout-seconds 1 :retry-config {:max-retries 0}}
+                          (constantly :ran))
+                         (catch Throwable t t))]
+            (is (instance? clojure.lang.ExceptionInfo thrown))
+            (is (contains? (ex-data thrown) :lock-names)
+                "contention must surface the same shape the Postgres path produces"))
+          (finally
+            (.countDown release)
+            @holder))))))
+
+(deftest h2-waits-within-the-retry-budget-test
+  ;; The bounded acquisition must still WAIT for a lock that is released promptly — callers such as the
+  ;; permissions and view-log writers rely on queueing behind a short critical section rather than failing.
+  (when (= :h2 (mdb/db-type))
+    (testing "a lock released while we retry is still acquired"
+      (let [held   (CountDownLatch. 1)
+            holder (future
+                     (sut/do-with-cluster-lock
+                      {:lock ::h2-brief-hold-test}
+                      (fn [] (.countDown held) (Thread/sleep 1500) :holder-done)))]
+        (is (.await held 10 TimeUnit/SECONDS))
+        (is (= :ran (sut/do-with-cluster-lock {:lock ::h2-brief-hold-test} (constantly :ran))))
+        (is (= :holder-done @holder))))))
 
 (deftest with-cluster-locking-test
   (testing "works when used non-concurrently"
