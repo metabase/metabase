@@ -146,7 +146,7 @@ describe("MonitorLayout", () => {
       ["Background tasks", Urls.monitorTasks()],
       ["Scheduled jobs", Urls.monitorJobs()],
       ["Application logs", Urls.monitorLogs()],
-      ["Model persistence log", Urls.monitorModelCaching()],
+      ["Model persistence log", Urls.monitorModelPersistenceLog()],
     ];
 
     expectedTabs.forEach(([name, href]) => {
@@ -187,7 +187,7 @@ describe("MonitorLayout", () => {
     },
     {
       label: "Model persistence log",
-      route: Urls.monitorModelCaching(),
+      route: Urls.monitorModelPersistenceLog(),
       section: "model-caching",
     },
   ] as const;

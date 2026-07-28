@@ -9,9 +9,9 @@ import { JobInfoApp } from "metabase/monitor/tools/components/JobInfoApp";
 import { LogLevelsModal } from "metabase/monitor/tools/components/LogLevelsModal";
 import { Logs } from "metabase/monitor/tools/components/Logs";
 import {
-  ModelCachePage,
-  ModelCacheRefreshJobModal,
-} from "metabase/monitor/tools/components/ModelCacheRefreshJobs";
+  ModelPersistenceLogJobModal,
+  ModelPersistenceLogPage,
+} from "metabase/monitor/tools/components/ModelPersistenceLogJobs";
 import { MonitorUpsell } from "metabase/monitor/tools/components/MonitorUpsell";
 import {
   getNotificationsRoutes,
@@ -72,8 +72,11 @@ export function getMonitorRoutes() {
               PLUGIN_MONITOR_TOOLS.COMPONENT || MonitorUpsell,
             )}
           />
-          <Route path="model-caching" element={<ModelCachePage />}>
-            {modalRoute(":jobId", ModelCacheRefreshJobModal)}
+          <Route
+            path="model-persistence-log"
+            element={<ModelPersistenceLogPage />}
+          >
+            {modalRoute(":jobId", ModelPersistenceLogJobModal)}
           </Route>
         </Route>
 
@@ -137,11 +140,11 @@ export function getMonitorRedirects() {
       />
       <Route
         path="/admin/tools/model-caching"
-        element={redirect(Urls.monitorModelCaching())}
+        element={redirect(Urls.monitorModelPersistenceLog())}
       />
       <Route
         path="/admin/tools/model-caching/*"
-        element={redirect(`${Urls.monitorModelCaching()}/*`)}
+        element={redirect(`${Urls.monitorModelPersistenceLog()}/*`)}
       />
       <Route
         path="/admin/tools/notifications"

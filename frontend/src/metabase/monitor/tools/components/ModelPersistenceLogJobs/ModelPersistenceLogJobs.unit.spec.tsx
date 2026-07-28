@@ -9,22 +9,24 @@ import {
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
 
-import { ModelCacheRefreshJobs } from "./ModelCacheRefreshJobs";
+import { ModelPersistenceLogJobs } from "./ModelPersistenceLogJobs";
 
 async function setup({ logs = [] }: { logs?: ModelCacheRefreshStatus[] } = {}) {
   mockGetBoundingClientRect({ width: 100, height: 100 });
   setupModelPersistenceEndpoints(logs);
 
-  renderWithProviders(<ModelCacheRefreshJobs />);
+  renderWithProviders(<ModelPersistenceLogJobs />);
 
-  await screen.findByTestId("model-cache-logs");
+  await screen.findByTestId("model-persistence-log-jobs");
 }
 
-describe("ModelCacheRefreshJobs", () => {
+describe("ModelPersistenceLogJobs", () => {
   it("shows empty state when there are no cache logs", async () => {
     await setup({ logs: [] });
     expect(await screen.findByText("No log entries")).toBeInTheDocument();
-    expect(screen.queryByTestId("model-cache-log-row")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("model-persistence-log-job-row"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows empty state when all logs are in 'deletable' state", async () => {
@@ -35,7 +37,9 @@ describe("ModelCacheRefreshJobs", () => {
       ],
     });
     expect(await screen.findByText("No log entries")).toBeInTheDocument();
-    expect(screen.queryByTestId("model-cache-log-row")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("model-persistence-log-job-row"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows model and collection names", async () => {
@@ -72,7 +76,7 @@ describe("ModelCacheRefreshJobs", () => {
       ],
     });
     expect(
-      await screen.findByTestId("model-cache-log-row"),
+      await screen.findByTestId("model-persistence-log-job-row"),
     ).toBeInTheDocument();
     expect(screen.queryByText("DELETABLE")).not.toBeInTheDocument();
   });
@@ -117,8 +121,9 @@ describe("ModelCacheRefreshJobs", () => {
       ],
     });
 
-    const getRows = () => screen.getAllByTestId("model-cache-log-row");
-    await screen.findAllByTestId("model-cache-log-row");
+    const getRows = () =>
+      screen.getAllByTestId("model-persistence-log-job-row");
+    await screen.findAllByTestId("model-persistence-log-job-row");
     expect(getRows()[0]).toHaveTextContent("Zebra");
     expect(getRows()[1]).toHaveTextContent("Apple");
 
@@ -136,8 +141,9 @@ describe("ModelCacheRefreshJobs", () => {
       ],
     });
 
-    const getRows = () => screen.getAllByTestId("model-cache-log-row");
-    await screen.findAllByTestId("model-cache-log-row");
+    const getRows = () =>
+      screen.getAllByTestId("model-persistence-log-job-row");
+    await screen.findAllByTestId("model-persistence-log-job-row");
     expect(getRows()[0]).toHaveTextContent("Zeta");
     expect(getRows()[1]).toHaveTextContent("Alpha");
 
