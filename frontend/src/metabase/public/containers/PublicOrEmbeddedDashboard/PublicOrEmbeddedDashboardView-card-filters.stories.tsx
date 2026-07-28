@@ -35,9 +35,7 @@ import { PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Heading);
 
 export default {

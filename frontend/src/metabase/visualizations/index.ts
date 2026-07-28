@@ -13,7 +13,10 @@ import type {
 } from "metabase-types/api";
 
 import type { RemappingHydratedDatasetColumn } from "./types";
-import type { Visualization } from "./types/visualization";
+import type {
+  Visualization,
+  VisualizationDefinition,
+} from "./types/visualization";
 
 const visualizations = new Map<VisualizationDisplay, Visualization>();
 const aliases = new Map<string, Visualization>();
@@ -37,15 +40,31 @@ export function getSensibleDisplays(data: DatasetData) {
 }
 
 let defaultVisualization: Visualization;
-export function setDefaultVisualization(visualization: Visualization) {
-  defaultVisualization = visualization;
+export function setDefaultVisualization(
+  visualization: Visualization | VisualizationDefinition,
+) {
+  defaultVisualization = asRegisteredVisualization(visualization);
 }
 
-function isVisualizationComponent(visualization: Visualization | undefined) {
+function isVisualizationComponent(
+  visualization: Visualization | VisualizationDefinition | undefined,
+): visualization is Visualization {
   return typeof visualization === "function";
 }
 
-export function registerVisualization(visualization: Visualization) {
+function asRegisteredVisualization(
+  visualization: Visualization | VisualizationDefinition,
+): Visualization {
+  // Static-viz bundles register bare definitions (see static-viz/register.ts
+  // and the enterprise custom-viz static path) that are never rendered as
+  // components, while the registry keeps the narrower Visualization type for
+  // interactive consumers.
+  return visualization as Visualization;
+}
+
+export function registerVisualization(
+  visualization: Visualization | VisualizationDefinition,
+) {
   if (visualization == null) {
     throw new Error(t`Visualization is null`);
   }
@@ -86,9 +105,9 @@ export function registerVisualization(visualization: Visualization) {
       );
     }
   }
-  visualizations.set(identifier, visualization);
+  visualizations.set(identifier, asRegisteredVisualization(visualization));
   for (const alias of visualization.aliases || []) {
-    aliases.set(alias, visualization);
+    aliases.set(alias, asRegisteredVisualization(visualization));
   }
 }
 

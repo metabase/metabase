@@ -7,19 +7,15 @@ import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import MetabaseSettings from "metabase/utils/settings";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import { formatValue as internalFormatValue } from "metabase/visualizations/lib/formatting/value";
-import type {
-  StaticCustomVisualization,
-  Visualization,
-} from "metabase/visualizations/types/visualization";
+import type { VisualizationDefinition } from "metabase/visualizations/types/visualization";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { customVizColumnTypes } from "metabase-lib/v1/types/utils/custom-viz-column-types";
-import type {
-  ColumnSettings,
-  CustomVizPluginId,
-  VisualizationDisplay,
-} from "metabase-types/api";
+import type { ColumnSettings, VisualizationDisplay } from "metabase-types/api";
 
-import { brandSettingDefinition } from "./custom-viz-settings";
+import {
+  brandSettingDefinition,
+  toHostSettingsDefinitions,
+} from "./custom-viz-settings";
 
 type StaticVizApiWindow = Omit<Window, "__METABASE_VIZ_API__"> & {
   __METABASE_VIZ_API__?: Omit<
@@ -30,7 +26,7 @@ type StaticVizApiWindow = Omit<Window, "__METABASE_VIZ_API__"> & {
 };
 
 export const customVizRegistry: Map<
-  string,
+  VisualizationDisplay,
   CustomVisualization<Record<string, unknown>>
 > = new Map();
 
@@ -40,29 +36,26 @@ function formatValue(value: unknown, options?: ColumnSettings): string {
   return String(result ?? "");
 }
 
-function applyStaticVisualizationProps(
+function buildStaticVisualizationDefinition(
   vizDef: CustomVisualization<Record<string, unknown>>,
-  props: {
-    identifier: VisualizationDisplay;
-    pluginId: CustomVizPluginId;
-    getUiName: () => string;
-  },
-): StaticCustomVisualization {
-  const Component = vizDef.StaticVisualizationComponent ?? (() => null);
-  Object.assign(Component, {
-    settings: vizDef.settings ?? {},
+  identifier: VisualizationDisplay,
+  getUiName: () => string,
+): VisualizationDefinition {
+  return {
+    identifier,
+    getUiName,
+    // Icons never render in the headless static-viz (GraalJS) context; matches getIconForVisualizationType fallbackh
+    iconName: "unknown",
+    settings: toHostSettingsDefinitions(vizDef.settings),
     checkRenderable: vizDef.checkRenderable,
     minSize: vizDef.minSize,
     defaultSize: vizDef.defaultSize,
-    ...props,
-  } satisfies Partial<Record<keyof Visualization, unknown>>);
-  return Component;
+  };
 }
 
 export function registerCustomVizPlugin(
   factory: CreateCustomVisualization<Record<string, unknown>>,
   identifier: string,
-  pluginId: CustomVizPluginId,
 ) {
   // Text measurement is unavailable in the GraalJS context, so the API object
   // assigned here omits the measure-text functions the global Window
@@ -82,15 +75,10 @@ export function registerCustomVizPlugin(
   const display: VisualizationDisplay = `custom:${identifier}`;
   customVizRegistry.set(display, vizDef);
 
-  const Component = applyStaticVisualizationProps(vizDef, {
-    identifier: display,
-    pluginId,
-    getUiName: () => identifier,
-  });
   if (!visualizations.has(display)) {
-    // TO IMPROVE: The registry accepts later down the line only Visualization components, so the cast is necessary to satisfy the type-checker.
-    // Static viz components might not need registration at all.
-    registerVisualization(Component as unknown as Visualization);
+    registerVisualization(
+      buildStaticVisualizationDefinition(vizDef, display, () => identifier),
+    );
   }
 }
 

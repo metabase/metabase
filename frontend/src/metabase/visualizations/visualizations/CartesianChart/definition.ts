@@ -21,7 +21,6 @@ import {
 } from "metabase/visualizations/lib/settings/validation";
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
 import type {
-  Visualization,
   VisualizationDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
@@ -44,8 +43,9 @@ const transformCartesianSeries = (series: Series): TransformedSeries => {
 };
 
 export const getCartesianChartDefinition = (
-  props: Partial<VisualizationDefinition>,
-): Partial<Visualization> => {
+  props: Omit<VisualizationDefinition, "isSensible" | "checkRenderable"> &
+    Partial<VisualizationDefinition>,
+): VisualizationDefinition => {
   return {
     noHeader: true,
     usesEChartsRenderer: true,
