@@ -112,6 +112,11 @@
 (api-scope/defscope agent-notification-read "agent:notification:read"
   (deferred-tru "View alerts and dashboard subscriptions"))
 
+;; Subscription. `agent:dashboard:subscribe` covers creating one, which is all the v1 tools do;
+;; editing and archiving an existing subscription is net-new capability and gets its own leaf.
+(api-scope/defscope agent-subscription-write "agent:subscription:write"
+  (deferred-tru "Edit and archive dashboard subscriptions"))
+
 ;; Search
 (api-scope/defscope agent-search "agent:search"
   (deferred-tru "Search for content"))
@@ -202,6 +207,7 @@
                                         "agent:document:*"
                                         "agent:alert:*"
                                         "agent:notification:*"
+                                        "agent:subscription:*"
                                         "agent:collection:*"}})
 
 (def always-granted-scopes

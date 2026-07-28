@@ -597,6 +597,42 @@
                                                   :dashboard_id dash-id
                                                   :schedule     {:schedule_type "hourly"}}))))))))
 
+(deftest update-requires-its-own-scope-test
+  (testing "GHY-4156: v1 only ever created subscriptions, so `agent:dashboard:subscribe` is bound to
+            create. Editing and archiving are net-new capability behind `agent:subscription:write` —
+            a Slackbot token issued to create a subscription must not be able to archive one."
+    (mt/with-model-cleanup [:model/Pulse]
+      (mt/with-temp [:model/Card {card-id :id} {}
+                     :model/Dashboard {dash-id :id} {:name "Sales KPIs"}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}
+                     :model/Pulse {pulse-id :id} {:name "Weekly" :dashboard_id dash-id
+                                                  :creator_id (mt/user->id :crowberto)}
+                     :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
+                     :model/PulseChannel _ {:pulse_id pulse-id :channel_type :email
+                                            :schedule_type :daily :schedule_hour 15}]
+        (let [create-only #{"agent:dashboard:subscribe"}
+              both        #{"agent:dashboard:subscribe" "agent:subscription:write"}]
+          (testing "the create scope alone still creates"
+            (is (pos-int? (:id (tool-result (call-tool! :crowberto create-only
+                                                        (wire {:method       "create"
+                                                               :dashboard_id dash-id
+                                                               :schedule     {:schedule_type "hourly"}})))))))
+          (testing "but cannot update, and nothing changes"
+            (is (re-find #"can create but not update"
+                         (tool-error (call-tool! :crowberto create-only
+                                                 (wire {:method "update" :id pulse-id :archived true})))))
+            (is (false? (t2/select-one-fn :archived :model/Pulse :id pulse-id))))
+          (testing "the write scope alongside it does"
+            (is (true? (:archived (tool-result (call-tool! :crowberto both
+                                                           (wire {:method "update" :id pulse-id
+                                                                  :archived true})))))))
+          (testing "and the write scope alone cannot call the tool at all — the create scope still
+                    gates listing and dispatch"
+            (is (re-find #"Insufficient scope"
+                         (tool-error (call-tool! :crowberto #{"agent:subscription:write"}
+                                                 (wire {:method "update" :id pulse-id
+                                                        :archived false})))))))))))
+
 (deftest null-args-are-dropped-at-the-boundary-test
   (testing "GHY-4156: strict clients fill every declared property they aren't setting with null;
             those are stripped before the handler, so an update that means to change one field
