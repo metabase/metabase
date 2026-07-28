@@ -53,7 +53,6 @@ Creating accounts for these embedded users in your Metabase counts toward the ac
 
 All SSO options require a Pro or Enterprise plan.
 
-<<<<<<< HEAD
 | Feature                                                                                   | SSO | Guest |
 | ----------------------------------------------------------------------------------------- | --- | ----- |
 | Charts                                                                                    | ✅  | ✅    |
@@ -71,7 +70,7 @@ All SSO options require a Pro or Enterprise plan.
 | [Advanced theming](./appearance.md)                                                       | ✅  | ❌    |
 | [Usage analytics](../usage-and-performance-tools/usage-analytics.md)                      | ✅  | ❌    |
 | Customize layouts and behavior with [plugins](./sdk/plugins.md)                           | ✅  | ❌    |
-=======
+
 **When to use public links and embeds**: One-off charts and dashboards. Admins can use public links when you just need to show someone a chart or dashboard without giving people access to your Metabase. And you don't care who sees the data; you want to make the item available to everyone.
 
 ## Full app embedding
