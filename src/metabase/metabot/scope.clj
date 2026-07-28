@@ -51,6 +51,8 @@
   (deferred-tru "Create metrics"))
 (api-scope/defscope agent-metric-update "agent:metric:update"
   (deferred-tru "Update metrics"))
+(api-scope/defscope agent-metric-write "agent:metric:write"
+  (deferred-tru "Create and edit metrics"))
 
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"
@@ -81,8 +83,12 @@
   (deferred-tru "Subscribe to dashboard alerts"))
 
 ;; Collection
+;; `create` predates the v2 surface and still gates the v1 `create_collection` endpoint; tokens
+;; carry the literal string, so it can't be folded into `write`. New work takes `write`.
 (api-scope/defscope agent-collection-create "agent:collection:create"
   (deferred-tru "Create collections"))
+(api-scope/defscope agent-collection-write "agent:collection:write"
+  (deferred-tru "Create and edit collections"))
 
 ;; SQL execution (MCP execute_sql tool, distinct from execute_query)
 (api-scope/defscope agent-sql-execute "agent:sql:execute"
@@ -131,6 +137,10 @@
 ;; Resource
 (api-scope/defscope agent-resource-read "agent:resource:read"
   (deferred-tru "View resources"))
+
+;; Bookmark
+(api-scope/defscope agent-bookmark-write "agent:bookmark:write"
+  (deferred-tru "Bookmark and un-bookmark content"))
 
 ;; Todo
 (api-scope/defscope agent-todo-read "agent:todo:read"
@@ -210,6 +220,7 @@
                                         "agent:document:*"
                                         "agent:alert:*"
                                         "agent:notification:*"
+                                        "agent:bookmark:*"
                                         "agent:collection:*"}})
 
 (def always-granted-scopes

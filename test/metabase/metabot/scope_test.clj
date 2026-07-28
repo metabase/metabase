@@ -133,6 +133,7 @@
     (is (api-scope/registered-scope? "agent:dashboard:update"))
     (is (api-scope/registered-scope? "agent:dashboard:write"))
     (is (api-scope/registered-scope? "agent:collection:create"))
+    (is (api-scope/registered-scope? "agent:collection:write"))
     (is (api-scope/registered-scope? "agent:sql:execute"))))
 
 (deftest ^:parallel mcp-write-scopes-defscope-vars-test
@@ -144,6 +145,7 @@
     (is (= "agent:dashboard:update" scope/agent-dashboard-update))
     (is (= "agent:dashboard:write" scope/agent-dashboard-write))
     (is (= "agent:collection:create" scope/agent-collection-create))
+    (is (= "agent:collection:write" scope/agent-collection-write))
     (is (= "agent:sql:execute" scope/agent-sql-execute))))
 
 (deftest ^:parallel mcp-write-scopes-granted-by-toggles-test
@@ -168,7 +170,10 @@
   (testing "agent:collection:create granted via new agent:collection:* wildcard under metabot-other-tools"
     (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})]
       (is (contains? scopes "agent:collection:*"))
-      (is (api-scope/scope-matches? scopes "agent:collection:create"))))
+      (is (api-scope/scope-matches? scopes "agent:collection:create"))
+      (testing "and the same wildcard covers agent:collection:write, so collection_write needs no
+                permission-mapping change of its own"
+        (is (api-scope/scope-matches? scopes "agent:collection:write")))))
   (testing "agent:sql:execute granted via existing agent:sql:* wildcard under metabot-sql-generation"
     (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :yes})]
       (is (api-scope/scope-matches? scopes "agent:sql:execute"))))
@@ -181,6 +186,7 @@
       (is (not (api-scope/scope-matches? scopes "agent:dashboard:update")))
       (is (not (api-scope/scope-matches? scopes "agent:dashboard:write")))
       (is (not (api-scope/scope-matches? scopes "agent:collection:create")))
+      (is (not (api-scope/scope-matches? scopes "agent:collection:write")))
       (is (not (api-scope/scope-matches? scopes "agent:sql:execute"))))))
 
 ;;; ──────────────────────────────────────────────────────────────────

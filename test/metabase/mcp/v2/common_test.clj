@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.channel.urls :as channel.urls]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.test :as mt]
@@ -186,6 +187,19 @@
   (is (nil? (common/resolve-collection-id "root")))
   (is (= 99 (common/resolve-collection-id "trash" {:trash-collection-id 99})))
   (is (thrown? Exception (common/resolve-collection-id "trash"))))
+
+(deftest frontend-url-test
+  (testing "a configured site URL is prefixed onto the relative path"
+    (with-redefs [channel.urls/site-url (constantly "http://metabase.example.com")]
+      (is (= "http://metabase.example.com/collection/42"
+             (common/frontend-url (channel.urls/collection-path 42))))))
+  (testing "an unset site URL yields a relative path, never the literal \"null\" host that
+            interpolating site-url directly would produce — site-url is nil both when it has
+            never been configured and when the stored value fails validation"
+    (doseq [unset [nil ""]]
+      (with-redefs [channel.urls/site-url (constantly unset)]
+        (is (= "/collection/42" (common/frontend-url (channel.urls/collection-path 42))))
+        (is (= "/question/42" (common/frontend-url (channel.urls/card-path 42))))))))
 
 (deftest ^:parallel select-fields-test
   (let [row {:id 5 :name "Fin" :description "d" :location "/" :archived false}]
