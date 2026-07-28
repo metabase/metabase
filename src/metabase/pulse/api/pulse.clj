@@ -179,24 +179,12 @@
     (assert (integer? card-id))
     (api/read-check :model/Card card-id)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/:id"
-  "Update a Pulse with `id`."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   {:keys [cards], :as pulse-updates} :- [:map
-                                          [:name          {:optional true} [:maybe ms/NonBlankString]]
-                                          [:cards         {:optional true} [:maybe [:+ models.pulse/CoercibleToCardRef]]]
-                                          [:channels      {:optional true} [:maybe [:+ :map]]]
-                                          [:skip_if_empty {:default false} [:maybe :boolean]]
-                                          [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                          [:archived      {:default false} [:maybe :boolean]]
-                                          [:parameters    {:optional true} [:maybe [:sequential ms/Map]]]]]
-  ;; do various perms checks
+(defn update-pulse-with-perm-checks!
+  "Apply `pulse-updates` to the Pulse with `id`, running the same permission checks `PUT /api/pulse/:id`
+  runs: the subscription/monitoring application permission, a write check on the Pulse, read checks on
+  any `:cards`, the collection-change check, and the advanced-permissions gate on adding recipients.
+  Returns the updated Pulse."
+  [id {:keys [cards] :as pulse-updates}]
   (try
     (perms/check-has-application-permission :monitoring)
     (catch clojure.lang.ExceptionInfo _e
@@ -229,8 +217,26 @@
          (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
                                             :archived :parameters])
                 :id id)))))
-  ;; return updated Pulse
   (models.pulse/retrieve-pulse id))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :put "/:id"
+  "Update a Pulse with `id`."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   pulse-updates :- [:map
+                     [:name          {:optional true} [:maybe ms/NonBlankString]]
+                     [:cards         {:optional true} [:maybe [:+ models.pulse/CoercibleToCardRef]]]
+                     [:channels      {:optional true} [:maybe [:+ :map]]]
+                     [:skip_if_empty {:default false} [:maybe :boolean]]
+                     [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                     [:archived      {:default false} [:maybe :boolean]]
+                     [:parameters    {:optional true} [:maybe [:sequential ms/Map]]]]]
+  (update-pulse-with-perm-checks! id pulse-updates))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

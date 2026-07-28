@@ -17,6 +17,7 @@
    [metabase.models.interface :as mi]
    [metabase.notification.models :as models.notification]
    [metabase.permissions.core :as perms]
+   [metabase.pulse.core :as pulse]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -349,3 +350,71 @@
 (register-key-projection! :alert alert-concise-keys
                           :detailed-keys alert-detailed-keys
                           :sample alert-sample)
+
+;;; ------------------------------------------------ subscription --------------------------------------------------
+
+(defn- compact
+  [m]
+  (m/remove-vals nil? m))
+
+(defn subscription-row
+  "The projection row for `pulse-row`, a Pulse hydrated by [[metabase.pulse.core/retrieve-pulse]].
+   Recipients are redacted exactly as `/api/pulse` redacts them, so this must be called as the
+   requesting user. Both `get_content` and `subscription_write` return this shape."
+  [pulse-row]
+  (let [pulse-row (-> pulse-row
+                      pulse/maybe-filter-pulse-recipients
+                      pulse/maybe-strip-sensitive-metadata)]
+    (compact
+     (-> (select-keys pulse-row [:id :name :dashboard_id :skip_if_empty :parameters :collection_id
+                                 :entity_id :creator_id :archived :created_at :updated_at])
+         (assoc :channels (mapv (fn [channel]
+                                  (compact
+                                   (-> (select-keys channel [:id :channel_type :schedule_type
+                                                             :schedule_hour :schedule_day
+                                                             :schedule_frame :enabled :details])
+                                       ;; `details.emails` is where recipients who aren't Metabase
+                                       ;; users are stored; `:recipients` below already carries
+                                       ;; them as `{:email …}`. `mi/to-json` strips it for every
+                                       ;; REST consumer, but that encoder hook only fires on a
+                                       ;; Toucan instance and `select-keys` returns a plain map.
+                                       (m/dissoc-in [:details :emails])
+                                       (assoc :recipients
+                                              (some->> (:recipients channel)
+                                                       (mapv #(compact (select-keys % [:id :email]))))))))
+                                (:channels pulse-row))
+                :cards (some->> (:cards pulse-row)
+                                (mapv #(compact (select-keys % [:id :name :include_csv :include_xls
+                                                                :format_rows])))))))))
+
+(def ^:private subscription-pulse-concise-keys
+  [:id :name :dashboard_id :channels :cards :skip_if_empty :archived :creator_id])
+
+(def ^:private subscription-pulse-detailed-keys
+  (into subscription-pulse-concise-keys
+        [:entity_id :collection_id :parameters :created_at :updated_at]))
+
+(def ^:private subscription-sample
+  (-> (zipmap subscription-pulse-detailed-keys (repeat "x"))
+      (assoc :channels [{:id 1 :channel_type "x" :schedule_type "x" :schedule_hour 1
+                         :schedule_day "x" :schedule_frame "x" :enabled true
+                         :details {}
+                         :recipients [{:id 1 :email "x"}]}]
+             :cards [{:id 1 :name "x" :include_csv true :include_xls true :format_rows true}]
+             :parameters [{:id "x" :name "x" :type "x"}])))
+
+(register-projection!
+ :subscription
+ {:concise  (fn [row]
+              (if (:handlers row)
+                (compact (select-keys row alert-concise-keys))
+                (compact (select-keys row subscription-pulse-concise-keys))))
+  :detailed (fn [row]
+              (if (:handlers row)
+                (compact (select-keys row alert-detailed-keys))
+                (compact (select-keys row subscription-pulse-detailed-keys))))
+  :sample   subscription-sample
+  ;; The projection dispatches on row shape (pulse-backed vs. notification-backed), so no single
+  ;; sample captures it — the `fields` catalog is the union of both shapes' detailed paths.
+  :catalog  (vec (sort (distinct (concat (paths-from-sample subscription-sample)
+                                         (paths-from-sample alert-sample)))))})

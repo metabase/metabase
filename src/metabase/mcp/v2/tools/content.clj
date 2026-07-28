@@ -256,27 +256,6 @@
 
 ;;; ------------------------------------------------- subscription -------------------------------------------------
 
-(defn- subscription-pulse-row
-  [pulse-row]
-  (let [pulse-row (-> pulse-row
-                      pulse/maybe-filter-pulse-recipients
-                      pulse/maybe-strip-sensitive-metadata)]
-    (compact
-     (-> (select-keys pulse-row [:id :name :dashboard_id :skip_if_empty :parameters :collection_id
-                                 :entity_id :creator_id :archived :created_at :updated_at])
-         (assoc :channels (mapv (fn [channel]
-                                  (compact
-                                   (-> (select-keys channel [:id :channel_type :schedule_type
-                                                             :schedule_hour :schedule_day
-                                                             :schedule_frame :enabled :details])
-                                       (assoc :recipients
-                                              (some->> (:recipients channel)
-                                                       (mapv #(compact (select-keys % [:id :email]))))))))
-                                (:channels pulse-row))
-                :cards (some->> (:cards pulse-row)
-                                (mapv #(compact (select-keys % [:id :name :include_csv :include_xls
-                                                                :format_rows])))))))))
-
 (defn- subscription-pulse-id
   "Resolve a subscription id argument against the Pulse id space; nil when an entity_id doesn't
    resolve (the notification source is then tried)."
@@ -298,7 +277,7 @@
     (if (and pulse-id (t2/exists? :model/Pulse :id pulse-id :alert_condition nil))
       (let [pulse-row (pulse/retrieve-pulse pulse-id)]
         (if (and pulse-row (mi/can-read? pulse-row))
-          (subscription-pulse-row pulse-row)
+          (projections/subscription-row pulse-row)
           (common/throw-not-found :subscription id-or-eid)))
       (or (when (int? id-or-eid)
             (let [notification (t2/select-one :model/Notification
@@ -307,38 +286,6 @@
               (when (and notification (mi/can-read? notification))
                 (projections/notification-row (projections/hydrate-notification-row notification)))))
           (common/throw-not-found :subscription id-or-eid)))))
-
-(def ^:private subscription-pulse-concise-keys
-  [:id :name :dashboard_id :channels :cards :skip_if_empty :archived :creator_id])
-
-(def ^:private subscription-pulse-detailed-keys
-  (into subscription-pulse-concise-keys
-        [:entity_id :collection_id :parameters :created_at :updated_at]))
-
-(def ^:private subscription-sample
-  (-> (zipmap subscription-pulse-detailed-keys (repeat "x"))
-      (assoc :channels [{:id 1 :channel_type "x" :schedule_type "x" :schedule_hour 1
-                         :schedule_day "x" :schedule_frame "x" :enabled true
-                         :details {}
-                         :recipients [{:id 1 :email "x"}]}]
-             :cards [{:id 1 :name "x" :include_csv true :include_xls true :format_rows true}]
-             :parameters [{:id "x" :name "x" :type "x"}])))
-
-(projections/register-projection!
- :subscription
- {:concise  (fn [row]
-              (if (:handlers row)
-                (compact (select-keys row projections/alert-concise-keys))
-                (compact (select-keys row subscription-pulse-concise-keys))))
-  :detailed (fn [row]
-              (if (:handlers row)
-                (compact (select-keys row projections/alert-detailed-keys))
-                (compact (select-keys row subscription-pulse-detailed-keys))))
-  :sample   subscription-sample
-  ;; The projection dispatches on row shape (pulse-backed vs. notification-backed), so no single
-  ;; sample captures it — the `fields` catalog is the union of both shapes' detailed paths.
-  :catalog  (vec (sort (distinct (concat (projections/paths-from-sample subscription-sample)
-                                         (projections/paths-from-sample projections/alert-sample)))))})
 
 ;;; --------------------------------------------------- transform --------------------------------------------------
 
