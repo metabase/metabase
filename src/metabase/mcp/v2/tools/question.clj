@@ -119,15 +119,6 @@
   [:enum "table" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
    "scalar" "smartscalar" "gauge" "progress" "funnel" "map" "waterfall" "sankey"])
 
-(defn- frontend-url
-  "Prefix a `channel.urls` relative `path` with the configured site URL, returning it relative
-   when site-url is unset so the tool never emits an absolute URL with an empty host."
-  [path]
-  (let [base (channel.urls/site-url)]
-    (if (str/blank? base)
-      path
-      (str base path))))
-
 (defn- collection-path
   "Permission-filtered location breadcrumb of `collection-id`, e.g. \"Our analytics / Marketing
    / Q3\". Ancestors the caller can't read are omitted, matching the app breadcrumb. A `nil`
@@ -242,7 +233,7 @@
                   dashboard-id    (assoc :dashboard_id dashboard-id))
                 {:id api/*current-user-id*})]
       (assoc (card-response card)
-             :url (frontend-url (channel.urls/card-path (:id card)))))))
+             :url (common/frontend-url (channel.urls/card-path (:id card)))))))
 
 (defn- update-card-response
   "The update response: [[card-response]] plus `:archived`."
@@ -331,7 +322,9 @@
   "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (a handle from an execute tool — MBQL or native SQL), query (inline MBQL 5), or native ({database_id, sql, template_tags?}). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit to save to your personal collection; pass \"root\" to save to the root collection) or dashboard_id (saves the question inside that dashboard; its collection is inferred from the dashboard — pass one or the other, not both), display, visualization_settings, cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets the card's result_metadata; typically used with card_type \"model\"). On update, pass id and any fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (its collection follows the dashboard's — pass with collection_id and you'll get an error; a question already saved in another dashboard can't be moved into a different one; moving a card OUT of a dashboard isn't supported yet)."
   {:name         "question_write"
    :scope        metabot.scope/agent-question-write
-   :annotations  {:readOnlyHint false :destructiveHint false}
+   ;; `archived: true` trashes the card, so this is not the additive-only update
+   ;; `destructiveHint false` would assert.
+   :annotations  {:readOnlyHint false :destructiveHint true}
    :args         question-write-args-schema}
   [args {:keys [session-id]}]
   (let [[op a b] (common/dispatch-write
