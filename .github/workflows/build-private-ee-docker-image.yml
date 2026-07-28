@@ -10,7 +10,7 @@ on:
     outputs:
       tag:
         description: "Image tag (the commit SHA)"
-        value: ${{ jobs.build.outputs.tag }}
+        value: ${{ jobs.dockerize.outputs.tag }}
 
 concurrency:
   group: build-private-ee-docker-image-${{ github.event.pull_request.head.sha || github.sha }}
