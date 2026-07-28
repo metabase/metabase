@@ -1,3 +1,4 @@
+import type { CardType } from "./card";
 import type { CollectionId } from "./collection";
 import type { PaginationRequest } from "./pagination";
 import type { SortDirection } from "./sorting";
@@ -73,6 +74,7 @@ export type ContentDiagnosticsFinding = {
   id: number;
   finding_type: ContentDiagnosticsFindingType;
   entity_type: ContentDiagnosticsEntityType;
+  card_type?: CardType | null;
   entity_id: number;
   detected_at: string;
   entity_display_name: string | null;

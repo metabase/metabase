@@ -4,6 +4,7 @@ import * as Urls from "metabase/urls";
 import type { Sorting } from "metabase/utils/sorting";
 import {
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
+  type CardType,
   type ContentDiagnosticsCollection,
   type ContentDiagnosticsEntityType,
   type ContentDiagnosticsFilterType,
@@ -27,6 +28,12 @@ const ENTITY_TYPE_ICONS: Record<ContentDiagnosticsEntityType, IconName> = {
   transform: "transform",
 };
 
+const CARD_TYPE_ICONS: Record<CardType, IconName> = {
+  question: "table2",
+  model: "model",
+  metric: "metric",
+};
+
 type ContentDiagnosticsCollectionBreadcrumbEntry =
   | ContentDiagnosticsCollection
   | ContentDiagnosticsCollection["effective_ancestors"][number];
@@ -38,24 +45,34 @@ export type ContentDiagnosticsBreadcrumbLink = {
   icon?: IconName;
 };
 
-export function getEntityIcon(
-  entityType: ContentDiagnosticsEntityType,
-): IconName {
-  return ENTITY_TYPE_ICONS[entityType];
+export function getEntityIcon(finding: ContentDiagnosticsFinding): IconName {
+  if (finding.entity_type === "card" && finding.card_type != null) {
+    return CARD_TYPE_ICONS[finding.card_type];
+  }
+  return ENTITY_TYPE_ICONS[finding.entity_type];
 }
 
-export function getEntityTypeLabel(
-  entityType: ContentDiagnosticsEntityType,
-): string {
-  switch (entityType) {
+export function getEntityTypeLabel(finding: ContentDiagnosticsFinding): string {
+  switch (finding.entity_type) {
     case "card":
-      return t`Question`;
+      return getCardTypeLabel(finding.card_type);
     case "dashboard":
       return t`Dashboard`;
     case "document":
       return t`Document`;
     case "transform":
       return t`Transform`;
+  }
+}
+
+function getCardTypeLabel(cardType: CardType | null | undefined): string {
+  switch (cardType) {
+    case "model":
+      return t`Model`;
+    case "metric":
+      return t`Metric`;
+    default:
+      return t`Question`;
   }
 }
 
@@ -85,7 +102,9 @@ export function getEntityUrl(finding: ContentDiagnosticsFinding): string {
 
   switch (finding.entity_type) {
     case "card":
-      return Urls.card(entity);
+      // Urls.card derives /question|/model|/metric from `type`; pass it so
+      // models/metrics link directly instead of via the /question/ redirect.
+      return Urls.card({ ...entity, type: finding.card_type ?? undefined });
     case "dashboard":
       return Urls.dashboard(entity);
     case "document":

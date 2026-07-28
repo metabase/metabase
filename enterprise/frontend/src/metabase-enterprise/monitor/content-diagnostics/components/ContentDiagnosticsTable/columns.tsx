@@ -33,7 +33,7 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsFinding>[] {
         const finding = row.original;
         return (
           <Group align="center" gap="sm" miw={0} wrap="nowrap">
-            <FixedSizeIcon name={getEntityIcon(finding.entity_type)} />
+            <FixedSizeIcon name={getEntityIcon(finding)} />
             <Ellipsified tooltipProps={{ openDelay: 300 }}>
               {getEntityName(finding)}
             </Ellipsified>
@@ -48,7 +48,7 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsFinding>[] {
       sortDescFirst: false,
       width: "auto",
       minWidth: 100,
-      accessorFn: (finding) => getEntityTypeLabel(finding.entity_type),
+      accessorFn: (finding) => getEntityTypeLabel(finding),
     },
     {
       id: "collection",

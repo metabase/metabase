@@ -67,7 +67,7 @@ type SidebarHeaderProps = {
 
 function SidebarHeader({ finding, onClose }: SidebarHeaderProps) {
   const entityUrl = getEntityUrl(finding);
-  const entityType = getEntityTypeLabel(finding.entity_type).toLowerCase();
+  const entityType = getEntityTypeLabel(finding).toLowerCase();
   const viewLabel = t`View ${entityType}`;
 
   return (
@@ -79,7 +79,7 @@ function SidebarHeader({ finding, onClose }: SidebarHeaderProps) {
       data-testid="content-diagnostics-sidebar-header"
     >
       <Group gap="sm" wrap="nowrap" align="center" miw={0}>
-        <FixedSizeIcon name={getEntityIcon(finding.entity_type)} />
+        <FixedSizeIcon name={getEntityIcon(finding)} />
         <Box className={CS.textWrap} fz="h3" fw="bold" lh="h3">
           {getEntityName(finding)}
         </Box>
@@ -148,7 +148,7 @@ function InfoSection({ finding }: InfoSectionProps) {
     <Card p={0} shadow="none" withBorder role="region" aria-label={t`Info`}>
       <InfoSectionItem label={t`Type`}>
         <Box className={CS.textWrap}>
-          {getEntityTypeLabel(finding.entity_type)}
+          {getEntityTypeLabel(finding)}
         </Box>
       </InfoSectionItem>
       <InfoSectionItem label={t`Description`}>
