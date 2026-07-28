@@ -78,7 +78,7 @@
   `(if sync-util/*log-exceptions-and-continue?*
      (try ~form
           (catch Throwable e#
-            (metabase.util.log/warn e# ~msg)
+            (metabase.util.log/warn ~msg (ex-message e#))
             (~action-on-exception e#)))
      ~form))
 

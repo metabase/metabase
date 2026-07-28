@@ -52,8 +52,8 @@
        result
        (let [result-with-timezone (add-zone-to-local result default-timezone-id)]
          (when-not (= result result-with-timezone)
-           (log/tracef "Applying default timezone %s to temporal literal without timezone '%s' -> %s"
-                       default-timezone-id s (pr-str result-with-timezone)))
+           (log/tracef "Applying default timezone %s to temporal literal without timezone"
+                       default-timezone-id))
          result-with-timezone)))))
 
 (defn- temporal->iso-8601-formatter [t]

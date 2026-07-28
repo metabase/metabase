@@ -241,7 +241,7 @@
     (when (should-auto-sync? database)
       ((requiring-resolve 'metabase.sync.task.sync-databases/check-and-schedule-tasks-for-db!) database))
     (catch Throwable e
-      (log/error e "Error scheduling tasks for DB"))))
+      (log/errorf "Error scheduling tasks for DB: %s" (ex-message e)))))
 
 (defn maybe-test-and-migrate-details!
   "When a driver has db-details to test and migrate:
@@ -270,25 +270,24 @@
    Reports analytics with the given connection-type label."
   [database driver engine details-map connection-type]
   (try
-    (log/info (u/format-color :cyan "Health check [%s]: checking %s {:id %d}"
-                              connection-type (:name database) (:id database)))
+    (log/info (u/format-color :cyan "Health check [%s]: checking database {:id %d}"
+                              connection-type (:id database)))
     (u/with-timeout (driver.settings/db-connection-timeout-ms)
       (or (driver/can-connect? driver details-map)
           (throw (Exception. (format "Failed to connect to Database (%s)" connection-type)))))
-    (log/info (u/format-color :green "Health check [%s]: success %s {:id %d}"
-                              connection-type (:name database) (:id database)))
+    (log/info (u/format-color :green "Health check [%s]: success database {:id %d}"
+                              connection-type (:id database)))
     (analytics/inc! :metabase-database/status {:driver engine :healthy true :connection-type connection-type})
     true
     (catch Throwable e
       (let [humanized-message (some->> (u/all-ex-messages e)
                                        (driver/humanize-connection-error-message driver))
             reason            (if (keyword? humanized-message) "user-input" "exception")]
-        (log/error e (u/format-color :red "Health check [%s]: failure with error %s {:id %d :reason %s :message %s}"
-                                     connection-type
-                                     (:name database)
-                                     (:id database)
-                                     reason
-                                     humanized-message))
+        (log/error (u/format-color :red "Health check [%s]: failure {:id %d :reason %s :message %s}"
+                                   connection-type
+                                   (:id database)
+                                   reason
+                                   humanized-message))
         (analytics/inc! :metabase-database/status {:driver engine :healthy false :reason reason :connection-type connection-type}))
       false)))
 
@@ -300,7 +299,7 @@
    - cleans-up ambiguous legacy db-details"
   [{:keys [engine] :as database}]
   (when-not (or (:is_audit database) (:is_sample database))
-    (log/info (u/format-color :cyan "Health check: queueing %s {:id %d}" (:name database) (:id database)))
+    (log/info (u/format-color :cyan "Health check: queueing database {:id %d}" (:id database)))
     (quick-task/submit-task!
      (fn []
        (let [details     (maybe-test-and-migrate-details! database)
@@ -313,12 +312,12 @@
            (let [provider (provider-detection/detect-provider-from-database database)]
              (when (not= provider (:provider_name database))
                (try
-                 (log/info (u/format-color :blue "Provider detection: updating %s {:id %d} from '%s' to '%s'"
-                                           (:name database) (:id database)
+                 (log/info (u/format-color :blue "Provider detection: updating database {:id %d} from '%s' to '%s'"
+                                           (:id database)
                                            (:provider_name database) provider))
                  (t2/update! :model/Database (:id database) {:provider_name provider})
                  (catch Throwable provider-e
-                   (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database)))))))
+                   (log/warnf "Error during provider detection for database {:id %d}: %s" (:id database) (ex-message provider-e)))))))
          (when (driver.conn/database-write-data-details lib-db)
            (let [write-details (driver.conn/without-resolution-telemetry
                                 (driver.conn/with-write-connection
@@ -370,7 +369,7 @@
   (try
     ((requiring-resolve 'metabase.sync.task.sync-databases/unschedule-tasks-for-db!) database)
     (catch Throwable e
-      (log/error e "Error unscheduling tasks for DB."))))
+      (log/errorf "Error unscheduling tasks for DB: %s" (ex-message e)))))
 
 ;; TODO -- consider whether this should live HERE or inside the `permissions` module.
 (defn- set-new-database-permissions!
@@ -477,7 +476,7 @@
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
-      (log/error e "Error sending database deletion notification"))))
+      (log/errorf "Error sending database deletion notification: %s" (ex-message e)))))
 
 (defn- maybe-disable-uploads-for-all-dbs!
   "This function maintains the invariant that only one database can have uploads_enabled=true."
@@ -648,8 +647,8 @@
                             ;; there is an known issue with exception is ignored when render API response (#32822)
                             ;; If you see this error, you probably need to define a setting for `setting-name`.
                             ;; But ideally, we should resolve the above issue, and remove this try/catch
-                            (log/errorf e "Error checking the readability of %s setting. The setting will be hidden in API response."
-                                        setting-name)
+                            (log/errorf "Error checking the readability of %s setting. The setting will be hidden in API response. Error: %s"
+                                        setting-name (ex-message e))
                             ;; let's be conservative and hide it by defaults, if you want to see it,
                             ;; you need to define it :)
                             false)))

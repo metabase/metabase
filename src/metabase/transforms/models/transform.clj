@@ -151,7 +151,7 @@
     ;; serdes-imported transform whose source database is missing), not a
     ;; misconfiguration. Only warn when an id is supplied but invalid.
     (when (and target-db-id (not valid-db-id?))
-      (log/warnf "Invalid target database id (%s) ignored for new transform (%s)" target-db-id (:name transform)))
+      (log/warnf "Invalid target database id (%s) ignored for new transform" target-db-id))
     (-> transform
         (assoc-in [:target :database] target-db-id)
         (assoc

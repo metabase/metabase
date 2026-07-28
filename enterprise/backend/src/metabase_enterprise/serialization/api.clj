@@ -160,7 +160,7 @@
                                           :dst    (.getPath dst)
                                           :count  cnt
                                           :files  (.listFiles dst)})))
-                       (log/infof "In total %s entries unpacked, detected source dir: %s" cnt (.getName path))
+                       (log/infof "In total %s entries unpacked, source dir detected" cnt)
                        (serdes/with-cache
                          (-> (v2.ingest/ingest-yaml (.getPath path))
                              (v2.load/load-metabase! {:continue-on-error continue-on-error
