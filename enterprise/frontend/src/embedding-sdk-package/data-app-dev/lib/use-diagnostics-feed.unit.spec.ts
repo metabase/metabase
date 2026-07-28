@@ -5,10 +5,15 @@ import type {
   DataAppDiagnosticsReport,
 } from "../types/diagnostics-channel";
 
+import { DEV_SESSION_ID } from "./dev-session";
 import { useDiagnosticsFeed } from "./use-diagnostics-feed";
 
-const entry = (eventId: number): DataAppDiagnosticPayload => ({
+const entry = (
+  eventId: number,
+  sessionId: string = DEV_SESSION_ID,
+): DataAppDiagnosticPayload => ({
   eventId,
+  sessionId,
   time: 0,
   kind: "error",
   summary: `event ${eventId}`,
@@ -82,6 +87,23 @@ describe("useDiagnosticsFeed", () => {
 
     await waitFor(() =>
       expect(result.current.entries.map((e) => e.eventId)).toEqual([1, 2]),
+    );
+  });
+
+  it("shows only this page load's entries, leaving earlier sessions to shell readers", async () => {
+    // The buffer outlives reloads on purpose (an agent pages it with
+    // `?startEventId=`), but a persistent error would otherwise stack up one
+    // copy per reload in the panel.
+    jest
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        ok(report([entry(1, "previous-page-load"), entry(2)])),
+      );
+
+    const { result } = renderHook(() => useDiagnosticsFeed("/feed"));
+
+    await waitFor(() =>
+      expect(result.current.entries.map((e) => e.eventId)).toEqual([2]),
     );
   });
 

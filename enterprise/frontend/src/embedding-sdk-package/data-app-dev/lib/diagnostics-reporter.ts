@@ -5,9 +5,8 @@ import {
   DIAGNOSTICS_RETRY_MS,
 } from "../constants/timings";
 
+import { DEV_SESSION_ID } from "./dev-session";
 import { toPayload } from "./diagnostics-payload";
-
-const getNextSessionId = (): string => `${Date.now()}-${performance.now()}`;
 
 /**
  * Mirrors the page's collector to the dev server: POSTs coalesced batches to
@@ -17,8 +16,6 @@ const getNextSessionId = (): string => `${Date.now()}-${performance.now()}`;
 export const installDiagnosticsReporter = (
   url: string = DATA_APP_DIAGNOSTICS_URL,
 ): void => {
-  const sessionId = getNextSessionId();
-
   let lastSentId = 0;
   let inFlight = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -49,7 +46,7 @@ export const installDiagnosticsReporter = (
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          sessionId,
+          sessionId: DEV_SESSION_ID,
           entries: fresh.map(toPayload),
           connection: devDiagnostics.getConnectionStatus(),
         }),

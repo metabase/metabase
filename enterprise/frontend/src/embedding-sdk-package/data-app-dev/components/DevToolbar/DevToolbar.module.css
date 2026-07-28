@@ -123,6 +123,12 @@
   border-bottom-color: var(--toolbar-brand);
 }
 
+/* After `.TabActive` so a selected tab holding problems still reads as such —
+   the underline keeps showing which tab is open. */
+.TabHasAlerts {
+  color: var(--toolbar-error);
+}
+
 .Body {
   flex: 1;
   min-height: 0;

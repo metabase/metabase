@@ -158,8 +158,41 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
               expect(id).to.be.greaterThan(afterIds[index - 1]);
             }
           });
+
+          // Every session is in the buffer, tagged with the page load that
+          // reported it — that stamp is what the toolbar filters on.
+          const sessions = new Set(after.entries.map((e) => e.sessionId));
+          expect(sessions.size).to.be.gte(2);
         });
       });
+    });
+
+    it("shows only the current page's entries in the panel after a reload", () => {
+      openDevToolbar();
+      devToolbarTab("Blocked").click();
+      devToolbarPanel()
+        .findAllByText(/Blocked fetch to blocked\.data-app\.test/, {
+          timeout: TIMEOUT_MS,
+        })
+        .then(($before) => {
+          const beforeCount = $before.length;
+
+          cy.reload();
+          cy.findByTestId("dev-app-content", { timeout: TIMEOUT_MS }).should(
+            "exist",
+          );
+          openDevToolbar();
+          devToolbarTab("Blocked").click();
+
+          // The reloaded page re-fires the same blocked request. Without the
+          // per-session filter the panel would stack a copy per reload, so the
+          // count must not grow even though the server kept both sessions.
+          devToolbarPanel()
+            .findAllByText(/Blocked fetch to blocked\.data-app\.test/, {
+              timeout: TIMEOUT_MS,
+            })
+            .should("have.length.at.most", beforeCount);
+        });
     });
 
     it("empties the open toolbar when an agent clears over the endpoint", () => {

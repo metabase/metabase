@@ -25,7 +25,7 @@ export class DiagnosticsStore {
 
     const connectionChanged = this.applyConnection(message?.connection);
     const sessionChanged = this.applySession(message?.sessionId);
-    const entriesAdded = this.appendEntries(message?.entries);
+    const entriesAdded = this.appendEntries(message?.entries, message?.sessionId);
 
     // Returns whether a reader would now see something different.
     return connectionChanged || sessionChanged || entriesAdded;
@@ -80,6 +80,7 @@ export class DiagnosticsStore {
 
   private appendEntries(
     entries: DataAppDiagnosticEntry[] | undefined,
+    sessionId: string | undefined,
   ): boolean {
     if (!Array.isArray(entries) || entries.length === 0) {
       return false;
@@ -87,7 +88,7 @@ export class DiagnosticsStore {
 
     this.entries = trimDiagnosticEntries([
       ...this.entries,
-      ...entries.map((entry) => this.toStoredEntry(entry)),
+      ...entries.map((entry) => this.toStoredEntry(entry, sessionId)),
     ]);
 
     return true;
@@ -95,12 +96,16 @@ export class DiagnosticsStore {
 
   private toStoredEntry(
     entry: DataAppDiagnosticEntry,
+    sessionId: string | undefined,
   ): DataAppDiagnosticPayload {
     // The page already truncated every field in `toPayload` before sending, so
-    // there is nothing left to bound here.
+    // there is nothing left to bound here. The session stamp is what lets the
+    // toolbar show only the current page's entries while the buffer — which a
+    // shell reader pages with `?startEventId=` — keeps every session's.
     return {
       ...entry,
       eventId: this.nextEntryId++,
+      sessionId: sessionId ?? "",
     };
   }
 }

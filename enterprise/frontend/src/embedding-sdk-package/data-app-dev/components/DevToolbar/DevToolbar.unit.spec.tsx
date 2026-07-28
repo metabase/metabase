@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { fireEvent, render, screen, waitFor } from "__support__/ui";
 
+import { DEV_SESSION_ID } from "../../lib/dev-session";
 import type {
   DataAppDiagnosticPayload,
   DataAppDiagnosticsReport,
@@ -20,6 +21,7 @@ const entry = (
   overrides: Partial<DataAppDiagnosticPayload> = {},
 ): DataAppDiagnosticPayload => ({
   eventId: 1,
+  sessionId: DEV_SESSION_ID,
   time: Date.parse("2026-01-01T10:00:00Z"),
   kind: "error",
   summary: "boom",
@@ -107,11 +109,61 @@ describe("DevToolbar open", () => {
 
     // No intermediate popover: the tabs are there immediately, and the toggle
     // button is replaced by the panel.
-    expect(screen.getByRole("tab", { name: "Errors" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^Errors/ })).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Diagnostics/ }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("No errors captured.")).toBeInTheDocument();
+  });
+
+  it("counts the problems on each tab, so the toggle's badge points somewhere", async () => {
+    serve(
+      [
+        entry({ eventId: 1, kind: "blocked-network", summary: "Blocked x" }),
+        entry({
+          eventId: 2,
+          kind: "sdk-call",
+          summary: "POST /api/dataset → 400",
+          alert: true,
+        }),
+        entry({
+          eventId: 3,
+          kind: "sdk-call",
+          summary: "GET /api/card/1 → 200",
+          alert: false,
+        }),
+      ],
+      {
+        manifest: {
+          name: null,
+          bundlePath: "dist/index.js",
+          bundlePathExists: true,
+          allowedHosts: [],
+          errors: ['"name" is required.'],
+          warnings: ["a warning is not a problem"],
+          restartRequired: false,
+        },
+        connection: {
+          checkedAt: 1,
+          metabaseUrl: "http://localhost:3000",
+          reachable: false,
+          sdkVersion: null,
+          error: "Could not reach http://localhost:3000.",
+        },
+      },
+    );
+    await setup();
+    await open();
+
+    // Every kind of problem is counted where it lives — entries, the manifest,
+    // and the connection check alike.
+    expect(screen.getByRole("tab", { name: "Blocked (1)" })).toBeVisible();
+    expect(screen.getByRole("tab", { name: "Queries (1)" })).toBeVisible();
+    expect(screen.getByRole("tab", { name: "Manifest (1)" })).toBeVisible();
+    expect(screen.getByRole("tab", { name: "Connection (1)" })).toBeVisible();
+
+    // A clean tab stays bare: no "(0)" to read past.
+    expect(screen.getByRole("tab", { name: "Errors" })).toBeVisible();
   });
 
   it("renders the server's summary, collapsed detail and hint", async () => {
@@ -157,7 +209,7 @@ describe("DevToolbar open", () => {
       screen.queryByText("Blocked fetch to evil.test"),
     ).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("tab", { name: "Blocked" }));
+    await userEvent.click(screen.getByRole("tab", { name: /^Blocked/ }));
 
     expect(screen.getByText("Blocked fetch to evil.test")).toBeInTheDocument();
     expect(
@@ -185,7 +237,7 @@ describe("DevToolbar open", () => {
     ]);
     await setup();
     await open();
-    await userEvent.click(screen.getByRole("tab", { name: "Queries" }));
+    await userEvent.click(screen.getByRole("tab", { name: /^Queries/ }));
 
     expect(screen.getByText(/api\/card\/1\/query/)).toBeInTheDocument();
     expect(screen.getByText(/Dev runs with an API key/)).toBeInTheDocument();
@@ -212,7 +264,7 @@ describe("DevToolbar open", () => {
     });
     await setup();
     await open();
-    await userEvent.click(screen.getByRole("tab", { name: "Manifest" }));
+    await userEvent.click(screen.getByRole("tab", { name: /^Manifest/ }));
 
     expect(screen.getByText("path is required")).toBeInTheDocument();
     expect(screen.getByText(/allowed_hosts changed/)).toBeInTheDocument();
@@ -231,7 +283,7 @@ describe("DevToolbar open", () => {
     });
     await setup();
     await open();
-    await userEvent.click(screen.getByRole("tab", { name: "Connection" }));
+    await userEvent.click(screen.getByRole("tab", { name: /^Connection/ }));
 
     expect(screen.getByText("http://localhost:3000")).toBeInTheDocument();
     expect(
@@ -276,7 +328,7 @@ describe("DevToolbar open", () => {
   it("closes back to the toggle when Close is clicked", async () => {
     await setup();
     await open();
-    expect(screen.getByRole("tab", { name: "Errors" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^Errors/ })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
 

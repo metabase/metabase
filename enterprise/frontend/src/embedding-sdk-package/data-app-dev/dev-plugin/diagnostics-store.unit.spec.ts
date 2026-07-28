@@ -55,6 +55,22 @@ describe("DiagnosticsStore", () => {
     expect(second.eventId).toBe(2);
   });
 
+  it("stamps each entry with the page load that reported it", () => {
+    const store = new DiagnosticsStore();
+
+    store.applyMessage(message([entry({ summary: "old page" })], "page-1"));
+    store.applyMessage(message([entry({ summary: "new page" })], "page-2"));
+
+    // The toolbar shows only its own page's entries; the buffer keeps both, so
+    // a shell reader paging with `?startEventId=` still sees the older ones.
+    expect(
+      store.getReport(0).entries.map((e) => [e.sessionId, e.summary]),
+    ).toEqual([
+      ["page-1", "old page"],
+      ["page-2", "new page"],
+    ]);
+  });
+
   it("keeps the previous page's events across a reload", () => {
     const store = new DiagnosticsStore();
 

@@ -16,7 +16,7 @@ import { FeedBanner } from "./FeedBanner/FeedBanner";
 import { ManifestTab } from "./ManifestTab/ManifestTab";
 import { QueriesTab } from "./QueriesTab/QueriesTab";
 import { ResizeHandle } from "./ResizeHandle/ResizeHandle";
-import { TABS, type TabId, isBlocked } from "./entries";
+import { TABS, type TabId, getTabAlertCounts, isBlocked } from "./entries";
 import { usePanelResize } from "./use-panel-resize";
 
 export interface DevToolbarProps {
@@ -38,6 +38,12 @@ export function DevToolbar({ subscribe }: DevToolbarProps = {}) {
     blocked: entries.filter(isBlocked),
     queries: entries.filter((entry) => entry.kind === "sdk-call"),
   };
+
+  const tabAlerts = getTabAlertCounts({
+    entries,
+    manifest: feed.manifest,
+    connection: feed.connection,
+  });
 
   if (!open) {
     return (
@@ -78,10 +84,13 @@ export function DevToolbar({ subscribe }: DevToolbarProps = {}) {
               type="button"
               role="tab"
               aria-selected={tab === id}
-              className={cx(S.Tab, { [S.TabActive]: tab === id })}
+              className={cx(S.Tab, {
+                [S.TabActive]: tab === id,
+                [S.TabHasAlerts]: tabAlerts[id] > 0,
+              })}
               onClick={() => setTab(id)}
             >
-              {label}
+              {tabAlerts[id] > 0 ? `${label} (${tabAlerts[id]})` : label}
             </button>
           ))}
         </div>

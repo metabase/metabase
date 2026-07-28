@@ -9,6 +9,8 @@ import type {
 } from "../types/diagnostics-channel";
 import type { DataAppManifestStatus } from "../types/manifest-status";
 
+import { DEV_SESSION_ID } from "./dev-session";
+
 export type SubscribeToChanges = (onChange: () => void) => () => void;
 
 export type DiagnosticsFeedProblem =
@@ -123,7 +125,13 @@ export const useDiagnosticsFeed = (
   }, [url]);
 
   return {
-    entries: report?.entries ?? EMPTY_ENTRIES,
+    // Only this page load's entries: after a reload the author is looking at a
+    // fresh page, and a persistent error would otherwise stack up a copy per
+    // load. The server's buffer keeps every session — a shell reader paging it
+    // with `?startEventId=` still sees what previous pages reported.
+    entries:
+      report?.entries.filter((entry) => entry.sessionId === DEV_SESSION_ID) ??
+      EMPTY_ENTRIES,
     connection: report?.connection ?? null,
     manifest: report?.manifest ?? null,
     clients: report?.clients ?? 0,

@@ -16,7 +16,9 @@ export const devToolbarToggle = () =>
 
 export const openDevToolbar = () => devToolbarToggle().click();
 
-export const devToolbarTab = (name: string) => cy.findByRole("tab", { name });
+/** Tabs holding problems append a count, so match on the label prefix. */
+export const devToolbarTab = (name: string) =>
+  cy.findByRole("tab", { name: new RegExp(`^${name}`) });
 
 /**
  * Poll the real diagnostics endpoint until `predicate` holds — the page's

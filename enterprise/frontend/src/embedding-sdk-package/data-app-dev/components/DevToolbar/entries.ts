@@ -1,4 +1,8 @@
-import type { DataAppDiagnosticPayload } from "../../types/diagnostics-channel";
+import type {
+  DataAppDiagnosticPayload,
+  InstanceConnectionStatus,
+} from "../../types/diagnostics-channel";
+import type { DataAppManifestStatus } from "../../types/manifest-status";
 
 export type TabId =
   | "errors"
@@ -22,3 +26,21 @@ export const isBlocked = (entry: DataAppDiagnosticPayload): boolean =>
 
 export const isFailedCall = (entry: DataAppDiagnosticPayload): boolean =>
   entry.kind === "sdk-call" && entry.alert;
+
+export const getTabAlertCounts = ({
+  entries,
+  manifest,
+  connection,
+}: {
+  entries: DataAppDiagnosticPayload[];
+  manifest: DataAppManifestStatus | null;
+  connection: InstanceConnectionStatus | null;
+}): Record<TabId, number> => ({
+  errors: entries.filter((entry) => entry.kind === "error" && entry.alert)
+    .length,
+  blocked: entries.filter((entry) => isBlocked(entry) && entry.alert).length,
+  queries: entries.filter(isFailedCall).length,
+  manifest: manifest?.errors.length ?? 0,
+  connection:
+    connection && (!connection.reachable || connection.error != null) ? 1 : 0,
+});
