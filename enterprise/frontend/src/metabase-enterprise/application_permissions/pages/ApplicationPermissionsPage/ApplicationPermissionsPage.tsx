@@ -4,7 +4,6 @@ import { ApplicationPermissionsHelp } from "metabase/admin/permissions/component
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
 import { connect } from "metabase/redux";
-import type { Route } from "metabase/router";
 import {
   initializeApplicationPermissions,
   saveApplicationPermissions,
@@ -38,7 +37,6 @@ interface ApplicationPermissionsPageProps {
   initialize: () => void;
   savePermissions: () => void;
   updatePermission: any;
-  route: Route;
 }
 
 const ApplicationPermissionsPage = ({
@@ -47,7 +45,6 @@ const ApplicationPermissionsPage = ({
   initialize,
   savePermissions,
   updatePermission,
-  route,
 }: ApplicationPermissionsPageProps) => {
   useEffect(() => {
     initialize();
@@ -71,7 +68,6 @@ const ApplicationPermissionsPage = ({
     <PermissionsPageLayout
       tab="application"
       isDirty={isDirty}
-      route={route}
       helpContent={<ApplicationPermissionsHelp />}
       onSave={savePermissions}
       onLoad={() => initialize()}

@@ -73,9 +73,7 @@
 
    Defines `handler-sym` as the handler fn (2-arity: null-stripped, schema-validated
    `arguments`, and a `context` map of `:session-id`, `:token-scopes`, `:client-info`,
-   `:request-context`) and registers the tool. Optional keys: `:update-scope` (the scope
-   [[metabase.mcp.v2.common/dispatch-write]] re-checks on `method: \"update\"`; also advertised
-   to OAuth via [[registered-scopes]]), `:extra-scopes` (scopes the handler gates individual
+   `:request-context`) and registers the tool. Optional keys: `:extra-scopes` (scopes the handler gates individual
    modes on — not required to call the tool, and opt-in: advertised via
    [[registered-opt-in-scopes]] so a token can request them, but kept out of the default DCR
    grant), `:feature` (a premium-features keyword; the tool is hidden when the
@@ -90,16 +88,15 @@
      (register-tool! (assoc ~opts :description ~description :handler (var ~handler-sym)))))
 
 (defn registered-scopes
-  "The default-grant scope strings the v2 surface relies on: every registered tool's `:scope` and
-   `:update-scope`. Folded into [[metabase.mcp.core/all-scopes]] so net-new leaf scopes flow into
-   the DCR default grant (and thus `scopes_supported`) as their tools land. `:extra-scopes` are
-   *not* here — they are opt-in, see [[registered-opt-in-scopes]]. A net-new leaf must also be
-   declared with `defscope` (and, for in-app metabot users, covered by a `perm-type->scopes`
-   bucket) in [[metabase.metabot.scope]] alongside the tool that carries it."
+  "The default-grant scope strings the v2 surface relies on: every registered tool's `:scope`.
+   Folded into [[metabase.mcp.core/all-scopes]] so net-new leaf scopes flow into the DCR default
+   grant (and thus `scopes_supported`) as their tools land. `:extra-scopes` are *not* here — they
+   are opt-in, see [[registered-opt-in-scopes]]. A net-new leaf must also be declared with
+   `defscope` (and, for in-app metabot users, covered by a `perm-type->scopes` bucket) in
+   [[metabase.metabot.scope]] alongside the tool that carries it."
   []
   (into #{}
-        (comp (mapcat (juxt :scope :update-scope))
-              (filter some?))
+        (keep :scope)
         (vals @tools*)))
 
 (defn registered-opt-in-scopes

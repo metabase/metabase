@@ -118,10 +118,7 @@
              "official"]]]])
 
 (def ^:private collection-write-entry
-  ;; No `:update-scope`: one `agent:collection:write` scope covers both methods, as segment_write
-  ;; and measure_write do. `dispatch-write` skips the method-level gate when it's absent.
-  {:tool-name       "collection_write"
-   :create-required [:name]})
+  {:create-required [:name]})
 
 (registry/deftool collection-write
   "Create, rename, move, archive, or restore a collection — the folders that hold questions, dashboards, models, and
@@ -142,8 +139,8 @@
    ;; additive-only update `destructiveHint false` would assert.
    :annotations {:readOnlyHint false :destructiveHint true}
    :args        collection-write-args-schema}
-  [args {:keys [token-scopes]}]
-  (let [[op a b] (common/dispatch-write collection-write-entry token-scopes args)
+  [args _]
+  (let [[op a b] (common/dispatch-write collection-write-entry args)
         payload  (case op
                    :create (create! a)
                    :update (update! a b))]

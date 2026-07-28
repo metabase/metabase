@@ -54,7 +54,7 @@ export function NativeQueryTableTagFieldSelect({
 
   if (noQueryMessage) {
     return (
-      <Alert icon={<Icon name="warning" />} color="warning">
+      <Alert size="compact" icon={<Icon name="warning" />} color="warning">
         {noQueryMessage}
       </Alert>
     );

@@ -43,6 +43,7 @@ import { getMetricRoutes } from "metabase/metrics/routes";
 import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
+import { getMonitorRedirects, getMonitorRoutes } from "metabase/monitor/routes";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_DATA_APPS,
@@ -67,16 +68,20 @@ import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldL
 import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
-import { Route, redirect, withRouteProps } from "metabase/router";
 import {
-  CanAccessDataModel,
-  CanAccessDataStudio,
   CanAccessOnboarding,
   CanAccessSettings,
   IsAdmin,
   IsAuthenticated,
   IsNotAuthenticated,
-} from "metabase/router/guards";
+} from "metabase/route-guards";
+import {
+  Navigate,
+  Route,
+  redirect,
+  useParams,
+  withRouteProps,
+} from "metabase/router";
 import { SearchApp } from "metabase/search/containers/SearchApp";
 import { RedirectIfSetup } from "metabase/setup/components/RedirectIfSetup";
 import { Setup } from "metabase/setup/components/Setup";
@@ -92,20 +97,29 @@ type AppStore = Store<State> & {
 // Legacy containers that still read v3 router props (`params`/`location`/
 // `route`/`router`/`routes`), fed from the router context so they run as
 // `element` routes. Removed with the shim.
+
+/**
+ * v48 and earlier linked databases as `/browse/<dbId>-<slug>`. That was a
+ * `:dbId-:slug` route, which react-router v7 cannot express: a dynamic segment
+ * has to span the whole path segment. Match the segment as a whole instead, and
+ * only redirect when it has the legacy hyphenated shape, so anything else still
+ * falls through to the not-found page rather than being sent to a database that
+ * cannot exist.
+ */
+export function LegacyBrowseRedirect() {
+  const { dbIdAndSlug } = useParams();
+
+  if (!dbIdAndSlug?.includes("-")) {
+    return <NotFoundFallbackPage />;
+  }
+
+  return <Navigate to={`/browse/databases/${dbIdAndSlug}`} replace />;
+}
+
+// Reads the route location through `connect`'s `mapStateToProps`, so the hooks
+// cannot reach it. Migrating it means rewriting the connected container,
+// tracked separately.
 const RoutedApp = withRouteProps(App);
-const RoutedLogin = withRouteProps(Login);
-const RoutedResetPassword = withRouteProps(ResetPassword);
-const RoutedSearchApp = withRouteProps(SearchApp);
-const RoutedCollectionLanding = withRouteProps(CollectionLanding);
-const RoutedQueryBuilder = withRouteProps(QueryBuilder);
-const RoutedMetabotQueryBuilder = withRouteProps(MetabotQueryBuilder);
-const RoutedNewModelOptions = withRouteProps(NewModelOptions);
-const RoutedBrowseSchemas = withRouteProps(BrowseSchemas);
-const RoutedBrowseTables = withRouteProps(BrowseTables);
-const RoutedTablePermalinkRedirect = withRouteProps(TablePermalinkRedirect);
-const RoutedMetricsViewerPage = withRouteProps(MetricsViewerPage);
-const RoutedTableDetailPage = withRouteProps(TableDetailPage);
-const RoutedUnsubscribePage = withRouteProps(UnsubscribePage);
 
 export const getRoutes = (store: AppStore) => {
   return (
@@ -128,15 +142,12 @@ export const getRoutes = (store: AppStore) => {
         <Route path="/auth">
           <Route index element={redirect("/auth/login")} />
           <Route element={<IsNotAuthenticated />}>
-            <Route path="login" element={<RoutedLogin />} />
-            <Route path="login/:provider" element={<RoutedLogin />} />
+            <Route path="login" element={<Login />} />
+            <Route path="login/:provider" element={<Login />} />
           </Route>
           <Route path="logout" element={<Logout />} />
           <Route path="forgot_password" element={<ForgotPassword />} />
-          <Route
-            path="reset_password/:token"
-            element={<RoutedResetPassword />}
-          />
+          <Route path="reset_password/:token" element={<ResetPassword />} />
           {/* FE routes can sometimes be prioritized over BE
               reloading will correctly pick the SSO flow back up from the BE  */}
           <Route path="sso" element={<SsoReload />} />
@@ -156,7 +167,7 @@ export const getRoutes = (store: AppStore) => {
             <Route index element={<Onboarding />} />
           </Route>
 
-          <Route path="search" element={<RoutedSearchApp />} />
+          <Route path="search" element={<SearchApp />} />
           {/* Send historical /archive route to trash - can remove in v52 */}
           <Route path="archive" element={redirect("trash")} />
           <Route path="trash" element={<TrashCollectionLanding />} />
@@ -199,7 +210,7 @@ export const getRoutes = (store: AppStore) => {
             />
           </Route>
 
-          <Route path="collection/:slug" element={<RoutedCollectionLanding />}>
+          <Route path="collection/:slug" element={<CollectionLanding />}>
             {modalRoute("move", MoveCollectionModal, { noWrap: true })}
             {modalRoute("archive", ArchiveCollectionModal, { noWrap: true })}
             {modalRoute("permissions", CollectionPermissionsModal)}
@@ -250,30 +261,30 @@ export const getRoutes = (store: AppStore) => {
                 ],
               })}
             />
-            <Route index element={<RoutedQueryBuilder />} />
-            <Route path="notebook" element={<RoutedQueryBuilder />} />
-            <Route path="ask" element={<RoutedMetabotQueryBuilder />} />
-            <Route path=":slug" element={<RoutedQueryBuilder />} />
-            <Route path=":slug/notebook" element={<RoutedQueryBuilder />} />
-            <Route path=":slug/metabot" element={<RoutedQueryBuilder />} />
-            <Route path=":slug/:objectId" element={<RoutedQueryBuilder />} />
+            <Route index element={<QueryBuilder />} />
+            <Route path="notebook" element={<QueryBuilder />} />
+            <Route path="ask" element={<MetabotQueryBuilder />} />
+            <Route path=":slug" element={<QueryBuilder />} />
+            <Route path=":slug/notebook" element={<QueryBuilder />} />
+            <Route path=":slug/metabot" element={<QueryBuilder />} />
+            <Route path=":slug/:objectId" element={<QueryBuilder />} />
           </Route>
 
           {/* MODELS */}
           {getModelRoutes()}
 
           <Route path="/model">
-            <Route index element={<RoutedQueryBuilder />} />
-            <Route path="new" element={<RoutedNewModelOptions />} />
-            <Route path=":slug" element={<RoutedQueryBuilder />} />
-            <Route path=":slug/notebook" element={<RoutedQueryBuilder />} />
-            <Route path=":slug/query" element={<RoutedQueryBuilder />} />
-            <Route path=":slug/columns" element={<RoutedQueryBuilder />} />
-            <Route path=":slug/metadata" element={<RoutedQueryBuilder />} />
-            <Route path=":slug/metabot" element={<RoutedQueryBuilder />} />
-            <Route path=":slug/:objectId" element={<RoutedQueryBuilder />} />
-            <Route path="query" element={<RoutedQueryBuilder />} />
-            <Route path="metabot" element={<RoutedQueryBuilder />} />
+            <Route index element={<QueryBuilder />} />
+            <Route path="new" element={<NewModelOptions />} />
+            <Route path=":slug" element={<QueryBuilder />} />
+            <Route path=":slug/notebook" element={<QueryBuilder />} />
+            <Route path=":slug/query" element={<QueryBuilder />} />
+            <Route path=":slug/columns" element={<QueryBuilder />} />
+            <Route path=":slug/metadata" element={<QueryBuilder />} />
+            <Route path=":slug/metabot" element={<QueryBuilder />} />
+            <Route path=":slug/:objectId" element={<QueryBuilder />} />
+            <Route path="query" element={<QueryBuilder />} />
+            <Route path="metabot" element={<QueryBuilder />} />
           </Route>
 
           {getMetricRoutes()}
@@ -283,40 +294,37 @@ export const getRoutes = (store: AppStore) => {
             <Route path="metrics" element={<BrowseMetrics />} />
             <Route path="models" element={<BrowseModels />} />
             <Route path="databases" element={<BrowseDatabases />} />
-            <Route path="databases/:slug" element={<RoutedBrowseSchemas />} />
+            <Route path="databases/:slug" element={<BrowseSchemas />} />
             <Route
               path="databases/:dbId/schema/:schemaName"
-              element={<RoutedBrowseTables />}
+              element={<BrowseTables />}
             />
             <Route
               path="databases/:dbName/schema/:schemaName/table/:tableName"
-              element={<RoutedTablePermalinkRedirect />}
+              element={<TablePermalinkRedirect />}
             />
             <Route
               path="databases/:dbName/table/:tableName"
-              element={<RoutedTablePermalinkRedirect />}
+              element={<TablePermalinkRedirect />}
             />
 
             {PLUGIN_TABLE_EDITING.getRoutes()}
 
             {/* These two Redirects support legacy paths in v48 and earlier */}
-            <Route
-              path=":dbId-:slug"
-              element={redirect("databases/:dbId-:slug")}
-            />
+            <Route path=":dbIdAndSlug" element={<LegacyBrowseRedirect />} />
             <Route
               path=":dbId/schema/:schemaName"
               element={redirect("databases/:dbId/schema/:schemaName")}
             />
           </Route>
 
-          <Route path="explore" element={<RoutedMetricsViewerPage />} />
+          <Route path="explore" element={<MetricsViewerPage />} />
 
           <Route path="table">
-            <Route path=":slug" element={<RoutedQueryBuilder />} />
+            <Route path=":slug" element={<QueryBuilder />} />
             <Route
               path=":tableId/detail/:rowId"
-              element={<RoutedTableDetailPage />}
+              element={<TableDetailPage />}
             />
           </Route>
 
@@ -383,11 +391,10 @@ export const getRoutes = (store: AppStore) => {
           {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
 
           {/* DATA STUDIO */}
-          {getDataStudioRoutes(
-            CanAccessDataStudio,
-            CanAccessDataModel,
-            IsAdmin,
-          )}
+          {getDataStudioRoutes(IsAdmin)}
+
+          {/* MONITOR */}
+          {getMonitorRoutes()}
         </Route>
       </Route>
 
@@ -414,8 +421,11 @@ export const getRoutes = (store: AppStore) => {
         element={redirect("/data-studio/transforms/*")}
       />
 
+      {/* Dependency diagnostics moved from /data-studio to /monitor */}
+      {getMonitorRedirects()}
+
       {/* MISC */}
-      <Route path="/unsubscribe" element={<RoutedUnsubscribePage />} />
+      <Route path="/unsubscribe" element={<UnsubscribePage />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="/*" element={<NotFoundFallbackPage />} />
     </Route>

@@ -1,17 +1,27 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import type { Location } from "history";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockLocation,
   createMockRoutingState,
 } from "metabase/redux/store/mocks";
+import type { Location } from "metabase/router";
 import { Route } from "metabase/router";
+import { openSaveDialog } from "metabase/utils/dom";
 
 import { DEFAULT_POLLING_DURATION_MS, Logs } from "./Logs";
 import { maybeMergeLogs } from "./utils";
 
-const PATHNAME = "/admin/tools/logs";
+jest.mock("metabase/utils/dom", () => ({
+  ...jest.requireActual("metabase/utils/dom"),
+  openSaveDialog: jest.fn(),
+}));
+
+// jest.mock replaces the module factory; retype the import as its mock
+const mockOpenSaveDialog = openSaveDialog as jest.Mock;
+
+const PATHNAME = "/monitor/logs";
 
 const log = {
   timestamp: "2024-01-10T21:21:58.597Z",
@@ -142,9 +152,11 @@ describe("Logs", () => {
     it("should display results if server responds with logs", async () => {
       fetchMock.get("path:/api/logger/logs", [log]);
       setup();
-      await waitFor(() => {
-        expect(screen.getByText(new RegExp(log.fqns))).toBeInTheDocument();
-      });
+      expect(await screen.findByText(new RegExp(log.fqns))).toBeInTheDocument();
+      // The log message is wrapped in a green ANSI escape sequence
+      expect(screen.getByText(/GET \/api\/collection\/root/)).toHaveClass(
+        "react-ansi-style-green",
+      );
       expect(screen.getByRole("button", { name: /Download/ })).toBeEnabled();
     });
 
@@ -185,6 +197,58 @@ describe("Logs", () => {
         { ...log, msg: "different" },
       ]);
       expect(shouldBeMerged).not.toBe(originalLogs);
+    });
+  });
+
+  describe("download", () => {
+    const readBlobText = (blob: Blob): Promise<string> =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsText(blob);
+      });
+
+    const alpha = {
+      ...log,
+      process_uuid: "uuid-1",
+      fqns: "metabase.alpha",
+      msg: "alpha-message",
+    };
+    const beta = {
+      ...log,
+      process_uuid: "uuid-2",
+      fqns: "metabase.beta",
+      msg: "beta-message",
+    };
+
+    beforeEach(() => {
+      mockOpenSaveDialog.mockClear();
+    });
+
+    it("downloads only the currently filtered logs, prefixed by process UUID", async () => {
+      fetchMock.get("path:/api/logger/logs", [alpha, beta]);
+      setup({
+        location: createMockLocation({
+          pathname: PATHNAME,
+          search: "?query=alpha-message",
+        }),
+      });
+
+      const downloadButton = await screen.findByRole("button", {
+        name: /Download/,
+      });
+      await waitFor(() => expect(downloadButton).toBeEnabled());
+      await userEvent.click(downloadButton);
+
+      expect(mockOpenSaveDialog).toHaveBeenCalledTimes(1);
+      const [filename, blob] = mockOpenSaveDialog.mock.calls[0];
+      expect(filename).toBe("logs.txt");
+      // mock.calls args are untyped; the dialog is always called with a Blob
+      const text = await readBlobText(blob as Blob);
+      expect(text).toContain("[uuid-1]");
+      expect(text).toContain("alpha-message");
+      expect(text).not.toContain("beta-message");
     });
   });
 });

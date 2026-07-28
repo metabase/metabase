@@ -24,6 +24,7 @@ import { createAsyncThunk } from "metabase/redux/utils";
 import { push } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
+import * as Urls from "metabase/urls";
 import { retry } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
 import type {
@@ -554,15 +555,6 @@ export const sendAgentRequest = createAsyncThunk<
                   },
                 });
               })
-              .with({ type: "data-navigate_to" }, (part) => {
-                dispatchToConvo(setNavigateToPath(part.data));
-
-                if (!isEmbeddingSdk()) {
-                  // Unjustified type cast. FIXME
-                  dispatchToConvo(push(part.data) as UnknownAction);
-                }
-                pushDataPart({ type: "data_part", part });
-              })
               .with({ type: "data-transform_suggestion" }, (part) => {
                 const suggestionId = nanoid();
                 const suggestedTransform = {
@@ -584,6 +576,25 @@ export const sendAgentRequest = createAsyncThunk<
                   metadata: { editorTransform, suggestionId },
                 });
               })
+              .with({ type: "data-generated_entity" }, (part) => {
+                if (agentId === "ask") {
+                  pushDataPart({ type: "data_part", part });
+                  return;
+                }
+
+                const path = Urls.generatedEntity(part.data);
+
+                if (isEmbeddingSdk()) {
+                  if (part.data.type === "card") {
+                    dispatchToConvo(setNavigateToPath(path));
+                  }
+                  pushDataPart({ type: "data_part", part });
+                  return;
+                }
+
+                // Unjustified type cast. FIXME
+                dispatchToConvo(push(path) as UnknownAction);
+              })
               .with({ type: "data-entity_saved" }, (part) => {
                 dispatch(
                   markChartSaved({
@@ -594,12 +605,10 @@ export const sendAgentRequest = createAsyncThunk<
                 pushDataPart({ type: "data_part", part });
               })
               .with(
-                { type: "data-generated_entity" },
+                { type: "data-navigate_to" },
                 { type: "data-adhoc_viz" },
                 { type: "data-static_viz" },
-                (part) => {
-                  pushDataPart({ type: "data_part", part });
-                },
+                () => {},
               )
               .exhaustive();
           },

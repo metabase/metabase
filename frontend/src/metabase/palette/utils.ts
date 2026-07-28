@@ -1,7 +1,7 @@
-import type { LocationDescriptor } from "history";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { LocationDescriptor } from "metabase/router";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName, RecentItem } from "metabase-types/api";
 
