@@ -1,7 +1,6 @@
 (ns metabase.sql-tools.sqlglot.replace-names-test
   "Tests for replace-names functionality using SQLGlot backend.
 
-   These tests mirror the Macaw tests to ensure feature parity between backends.
    Tests call sql-parsing/replace-names directly since it doesn't need Metabase metadata."
   (:require
    [clojure.test :refer [deftest is testing]]

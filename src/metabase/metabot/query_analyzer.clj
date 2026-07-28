@@ -51,7 +51,7 @@
     ;; In general, it's a huge anti-pattern to have any identifiers that differ only by case, so this extra leniency is
     ;; unlikely to ever cause issues in practice.
     ;;
-    ;; If we want 100% correctness, we can use the Macaw :case-insensitive option here to do the right thing.
+    ;; If we want 100% correctness, we would need driver-specific case-sensitivity rules here.
     [:= [:lower field] (u/lower-case-en value)]))
 
 (defn- table-query

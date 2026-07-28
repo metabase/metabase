@@ -2,10 +2,10 @@
   "Multimethod definitions for sql-tools parser implementations.
 
    This namespace contains only the multimethod definitions. Implementations
-   are in metabase.sql-tools.macaw.core and metabase.sql-tools.sqlglot.core.")
+   are in metabase.sql-tools.sqlglot.core.")
 
 (defn parser-driver-dispatch
-  "Dispatch function for sql-tools multimethods. Returns the parser keyword (e.g. :macaw, :sqlglot)."
+  "Dispatch function for sql-tools multimethods. Returns the parser keyword (e.g. :sqlglot)."
   [parser _driver & _args]
   parser)
 

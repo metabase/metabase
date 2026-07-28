@@ -10,7 +10,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.sql-tools.core :as sql-tools]
-   ;; sql-tools.init registers multimethod implementations for :macaw parser backend
+   ;; sql-tools.init registers the parser multimethod implementations
    [metabase.sql-tools.init]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
