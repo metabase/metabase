@@ -48,20 +48,6 @@
   abandoned and may be taken over. Backends that can't coordinate across processes should return `true` (degrading to
   the no-stampede-protection behavior)."))
 
-(defmacro with-cached-results
-  "Macro version for consuming `cached-results` from a `backend`.
-
-    (with-cached-results backend query-hash [is updated-at]
-      ...)
-
-  InputStream `is` (and `updated-at`) will be `nil` if there is no cache entry at all. `is` is only valid within
-  `body`."
-  {:style/indent 3}
-  [backend query-hash [is-binding updated-at-binding] & body]
-  `(cached-results ~backend ~query-hash
-                   (fn [~(vary-meta is-binding assoc :tag 'java.io.InputStream) ~updated-at-binding]
-                     ~@body)))
-
 (defmulti cache-backend
   "Return an instance of a cache backend, which is any object that implements `QueryProcessorCacheBackend`.
 
