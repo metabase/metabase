@@ -14,7 +14,7 @@ This changelog covers the `@metabase/custom-viz` npm package — the API and CLI
 
 ### Bug Fixes
 
-- `FormatValueOptions.date_style` now accepts `null`, matching the values Metabase actually passes ([#70306](https://github.com/metabase/metabase/pull/70306)).
+- `FormatValueOptions["date_style"]` now accepts `null`, matching the values Metabase actually passes ([#70306](https://github.com/metabase/metabase/pull/70306)).
 
 ## 1.0.5 (2026-07-23)
 
