@@ -146,7 +146,7 @@ describe("MonitorLayout", () => {
       ["Background tasks", Urls.monitorTasks()],
       ["Scheduled jobs", Urls.monitorJobs()],
       ["Application logs", Urls.monitorLogs()],
-      ["Model caching log", Urls.monitorModelCaching()],
+      ["Model persistence log", Urls.monitorModelPersistenceLog()],
     ];
 
     expectedTabs.forEach(([name, href]) => {
@@ -186,8 +186,8 @@ describe("MonitorLayout", () => {
       section: "logs",
     },
     {
-      label: "Model caching log",
-      route: Urls.monitorModelCaching(),
+      label: "Model persistence log",
+      route: Urls.monitorModelPersistenceLog(),
       section: "model-caching",
     },
   ] as const;
@@ -246,7 +246,7 @@ describe("MonitorLayout", () => {
       "Scheduled jobs",
       "Application logs",
       "Erroring questions",
-      "Model caching log",
+      "Model persistence log",
       "Alerts management",
     ].forEach((name) => {
       expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
@@ -273,7 +273,7 @@ describe("MonitorLayout", () => {
       "Background tasks",
       "Scheduled jobs",
       "Application logs",
-      "Model caching log",
+      "Model persistence log",
     ].forEach((name) => {
       expect(screen.getByRole("link", { name })).toBeInTheDocument();
     });

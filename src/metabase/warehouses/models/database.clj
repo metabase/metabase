@@ -161,16 +161,6 @@
   [_db-id]
   (mi/superuser?))
 
-(defenterprise reconcile-workspace-database-refs-before-delete!
-  "Hook called from the `:model/Database` before-delete. In workspaces mode this refuses
-   the delete (409) if any non-`:unprovisioned` `workspace_database` rows reference `db-id`,
-   and explicitly removes any `:unprovisioned` rows so the FK RESTRICT is satisfied. OSS
-   implementation is a no-op — fresh OSS installs have no workspace_database table, and
-   feature-off EE instances have nothing to reconcile."
-  metabase-enterprise.workspaces.models.workspace-database
-  [_db-id]
-  nil)
-
 (defenterprise mark-transforms-stale-on-database-delete!
   "Hook called from the `:model/Database` before-delete. Transforms whose `source_database_id`
    is about to be SET NULL by the FK action survive the delete (so the analyst can read the
@@ -340,11 +330,35 @@
                                   (driver.conn/effective-details database)))]
              (check-connection! database driver engine-str (assoc admin-details :engine engine-str) "admin"))))))))
 
+(defn- health-check-candidates
+  "The databases to health check at startup: one representative per unique engine — the lowest-id regular database of
+  each engine — rather than every database. The health signal feeds the per-driver `:metabase-database/status`
+  metrics, so checking hundreds of same-engine databases at startup mostly re-measures the same driver stack while
+  hammering the warehouses with connection attempts. Audit/sample databases are excluded here (rather than relying on
+  the guard in [[health-check-database!]]) so they can never claim an engine's representative slot and starve a real
+  database of its check; router destinations are excluded because they can be very numerous and are only reachable
+  through their router.
+
+  The representative ids are aggregated in the database first, and only those rows are fetched as model instances:
+  instances with 3k+ databases exist in the wild, and realizing every Database row (including details decryption)
+  just to pick one per engine would defeat the point."
+  []
+  (let [ids (map :id (t2/query {:select   [[:%min.id :id]]
+                                :from     [(t2/table-name :model/Database)]
+                                :where    [:and
+                                           [:= :is_audit false]
+                                           [:= :is_sample false]
+                                           [:= :router_database_id nil]]
+                                :group-by [:engine]}))]
+    (when (seq ids)
+      (t2/select :model/Database :id [:in ids]))))
+
 (defn check-health!
-  "Health checks databases connected to metabase asynchronously using a thread pool."
+  "Health checks databases connected to metabase asynchronously using a thread pool. Only one database per unique
+  engine is checked -- see [[health-check-candidates]]."
   []
   (analytics/clear! :metabase-database/status)
-  (doseq [database (t2/select :model/Database)]
+  (doseq [database (health-check-candidates)]
     (health-check-database! database)))
 
 ;; TODO - something like NSNotificationCenter in Objective-C would be really really useful here so things that want to
@@ -434,11 +448,6 @@
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
-  ;; Reconcile workspace_database rows first: the FK is RESTRICT, so :unprovisioned
-  ;; rows must be cleaned up explicitly, and non-:unprovisioned rows must refuse the delete.
-  ;; Runs before any other cleanup so we don't partially unwind sync tasks / secrets
-  ;; / fields for a Database whose deletion is about to be refused.
-  (reconcile-workspace-database-refs-before-delete! id)
   ;; Mark transforms with this DB as source as stale so dependency-diagnostics re-analyzes
   ;; them after the row's gone. Must run BEFORE the FK SET NULL fires (which happens when
   ;; the database row is deleted below) so we can still resolve the affected transforms by

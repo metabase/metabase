@@ -53,19 +53,24 @@
   (and (semantic.util/semantic-search-available?)
        (semantic.embedding/embedding-supported? (semantic.embedding/get-configured-model))))
 
+(defonce ^:private hnsw-index-build-running? (atom false))
+
 (defn build-hnsw-index-async!
   "Build the HNSW index on the active semantic search index in the background, returning promptly.
 
-  No-ops when semantic search isn't active on this instance. Backs the just-in-time HNSW build, which
-  runs only when an instance is configured to the `:hnsw` vector-search strategy."
+  No-ops when semantic search isn't active or this process already has a build running. Database-level
+  coordination in [[semantic.pgvector-api/ensure-active-hnsw-index!]] serializes builds across instances."
   []
-  (when (semantic.util/semantic-search-active?)
+  (when (and (semantic.util/semantic-search-active?)
+             (compare-and-set! hnsw-index-build-running? false true))
     (future
       (try
         (semantic.pgvector-api/ensure-active-hnsw-index! (semantic.env/get-pgvector-datasource!)
                                                          (semantic.env/get-index-metadata))
         (catch Throwable t
-          (log/error t "Failed to build HNSW index for semantic search")))))
+          (log/error t "Failed to build HNSW index for semantic search"))
+        (finally
+          (reset! hnsw-index-build-running? false)))))
   nil)
 
 (defn- with-zero-semantic-distance-score

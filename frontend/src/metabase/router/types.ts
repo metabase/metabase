@@ -198,11 +198,10 @@ export type RouteComponent = ComponentClass<any> | FunctionComponent<any>;
  * lifecycle hooks (`onEnter` / `onChange` / `onLeave`) are intentionally absent:
  * they have no v7 equivalent and the app does that work in components now.
  */
-export interface RouteProps<Props = any> {
+export interface RouteProps {
   children?: ReactNode;
   path?: string;
   component?: RouteComponent;
-  props?: Props;
 }
 
 /**
@@ -210,7 +209,7 @@ export interface RouteProps<Props = any> {
  * `RouterBridge` republishes the matched branch in this shape, adding
  * `pathnameBase`, the URL prefix the route accounts for (v7's `match.pathname`).
  */
-export interface PlainRoute<Props = any> extends RouteProps<Props> {
+export interface PlainRoute extends RouteProps {
   childRoutes?: PlainRoute[];
   indexRoute?: PlainRoute;
   pathnameBase?: string;

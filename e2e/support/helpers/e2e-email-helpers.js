@@ -1,4 +1,7 @@
-import { openDashboardMenu, sidebar } from "e2e/support/helpers";
+import {
+  sidebar,
+  toggleDashboardSubscriptionsSidebar,
+} from "e2e/support/helpers";
 
 import { WEBMAIL_CONFIG } from "../cypress_data";
 
@@ -85,7 +88,7 @@ export const clickSend = () => {
 };
 
 export const openAndAddEmailsToSubscriptions = (recipients) => {
-  openDashboardMenu("Subscriptions");
+  toggleDashboardSubscriptionsSidebar();
 
   sidebar().findByText("Set up a dashboard subscription").should("be.visible");
 

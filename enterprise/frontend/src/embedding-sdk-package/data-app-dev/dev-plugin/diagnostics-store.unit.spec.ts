@@ -1,7 +1,6 @@
 import {
   DATA_APP_DIAGNOSTICS_CALL_LIMIT,
   DATA_APP_DIAGNOSTICS_LIMIT,
-  DATA_APP_DIAGNOSTIC_MAX_CHARS,
 } from "../constants/diagnostics-channel";
 import type { DataAppDiagnosticEntry } from "../types/diagnostics-channel";
 
@@ -54,6 +53,22 @@ describe("DiagnosticsStore", () => {
     const [, second] = store.getReport(0).entries;
     expect(second.summary).toBe("new page");
     expect(second.eventId).toBe(2);
+  });
+
+  it("stamps each entry with the page load that reported it", () => {
+    const store = new DiagnosticsStore();
+
+    store.applyMessage(message([entry({ summary: "old page" })], "page-1"));
+    store.applyMessage(message([entry({ summary: "new page" })], "page-2"));
+
+    // The toolbar shows only its own page's entries; the buffer keeps both, so
+    // a shell reader paging with `?startEventId=` still sees the older ones.
+    expect(
+      store.getReport(0).entries.map((e) => [e.sessionId, e.summary]),
+    ).toEqual([
+      ["page-1", "old page"],
+      ["page-2", "new page"],
+    ]);
   });
 
   it("keeps the previous page's events across a reload", () => {
@@ -132,17 +147,6 @@ describe("DiagnosticsStore", () => {
     // to 0, and every id is >= 0.
     expect(store.getReport(Number.NaN).entries).toHaveLength(1);
     expect(store.getReport(0).entries).toHaveLength(1);
-  });
-
-  it("re-truncates oversized text, since the socket is just another local process", () => {
-    const store = new DiagnosticsStore();
-    const long = "x".repeat(DATA_APP_DIAGNOSTIC_MAX_CHARS + 100);
-
-    store.applyMessage(message([entry({ summary: long, detail: long })]));
-
-    const [only] = store.getReport(0).entries;
-    expect(only.summary).toContain("truncated");
-    expect(only.detail).toContain("truncated");
   });
 
   it("holds the last connection status reported, ignoring messages without one", () => {
