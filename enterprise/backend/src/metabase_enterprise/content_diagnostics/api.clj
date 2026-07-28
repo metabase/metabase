@@ -233,15 +233,10 @@
 
 (defn- imbalanced-where-clause
   "The shared finding-list WHERE over the umbrella's finding types (narrowed by the `finding-types`
-  param - the where-clause is the umbrella set intersected with the param) plus the `min-`/`max-content-count`
-  floor/ceiling on the native `content_count` (crowded queries typically use min, empty/sparse max,
-  but both apply to all)."
-  [{:keys [finding-types min-content-count max-content-count] :as params}]
+  param - the where-clause is the umbrella set intersected with the param)."
+  [{:keys [finding-types] :as params}]
   (let [types (or (not-empty (u/one-or-many finding-types)) imbalanced-finding-types)]
-    (api.common/findings-where
-     (mapv name types) params
-     (when min-content-count [:>= :content_count min-content-count])
-     (when max-content-count [:<= :content_count max-content-count]))))
+    (api.common/findings-where (mapv name types) params)))
 
 (defn- duplicated-where-clause
   "The shared finding-list WHERE plus the duplicated-specific `min-duplicate-count` floor on the native
@@ -387,13 +382,11 @@
   collection subject, being) a personal collection are excluded. `entity-types` (repeatable;
   `card`|`collection`|`dashboard`|`document`|`transform`, omitted = all; `card` emits `empty` only).
   `finding-types` (repeatable; `empty`|`sparse`|`crowded`, omitted = all three) narrows within the
-  umbrella. `min-content-count`/`max-content-count` (int, 0 or more) floor/ceiling the native
-  `content_count`. `query` case-insensitively substring-matches the entity name. `sort-column`
+  umbrella. `query` case-insensitively substring-matches the entity name. `sort-column`
   (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`content-count`, default `detected-at`)
   + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
   [_route-params
-   {:keys [include-personal-collections sort-column sort-direction entity-types finding-types
-           min-content-count max-content-count query]
+   {:keys [include-personal-collections sort-column sort-direction entity-types finding-types query]
     :or   {include-personal-collections false
            sort-column                   :detected-at
            sort-direction                :asc}}
@@ -407,15 +400,11 @@
        [:finding-types     {:optional true} [:or
                                              (ms/enum-decode-keyword imbalanced-finding-types)
                                              [:sequential (ms/enum-decode-keyword imbalanced-finding-types)]]]
-       [:min-content-count {:optional true} ms/IntGreaterThanOrEqualToZero]
-       [:max-content-count {:optional true} ms/IntGreaterThanOrEqualToZero]
        [:query             {:optional true} :string]]]
   (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)]
     (findings-response (imbalanced-where-clause {:excluded-personal-collection-ids excluded-personal-ids
                                                  :entity-types                     entity-types
                                                  :finding-types                    finding-types
-                                                 :min-content-count                min-content-count
-                                                 :max-content-count                max-content-count
                                                  :query                            query})
                        imbalanced-sort-column->field sort-column sort-direction
                        excluded-personal-ids)))

@@ -124,8 +124,8 @@
                                     :content_count content-count
                                     :details       details})))
 
-(deftest imbalanced-api-finding-types-and-count-bounds-test
-  (testing "GET /imbalanced narrows by finding-types (default all three) and min-/max-content-count (inclusive)"
+(deftest imbalanced-api-finding-types-test
+  (testing "GET /imbalanced narrows by finding-types (default all three)"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
@@ -152,15 +152,7 @@
               (testing "one type"
                 (is (= #{empty-fid} (ids :finding-types "empty"))))
               (testing "two types"
-                (is (= #{sparse-fid crowded-fid} (ids :finding-types ["sparse" "crowded"]))))
-              (testing "min-content-count is an inclusive floor"
-                (is (= #{sparse-fid crowded-fid} (ids :min-content-count "2")))
-                (is (= #{crowded-fid} (ids :min-content-count "3"))))
-              (testing "max-content-count is an inclusive ceiling"
-                (is (= #{empty-fid sparse-fid} (ids :max-content-count "2")))
-                (is (= #{empty-fid} (ids :max-content-count "0"))))
-              (testing "floor + ceiling compose"
-                (is (= #{sparse-fid} (ids :min-content-count "1" :max-content-count "5")))))))))))
+                (is (= #{sparse-fid crowded-fid} (ids :finding-types ["sparse" "crowded"])))))))))))
 
 (deftest imbalanced-api-multiple-types-per-entity-test
   (testing "one entity surfaces once per finding type - there is no read-time dedup across the umbrella"
