@@ -5,7 +5,7 @@
   or mfa.settings directly."
   (:require
    [metabase-enterprise.mfa.gate :as gate]
-   [metabase-enterprise.mfa.settings :as settings]
+   [metabase-enterprise.mfa.settings]
    [metabase-enterprise.mfa.verification :as verification]
    [metabase.channel.email.messages :as messages]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -72,4 +72,4 @@
   "Whether MFA is currently required for all users on the "
   :feature :multi-factor-auth
   []
-  (settings/mfa-required?))
+  (metabase-enterprise.mfa.settings/mfa-required?))
