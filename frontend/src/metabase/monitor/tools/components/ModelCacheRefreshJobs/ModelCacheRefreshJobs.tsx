@@ -105,7 +105,7 @@ export function ModelCacheRefreshJobs() {
           <TreeTable
             instance={treeTableInstance}
             hierarchical={false}
-            ariaLabel={t`Model caching log`}
+            ariaLabel={t`Model persistence log`}
             emptyState={<MonitorEmptyState label={t`No log entries`} />}
             getRowProps={() => ({ "data-testid": "model-cache-log-row" })}
             onRowClick={handleRowActivate}
@@ -134,7 +134,7 @@ export function ModelCachePage() {
   return (
     <Flex h="100%" wrap="nowrap">
       <MonitorMain>
-        <MonitorHeaderTitle mb="sm">{t`Model caching log`}</MonitorHeaderTitle>
+        <MonitorHeaderTitle mb="sm">{t`Model persistence log`}</MonitorHeaderTitle>
         <ModelCacheRefreshJobs />
       </MonitorMain>
       <Outlet /> {/* refresh modal */}

@@ -140,7 +140,7 @@ export function MonitorLayout() {
             onClick={() => trackMonitorSectionClicked("logs")}
           />
           <AreaTab
-            label={t`Model caching log`}
+            label={t`Model persistence log`}
             icon="bolt"
             to={Urls.monitorModelCaching()}
             isSelected={activeSection === "model-caching"}

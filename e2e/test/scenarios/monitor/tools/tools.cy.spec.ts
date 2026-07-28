@@ -525,7 +525,7 @@ describe("monitor > tools", () => {
 
     cy.log("We should be able to switch to the model caching page");
 
-    cy.findByTestId("monitor-nav").findByText("Model caching log").click();
+    cy.findByTestId("monitor-nav").findByText("Model persistence log").click();
     cy.location("pathname").should("eq", "/monitor/model-caching");
 
     cy.log(
