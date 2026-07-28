@@ -685,8 +685,11 @@
    :useUnicode           true
    :characterEncoding    "UTF8"
    :characterSetResults  "UTF8"
-   ;; GZIP compress packets sent between Metabase server and MySQL/MariaDB database
-   :useCompression       true
+   ;; Protocol compression (formerly enabled here) is intentionally OFF: mariadb-java-client 3.x hangs the
+   ;; connection when `useCompression=true` is combined with `LOAD DATA LOCAL INFILE` — the upload path —
+   ;; against MySQL and MariaDB alike (verified 3.3.3 through 3.5.9 vs MySQL 8.4/26.7, MariaDB 12.3; the
+   ;; 2.x connector handled it fine). Users can re-enable compression via additional-options, at the cost
+   ;; of hanging uploads until the driver bug is fixed.
    ;; record transaction isolation level and auto-commit locally, and avoid hitting the DB if we do something like
    ;; `.setTransactionIsolation()` to something we previously set it to. Since we do this every time we run a
    ;; query (see [[metabase.driver.sql-jdbc.execute/set-best-transaction-level!]]) this should speed up things a bit by
