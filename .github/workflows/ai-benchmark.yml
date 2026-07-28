@@ -75,7 +75,6 @@ jobs:
             core.setOutput('comment_id', String(data.id));
 
   image:
-    if: github.event.pull_request.head.repo.full_name == github.repository
     uses: ./.github/workflows/build-private-ee-docker-image.yml
     secrets: inherit
     with:
@@ -97,7 +96,6 @@ jobs:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          # WIP
           EVALS_BRANCH: evals-docker-registry
         run: |
           gh api repos/metabase/evals/actions/workflows/eval-run.yml/dispatches \

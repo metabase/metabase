@@ -3239,6 +3239,7 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.entity-retrieval.init}
    :uses #{analytics-interface
+           app-db
            collections
            entity-retrieval
            health-inspector
@@ -3566,7 +3567,8 @@
            metabase-enterprise.semantic-search.db.datasource
            metabase-enterprise.semantic-search.embedding
            metabase-enterprise.semantic-search.embedding-health
-           metabase-enterprise.semantic-search.init}
+           metabase-enterprise.semantic-search.init
+           metabase-enterprise.semantic-search.util}
    :uses #{activity-feed
            analytics
            analytics-interface

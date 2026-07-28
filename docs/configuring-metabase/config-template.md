@@ -262,7 +262,7 @@ config:
     premium-embedding-token: null
     query-caching-max-kb: 2000
     query-caching-max-ttl: 3024000.0
-    queue-backend: quartz
+    queue-backend: null
     queue-max-retries: 5
     queue-no-listener-max-age-ms: 86400000
     redirect-all-requests-to-https: false

@@ -24,6 +24,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.connection :as u.connection]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -601,11 +602,13 @@
   `unreturnedConnectionTimeout` to kill long queries. Transforms rebind `*query-timeout-ms*` so their statements get
   the transform timeout instead of the shorter default. Drivers that opt out via the `:jdbc/set-query-timeout`
   feature flag (e.g. SparkSQL — calling it closes the Hive Thrift transport) skip the call entirely; for the rest,
-  individual implementations that throw fall back to the c3p0 leak-detector via the `catch Throwable`."
+  individual implementations that throw fall back to the c3p0 leak-detector via the `catch Throwable`.
+  A MySQL 26 or newer warehouse also falls back, because there the driver would turn the timeout into MariaDB syntax
+  the server rejects, failing every query outright — the query is still bounded by the QP's own cancelation."
   [driver ^Statement stmt]
   (when (driver/database-supports? driver :jdbc/set-query-timeout nil)
     (try
-      (.setQueryTimeout stmt (long (/ driver.settings/*query-timeout-ms* 1000)))
+      (u.connection/set-query-timeout! stmt (long (/ driver.settings/*query-timeout-ms* 1000)))
       (catch Throwable e
         (log/debug e "Error setting statement query timeout")))))
 
