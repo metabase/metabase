@@ -68,4 +68,57 @@ describe("QueryBuilder > timeline events (GHY-3839)", () => {
       { timeout: 5000 },
     );
   });
+
+  it("seeds visibility from the question's saved timeline settings", async () => {
+    const otherEventId = 100;
+    const timeline = createMockTimeline({
+      ...TIMELINE,
+      events: [
+        ...(TIMELINE.events ?? []),
+        createMockTimelineEvent({
+          id: otherEventId,
+          name: "RC2",
+          timestamp: "2025-07-01T00:00:00Z",
+        }),
+      ],
+    });
+    const card = {
+      ...CARD,
+      visualization_settings: {
+        "timeline.selected_timeline_ids": [timeline.id],
+        "timeline.excluded_timeline_event_ids": [otherEventId],
+      },
+    };
+
+    const { store } = await setup({ card, timelines: [timeline] });
+
+    await waitFor(
+      () => {
+        screen.queryByTestId("test-container");
+        expect(getVisibleTimelineEventIds(store.getState())).toEqual([
+          EVENT_ID,
+        ]);
+      },
+      { timeout: 5000 },
+    );
+  });
+
+  it("shows no events when the question's saved selection is empty", async () => {
+    const card = {
+      ...CARD,
+      visualization_settings: {
+        "timeline.selected_timeline_ids": [],
+        "timeline.excluded_timeline_event_ids": [],
+      },
+    };
+
+    const { store } = await setup({ card, timelines: [TIMELINE] });
+
+    await waitFor(() => {
+      expect(getFetchedTimelines(store.getState())).toHaveLength(1);
+    });
+
+    screen.queryByTestId("test-container");
+    expect(getVisibleTimelineEventIds(store.getState())).toEqual([]);
+  });
 });
