@@ -189,8 +189,10 @@
 
 (mu/defmethod mi/visible-filter-clause :model/Database
   [_model column-or-exp user-info permission-mapping]
-  {:clause [:in column-or-exp
-            (perms/visible-database-filter-select user-info permission-mapping)]})
+  {:clause [:exists {:select [[[:inline 1]]]
+                     :from   [[(perms/visible-database-filter-select user-info permission-mapping)
+                               :visible_database]]
+                     :where  [:= :visible_database.id column-or-exp]}]})
 
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."

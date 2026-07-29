@@ -20,8 +20,7 @@
 (defn- truncate-table-batched!
   [table-name time-column]
   (case (mdb/db-type)
-    ;; Postgres/H2 DELETE has no LIMIT, so pick a batch of ids first and delete that literal list. (A subselect
-    ;; would work too, but an id batch keeps the DELETE trivially cheap and the shape linter-clean.)
+    ;; Postgres/H2 DELETE has no LIMIT, so pick a batch of ids first and delete that literal list
     (:postgres :h2)
     (let [batch-ids (t2/query {:select [:id]
                                :from (keyword table-name)

@@ -768,17 +768,16 @@
   (let [user-info {:user-id       api/*current-user-id*
                    :is-superuser? api/*is-superuser?*}
         published-clause (perms/published-table-visible-clause :t.id user-info)
+        visible-exists   (fn [permission-mapping]
+                           [:exists {:select [[[:inline 1]]]
+                                     :from   [[(perms/visible-table-filter-select :id user-info permission-mapping)
+                                               :visible_table]]
+                                     :where  [:= :visible_table.id :t.id]}])
         queryable-clause (cond-> [:or
-                                  [:in :t.id (perms/visible-table-filter-select
-                                              :id
-                                              user-info
-                                              {:perms/view-data      :unrestricted
-                                               :perms/create-queries :query-builder})]]
+                                  (visible-exists {:perms/view-data      :unrestricted
+                                                   :perms/create-queries :query-builder})]
                            published-clause (conj [:and
-                                                   [:in :t.id (perms/visible-table-filter-select
-                                                               :id
-                                                               user-info
-                                                               {:perms/view-data :unrestricted})]
+                                                   (visible-exists {:perms/view-data :unrestricted})
                                                    published-clause]))]
     {:select [:t.id
               [:t.id :table_id]

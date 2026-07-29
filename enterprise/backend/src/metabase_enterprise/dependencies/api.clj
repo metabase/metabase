@@ -234,12 +234,15 @@
                        (branch nil)
 
                        api/*is-data-analyst?*
-                       (branch [:in :source_database_id
-                                (perms/visible-database-filter-select
-                                 {:user-id          api/*current-user-id*
-                                  :is-superuser?    api/*is-superuser?*
-                                  :is-data-analyst? api/*is-data-analyst?*}
-                                 {:perms/create-queries :query-builder})]))
+                       (branch [:exists
+                                {:select [[[:inline 1]]]
+                                 :from   [[(perms/visible-database-filter-select
+                                            {:user-id          api/*current-user-id*
+                                             :is-superuser?    api/*is-superuser?*
+                                             :is-data-analyst? api/*is-data-analyst?*}
+                                            {:perms/create-queries :query-builder})
+                                           :visible_database]]
+                                 :where  [:= :visible_database.id :source_database_id]}]))
 
                      ;; Collection-based entities with archived field
                      (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
@@ -264,13 +267,16 @@
                      ;; Table with visible-filter-clause; inactive/hidden tables are always included
                      ;; so that dependencies broken by dropped tables stay visible
                      :model/Table
-                     (branch [:in id-column
-                              (perms/visible-table-filter-select
-                               :id
-                               {:user-id       api/*current-user-id*
-                                :is-superuser? api/*is-superuser?*}
-                               {:perms/view-data      :unrestricted
-                                :perms/create-queries :query-builder})])
+                     (branch [:exists
+                              {:select [[[:inline 1]]]
+                               :from   [[(perms/visible-table-filter-select
+                                          :id
+                                          {:user-id       api/*current-user-id*
+                                           :is-superuser? api/*is-superuser?*}
+                                          {:perms/view-data      :unrestricted
+                                           :perms/create-queries :query-builder})
+                                         :visible_table]]
+                               :where  [:= :visible_table.id id-column]}])
 
                      ;; Segment/Measure with table permissions and archived filtering
                      (:model/Segment :model/Measure)
@@ -278,21 +284,18 @@
                            table-id-column (keyword (name table-name) "table_id")]
                        (branch [:and
                                 ;; Check that user can see the table this entity belongs to
+                                ;; (using this select because mi/visible-filter-clause can return CTE-based filters)
+                                ;; TODO(ed 2025-12-16: support using CTES in filters in dependency graph)
                                 [:exists
                                  {:select [[[:inline 1]]]
-                                  :from   [:metabase_table]
-                                  ;; using this clause because we had to change the mi/visible-filter-clause
-                                  ;; to allow returning CTE based filters
-                                  ;; TODO(ed 2025-12-16: support using CTES in filters in dependency graph)
-                                  :where  [:and
-                                           [:= :metabase_table.id table-id-column]
-                                           [:in :metabase_table.id
-                                            (perms/visible-table-filter-select
+                                  :from   [[(perms/visible-table-filter-select
                                              :id
                                              {:user-id       api/*current-user-id*
                                               :is-superuser? api/*is-superuser?*}
                                              {:perms/view-data      :unrestricted
-                                              :perms/create-queries :query-builder})]]}]
+                                              :perms/create-queries :query-builder})
+                                            :visible_table]]
+                                  :where  [:= :visible_table.id table-id-column]}]
                                 ;; Filter by archived status
                                 (case include-archived-items
                                   :exclude [:= archived-column false]
