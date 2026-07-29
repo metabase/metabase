@@ -20,23 +20,25 @@ import {
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
-
 import {
   useGetDataComplexityScoresQuery,
   useRefreshDataComplexityScoresMutation,
-} from "../../api";
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/api";
+import {
+  ConversationFilters,
+  useFilterOptions,
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
+import {
+  type UrlState as ConversationsUrlState,
+  urlStateConfig as conversationsUrlStateConfig,
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationsPage/utils";
 import {
   VIEW_CONVERSATIONS,
   VIEW_GROUP_MEMBERS,
   VIEW_USAGE_LOG,
-} from "../../constants";
-import { useAuditTable } from "../../hooks/useAuditTable";
-import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
-import {
-  type UrlState as ConversationsUrlState,
-  urlStateConfig as conversationsUrlStateConfig,
-} from "../ConversationsPage/utils";
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
+import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { BreakoutChart } from "./BreakoutChart";
 import {

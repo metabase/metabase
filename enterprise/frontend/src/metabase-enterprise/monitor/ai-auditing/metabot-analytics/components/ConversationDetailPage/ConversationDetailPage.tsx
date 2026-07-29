@@ -41,11 +41,13 @@ import {
 import { question as ML_getUrl } from "metabase/urls/questions";
 import { formatNumber } from "metabase/utils/formatting";
 import { getUserName } from "metabase/utils/user";
+import { useGetMetabotAnalyticsConversationQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/api";
+import type {
+  ConversationFeedback,
+  GeneratedQuery,
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
-
-import { useGetMetabotAnalyticsConversationQuery } from "../../api";
-import type { ConversationFeedback, GeneratedQuery } from "../../types";
 
 import { ConversationHeader } from "./ConversationHeader";
 import { ToolCallDetailsSidebar } from "./ToolCallDetailsSidebar";

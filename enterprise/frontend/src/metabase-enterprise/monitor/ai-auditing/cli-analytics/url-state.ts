@@ -3,13 +3,12 @@ import {
   type UrlStateConfig,
   getFirstParamValue,
 } from "metabase/common/hooks/use-url-state";
-import type { SortDirection } from "metabase-types/api";
-
 import {
   type FilterUrlState,
   filterUrlStateConfig,
   mergeUrlStateConfig,
-} from "../metabot-analytics/components/ConversationFilters/url-state";
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters/url-state";
+import type { SortDirection } from "metabase-types/api";
 
 import { CLI_EVENT_SORT_COLUMNS, type CliEventSortColumn } from "./query-utils";
 

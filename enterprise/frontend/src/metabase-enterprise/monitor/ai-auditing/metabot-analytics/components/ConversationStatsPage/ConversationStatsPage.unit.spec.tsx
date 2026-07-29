@@ -12,16 +12,7 @@ import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type { ClickObject } from "metabase-lib";
-import type { Dataset, RawSeries, RowValue } from "metabase-types/api";
-import {
-  createMockColumn,
-  createMockDataset,
-  createMockDatasetData,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
-
-import { AUDIT_DB_ID } from "../../constants";
+import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
 import {
   ADMIN_GROUP,
   ALL_USERS_GROUP,
@@ -31,7 +22,15 @@ import {
   ROBERT,
   ROBERT_TENANT,
   selectFilterOption,
-} from "../../tests/fixtures";
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/tests/fixtures";
+import type { ClickObject } from "metabase-lib";
+import type { Dataset, RawSeries, RowValue } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import { ConversationStatsPage } from "./ConversationStatsPage";
 import { buildAuditViewsFixture } from "./audit-views-fixture";

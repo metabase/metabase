@@ -17,6 +17,7 @@ import {
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
+import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/constants";
 import type { Database, Dataset, Field } from "metabase-types/api";
 import {
   createMockColumn,
@@ -29,8 +30,6 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-
-import { AUDIT_DB_ID } from "../constants";
 
 import { McpAnalyticsPage } from "./McpAnalyticsPage";
 

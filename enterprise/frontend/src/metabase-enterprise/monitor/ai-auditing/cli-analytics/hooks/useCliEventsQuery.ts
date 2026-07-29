@@ -1,11 +1,10 @@
 import { useMemo } from "react";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import { paginateEventsQuery } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { Dataset } from "metabase-types/api";
-
-import { paginateEventsQuery } from "../query-utils";
 
 type EventsPageResult = {
   data: Dataset | undefined;

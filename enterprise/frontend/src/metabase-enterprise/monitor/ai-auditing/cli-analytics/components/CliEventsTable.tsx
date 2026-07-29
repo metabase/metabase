@@ -18,21 +18,20 @@ import {
 } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatNumber } from "metabase/utils/formatting";
-import type {
-  CardMetadata,
-  MetadataProvider,
-  TableMetadata,
-} from "metabase-lib";
-import type { RowValue, RowValues, SortingOptions } from "metabase-types/api";
-
-import { useCliEventsQuery } from "../hooks/useCliEventsQuery";
+import { useCliEventsQuery } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/hooks/useCliEventsQuery";
 import {
   CLI_EVENT_SORT_COLUMNS,
   type CliEventSortColumn,
   type CliFilters,
   buildEventsQuery,
   cliEventColumnKeys,
-} from "../query-utils";
+} from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
+import type {
+  CardMetadata,
+  MetadataProvider,
+  TableMetadata,
+} from "metabase-lib";
+import type { RowValue, RowValues, SortingOptions } from "metabase-types/api";
 
 export const EVENTS_PAGE_SIZE = 25;
 

@@ -9,17 +9,19 @@ import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTit
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { useRouter } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
-
+import {
+  VIEW_GROUP_MEMBERS,
+  VIEW_MCP_TOOL_CALLS,
+} from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/constants";
+import { useMcpHasData } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/hooks/useMcpHasData";
+import { buildCallsByDayByStatusQuery } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/query-utils";
+import { mcpUrlStateConfig } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/url-state";
 import {
   // The shared audit filter bar; aliased since it has nothing to do with MCP "conversations".
   ConversationFilters as McpToolCallsFilter,
   useFilterOptions,
-} from "../../metabot-analytics/components/ConversationFilters";
-import { useAuditTable } from "../../metabot-analytics/hooks/useAuditTable";
-import { VIEW_GROUP_MEMBERS, VIEW_MCP_TOOL_CALLS } from "../constants";
-import { useMcpHasData } from "../hooks/useMcpHasData";
-import { buildCallsByDayByStatusQuery } from "../query-utils";
-import { mcpUrlStateConfig } from "../url-state";
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
+import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
 
 import { McpAnalyticsEmptyState } from "./McpAnalyticsEmptyState";
 import { McpBreakoutChart } from "./McpBreakoutChart";

@@ -21,11 +21,6 @@ import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import {
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
-
-import {
   ALL_USERS_GROUP,
   BOBBY,
   BOBBY_TENANT,
@@ -33,8 +28,12 @@ import {
   ROBERT,
   ROBERT_TENANT,
   selectFilterOption,
-} from "../../tests/fixtures";
-import type { ConversationSummary } from "../../types";
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/tests/fixtures";
+import type { ConversationSummary } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
+import {
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { ConversationsPage } from "./ConversationsPage";
 

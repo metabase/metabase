@@ -8,9 +8,11 @@ import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTit
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { useRouter } from "metabase/router";
 import { Flex } from "metabase/ui";
-
-import { useLazyListMetabotAnalyticsConversationsQuery } from "../../api";
-import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
+import { useLazyListMetabotAnalyticsConversationsQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/api";
+import {
+  ConversationFilters,
+  useFilterOptions,
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
 
 import { ConversationsTable } from "./ConversationsTable";
 import { PAGE_SIZE, urlStateConfig } from "./utils";

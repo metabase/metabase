@@ -2,6 +2,15 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Skeleton, useMantineTheme } from "metabase/ui";
+import type { CliFilters } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
+import {
+  buildCountBreakoutQuery,
+  buildErrorBreakoutQuery,
+} from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
+import { toCountBreakoutRawSeries } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/raw-series";
+import { BreakoutChartCard } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/BreakoutChartCard";
+import { mapBreakoutDimension } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/breakout-raw-series";
+import { useAdhocBreakoutQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAdhocBreakoutQuery";
 import type {
   CardMetadata,
   MetadataProvider,
@@ -9,16 +18,6 @@ import type {
   TableMetadata,
 } from "metabase-lib";
 import type { VisualizationDisplay } from "metabase-types/api";
-
-import { BreakoutChartCard } from "../../metabot-analytics/components/ConversationStatsPage/BreakoutChartCard";
-import { mapBreakoutDimension } from "../../metabot-analytics/components/ConversationStatsPage/breakout-raw-series";
-import { useAdhocBreakoutQuery } from "../../metabot-analytics/hooks/useAdhocBreakoutQuery";
-import type { CliFilters } from "../query-utils";
-import {
-  buildCountBreakoutQuery,
-  buildErrorBreakoutQuery,
-} from "../query-utils";
-import { toCountBreakoutRawSeries } from "../raw-series";
 
 const DEFAULT_CHART_HEIGHT = 350;
 const DEFAULT_MAX_CATEGORIES = 8;

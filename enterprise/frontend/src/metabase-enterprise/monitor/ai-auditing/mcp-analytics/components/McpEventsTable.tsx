@@ -18,21 +18,20 @@ import {
 } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatNumber } from "metabase/utils/formatting";
+import { useMcpEventsQuery } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/hooks/useMcpEventsQuery";
+import {
+  MCP_EVENT_SORT_COLUMNS,
+  type McpEventSortColumn,
+  type McpFilters,
+  mcpEventColumnKeys,
+} from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/query-utils";
+import { buildEventsQuery } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/query-utils";
 import type {
   CardMetadata,
   MetadataProvider,
   TableMetadata,
 } from "metabase-lib";
 import type { RowValue, RowValues, SortingOptions } from "metabase-types/api";
-
-import { useMcpEventsQuery } from "../hooks/useMcpEventsQuery";
-import {
-  MCP_EVENT_SORT_COLUMNS,
-  type McpEventSortColumn,
-  type McpFilters,
-  mcpEventColumnKeys,
-} from "../query-utils";
-import { buildEventsQuery } from "../query-utils";
 
 export const EVENTS_PAGE_SIZE = 25;
 

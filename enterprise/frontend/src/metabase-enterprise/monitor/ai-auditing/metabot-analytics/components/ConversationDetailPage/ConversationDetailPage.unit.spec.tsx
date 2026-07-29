@@ -7,9 +7,11 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
+import type {
+  ConversationDetail,
+  ConversationFeedback,
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
 import { createMockUser } from "metabase-types/api/mocks";
-
-import type { ConversationDetail, ConversationFeedback } from "../../types";
 
 import { ConversationDetailPage } from "./ConversationDetailPage";
 

@@ -1,14 +1,13 @@
 import { useMemo, useRef } from "react";
 
+import type { CliFilters } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
+import { buildTotalCountQuery } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
+import { useAdhocBreakoutQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAdhocBreakoutQuery";
 import type {
   CardMetadata,
   MetadataProvider,
   TableMetadata,
 } from "metabase-lib";
-
-import { useAdhocBreakoutQuery } from "../../metabot-analytics/hooks/useAdhocBreakoutQuery";
-import type { CliFilters } from "../query-utils";
-import { buildTotalCountQuery } from "../query-utils";
 
 type DataSources = {
   provider: MetadataProvider | null;

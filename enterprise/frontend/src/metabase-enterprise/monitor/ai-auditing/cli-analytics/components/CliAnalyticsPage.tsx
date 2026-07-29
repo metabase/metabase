@@ -8,18 +8,20 @@ import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTit
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { useRouter } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
-
+import {
+  VIEW_AGENT_API_CALLS,
+  VIEW_GROUP_MEMBERS,
+} from "metabase-enterprise/monitor/ai-auditing/cli-analytics/constants";
+import { useCliHasData } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/hooks/useCliHasData";
+import { buildCallsByDayByStatusQuery } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
+import type { CliTab } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/url-state";
+import { cliUrlStateConfig } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/url-state";
 import {
   // The shared audit filter bar; aliased since it has nothing to do with Metabot "conversations".
   ConversationFilters as CliCallsFilter,
   useFilterOptions,
-} from "../../metabot-analytics/components/ConversationFilters";
-import { useAuditTable } from "../../metabot-analytics/hooks/useAuditTable";
-import { VIEW_AGENT_API_CALLS, VIEW_GROUP_MEMBERS } from "../constants";
-import { useCliHasData } from "../hooks/useCliHasData";
-import { buildCallsByDayByStatusQuery } from "../query-utils";
-import type { CliTab } from "../url-state";
-import { cliUrlStateConfig } from "../url-state";
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
+import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
 
 import { CliAnalyticsEmptyState } from "./CliAnalyticsEmptyState";
 import { CliBreakoutChart } from "./CliBreakoutChart";
