@@ -236,6 +236,22 @@
   []
   (aisdk-xf {:stream-text? true}))
 
+(defn stamp-tool-titles-xf
+  "Stamp a client-facing `:title` onto `:tool-input` parts via each tool's
+  optional `:title-fn`. A throwing title-fn leaves the part untitled."
+  [tools]
+  (map (fn [part]
+         (if-let [title-fn (and (= :tool-input (:type part))
+                                (:title-fn (get tools (:function part))))]
+           (let [title (try
+                         (title-fn (:arguments part))
+                         (catch Throwable e
+                           (log/debug e "tool title-fn failed" {:tool (:function part)})
+                           nil))]
+             (cond-> part
+               (string? title) (assoc :title title)))
+           part))))
+
 ;;; AI SDK SSE Output
 ;;
 ;; Converts internal parts to the AI SDK v5+ SSE protocol: typed `UIMessageChunk`
@@ -446,10 +462,11 @@
                                             :toolName   (:function part)}))
 
               :tool-input
-              (rf result (format-sse-event {:type       "tool-input-available"
-                                            :toolCallId (:id part)
-                                            :toolName   (:function part)
-                                            :input      (:arguments part)}))
+              (rf result (format-sse-event (cond-> {:type       "tool-input-available"
+                                                    :toolCallId (:id part)
+                                                    :toolName   (:function part)
+                                                    :input      (:arguments part)}
+                                             (:title part) (assoc :title (:title part)))))
 
               :tool-output
               (rf result
