@@ -29,14 +29,18 @@ import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { MetabaseReduxProvider, useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
+import {
+  type StoreSeedState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import {
   type Action,
   type History,
   type LocationDescriptor,
   Route,
+  createLocationMirror,
   routerMiddleware,
   routing as routingReducer,
 } from "metabase/router";
@@ -71,7 +75,7 @@ export interface RenderWithProvidersOptions {
   // public or sdk-specific tests
   mode?: "default" | "public";
   initialRoute?: string;
-  storeInitialState?: Partial<State>;
+  storeInitialState?: Partial<StoreSeedState>;
   withRouter?: boolean;
   /** Renders children wrapped with kbar provider */
   withKBar?: boolean;
@@ -185,8 +189,11 @@ export function getTestStoreAndWrapper({
   customReducers,
   theme,
 }: GetTestStoreAndWrapperOptions) {
-  let { routing, ...initialState }: Partial<State> =
-    createMockState(storeInitialState);
+  let {
+    routing,
+    settings, // pull settings out because they aren't in the store
+    ...initialState
+  }: Partial<StoreSeedState> = createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
@@ -424,6 +431,12 @@ function MaybeRouter({
   v7History?: MemoryTestHistory;
   initialRoute: string;
 }): JSX.Element {
+  const dispatch = useDispatch();
+  const onLocationChange = useMemo(
+    () => createLocationMirror(dispatch),
+    [dispatch],
+  );
+
   if (!hasRouter) {
     return children;
   }
@@ -436,7 +449,11 @@ function MaybeRouter({
     <Route path="*" element={children} />
   );
   return (
-    <RouterProviderV7Memory initialRoute={initialRoute} history={v7History}>
+    <RouterProviderV7Memory
+      initialRoute={initialRoute}
+      history={v7History}
+      onLocationChange={onLocationChange}
+    >
       {content}
     </RouterProviderV7Memory>
   );

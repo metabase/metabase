@@ -300,6 +300,38 @@ describe("McpAnalyticsPage", () => {
     });
   });
 
+  it("issues exactly one events query per page change (no redundant refetch)", async () => {
+    const { history } = setup({ dataset: multiPageDatasetResponse });
+
+    await screen.findByRole("heading", { name: "MCP analytics" });
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Tool calls" }),
+    );
+    await within(screen.getByRole("tabpanel")).findByRole("table");
+
+    // Dataset calls for the events query's second page (MBQL `:page` is 1-indexed, so UI page 1).
+    const page2EventsCalls = () =>
+      fetchMock.callHistory.calls("dataset").filter((call) => {
+        const body = call.options?.body;
+        if (typeof body !== "string") {
+          return false;
+        }
+        return JSON.parse(body)?.stages?.[0]?.page?.page === 2;
+      });
+
+    await userEvent.click(await screen.findByLabelText("Next page"));
+
+    // Wait for the debounced URL update to land — it's the last re-render trigger around a page
+    // change, and where the old `sortingOptions`-object dependency used to fire redundant refetches.
+    await waitFor(() =>
+      expect(history?.getCurrentLocation().search).toContain("page=1"),
+    );
+
+    // The query memo depends on the primitive sort values, so it stays referentially stable across
+    // those re-renders: one page change → exactly one events request, not one per render.
+    expect(page2EventsCalls()).toHaveLength(1);
+  });
+
   it("orders the events query by a total order (created_at + tool_call_id) for stable paging", async () => {
     setup();
 

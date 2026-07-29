@@ -7,6 +7,7 @@
    [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.interface :as mi]
+   [metabase.util.connection :as u.connection]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [next.jdbc.result-set :as rs]
@@ -74,7 +75,7 @@
       (.setAutoCommit conn false)
       (try
         (with-open [stmt (doto (sql-jdbc.execute/prepared-statement driver conn sql params)
-                           (.setQueryTimeout *query-timeout-seconds*))
+                           (u.connection/set-query-timeout! *query-timeout-seconds*))
                     rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
           (rs/datafiable-result-set rs conn {}))
         (finally
@@ -91,7 +92,7 @@
       (try
         (boolean (seq (query-read-only! query)))
         (catch Throwable e
-          (log/warnf e "Matching query failed: %s" (pr-str query))
+          (log/warnf "Matching query failed: %s" (ex-message e))
           :error))
       (do
         (log/warnf "No matching query for dialect %s or default" (name (mdb/db-type)))
@@ -160,7 +161,7 @@
              (try
                (evaluate-advisory! advisory instance-version)
                (catch Exception e
-                 (log/warnf e "Error evaluating advisory %s" (:advisory_id advisory))
+                 (log/warnf "Error evaluating advisory %s: %s" (:advisory_id advisory) (ex-message e))
                  (t2/update! :model/SecurityAdvisory (:id advisory)
                              {:match_status      :error
                               :last_evaluated_at (mi/now)}))))))))

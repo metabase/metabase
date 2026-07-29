@@ -1,8 +1,6 @@
-import type { ReactNode } from "react";
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
-import type { Route } from "metabase/router";
+import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
@@ -16,16 +14,8 @@ type DataModelNewMeasurePageParams = {
   tableId: string;
 };
 
-type DataModelNewMeasurePageProps = {
-  params: DataModelNewMeasurePageParams;
-  route: Route;
-  children?: ReactNode;
-};
-
-export function DataModelNewMeasurePage({
-  params,
-  route,
-}: DataModelNewMeasurePageProps) {
+export function DataModelNewMeasurePage() {
+  const params = useParams<DataModelNewMeasurePageParams>();
   const databaseId = Number(params.databaseId);
   const schemaName = getSchemaName(params.schemaId);
   const tableId = Urls.extractEntityId(params.tableId);
@@ -44,7 +34,6 @@ export function DataModelNewMeasurePage({
 
   return (
     <NewMeasurePage
-      route={route}
       table={table}
       breadcrumbs={<DataModelMeasureBreadcrumbs table={table} />}
       getSuccessUrl={(measure) =>

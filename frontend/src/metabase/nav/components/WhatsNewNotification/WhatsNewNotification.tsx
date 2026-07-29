@@ -1,11 +1,10 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useGetVersionInfoQuery } from "metabase/api";
+import { useGetVersionInfoQuery, useUpdateSettingMutation } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
-import { useDispatch, useSelector } from "metabase/redux";
-import { updateSetting } from "metabase/redux/settings";
+import { useSelector } from "metabase/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 
@@ -13,7 +12,7 @@ import Sparkles from "./sparkles.svg?component";
 import { getLatestEligibleReleaseNotes } from "./utils";
 
 export function WhatsNewNotification() {
-  const dispatch = useDispatch();
+  const [updateSetting] = useUpdateSettingMutation();
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
   const { data: versionInfo } = useGetVersionInfoQuery();
   const currentVersion = useSetting("version");
@@ -39,13 +38,11 @@ export function WhatsNewNotification() {
   ]);
 
   const dismiss = useCallback(() => {
-    dispatch(
-      updateSetting({
-        key: "last-acknowledged-version",
-        value: currentVersion.tag,
-      }),
-    );
-  }, [currentVersion.tag, dispatch]);
+    updateSetting({
+      key: "last-acknowledged-version",
+      value: currentVersion.tag,
+    });
+  }, [currentVersion.tag, updateSetting]);
 
   if (!url) {
     return null;

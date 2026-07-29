@@ -19,40 +19,7 @@ jobs:
         run: bun install --frozen-lockfile
       - name: get module boundary stats
         id: get-stats
-        run: |
-          NAMED_MODULES=$(node --input-type=module -e "
-            import { elements } from './frontend/lint/module-boundaries.mjs';
-            const named = elements.filter(e => !['shared/other', 'app/misc', 'other'].includes(e.type));
-            console.log(named.length);
-          ")
-
-          ENFORCED_MODULES=$(node --input-type=module -e "
-            import { elements } from './frontend/lint/module-boundaries.mjs';
-            const enforced = new Set(elements.filter(e => e.enforceOutgoing).map(e => e.type));
-            console.log(enforced.size);
-          ")
-
-          NAMED_DIRS=$(node --input-type=module -e "
-            import { elements } from './frontend/lint/module-boundaries.mjs';
-            const dirs = new Set();
-            for (const el of elements) {
-              const m = el.pattern.match(/^frontend\/src\/metabase\/(\w[\w-]*)\//)
-              if (m) dirs.add(m[1]);
-            }
-            for (const d of dirs) console.log(d);
-          ")
-          TOTAL_DIRS=$(ls -d frontend/src/metabase/*/ | xargs -I{} basename {} | wc -l | tr -d ' ')
-          NAMED_COUNT=$(echo "$NAMED_DIRS" | grep -c . || true)
-          UNMODULED=$(($TOTAL_DIRS - $NAMED_COUNT))
-
-          VIOLATIONS=$(bun run module-boundaries 2>&1 | grep -o '✖ [0-9]* problems' | grep -o '[0-9]*' || echo "0")
-
-          echo "$NAMED_MODULES modules, $ENFORCED_MODULES enforced, $UNMODULED unmoduled folders, $VIOLATIONS violations"
-
-          echo "NAMED_MODULES=$NAMED_MODULES" >> $GITHUB_OUTPUT
-          echo "ENFORCED_MODULES=$ENFORCED_MODULES" >> $GITHUB_OUTPUT
-          echo "UNMODULED=$UNMODULED" >> $GITHUB_OUTPUT
-          echo "VIOLATIONS=$VIOLATIONS" >> $GITHUB_OUTPUT
+        run: node frontend/lint/module-boundaries-stats.mjs | tee -a "$GITHUB_OUTPUT"
       - name: Upload stats
         uses: actions/github-script@v9
         env:

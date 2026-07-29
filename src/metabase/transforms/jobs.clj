@@ -181,7 +181,7 @@
         (run-transform! ctx started-run-id transform)
         {::status :succeeded ::transform transform}
         (catch Throwable t
-          (log/errorf t "Transform %s in run %s failed" (pr-str (:id transform)) (pr-str run-id))
+          (log/errorf "Transform %s in run %s failed: %s" (pr-str (:id transform)) (pr-str run-id) (ex-message t))
           {::status    :failed
            ::transform transform
            ::message   (or (ex-message t) (str t))
@@ -292,7 +292,7 @@
     (try
       (cancel-worker! worker)
       (catch Throwable t
-        (log/warnf t "Error canceling in-flight worker for transform %s" (pr-str id))))))
+        (log/warnf "Error canceling in-flight worker for transform %s: %s" (pr-str id) (ex-message t))))))
 
 (defonce ^:private active-runs
   ;; job-run-id -> promise, delivered once the run is found terminated externally (e.g. reaped).
@@ -454,13 +454,13 @@
                      (coordinated-run/fail-started-run! model run-id
                                                         {:message (compile-transform-failure-messages (::failures result))})
                      (catch Exception e
-                       (log/errorf e "Error when failing %s %s." label (pr-str run-id)))))
+                       (log/errorf "Error when failing %s %s: %s" label (pr-str run-id) (ex-message e)))))
       result)
     (catch Throwable t
       (try
         (coordinated-run/fail-started-run! model run-id {:message (ex-message t)})
         (catch Exception e
-          (log/errorf e "Error when failing %s." label)))
+          (log/errorf "Error when failing %s: %s" label (ex-message e))))
       (throw t))))
 
 (defn- active-users-to-edit-transform
@@ -550,7 +550,7 @@
                                  (try
                                    (notify-transform-failures job-id failures)
                                    (catch Exception e
-                                     (log/errorf e "Error notifying failures of transform job %s" (pr-str job-id))))))]
+                                     (log/errorf "Error notifying failures of transform job %s: %s" (pr-str job-id) (ex-message e))))))]
             (some-> start-promise (deliver [:started run-id]))
             (tracing/with-span :tasks "task.transform.run-job" {:transform.job/id         job-id
                                                                 :transform.job/run-method (name run-method)

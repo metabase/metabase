@@ -228,7 +228,7 @@
            :join-structure (extract-native-join-structure ast table->id driver)
            :visited-fields (resolve-native-visited-fields driver native-query)})))
     (catch Exception e
-      (log/warn e "Failed to analyze native SQL query")
+      (log/warnf "Failed to analyze native SQL query: %s" (ex-message e))
       nil)))
 
 ;;; -------------------------------------------------- Unified Analysis --------------------------------------------------

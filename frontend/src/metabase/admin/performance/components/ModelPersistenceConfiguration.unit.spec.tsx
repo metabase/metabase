@@ -7,6 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { useGetSettingsQuery } from "metabase/api";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockSettings } from "metabase-types/api/mocks";
 
@@ -39,9 +40,24 @@ const setup = ({
 
   const state = createMockState({ settings: mockSettings(settings) });
 
-  return renderWithProviders(<ModelPersistenceConfiguration />, {
-    storeInitialState: state,
-  });
+  // The default settings subscription is managed in AppComponent.
+  // This component doesn't create a subscription itself, but in RTK
+  // invalidating a tag with no active subscriber doesn't refetch.
+  // So we need to create a subscriber for this test to test the invalidation and refetching behaviour
+  const SettingsSubscriber = () => {
+    useGetSettingsQuery();
+    return null;
+  };
+
+  return renderWithProviders(
+    <>
+      <SettingsSubscriber />
+      <ModelPersistenceConfiguration />
+    </>,
+    {
+      storeInitialState: state,
+    },
+  );
 };
 
 describe("ModelPersistenceConfiguration", () => {
@@ -102,10 +118,20 @@ describe("ModelPersistenceConfiguration", () => {
     it("refetches site settings after toggling", async () => {
       setup({ persistedModelsEnabled: false });
 
+      // the mounted settings subscription fetches once on mount
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls(SESSION_PROPERTIES_URL),
+        ).toHaveLength(1);
+      });
+
       await userEvent.click(screen.getByRole("switch"));
 
+      // enablePersist invalidates session-properties → the subscription refetches
       await waitFor(() => {
-        expect(fetchMock.callHistory.called(SESSION_PROPERTIES_URL)).toBe(true);
+        expect(
+          fetchMock.callHistory.calls(SESSION_PROPERTIES_URL),
+        ).toHaveLength(2);
       });
     });
   });

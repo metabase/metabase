@@ -10,10 +10,6 @@
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
-   ;; Side-effects: registers BigQuery driver multimethods for workspace
-   ;; isolation (`init-workspace-isolation!`, `grant-workspace-read-access!`,
-   ;; `destroy-workspace-isolation!`).
-   [metabase.driver.bigquery-cloud-sdk.workspaces]
    [metabase.driver.common :as driver.common]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.connection :as driver.conn]
@@ -36,7 +32,6 @@
   (:import
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
-   (com.google.auth.oauth2 ImpersonatedCredentials)
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetListOption
@@ -70,7 +65,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :bigquery-cloud-sdk, :parent #{:sql
+(driver/register! :bigquery-cloud-sdk, :parent #{:sql-mbql5
                                                  ::like-escape-char-built-in/like-escape-char-built-in})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -89,21 +84,7 @@
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
   (let [base-creds   (bigquery.common/database-details->service-account-credential details)
-        ;; Check if we should impersonate a different service account
-        ;; ImpersonatedCredentials automatically refreshes tokens before expiration,
-        ;; so the 1-hour lifetime is just the initial token validity period.
-        ;; Each query creates a fresh client, and the credentials handle refresh internally.
-        impersonating? (some? (:impersonate-service-account details))
-        final-creds  (if impersonating?
-                       (let [target-sa (:impersonate-service-account details)]
-                         (log/debugf "Creating impersonated credentials for service account: %s" target-sa)
-                         (ImpersonatedCredentials/create
-                          (.createScoped base-creds bigquery-scopes)
-                          target-sa
-                          nil  ;; delegates (not needed)
-                          (java.util.ArrayList. bigquery-scopes)
-                          3600))  ;; 1 hour token lifetime
-                       (.createScoped base-creds bigquery-scopes))
+        creds        (.createScoped base-creds bigquery-scopes)
         mb-version   (:tag driver-api/mb-version-info)
         run-mode     (name driver-api/run-mode)
         user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
@@ -114,19 +95,9 @@
                               (.setReadTimeout read-timeout-ms)
                               (.build))
         bq-bldr      (doto (BigQueryOptions/newBuilder)
-                       (.setCredentials final-creds)
+                       (.setCredentials creds)
                        (.setHeaderProvider header-provider)
                        (.setTransportOptions transport-options))]
-    ;; `ImpersonatedCredentials` doesn't carry a project id (it derives identity
-    ;; from the impersonation target SA, not from a key file), so the Google SDK
-    ;; would throw "A project ID is required for this service but could not be
-    ;; determined from the builder or the environment" when building the client.
-    ;; Fall back to the base SA's project id, which is what every non-impersonated
-    ;; call site is implicitly relying on through `getOptions.getProjectId`.
-    (when impersonating?
-      (when-let [pid (or (:project-id details)
-                         (.getProjectId base-creds))]
-        (.setProjectId bq-bldr ^String pid)))
     (when-let [host (not-empty (:host details))]
       (.setHost bq-bldr host))
     (.. bq-bldr build getService)))
@@ -167,7 +138,7 @@
   ;; check whether we can connect by seeing whether listing datasets succeeds
   (let [[success? datasets] (try [true (list-datasets details)]
                                  (catch Exception e
-                                   (log/error e "Exception caught in :bigquery-cloud-sdk can-connect?")
+                                   (log/errorf "Exception caught in :bigquery-cloud-sdk can-connect?: %s" (ex-message e))
                                    [false nil]))]
     (cond
       (not success?)
@@ -503,7 +474,7 @@
                                 :where     [:in :c.table_name table-names]
                                 :order-by  [:c.table_name]})
                (catch Throwable e
-                 (log/warnf e "error in describe-fields for dataset: %s" dataset-id)))]
+                 (log/warnf "error in describe-fields for dataset %s: %s" dataset-id (ex-message e))))]
     (eduction
      (partition-by :table_name)
      (mapcat #(describe-dataset-table dataset-id %))
@@ -523,7 +494,7 @@
                                :from [[(information-schema-table project-id dataset-id "TABLES") :t]]
                                :order-by [:table_name]}))
     (catch Throwable e
-      (log/warnf e "error in list-table-names for dataset: %s" dataset-id))))
+      (log/warnf "error in list-table-names for dataset %s: %s" dataset-id (ex-message e)))))
 
 (defmethod driver/describe-fields :bigquery-cloud-sdk
   [driver database & {:keys [schema-names table-names]}]
@@ -863,7 +834,7 @@
              (let [acc' (try
                           (rf acc (.next it))
                           (catch Throwable e
-                            (log/errorf e "error in reducible-bigquery-results! %d rows" n)
+                            (log/errorf "error in reducible-bigquery-results! %d rows: %s" n (ex-message e))
                             (throw e)))]
                (recur page it acc' (inc n)))
 
@@ -891,7 +862,7 @@
                                  (.cancel client job-id)
                                  (catch Throwable e
                                    ;; Just log exception if it can't be cancelled.
-                                   (log/debugf e "Could not cancel job-id: %s" job-id)))
+                                   (log/debugf "Could not cancel job-id %s: %s" job-id (ex-message e))))
         ^Schema schema (some-> page .getSchema)
         parsers (some-> schema get-field-parsers)
         columns (for [column (some-> schema .getFields fields->metabase-field-info)]
@@ -949,7 +920,7 @@
         :cancel (try
                   (.cancel client job-id)
                   (catch Throwable t
-                    (log/warnf t "Couldn't cancel job %s" job-id))
+                    (log/warnf "Couldn't cancel job %s: %s" job-id (ex-message t)))
                   (finally
                     (throw-cancelled sql parameters)))
         :ready  (bigquery-execute-response result job client respond cancel-chan)))))
@@ -1029,10 +1000,7 @@
                               ;; statements by using a different driver-native API for affected-row counts.
                               :transforms/accurate-rows-affected false
                               :transforms/python                true
-                              :transforms/table                 true
-                              ;; Workspace isolation using service account impersonation
-                              ;; Tearing down workspaces is not working right currently
-                              :workspace                        false}]
+                              :transforms/table                 true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :bigquery-cloud-sdk
@@ -1296,7 +1264,7 @@
       (doall
        (for [query queries]
          (let [[sql params] (if (string? query) [query] query)
-               _ (log/debugf "Executing BigQuery DDL: %s" sql)
+               _ (log/debug "Executing BigQuery DDL")
                job-config (-> (QueryJobConfiguration/newBuilder sql)
                               (bigquery.params/set-parameters! params)
                               (.setUseLegacySql false)
@@ -1305,7 +1273,7 @@
            {:rows-affected (or (and table-result (.getTotalRows table-result))
                                0)})))
       (catch Exception e
-        (log/error e "Error executing BigQuery DDL")
+        (log/errorf "Error executing BigQuery DDL: %s" (ex-message e))
         (throw e)))))
 
 (defmethod driver/drop-transform-target! [:bigquery-cloud-sdk :table]
@@ -1329,8 +1297,6 @@
 (defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
   [driver conn-spec schema]
   ;; Check if dataset exists using the BigQuery API before trying to create.
-  ;; This is important for workspace isolation where the impersonated SA has
-  ;; access to an existing isolated dataset but cannot create new datasets.
   (let [client     (database-details->client conn-spec) ;; for bigquery, connection spec *is* the details
         project-id (bigquery.common/get-project-id conn-spec)
         dataset-id (DatasetId/of project-id schema)]
@@ -1352,16 +1318,6 @@
   [_driver]
   ;; https://cloud.google.com/bigquery/docs/tables
   1024)
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           Workspace Isolation                                                  |
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; BigQuery workspace isolation uses service account impersonation instead of SQL GRANT statements.
-;;; Each workspace gets its own service account (created automatically) with table-level read permissions.
-;;;
-;;; Required GCP setup for the main service account:
-;;; - Roles: `roles/bigquery.admin`, `roles/iam.serviceAccountAdmin`, `roles/resourcemanager.projectIamAdmin`
-;;; - APIs: `bigquery.googleapis.com`, `iam.googleapis.com`, `cloudresourcemanager.googleapis.com`
 
 (defmethod driver/llm-sql-dialect-resource :bigquery-cloud-sdk [_]
   "metabot/prompts/dialects/bigquery.md")

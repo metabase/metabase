@@ -102,7 +102,7 @@
   (try
     (t2/delete! (t2/table-name :model/QueryCache) :query_hash query-hash)
     (catch Throwable e
-      (log/error e "Error deleting outdated cache entry")))
+      (log/errorf "Error deleting outdated cache entry: %s" (ex-message e))))
   nil)
 
 (defn- purge-old-cache-entries!
@@ -114,7 +114,7 @@
     (t2/delete! (t2/table-name :model/QueryCache)
                 :updated_at [:<= (seconds-ago max-age-seconds)])
     (catch Throwable e
-      (log/error e "Error purging old cache entries")))
+      (log/errorf "Error purging old cache entries: %s" (ex-message e))))
   nil)
 
 (defn- save-results!
@@ -130,7 +130,7 @@
                                              :results            final-results
                                              :refresh_started_at nil}))
       (catch Throwable e
-        (log/error e "Error saving query results to cache.")))
+        (log/errorf "Error saving query results to cache: %s" (ex-message e))))
     nil))
 
 (defmethod i/cache-backend :db

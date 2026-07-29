@@ -30,7 +30,7 @@ type UseLensNavigationResult = {
 
 export const useLensNavigation = (
   availableLenses: InspectorLensMetadata[],
-  params: RouteParams,
+  params: Partial<RouteParams>,
   location: Location,
 ): UseLensNavigationResult => {
   const dispatch = useDispatch();

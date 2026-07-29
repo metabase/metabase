@@ -9,6 +9,7 @@ import {
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
 import type { DashboardState, State } from "metabase/redux/store";
+import type { StoreSeedState } from "metabase/redux/store/mocks";
 import {
   createMockDashboardState,
   createMockSettingsState,
@@ -399,7 +400,7 @@ function setupConcurrencyTest(dashboardId: number, cardCount: number) {
   });
 
   const DASHBOARD = createMockDashboard({ id: dashboardId, dashcards });
-  const state: Partial<State> = {
+  const state: Partial<StoreSeedState> = {
     dashboard: createMockDashboardState({
       dashboardId: DASHBOARD.id,
       dashboards: {
@@ -488,7 +489,7 @@ describe("fetchDashboardCardData", () => {
       dashcards,
     });
 
-    const state: Partial<State> = {
+    const state: Partial<StoreSeedState> = {
       dashboard: createMockDashboardState({
         dashboardId: DASHBOARD.id,
         selectedTabId: tab1.id,

@@ -59,8 +59,7 @@
   :encryption :no
   :visibility :settings-manager
   :default "claude-opus-4-5-20251101"
-  :export? false
-  :doc false)
+  :export? false)
 
 (defsetting llm-anthropic-api-base-url
   (deferred-tru "The Anthropic API base URL.")
@@ -68,8 +67,7 @@
   :visibility       :settings-manager
   :default          "https://api.anthropic.com"
   :export?          false
-  :deprecated-name  :ee-anthropic-api-base-url
-  :doc              false)
+  :deprecated-name  :ee-anthropic-api-base-url)
 
 (defsetting llm-anthropic-api-version
   (deferred-tru "The Anthropic API version.")
@@ -87,8 +85,7 @@
   :visibility       :settings-manager
   :default          "gpt-5.4"
   :export?          false
-  :deprecated-name  :ee-openai-model
-  :doc              false)
+  :deprecated-name  :ee-openai-model)
 
 (defsetting llm-openai-api-base-url
   (deferred-tru "The OpenAI API base URL.")
@@ -96,8 +93,7 @@
   :visibility       :settings-manager
   :default          "https://api.openai.com"
   :export?          false
-  :deprecated-name  :ee-openai-api-base-url
-  :doc              false)
+  :deprecated-name  :ee-openai-api-base-url)
 
 (defsetting llm-openai-api-key
   (deferred-tru "The OpenAI API Key.")
@@ -108,8 +104,7 @@
   :setter           (partial set-prefixed-api-key!
                              :llm-openai-api-key
                              "sk-"
-                             (deferred-tru "Invalid OpenAI API key format. Key must start with ''sk-''."))
-  :doc              false)
+                             (deferred-tru "Invalid OpenAI API key format. Key must start with ''sk-''.")))
 
 ;;; ------------------------------------------------- OpenRouter ------------------------------------------------
 
@@ -119,8 +114,7 @@
   :visibility       :settings-manager
   :default          "https://openrouter.ai/api"
   :export?          false
-  :deprecated-name  :ee-openrouter-api-base-url
-  :doc              false)
+  :deprecated-name  :ee-openrouter-api-base-url)
 
 (defsetting llm-openrouter-api-key
   (deferred-tru "The OpenRouter API Key.")
@@ -131,8 +125,7 @@
   :setter           (partial set-prefixed-api-key!
                              :llm-openrouter-api-key
                              "sk-or-v1-"
-                             (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
-  :doc              false)
+                             (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''.")))
 
 ;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
 
@@ -141,7 +134,6 @@
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :doc         false
   :setter      (partial set-trimmed-string! :llm-bedrock-access-key-id))
 
 (defsetting llm-bedrock-secret-access-key
@@ -149,7 +141,6 @@
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :doc         false
   :setter      (partial set-trimmed-string! :llm-bedrock-secret-access-key))
 
 (defsetting llm-bedrock-session-token
@@ -157,7 +148,6 @@
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :doc         false
   :setter      (partial set-trimmed-string! :llm-bedrock-session-token))
 
 (defn- set-bedrock-region!
@@ -173,7 +163,6 @@
   :visibility  :settings-manager
   :default     "us-east-1"
   :export?     false
-  :doc         false
   :setter      set-bedrock-region!)
 
 (defsetting llm-bedrock-configured?
@@ -194,7 +183,6 @@
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :doc         false
   :setter      (partial set-trimmed-string! :llm-azure-api-key))
 
 (defn normalize-llm-base-url
@@ -206,11 +194,10 @@
           not-empty))
 
 (defsetting llm-azure-api-base-url
-  (deferred-tru "The base URL of the Azure resource''s OpenAI- or Anthropic-compatible surface, e.g. https://<resource>.services.ai.azure.com/openai.")
+  (deferred-tru "The base URL of the Azure resource''s OpenAI- or Anthropic-compatible surface, e.g. `https://<resource>.services.ai.azure.com/openai`.")
   :encryption  :no
   :visibility  :settings-manager
   :export?     false
-  :doc         false
   :setter      (fn [new-value]
                  (setting/set-value-of-type! :string :llm-azure-api-base-url (normalize-llm-base-url new-value))))
 
@@ -260,37 +247,32 @@
   :type :integer
   :default 4096
   :visibility :settings-manager
-  :export? false
-  :doc false)
+  :export? false)
 
 (defsetting llm-request-timeout-ms
   (deferred-tru "Socket timeout in milliseconds for LLM API requests.")
   :type :integer
   :default 60000
   :visibility :settings-manager
-  :export? false
-  :doc false)
+  :export? false)
 
 (defsetting llm-connection-timeout-ms
   (deferred-tru "Connection timeout in milliseconds for LLM API requests.")
   :type :integer
   :default 5000
   :visibility :settings-manager
-  :export? false
-  :doc false)
+  :export? false)
 
 (defsetting llm-rate-limit-per-user
   (deferred-tru "Maximum SQL generation requests per user per minute.")
   :type :integer
   :default 20
   :visibility :settings-manager
-  :export? false
-  :doc false)
+  :export? false)
 
 (defsetting llm-rate-limit-per-ip
   (deferred-tru "Maximum SQL generation requests per IP address per minute.")
   :type :integer
   :default 100
   :visibility :settings-manager
-  :export? false
-  :doc false)
+  :export? false)

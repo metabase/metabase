@@ -1,7 +1,13 @@
 import json
+import logging
 import re
 
 import sqlglot
+
+# sqlglot's parser warnings quote raw chunks of the SQL being parsed ("... contains unsupported
+# syntax. Falling back to parsing as a 'Command'."); silence them so customer SQL never reaches
+# stderr/server logs.
+logging.getLogger("sqlglot").setLevel(logging.CRITICAL)
 import sqlglot.lineage as lineage
 import sqlglot.optimizer as optimizer
 import sqlglot.optimizer.qualify as qualify

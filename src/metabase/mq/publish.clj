@@ -48,7 +48,7 @@
       (try
         (publish! channel msgs)
         (catch Exception e
-          (log/error e "Error flushing deferred messages" {:channel channel}))))))
+          (log/error "Error flushing deferred messages" {:channel channel :error (ex-message e)}))))))
 
 (defn defer-in-transaction!
   "Accumulates msgs in *transaction-state* under [::deferred-messages channel].
@@ -100,7 +100,7 @@
           (publish-collected! channel msgs))
         result)
       (catch Exception e
-        (log/error e error-label)
+        (log/error error-label (ex-message e))
         (throw e)))))
 
 (defmacro with-buffer

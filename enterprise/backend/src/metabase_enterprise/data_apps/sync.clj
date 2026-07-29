@@ -143,7 +143,7 @@
                              :allowed_hosts allowed_hosts
                              :bundle_path   bundle
                              :sync_error    (ex-message e)})
-      (log/warnf e "[data-app] failed to sync app %s" slug)
+      (log/warnf "[data-app] failed to sync app %s: %s" slug (ex-message e))
       ;; a failing app counts as a change unless it was already failing identically
       (or (nil? existing) (not= (:sync_error existing) (ex-message e))))))
 
@@ -215,5 +215,5 @@
                    (count config-errors) (str/join "; " config-errors)))
       result)
     (catch Throwable e
-      (log/warn e "[data-app] sync from remote-sync snapshot failed")
+      (log/warnf "[data-app] sync from remote-sync snapshot failed: %s" (ex-message e))
       nil)))

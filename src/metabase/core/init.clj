@@ -82,6 +82,7 @@
    [metabase.usage-metadata.init]
    [metabase.user-key-value.init]
    [metabase.users.init]
+   [metabase.util.experiment.init]
    [metabase.version.init]
    [metabase.view-log.init]
    [metabase.warehouses.init]
