@@ -3,6 +3,7 @@ import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   isCollectionData,
   isEmptyStateData,
+  isSeedData,
   isTableData,
 } from "metabase/data-studio/common/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
@@ -11,6 +12,7 @@ import type { CollectionId } from "metabase-types/api";
 
 import { LibraryCollectionRowMenu } from "./LibraryCollectionRowMenu";
 import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";
+import { SeedRowMenu } from "./SeedRowMenu";
 
 type ActionCellProps = {
   treeItem: TreeItem;
@@ -28,6 +30,11 @@ export function ActionCell(props: ActionCellProps) {
 
   if (isTableData(data)) {
     return <TableMoreMenu table={data} onMoved={refreshTableCollections} />;
+  }
+
+  // Uploaded seeds are user-owned (replace/delete); git-origin seeds are read-only.
+  if (isSeedData(data)) {
+    return data.origin === "upload" ? <SeedRowMenu seed={data} /> : null;
   }
 
   if (!isCollectionData(data) || data.model !== "collection") {

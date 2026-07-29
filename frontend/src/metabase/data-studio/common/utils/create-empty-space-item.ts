@@ -32,7 +32,7 @@ const getEmptyStateConfig = (
       actionLabel: t`New snippet`,
     },
     seeds: {
-      description: t`Reference tables synced from CSVs in your Git repo`,
+      description: t`Reference tables from CSVs you upload or sync from Git`,
       actionLabel: "",
     },
   };

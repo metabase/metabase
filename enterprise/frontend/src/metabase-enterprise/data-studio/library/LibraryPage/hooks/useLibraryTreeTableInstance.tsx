@@ -6,15 +6,20 @@ import _ from "underscore";
 import { DateTime } from "metabase/common/components/DateTime";
 import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
 import type { TreeItem } from "metabase/data-studio/common/types";
-import { isEmptyStateData } from "metabase/data-studio/common/utils";
+import {
+  isEmptyStateData,
+  isSeedData,
+} from "metabase/data-studio/common/utils";
 import { useSelector } from "metabase/redux";
 import { useRouter } from "metabase/router";
 import {
+  Box,
   EntityNameCell,
   Flex,
   Group,
   Icon,
   Text,
+  Tooltip,
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
@@ -185,7 +190,7 @@ export function useLibraryTreeTableInstance({
             );
           }
 
-          return (
+          const nameCell = (
             <EntityNameCell
               data-testid={`${row.original.model}-name`}
               icon={row.original.icon}
@@ -206,6 +211,23 @@ export function useLibraryTreeTableInstance({
               }
             />
           );
+
+          // A seed that failed to materialize (e.g. its target db isn't upload-enabled) keeps a
+          // warning icon; surface the sync error on hover so it isn't a silent failure.
+          if (isSeedData(data) && data.syncError != null) {
+            return (
+              <Tooltip
+                label={data.syncError}
+                multiline
+                maw="20rem"
+                position="top-start"
+              >
+                <Box>{nameCell}</Box>
+              </Tooltip>
+            );
+          }
+
+          return nameCell;
         },
       },
       {

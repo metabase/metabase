@@ -26,5 +26,5 @@
 
 (def columns
   "Columns for seed list/detail reads."
-  [:id :name :table_id :collection_id :csv_hash :last_synced_sha :sync_error
-   :entity_id :created_at :updated_at])
+  [:id :name :origin :table_id :collection_id :csv_hash :target_db_id :schema_name
+   :last_synced_sha :sync_error :entity_id :created_at :updated_at])

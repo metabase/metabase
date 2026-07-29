@@ -42,7 +42,10 @@ export type SeedData = {
   model: "seed";
   id: number;
   name: string;
+  // "git" seeds are authored in the repo and read-only here; "upload" seeds are user-owned.
+  origin: "git" | "upload";
   tableId: number | null;
+  syncError: string | null;
 };
 
 export type TreeItemModel = CollectionItemModel | "empty-state" | "seed";

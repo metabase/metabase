@@ -33,6 +33,13 @@ databaseChangeLog:
                     unique: true
                     uniqueConstraintName: unique_seed_name
               - column:
+                  name: origin
+                  type: varchar(16)
+                  defaultValue: git
+                  remarks: Who owns this seed. 'git' seeds are authored in the repo and managed by sync (materialized on pull, pruned when their file is gone); 'upload' seeds are created in-app and never touched by sync.
+                  constraints:
+                    nullable: false
+              - column:
                   name: csv_hash
                   type: varchar(64)
                   remarks: SHA-256 hex of the repo CSV last materialized here; a pull skips re-materializing when it matches.
@@ -42,6 +49,18 @@ databaseChangeLog:
                   name: table_id
                   type: int
                   remarks: The warehouse table this seed materialized into on this instance. NULL until (re)materialized.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: target_db_id
+                  type: int
+                  remarks: Database the seed's sidecar targets; groups seeds in the UI and shows a failed seed (uploads-disabled db) under its intended db. NULL when the sidecar names a db that doesn't resolve on this instance.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: schema_name
+                  type: varchar(254)
+                  remarks: Target schema within the database (Metabase has no schema id, so this is a plain name like metabase_table.schema). NULL means the database's default upload schema.
                   constraints:
                     nullable: true
               - column:
@@ -95,4 +114,11 @@ databaseChangeLog:
             referencedTableName: collection
             referencedColumnNames: id
             constraintName: fk_seed_collection_id
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: seed
+            baseColumnNames: target_db_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_seed_target_db_id
             onDelete: SET NULL

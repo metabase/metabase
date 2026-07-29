@@ -3137,6 +3137,7 @@
            upload
            util}
    :model-imports #{:model/Collection
+                    :model/Database
                     :model/Dimension
                     :model/Field
                     :model/Table
