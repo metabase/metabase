@@ -2155,3 +2155,37 @@ serdes/meta:
         (is (not (t2/exists? :model/FieldUserSettings :field_id (:id field)))))
       (testing "the parent table rows are never touched"
         (is (t2/exists? :model/Table :id (:id stale)))))))
+
+(deftest remove-unsynced-user-settings-no-side-cars-test
+  (testing "a snapshot carrying no TableUserSettings side-cars at all is not a delete signal"
+    (doseq [[label by-path] [["the model key is absent (repo written before side-car export existed)"
+                              {:model/FieldUserSettings [{:db_name "DB" :table_name "T" :field_name "F"}]}]
+                             ["the model key is present but empty"
+                              {:model/TableUserSettings []
+                               :model/FieldUserSettings [{:db_name "DB" :table_name "T" :field_name "F"}]}]]]
+      (testing label
+        (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Synced" :type "library-data"}
+                       :model/Database   db    {:name "DB"}
+                       :model/Table      table {:db_id (:id db) :name "T" :schema nil
+                                                :is_published true :collection_id (:id coll)}
+                       :model/Field      field {:table_id (:id table) :name "F" :base_type :type/Text}]
+          (t2/insert! :model/TableUserSettings {:table_id (:id table) :description "backfilled"})
+          (t2/insert! :model/FieldUserSettings {:field_id (:id field) :description "curated"})
+          (#'impl/remove-unsynced-user-settings! (spec/all-syncable-collection-ids) {:by-path by-path})
+          (testing "the backfilled table settings survive the pull"
+            (is (t2/exists? :model/TableUserSettings :table_id (:id table))))
+          (testing "the field settings whose side-car was imported survive too"
+            (is (t2/exists? :model/FieldUserSettings :field_id (:id field)))))))))
+
+(deftest remove-unsynced-user-settings-empty-snapshot-test
+  (testing "an import that produced no side-cars of either kind deletes nothing"
+    (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Synced" :type "library-data"}
+                   :model/Database   db    {:name "DB"}
+                   :model/Table      table {:db_id (:id db) :name "T" :schema nil
+                                            :is_published true :collection_id (:id coll)}
+                   :model/Field      field {:table_id (:id table) :name "F" :base_type :type/Text}]
+      (t2/insert! :model/TableUserSettings {:table_id (:id table) :description "backfilled"})
+      (t2/insert! :model/FieldUserSettings {:field_id (:id field) :description "curated"})
+      (#'impl/remove-unsynced-user-settings! (spec/all-syncable-collection-ids) {:by-path {}})
+      (is (t2/exists? :model/TableUserSettings :table_id (:id table)))
+      (is (t2/exists? :model/FieldUserSettings :field_id (:id field))))))
