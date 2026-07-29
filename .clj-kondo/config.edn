@@ -300,7 +300,10 @@
     metabase.query-processor.util/normalize-token                {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
-  {clojure.core/print                                 {:message "Use metabase.util.log instead of clojure.core/print"}
+  {metabase-enterprise.entity-retrieval.core/search-unfiltered {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
+   metabase.entity-retrieval.core/search-unfiltered            {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
+   metabase.entity-retrieval.mirror/search-unfiltered          {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
+   clojure.core/print                                 {:message "Use metabase.util.log instead of clojure.core/print"}
    clojure.core/println                               {:message "Use metabase.util.log instead of clojure.core/println"}
    clojure.core/printf                                {:message "Use metabase.util.log instead of clojure.core/printf"}
    clojure.core/prn                                   {:message "Use metabase.util.log instead of clojure.core/prn"}
@@ -467,6 +470,8 @@
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.transforms.test-util/with-transform-cleanup!                                 clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
+  metabase.app-db.connection/with-unshared-connection                                   clojure.core/fn
+  metabase.app-db.core/with-unshared-connection                                         clojure.core/fn
   metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn
   metabase.app-db.custom-migrations/define-migration                                    clj-kondo.lint-as/def-catch-all
   metabase.app-db.custom-migrations/define-reversible-migration                         clj-kondo.lint-as/def-catch-all

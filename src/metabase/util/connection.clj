@@ -1,10 +1,12 @@
 (ns metabase.util.connection
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData)))
+   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData Statement)))
 
 (set! *warn-on-reflection* true)
 
@@ -64,3 +66,33 @@
                                          {:child-table   (name table-name')
                                           :child-column  (u/lower-case-en (.getString fks "FKCOLUMN_NAME"))
                                           :parent-column (u/lower-case-en (.getString fks "PKCOLUMN_NAME"))}]))))))))))
+
+;;; ------------------------------------------ statement timeouts ------------------------------------------
+
+(defn server-rejects-query-timeout?
+  "Whether calling `.setQueryTimeout` on `conn` makes the driver send SQL this server cannot parse.
+
+  MariaDB Connector/J implements the timeout by prefixing the statement with `SET STATEMENT max_statement_time=N FOR`,
+  and turns that on for any server reporting version 10.1.2 or newer.
+  It never consults the MariaDB flag it already read from the handshake, so MySQL — below 10 until the
+  calendar-versioned 26.x releases — now clears the check and gets syntax only MariaDB understands."
+  [^Connection conn]
+  (boolean
+   (try
+     (let [md (.getMetaData conn)]
+       (and (str/includes? (str (.getDriverName md)) "MariaDB")
+            (not (str/includes? (str (.getDatabaseProductVersion md)) "MariaDB"))
+            (>= (.getDatabaseMajorVersion md) 10)))
+     (catch Throwable e
+       (log/debugf "Could not read server version; assuming statement timeouts work: %s" (ex-message e))
+       false))))
+
+(defn set-query-timeout!
+  "Bound `stmt` to `timeout-seconds` with `.setQueryTimeout`, unless that would send the server unparseable SQL.
+  Returns false when the timeout could not be set, leaving it to the caller to bound the statement another way."
+  [^Statement stmt timeout-seconds]
+  (if (server-rejects-query-timeout? (.getConnection stmt))
+    false
+    (do
+      (.setQueryTimeout stmt (int timeout-seconds))
+      true)))

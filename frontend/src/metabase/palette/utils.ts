@@ -113,12 +113,9 @@ export const locationDescriptorToURL = (
   if (typeof locationDescriptor === "string") {
     return locationDescriptor;
   } else {
-    const { pathname = "", query = null, hash = null } = locationDescriptor;
-    const queryString = query
-      ? "?" + new URLSearchParams(query).toString()
-      : "";
+    const { pathname = "", search = "", hash = null } = locationDescriptor;
     const hashString = hash ? "#" + hash : "";
 
-    return `${pathname}${queryString}${hashString}`;
+    return `${pathname}${search}${hashString}`;
   }
 };

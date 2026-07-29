@@ -51,6 +51,7 @@ const getDefaultPluginAudit = () => ({
   getMetabotAnalyticsNavItems: (): ReactNode => null,
   getAiAnalyticsRoutes: (): ReactNode => null,
   getMcpAnalyticsRoutes: (): ReactNode => null,
+  getCliAnalyticsRoutes: (): ReactNode => null,
   // Unjustified type cast. FIXME
   handleMetabotSlashCommand: ((_args) => false) as MetabotSlashCommandHandler,
 });

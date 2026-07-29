@@ -8,11 +8,7 @@ import {
 import { Api } from "metabase/api";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import {
-  type RouterNavigator,
-  routerMiddleware,
-  routing,
-} from "metabase/router";
+import { type RouterNavigator, routerMiddleware } from "metabase/router";
 
 export function getStore(
   reducers: Record<string, Reducer<any, any, any>>,
@@ -24,7 +20,6 @@ export function getStore(
   // is typed as a plain record rather than one app's State.
   const reducerMap: Record<string, Reducer<any, any, any>> = {
     ...reducers,
-    routing,
     [Api.reducerPath]: Api.reducer,
   };
 

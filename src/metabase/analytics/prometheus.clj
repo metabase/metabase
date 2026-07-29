@@ -199,7 +199,7 @@
                       (swap! pull-collector-last-runs assoc id now)
                       (f)))
                   (catch Throwable e
-                    (log/warn e "Error running pull collector" id)))))
+                    (log/warn "Error running pull collector" id (ex-message e))))))
             [])]
     (delay
       (collector/named
@@ -670,7 +670,7 @@
                        {:description "JDBC connection pool acquisitions by connection type (default, write-data, or admin)."
                         :labels [:connection-type]})
    (prometheus/counter :metabase-db-connection/type-resolved
-                       {:description "Non-default connection details resolved by effective-details (driver-agnostic). Only incremented when an overlay (write-data or admin details) is genuinely used, not on fallback or workspace swap."
+                       {:description "Non-default connection details resolved by effective-details (driver-agnostic). Only incremented when an overlay (write-data or admin details) is genuinely used, not on fallback."
                         :labels [:connection-type]})
    ;; SQL parsing metrics
    (prometheus/counter :metabase-sql-parsing/context-timeouts
@@ -991,7 +991,7 @@
              (alter-var-root #'system (constantly nil))
              (log/info "Prometheus web-server shut down")
              (catch Exception e
-               (log/warn e "Error stopping prometheus web-server")))))))
+               (log/warnf "Error stopping prometheus web-server: %s" (ex-message e))))))))
 
 (defn observe!
   "Call iapetos.core/observe on the metric in the global registry.

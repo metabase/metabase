@@ -3,8 +3,12 @@
 
   The library entity index is a pgvector index of every library entity's name/description plus its OSI
   `ai_context` synonyms/examples (see [[metabase.osi.models.osi-ai-context]]).
-  [[search]] matches a natural-language request against it by vector similarity (enterprise; returns []
-  in OSS). [[ai-context-instructions]] reads curator instructions live from the appdb."
+  [[search-unfiltered]] matches a natural-language request against it by vector similarity (enterprise;
+  returns [] in OSS). [[ai-context-instructions]] reads curator instructions live from the appdb.
+
+  The index is user-agnostic, so [[search-unfiltered]] hits are not permission-filtered. A caller that
+  returns anything derived from them must first resolve each entity against the appdb and keep only the ones
+  the current user can read."
   (:require
    [clojure.string :as str]
    [metabase.entity-retrieval.mirror]
@@ -13,12 +17,14 @@
 
 (comment metabase.entity-retrieval.mirror/keep-me)
 
+;; Re-exporting the var is not raw access: this namespace only bridges OSS/EE, and never reads a result.
+#_{:clj-kondo/ignore [:discouraged-var]}
 (p/import-vars
  [metabase.entity-retrieval.mirror
   entity-retrieval-available?
   force-reconcile!
   library-entity-keys
-  search])
+  search-unfiltered])
 
 (def card-entity-types
   "The real entity_type strings the CRUD and tool APIs speak that all denote a Card: `question`/`metric`/

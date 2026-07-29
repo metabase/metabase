@@ -44,17 +44,11 @@ import {
   PLUGIN_SECURITY_CENTER,
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
-  PLUGIN_WORKSPACES,
   PLUGIN_WRITABLE_CONNECTION,
   PerformanceTabId,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import {
-  Route,
-  type RouteComponent,
-  redirect,
-  withRouteProps,
-} from "metabase/router";
+import { Route, type RouteComponent, redirect } from "metabase/router";
 import { getTokenFeature } from "metabase/selectors/settings";
 
 import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
@@ -70,21 +64,6 @@ import {
   createTenantsRouteGuard,
 } from "./utils";
 
-// Legacy containers that still read v3 router props (`params`/`location`/
-// `route`), fed from the router context so they run as `element` routes.
-const RoutedRedirectToAllowedSettings = withRouteProps(
-  RedirectToAllowedSettings,
-);
-const RoutedDataModelV1 = withRouteProps(DataModelV1);
-const RoutedDatabasePage = withRouteProps(DatabasePage);
-const RoutedSegmentListApp = withRouteProps(SegmentListApp);
-const RoutedSegmentApp = withRouteProps(SegmentApp);
-const RoutedRevisionHistoryApp = withRouteProps(RevisionHistoryApp);
-const RoutedGroupDetailApp = withRouteProps(GroupDetailApp);
-const RoutedAdminEmbeddingApp = withRouteProps(AdminEmbeddingApp);
-const RoutedEmbeddingThemeEditorApp = withRouteProps(EmbeddingThemeEditorApp);
-const RoutedOAuthAuthorizationsPage = withRouteProps(OAuthAuthorizationsPage);
-
 export const getRoutes = (
   store: Store<State>,
   CanAccessSettings: RouteComponent,
@@ -96,18 +75,17 @@ export const getRoutes = (
   return (
     <Route path="/admin" element={<CanAccessSettings />}>
       <Route element={<AdminApp />}>
-        <Route index element={<RoutedRedirectToAllowedSettings />} />
+        <Route index element={<RedirectToAllowedSettings />} />
         <Route
           path="databases"
           element={createElement(createAdminRouteGuard("databases"))}
         >
           <Route index element={<DatabaseListApp />} />
           <Route element={<IsAdmin />}>
-            <Route path="create" element={<RoutedDatabasePage />} />
+            <Route path="create" element={<DatabasePage />} />
           </Route>
-          <Route path=":databaseId/edit" element={<RoutedDatabasePage />} />
+          <Route path=":databaseId/edit" element={<DatabasePage />} />
           {PLUGIN_WRITABLE_CONNECTION.getWritableConnectionInfoRoutes(IsAdmin)}
-          {PLUGIN_WORKSPACES.getWorkspaceDatabaseRoutes(IsAdmin)}
           <Route path=":databaseId" element={<DatabaseEditApp />}>
             {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
           </Route>
@@ -118,34 +96,31 @@ export const getRoutes = (
         >
           <Route>
             <Route index element={redirect("database")} />
-            <Route path="database" element={<RoutedDataModelV1 />} />
-            <Route
-              path="database/:databaseId"
-              element={<RoutedDataModelV1 />}
-            />
+            <Route path="database" element={<DataModelV1 />} />
+            <Route path="database/:databaseId" element={<DataModelV1 />} />
             <Route
               path="database/:databaseId/schema/:schemaId"
-              element={<RoutedDataModelV1 />}
+              element={<DataModelV1 />}
             />
             <Route
               path="database/:databaseId/schema/:schemaId/table/:tableId"
-              element={<RoutedDataModelV1 />}
+              element={<DataModelV1 />}
             />
             <Route
               path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-              element={<RoutedDataModelV1 />}
+              element={<DataModelV1 />}
             />
-            <Route element={<RoutedDataModelV1 />}>
-              <Route path="segments" element={<RoutedSegmentListApp />} />
+            <Route element={<DataModelV1 />}>
+              <Route path="segments" element={<SegmentListApp />} />
               <Route path="segment/create" element={<IsAdmin />}>
-                <Route index element={<RoutedSegmentApp />} />
+                <Route index element={<SegmentApp />} />
               </Route>
               <Route path="segment/:id" element={<IsAdmin />}>
-                <Route index element={<RoutedSegmentApp />} />
+                <Route index element={<SegmentApp />} />
               </Route>
               <Route
                 path="segment/:id/revisions"
-                element={<RoutedRevisionHistoryApp />}
+                element={<RevisionHistoryApp />}
               />
             </Route>
             <Route
@@ -173,7 +148,7 @@ export const getRoutes = (
             {/*NOTE: this must come before the other routes otherwise it will be masked by them*/}
             <Route path="groups">
               <Route index element={<GroupsListingApp />} />
-              <Route path=":groupId" element={<RoutedGroupDetailApp />} />
+              <Route path=":groupId" element={<GroupDetailApp />} />
             </Route>
 
             {/* Tenants */}
@@ -214,7 +189,7 @@ export const getRoutes = (
           path="embedding"
           element={createElement(createAdminRouteGuard("embedding"))}
         >
-          <Route element={<RoutedAdminEmbeddingApp />}>
+          <Route element={<AdminEmbeddingApp />}>
             <Route index element={<EmbeddingSettings />} />
 
             <Route path="setup-guide">
@@ -237,7 +212,7 @@ export const getRoutes = (
             <Route path="themes" element={<EmbeddingThemeListingApp />} />
             <Route
               path="themes/:themeId"
-              element={<RoutedEmbeddingThemeEditorApp />}
+              element={<EmbeddingThemeEditorApp />}
             />
           </Route>
         </Route>
@@ -313,6 +288,7 @@ export const getRoutes = (
         >
           {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
           {PLUGIN_AUDIT.getMcpAnalyticsRoutes()}
+          {PLUGIN_AUDIT.getCliAnalyticsRoutes()}
           <Route key="index-layout" element={<MetabotAdminLayout />}>
             <Route index key="index" element={<AISettingsPage />} />
             <Route key="mcp" path="mcp" element={<McpSettingsPage />} />
@@ -328,7 +304,7 @@ export const getRoutes = (
           >
             <Route
               path="mcp/authorizations"
-              element={<RoutedOAuthAuthorizationsPage />}
+              element={<OAuthAuthorizationsPage />}
             />
           </Route>
           <Route

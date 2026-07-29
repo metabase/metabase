@@ -234,9 +234,9 @@
                              args
                              (cons default-secret-key args))
         log-error-fn (fn [kind ^Throwable e]
-                       (log/warnf e
-                                  "Cannot decrypt encrypted %s. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY?"
-                                  kind))]
+                       (log/warnf "Cannot decrypt encrypted %s. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY? %s"
+                                  kind
+                                  (ex-message e)))]
     (cond (nil? secret-key)
           v
 

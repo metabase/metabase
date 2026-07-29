@@ -108,6 +108,19 @@ const DefaultErrorMessage = ({ message, onClose }: SdkErrorComponentProps) => (
       icon={<Icon name="warning" />}
       withCloseButton={Boolean(onClose)}
       onClose={onClose}
+      styles={{
+        root: { background: "var(--alert-bg)" },
+        closeButton: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 0,
+          border: 0,
+          background: "transparent",
+          appearance: "none",
+          cursor: "pointer",
+        },
+      }}
     >
       <Box
         style={{
