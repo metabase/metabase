@@ -3114,7 +3114,7 @@
 
   enterprise/cloud-add-ons
   {:team "Cloud"
-   :api  #{metabase-enterprise.cloud-add-ons.api}
+   :api  #{metabase-enterprise.cloud-add-ons.api metabase-enterprise.cloud-add-ons.core}
    :uses #{api
            events
            premium-features
@@ -3470,6 +3470,7 @@
               settings
               task
               util
+              enterprise/cloud-add-ons
               enterprise/dependencies
               enterprise/transforms-python}
    :model-imports #{:model/AiUsageLog

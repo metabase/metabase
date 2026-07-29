@@ -133,6 +133,9 @@ async function setup({
   createdConnection = ANTHROPIC_CONNECTION,
   updatedConnection = ANTHROPIC_CONNECTION,
 }: SetupOpts = {}) {
+  fetchMock.removeRoutes();
+  fetchMock.clearHistory();
+
   const sessionProperties = createMockSettings({
     "llm-metabot-provider": modelRef,
   });
@@ -450,6 +453,9 @@ describe("AIProviderSetup (ad-hoc connect modal)", () => {
   });
 
   async function setupModal() {
+    fetchMock.removeRoutes();
+    fetchMock.clearHistory();
+
     const sessionProperties = createMockSettings({
       "llm-metabot-provider": null,
     });

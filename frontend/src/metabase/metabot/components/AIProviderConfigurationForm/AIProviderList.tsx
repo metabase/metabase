@@ -8,7 +8,6 @@ import {
   useListLlmProvidersQuery,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import { Button, Card, Group, Icon, Menu, Stack, Text } from "metabase/ui";
 import type {
   LlmProviderConnection,
@@ -30,7 +29,6 @@ export function AIProviderList() {
     useDisclosure(false);
   const [editing, setEditing] = useState<LlmProviderConnection | undefined>();
   const [deleting, setDeleting] = useState<LlmProviderConnection | undefined>();
-  const onProviderRemoved = PLUGIN_METABOT.useOnProviderRemoved();
 
   const handleModalClose = () => {
     stopAdding();
@@ -39,7 +37,6 @@ export function AIProviderList() {
 
   const handleConfirmDelete = async () => {
     if (deleting) {
-      await onProviderRemoved(deleting.type);
       await deleteProvider(deleting.key);
       setDeleting(undefined);
     }
