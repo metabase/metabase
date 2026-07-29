@@ -6,7 +6,7 @@ import { t } from "ttag";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { Box, Ellipsified } from "metabase/ui";
+import { Box, Ellipsified, Flex, Icon } from "metabase/ui";
 import { displayNameForColumn } from "metabase/utils/formatting";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { ClickObject } from "metabase-lib";
@@ -58,7 +58,19 @@ export function DetailsTableCell({
 
   if (isColumnName) {
     const title = column !== null ? columnTitle : null;
-    cellValue = <Ellipsified lines={8}>{title}</Ellipsified>;
+    cellValue = (
+      <Flex align="center" gap="xs">
+        <Ellipsified lines={8}>{title}</Ellipsified>
+        {column?.description && (
+          <Icon
+            name="info"
+            size={14}
+            flex="0 0 auto"
+            tooltip={column.description}
+          />
+        )}
+      </Flex>
+    );
     isLink = false;
   } else {
     if (value === null || value === undefined || value === "") {
