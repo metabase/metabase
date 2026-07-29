@@ -212,7 +212,7 @@
   Rows are fetched with a raw query rather than a model select, and realized one at a time: key access on unrealized
   result-set rows goes through toucan2's deferred-row machinery on every lookup, which benchmarked ~15x slower than
   realizing each row once and reading plain map keys (see
-  [[metabase.permissions.models.data-permissions/relevant-permissions-for-user-and-dbs]]). The raw query skips the
+  [[metabase.permissions.models.data-permissions/full-perm-rows]]). The raw query skips the
   model transforms, so `:type` and `:value` arrive as strings and are keywordized here."
   [{:keys [group-id group-ids db-id perm-type audit?]}]
   (eduction
