@@ -118,7 +118,12 @@
 
 (defn- resolve-query-source
   "Resolve exactly one query source to a `dataset_query` map. `query_handle` re-runs the
-   save-path guards (native allowed); `query` is inline MBQL 5; `native` is built from raw SQL."
+   save-path guards (native allowed); `query` is inline MBQL 5; `native` is built from raw SQL.
+
+   Every branch returns genuine normalized pMBQL: the save path feeds `dataset_query` into
+   strictly schema-checked functions (`queries/check-allowed-to-create-card!` and friends), so
+   the JSON-shaped maps a handle or inline source yields — keyword *values* flattened to strings
+   by the JSON round-trip — must be restored first."
   [{:keys [query_handle query native]} session-id]
   (let [sources (cond-> []
                   query_handle (conj :query_handle)
@@ -129,7 +134,10 @@
        "Pass exactly one query source: `query_handle` (a handle from an execute tool), `query` (an inline query), or `native` ({database_id, sql})."))
     (cond
       query_handle
-      (:query (common/resolve-query-handle-for-save! session-id api/*current-user-id* query_handle))
+      (lib-be/normalize-query
+       nil
+       (:query (common/resolve-query-handle-for-save! session-id api/*current-user-id* query_handle))
+       {:strict? true})
 
       query
       (try
