@@ -23,5 +23,9 @@ export const Root = styled.div<{
       flex-direction: row;
       justify-content: space-between;
       align-items: center;
+      /* justify-content: space-between has no floor -- once the title's width
+         approaches the row's, the widget ends up flush against it with no
+         visible gap at all (metabase#78685). gap guarantees a minimum. */
+      gap: var(--mantine-spacing-sm);
     `}
 `;
