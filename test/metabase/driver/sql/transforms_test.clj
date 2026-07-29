@@ -228,7 +228,7 @@
   ;; Characterizes the CTAS row count per driver. BigQuery, Snowflake, and Redshift are excluded; they
   ;; declare `:transforms/accurate-rows-affected false`, so the transforms layer skips emitting
   ;; efficiency metrics for their full-rebuild runs rather than trust the bogus count. New failing
-  ;; driver → add the feature override + add it to this exclusion.
+  ;; driver → add the feature override + add it to this exclusion. [kondo-keep]
   #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/table)
                          :bigquery-cloud-sdk :redshift :snowflake)

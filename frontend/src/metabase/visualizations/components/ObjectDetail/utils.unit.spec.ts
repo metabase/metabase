@@ -5,6 +5,7 @@ import {
   createMockDatasetData,
   createMockImplicitQueryAction,
   createMockNativeDatasetQuery,
+  createMockTable,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -18,6 +19,7 @@ import {
   getDisplayId,
   getIdValue,
   getObjectName,
+  getRowUrl,
   getSinglePKIndex,
   isValidImplicitDeleteAction,
   isValidImplicitUpdateAction,
@@ -258,6 +260,38 @@ describe("ObjectDetail utils", () => {
 
     it("should return undefined if there are no PKs", () => {
       expect(getSinglePKIndex([qtyCol, nameCol])).toBe(undefined);
+    });
+  });
+
+  describe("getRowUrl", () => {
+    const question = new Question(card, metadata);
+    const model = new Question({ ...card, type: "model" }, metadata);
+    const table = createMockTable({ id: 5, display_name: "Invoices" });
+
+    it("should return undefined when there is not exactly one PK column", () => {
+      expect(getRowUrl(question, [idCol, productIdCol], table, 1)).toBe(
+        undefined,
+      );
+      expect(getRowUrl(question, [qtyCol], table, 1)).toBe(undefined);
+    });
+
+    it("should return a model URL with the model slug", () => {
+      expect(getRowUrl(model, [idCol, qtyCol], table, 1)).toBe(
+        "/model/1-special-order/detail/1",
+      );
+    });
+
+    it("should return a table URL with the table slug", () => {
+      expect(getRowUrl(question, [idCol, qtyCol], table, 1)).toBe(
+        "/table/5-invoices/detail/1",
+      );
+    });
+
+    it("should return undefined for virtual tables", () => {
+      const virtualTable = createMockTable({ id: "card__17" });
+      expect(getRowUrl(question, [idCol, qtyCol], virtualTable, 1)).toBe(
+        undefined,
+      );
     });
   });
 

@@ -5,6 +5,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -76,9 +77,13 @@ describe("MetricTabs", () => {
       }),
     });
 
-    renderWithProviders(<MetricTabs card={card} urls={urls} />, {
-      storeInitialState: state,
-    });
+    renderWithProviders(
+      <Route path="*" element={<MetricTabs card={card} urls={urls} />} />,
+      {
+        withRouter: true,
+        storeInitialState: state,
+      },
+    );
   }
 
   function getTabLabels() {

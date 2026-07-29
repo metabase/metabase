@@ -250,7 +250,7 @@
       (try
         (prefetch-tables-for-cards! cards-with-non-empty-queries)
         (catch Throwable t
-          (log/errorf t "Failed prefetching cards `%s`." (pr-str (map :id cards-with-non-empty-queries))))))
+          (log/errorf "Failed prefetching cards `%s`: %s" (pr-str (map :id cards-with-non-empty-queries)) (ex-message t)))))
     (query-perms/with-card-instances (when (seq source-card-ids)
                                        (t2/select-fn->fn :id identity [:model/Card :id :collection_id :card_schema]
                                                          :id [:in source-card-ids]))
@@ -762,20 +762,17 @@
   Always returns `card`."
   [card]
   (when (= (:dataset_query card) {})
-    (log/infof "Card %d has a blank :dataset_query - this indicates a Metabase issue. Legacy MBQL: %s"
-               (:id card) (:legacy_query card))
+    (log/infof "Card %d has a blank :dataset_query - this indicates a Metabase issue."
+               (:id card))
     (let [uniques (swap! unique-cards-with-blank-dataset-query conj (:id card))]
       (analytics/set-gauge! :metabase-card/unique-cards-failed-conversion (count uniques))))
   ;; Always returns the original card.
   card)
 
-(defn- mbql5-conversion-clean-callback [untransformed-card pre-cleaning-query post-cleaning-query]
+(defn- mbql5-conversion-clean-callback [untransformed-card _pre-cleaning-query _post-cleaning-query]
   (analytics/inc! :metabase-card/conversions-requiring-cleaning)
-  (log/infof "MBQL 4->5 conversion for Card %d had real 'clean' changes from %s into %s; :legacy_query is %s"
-             (:id untransformed-card)
-             (pr-str (dissoc pre-cleaning-query :lib/metadata))
-             (pr-str (dissoc post-cleaning-query :lib/metadata))
-             (:legacy_query untransformed-card)))
+  (log/infof "MBQL 4->5 conversion for Card %d had real 'clean' changes"
+             (:id untransformed-card)))
 
 ;; Uses [[lib/with-card-clean-hook]] to bind a callback which logs the impact of the cleaning process during
 ;; `transform-out`, so that we can log whenever a card gets converted and [[lib.convert/clean]] makes material
@@ -852,6 +849,19 @@
         (card.metadata/populate-result-metadata changes))
       (m/update-existing :result_metadata #(some->> % (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
 
+(defn- clear-metabot-origin
+  "A card edited after being saved from a Metabot conversation no longer materializes
+  the chart it was saved from, so sever the link back to its origin — the conversation
+  then stops showing that chart as saved. Only content edits count (query, display, viz
+  settings); renames, moves, and archiving keep the link. The Metabot save paths stamp
+  these columns with raw table updates, so stamping never re-enters this hook."
+  [card changes]
+  (if (and (some (partial contains? changes)
+                 [:dataset_query :display :visualization_settings])
+           (or (:metabot_conversation_id card) (:metabot_chart_id card)))
+    (assoc card :metabot_conversation_id nil :metabot_chart_id nil)
+    card))
+
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
   (let [changes (some-> card t2/changes queries.schema/normalize-card)
@@ -866,6 +876,7 @@
         ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
         ;; Only allow it to nil out a stale table_id when the query itself is changing.
         (populate-query-fields (contains? changes :dataset_query))
+        (clear-metabot-origin changes)
         (pre-update changes)
         maybe-populate-initially-published-at)))
 
@@ -887,10 +898,6 @@
                                                                         :from   [:notification_card]
                                                                         :where  [:= :card_id id]}]))]
     (t2/delete! :model/Notification :id [:in notification-ids])))
-
-(defmethod serdes/hash-fields :model/Card
-  [_card]
-  [:name (serdes/hydrated-hash :collection) :created_at])
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
   [_model & {:keys [table-alias]}]
@@ -1271,10 +1278,7 @@
     (try
       (update-associated-parameters! card-before-update card-updates)
       (catch Throwable e
-        (log/error e "Update of dependent card parameters failed!")
-        (log/debug e
-                   "`card-before-update`:" (pr-str card-before-update)
-                   "`card-updates`:" (pr-str card-updates))))
+        (log/errorf "Update of dependent card parameters failed!: %s" (ex-message e))))
     (collection/check-for-remote-sync-update card-before-update))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one :model/Card :id (:id card-before-update))]
@@ -1397,7 +1401,7 @@
           ;; cache invalidation is instance-specific
           :cache_invalidated_at
           ;; those are instance-specific analytic columns
-          :view_count :last_used_at :initially_published_at
+          :view_count :initially_published_at
           ;; this is data migration column
           :dataset_query_metrics_v2_migration_backup
           ;; this column is not used anymore
@@ -1409,9 +1413,13 @@
           ;; always derivable from dataset_query by populate-query-fields; nil when not derivable
           :query_type
           ;; always re-derived from dataset_query by populate-query-fields on import
-          :table_id :source_card_id]
+          :table_id :source_card_id
+          ;; instance-specific Metabot origin (which conversation/chart the card was saved from)
+          :metabot_conversation_id :metabot_chart_id]
    :transform
    {:created_at             (serdes/date)
+    ;; exported so imported cards don't look freshly used to stale-content detection (GDGT-217)
+    :last_used_at           (serdes/date)
     ;; database_id is usually derivable from dataset_query, but must be kept when the query
     ;; is empty (e.g. a native card with no query yet) and database_id is the only reference.
     :database_id            (let [{:keys [import]} (serdes/fk :model/Database)]
@@ -1437,6 +1445,10 @@
               :archived_directly   false
               :collection_preview  true
               :enable_embedding    false}})
+
+(defmethod serdes/load-update! "Card" [_ ingested local]
+  ;; when the card already exists, its own usage history wins over the source's
+  (serdes/default-load-update! "Card" (dissoc ingested :last_used_at) local))
 
 (defn- card-deps
   "The serdes dependencies of a Card as `:serdes/meta` paths. `allow-int-ids?` selects raw-appdb vs serialized ref semantics for

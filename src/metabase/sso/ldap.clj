@@ -5,7 +5,6 @@
    [metabase.settings.core :as setting]
    [metabase.sso.ldap.default-implementation :as default-impl]
    [metabase.sso.settings :as sso.settings]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
@@ -55,7 +54,7 @@
   ^LDAPConnectionPool
   []
   (let [options (settings->ldap-options)]
-    (log/debugf "Opening LDAP connection with options %s" (u/pprint-to-str options))
+    (log/debug "Opening LDAP connection")
     (try
       (ldap/connect options)
       (catch LDAPException e

@@ -110,7 +110,7 @@
 
                 :else
                 (do
-                  (log/warn "SSE unexpected line" {:line line})
+                  (log/warn "SSE unexpected line" {:line-len (count line)})
                   (recur acc)))
               acc)))))
 
@@ -224,6 +224,10 @@
 ;; events (see `:metabase.metabot.schema.v2/ui-message-chunk`), one per
 ;; `data: {json}` line, terminated by `data: [DONE]`.
 
+(def done-sse-line
+  "AI SDK stream terminator line."
+  "data: [DONE]\n")
+
 (defn format-sse-event
   "Format a payload map as an SSE event line: data: {JSON}\\n. The streaming
   writer appends another newline, forming the blank-line event boundary."
@@ -244,7 +248,7 @@
   [error-part]
   (str (format-error-line error-part) "\n"
        (format-sse-event {:type "finish" :finishReason "error"}) "\n"
-       "data: [DONE]\n\n"))
+       done-sse-line "\n"))
 
 (defn- ->message-metadata
   "Translate accumulated per-model usage into the `finish` event's message
@@ -359,7 +363,7 @@
                      (cond-> {:type         "finish"
                               :finishReason (if @error? "error" "stop")}
                        (seq metadata) (assoc :messageMetadata metadata))))
-                (rf "data: [DONE]\n")
+                (rf done-sse-line)
                 (rf))))
          ([result part]
           ;; Any non-text part implicitly closes the current text block before
@@ -540,7 +544,7 @@
                              arguments (or (coerce-stringified-json arguments) {})
                              decode    (tool-decode-fn tool)
                              arguments (cond-> arguments decode decode)]
-                         (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
+                         (log/debug "Executing tool" {:tool-name tool-name})
                          (when (ait/capture-active?)
                            (ait/record! {:ai/tool-args arguments}))
                          (let [tool-fn (tool-call-fn tool)
@@ -550,7 +554,7 @@
                        (catch Exception e
                          (if (:agent-error? (ex-data e))
                            (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
-                           (log/warn e "Tool execution failed" {:tool-name tool-name}))
+                           (log/warn "Tool execution failed" {:tool-name tool-name :error (ex-message e)}))
                          [{:type         :tool-output-available
                            :toolCallId   tool-call-id
                            :toolName     tool-name
@@ -731,15 +735,16 @@
 
 (def ^:private auth-error-statuses
   "Statuses whose upstream body may carry provider-side auth/account detail
-  (raw API keys, org/account names, tenant IDs). The full body still hits the
-  warn log; we just don't splice it into the message the caller sees."
+  (raw API keys, org/account names, tenant IDs). For these we don't splice a
+  body preview into the message the caller sees."
   #{401 403})
 
 (defn rethrow-api-error!
   "Rethrow a provider HTTP exception with a translated, user-facing message.
   `res->message` receives the decoded response map and returns the provider-specific message.
   A body preview is appended to the message except on 401/403 (see [[auth-error-statuses]]),
-  where the body may carry sensitive auth/account detail; the full body is still logged.
+  where the body may carry sensitive auth/account detail. The warn log carries provider and
+  status only — response bodies are never logged; the full body travels on the thrown ex-data.
   ex-data is an explicit allow-list of `:status`, `:reason-phrase`, `:headers`, `:body`, plus provider tags.
   Exceptions already tagged `:api-error true` are rethrown unchanged."
   [provider res->message ^Throwable e]
@@ -755,11 +760,8 @@
                       (body-preview (:body res)))
             msg     (cond-> base
                       preview (str " — " preview))]
-        ;; warnf (not warn) so the body renders into the message string, not as MDC.
-        ;; body-for-log caps the pr-str so a near-cap slurped stream can't flood the logs;
-        ;; the full body still survives in ex-data below.
-        (log/warnf "Provider API request failed: provider=%s status=%s body=%s"
-                   provider (:status res) (body-for-log (:body res)))
+        (log/warnf "Provider API request failed: provider=%s status=%s"
+                   provider (:status res))
         ;; Allow-list explicitly — clj-http responses carry :http-client (a Closeable),
         ;; :trace-redirects, :orig-content-encoding, etc., none of which should propagate downstream.
         ;; :headers is included so the retry path in metabase.metabot.self/parse-retry-after-header

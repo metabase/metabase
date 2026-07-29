@@ -56,7 +56,6 @@ export {
   PLUGIN_REDUX_MIDDLEWARES,
   PLUGIN_LOGO_ICON_COMPONENTS,
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
-  PLUGIN_ADMIN_TOOLS,
   PLUGIN_SELECTORS,
   PLUGIN_FORM_WIDGETS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
@@ -170,16 +169,13 @@ export {
   PLUGIN_DEPENDENCIES,
   type DependencyGraphPageContextType,
 } from "./oss/dependencies";
+export { PLUGIN_MONITOR, PLUGIN_MONITOR_TOOLS } from "./oss/monitor";
 export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
 export { PLUGIN_WHITELABEL } from "./oss/whitelabel";
 export {
   PLUGIN_WRITABLE_CONNECTION,
   type WritableConnectionInfoSectionProps,
 } from "./oss/writable-connection";
-export {
-  PLUGIN_WORKSPACES,
-  type WorkspaceDatabaseSectionProps,
-} from "./oss/workspaces";
 export { PLUGIN_SECURITY_CENTER } from "./oss/security-center";
 export { PLUGIN_AI_CONTROLS, type AiControlsPlugin } from "./oss/ai-controls";
 export { PLUGIN_SUPPORT } from "./oss/support";
@@ -215,6 +211,7 @@ import { reinitialize as reinitializeLibrary } from "./oss/library";
 import { reinitialize as reinitializeMetabot } from "./oss/metabot";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
+import { reinitialize as reinitializeMonitor } from "./oss/monitor";
 import { reinitialize as reinitializeMultiFactorAuth } from "./oss/multi-factor-auth";
 import { reinitialize as reinitializeNotificationsSdk } from "./oss/notifications-sdk";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
@@ -232,7 +229,6 @@ import { reinitialize as reinitializeTenants } from "./oss/tenants";
 import { reinitialize as reinitializeTransforms } from "./oss/transforms";
 import { reinitialize as reinitializeUploadManagement } from "./oss/upload-management";
 import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
-import { reinitialize as reinitializeWorkspaces } from "./oss/workspaces";
 import { reinitialize as reinitializeWritableConnection } from "./oss/writable-connection";
 /**
  * Mostly for test purposes, reinitialize all plugins.
@@ -262,6 +258,7 @@ export function reinitialize() {
   reinitializeMetabot();
   reinitializeModelPersistence();
   reinitializeModeration();
+  reinitializeMonitor();
   reinitializeMultiFactorAuth();
   reinitializePermissions();
   reinitializeRemoteSync();
@@ -279,6 +276,5 @@ export function reinitialize() {
   reinitializeTransforms();
   reinitializeUploadManagement();
   reinitializeWhitelabel();
-  reinitializeWorkspaces();
   reinitializeWritableConnection();
 }

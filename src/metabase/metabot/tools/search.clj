@@ -24,11 +24,11 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private metabot-search-models
-  (sorted-set "card" "dashboard" "database" "dataset" "metric" "table" "transform"))
+  (sorted-set "card" "dashboard" "database" "dataset" "document" "metric" "table" "transform"))
 
 (defn- postprocess-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
-  [{:keys [verified moderated_status collection data_authority curated data_layer] :as result}]
+  [{:keys [verified moderated_status collection data_authority curated data_layer can_write] :as result}]
   (let [model (:model result)
         verified? (or (boolean verified) (= moderated_status "verified"))
         collection-info (select-keys collection [:id :name :authority_level])
@@ -67,7 +67,15 @@
           (merge {:verified   verified?
                   :official   official?
                   :collection collection-info})
-          (m/assoc-some :curated curated))
+          (m/assoc-some :curated curated
+                        :can_write can_write))
+
+      "document"
+      (-> common-fields
+          (merge {:official   official?
+                  :collection collection-info})
+          (m/assoc-some :curated curated
+                        :can_write can_write))
 
       "transform"
       (merge common-fields
@@ -139,7 +147,9 @@
   hallucinate the base table (observed failure mode: `[<db>, public, customers]`) or do an
   extra `read_resource` round-trip. We read the two columns directly from
   `report_card.table_id` + `metabase_table.{schema,name}` to keep the lookup O(1) extra
-  query per search call, regardless of number of metrics in the result set.
+  query per search call, regardless of number of metrics in the result set. Base-table
+  metadata is attached only when the current user can read that Table; collection access
+  to the metric Card does not imply access to its physical source.
 
   Requires `:database_name` to already be set on each metric result (done earlier by
   [[enrich-with-database-engines]]) so we can assemble the full portable FK
@@ -150,21 +160,32 @@
                             (t2/select-pk->fn :table_id :model/Card :id [:in metric-ids]))
         table-ids (->> card-id->table-id vals (remove nil?) distinct)
         table-id->info (when (seq table-ids)
-                         (t2/select-pk->fn (juxt :schema :name) :model/Table :id [:in table-ids]))]
+                         (into {}
+                               (comp (filter mi/can-read?)
+                                     (map (juxt :id (juxt :schema :name))))
+                               (t2/select [:model/Table :id :schema :name :db_id]
+                                          :id [:in table-ids])))
+        metric-id->table-info
+        (into {}
+              (keep (fn [[metric-id table-id]]
+                      (when-let [[schema table-name] (get table-id->info table-id)]
+                        [metric-id {:table-id   table-id
+                                    :schema     schema
+                                    :table-name table-name}])))
+              card-id->table-id)]
     (cond->> results
       (seq card-id->table-id)
-      (mapv (fn [r]
-              (if (= "metric" (:type r))
-                (if-let [table-id (get card-id->table-id (:id r))]
-                  (let [[schema table-name] (get table-id->info table-id)
-                        db-name (:database_name r)]
-                    (cond-> (assoc r :base_table_id table-id)
-                      table-name (assoc :base_table_name table-name
-                                        :base_table_schema schema)
-                      (and db-name table-name)
-                      (assoc :base_table_portable_fk [db-name schema table-name])))
-                  r)
-                r))))))
+      (mapv (fn [{:keys [id type database_name] :as result}]
+              (if-let [{:keys [table-id schema table-name]}
+                       (when (= "metric" type)
+                         (get metric-id->table-info id))]
+                (cond-> (assoc result
+                               :base_table_id table-id
+                               :base_table_name table-name
+                               :base_table_schema schema)
+                  database_name
+                  (assoc :base_table_portable_fk [database_name schema table-name]))
+                result))))))
 
 (defn- remove-unreadable-transforms
   "Remove transforms from search results that the user cannot read.
@@ -181,6 +202,31 @@
       (seq transform-ids) (filterv (fn [result]
                                      (or (not= "transform" (:type result))
                                          (contains? readable-ids (:id result))))))))
+
+(defn- validate-and-enrich-documents
+  "Remove stale or unreadable document hits and attach live write permission.
+
+  Search indexes are updated asynchronously, so a deleted document can briefly remain
+  searchable. Destination discovery must validate hits against the live model before the
+  agent attempts to save into them."
+  [results]
+  (let [document-ids (->> results (filter #(= "document" (:type %))) (map :id) set)
+        id->document (when (seq document-ids)
+                       (->> (t2/select :model/Document
+                                       :id [:in document-ids]
+                                       :archived false)
+                            (filter mi/can-read?)
+                            (map (juxt :id identity))
+                            (into {})))]
+    (if (seq document-ids)
+      (into []
+            (keep (fn [result]
+                    (if (= "document" (:type result))
+                      (when-let [document (get id->document (:id result))]
+                        (assoc result :can_write (boolean (mi/can-write? document))))
+                      result)))
+            results)
+      results)))
 
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
@@ -241,17 +287,15 @@
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
            entity-types limit metabot-id profile-id search-native-query weights]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
-             {:term-queries        term-queries
-              :semantic-queries    semantic-queries
-              :database-id         database-id
-              :created-at          created-at
-              :last-edited-at      last-edited-at
-              :entity-types        entity-types
-              :limit               limit
-              :metabot-id          metabot-id
-              :profile-id          profile-id
-              :search-native-query search-native-query
-              :weights             weights})
+             {:term-query-count     (count term-queries)
+              :semantic-query-count (count semantic-queries)
+              :database-id          database-id
+              :entity-types         entity-types
+              :limit                limit
+              :metabot-id           metabot-id
+              :profile-id           profile-id
+              :search-native-query  search-native-query
+              :weights              weights})
   (let [search-models   (if (seq entity-types)
                           (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
@@ -293,12 +337,12 @@
                                                   (assoc :search-engine (name search-engine))
                                                   collection-id
                                                   (assoc :collection collection-id)))
-                                _              (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
-                                                          search-string (:models search-context))
+                                _              (log/infof "[METABOT-SEARCH] Search context models: %s"
+                                                          (:models search-context))
                                 search-results (search/search search-context)
                                 data           (:data search-results)
                                 result-models  (frequencies (map :model data))]
-                            (log/infof "[METABOT-SEARCH] Query '%s' returned entity types: %s" search-string result-models)
+                            (log/infof "[METABOT-SEARCH] Query returned entity types: %s" result-models)
                             data))
         search-fn*      (fn [search-engine queries]
                           (let [queries (search.engine/disjunction search-engine queries)]
@@ -323,6 +367,7 @@
          enrich-with-database-engines
          enrich-with-portable-entity-ids
          enrich-with-metric-base-tables
+         validate-and-enrich-documents
          remove-unreadable-transforms)))
 
 (defn- table-refs->results
@@ -506,7 +551,7 @@
                              :data results
                              :total_count (count results)}})
       (catch Exception e
-        (log/error e (str "Error in " label))
+        (log/error (str "Error in " label ": " (ex-message e)))
         {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
 
 (def ^:private search-schema
@@ -514,15 +559,15 @@
    [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
    [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "dashboard" "question"]]]]
+    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "dashboard" "document" "question"]]]]
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
 (mu/defn ^{:tool-name "search"
            :scope     scope/agent-search}
   search-tool
-  "Find tables, models, metrics, dashboards, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
+  "Find tables, models, metrics, dashboards, documents, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
   [args :- search-schema]
-  (do-search "search" (sorted-set "dashboard" "metric" "model" "question" "table") {} args))
+  (do-search "search" (sorted-set "dashboard" "document" "metric" "model" "question" "table") {} args))
 
 (def ^:private sql-search-schema
   [:map {:closed true}
@@ -545,15 +590,20 @@
    [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
    [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "question"]]]]
+    [:maybe [:sequential [:enum {:description entity-types-desc}
+                          "table" "model" "metric" "question" "dashboard" "document"]]]]
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
 (mu/defn ^{:tool-name "search"
            :scope     scope/agent-search}
   nlq-search-tool
-  "Find NLQ-queryable data sources (tables, models, metrics, saved questions) by topic, to build a visualization from."
-  [args :- nlq-search-schema]
-  (do-search "NLQ search" (sorted-set "metric" "model" "question" "table") {:profile-id "nlq"} args))
+  "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
+  [{:keys [entity_types] :as args} :- nlq-search-schema]
+  (let [allowed-types (sorted-set "dashboard" "document" "metric" "model" "question" "table")
+        args          (cond-> args
+                        (not (seq entity_types))
+                        (assoc :entity_types ["metric" "model" "question" "table"]))]
+    (do-search "NLQ search" allowed-types {:profile-id "nlq"} args)))
 
 (def ^:private transform-search-schema
   [:map {:closed true}

@@ -31,6 +31,14 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- search-embedding-model
+  "Translate the neutral embedding descriptor's dimension key to semantic search's internal key."
+  [embedding-model]
+  (cond-> embedding-model
+    (and (nil? (:vector-dimensions embedding-model))
+         (some? (:model-dimensions embedding-model)))
+    (assoc :vector-dimensions (:model-dimensions embedding-model))))
+
 (defn get-embeddings-batch
   "Return a sequential collection of embedding vectors, in the same order as the input texts.
 
@@ -41,4 +49,4 @@
   `opts`            — optional keyword opts (e.g. `:type :doc`). Accepts alternating kwargs or a single trailing map;
                       forwarded as kwargs into the multimethod, which destructures with `& {:as opts}`."
   [embedding-model texts & {:as opts}]
-  (apply semantic-search/get-embeddings-batch embedding-model texts (mapcat identity opts)))
+  (apply semantic-search/get-embeddings-batch (search-embedding-model embedding-model) texts (mapcat identity opts)))

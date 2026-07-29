@@ -1,3 +1,9 @@
+import {
+  MemoryRouter,
+  Route as V7Route,
+  Routes as V7Routes,
+} from "react-router";
+
 import { renderWithProviders, screen } from "__support__/ui";
 
 import { Route } from "./route";
@@ -41,12 +47,24 @@ describe("router/useParams", () => {
   });
 
   it("exposes the splat under v7's `*` key, not v3's `splat`", () => {
-    renderWithProviders(<Route path="files/**" element={<SplatProbe />} />, {
+    renderWithProviders(<Route path="files/*" element={<SplatProbe />} />, {
       withRouter: true,
       initialRoute: "/files/a/b",
     });
 
     expect(screen.getByTestId("splat")).toHaveTextContent("a/b");
     expect(screen.getByTestId("has-splat-key")).toHaveTextContent("false");
+  });
+
+  it("works outside the facade route tree, reading the host's own match", () => {
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/files/a/b"]}>
+        <V7Routes>
+          <V7Route path="files/*" element={<SplatProbe />} />
+        </V7Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("splat")).toHaveTextContent("a/b");
   });
 });

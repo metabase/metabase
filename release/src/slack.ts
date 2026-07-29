@@ -2,6 +2,7 @@ import 'dotenv/config';
 import fs from 'fs';
 
 import { WebClient } from '@slack/web-api';
+import type { Block, KnownBlock, MessageAttachment } from '@slack/web-api';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import fetch from 'node-fetch';
@@ -23,7 +24,7 @@ export function mentionUserByGithubLogin(githubLogin?: string | null) {
   if (githubLogin && githubLogin in githubSlackMap) {
     return `<@${githubSlackMap[githubLogin]}>`;
   }
-  return `@${githubLogin ?? 'unassigned'}`;
+  return githubLogin ? `@${githubLogin}` : '@unassigned';
 }
 
 export function mentionSlackTeam(teamName: string) {
@@ -162,10 +163,17 @@ export async function sendPreReleaseStatus({
   });
 }
 
-export function sendSlackMessage({ channelName = SLACK_CHANNEL_NAME, message }: { channelName?: string, message: string }) {
+export function sendSlackMessage({ channelName = SLACK_CHANNEL_NAME, message, blocks, attachments }: {
+  channelName?: string,
+  message: string,
+  blocks?: (Block | KnownBlock)[],
+  attachments?: MessageAttachment[],
+}) {
   return slack.chat.postMessage({
     channel: channelName,
     text: message,
+    blocks,
+    attachments,
   });
 }
 

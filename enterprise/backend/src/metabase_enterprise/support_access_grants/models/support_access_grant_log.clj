@@ -60,6 +60,6 @@
             (catch Exception e
               ;; If the support user is somehow the last admin, we can't remove superuser via model hooks.
               ;; Sessions and auth identities are still cleaned up below, preventing further access.
-              (log/warnf e "Could not remove superuser from support user %d" support-user-id)))
+              (log/warnf "Could not remove superuser from support user %d: %s" support-user-id (ex-message e))))
           (t2/update! :model/AuthIdentity :id [:in auth-identity-ids] {:expires_at revoked-at})
           (t2/delete! :model/Session :user_id support-user-id))))))

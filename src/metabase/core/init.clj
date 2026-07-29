@@ -82,6 +82,7 @@
    [metabase.usage-metadata.init]
    [metabase.user-key-value.init]
    [metabase.users.init]
+   [metabase.util.experiment.init]
    [metabase.version.init]
    [metabase.view-log.init]
    [metabase.warehouses.init]
@@ -90,5 +91,4 @@
 ;; load EE init code on system launch if it exists.
 (when (and (not *compile-files*)
            config/ee-available?)
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (require 'metabase-enterprise.core.init))

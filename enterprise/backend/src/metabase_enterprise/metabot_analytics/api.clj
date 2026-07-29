@@ -31,7 +31,7 @@
   [:map
    [:conversation_id         ms/UUIDString]
    [:created_at              ms/TemporalInstant]
-   [:summary                 [:maybe :string]]
+   [:title                   [:maybe :string]]
    [:message_count           ms/IntGreaterThanOrEqualToZero]
    [:user_message_count      ms/IntGreaterThanOrEqualToZero]
    [:assistant_message_count ms/IntGreaterThanOrEqualToZero]
@@ -110,7 +110,7 @@
   [:map
    [:conversation_id ms/UUIDString]
    [:created_at      ms/TemporalInstant]
-   [:summary         [:maybe :string]]
+   [:title           [:maybe :string]]
    [:user            [:maybe UserInfo]]
    [:message_count   ms/IntGreaterThanOrEqualToZero]
    [:total_tokens    ms/IntGreaterThanOrEqualToZero]

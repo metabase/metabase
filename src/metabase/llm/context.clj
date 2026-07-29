@@ -77,7 +77,7 @@
             (into #{} (map :id) matched-tables))
           #{}))
       (catch Exception e
-        (log/warn e "Failed to extract tables from source SQL")
+        (log/warnf "Failed to extract tables from source SQL: %s" (ex-message e))
         #{}))
     #{}))
 
@@ -174,20 +174,21 @@
 
 (defn- fetch-fk-targets
   "Fetch table.field names for FK target fields.
+   Only includes targets whose Tables the current user can access.
    Returns map of target-field-id -> {:table name :field name}"
   [columns]
   (let [target-ids (->> columns
                         (keep :fk_target_field_id)
                         set)]
     (when (seq target-ids)
-      (let [fields      (t2/select [:model/Field :id :name :table_id]
-                                   :id [:in target-ids])
-            table-ids   (into #{} (map :table_id) fields)
-            table-names (when (seq table-ids)
-                          (t2/select-pk->fn :name :model/Table :id [:in table-ids]))]
+      (let [fields            (t2/select [:model/Field :id :name :table_id]
+                                         :id [:in target-ids])
+            table-ids         (into #{} (map :table_id) fields)
+            accessible-tables (fetch-accessible-tables table-ids)]
         (into {}
-              (map (fn [{:keys [id name table_id]}]
-                     [id {:table (get table-names table_id) :field name}]))
+              (keep (fn [{:keys [id name table_id]}]
+                      (when-let [table (get accessible-tables table_id)]
+                        [id {:table (:name table) :field name}])))
               fields)))))
 
 ;;; ----------------------------------------- On-Demand Metadata Enrichment -----------------------------------------

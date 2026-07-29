@@ -1,5 +1,4 @@
 (ns metabase.driver.ddl.interface
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
    [metabase.appearance.core :as appearance]

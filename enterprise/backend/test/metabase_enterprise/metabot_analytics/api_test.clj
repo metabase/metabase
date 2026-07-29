@@ -9,12 +9,12 @@
 (set! *warn-on-reflection* true)
 
 (defn- insert-conversation!
-  [{:keys [conversation-id user-id created-at summary slack-team-id slack-channel-id slack-thread-ts ip-address]}]
+  [{:keys [conversation-id user-id created-at title slack-team-id slack-channel-id slack-thread-ts ip-address]}]
   (t2/insert! :model/MetabotConversation
               (cond-> {:id      conversation-id
                        :user_id user-id}
                 created-at (assoc :created_at created-at)
-                summary (assoc :summary summary)
+                title (assoc :title title)
                 slack-team-id (assoc :slack_team_id slack-team-id)
                 slack-channel-id (assoc :slack_channel_id slack-channel-id)
                 slack-thread-ts (assoc :slack_thread_ts slack-thread-ts)
@@ -94,15 +94,15 @@
           (insert-conversation! {:conversation-id convo-1
                                  :user-id         test-user-id
                                  :created-at      jan-1
-                                 :summary         "First conversation"})
+                                 :title           "First conversation"})
           (insert-conversation! {:conversation-id convo-2
                                  :user-id         test-user-id
                                  :created-at      jan-2
-                                 :summary         "Second conversation"})
+                                 :title           "Second conversation"})
           (insert-conversation! {:conversation-id convo-3
                                  :user-id         test-user-id
                                  :created-at      jan-3
-                                 :summary         "Third conversation"})
+                                 :title           "Third conversation"})
           (insert-message! {:conversation-id convo-1
                             :created-at      jan-2
                             :role            "user"
@@ -179,7 +179,7 @@
           (is (= 99 (:total_tokens convo-3-response)))
           (is (= 0 (:cache_read_tokens convo-3-response))))
         (is (= {:conversation_id         convo-1
-                :summary                 "First conversation"
+                :title                   "First conversation"
                 :message_count           2
                 :user_message_count      1
                 :assistant_message_count 1
@@ -190,7 +190,7 @@
                                           :email      "metabot-analytics-list-test@metabase.com"
                                           :first_name "Metabot"
                                           :last_name  "Analytics"}}
-               (-> (select-keys convo-1-response [:conversation_id :summary :message_count
+               (-> (select-keys convo-1-response [:conversation_id :title :message_count
                                                   :user_message_count :assistant_message_count :total_tokens
                                                   :cache_read_tokens :profile_id :user])
                    (update :user select-keys [:id :email :first_name :last_name]))))
@@ -458,7 +458,7 @@
           (insert-conversation! {:conversation-id conversation-id
                                  :user-id         user-id
                                  :created-at      jan-1
-                                 :summary         "Conversation detail"})
+                                 :title           "Conversation detail"})
           (insert-message! {:conversation-id conversation-id
                             :created-at      jan-1
                             :role            "user"
@@ -474,7 +474,7 @@
           (let [response (mt/user-http-request :crowberto :get 200
                                                (format "ee/metabot-analytics/conversations/%s" conversation-id))]
             (is (= conversation-id (:conversation_id response)))
-            (is (= "Conversation detail" (:summary response)))
+            (is (= "Conversation detail" (:title response)))
             (is (= {:id         user-id
                     :email      "crowberto@metabase.com"
                     :first_name "Crowberto"
@@ -622,7 +622,7 @@
           (insert-conversation! {:conversation-id conversation-id
                                  :user-id         user-id
                                  :created-at      jan-1
-                                 :summary         "Conversation with queries"})
+                                 :title           "Conversation with queries"})
           ;; user prompt
           (insert-message! {:conversation-id conversation-id
                             :created-at      jan-1
@@ -703,15 +703,15 @@
           (insert-conversation! {:conversation-id convo-none
                                  :user-id         test-user-id
                                  :created-at      jan-1
-                                 :summary         "no searches"})
+                                 :title           "no searches"})
           (insert-conversation! {:conversation-id convo-two
                                  :user-id         test-user-id
                                  :created-at      jan-2
-                                 :summary         "two searches across two messages"})
+                                 :title           "two searches across two messages"})
           (insert-conversation! {:conversation-id convo-errored
                                  :user-id         test-user-id
                                  :created-at      jan-3
-                                 :summary         "one errored search still counts"})
+                                 :title           "one errored search still counts"})
           ;; convo-none: only text, no search calls.
           (insert-message! {:conversation-id convo-none
                             :created-at      jan-1
@@ -803,15 +803,15 @@
           (insert-conversation! {:conversation-id convo-none
                                  :user-id         test-user-id
                                  :created-at      mar-1
-                                 :summary         "no query tools"})
+                                 :title           "no query tools"})
           (insert-conversation! {:conversation-id convo-mixed
                                  :user-id         test-user-id
                                  :created-at      mar-2
-                                 :summary         "create + edit + notebook across messages"})
+                                 :title           "create + edit + notebook across messages"})
           (insert-conversation! {:conversation-id convo-edits
                                  :user-id         test-user-id
                                  :created-at      mar-3
-                                 :summary         "only edit/replace — counted as queries"})
+                                 :title           "only edit/replace — counted as queries"})
           ;; convo-none: only a search, no new-query tools.
           (insert-message! {:conversation-id convo-none
                             :created-at      mar-1
@@ -876,7 +876,7 @@
         (try
           (insert-conversation! {:conversation-id  conversation-id
                                  :user-id          user-id
-                                 :summary          "Slack conversation"
+                                 :title            "Slack conversation"
                                  :slack-team-id    "T123"
                                  :slack-channel-id "C123"
                                  :slack-thread-ts  "1712785577.123456"})
@@ -908,19 +908,19 @@
           (insert-conversation! {:conversation-id convo-web
                                  :user-id         test-user-id
                                  :created-at      jan-1
-                                 :summary         "web conversation"
+                                 :title           "web conversation"
                                  :ip-address      "1.2.3.4"})
           (insert-conversation! {:conversation-id convo-slack
                                  :user-id         test-user-id
                                  :created-at      jan-2
-                                 :summary         "slack conversation"
+                                 :title           "slack conversation"
                                  :slack-team-id   "T123"
                                  :slack-channel-id "C123"
                                  :slack-thread-ts  "1712785577.123456"})
           (insert-conversation! {:conversation-id convo-null
                                  :user-id         test-user-id
                                  :created-at      jan-3
-                                 :summary         "legacy conversation with no ip"})
+                                 :title           "legacy conversation with no ip"})
           (thunk {:test-user-id test-user-id
                   :convo-web    convo-web
                   :convo-slack  convo-slack
@@ -955,7 +955,7 @@
           (insert-conversation! {:conversation-id conversation-id
                                  :user-id         user-id
                                  :created-at      jan-1
-                                 :summary         "feedback conversation"})
+                                 :title           "feedback conversation"})
           (let [msg-1 (insert-message! {:conversation-id conversation-id :created-at jan-2
                                         :role "assistant" :profile-id "gpt-5" :total-tokens 5
                                         :data [{:type "text" :text "first answer"}]})
@@ -1007,7 +1007,7 @@
             (insert-conversation! {:conversation-id conversation-id
                                    :user-id         owner-id
                                    :created-at      apr-1
-                                   :summary         "shared thread feedback"})
+                                   :title           "shared thread feedback"})
             (let [assistant-msg (insert-message! {:conversation-id conversation-id :created-at apr-2
                                                   :role "assistant" :profile-id "slackbot" :total-tokens 9
                                                   :data [{:type "text" :text "shared answer"}]})]

@@ -1,6 +1,6 @@
-import type { Location } from "history";
 import { useEffect, useState } from "react";
 
+import { useGetSettingsQuery } from "metabase/api";
 import { AppBarContainer } from "metabase/app/nav/AppBar";
 import { Navbar } from "metabase/app/nav/Navbar";
 import {
@@ -8,6 +8,7 @@ import {
   getIsAppBarVisible,
   getIsDataApp,
   getIsDataStudioApp,
+  getIsMonitorApp,
   getIsNavBarEnabled,
 } from "metabase/app/selectors";
 import { AppBanner } from "metabase/common/components/AppBanner";
@@ -26,6 +27,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { connect, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor, State } from "metabase/redux/store";
+import type { Location } from "metabase/router";
 import { Outlet, useLocation } from "metabase/router";
 import { getErrorPage } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -61,6 +63,7 @@ interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
   isDataStudioApp: boolean;
+  isMonitorApp: boolean;
   isDataApp: boolean;
   bannerMessageDescriptor?: string;
   isAppBarVisible: boolean;
@@ -84,6 +87,7 @@ const mapStateToProps = (
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
   isDataStudioApp: getIsDataStudioApp(state, props),
+  isMonitorApp: getIsMonitorApp(state, props),
   isDataApp: getIsDataApp(state, props),
   isAppBarVisible: getIsAppBarVisible(state, props),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
@@ -97,6 +101,7 @@ function App({
   errorPage,
   isAdminApp,
   isDataStudioApp,
+  isMonitorApp,
   isDataApp,
   isAppBarVisible,
   isNavBarEnabled,
@@ -108,6 +113,10 @@ function App({
 
   usePageTitle(applicationName, { titleIndex: 0 });
   useTokenRefresh();
+  // App-wide subscription that keeps the settings cache alive for the whole
+  // session and makes `session-properties` invalidations refetch.
+  // In RTK if there is no active subscriber, invalidating a tag does not trigger a refetch.
+  useGetSettingsQuery();
 
   useEffect(() => {
     initializeIframeResizer();
@@ -137,7 +146,11 @@ function App({
               <UndoListing />
               <StatusListing />
               <NewModals />
-              <Metabot hide={isAdminApp || isDataStudioApp || isDataApp} />
+              <Metabot
+                hide={
+                  isAdminApp || isDataStudioApp || isMonitorApp || isDataApp
+                }
+              />
             </AppContentContainer>
           </AppContainer>
           <Palette />

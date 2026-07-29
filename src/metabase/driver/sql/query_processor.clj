@@ -866,7 +866,7 @@
 
                :else honeysql-form)
       (when-not (= <> honeysql-form)
-        (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>))))))
+        (log/trace "Applied casting")))))
 
 (defmethod ->honeysql [:sql :datetime]
   [driver [_ value {:keys [mode]}]]
@@ -1041,9 +1041,7 @@
           (or database-type effective-temporal-type) maybe-add-type-info
           (:temporal-unit options) (apply-temporal-bucketing driver options)
           (:binning options)       (apply-binning options))
-        (log/trace (binding [*print-meta* true]
-                     (format "Compiled field clause\n%s\n=>\n%s"
-                             (u/pprint-to-str field-clause) (u/pprint-to-str <>))))))
+        (log/trace "Compiled field clause")))
     (catch Throwable e
       (throw (ex-info (tru "Error compiling :field clause: {0}" (ex-message e))
                       {:clause field-clause}
@@ -1621,10 +1619,12 @@
     ;; -> SELECT CASE WHEN ... > ... THEN 1 ELSE 0 END AS \"x\""
   [driver clause & _unique-name-fn]
   (let [{cast-type ::add-cast
-         wrap-in-case? ::wrap-in-case} (driver-api/field-options clause)
+         wrap-in-case? ::wrap-in-case} (driver-api/match-one clause
+                                         [_ (opts :guard :lib/uuid) _] opts ;; mbql5
+                                         [_ _ opts] opts)
         maybe-cast    #(cond-> %
-                         wrap-in-case? (as-> <> (vector ::wrap-in-case <>))
-                         cast-type     (as-> <> (vector ::cast <> cast-type)))
+                         wrap-in-case? (as-> <> (mbql-clause driver ::wrap-in-case <>))
+                         cast-type     (as-> <> (mbql-clause driver ::cast <> cast-type)))
         honeysql-form (->honeysql driver (maybe-cast clause))
         field-alias   (field-clause->alias driver clause)]
     (if field-alias
@@ -2043,7 +2043,6 @@
 
 (defmethod apply-top-level-clause [:sql :joins]
   [driver _ honeysql-form {:keys [joins]}]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (let [f apply-joins-honey-sql-2]
     (f driver honeysql-form joins)))
 
@@ -2085,7 +2084,7 @@
 (defmethod ->honeysql [:sql :metadata/table]
   [driver table]
   ;; `:db` is normally absent on `:metadata/table` — sync doesn't populate it.
-  ;; Workspace remap (and any future cross-DB rewriter) can fill it to route the
+  ;; A cross-DB rewriter can fill it to route the
   ;; query at a database different from the connection's bound one. The
   ;; identifier helper drops nil components, so absent `:db` produces the same
   ;; `schema.table` shape as before.
@@ -2148,9 +2147,7 @@
       (format-honeysql-2 driver dialect honeysql-form)
       (catch Throwable e
         (try
-          (log/error e (u/format-color :red
-                                       "Invalid HoneySQL form: %s\n%s"
-                                       (ex-message e) (u/pprint-to-str honeysql-form)))
+          (log/error (u/format-color :red "Invalid HoneySQL form: %s" (ex-message e)))
           (finally
             (throw (ex-info (tru "Error compiling HoneySQL form: {0}" (ex-message e))
                             {:dialect dialect
@@ -2315,9 +2312,9 @@
   (if (:lib/type query)
     (binding [driver/*driver* driver]
       (let [inner-query (preprocess driver query)]
-        (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
+        (log/trace "Compiling MBQL query")
         (u/prog1 (compile-mbql driver inner-query)
-          (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
+          (log/debug "Compiled HoneySQL form")
           (driver-api/debug> (list '🍯 <>)))))
     (let [metadata-provider (driver-api/metadata-provider)
           database-id       (if (:type query)
@@ -2345,16 +2342,15 @@
 (defmethod driver/compile-transform :sql
   [driver {:keys [query output-db output-table]}]
   (let [{sql-query :query sql-params :params} query
-        ;; If the workspace remap populated `:output-db`, qualify the output
-        ;; table with that DB so the CTAS lands in the iso database. Used by
-        ;; MySQL workspace transforms today — the iso namespace lives at the
+        ;; If `:output-db` is populated, qualify the output table with that DB
+        ;; so the CTAS lands in that database. The target namespace lives at the
         ;; AST `:db` position and the canonical `output-table` is bare.
         ;;
         ;; HoneySQL renders `(keyword ns name)` as ``ns`.`name`` on MySQL — we
         ;; lean on that here. 3-part `:db.:schema.:name` writes (Snowflake / SQL
         ;; Server / BigQuery cross-DB) aren't expressible through this single-
-        ;; keyword shape; when those workspaces land they'll either need
-        ;; `output-table` to carry both qualifiers or a different HoneySQL form.
+        ;; keyword shape; supporting those would need `output-table` to carry
+        ;; both qualifiers or a different HoneySQL form.
         target-id (cond
                     (and (not (str/blank? output-db))
                          (str/blank? (namespace (keyword output-table))))

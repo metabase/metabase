@@ -2262,8 +2262,8 @@
           cols          (lib/returned-columns lib-q)]
       (column-descriptors cols))
     (catch Exception e
-      (log/debugf e "[repr-repair] mini-resolve of stages[0..%d] failed; skipping cross-stage type inference for stage %d"
-                  (dec stage-idx) stage-idx)
+      (log/debugf "[repr-repair] mini-resolve of stages[0..%d] failed; skipping cross-stage type inference for stage %d: %s"
+                  (dec stage-idx) stage-idx (ex-message e))
       nil)))
 
 (defn- strip-surrounding-double-quotes
@@ -2385,8 +2385,8 @@
               cols       (lib/returned-columns lib-q)]
           (column-descriptors cols))
         (catch Exception e
-          (log/debugf e "[repr-repair] source-card resolve of stage %d failed; skipping field-type inference"
-                      stage-idx)
+          (log/debugf "[repr-repair] source-card resolve of stage %d failed; skipping field-type inference: %s"
+                      stage-idx (ex-message e))
           nil)))))
 
 (defn- infer-source-card-field-types*

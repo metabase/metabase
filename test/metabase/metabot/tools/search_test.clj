@@ -230,6 +230,7 @@
                   :name "Main Dashboard"
                   :description "Dashboard desc"
                   :verified false
+                  :can_write false
                   :collection {:id 10 :name "Finance" :authority_level "official"}
                   :updated_at "2024-01-03"
                   :created_at "2024-01-03"}
@@ -238,10 +239,31 @@
                     :name "Main Dashboard"
                     :description "Dashboard desc"
                     :verified false
+                    :can_write false
                     :official true
                     :collection {:id 10 :name "Finance" :authority_level "official"}
                     :updated_at "2024-01-03"
                     :created_at "2024-01-03"}]
+      (is (= expected (#'search/postprocess-search-result result))))))
+
+(deftest ^:parallel postprocess-document-search-result-test
+  (testing "document result postprocessing"
+    (let [result   {:model      "document"
+                    :id         8
+                    :name       "Quarterly plan"
+                    :can_write  false
+                    :collection {:id 10 :name "Finance" :authority_level "official"}
+                    :updated_at "2024-01-03"
+                    :created_at "2024-01-02"}
+          expected {:id          8
+                    :type        "document"
+                    :name        "Quarterly plan"
+                    :description nil
+                    :can_write   false
+                    :official    true
+                    :collection  {:id 10 :name "Finance" :authority_level "official"}
+                    :updated_at  "2024-01-03"
+                    :created_at  "2024-01-02"}]
       (is (= expected (#'search/postprocess-search-result result))))))
 
 (deftest ^:parallel postprocess-search-result-test-5
@@ -349,13 +371,28 @@
                                                              {:data []})]
               (search/sql-search-tool {:keyword_queries ["x"] :database_id 1}))
             (is (= #{"table" "dataset"} @captured))))
+        (testing "general search includes documents in its default entity types"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:models context))
+                                                             {:data []})]
+              (search/search-tool {:keyword_queries ["x"]}))
+            (is (contains? @captured "document"))))
         (testing "agent-supplied entity_types narrow the default allowed set"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:models context))
                                                              {:data []})]
               (search/nlq-search-tool {:keyword_queries ["x"] :entity_types ["metric"]}))
-            (is (= #{"metric"} @captured))))))))
+            (is (= #{"metric"} @captured))))
+        (testing "NLQ search accepts document and dashboard destination types"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:models context))
+                                                             {:data []})]
+              (search/nlq-search-tool {:keyword_queries ["plan"]
+                                       :entity_types    ["document" "dashboard"]}))
+            (is (= #{"document" "dashboard"} @captured))))))))
 
 (deftest tool-limit-test
   (testing "tool variants apply the :limit arg with default 10 and cap 50"
@@ -400,6 +437,30 @@
                           (filter (fn [{:keys [id type]}] (and (= "dashboard" type) (contains? test-dashboard-ids id))))
                           (map :name)
                           (set)))))))))))
+
+(deftest document-search-test
+  (testing "search can discover documents by name"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Document {document-id :id}
+                       {:name "Quarterly planning sh1b0le#doc"}]
+          (let [result (->> (search/search {:term-queries ["sh1b0le#doc"]
+                                            :entity-types ["document"]})
+                            (filter #(= document-id (:id %)))
+                            first)]
+            (is (= "document" (:type result)))
+            (is (= "Quarterly planning sh1b0le#doc" (:name result)))))))))
+
+(deftest validate-and-enrich-documents-test
+  (testing "stale document search hits are removed using the live model"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Document {document-id :id} {:name "Existing document"}]
+        (let [results [{:id document-id :type "document" :name "Existing document"}
+                       {:id Integer/MAX_VALUE :type "document" :name "Deleted document"}
+                       {:id 1 :type "dashboard" :name "Unrelated dashboard"}]]
+          (is (= [{:id document-id :type "document" :name "Existing document" :can_write true}
+                  {:id 1 :type "dashboard" :name "Unrelated dashboard"}]
+                 (#'search/validate-and-enrich-documents results))))))))
 
 (deftest enrich-with-collection-descriptions-test
   (mt/with-premium-features #{:content-verification}
@@ -559,6 +620,28 @@
             (testing "base_table_portable_fk is `[database_name, schema, table_name]`"
               (is (= [db-name (:schema orders-t) (:name orders-t)]
                      (:base_table_portable_fk metric-res))))))))))
+
+(deftest enrich-with-metric-base-tables-respects-table-permissions-test
+  (testing "a readable metric does not reveal metadata for an unreadable base table"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-test-user :rasta
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Card {metric-id :id} {:name          "Restricted Base Table Metric"
+                                                      :type          :metric
+                                                      :database_id   (mt/id)
+                                                      :table_id      (mt/id :orders)
+                                                      :dataset_query {:database (mt/id)
+                                                                      :type     :query
+                                                                      :query    {:source-table (mt/id :orders)
+                                                                                 :aggregation  [[:count]]}}}]
+            (let [results    (search/search {:term-queries ["Restricted Base Table Metric"]})
+                  metric-res (some #(when (= [metric-id "metric"] [(:id %) (:type %)]) %) results)]
+              (is (some? metric-res) "collection access still makes the metric searchable")
+              (is (not-any? #(contains? metric-res %)
+                            [:base_table_id
+                             :base_table_name
+                             :base_table_schema
+                             :base_table_portable_fk])))))))))
 
 (deftest remove-unreadable-transforms-test
   (testing "remove-unreadable-transforms correctly filters transforms based on source database access"

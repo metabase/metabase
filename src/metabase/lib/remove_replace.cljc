@@ -97,8 +97,8 @@
           (if-let [new-column (some-> old-matching-column :lib/source-uuid source-uuid->new-column)]
             (assoc &match 2 ((some-fn :lib/source-column-alias :name) new-column))
             (do
-              (log/warnf "Failed to match downstream ref %s against visible columns, ref is on stage %d at %s"
-                         &match stage-number &parents)
+              (log/warnf "Failed to match downstream ref against visible columns, ref is on stage %d at %s"
+                         stage-number &parents)
               &match)))))))
 
 (defn update-stale-references

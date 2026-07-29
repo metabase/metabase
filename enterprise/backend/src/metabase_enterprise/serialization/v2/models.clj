@@ -13,9 +13,11 @@
 
 (def data-model-in-collection
   "Data model types that can be found in collections (via published tables).
-   These are extracted by ID when discovered via descendants, even if no-data-model is set."
+   These are extracted by ID when discovered via descendants, even if no-data-model is set.
+   Includes both Field (full serdes) and FieldUserSettings (user-edits-only / git sync)."
   ["Table"
    "Field"
+   "FieldUserSettings"
    "Segment"])
 
 (def content
@@ -61,7 +63,8 @@
 
 (def excluded-models
   "List of models which are not going to be serialized ever."
-  ["AiUsageLog"
+  ["AgentApiCallLog"
+   "AiUsageLog"
    "AnalysisFinding"
    "AnalysisFindingError"
    "ApiKey"
@@ -149,10 +152,10 @@
    "SourceSegmentDaily"
    "SsoRelayState"
    "SupportAccessGrantLog"
-   "TableRemapping"
    "TaskHistory"
    "TaskRun"
    "Tenant"
+   "TransformDagRun"
    "TransformJobRun"
    "TransformRun"
    "TransformRunCancelation"
@@ -160,6 +163,4 @@
    "User"
    "UserKeyValue"
    "UserParameterValue"
-   "ViewLog"
-   "Workspace"
-   "WorkspaceDatabase"])
+   "ViewLog"])

@@ -153,7 +153,7 @@
     "embedding-simple"          (analytics/inc! :metabase-embedding-simple/response {:status (str status)})
     ;; Known client, but a response-code counter tells us nothing actionable about data apps - so no metric.
     "data-app"                  nil
-    (log/infof "Unknown client. client: %s" sdk-client)))
+    (log/info "Unknown client.")))
 
 (defn embedding-context?
   "Should we track this request as being made by an embedding client?"

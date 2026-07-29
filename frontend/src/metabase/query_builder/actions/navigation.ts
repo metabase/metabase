@@ -1,10 +1,9 @@
-import type { Location } from "history";
 import _ from "underscore";
 
 import { createThunkAction } from "metabase/redux";
 import { resetUIControls } from "metabase/redux/query-builder";
 import type { Dispatch } from "metabase/redux/store";
-import { getLocation } from "metabase/selectors/routing";
+import type { Location } from "metabase/router";
 
 import {
   getCard,
@@ -25,13 +24,15 @@ import { zoomInRow } from "./zoom";
 export const POP_STATE = "metabase/qb/POP_STATE";
 export const popState = createThunkAction(
   POP_STATE,
-  (location) => async (dispatch, getState) => {
+  (location: Location) => async (dispatch, getState) => {
     dispatch(cancelQuery());
 
     const zoomedObjectId = getZoomedObjectId(getState());
     if (zoomedObjectId) {
-      const { state, query } = getLocation(getState());
-      const previouslyZoomedObjectId = state?.objectId || query?.objectId;
+      // The POP has already committed, so `location` is the entry we navigated
+      // to; its state/query hold the object we were previously zoomed into.
+      const previouslyZoomedObjectId =
+        location.state?.objectId || location.query?.objectId;
 
       if (
         previouslyZoomedObjectId &&

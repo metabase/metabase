@@ -25,7 +25,8 @@
 
 (def ^:private models-to-exclude
   "Models that should *not* be migrated in `load-from-h2`."
-  #{:model/AiUsageLog
+  #{:model/AgentApiCallLog
+    :model/AiUsageLog
     :model/AnalysisFinding
     :model/AnalysisFindingError
     :model/ApiKey
@@ -74,6 +75,7 @@
     :model/Transform
     :model/TransformRun
     :model/TransformRunCancelation
+    :model/TransformDagRun
     :model/TransformJob
     :model/TransformJobRun
     :model/TransformJobTransformTag

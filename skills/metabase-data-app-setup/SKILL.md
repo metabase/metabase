@@ -5,7 +5,7 @@ description: Scaffold a new Metabase data-app into the connected remote-sync rep
 
 # Create a Metabase Data App
 
-A Metabase **data-app** is a single JS bundle that the host loads inside a Near Membrane sandbox and renders inside its own React tree. The scaffold is a Vite + React + TypeScript project: source under `src/`, a dev server that previews the app against a real Metabase **through the same Near Membrane sandbox + distortion rules Metabase uses in production** — so `npm run dev` behaves like production, including for third-party libraries the app bundles — and `npm run build` producing a single `dist/index.js`. (Because the sandbox runs a built bundle, a change rebuilds it and does a *soft reload* — re-evaluates the bundle in the sandbox and remounts the app, keeping auth/SDK loaded — rather than hot-swapping modules; component state resets, but there's no full browser refresh.) The dev preview also shows a corner **⚠ Diagnostics** toolbar that captures runtime errors — including the sandbox's otherwise-opaque blocked-API messages — so failures surface instead of being swallowed.
+A Metabase **data-app** is a single JS bundle that the host loads inside a Near Membrane sandbox and renders inside its own React tree. The scaffold is a Vite + React + TypeScript project: source under `src/`, a dev server that previews the app against a real Metabase **through the same Near Membrane sandbox + distortion rules Metabase uses in production** — so `npm run dev` behaves like production, including for third-party libraries the app bundles — and `npm run build` producing a single `dist/index.js`. (Because the sandbox runs a built bundle, a change rebuilds it and does a *soft reload* — re-evaluates the bundle in the sandbox and remounts the app, keeping auth/SDK loaded — rather than hot-swapping modules; component state resets, but there's no full browser refresh.) The dev preview also shows a corner **⚠ Diagnostics** toolbar that captures runtime errors — including the sandbox's otherwise-opaque blocked-API messages — so failures surface instead of being swallowed. The same data is served as JSON at `http://localhost:5174/__data-app/diagnostics`, which is how *you* read it (see "Reading the diagnostics feed" below) — you have a shell, not a browser, and these failures are invisible from the terminal otherwise.
 
 **Data apps are served from Git, not uploaded.** A single repository is connected to Metabase via remote-sync (Admin → Settings → Remote sync). Each app lives in its own directory `data_apps/<app>/` inside that repo — its source, a `data_app.yaml` (name/path), and the committed built bundle at the `path` its `data_app.yaml` declares (`dist/index.js` by default). On each remote-sync import Metabase materializes one app per directory and serves it at `/apps/<slug>` url, where the slug **is** the directory's name. So this skill always scaffolds **into the connected repo's `data_apps/<app>/` directory**, never as a standalone project.
 
@@ -167,6 +167,15 @@ project scaffold and proving the starter bundle works.
    built bundle (`dist/index.js` by default) as committable files.
 4. If the user asked for a live preview, run `npm run dev` and confirm the
    starter "Hello, data app" screen renders through the sandbox preview.
+5. With the preview open, check the diagnostics feed once — it is the only place
+   runtime failures appear to you (see *Reading the diagnostics feed*):
+
+   ```bash
+   curl -s "http://localhost:5174/__data-app/diagnostics?startEventId=0"
+   ```
+
+   Expect `clients: 1` and no entries with `"alert": true`. `clients: 0` means no
+   preview tab is open, so an empty feed proves nothing.
 
 Stop here if the user only asked to create, scaffold, or set up a data app.
 
@@ -192,6 +201,49 @@ There is intentionally **no escape hatch** for extra Vite plugins, aliases, or `
 **After every meaningful round of edits, run `npm run typecheck`.** It runs `tsc --noEmit` over `src/` and `vite.config.ts` — catches wrong prop shapes against the SDK types, broken refactors, missing imports, etc. The Vite dev server does NOT typecheck (it only transpiles), so errors that would fail a production CI run can sit invisibly in a passing `npm run dev` session. Run it before declaring a task complete.
 
 **Before handoff, re-check package hygiene.** `@metabase/embedding-sdk-react` should use the expected data-app SDK source/tag for the target environment, and `@types/react-datepicker` should not be installed unless the chosen `react-datepicker` version actually needs it.
+
+## Reading the diagnostics feed
+
+`npm run dev` serves everything the toolbar shows as JSON — the only way *you*
+see runtime failures, since sandbox blocks, CSP refusals, failed queries and
+uncaught errors reach neither the terminal nor `npm run typecheck`. Check it
+after any change you can't verify by reading the code.
+
+**Loop:** note `nextEventId` before editing → make the change (rebuilds
+automatically) → re-read. `startEventId` is inclusive and survives page reloads.
+
+```bash
+curl -s "http://localhost:5174/__data-app/diagnostics?startEventId=0"
+```
+
+```jsonc
+{
+  "entries": [{
+    "eventId": 31, "kind": "blocked-network", "alert": true,
+    "summary": "Blocked fetch to api.example.com (not in allowed_hosts)",
+    "detail": null,   // stack frames, when any
+    "hint": "Add https://api.example.com to allowed_hosts in data_app.yaml …"
+  }],
+  "clients": 1,       // connected preview tabs — 0 means nothing ran
+  "nextEventId": 32   // pass back as ?startEventId=
+}
+```
+
+**`clients: 0` does not mean healthy** — it means no preview tab is open, so an
+empty `entries` proves nothing. Open `http://localhost:5174` first.
+
+Triage by `kind` (always read `hint` — it names the exact fix; never soften a
+`summary` when reporting it):
+
+| `kind` | Fix |
+|---|---|
+| `blocked-network` / `csp-violation` | add the origin to `allowed_hosts` in `data_app.yaml`, then **restart** `npm run dev` (allowlist + CSP are read at boot) |
+| `blocked-api` | blocked in production too — use an SDK API or drop the call, don't work around it |
+| `sdk-call` + `alert: true` | a Metabase request failed; fix the query — `summary` has the endpoint and status |
+| `error` | a real bug; `detail` has the stack |
+
+Text is truncated and the buffer holds the last 200 events. `curl -X DELETE
+.../__data-app/diagnostics` clears it for every reader.
 
 ## Source conventions
 
@@ -436,6 +488,8 @@ Data apps are delivered by Git, not uploaded — you commit the app directory an
 | `dist/index.js` doesn't assign to `__dataAppFactory__`. | `src/index.tsx` must `export default` the `DataAppFactory` — the preset wires that into the IIFE global. |
 | `Cannot find module '@metabase/embedding-sdk-react'`. | Run `npm install` (or the equivalent for your package manager). Types come from the package directly. |
 | Drill popups don't open / SDK components show empty / "MetabaseProvider not found" at runtime in dev. | `App.tsx` is rendering its own `<MetabaseProvider>` — remove it. The dev entry (SDK) and the production host provide the provider; wrapping it inside the bundle routes the SDK's state paths through the sandbox and breaks them. |
-| Dev preview blank / `Bundle did not assign a function to __dataAppFactory__` / sandbox errors in dev. | `src/index.tsx` isn't default-exporting the factory, or your app code throws while the sandbox evaluates the bundle — open the dev toolbar's **Diagnostics** panel for the real error. |
+| Dev preview blank / `Bundle did not assign a function to __dataAppFactory__` / sandbox errors in dev. | `src/index.tsx` isn't default-exporting the factory, or your app code throws while the sandbox evaluates the bundle. Read the real error from the diagnostics feed (`curl -s "http://localhost:5174/__data-app/diagnostics?startEventId=0"`), or the dev toolbar's **Diagnostics** panel. |
+| A network call works in `npm run dev` but is blocked after syncing to Metabase. | It was never allowed — you edited `allowed_hosts` without restarting the dev server, so the running sandbox and CSP still use the boot-time list. Restart `npm run dev`; the feed's `manifest` section flags this as `restartRequired`. |
+| The SDK was rebuilt or reinstalled but the preview still behaves like the old version. | Vite pre-bundles the SDK into `node_modules/.vite` and keys that cache on the package version, so an in-place rebuild doesn't invalidate it. Stop the dev server, delete the `node_modules/.vite` directory, and start it again (or run `npx vite --force`). |
 | Component state resets on every edit. | Expected: dev rebuilds the bundle and does a *soft reload* — re-evaluates it in the sandbox and remounts the app (auth/SDK stay loaded, no browser refresh). There's no module-level HMR / Fast Refresh because the app is an evaluated bundle in an isolated realm, so local component state resets. |
 | URL changes but UI doesn't update in production (works in dev). | Import the routing primitives from `@metabase/embedding-sdk-react/data-app` (not the main entry) and keep using `dataAppConfig()` — it externalizes `/data-app` so its routing isn't inlined (inlining triggers the React-state-batching-through-Near-Membrane bug). |

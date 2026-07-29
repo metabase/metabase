@@ -28,6 +28,7 @@ import type {
   DashboardId,
   DatasetColumn,
   DatasetData,
+  Field,
   IconName,
   RawSeries,
   RowValue,
@@ -262,7 +263,7 @@ export type VisualizationPassThroughProps = {
    * Items that will be shown in a menu when the title is clicked.
    * Used for visualizer cards to jump to underlying questions
    */
-  titleMenuItems?: ReactNode[];
+  titleMenuItems?: ReactNode;
 
   // frontend/src/metabase/visualizations/components/ChartSettings/ChartSettingsVisualization/ChartSettingsVisualization.tsx
   isSettings?: boolean;
@@ -276,9 +277,17 @@ export type VisualizationPassThroughProps = {
    * Props used for Audit Table visualization
    */
   isSelectable?: boolean;
-  rowChecked?: [];
-  onAllSelectClick?: () => void;
-  onRowSelectClick?: () => void;
+  rowChecked?: Record<string, boolean>;
+  onAllSelectClick?: (event: { rows: RowValues[] }) => void;
+  onRowSelectClick?: (event: { row: RowValues; rowIndex: number }) => void;
+  isSortable?: boolean;
+  sorting?: AuditTableSorting;
+  onSortingChange?: (sorting: AuditTableSorting) => void;
+};
+
+export type AuditTableSorting = {
+  column: string;
+  isAscending: boolean;
 };
 
 export type ColumnSettingDefinition<TValue, TProps = unknown> = {
@@ -407,6 +416,14 @@ export type DatasetColumnSettingDefinition<
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = VisualizationSettingDefinition<DatasetColumn, TValue, TProps>;
+
+/**
+ * current we work with DatasetColumn and Field, but their shapes are different
+ */
+export type FormattableColumn = Omit<DatasetColumn, "id" | "source"> & {
+  id?: DatasetColumn["id"] | Field["id"];
+  source?: DatasetColumn["source"];
+};
 
 export type SeriesSettingDefinition<
   TValue = unknown,
@@ -622,10 +639,7 @@ export type VisualizationGridSize = {
 
 // TODO: add component property for the react component instead of the intersection
 export type Visualization = ComponentType<
-  Omit<VisualizationProps, "width" | "height"> & {
-    width?: number | null;
-    height?: number | null;
-  } & VisualizationPassThroughProps
+  VisualizationProps & VisualizationPassThroughProps
 > &
   VisualizationDefinition;
 
@@ -635,7 +649,7 @@ export type VisualizationDefinition = {
   getUiName: () => string;
   identifier: VisualizationDisplay;
   aliases?: string[];
-  iconName: IconName;
+  iconName?: IconName;
   iconUrl?: string;
   hasEmptyState?: boolean;
   isDev?: boolean; // is custom viz in dev mode
@@ -665,7 +679,7 @@ export type VisualizationDefinition = {
   isSensible?: (data: DatasetData) => boolean;
   columnSettings?:
     | VisualizationSettingsDefinitions
-    | ((column: DatasetColumn) => VisualizationSettingsDefinitions);
+    | ((column: FormattableColumn) => VisualizationSettingsDefinitions);
   // checkRenderable throws an error if a visualization is not renderable
   checkRenderable: (
     series: Series,

@@ -17,4 +17,4 @@
       (t2/update! :model/User user-id {:last_login :%now})
       (catch Throwable e
         ;; TODO -- huh? Terrible log message.
-        (log/warnf e "Failed to process sync-database event. %s" topic)))))
+        (log/warnf "Failed to process sync-database event. %s: %s" topic (ex-message e))))))

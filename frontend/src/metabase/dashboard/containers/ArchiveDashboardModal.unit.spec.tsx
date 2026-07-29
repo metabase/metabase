@@ -17,11 +17,12 @@ const setup = ({
   slug?: string;
   onClose?: () => void;
 } = {}) => {
+  const modal = <ArchiveDashboardModalConnectedInner onClose={onClose} />;
   renderWithProviders(
-    <Route
-      path="/dashboard(/:slug)"
-      element={<ArchiveDashboardModalConnectedInner onClose={onClose} />}
-    />,
+    <>
+      <Route path="/dashboard" element={modal} />
+      <Route path="/dashboard/:slug" element={modal} />
+    </>,
     {
       withRouter: true,
       initialRoute: slug ? `/dashboard/${slug}` : "/dashboard",

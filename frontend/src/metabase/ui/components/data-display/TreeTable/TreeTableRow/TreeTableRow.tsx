@@ -3,14 +3,17 @@ import { flexRender } from "@tanstack/react-table";
 import cx from "classnames";
 import type { MouseEvent } from "react";
 import { memo, useMemo } from "react";
+import { t } from "ttag";
 
-// eslint-disable-next-line boundaries/element-types -- this UI-library row renders a routing Link; it predates the metabase/router facade and should move out of metabase/ui
-import { Link } from "metabase/router";
-import { Flex } from "metabase/ui";
+import { Flex, Loader } from "metabase/ui";
 
 import { ExpandButton } from "../ExpandButton";
 import { SelectionCheckbox } from "../SelectionCheckbox";
-import { DEFAULT_ROW_HEIGHT, TREE_CELL_BASE_PADDING } from "../constants";
+import {
+  CHECKBOX_COLUMN_WIDTH,
+  DEFAULT_ROW_HEIGHT,
+  TREE_CELL_BASE_PADDING,
+} from "../constants";
 import type {
   SelectionState,
   TreeNodeData,
@@ -35,6 +38,7 @@ interface TreeTableRowContentProps<
   selectedRowId: string | null;
   isDisabled?: boolean;
   isChildrenLoading?: boolean;
+  isLoading?: boolean;
   isExpanded: boolean;
   canExpand: boolean;
   getSelectionState?: (row: Row<TData>) => SelectionState;
@@ -60,6 +64,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
   selectedRowId,
   isDisabled,
   isChildrenLoading,
+  isLoading,
   isExpanded,
   canExpand,
   getSelectionState,
@@ -84,6 +89,21 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
       : row.getIsSomeSelected()
         ? "some"
         : "none";
+
+  const isCheckboxDisabled =
+    isDisabled || (!getSelectionState && !row.getCanSelect());
+
+  const handleCheckboxToggle = (event: MouseEvent) => {
+    event.stopPropagation();
+    if (isLoading || isCheckboxDisabled) {
+      return;
+    }
+    if (onCheckboxClick) {
+      onCheckboxClick(row, rowIndex, event);
+    } else {
+      row.toggleSelected();
+    }
+  };
 
   return (
     <Flex
@@ -111,21 +131,24 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
       onDoubleClick={(e) => onRowDoubleClick?.(row, e)}
     >
       {showCheckboxes && (
-        <Flex align="center" pl="0.75rem" className={S.checkboxWrapper}>
-          <SelectionCheckbox
-            isSelected={selectionState === "all"}
-            isSomeSelected={selectionState === "some"}
-            disabled={isDisabled || (!getSelectionState && !row.getCanSelect())}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onCheckboxClick) {
-                onCheckboxClick(row, rowIndex, e);
-              } else {
-                row.toggleSelected();
-              }
-            }}
-            className={classNames?.checkbox}
-          />
+        <Flex
+          align="center"
+          pl="0.75rem"
+          w={CHECKBOX_COLUMN_WIDTH}
+          className={S.checkboxWrapper}
+          onClick={handleCheckboxToggle}
+        >
+          {isLoading ? (
+            <Loader size="xs" color="core-brand" aria-label={t`Loading`} />
+          ) : (
+            <SelectionCheckbox
+              isSelected={selectionState === "all"}
+              isSomeSelected={selectionState === "some"}
+              disabled={isCheckboxDisabled}
+              onClick={handleCheckboxToggle}
+              className={classNames?.checkbox}
+            />
+          )}
         </Flex>
       )}
       {visibleCells.map((cell, colIndex) => {
@@ -217,12 +240,13 @@ export function TreeTableRow<TData extends TreeNodeData>({
   onRowDoubleClick,
   isDisabled,
   isChildrenLoading,
+  isLoading,
   getSelectionState,
   onCheckboxClick,
   classNames,
   styles,
   getRowProps,
-  href,
+  renderRowLink,
   renderSubRow,
   hierarchical = true,
 }: TreeTableRowProps<TData>) {
@@ -241,6 +265,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
       selectedRowId={selectedRowId ?? null}
       isDisabled={isDisabled}
       isChildrenLoading={isChildrenLoading}
+      isLoading={isLoading}
       isExpanded={isExpanded}
       canExpand={canExpand}
       getSelectionState={getSelectionState}
@@ -255,18 +280,15 @@ export function TreeTableRow<TData extends TreeNodeData>({
   );
 
   const renderContent = () => {
-    const subRowContent = renderSubRow?.(row) ?? null;
-    return href ? (
-      <Link to={href} className={S.link}>
-        {content}
-        {subRowContent}
-      </Link>
-    ) : (
+    const rowContent = (
       <>
         {content}
-        {subRowContent}
+        {renderSubRow?.(row) ?? null}
       </>
     );
+    return renderRowLink
+      ? renderRowLink(row, { className: S.link, children: rowContent })
+      : rowContent;
   };
 
   if (typeof virtualItemOrPinnedPosition === "string") {

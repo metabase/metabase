@@ -22,7 +22,7 @@ import { DASHCARD_HEADER_HEIGHT } from "./constants";
 import { SMART_SCALAR_CHART_DEFINITION } from "./definition";
 import { getValueHeight, getValueWidth, isPeriodVisible } from "./utils";
 
-export function SmartScalar({
+function SmartScalarComponent({
   onVisualizationClick,
   isDashboard,
   settings,
@@ -138,4 +138,7 @@ export function SmartScalar({
   );
 }
 
-Object.assign(SmartScalar, SMART_SCALAR_CHART_DEFINITION);
+export const SmartScalar = Object.assign(
+  SmartScalarComponent,
+  SMART_SCALAR_CHART_DEFINITION,
+);

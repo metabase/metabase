@@ -2,9 +2,9 @@
 //
 // This pins updateUrl -> dispatch(push/replace, { ..., state }), the QB side that
 // decides which router action to emit and what card state to carry on it. It is a
-// lock-down net for the upcoming react-router migration and is complementary to
+// lock-down net for the react-router migration and is complementary to
 // redux/routing-contract.unit.spec.ts, which pins the transport side (how the
-// dispatched push/replace action mutates state.routing).
+// dispatched push/replace action drives history navigation).
 
 import { createMockEntitiesState } from "__support__/store";
 import {

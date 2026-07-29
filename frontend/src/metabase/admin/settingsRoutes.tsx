@@ -7,13 +7,7 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import {
-  Outlet,
-  Route,
-  type RouteComponent,
-  redirect,
-  withRouteProps,
-} from "metabase/router";
+import { Outlet, Route, type RouteComponent, redirect } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import * as Urls from "metabase/urls";
 
@@ -40,10 +34,6 @@ import { SlackSettingsPage } from "./settings/components/SettingsPages/SlackSett
 import { UpdatesSettingsPage } from "./settings/components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
 import { WebhooksSettingsPage } from "./settings/components/SettingsPages/WebhooksSettingsPage";
-
-const RoutedCustomVisualizationsFormPage = withRouteProps(
-  CustomVisualizationsFormPage,
-);
 
 export const getSettingsRoutes = (
   store: Store<State>,
@@ -103,11 +93,8 @@ export const getSettingsRoutes = (
         element={<IsAdmin />}
       >
         <Route index element={<CustomVisualizationsManagePage />} />
-        <Route path="new" element={<RoutedCustomVisualizationsFormPage />} />
-        <Route
-          path="edit/:id"
-          element={<RoutedCustomVisualizationsFormPage />}
-        />
+        <Route path="new" element={<CustomVisualizationsFormPage />} />
+        <Route path="edit/:id" element={<CustomVisualizationsFormPage />} />
         {devModeEnabled && (
           <Route
             path="development"

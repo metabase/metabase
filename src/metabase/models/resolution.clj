@@ -13,6 +13,7 @@
 
   Tests will check to make sure new models get included in this map."
   '{:model/Action                            metabase.actions.models
+    :model/AgentApiCallLog                   metabase.agent-api.models.agent-api-call-log
     :model/AnalysisFinding                   metabase-enterprise.dependencies.models.analysis-finding
     :model/AnalysisFindingError              metabase-enterprise.dependencies.models.analysis-finding-error
     :model/ApiKey                            metabase.api-keys.models.api-key
@@ -123,13 +124,13 @@
     :model/SsoRelayState                     metabase-enterprise.sso.models.relay-state
     :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
-    :model/TableRemapping                    metabase-enterprise.workspaces.models.table-remapping
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/TaskRun                           metabase.task-history.models.task-run
     :model/Tenant                            metabase-enterprise.tenants.models
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
     :model/Transform                         metabase.transforms.models.transform
+    :model/TransformDagRun                   metabase.transforms.models.dag-run
     :model/TransformJob                      metabase.transforms.models.transform-job
     :model/TransformJobRun                   metabase.transforms.models.job-run
     :model/TransformJobTransformTag          metabase.transforms.models.transform-job-transform-tag
@@ -146,9 +147,7 @@
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.users.models.user-parameter-value
-    :model/ViewLog                           metabase.view-log.models.view-log
-    :model/Workspace                         metabase-enterprise.workspaces.models.workspace
-    :model/WorkspaceDatabase                 metabase-enterprise.workspaces.models.workspace-database})
+    :model/ViewLog                           metabase.view-log.models.view-log})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!
@@ -161,13 +160,12 @@
   "Ensure the namespace for given model is loaded. This is a safety mechanism as we are moving to toucan2 and we don't
   need to require the model namespaces in order to use it."
   [x]
-  (when (and (keyword? x)
-             (= (namespace x) "model")
-             ;; Don't try to require if it's already registered as a :metabase/model, since that means it has already
-             ;; been required
-             (not (isa? x :metabase/model)))
-    ;; [[classloader/require]] for thread safety
-    (classloader/require (model->namespace x)))
+  (when (keyword? x)
+    ;; Always require the model's namespace when we know it. It is fast, and there can be race conditions between
+    ;; before side effects like `deftransforms` and `define-before-insert` have run
+    (when-let [nspace (get model->namespace x)]
+      ;; [[classloader/require]] for thread safety
+      (classloader/require nspace)))
   x)
 
 (methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol

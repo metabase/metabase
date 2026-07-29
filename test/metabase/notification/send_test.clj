@@ -492,6 +492,7 @@
                                         :timeout-ms  1000})]
       ;; dispatcher spawns its own worker threads that don't inherit *local-redefs* —
       ;; use with-redefs to swap the root so worker threads see the replacement.
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [notification.send/send-notification-sync! (fn [notification]
                                                                 ;; fake latency
@@ -529,7 +530,6 @@
             (reset! sent-notifications [])
             (let [error-thrown (atom false)]
               ;; dispatcher worker thread — see note above
-              #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
               (with-redefs [notification.send/send-notification-sync!
                             (fn [notification]
                               (if (= "F" (:test-value notification))
@@ -683,6 +683,7 @@
           queue-size (notification.settings/notification-thread-pool-size)]
       ;; notification thread pool workers don't inherit *local-redefs* — the root swap from
       ;; with-redefs is required so the patched fns are visible to the worker threads.
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [notification.payload/notification-payload (fn [& _]
                                                                 (assert false))
@@ -739,6 +740,7 @@
           dispatch-fn             (:dispatch-fn dispatcher)
           shutdown-fn             (:shutdown-fn dispatcher)]
       ;; dispatcher spawns worker threads without our dynamic binding
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [notification.send/send-notification-sync!
                     (fn [notification]

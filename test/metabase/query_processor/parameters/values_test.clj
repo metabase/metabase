@@ -431,6 +431,7 @@
   (mt/with-test-user :rasta
     (testing "Persisted Models are substituted"
       ;; legacy test -- don't hardcode driver names in new tests going forward.
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
       (mt/test-driver :postgres
         ;; TODO (Cam 7/16/25) -- rework this to use metadata providers -- we support model persisted info directly from

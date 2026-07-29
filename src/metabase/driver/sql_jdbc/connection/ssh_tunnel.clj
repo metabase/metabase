@@ -102,8 +102,8 @@
                                                                       (SshdSocketAddress. "" 0)
                                                                       (SshdSocketAddress. host port))
         input-port                 (.. tracker getBoundAddress getPort)]
-    (log/trace (u/format-color 'cyan "creating ssh tunnel (heartbeating every %d seconds) %s@%s:%s -L %s:%s:%s"
-                               hb-sec tunnel-user tunnel-host tunnel-port input-port host port))
+    (log/trace (u/format-color 'cyan "creating ssh tunnel (heartbeating every %d seconds) %s:%s -L %s:%s:%s"
+                               hb-sec tunnel-host tunnel-port input-port host port))
     [session tracker dedicated-client]))
 
 (defn use-ssh-tunnel?
@@ -175,7 +175,7 @@
   "Close a running tunnel session"
   [details]
   (when (and (use-ssh-tunnel? details) (ssh-tunnel-open? details))
-    (log/tracef "Closing SSH tunnel: %s" (:tunnel-session details))
+    (log/trace "Closing SSH tunnel")
     (.close ^ClientSession (:tunnel-session details)))
   (when-let [^SshClient dedicated-client (:tunnel-client details)]
     (.stop dedicated-client)))

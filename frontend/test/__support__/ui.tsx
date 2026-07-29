@@ -8,9 +8,14 @@ import {
   render as testingLibraryRender,
   waitFor,
 } from "@testing-library/react";
-import type { History } from "history";
-import { createMemoryHistory } from "history";
-import { useCallback, useMemo, useState } from "react";
+import {
+  Children,
+  Fragment,
+  isValidElement,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import { createPortal } from "react-dom";
@@ -22,22 +27,32 @@ import { Api } from "metabase/api";
 import { useUpdateSettingMutation } from "metabase/api/settings";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
-import { HistoryProvider } from "metabase/history";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { MetabaseReduxProvider, useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import {
-  ReactRouterRoute,
-  type RouterEngine,
-  RouterProvider,
+  type StoreSeedState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import {
+  type Action,
+  type History,
+  type LocationDescriptor,
+  Route,
+  createLocationMirror,
   routerMiddleware,
-  routing as routingReducer,
-  useRouterHistory,
 } from "metabase/router";
-import { RouterProviderV7Memory } from "metabase/router/v7/RouterProviderV7";
-import { createV7Navigator } from "metabase/router/v7/navigator";
+import {
+  type MemoryTestHistory,
+  RouterProviderV7Memory,
+  createMemoryTestHistory,
+} from "metabase/router/v7/RouterProviderV7";
+import { toV3Location } from "metabase/router/v7/location";
+import {
+  createV7Navigator,
+  toNavigateArgs,
+} from "metabase/router/v7/navigator";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
 import { PortalContainer, ThemeProvider, useMantineTheme } from "metabase/ui";
@@ -59,10 +74,8 @@ export interface RenderWithProvidersOptions {
   // public or sdk-specific tests
   mode?: "default" | "public";
   initialRoute?: string;
-  storeInitialState?: Partial<State>;
+  storeInitialState?: Partial<StoreSeedState>;
   withRouter?: boolean;
-  /** Which router engine hosts the tree when `withRouter` is set. Defaults to v3. */
-  routerEngine?: RouterEngine;
   /** Renders children wrapped with kbar provider */
   withKBar?: boolean;
   withDND?: boolean;
@@ -83,7 +96,6 @@ export function renderWithProviders(
     initialRoute = "/",
     storeInitialState = {},
     withRouter = false,
-    routerEngine = "v3",
     withKBar = false,
     withDND = false,
     withUndos = false,
@@ -97,7 +109,6 @@ export function renderWithProviders(
     initialRoute,
     storeInitialState,
     withRouter,
-    routerEngine,
     withKBar,
     withDND,
     withUndos,
@@ -124,7 +135,6 @@ export function renderHookWithProviders<TProps, TResult>(
     initialRoute = "/",
     storeInitialState = {},
     withRouter = false,
-    routerEngine = "v3",
     withKBar = false,
     withDND = false,
     withUndos = false,
@@ -142,7 +152,6 @@ export function renderHookWithProviders<TProps, TResult>(
     initialRoute,
     storeInitialState,
     withRouter,
-    routerEngine,
     withKBar,
     withDND,
     withUndos,
@@ -153,7 +162,7 @@ export function renderHookWithProviders<TProps, TResult>(
   const WrapperWithRoute = ({ children, ...props }: any) => {
     return (
       <Wrapper {...props}>
-        <ReactRouterRoute path="/" component={() => <>{children}</>} />
+        <Route path="*" element={<>{children}</>} />
       </Wrapper>
     );
   };
@@ -173,30 +182,28 @@ export function getTestStoreAndWrapper({
   initialRoute,
   storeInitialState,
   withRouter,
-  routerEngine = "v3",
   withKBar,
   withDND,
   withUndos,
   customReducers,
   theme,
 }: GetTestStoreAndWrapperOptions) {
-  const isV7Router = withRouter && routerEngine === "v7";
-  let { routing, ...initialState }: Partial<State> =
-    createMockState(storeInitialState);
+  let {
+    settings, // pull settings out because they aren't in the store
+    ...initialState
+  }: Partial<StoreSeedState> = createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
     initialState = _.pick(initialState, ...publicReducerNames);
   }
 
-  // We need to call `useRouterHistory` to ensure the history has a `query` object,
-  // since some components and hooks rely on it to read/write query params.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const browserHistory = useRouterHistory(createMemoryHistory)({
-    entries: [initialRoute],
-  });
-  // v7 owns its own in-memory history; only the v3 engine uses this one.
-  const history = withRouter && !isV7Router ? browserHistory : undefined;
+  // The harness owns the memory history (rather than the provider creating it
+  // internally) so specs still get a handle to drive and assert against.
+  const v7History = withRouter
+    ? createMemoryTestHistory(initialRoute)
+    : undefined;
+  const history = v7History ? createV3HistoryAdapter(v7History) : undefined;
 
   let reducers;
 
@@ -206,20 +213,11 @@ export function getTestStoreAndWrapper({
     reducers = makeMainReducers();
   }
 
-  if (withRouter) {
-    Object.assign(reducers, { routing: routingReducer });
-    Object.assign(initialState, { routing });
-  }
   if (customReducers) {
     reducers = { ...reducers, ...customReducers };
   }
 
-  // Drive navigation through v3 history or the v7 navigator, matching the engine.
-  const routerNavigator = isV7Router
-    ? createV7Navigator()
-    : history
-      ? history
-      : undefined;
+  const routerNavigator = withRouter ? createV7Navigator() : undefined;
   const storeMiddleware = _.compact([
     Api.middleware,
     routerNavigator && routerMiddleware(routerNavigator),
@@ -238,9 +236,8 @@ export function getTestStoreAndWrapper({
       <TestWrapper
         {...props}
         store={store}
-        history={history}
+        v7History={v7History}
         withRouter={withRouter}
-        routerEngine={routerEngine}
         initialRoute={initialRoute}
         withDND={withDND}
         withUndos={withUndos}
@@ -291,9 +288,8 @@ const TestColorSchemeProvider = ({ children }: React.PropsWithChildren) => {
 export function TestWrapper({
   children,
   store,
-  history,
+  v7History,
   withRouter,
-  routerEngine = "v3",
   initialRoute = "/",
   withKBar,
   withDND,
@@ -304,9 +300,8 @@ export function TestWrapper({
 }: {
   children: React.ReactElement;
   store: any;
-  history?: History;
+  v7History?: MemoryTestHistory;
   withRouter: boolean;
-  routerEngine?: RouterEngine;
   initialRoute?: string;
   withKBar: boolean;
   withDND: boolean;
@@ -342,8 +337,7 @@ export function TestWrapper({
                 <MaybeKBar hasKBar={withKBar}>
                   <MaybeRouter
                     hasRouter={withRouter}
-                    routerEngine={routerEngine}
-                    history={history}
+                    v7History={v7History}
                     initialRoute={initialRoute}
                   >
                     {children}
@@ -359,36 +353,103 @@ export function TestWrapper({
   );
 }
 
+/**
+ * The v3 `history` surface the specs drive and assert against
+ * (`getCurrentLocation()`, `push`, `goBack`, `listen`, ...), backed by the v7
+ * memory history. Lets specs written against the v3 engine keep working
+ * unchanged on v7. Cast to `History` so the handle specs already destructure
+ * keeps its type; it implements the subset they use.
+ */
+function createV3HistoryAdapter(history: MemoryTestHistory): History {
+  const getCurrentLocation = () =>
+    // v7 types `action` as its own `Action` enum; the values are the same
+    // "POP"/"PUSH"/"REPLACE" strings the facade's `Action` union uses.
+    toV3Location(history.location, history.action as Action);
+
+  const adapter = {
+    getCurrentLocation,
+    get location() {
+      return getCurrentLocation();
+    },
+    push: (location: LocationDescriptor) => {
+      const [to, options] = toNavigateArgs(location);
+      history.push(to, options.state);
+    },
+    replace: (location: LocationDescriptor) => {
+      const [to, options] = toNavigateArgs(location);
+      history.replace(to, options.state);
+    },
+    go: (n: number) => history.go(n),
+    goBack: () => history.go(-1),
+    goForward: () => history.go(1),
+    listen: (
+      listener: (location: ReturnType<typeof getCurrentLocation>) => void,
+    ) =>
+      history.listen(({ location, action }) =>
+        // Same enum-vs-union mismatch as in `getCurrentLocation` above.
+        listener(toV3Location(location, action as Action)),
+      ),
+  };
+
+  // The adapter implements the subset of v3's `History` the specs actually call,
+  // not the full interface, so widen through `unknown` to keep the `history`
+  // handle they destructure typed as before.
+  return adapter as unknown as History;
+}
+
+function childrenAreRouteTree(children: React.ReactNode): boolean {
+  return Children.toArray(children).some((child) => {
+    if (!isValidElement(child)) {
+      return false;
+    }
+    if (child.type === Route) {
+      return true;
+    }
+    // Routes are often grouped in a fragment (`<><Route/><Route/></>`); descend
+    // so the tree is still recognized, matching how `mapToV7` unwraps fragments.
+    if (child.type === Fragment) {
+      return childrenAreRouteTree(child.props.children);
+    }
+    return false;
+  });
+}
+
 function MaybeRouter({
   children,
   hasRouter,
-  routerEngine,
-  history,
+  v7History,
   initialRoute,
 }: {
   children: React.ReactElement;
   hasRouter: boolean;
-  routerEngine: RouterEngine;
-  history?: History;
+  v7History?: MemoryTestHistory;
   initialRoute: string;
 }): JSX.Element {
+  const dispatch = useDispatch();
+  const onLocationChange = useMemo(
+    () => createLocationMirror(dispatch),
+    [dispatch],
+  );
+
   if (!hasRouter) {
     return children;
   }
-  if (routerEngine === "v7") {
-    return (
-      <RouterProviderV7Memory initialRoute={initialRoute}>
-        {children}
-      </RouterProviderV7Memory>
-    );
-  }
-  if (!history) {
-    return children;
-  }
+  // Tests pass either a `<Route>` tree (rendered as-is) or a bare component.
+  // `<Routes>` only renders `<Route>` children, so wrap a bare component in a
+  // catch-all route.
+  const content = childrenAreRouteTree(children) ? (
+    children
+  ) : (
+    <Route path="*" element={children} />
+  );
   return (
-    <HistoryProvider history={history}>
-      <RouterProvider>{children}</RouterProvider>
-    </HistoryProvider>
+    <RouterProviderV7Memory
+      initialRoute={initialRoute}
+      history={v7History}
+      onLocationChange={onLocationChange}
+    >
+      {content}
+    </RouterProviderV7Memory>
   );
 }
 

@@ -17,12 +17,12 @@ export const DependencyGraph = {
 
 export const DependencyDiagnostics = {
   visitBrokenDependencies: () =>
-    cy.visit("/data-studio/dependency-diagnostics/broken"),
+    cy.visit("/monitor/dependency-diagnostics/broken"),
   visitUnreferencedEntities: () => {
     cy.intercept("GET", "/api/ee/dependencies/graph/unreferenced*").as(
       "unreferencedEntities",
     );
-    cy.visit("/data-studio/dependency-diagnostics/unreferenced");
+    cy.visit("/monitor/dependency-diagnostics/unreferenced");
     cy.wait("@unreferencedEntities");
     DependencyDiagnostics.list().should("be.visible");
   },
