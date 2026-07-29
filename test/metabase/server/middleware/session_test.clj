@@ -558,7 +558,7 @@
           (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id)
                 session       (generate-session! user-id (:id auth-identity))]
             (is (some? session))))))
-    (mt/when-ee-available
+    (mt/when-ee-evailable
      (testing "With feature flag on, password doesn't work"
        (mt/with-premium-features
         #{:multi-factor-auth}
