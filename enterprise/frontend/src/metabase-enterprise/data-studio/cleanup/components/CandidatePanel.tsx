@@ -1,4 +1,3 @@
-import { skipToken } from "@reduxjs/toolkit/query";
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
@@ -19,7 +18,6 @@ import {
   Button,
   Card,
   Divider,
-  Drawer,
   Flex,
   Group,
   Icon,
@@ -48,36 +46,32 @@ import { CreateCandidateModal } from "./CreateCandidateModal";
 import { DismissCandidateModal } from "./DismissCandidateModal";
 import { ModelingStatusBadge } from "./ModelingStatusBadge";
 
-const DRAWER_SIZE = "min(48rem, 100vw)";
-
 function getErrorStatus(error: unknown) {
   return typeof error === "object" && error != null && "status" in error
     ? error.status
     : undefined;
 }
 
-type CandidateDrawerProps = {
-  candidateId: number | undefined;
+type CandidatePanelProps = {
+  candidateId: number;
   onClose: () => void;
   onStale: () => void;
   onTablePublished: () => void;
 };
 
-export function CandidateDrawer({
+export function CandidatePanel({
   candidateId,
   onClose,
   onStale,
   onTablePublished,
-}: CandidateDrawerProps) {
+}: CandidatePanelProps) {
   const dispatch = useDispatch();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDismissModal, setShowDismissModal] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const staleCandidateId = useRef<number | undefined>(undefined);
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
-  const candidateQuery = useGetUsageMetadataCandidateQuery(
-    candidateId ?? skipToken,
-  );
+  const candidateQuery = useGetUsageMetadataCandidateQuery(candidateId);
   const [restoreCandidate] = useRestoreUsageMetadataCandidateMutation();
   const candidate = candidateQuery.data;
 
@@ -191,17 +185,17 @@ export function CandidateDrawer({
 
   return (
     <>
-      <Drawer
-        opened={candidateId != null}
-        onClose={onClose}
-        position="right"
-        size={DRAWER_SIZE}
-        padding={0}
-        withCloseButton={false}
-        withOverlay={false}
-        lockScroll={false}
-        shadow="lg"
-        zIndex={100}
+      <Stack
+        h="100%"
+        miw="38rem"
+        w="42rem"
+        maw="48rem"
+        gap={0}
+        bg="background_page-secondary"
+        bd="0 0 0 1px solid var(--mb-color-border-neutral)"
+        role="complementary"
+        aria-label={t`Candidate report`}
+        data-testid="cleanup-candidate-panel"
       >
         {candidateQuery.isLoading ? (
           <Flex h="100%" align="center" justify="center">
@@ -212,7 +206,7 @@ export function CandidateDrawer({
             <LoadingAndErrorWrapper error={candidateQuery.error} />
           </Flex>
         ) : (
-          <CandidateDrawerBody
+          <CandidatePanelBody
             candidate={candidate}
             onClose={onClose}
             onCreate={() => setShowCreateModal(true)}
@@ -226,7 +220,7 @@ export function CandidateDrawer({
             }}
           />
         )}
-      </Drawer>
+      </Stack>
       {candidate && (
         <>
           <CreateCandidateModal
@@ -257,7 +251,7 @@ export function CandidateDrawer({
   );
 }
 
-type CandidateDrawerBodyProps = {
+type CandidatePanelBodyProps = {
   candidate: UsageMetadataCandidateDetail;
   onClose: () => void;
   onCreate: () => void;
@@ -266,14 +260,14 @@ type CandidateDrawerBodyProps = {
   onPublish: () => void;
 };
 
-function CandidateDrawerBody({
+function CandidatePanelBody({
   candidate,
   onClose,
   onCreate,
   onDismiss,
   onRestore,
   onPublish,
-}: CandidateDrawerBodyProps) {
+}: CandidatePanelBodyProps) {
   const hasPublishedBlocker = candidate.creation_blockers.includes(
     "table-not-published",
   );
