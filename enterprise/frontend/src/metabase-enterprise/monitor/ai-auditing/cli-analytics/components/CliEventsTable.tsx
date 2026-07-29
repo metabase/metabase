@@ -61,7 +61,7 @@ export function eventColumns(
   hasPii: boolean,
 ): EventColumn[] {
   const columns: (EventColumn | false)[] = [
-    { key: "call_id", title: t`ID` },
+    { key: "call_id", title: t`ID`, sort: "call_id" },
     {
       key: "created_at",
       title: t`Created at`,
@@ -80,8 +80,8 @@ export function eventColumns(
       sort: "client_display_name",
     },
     { key: "user_display_name", title: t`User`, sort: "user_display_name" },
-    hasTenants && { key: "tenant_name", title: t`Tenant` },
-    hasPii && { key: "ip_address", title: t`IP address` },
+    hasTenants && { key: "tenant_name", title: t`Tenant`, sort: "tenant_name" },
+    hasPii && { key: "ip_address", title: t`IP address`, sort: "ip_address" },
     { key: "status", title: t`Status`, sort: "status" },
     {
       key: "duration_ms",
@@ -91,7 +91,11 @@ export function eventColumns(
       render: (value) =>
         value == null ? EMPTY_CELL_PLACEHOLDER : formatNumber(Number(value)),
     },
-    hasPii && { key: "error_message", title: t`Error message` },
+    hasPii && {
+      key: "error_message",
+      title: t`Error message`,
+      sort: "error_message",
+    },
   ];
   return columns.filter((column): column is EventColumn => column !== false);
 }

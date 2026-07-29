@@ -333,12 +333,16 @@ export function buildTotalCountQuery({
 }
 
 export const CLI_EVENT_SORT_COLUMNS = [
+  "call_id",
   "created_at",
   "operation",
   "client_display_name",
   "user_display_name",
+  "tenant_name",
+  "ip_address",
   "status",
   "duration_ms",
+  "error_message",
 ] as const;
 
 export type CliEventSortColumn = (typeof CLI_EVENT_SORT_COLUMNS)[number];
