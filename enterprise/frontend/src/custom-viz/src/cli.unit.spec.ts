@@ -57,6 +57,7 @@ describe("cli --help", () => {
     const { stdout } = await runCli(["--help"]);
     expect(stdout).toContain("metabase-custom-viz");
     expect(stdout).toContain("init");
+    expect(stdout).toContain("pack");
   });
 });
 
@@ -70,11 +71,11 @@ describe("cli init", () => {
       "package.json",
       "vite.config.ts",
       "tsconfig.json",
-      "pack.mjs",
       "src/index.tsx",
       "metabase-plugin.json",
       "public/assets/icon.svg",
       ".gitignore",
+      "README.md",
     ];
 
     for (const file of expectedFiles) {
@@ -82,6 +83,23 @@ describe("cli init", () => {
         true,
       );
     }
+  });
+
+  it("does not scaffold a pack script — packing lives in the CLI", async () => {
+    await runCli(["init", "test-viz-no-pack"]);
+    expect(existsSync(join(tmpDir, "test-viz-no-pack", "pack.mjs"))).toBe(
+      false,
+    );
+  });
+
+  it("builds through the CLI's pack command", async () => {
+    await runCli(["init", "my-viz"]);
+    const pkg = JSON.parse(
+      readFileSync(join(tmpDir, "my-viz", "package.json"), "utf-8"),
+    );
+    expect(pkg.scripts.build).toBe("vite build && metabase-custom-viz pack");
+    expect(pkg.devDependencies).not.toHaveProperty("tar-stream");
+    expect(pkg.devDependencies).not.toHaveProperty("@types/tar-stream");
   });
 
   it("substitutes the project name in package.json", async () => {

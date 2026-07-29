@@ -11,10 +11,27 @@ This changelog covers the `@metabase/custom-viz` npm package — the API and CLI
 ### Features
 
 - Per-column formatting: visualization settings now include a `column` function that resolves a column's effective formatting settings — instance-wide defaults, the column's metadata settings, and the card-level settings from the column formatting popover, merged in that order. Pass its result to `formatValue` to render values the way the user configured them ([#78128](https://github.com/metabase/metabase/pull/78128)).
+- New `@metabase/custom-viz pack` command packages a built visualization into an upload-ready `.tgz`. Scaffolded projects call it from their `build` script instead of carrying their own copy of the packaging script, so fixes to packaging and to the bundle size limits now come with a package upgrade. Pass `--dir` to pack a project in another directory.
 
 ### Bug Fixes
 
 - `FormatValueOptions["date_style"]` now accepts `null`, matching the values Metabase actually passes ([#70306](https://github.com/metabase/metabase/pull/70306)).
+
+### Migrate to the `pack` command
+
+Projects scaffolded before 2.0.0 have their own `pack.mjs` at the project root. To switch to the CLI:
+
+1. Update `@metabase/custom-viz` to 2.0.0 or newer.
+2. Change the `build` script in `package.json` to:
+
+   ```
+   vite build && metabase-custom-viz pack
+   ```
+
+3. Delete `pack.mjs`.
+4. Remove `tar-stream` and `@types/tar-stream` from `devDependencies`, then reinstall.
+
+Run `npm run build` to confirm you still get a `<name>-<version>.tgz` at the project root.
 
 ## 1.0.5 (2026-07-23)
 

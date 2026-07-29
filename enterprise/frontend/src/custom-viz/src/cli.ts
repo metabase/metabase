@@ -4,18 +4,18 @@
 
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import { Command } from "commander";
 
 import { version } from "../package.json";
 
+import { packPlugin } from "./pack";
 import {
   generateGitignore,
   generateIconSvg,
   generateIndexTsx,
   generateManifest,
-  generatePackScript,
   generatePackageJson,
   generateReadme,
   generateTsConfig,
@@ -60,7 +60,6 @@ program
       writeFile(join(name, "package.json"), generatePackageJson(name)),
       writeFile(join(name, "vite.config.ts"), generateViteConfig()),
       writeFile(join(name, "tsconfig.json"), generateTsConfig()),
-      writeFile(join(name, "pack.mjs"), generatePackScript()),
       writeFile(
         join(name, "src", "index.tsx"),
         generateIndexTsx(name, displayName),
@@ -75,7 +74,6 @@ program
     console.log(`  ${name}/package.json`);
     console.log(`  ${name}/vite.config.ts`);
     console.log(`  ${name}/tsconfig.json`);
-    console.log(`  ${name}/pack.mjs`);
     console.log(`  ${name}/src/index.tsx`);
     console.log(`  ${name}/metabase-plugin.json`);
     console.log(`  ${name}/public/assets/icon.svg`);
@@ -97,6 +95,26 @@ program
     console.log(
       "  Production:             npm run build, then upload the .tgz in Admin → Custom visualizations → Add",
     );
+  });
+
+program
+  .command("pack")
+  .description("Package a built visualization into an upload-ready .tgz")
+  .option("--dir <dir>", "Project directory", ".")
+  .action(async (options: { dir: string }) => {
+    try {
+      const { outPath, compressedBytes } = await packPlugin(
+        resolve(process.cwd(), options.dir),
+      );
+      console.log(
+        `Packed ${outPath} (${(compressedBytes / 1024).toFixed(1)} KiB)`,
+      );
+    } catch (error) {
+      console.error(
+        `Error: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      process.exit(1);
+    }
   });
 
 program.parse();

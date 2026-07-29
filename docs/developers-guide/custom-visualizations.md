@@ -59,7 +59,6 @@ public/
     icon.svg            # Visualization icon (shown in the chart type picker)
 package.json
 vite.config.ts          # Build configuration — don't edit
-pack.mjs                # Packages the build into a .tgz — don't edit
 tsconfig.json
 ```
 
@@ -407,6 +406,14 @@ npm run build
 ```
 
 This compiles `src/` to `dist/` and packages the result into `<name>-<version>.tgz` at the project root. The archive contains `metabase-plugin.json`, `dist/index.js`, and the whitelisted icon under `dist/assets/`, and has to come in under 5 MiB. The packaging step also rejects an archive whose uncompressed contents exceed 25 MiB. You don't need to commit `dist/`.
+
+Packaging runs through the `@metabase/custom-viz` CLI, so you can also run it on its own:
+
+```
+npx @metabase/custom-viz pack
+```
+
+> **Upgrading an older project**: earlier versions (`1.*`) of the CLI scaffolded a `pack.mjs` script into your project. To switch to the built-in command instead, update `@metabase/custom-viz` to the latest version, set `build` to `vite build && metabase-custom-viz pack` in `package.json`, then delete `pack.mjs` and the `tar-stream` and `@types/tar-stream` devDependencies.
 
 For uploading and managing plugins, see [Custom visualizations](../questions/visualizations/custom.md).
 
