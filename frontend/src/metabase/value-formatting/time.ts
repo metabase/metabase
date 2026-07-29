@@ -39,7 +39,7 @@ export function formatTimeWithUnit(
   const timeFormat = options.time_format
     ? options.time_format
     : // Unjustified type cast. FIXME
-      getTimeFormatFromStyle(timeStyle, unit, timeEnabled as any);
+      getTimeFormatFromStyle(timeStyle, timeEnabled as any);
 
   return d.format(timeFormat);
 }
@@ -65,7 +65,7 @@ export function formatTime(
   const timeFormat =
     options.time_format ??
     // Unjustified type cast. FIXME
-    getTimeFormatFromStyle(timeStyle, unit, timeEnabled as any);
+    getTimeFormatFromStyle(timeStyle, timeEnabled as any);
 
   return parsedTime.isValid() ? parsedTime.format(timeFormat) : String(time);
 }
