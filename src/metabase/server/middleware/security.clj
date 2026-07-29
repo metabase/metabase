@@ -227,8 +227,9 @@
 (defenterprise data-app-connect-src-hosts
   "Origins the data app identified by `slug` may reach (its `allowed_hosts`),
    added to the data-app iframe document's CSP `connect-src` so the sandboxed
-   bundle can `fetch`/XHR them. Returns `[]` in OSS, when the `:data-apps`
-   feature is absent, or when there's no enabled app for `slug`. EE
+   bundle can `fetch`/XHR them. Returns `[]` in OSS, when the
+   `:data-apps-preview` feature is absent, or when there's no enabled app for
+   `slug`. EE
    implementation: [[metabase-enterprise.data-apps.csp]]."
   metabase-enterprise.data-apps.csp
   [_slug]

@@ -49,11 +49,11 @@
 ;;; ---------------------------------------------- Permissions ----------------------------------------------
 
 (deftest non-superuser-can-view-and-list-but-not-manage-test
-  ;; global mode so the `:data-apps` premium feature is visible to the real-HTTP
+  ;; global mode so the `:data-apps-preview` premium feature is visible to the real-HTTP
   ;; `user-real-request` calls below (which run on Jetty threads that don't inherit
   ;; a thread-local `binding`).
   (mt/test-helpers-set-global-values!
-    (mt/with-premium-features #{:data-apps}
+    (mt/with-premium-features #{:data-apps-preview}
       (mt/with-model-cleanup [:model/DataApp]
         (create-app!)
         (testing "a non-superuser can view (open) a data app"
@@ -72,7 +72,7 @@
 
 (deftest superuser-can-manage-and-view-test
   (mt/test-helpers-set-global-values!
-    (mt/with-premium-features #{:data-apps}
+    (mt/with-premium-features #{:data-apps-preview}
       (mt/with-model-cleanup [:model/DataApp]
         (create-app!)
         (testing "a superuser can list, read metadata, and serve the bundle"
@@ -85,7 +85,7 @@
                "BUNDLE")))))))
 
 (deftest list-available-apps-test
-  (mt/with-premium-features #{:data-apps}
+  (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp]
       (t2/insert! :model/DataApp :name "ready" :display_name "Ready" :bundle_path "data_apps/ready/index.js")
       (t2/insert! :model/DataApp :name "disabled" :display_name "Disabled" :bundle_path "data_apps/disabled/index.js"
@@ -96,7 +96,7 @@
               (mt/user-http-request :rasta :get 200 "apps?available=true"))))))
 
 (deftest bundle-includes-allowed-hosts-header-test
-  (mt/with-premium-features #{:data-apps}
+  (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp]
       (t2/insert! :model/DataApp
                   :name          "demo"
@@ -116,7 +116,7 @@
                  (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"]))))))))
 
 (deftest list-includes-allowed-hosts-test
-  (mt/with-premium-features #{:data-apps}
+  (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp]
       (t2/insert! :model/DataApp
                   :name "withhosts" :display_name "With"
@@ -180,7 +180,7 @@
 
 (deftest delete-endpoint-test
   (mt/test-helpers-set-global-values!
-    (mt/with-premium-features #{:data-apps}
+    (mt/with-premium-features #{:data-apps-preview}
       (mt/with-model-cleanup [:model/DataApp]
         (create-app!)
         (testing "a non-superuser cannot remove an app"
@@ -262,7 +262,7 @@
 
 (deftest list-and-bundle-endpoints-test
   (mt/test-helpers-set-global-values!
-    (mt/with-premium-features #{:data-apps}
+    (mt/with-premium-features #{:data-apps-preview}
       (mt/with-model-cleanup [:model/DataApp]
         (data-app.sync/import-from-snapshot!
          (snapshot (app-files "demo" {:name "Demo app" :path "dist/index.js" :bundle "DEMOBUNDLE"})))
@@ -276,7 +276,7 @@
                "DEMOBUNDLE")))))))
 
 (deftest repo-status-endpoint-test
-  (mt/with-premium-features #{:data-apps}
+  (mt/with-premium-features #{:data-apps-preview}
     (testing "reports no repository when none is connected"
       (mt/with-dynamic-fn-redefs [data-app.sync/repo-url (constantly nil)]
         (is (=? {:configured false :url nil}
@@ -288,7 +288,7 @@
 
 (deftest enable-disable-endpoint-test
   (mt/test-helpers-set-global-values!
-    (mt/with-premium-features #{:data-apps}
+    (mt/with-premium-features #{:data-apps-preview}
       (mt/with-model-cleanup [:model/DataApp]
         (data-app.sync/import-from-snapshot!
          (snapshot (app-files "demo" {:name "Demo" :path "index.js" :bundle "BUNDLE"})))

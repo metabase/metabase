@@ -215,6 +215,7 @@
              (update :failed conj id)
              (update :failures conj
                      {::transform t
+                      ::cascade? true
                       ::message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")}))
 
          ;; Defer if another in-flight transform is already writing this target table.
@@ -423,17 +424,35 @@
                                            :scheduled  (contains? scheduled id))))
          plan)))
 
+(defn- split-cascade-failures
+  "Split `failures` into `[root-causes cascades]`, where cascades are dependents that never ran
+  because an upstream transform failed. If somehow every failure is a cascade, treat them all as
+  root causes so they aren't silently dropped."
+  [failures]
+  (let [{cascades true, roots false} (group-by (comp boolean ::cascade?) failures)]
+    (if (seq roots)
+      [roots cascades]
+      [failures nil])))
+
 (defn- compile-transform-failure-messages
   "Render the `::failures` of a coordinated run (as returned by [[run-transforms!]]) into a single
-  human-readable message, one block per failed transform with a link to its run."
+  human-readable message: one block per root-cause failure with a link to its run, plus a single
+  summary line for dependents skipped because an upstream transform failed."
   [failures]
-  (->> failures
-       (map (fn [failure]
-              (format "%s %s:\n%s"
-                      (:name (::transform failure))
-                      (urls/transform-run-url (:id (::transform failure)))
-                      (::message failure))))
-       (str/join "\n\n")))
+  (let [[roots cascades] (split-cascade-failures failures)
+        blocks  (map (fn [failure]
+                       (format "%s %s:\n%s"
+                               (:name (::transform failure))
+                               (urls/transform-run-url (:id (::transform failure)))
+                               (::message failure)))
+                     roots)
+        summary (when (seq cascades)
+                  (str (i18n/trsn "{0} downstream transform did not run because a transform it depends on failed"
+                                  "{0} downstream transforms did not run because a transform they depend on failed"
+                                  (count cascades))
+                       ": "
+                       (str/join ", " (map (comp :name ::transform) cascades))))]
+    (str/join "\n\n" (cond-> blocks summary (concat [summary])))))
 
 (defn execute-coordinated-run!
   "Run `transform-ids` per `plan` (as returned by [[get-plan]] or [[dependencies->plan]]) as the
@@ -504,14 +523,17 @@
   ;; or the creator if it hasn't been modified.
   ;; Or the admins if the creator is not active.
   ;; We hope that this will be the most recent user.
+  ;; Only root-cause failures are reported individually; dependents that never ran because an
+  ;; upstream transform failed are summarized as a count to avoid a cascade of redundant errors.
   (let [job (t2/select-one :model/TransformJob job-id)
-        failures (map (fn [failure]
-                        (let [transform (::transform failure)]
-                          (assoc failure ::emails (->> transform
-                                                       users-to-notify-of-transform-failure
-                                                       (keep :email)))))
-                      failures)
-        by-user (group-by ::emails failures)]
+        [roots cascades] (split-cascade-failures failures)
+        roots (map (fn [failure]
+                     (let [transform (::transform failure)]
+                       (assoc failure ::emails (->> transform
+                                                    users-to-notify-of-transform-failure
+                                                    (keep :email)))))
+                   roots)
+        by-user (group-by ::emails roots)]
     (doseq [[user-emails failures] by-user
             email user-emails]
       (events/publish-event! :event/transform-failed
@@ -519,6 +541,7 @@
                               :job_name (:name job)
                               :job_href (urls/transform-job-url job-id)
                               :failure_count (count failures)
+                              :skipped_count (count cascades)
                               :failures (mapv (fn [failure]
                                                 {:transform_name (:name (::transform failure))
                                                  :transform_href (urls/transform-run-url (:id (::transform failure)))

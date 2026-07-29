@@ -7,6 +7,7 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.seed :as notification.seed]
@@ -709,3 +710,44 @@
                    (jobs/run-transforms! 0 #{1 2 3 4 5} {:order plan :deps deps} {:run-method :manual}))
                 "all three SQL transforms reach the barrier (run in parallel)")
             (is (= 1 @max-py) "python lane stays single-slot")))))))
+
+(deftest compile-transform-failure-messages-test
+  (let [root    {::jobs/transform {:id 1 :name "root"} ::jobs/message "boom\nsome detail"}
+        child-a {::jobs/transform {:id 2 :name "child-a"} ::jobs/cascade? true
+                 ::jobs/message "Failed to run because one or more of the transforms it depends on failed."}
+        child-b {::jobs/transform {:id 3 :name "child-b"} ::jobs/cascade? true
+                 ::jobs/message "Failed to run because one or more of the transforms it depends on failed."}]
+    (testing "cascade failures are collapsed into a single summary line"
+      (let [message (#'jobs/compile-transform-failure-messages [root child-a child-b])]
+        (is (str/includes? message "boom"))
+        (is (str/includes? message "2 downstream transforms did not run because a transform they depend on failed: child-a, child-b"))
+        (is (not (str/includes? message "Failed to run because one or more")))))
+    (testing "singular form for a single cascade failure"
+      (let [message (#'jobs/compile-transform-failure-messages [root child-a])]
+        (is (str/includes? message "1 downstream transform did not run because a transform it depends on failed: child-a"))))
+    (testing "no summary line when there are no cascade failures"
+      (is (not (str/includes? (#'jobs/compile-transform-failure-messages [root]) "downstream"))))
+    (testing "all-cascade failures are reported in full rather than dropped"
+      (let [message (#'jobs/compile-transform-failure-messages [child-a child-b])]
+        (is (str/includes? message "child-a"))
+        (is (str/includes? message "child-b"))
+        (is (str/includes? message "Failed to run because one or more"))))))
+
+(deftest notify-transform-failures-skips-cascades-test
+  (testing "only root-cause failures are emailed; cascades are summarized as a count"
+    (mt/with-temp [:model/TransformJob job {:name "cascade-job" :schedule "0 0 * * * ? *"}
+                   :model/Transform root {:name "root-t"}
+                   :model/Transform child {:name "child-t"}]
+      (let [published (atom [])]
+        (with-redefs [events/publish-event! (fn [topic payload] (swap! published conj [topic payload]))]
+          (#'jobs/notify-transform-failures
+           (:id job)
+           [{::jobs/transform root ::jobs/message "boom"}
+            {::jobs/transform child ::jobs/cascade? true
+             ::jobs/message "Failed to run because one or more of the transforms it depends on failed."}]))
+        (is (seq @published))
+        (doseq [[topic payload] @published]
+          (is (= :event/transform-failed topic))
+          (is (= ["root-t"] (map :transform_name (:failures payload))))
+          (is (= 1 (:failure_count payload)))
+          (is (= 1 (:skipped_count payload))))))))

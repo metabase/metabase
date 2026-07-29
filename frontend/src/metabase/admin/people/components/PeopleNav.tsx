@@ -13,7 +13,7 @@ import { UpsellSSO } from "metabase/admin/upsells";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { useLocation } from "metabase/router";
 import { Divider, Stack } from "metabase/ui";
 
 export function PeopleNav() {
@@ -81,7 +81,7 @@ export function PeopleNav() {
 }
 
 export const PeopleNavItem = (props: AdminNavItemProps) => {
-  const location = useSelector(getLocation);
+  const location = useLocation();
   const subpath = location?.pathname;
 
   // we want to highlight the groups nav item if it's showing a details subpage

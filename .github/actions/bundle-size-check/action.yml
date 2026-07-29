@@ -1,10 +1,11 @@
-name: Embedding SDK Bundle Size Check
+name: Bundle Size Check
 description: |
   Measures app + embedding SDK bundle sizes from the current and base-ref
   uberjars (reusing the builds that already ran) plus their bundle-stats
-  artifacts, and flags changes to the chunked SDK's reachable, gzipped size
-  beyond the threshold. Skips when the base-ref artifacts aren't available
-  rather than rebuilding from source (which would compare across pipelines).
+  artifacts, and flags gzipped size changes beyond the threshold for the main
+  app's initial bundle and the chunked SDK's reachable total. Skips when the
+  base-ref artifacts aren't available rather than rebuilding from source (which
+  would compare across pipelines).
 
 inputs:
   edition:
@@ -18,12 +19,18 @@ inputs:
     required: true
 
 outputs:
-  status:
-    description: "Bundle size status: increased, decreased, or stable"
-    value: ${{ steps.compare.outputs.status }}
-  size_change_percent:
-    description: "size change percent (positive = increase, negative = decrease)"
-    value: ${{ steps.compare.outputs.size_change_percent }}
+  app_status:
+    description: "App initial bundle status: increased, decreased, or stable"
+    value: ${{ steps.compare.outputs.app_initial_status }}
+  app_size_change_percent:
+    description: "App initial bundle size change percent (positive = increase, negative = decrease)"
+    value: ${{ steps.compare.outputs.app_initial_size_change_percent }}
+  sdk_status:
+    description: "Chunked SDK bundle status: increased, decreased, or stable"
+    value: ${{ steps.compare.outputs.embedding_sdk_chunked_total_status }}
+  sdk_size_change_percent:
+    description: "Chunked SDK bundle size change percent (positive = increase, negative = decrease)"
+    value: ${{ steps.compare.outputs.embedding_sdk_chunked_total_size_change_percent }}
 
 runs:
   using: "composite"
@@ -52,13 +59,20 @@ runs:
         BASE_SHA: ${{ inputs.base-ref-commit }}
         THRESHOLD: ${{ inputs.threshold-percent }}
         MEASURE_BUNDLES: app,embedding-sdk-legacy,embedding-sdk-chunked
+        # The gated bundles, as "<bundle>/<kind>". Each one's step outputs are
+        # named after its key (see outputPrefix in compare.js), which is what the
+        # action outputs above read.
+        GATES: app/initial,embedding-sdk-chunked/total
       run: |
         set -uo pipefail
 
         skip() {
-          echo "::notice::Embedding SDK bundle-size check skipped: $1"
-          echo "status=stable" >> "$GITHUB_OUTPUT"
-          echo "size_change_percent=0" >> "$GITHUB_OUTPUT"
+          echo "::notice::Bundle-size check skipped: $1"
+          for gate in ${GATES//,/ }; do
+            prefix=$(printf '%s' "$gate" | tr -c 'a-zA-Z0-9' '_')
+            echo "${prefix}_status=stable" >> "$GITHUB_OUTPUT"
+            echo "${prefix}_size_change_percent=0" >> "$GITHUB_OUTPUT"
+          done
           exit 0
         }
 
@@ -97,4 +111,4 @@ runs:
         MEASURE_ROOT=temp/base node ./.github/scripts/measure-bundle-sizes.js > temp/base-sizes.json \
           || { echo "::error::Failed to measure base bundle sizes"; exit 1; }
 
-        node ./.github/actions/sdk-bundle-size-check/compare.js temp/current-sizes.json temp/base-sizes.json
+        node ./.github/actions/bundle-size-check/compare.js temp/current-sizes.json temp/base-sizes.json
