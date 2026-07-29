@@ -2,8 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDispatch } from "metabase/redux";
-import type { Location } from "metabase/router";
-import { replace } from "metabase/router";
+import { replace, useRouter } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { ContentDiagnostics } from "../components";
@@ -17,11 +16,8 @@ import {
   parseUserParams,
 } from "./utils";
 
-type StaleContentPageProps = {
-  location: Location;
-};
-
-export function StaleContentPage({ location }: StaleContentPageProps) {
+export function StaleContentPage() {
+  const { location } = useRouter();
   const isInitializingRef = useRef(false);
   const dispatch = useDispatch();
 

@@ -13,7 +13,7 @@ import {
   within,
 } from "__support__/ui";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type {
   ContentDiagnosticsFinding,
@@ -86,14 +86,12 @@ function setup({
 
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
-  const PageComponent = withRouteProps(StaleContentPage);
-
   const { history } = renderWithProviders(
     <Route
       path={Urls.staleContent()}
       element={
         <MonitorContent>
-          <PageComponent />
+          <StaleContentPage />
         </MonitorContent>
       }
     />,
