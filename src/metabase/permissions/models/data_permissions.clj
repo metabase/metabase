@@ -190,42 +190,40 @@
 (def ^:dynamic *permissions-for-user*
   "A dynamically-bound atom containing a cache of data permissions that have been fetched so far for the current user.
    Keys are:
-    - :db-ids   -> A set of the IDs of databases which have already been fetched.
-    - :all-dbs? -> True once [[prime-all-dbs-cache]] has primed every database, meaning questions spanning all
-                   databases (e.g. [[user-has-any-perms-of-type?]]) can be answered from the cache.
-    - :intern   -> The interner used to dedupe entry values; created on first prime so sharing spans every prime
-                   in the request.
-    - :perms    -> A map of permissions with the structure `{user-id {perm-type {db-id entry}}}` so that we NEVER
-                   accidentally use the cache of the wrong user. Each `entry` is a compact map
+    - :db-ids -> A set of the IDs of databases which have already been fetched.
+    - :intern -> The interner used to dedupe entry values; created on first prime so sharing spans every prime
+                 in the request.
+    - :perms  -> A map of permissions with the structure `{user-id {perm-type {db-id entry}}}` so that we NEVER
+                 accidentally use the cache of the wrong user. Each `entry` is a compact map
 
-                       {:groups {group-id #{perm-value}}                                    ; db-level rows
-                        :tables {table-id {group-id #{{:schema schema-name                 ; table-level rows
-                                                       :value  perm-value}}}}}
+                     {:groups {group-id #{perm-value}}                                    ; db-level rows
+                      :tables {table-id {group-id #{{:schema schema-name                 ; table-level rows
+                                                     :value  perm-value}}}}}
 
-                   The sets almost always hold exactly one value; see [[rows->cache-entry]] for why every distinct
-                   value of duplicate rows is preserved rather than one row winning.
+                 The sets almost always hold exactly one value; see [[rows->cache-entry]] for why every distinct
+                 value of duplicate rows is preserved rather than one row winning.
 
-                   On instances with many databases these maps are typically identical across most of them, so
-                   they are interned at load time: equal values share one instance. This keeps the cache size
-                   proportional to the number of *distinct* permission profiles rather than `groups * databases`
-                   (see #76077 for how large the raw row count can get). Concretely, on an instance where the
-                   user's groups have the same db-level grants almost everywhere plus one database with
-                   table-level rows:
+                 On instances with many databases these maps are typically identical across most of them, so
+                 they are interned at load time: equal values share one instance. This keeps the cache size
+                 proportional to the number of *distinct* permission profiles rather than `groups * databases`
+                 (see #76077 for how large the raw row count can get). Concretely, on an instance where the
+                 user's groups have the same db-level grants almost everywhere plus one database with
+                 table-level rows:
 
-                       {1
-                        {:perms/view-data
-                         {10 {:groups {1 #{:unrestricted}, 2 #{:blocked}} :tables {}}  ; ─┐ interning makes
-                          11 {:groups {1 #{:unrestricted}, 2 #{:blocked}} :tables {}}  ;  ├ these :groups maps
-                          12 {:groups {1 #{:unrestricted}, 2 #{:blocked}} :tables {}}  ; ─┘ identical
-                          13 {:groups {1 #{:unrestricted}}
-                              :tables
-                              {100 {2 #{{:schema \"public\"    :value :blocked}}}  ; ─┬ identical, and their
-                               101 {2 #{{:schema \"public\"    :value :blocked}}}  ; ─┘ inner :schema/:value
-                               102 {2 #{{:schema \"reporting\" :value :blocked}}}}}}}}  ; maps also identical
+                     {1
+                      {:perms/view-data
+                       {10 {:groups {1 #{:unrestricted}, 2 #{:blocked}} :tables {}}  ; ─┐ interning makes
+                        11 {:groups {1 #{:unrestricted}, 2 #{:blocked}} :tables {}}  ;  ├ these :groups maps
+                        12 {:groups {1 #{:unrestricted}, 2 #{:blocked}} :tables {}}  ; ─┘ identical
+                        13 {:groups {1 #{:unrestricted}}
+                            :tables
+                            {100 {2 #{{:schema \"public\"    :value :blocked}}}  ; ─┬ identical, and their
+                             101 {2 #{{:schema \"public\"    :value :blocked}}}  ; ─┘ inner :schema/:value
+                             102 {2 #{{:schema \"reporting\" :value :blocked}}}}}}}}  ; maps also identical
 
-                   Each annotated group prints as N equal maps but is held as ONE shared instance plus N
-                   pointers — 1,000 databases with the same profile cost one :groups map, not 1,000. The sharing
-                   is established at construction by [[rows->cache-entry]] and is invisible to readers.
+                 Each annotated group prints as N equal maps but is held as ONE shared instance plus N
+                 pointers — 1,000 databases with the same profile cost one :groups map, not 1,000. The sharing
+                 is established at construction by [[rows->cache-entry]] and is invisible to readers.
 
   When checking permissions, if a DB has not been fetched, it will be added to the cache before the check returns."
   (atom {:db-ids #{} :perms {}}))
@@ -291,20 +289,17 @@
             new-by-type (update-vals folded
                                      (fn [db-id->entry]
                                        (update-vals db-id->entry #(finalize-cache-entry interner %))))]
-        ;; assoc rather than reset! so keys other than the three we compute here (e.g. :all-dbs?) survive
-        (swap! *permissions-for-user* assoc
-               :db-ids (into cached-db-ids db-ids)
-               :intern interner
-               :perms  (update perms user-id #(merge-with merge % new-by-type)))))))
+        (reset! *permissions-for-user*
+                {:db-ids (into cached-db-ids db-ids)
+                 :intern interner
+                 :perms  (update perms user-id #(merge-with merge % new-by-type))})))))
 
-(defn prime-all-dbs-cache
-  "Prime the permissions cache for every database, so that questions spanning all databases (like
-  [[user-has-any-perms-of-type?]]) can be answered from the cache. Records completeness under the cache's
-  `:all-dbs?` key, so repeated calls within a request don't re-fetch the database ID list."
-  []
-  (when-not (:all-dbs? @*permissions-for-user*)
-    (prime-db-cache (t2/select-pks-vec :model/Database))
-    (swap! *permissions-for-user* assoc :all-dbs? true)))
+(def ^:dynamic *dbs-granting-max-perm-value*
+  "Request-scoped cache for [[user-has-any-perms-of-type?]]: an atom holding a map of `[user-id perm-type]` to the set
+  of database IDs for which the user has the most permissive value of that permission type in some group. Each set is
+  loaded across all databases in one query, so every `:exclude-db-ids` variant of the question is answered from it.
+  `nil` outside [[with-relevant-permissions-for-user]], in which case checks query the DB directly."
+  nil)
 
 (defenterprise enforced-sandboxes-for-user
   "Given a user-id, returns the set of sandboxes that should be enforced for the provided user ID. This result is
@@ -326,8 +321,9 @@
   "Populates the `*permissions-for-user*` and `*sandboxes-for-user*` dynamic vars for use by the cache-aware functions
   in this namespace."
   [user-id & body]
-  `(binding [*permissions-for-user* (atom {:db-ids #{} :perms {}})
-             *sandboxes-for-user*   (delay (enforced-sandboxes-for-user ~user-id))]
+  `(binding [*permissions-for-user*          (atom {:db-ids #{} :perms {}})
+             *dbs-granting-max-perm-value*   (atom {})
+             *sandboxes-for-user*            (delay (enforced-sandboxes-for-user ~user-id))]
      ~@body))
 
 (def ^:dynamic *use-perms-cache?*
@@ -670,51 +666,42 @@
                     (most-restrictive-per-group :perms/download-results pairs))
           (least-permissive-value :perms/download-results)))))
 
-(defn- cache-entry-has-value?
-  "True if a permissions cache entry (see [[*permissions-for-user*]]) contains `value` in any db-level or table-level
-  row."
-  [entry value]
-  (boolean
-   (or (some #(contains? % value)
-             (vals (:groups entry)))
-       (some (fn [group-id->rows]
-               (some (fn [rows]
-                       (some #(= (:value %) value) rows))
-                     (vals group-id->rows)))
-             (vals (:tables entry))))))
+(defn- dbs-granting-max-perm-value
+  "The set of database IDs for which `user-id` has the most permissive value of `perm-type` in some group, at either
+  the database or table level. Answered from [[*dbs-granting-max-perm-value*]] when bound; loaded across all databases
+  in one query on the first miss."
+  [user-id perm-type]
+  (let [load-ids (fn []
+                   (t2/select-fn-set :db_id :model/DataPermissions
+                                     {:select-distinct [:p.db_id]
+                                      :from [[:permissions_group_membership :pgm]]
+                                      :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
+                                             [:data_permissions :p]   [:= :p.group_id :pg.id]]
+                                      :where [:and
+                                              [:= :pgm.user_id user-id]
+                                              [:= :p.perm_type (u/qualified-name perm-type)]
+                                              [:= :p.perm_value (u/qualified-name (most-permissive-value perm-type))]]}))]
+    (if-let [cache (when (use-cache? user-id) *dbs-granting-max-perm-value*)]
+      (or (get @cache [user-id perm-type])
+          (let [db-ids (or (load-ids) #{})]
+            (swap! cache assoc [user-id perm-type] db-ids)
+            db-ids))
+      (or (load-ids) #{}))))
 
 (mu/defn user-has-any-perms-of-type? :- :boolean
   "Returns a Boolean indicating whether the user has the highest level of access for the given permission type in any
   group, for at least one database or table. Optionally takes `:exclude-db-ids` to exclude specific databases from the
   check.
 
-  When the request-scoped permissions cache is available it primes it for all databases and answers from it, so
-  callers that invoke this repeatedly within one request (e.g. once per snippet in a list) cost one fetch rather than
-  one query per call. Note the cache excludes permission rows for inactive tables, so a grant that exists only on an
-  inactive table does not count."
+  When called for the current user within a request, the set of database IDs granting the permission is fetched once
+  across all databases and cached, so callers that invoke this repeatedly within one request (e.g. once per snippet in
+  a list) cost one query rather than one per call."
   [user-id perm-type & {:keys [exclude-db-ids]}]
   (or (is-superuser? user-id)
       (and (= perm-type :perms/manage-table-metadata)
            (is-data-analyst? user-id))
-      (let [value (most-permissive-value perm-type)]
-        (if (use-cache? user-id)
-          (let [exclude? (set exclude-db-ids)]
-            (prime-all-dbs-cache)
-            (boolean (some (fn [[db-id entry]]
-                             (and (not (exclude? db-id))
-                                  (cache-entry-has-value? entry value)))
-                           (get-in (:perms @*permissions-for-user*) [user-id perm-type]))))
-          (t2/exists? :model/DataPermissions
-                      {:select [[:p.perm_value :value]]
-                       :from [[:permissions_group_membership :pgm]]
-                       :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                              [:data_permissions :p]   [:= :p.group_id :pg.id]]
-                       :where (into [:and
-                                     [:= :pgm.user_id user-id]
-                                     [:= :p.perm_type (u/qualified-name perm-type)]
-                                     [:= :p.perm_value (u/qualified-name value)]]
-                                    (when (seq exclude-db-ids)
-                                      [[:not-in :p.db_id exclude-db-ids]]))})))))
+      (boolean (seq (remove (set exclude-db-ids)
+                            (dbs-granting-max-perm-value user-id perm-type))))))
 
 (defn- admin-permission-graph
   "Returns the graph representing admin permissions for all groups"
