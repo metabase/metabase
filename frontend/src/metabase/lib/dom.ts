@@ -37,9 +37,6 @@ export const isWithinIframe = function (): boolean {
   }
 };
 
-// add a global so we can check if the parent iframe is Metabase
-window.METABASE = true;
-
 // check whether scrollbars are visible to the user,
 // this is off by default on Macs, but can be changed
 // Always on on most other non mobile platforms
