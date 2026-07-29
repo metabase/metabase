@@ -1288,6 +1288,7 @@
               lib
               lib-be
               llm
+              metrics
               models
               native-query-snippets
               notification
