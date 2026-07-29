@@ -191,6 +191,8 @@
   "A dynamically-bound atom containing a cache of data permissions that have been fetched so far for the current user.
    Keys are:
     - :db-ids -> A set of the IDs of databases which have already been fetched.
+    - :all-dbs-primed? -> True once [[prime-all-dbs-cache]] has primed every database, meaning questions spanning all
+                 databases (e.g. [[user-has-any-perms-of-type?]]) can be answered from the cache.
     - :intern -> The interner used to dedupe entry values; created on first prime so sharing spans every prime
                  in the request.
     - :perms  -> A map of permissions with the structure `{user-id {perm-type {db-id entry}}}` so that we NEVER
@@ -289,19 +291,24 @@
             new-by-type (update-vals folded
                                      (fn [db-id->entry]
                                        (update-vals db-id->entry #(finalize-cache-entry interner %))))]
-        (reset! *permissions-for-user*
-                {:db-ids (into cached-db-ids db-ids)
-                 :intern interner
-                 :perms  (update perms user-id #(merge-with merge % new-by-type))})))))
+        ;; assoc rather than reset! so keys other than the three we compute here (e.g. :all-dbs-primed?) survive
+        (swap! *permissions-for-user* assoc
+               :db-ids (into cached-db-ids db-ids)
+               :intern interner
+               :perms  (update perms user-id #(merge-with merge % new-by-type)))))))
 
-(defn- prime-all-dbs-cache
+(defn prime-all-dbs-cache
   "Prime the permissions cache for every database, so that questions spanning all databases (like
-  [[user-has-any-perms-of-type?]]) can be answered from the cache. Records completeness by adding `::all-dbs` to the
-  cache's `:db-ids` set, so repeated calls within a request don't re-fetch the database ID list."
-  []
-  (when-not (contains? (:db-ids @*permissions-for-user*) ::all-dbs)
-    (prime-db-cache (t2/select-pks-vec :model/Database))
-    (swap! *permissions-for-user* update :db-ids conj ::all-dbs)))
+  [[user-has-any-perms-of-type?]]) can be answered from the cache. Records completeness under the cache's
+  `:all-dbs-primed?` key, so repeated calls within a request don't re-fetch the database ID list. Callers that have
+  already fetched the full set of database IDs can pass it as `all-db-ids` to skip the fetch."
+  ([]
+   (prime-all-dbs-cache nil))
+  ([all-db-ids]
+   (when-not (:all-dbs-primed? @*permissions-for-user*)
+     (prime-db-cache (or (not-empty all-db-ids)
+                         (t2/select-pks-vec :model/Database)))
+     (swap! *permissions-for-user* assoc :all-dbs-primed? true))))
 
 (defenterprise enforced-sandboxes-for-user
   "Given a user-id, returns the set of sandboxes that should be enforced for the provided user ID. This result is
