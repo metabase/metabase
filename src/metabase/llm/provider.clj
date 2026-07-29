@@ -39,6 +39,7 @@
   [{:type          "anthropic"
     :label         (deferred-tru "Anthropic")
     :default-model "claude-sonnet-4-6"
+    :mini-model    "claude-haiku-4-5"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -54,6 +55,7 @@
    {:type          "openai"
     :label         (deferred-tru "OpenAI")
     :default-model "gpt-5.4"
+    :mini-model    "gpt-5.4-mini"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -69,6 +71,7 @@
    {:type          "openrouter"
     :label         (deferred-tru "OpenRouter")
     :default-model "anthropic/claude-sonnet-4.6"
+    :mini-model    "anthropic/claude-haiku-4.5"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -161,6 +164,7 @@
    {:type          "bedrock"
     :label         (deferred-tru "Amazon Bedrock")
     :default-model "anthropic.claude-opus-4-8"
+    :mini-model    "anthropic.claude-haiku-4-5"
     :fields        [{:key         :access-key-id
                      :label       (deferred-tru "Access key ID")
                      :type        :password
@@ -248,6 +252,13 @@
   models are deployment names the admin chooses)."
   [type-name]
   (:default-model (provider-type type-name)))
+
+(defn mini-model
+  "The fastest and cheapest model `type-name` serves — what short utility calls such as conversation titles run on
+  when no model has been picked for them. Returns nil for types with no such model: Azure, whose models are
+  deployment names the admin chooses, and the managed provider, which serves a single benchmarked model."
+  [type-name]
+  (:mini-model (provider-type type-name)))
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 

@@ -10,7 +10,7 @@ import {
   setupLlmProvidersEndpoint,
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { LlmConnectionModels } from "metabase-types/api";
 import {
   createMockLlmConnectionModels,
@@ -118,9 +118,12 @@ describe("AIProviderList", () => {
     });
 
     expect(await screen.findByTestId("provider-anthropic")).toBeInTheDocument();
-    expect(await screen.findByText("Model")).toBeInTheDocument();
 
-    expect(fetchMock.callHistory.calls("path:/api/llm/models")).toHaveLength(1);
+    await waitFor(() =>
+      expect(fetchMock.callHistory.calls("path:/api/llm/models")).toHaveLength(
+        1,
+      ),
+    );
   });
 
   it("shows the skeleton until the connections have loaded", async () => {

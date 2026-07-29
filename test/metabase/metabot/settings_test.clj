@@ -302,6 +302,59 @@
              clojure.lang.ExceptionInfo #"Model name is required"
              (metabot.settings/llm-metabot-provider! "metabase/")))))))
 
+(deftest llm-title-model-defaults-to-the-metabot-connections-mini-model-test
+  (testing "with nothing stored, titles run on the fastest model of the connection Metabot uses"
+    (with-connections [configured-anthropic
+                       (connection "openai" "openai" {:api-key "sk-openai"})]
+      (with-selected-model "anthropic/claude-sonnet-4-6"
+        (is (= "anthropic/claude-haiku-4-5" (metabot.settings/llm-title-model))))
+      (testing "including a second connection of the same type, which keeps its own key"
+        (with-selected-model "openai/gpt-5.4"
+          (is (= "openai/gpt-5.4-mini" (metabot.settings/llm-title-model))))))))
+
+(deftest llm-title-model-falls-back-to-the-metabot-model-test
+  (testing "provider types with no mini model fall through to the model Metabot itself uses"
+    (with-connections [(connection "azure" "azure" {:api-key  "azure-key"
+                                                    :base-url "https://my-resource.services.ai.azure.com/openai"})]
+      (with-selected-model "azure/openai/my-gpt-deployment"
+        (is (= "azure/openai/my-gpt-deployment" (metabot.settings/llm-title-model))))))
+  (testing "so does a model reference naming a connection that does not exist"
+    (with-connections []
+      (with-selected-model "gone/some-model"
+        (is (= "gone/some-model" (metabot.settings/llm-title-model)))))))
+
+(deftest llm-title-model-explicit-value-wins-test
+  (with-connections [configured-anthropic]
+    (with-selected-model "anthropic/claude-sonnet-4-6"
+      (mt/with-temporary-setting-values [llm-title-model "anthropic/claude-opus-4-8"]
+        (is (= "anthropic/claude-opus-4-8" (metabot.settings/llm-title-model))))
+      (testing "and clearing it returns to the derived mini model"
+        (mt/with-temporary-setting-values [llm-title-model nil]
+          (is (= "anthropic/claude-haiku-4-5" (metabot.settings/llm-title-model))))))))
+
+(deftest explicit-title-model-reports-only-what-was-set-test
+  (testing "the explicit reading is nil while the model is derived, so callers can tell a choice from a fallback"
+    (with-connections [configured-anthropic]
+      (with-selected-model "anthropic/claude-sonnet-4-6"
+        (mt/with-temporary-setting-values [llm-title-model nil]
+          (is (nil? (metabot.settings/explicit-title-model)))
+          (is (= "anthropic/claude-haiku-4-5" (metabot.settings/llm-title-model))))
+        (mt/with-temporary-setting-values [llm-title-model "anthropic/claude-opus-4-8"]
+          (is (= "anthropic/claude-opus-4-8" (metabot.settings/explicit-title-model))))))))
+
+(deftest llm-title-model-is-validated-like-the-metabot-model-test
+  (with-connections [configured-anthropic
+                     (connection "azure" "azure" {:api-key  "azure-key"
+                                                  :base-url "https://my-resource.services.ai.azure.com/openai"})]
+    (testing "rejects a reference with no model"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Model name is required"
+           (metabot.settings/llm-title-model! "anthropic"))))
+    (testing "applies the azure deployment-name rules"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Invalid Azure model"
+           (metabot.settings/llm-title-model! "azure/gemini/some-deployment"))))))
+
 (deftest ai-usage-max-retention-days-default-test
   (testing "defaults to 180 days when no env var is set"
     (mt/with-temp-env-var-value! [mb-ai-usage-max-retention-days nil]
