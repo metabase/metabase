@@ -1,4 +1,3 @@
-import FakeTimers, { type Clock } from "@sinonjs/fake-timers";
 import Cookie from "js-cookie";
 
 import { logout, refreshSession } from "metabase/redux/auth";
@@ -19,8 +18,6 @@ jest.mock("metabase/router", () => ({
   ...jest.requireActual("metabase/router"),
   replace: jest.fn(),
 }));
-
-let clock: Clock;
 
 const actionStub = { type: "ANY_ACTION" };
 
@@ -45,12 +42,7 @@ const setup = () => {
   const storeMock = { dispatch: dispatchMock, getState: jest.fn() };
   const nextMock = jest.fn();
 
-  // fake-timers ids are not NodeJS.Timeouts, but they only flow back into clearInterval, which accepts both
-  const setIntervalMock = clock.setInterval.bind(
-    clock,
-  ) as unknown as typeof global.setInterval;
-
-  const sessionMiddleware = createSessionMiddleware([], setIntervalMock);
+  const sessionMiddleware = createSessionMiddleware([]);
 
   return {
     handleAction: sessionMiddleware(storeMock)(nextMock),
@@ -61,7 +53,11 @@ const setup = () => {
 
 describe("createSessionMiddleware", () => {
   beforeEach(() => {
-    clock = FakeTimers.createClock();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it("should read metabase.TIMEOUT cookie to check the session", () => {
@@ -99,7 +95,7 @@ describe("createSessionMiddleware", () => {
 
       handleAction(actionStub);
 
-      clock.tick(COOKIE_POOLING_TIMEOUT);
+      jest.advanceTimersByTime(COOKIE_POOLING_TIMEOUT);
 
       expect(dispatchMock).not.toHaveBeenCalled();
     });
@@ -114,7 +110,7 @@ describe("createSessionMiddleware", () => {
 
       handleAction(actionStub);
 
-      clock.tick(COOKIE_POOLING_TIMEOUT);
+      jest.advanceTimersByTime(COOKIE_POOLING_TIMEOUT);
 
       expect(dispatchMock).toHaveBeenCalled();
       expect(logout).toHaveBeenCalledWith("/question/1?query=5#hash");
@@ -135,7 +131,7 @@ describe("createSessionMiddleware", () => {
       const { handleAction, dispatchMock } = setup();
 
       handleAction(actionStub);
-      clock.tick(COOKIE_POOLING_TIMEOUT);
+      jest.advanceTimersByTime(COOKIE_POOLING_TIMEOUT);
 
       expect(dispatchMock).not.toHaveBeenCalled();
       expect(replace).not.toHaveBeenCalled();
@@ -154,7 +150,7 @@ describe("createSessionMiddleware", () => {
       const { handleAction, dispatchMock } = setup();
 
       handleAction(actionStub);
-      clock.tick(COOKIE_POOLING_TIMEOUT);
+      jest.advanceTimersByTime(COOKIE_POOLING_TIMEOUT);
 
       expect(dispatchMock).toHaveBeenCalled();
       expect(replace).toHaveBeenCalledWith("/question/1?query=5#hash");
@@ -178,7 +174,7 @@ describe("createSessionMiddleware", () => {
 
       handleAction(actionStub);
 
-      clock.tick(COOKIE_POOLING_TIMEOUT);
+      jest.advanceTimersByTime(COOKIE_POOLING_TIMEOUT);
 
       expect(dispatchMock).toHaveBeenCalled();
       expect(refreshSession).toHaveBeenCalledWith();
