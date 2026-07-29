@@ -7,11 +7,10 @@ export interface TabsProps<T extends string = string> extends Omit<
   MantineTabsProps,
   "value" | "defaultValue" | "onChange"
 > {
-  /** Controlled component value */
   value?: T | null;
-  /** Uncontrolled component default value */
   defaultValue?: T | null;
-  /** Called when value changes */
+  // Need to keep 'null' option here, because Tabs has `allowTabDeactivation`
+  // prop which leads to null value being passed to onChange.
   onChange?: (value: T | null) => void;
   /**
    * Whether the tab list renders its own divider line. Only applies to the
@@ -34,8 +33,8 @@ function TabsRoot<T extends string = string>({
       {...props}
       variant={variant}
       // Mantine types the change value as `string | null` because it cannot see
-      // the `Tabs.Tab` values. The emitted value is always one of those, which
-      // the caller declares as `T`.
+      // the `Tabs.Tab` values. But we know that the emitted value is always one of those,
+      // so we can safely cast it to the expected type.
       onChange={onChange as MantineTabsProps["onChange"]}
       data-list-border-hidden={hideListBorder || undefined}
     />
