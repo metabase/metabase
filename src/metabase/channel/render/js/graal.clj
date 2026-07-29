@@ -216,12 +216,10 @@
   :static-viz)
 
 (defn- untrusted-context-pool
-  "Single-context pool of isolate contexts pre-loaded with the bundle at `bundle-path`. Pools
-  `{:context <Context>, :used-ms <atom>}` wrappers, not raw contexts: dirigiste hands the same object back
-  on release/dispose/destroy, so the cumulative-CPU accumulator (see [[pool-cpu-soft-limit-ms]]) travels
-  with its context without a global table. When idle for 10 minutes the pool shrinks to 0 and `destroy`
-  closes the context (and, on the last context from either pool, the shared engine). See
-  [[metabase.util.pool/create-pool]]."
+  "Pool of one isolate context pre-loaded with the bundle at `bundle-path`. Pools `{:context <Context>,
+  :used-ms <atom>}` wrappers so the cumulative-CPU accumulator (see [[pool-cpu-soft-limit-ms]]) travels
+  with its context. After 10 idle minutes the pool shrinks to 0, closing the context (and, with the last
+  context from either pool, the shared engine)."
   ^Pool [bundle-path]
   (u.pool/create-pool (fn [] {:context (generate-untrusted-context! bundle-path pool-max-cpu-time)
                               :used-ms (atom 0)})
@@ -238,26 +236,20 @@
   (untrusted-context-pool common/bundle-resource-path))
 
 (def ^:private render-lock
-  "Serializes *all* static-viz rendering: every render — builtin or plugin — holds this, so at most one
-  runs at a time across the whole isolate (see [[do-with-untrusted-context*]]). With one active render,
-  only one context allocates its peak heap at a time, which is the margin that lets [[max-isolate-memory]]
-  sit as low as it does. The pools still keep their (at most two) contexts warm between renders; this
-  bounds concurrency, not residency."
+  "Serializes *all* static-viz rendering — builtin or plugin, at most one render at a time — so only one
+  context allocates its peak heap at a time, which is what lets [[max-isolate-memory]] sit as low as it
+  does. Bounds concurrency, not residency: the pools still keep their contexts warm between renders."
   (Object.))
 
 (def ^:private pool-cpu-soft-limit-ms
-  "Recycle a pooled context (builtin or plugin) once its renders' cumulative host wall time passes this
-  threshold — well before the context's hard [[pool-max-cpu-time]] budget (which is cumulative, and whose
-  exhaustion would kill a render *mid-flight*). Host wall time upper-bounds the single-threaded guest's CPU
-  time, so accounting with it errs toward recycling early, which is safe: it only costs the next render a
-  context regeneration instead of a mid-render kill."
+  "Recycle a pooled context once its renders' cumulative host wall time passes this threshold — well
+  before exhausting the hard [[pool-max-cpu-time]] budget, which would kill a render mid-flight."
   120000)
 
 (defn- do-with-pooled-context
-  "Prod path: borrow a wrapper from `pool` and run `f` with its context. Disposes (rather than releases)
-  the context when a sandbox-limit hit leaves it permanently unusable, or when its renders' cumulative CPU
-  crosses [[pool-cpu-soft-limit-ms]] — see that var for why recycling is proactive. `label`
-  (\"builtin\"/\"plugin\") only tags log messages."
+  "Prod path: borrow a wrapper from `pool` and run `f` with its context. The context is disposed instead
+  of released when a sandbox-limit hit leaves it permanently unusable, or when its cumulative CPU crosses
+  [[pool-cpu-soft-limit-ms]]. `label` only tags log messages."
   [^Pool pool label f]
   (let [{:keys [^Context context used-ms] :as wrapper} (.acquire pool pool-key)
         disposed? (volatile! false)
@@ -284,11 +276,9 @@
               (.release pool pool-key wrapper))))))))
 
 (defn- do-with-untrusted-context*
-  "Run `f` with an isolate context pre-loaded with the bundle at `bundle-path`, held exclusively for the
-  call under the global [[render-lock]] so no other static-viz render runs concurrently. In dev, builds a
-  throwaway context per call — so a fresh `bun run build-static-viz` is picked up without a REPL restart —
-  with the tighter single-render [[render-max-cpu-time]] budget; in prod, borrows a pooled context from
-  `pool`."
+  "Run `f` with an isolate context pre-loaded with the bundle at `bundle-path`, under the global
+  [[render-lock]]. In dev, builds a throwaway context per call so a fresh `bun run build-static-viz` is
+  picked up without a REPL restart; in prod, borrows a pooled context from `pool`."
   [^Pool pool bundle-path label f]
   (locking render-lock
     (if config/is-dev?
