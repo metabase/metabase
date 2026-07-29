@@ -333,19 +333,21 @@
   loaded for every permission type and stored in the cache; otherwise only the requested permission type is loaded
   directly."
   [user-id db-ids perm-type]
-  (let [cache? (use-cache? user-id)
-        {cached-db-ids :db-ids
-         cached-interner :intern
-         cached-perms :perms} (when cache? @*full-perms-cache*)
-        interner (or cached-interner (u.memo/fast-interner))]
+  (let [cache?    (use-cache? user-id)
+        interner (or (when cache?
+                       (:intern @*full-perms-cache*))
+                     (if cache?
+                       (:intern (swap! *full-perms-cache* update :intern #(or % (u.memo/fast-interner))))
+                       (u.memo/fast-interner)))]
     (if cache?
-      (let [missing-db-ids (remove cached-db-ids db-ids)]
+      (let [missing-db-ids (remove (:db-ids @*full-perms-cache*) db-ids)]
         (when (seq missing-db-ids)
           (let [new-perms (load-full-perms interner user-id missing-db-ids nil)]
-            (reset! *full-perms-cache*
-                    {:db-ids (into cached-db-ids db-ids)
-                     :intern interner
-                     :perms  (update cached-perms user-id #(merge-with merge % new-perms))})))
+            (swap! *full-perms-cache*
+                   (fn [cache]
+                     (-> cache
+                         (update :db-ids into missing-db-ids)
+                         (update-in [:perms user-id] #(merge-with merge % new-perms)))))))
         (cond-> (get (:perms @*full-perms-cache*) user-id)
           perm-type (get perm-type)))
       (cond-> (load-full-perms interner user-id db-ids perm-type)
