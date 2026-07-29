@@ -20,7 +20,7 @@
 
 (def ^:const algorithm-version
   "Version of persisted candidate materialization behavior."
-  6)
+  7)
 
 (def ^:const signature-version
   "Version of the canonical identity used by durable dismissals."
@@ -241,6 +241,20 @@
   [definition]
   (into #{} (map insights/canonical-signature) (lib/atomic-filters (lib/normalize definition) 0)))
 
+(defn- measure-condition-atoms
+  [definition]
+  (when-let [[tag _opts & args] (aggregation-clause definition)]
+    (when-let [condition (case tag
+                           :count-where    (first args)
+                           :distinct-where (second args)
+                           :sum-where      (second args)
+                           nil)]
+      (letfn [(flatten-and [[clause-tag _opts & clause-args :as clause]]
+                (if (= clause-tag :and)
+                  (mapcat flatten-and clause-args)
+                  [clause]))]
+        (into #{} (map insights/canonical-signature) (flatten-and condition))))))
+
 (defn- relation-for-segment
   [candidate existing]
   (let [candidate-atoms (segment-atoms (:definition candidate))
@@ -443,6 +457,27 @@
                    candidate-id))))
        (into #{} cat)))
 
+(defn- non-closed-measure-candidate-ids
+  [candidates provenance-index]
+  (->> candidates
+       (keep (fn [candidate]
+               (when-let [atoms (not-empty (measure-condition-atoms (:definition candidate)))]
+                 (assoc candidate
+                        ::atoms atoms
+                        ::base (measure-base (:definition candidate))
+                        ::provenance (get provenance-index (:id candidate))))))
+       (group-by (juxt :table_id ::base ::provenance))
+       (keep (fn [[[_table-id _base provenance] candidates]]
+               (when (seq provenance)
+                 (for [{candidate-id :id, candidate-atoms ::atoms} candidates
+                       :when (some (fn [{other-id :id, other-atoms ::atoms}]
+                                     (and (not= candidate-id other-id)
+                                          (< (count candidate-atoms) (count other-atoms))
+                                          (set/subset? candidate-atoms other-atoms)))
+                                   candidates)]
+                   candidate-id))))
+       (into #{} cat)))
+
 (defn- prune-non-closed-segment-candidates!
   "Remove Segment subsets that carry no provenance beyond a stricter Segment on the same table."
   [run-id]
@@ -455,6 +490,22 @@
                                       :table_id table-id)
           provenance-index (source-provenance-index (map :id candidates))
           candidate-ids    (non-closed-segment-candidate-ids candidates provenance-index)]
+      (when (seq candidate-ids)
+        (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids])))))
+
+(defn- prune-non-closed-measure-candidates!
+  "Remove conditional Measure subsets that carry no provenance beyond a stricter condition on the
+  same base aggregation and table."
+  [run-id]
+  (doseq [table-id (t2/select-fn-set :table_id :model/UsageMetadataCandidate
+                                     :run_id run-id
+                                     :candidate_type :measure)]
+    (let [candidates       (t2/select [:model/UsageMetadataCandidate :id :table_id :definition]
+                                      :run_id run-id
+                                      :candidate_type :measure
+                                      :table_id table-id)
+          provenance-index (source-provenance-index (map :id candidates))
+          candidate-ids    (non-closed-measure-candidate-ids candidates provenance-index)]
       (when (seq candidate-ids)
         (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids])))))
 
@@ -498,6 +549,7 @@
         (persist-card-batch! run-id batch))
       (prune-ineligible-candidates! run-id)
       (prune-non-closed-segment-candidates! run-id)
+      (prune-non-closed-measure-candidates! run-id)
       (let [summary (run-summary run-id)]
         (t2/update! :model/UsageMetadataCandidateRun run-id
                     {:status :succeeded, :finished_at (mi/now), :summary summary})

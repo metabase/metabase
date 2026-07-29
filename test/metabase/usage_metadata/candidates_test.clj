@@ -23,6 +23,8 @@
 (def ^:private locally-running-run-ids @#'candidates/locally-running-run-ids)
 (def ^:private non-closed-segment-candidate-ids
   @#'candidates/non-closed-segment-candidate-ids)
+(def ^:private non-closed-measure-candidate-ids
+  @#'candidates/non-closed-measure-candidate-ids)
 
 (defn- candidate-row
   [run-id table-id]
@@ -244,6 +246,50 @@
     (testing "only a proper subset with identical full provenance on the same table is pruned"
       (is (= #{1}
              (non-closed-segment-candidate-ids candidates provenance-index))))))
+
+(deftest closed-measure-pruning-uses-exact-provenance-and-base-aggregation-test
+  (let [metadata-provider (lib-be/application-database-metadata-provider (mt/id))
+        base-query        (lib/query metadata-provider
+                                     (lib.metadata/table metadata-provider (mt/id :orders)))
+        subtotal          (lib.metadata/field metadata-provider (mt/id :orders :subtotal))
+        user-id           (lib.metadata/field metadata-provider (mt/id :orders :user_id))
+        product-id        (lib.metadata/field metadata-provider (mt/id :orders :product_id))
+        quantity          (lib.metadata/field metadata-provider (mt/id :orders :quantity))
+        atom-a            (lib/> subtotal 10)
+        atom-b            (lib/= user-id 1)
+        atom-c            (lib/= product-id 2)
+        condition         (fn [& atoms]
+                            (if (next atoms)
+                              (apply lib/and atoms)
+                              (first atoms)))
+        count-definition  (fn [& atoms]
+                            (lib/aggregate base-query
+                                           (lib/count-where (apply condition atoms))))
+        sum-definition    (fn [& atoms]
+                            (lib/aggregate base-query
+                                           (lib/sum-where quantity (apply condition atoms))))
+        table-id          (mt/id :orders)
+        candidates        [{:id 1, :table_id table-id, :definition (count-definition atom-a)}
+                           {:id 2, :table_id table-id, :definition (count-definition atom-a atom-b)}
+                           {:id 3, :table_id table-id, :definition (count-definition atom-a atom-c)}
+                           {:id 4, :table_id table-id, :definition (sum-definition atom-a atom-b)}
+                           {:id 5, :table_id table-id, :definition (count-definition atom-a atom-b atom-c)}
+                           {:id 6, :table_id (mt/id :products), :definition (count-definition atom-a atom-b)}]
+        shared-provenance [{:card_id 10, :stage_numbers [0], :joined false}
+                           {:card_id 20, :stage_numbers [0], :joined false}]
+        different-provenance [{:card_id 10, :stage_numbers [0], :joined false}
+                              {:card_id 30, :stage_numbers [0], :joined false}]
+        third-provenance [{:card_id 10, :stage_numbers [0], :joined false}
+                          {:card_id 40, :stage_numbers [0], :joined false}]
+        provenance-index {1 shared-provenance
+                          2 shared-provenance
+                          3 different-provenance
+                          4 shared-provenance
+                          5 third-provenance
+                          6 shared-provenance}]
+    (testing "only a condition subset with identical table, base aggregation, and provenance is pruned"
+      (is (= #{1}
+             (non-closed-measure-candidate-ids candidates provenance-index))))))
 
 (deftest source-provenance-index-groups-and-normalizes-sources-test
   (let [metadata-provider (lib-be/application-database-metadata-provider (mt/id))
