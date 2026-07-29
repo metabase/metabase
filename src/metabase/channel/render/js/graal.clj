@@ -17,6 +17,7 @@
   rendering is globally serialized (see [[render-lock]]) — one render at a time across both pools."
   (:require
    [clojure.java.io :as io]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.channel.render.js.common :as common]
    [metabase.channel.render.js.protocol :as js.protocol]
    [metabase.config.core :as config]
@@ -246,6 +247,17 @@
   before exhausting the hard [[pool-max-cpu-time]] budget, which would kill a render mid-flight."
   120000)
 
+(defn- sandbox-limit-label
+  "Which sandbox limit killed a render, for the prometheus counter. Only the exception message
+  distinguishes the heap cap from the CPU-time budget — the polyglot API exposes no more than the
+  cancelled/resource-exhausted flags."
+  [^PolyglotException e]
+  (let [message (str (.getMessage e))]
+    (cond
+      (re-find #"(?i)heap" message)     "memory"
+      (re-find #"(?i)cpu time" message) "cpu"
+      :else                             "other")))
+
 (defn- do-with-pooled-context
   "Prod path: borrow a wrapper from `pool` and run `f` with its context. The context is disposed instead
   of released when a sandbox-limit hit leaves it permanently unusable, or when its cumulative CPU crosses
@@ -261,6 +273,8 @@
         ;; regenerates a fresh one rather than handing a dead context to the next render.
         (when (or (.isCancelled e) (.isResourceExhausted e))
           (vreset! disposed? true)
+          (analytics/inc! :metabase-static-viz/sandbox-limit-hits
+                          {:tier label, :limit (sandbox-limit-label e)})
           (log/warnf "static-viz: untrusted %s context hit a sandbox limit (cancelled=%s resource-exhausted=%s); disposing and regenerating. %s"
                      label (.isCancelled e) (.isResourceExhausted e) (.getMessage e))
           (.dispose pool pool-key wrapper))
