@@ -101,7 +101,7 @@
   "Fetch *all* `Measures`."
   []
   (as-> (t2/select :model/Measure
-                   {:where    [:and [:= :archived false] (measure/visible-filter-clause)]
+                   {:where    [:and [:= :archived false] (measure/visible-measure-filter-clause)]
                     :order-by [[:%lower.name :asc]]}) measures
     (filter mi/can-read? measures)
     (t2/hydrate measures :creator :definition_description)))

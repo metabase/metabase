@@ -77,7 +77,7 @@
   "Fetch *all* `Segments`."
   []
   (as-> (t2/select :model/Segment
-                   {:where    [:and [:= :archived false] (segment/visible-filter-clause)]
+                   {:where    [:and [:= :archived false] (segment/visible-segment-filter-clause)]
                     :order-by [[:%lower.name :asc]]}) segments
     (filter mi/can-read? segments)
     (t2/hydrate segments :creator :definition_description)))

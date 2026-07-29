@@ -22,7 +22,7 @@
   ([_model _pk]
    (api/is-data-analyst?)))
 
-(defn visible-filter-clause
+(defn visible-transform-tag-filter-clause
   "HoneySQL predicate selecting TransformTags the current user can read -- the SQL counterpart of
   `mi/can-read? :model/TransformTag` above. nil when no filtering is needed (data analysts, superusers, no bound
   user)."

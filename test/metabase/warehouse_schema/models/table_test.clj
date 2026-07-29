@@ -758,7 +758,7 @@
                                :name "raw-insert-probe" :db_id db-id)))))))
 
 (deftest table-visible-filter-clause-matches-can-read?-test
-  (testing "table/visible-filter-clause admits exactly the Tables mi/can-read? admits (the two must stay in sync)"
+  (testing "table/visible-table-filter-clause admits exactly the Tables mi/can-read? admits (the two must stay in sync)"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database         {db-id :id}  {}
                      :model/Table            {t-full :id} {:db_id db-id :name "TFullAccess"}
@@ -779,7 +779,7 @@
                                  (set (t2/select-pks-set :model/Table
                                                          {:where [:and
                                                                   [:in :metabase_table.id table-ids]
-                                                                  (table/visible-filter-clause :metabase_table.id)]})))
+                                                                  (table/visible-table-filter-clause :metabase_table.id)]})))
               can-read-visible (fn []
                                  (set (filter #(mi/can-read? (t2/select-one :model/Table :id %)) table-ids)))]
           (mt/with-current-user (mt/user->id :rasta)
@@ -787,14 +787,14 @@
             (is (= (can-read-visible) (clause-visible))))
           (testing "superusers get a nil clause (no filtering), matching can-read? on every table"
             (mt/with-current-user (mt/user->id :crowberto)
-              (is (nil? (table/visible-filter-clause :metabase_table.id)))
+              (is (nil? (table/visible-table-filter-clause :metabase_table.id)))
               (is (= table-ids (can-read-visible)))))
           (testing "data analysts get a nil clause, matching can-read?, which grants them implicit
                     manage-table-metadata on every table"
             (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:is_data_analyst true}
               (mt/with-current-user (mt/user->id :rasta)
                 (binding [api/*is-data-analyst?* true]
-                  (is (nil? (table/visible-filter-clause :metabase_table.id)))
+                  (is (nil? (table/visible-table-filter-clause :metabase_table.id)))
                   (is (= table-ids (can-read-visible)))))))
           (testing "no bound user -> nil clause; outside the request cycle filtering is the caller's concern"
-            (is (nil? (table/visible-filter-clause :metabase_table.id)))))))))
+            (is (nil? (table/visible-table-filter-clause :metabase_table.id)))))))))

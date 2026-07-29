@@ -64,7 +64,7 @@
    _query-params]
   (log/info "Getting all transform tags")
   (api/check-data-analyst)
-  (t2/hydrate (t2/select :model/TransformTag {:where    [:and (transform-tag/visible-filter-clause)]
+  (t2/hydrate (t2/select :model/TransformTag {:where    [:and (transform-tag/visible-transform-tag-filter-clause)]
                                               :order-by [[:name :asc]]})
               :can_run))
 

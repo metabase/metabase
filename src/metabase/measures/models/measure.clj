@@ -61,12 +61,12 @@
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
-(defn visible-filter-clause
+(defn visible-measure-filter-clause
   "HoneySQL predicate selecting Measures (by `table-id-column`, default `:table_id`) that the current user can
   read -- the SQL counterpart of `mi/can-read? :model/Measure` above, delegating to the Table clause the same way.
   nil when no filtering is needed."
-  ([] (visible-filter-clause :table_id))
-  ([table-id-column] (table/visible-filter-clause table-id-column)))
+  ([] (visible-measure-filter-clause :table_id))
+  ([table-id-column] (table/visible-table-filter-clause table-id-column)))
 
 ;; Measures can be written by superusers or data analysts with unrestricted view data permissions,
 ;; but only if the parent table is editable (not in a remote-synced collection in read-only mode).

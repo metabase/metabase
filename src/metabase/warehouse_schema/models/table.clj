@@ -320,7 +320,7 @@
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Table pk))))
 
-(defn visible-filter-clause
+(defn visible-table-filter-clause
   "HoneySQL predicate selecting Tables (by `id-column`) whose metadata the current user can read -- the SQL
   counterpart of `mi/can-read? :model/Table` above; keep the two in sync. nil when no filtering is needed
   (superusers, data analysts, no bound user). Compiles to a correlated EXISTS, so qualify `id-column` whenever its

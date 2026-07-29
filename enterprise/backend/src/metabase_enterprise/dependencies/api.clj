@@ -209,7 +209,7 @@
   - Collection-based (:model/Card, :model/Dashboard, :model/Document, :model/NativeQuerySnippet):
     Uses collection/visible-collection-filter-clause for collection filtering and adds archived entity filtering.
     Native query snippets have additional restrictions for sandboxed users.
-  - Table: Uses table/visible-filter-clause, the SQL counterpart of `mi/can-read? :model/Table`. Tables are NOT
+  - Table: Uses table/visible-table-filter-clause, the SQL counterpart of `mi/can-read? :model/Table`. Tables are NOT
     filtered by active/visibility_type regardless of `include-archived-items`, so dependencies broken by dropped
     or hidden tables stay visible.
   - Segment/Measure: their entity visible-filter-clauses (the SQL counterparts of their can-read?).
@@ -268,7 +268,7 @@
                      ;; Table with visible-filter-clause; inactive/hidden tables are always included
                      ;; so that dependencies broken by dropped tables stay visible
                      :model/Table
-                     (branch (table/visible-filter-clause id-column))
+                     (branch (table/visible-table-filter-clause id-column))
 
                      ;; Segment/Measure with table permissions and archived filtering
                      (:model/Segment :model/Measure)
@@ -276,8 +276,8 @@
                            table-id-column (keyword (name table-name) "table_id")]
                        (branch [:and
                                 (if (= model :model/Segment)
-                                  (segment/visible-filter-clause table-id-column)
-                                  (measure/visible-filter-clause table-id-column))
+                                  (segment/visible-segment-filter-clause table-id-column)
+                                  (measure/visible-measure-filter-clause table-id-column))
                                 ;; Filter by archived status
                                 (case include-archived-items
                                   :exclude [:= archived-column false]
