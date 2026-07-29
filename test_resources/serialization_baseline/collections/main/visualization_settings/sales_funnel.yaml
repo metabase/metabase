@@ -79,7 +79,7 @@ visualization_settings:
   funnel.dimension: CATEGORY
   funnel.metric: count
   funnel.type: funnel
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: mkKa6jf-QsuCRnaPOIsYh
   label: sales_funnel

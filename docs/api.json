@@ -14424,11 +14424,33 @@
           "checkpoint-filter-field-id" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
           },
+          "lookback" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.transforms.schema.lookback"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "type" : {
             "const" : "checkpoint"
           }
         },
         "required" : [ "type" ]
+      },
+      "metabase.transforms.schema.lookback" : {
+        "description" : "A lookback window: each run re-reads source rows up to `value` `unit`s behind the checkpoint,\n  so late-arriving rows older than the watermark still get picked up. Only supported for\n  temporal checkpoint columns.",
+        "type" : "object",
+        "properties" : {
+          "unit" : {
+            "type" : "string",
+            "enum" : [ "day", "hour", "millisecond", "minute", "month", "quarter", "second", "week", "year" ]
+          },
+          "value" : {
+            "type" : "integer",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "value", "unit" ]
       },
       "metabase.transforms.schema.merge-config" : {
         "type" : "object",
@@ -14687,59 +14709,6 @@
           },
           "required" : [ "enabled" ]
         }
-      },
-      "metabase.workspaces.core.table-namespace" : {
-        "description" : "A `{:db ?, :schema ?}` namespace map. Either or both keys may be present\n   depending on the driver's `qualified-name-components`; at least one must\n   populate. Empty-string `\"\"` is reserved for the storage layer; the atom\n   carries `nil`/missing for absent slots.",
-        "type" : "object",
-        "properties" : {
-          "db" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }
-      },
-      "metabase.workspaces.core.workspace-database-config" : {
-        "description" : "Per-database workspace config: `:input_schemas` is a vector of driver-opaque\n   schema names (the source schemas the workspace reads from) — may be empty\n   on drivers with no schema layer (e.g. MySQL), where the bound DB itself acts\n   as the implicit input namespace; `:output` is a single namespace map (the\n   workspace's isolation schema, expanded with the warehouse catalog at boot).",
-        "type" : "object",
-        "properties" : {
-          "input_schemas" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "output" : {
-            "$ref" : "#/components/schemas/metabase.workspaces.core.table-namespace"
-          }
-        },
-        "required" : [ "input_schemas", "output" ]
-      },
-      "metabase.workspaces.core.workspace-instance-config" : {
-        "description" : "The shape stored in the EE `instance-workspace` setting after the `:workspace`\n   config.yml loader has resolved database names to ids. Database keys are integer\n   ids (post-resolution); the wire format with name keys lives in\n   `metabase-enterprise.advanced-config.file.workspace`.",
-        "type" : "object",
-        "properties" : {
-          "databases" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "$ref" : "#/components/schemas/metabase.workspaces.core.workspace-database-config"
-            }
-          },
-          "name" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        },
-        "required" : [ "name", "databases" ]
       },
       "metabase.xrays.api.automagic-dashboards.base-64-encoded-json" : {
         "description" : "form-encoded base-64-encoded JSON"
@@ -22895,15 +22864,6 @@
                       "type" : "null"
                     } ]
                   },
-                  "admin_details" : {
-                    "oneOf" : [ {
-                      "description" : "Value must be a map.",
-                      "type" : "object",
-                      "properties" : { }
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
                   "refingerprint" : {
                     "oneOf" : [ {
                       "type" : "boolean"
@@ -23869,7 +23829,7 @@
       "post" : {
         "operationId" : "post-api-dataset-native",
         "summary" : "POST /api/dataset/native",
-        "description" : "Fetch a native version of an MBQL query.\n\n  Display path: workspace remapping is suppressed via\n  [[ws.table-remapping/with-display-context]] so the user sees canonical-schema SQL\n  in the 'Show me the SQL' panel. The query still executes against the workspace\n  isolation schema at warehouse time (separate code path); this endpoint only\n  affects what the user reads.",
+        "description" : "Fetch a native version of an MBQL query.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -24989,7 +24949,7 @@
       "post" : {
         "operationId" : "post-api-ee-advanced-config",
         "summary" : "POST /api/ee/advanced-config",
-        "description" : "Apply an uploaded `config.yml` to this instance. Runs the same per-section\n  initializers (`settings`, `databases`, `users`, `api-keys`, `workspace`, ...)\n  the boot-time loader runs. Superuser-only.\n\n  Unlike the boot-time loader, `{{env VAR}}` templates are NOT expanded — the\n  file's values are inserted verbatim, so an admin's upload can't read\n  server-side environment variables it didn't intend to.",
+        "description" : "Apply an uploaded `config.yml` to this instance. Runs the same per-section\n  initializers (`settings`, `databases`, `users`, `api-keys`, ...)\n  the boot-time loader runs. Superuser-only.\n\n  Unlike the boot-time loader, `{{env VAR}}` templates are NOT expanded — the\n  file's values are inserted verbatim, so an admin's upload can't read\n  server-side environment variables it didn't intend to.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -25989,7 +25949,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered", "dwh-rent", "etl-connections" ]
           }
         } ],
         "responses" : {
@@ -26040,7 +26000,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered", "dwh-rent", "etl-connections" ]
           }
         } ],
         "responses" : {
@@ -33133,898 +33093,6 @@
           }
         },
         "tags" : [ "/api/ee/upload-management" ]
-      }
-    },
-    "/api/ee/workspace-instance/current" : {
-      "get" : {
-        "operationId" : "get-api-ee-workspace-instance-current",
-        "summary" : "GET /api/ee/workspace-instance/current",
-        "description" : "Read-only summary of the workspace loaded on this instance, wrapped in a\n  `{:data ...}` envelope.\n\n  Reads from the `instance-workspace` setting populated at boot by the `:workspace`\n  section of `config.yml`, or at runtime by `POST /current`. `:data` is `null`\n  when no workspace was loaded — i.e. this is a manager-only instance, or no\n  `config.yml` was present at boot and `POST /current` hasn't been called.\n  The envelope avoids an empty JSON body for the `nil` case.\n\n  The workspace's `can_write` flag is `false` when it was set by deployment\n  config (`config.yml` or `MB_INSTANCE_WORKSPACE`); `POST`/`DELETE` are rejected\n  in that case.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "data" : {
-                      "oneOf" : [ {
-                        "type" : "object",
-                        "properties" : {
-                          "can_write" : {
-                            "type" : "boolean"
-                          },
-                          "databases" : {
-                            "type" : "object",
-                            "additionalProperties" : {
-                              "type" : "object",
-                              "properties" : {
-                                "input_schemas" : {
-                                  "type" : "array",
-                                  "items" : {
-                                    "type" : "string"
-                                  }
-                                },
-                                "output" : {
-                                  "type" : "object",
-                                  "properties" : {
-                                    "db" : {
-                                      "oneOf" : [ {
-                                        "type" : "string"
-                                      }, {
-                                        "type" : "null"
-                                      } ]
-                                    },
-                                    "schema" : {
-                                      "oneOf" : [ {
-                                        "type" : "string"
-                                      }, {
-                                        "type" : "null"
-                                      } ]
-                                    }
-                                  }
-                                }
-                              },
-                              "required" : [ "input_schemas", "output" ]
-                            }
-                          },
-                          "name" : {
-                            "type" : "string",
-                            "minLength" : 1
-                          }
-                        },
-                        "required" : [ "name", "databases", "can_write" ]
-                      }, {
-                        "type" : "null"
-                      } ]
-                    }
-                  },
-                  "required" : [ "data" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/workspace-instance" ]
-      },
-      "post" : {
-        "operationId" : "post-api-ee-workspace-instance-current",
-        "summary" : "POST /api/ee/workspace-instance/current",
-        "description" : "Install a workspace config on this instance at runtime. Accepts the same shape\n  `GET /current` returns and persists it via the `instance-workspace` setting so\n  it survives restarts. Use this on a running instance to enter workspace mode\n  without restarting from `config.yml`.\n\n  Returns 400 if the workspace was set by deployment config (`config.yml` or\n  `MB_INSTANCE_WORKSPACE`) and so is read-only.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "can_write" : {
-                      "type" : "boolean"
-                    },
-                    "databases" : {
-                      "type" : "object",
-                      "additionalProperties" : {
-                        "type" : "object",
-                        "properties" : {
-                          "input_schemas" : {
-                            "type" : "array",
-                            "items" : {
-                              "type" : "string"
-                            }
-                          },
-                          "output" : {
-                            "type" : "object",
-                            "properties" : {
-                              "db" : {
-                                "oneOf" : [ {
-                                  "type" : "string"
-                                }, {
-                                  "type" : "null"
-                                } ]
-                              },
-                              "schema" : {
-                                "oneOf" : [ {
-                                  "type" : "string"
-                                }, {
-                                  "type" : "null"
-                                } ]
-                              }
-                            }
-                          }
-                        },
-                        "required" : [ "input_schemas", "output" ]
-                      }
-                    },
-                    "name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    }
-                  },
-                  "required" : [ "name", "databases", "can_write" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase.workspaces.core.workspace-instance-config"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/workspace-instance" ]
-      },
-      "delete" : {
-        "operationId" : "delete-api-ee-workspace-instance-current",
-        "summary" : "DELETE /api/ee/workspace-instance/current",
-        "description" : "Clear the workspace config on this instance. After this returns, the instance\n  is no longer in workspace mode and `GET /current` returns `nil`. Also drops\n  every `TableRemapping` row, since stale mappings from the prior workspace\n  would otherwise keep rewriting queries on the now-unmanaged databases.\n\n  Returns 400 if the workspace was set by deployment config (`config.yml` or\n  `MB_INSTANCE_WORKSPACE`) and so is read-only.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/workspace-instance" ]
-      }
-    },
-    "/api/ee/workspace-instance/table-remappings" : {
-      "get" : {
-        "operationId" : "get-api-ee-workspace-instance-table-remappings",
-        "summary" : "GET /api/ee/workspace-instance/table-remappings",
-        "description" : "Return all table remappings, ordered by id.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "type" : "object",
-                    "properties" : {
-                      "from_db" : {
-                        "oneOf" : [ {
-                          "type" : "string"
-                        }, {
-                          "type" : "null"
-                        } ]
-                      },
-                      "to_table_name" : {
-                        "type" : "string",
-                        "minLength" : 1
-                      },
-                      "id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "database_id" : {
-                        "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                      },
-                      "to_db" : {
-                        "oneOf" : [ {
-                          "type" : "string"
-                        }, {
-                          "type" : "null"
-                        } ]
-                      },
-                      "created_at" : { },
-                      "from_schema" : {
-                        "oneOf" : [ {
-                          "type" : "string"
-                        }, {
-                          "type" : "null"
-                        } ]
-                      },
-                      "from_table_name" : {
-                        "type" : "string",
-                        "minLength" : 1
-                      },
-                      "to_schema" : {
-                        "oneOf" : [ {
-                          "type" : "string"
-                        }, {
-                          "type" : "null"
-                        } ]
-                      }
-                    },
-                    "required" : [ "id", "database_id", "from_db", "from_schema", "from_table_name", "to_db", "to_schema", "to_table_name", "created_at" ]
-                  }
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/workspace-instance" ]
-      }
-    },
-    "/api/ee/workspace-manager" : {
-      "get" : {
-        "operationId" : "get-api-ee-workspace-manager",
-        "summary" : "GET /api/ee/workspace-manager",
-        "description" : "List all Workspaces.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "type" : "object",
-                    "properties" : {
-                      "created_at" : {
-                        "anyOf" : [ { }, { } ]
-                      },
-                      "creator" : {
-                        "oneOf" : [ {
-                          "type" : "object",
-                          "properties" : {
-                            "common_name" : {
-                              "oneOf" : [ {
-                                "type" : "string"
-                              }, {
-                                "type" : "null"
-                              } ]
-                            },
-                            "email" : {
-                              "type" : "string",
-                              "minLength" : 1
-                            },
-                            "first_name" : {
-                              "oneOf" : [ {
-                                "type" : "string"
-                              }, {
-                                "type" : "null"
-                              } ]
-                            },
-                            "id" : {
-                              "description" : "value must be an integer greater than zero.",
-                              "type" : "integer",
-                              "minimum" : 1
-                            },
-                            "last_name" : {
-                              "oneOf" : [ {
-                                "type" : "string"
-                              }, {
-                                "type" : "null"
-                              } ]
-                            }
-                          },
-                          "required" : [ "id", "first_name", "last_name", "email" ],
-                          "additionalProperties" : false
-                        }, {
-                          "type" : "null"
-                        } ]
-                      },
-                      "databases" : {
-                        "type" : "array",
-                        "items" : {
-                          "type" : "object",
-                          "properties" : {
-                            "database" : {
-                              "oneOf" : [ {
-                                "type" : "object",
-                                "properties" : { }
-                              }, {
-                                "type" : "null"
-                              } ]
-                            },
-                            "database_id" : {
-                              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                            },
-                            "input_schemas" : {
-                              "type" : "array",
-                              "items" : {
-                                "type" : "string",
-                                "minLength" : 1
-                              }
-                            },
-                            "output_namespace" : {
-                              "type" : "string"
-                            },
-                            "status" : {
-                              "type" : "string",
-                              "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
-                            }
-                          },
-                          "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
-                          "additionalProperties" : false
-                        }
-                      },
-                      "id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "name" : {
-                        "type" : "string",
-                        "minLength" : 1
-                      },
-                      "updated_at" : {
-                        "anyOf" : [ { }, { } ]
-                      }
-                    },
-                    "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
-                    "additionalProperties" : false
-                  }
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/workspace-manager" ]
-      },
-      "post" : {
-        "operationId" : "post-api-ee-workspace-manager",
-        "summary" : "POST /api/ee/workspace-manager",
-        "description" : "Create a new Workspace attached to the given databases (each must be eligible\n   for workspaces) and provision it (blocking).",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "created_at" : {
-                      "anyOf" : [ { }, { } ]
-                    },
-                    "creator" : {
-                      "oneOf" : [ {
-                        "type" : "object",
-                        "properties" : {
-                          "common_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "email" : {
-                            "type" : "string",
-                            "minLength" : 1
-                          },
-                          "first_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          },
-                          "last_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          }
-                        },
-                        "required" : [ "id", "first_name", "last_name", "email" ],
-                        "additionalProperties" : false
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "databases" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "database" : {
-                            "oneOf" : [ {
-                              "type" : "object",
-                              "properties" : { }
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "database_id" : {
-                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                          },
-                          "input_schemas" : {
-                            "type" : "array",
-                            "items" : {
-                              "type" : "string",
-                              "minLength" : 1
-                            }
-                          },
-                          "output_namespace" : {
-                            "type" : "string"
-                          },
-                          "status" : {
-                            "type" : "string",
-                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
-                          }
-                        },
-                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
-                        "additionalProperties" : false
-                      }
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : {
-                      "anyOf" : [ { }, { } ]
-                    }
-                  },
-                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
-                  "additionalProperties" : false
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "database_ids" : {
-                    "type" : "array",
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                    },
-                    "minItems" : 1
-                  },
-                  "name" : {
-                    "type" : "string",
-                    "minLength" : 1
-                  }
-                },
-                "required" : [ "name", "database_ids" ],
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/workspace-manager" ]
-      }
-    },
-    "/api/ee/workspace-manager/{id}" : {
-      "get" : {
-        "operationId" : "get-api-ee-workspace-manager-id",
-        "summary" : "GET /api/ee/workspace-manager/{id}",
-        "description" : "Get a single Workspace by id.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "created_at" : {
-                      "anyOf" : [ { }, { } ]
-                    },
-                    "creator" : {
-                      "oneOf" : [ {
-                        "type" : "object",
-                        "properties" : {
-                          "common_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "email" : {
-                            "type" : "string",
-                            "minLength" : 1
-                          },
-                          "first_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          },
-                          "last_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          }
-                        },
-                        "required" : [ "id", "first_name", "last_name", "email" ],
-                        "additionalProperties" : false
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "databases" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "database" : {
-                            "oneOf" : [ {
-                              "type" : "object",
-                              "properties" : { }
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "database_id" : {
-                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                          },
-                          "input_schemas" : {
-                            "type" : "array",
-                            "items" : {
-                              "type" : "string",
-                              "minLength" : 1
-                            }
-                          },
-                          "output_namespace" : {
-                            "type" : "string"
-                          },
-                          "status" : {
-                            "type" : "string",
-                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
-                          }
-                        },
-                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
-                        "additionalProperties" : false
-                      }
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : {
-                      "anyOf" : [ { }, { } ]
-                    }
-                  },
-                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
-                  "additionalProperties" : false
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/workspace-manager" ]
-      },
-      "put" : {
-        "operationId" : "put-api-ee-workspace-manager-id",
-        "summary" : "PUT /api/ee/workspace-manager/{id}",
-        "description" : "Update a workspace's name.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "created_at" : {
-                      "anyOf" : [ { }, { } ]
-                    },
-                    "creator" : {
-                      "oneOf" : [ {
-                        "type" : "object",
-                        "properties" : {
-                          "common_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "email" : {
-                            "type" : "string",
-                            "minLength" : 1
-                          },
-                          "first_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          },
-                          "last_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          }
-                        },
-                        "required" : [ "id", "first_name", "last_name", "email" ],
-                        "additionalProperties" : false
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "databases" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "database" : {
-                            "oneOf" : [ {
-                              "type" : "object",
-                              "properties" : { }
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "database_id" : {
-                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                          },
-                          "input_schemas" : {
-                            "type" : "array",
-                            "items" : {
-                              "type" : "string",
-                              "minLength" : 1
-                            }
-                          },
-                          "output_namespace" : {
-                            "type" : "string"
-                          },
-                          "status" : {
-                            "type" : "string",
-                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
-                          }
-                        },
-                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
-                        "additionalProperties" : false
-                      }
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : {
-                      "anyOf" : [ { }, { } ]
-                    }
-                  },
-                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
-                  "additionalProperties" : false
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "name" : {
-                    "type" : "string",
-                    "minLength" : 1
-                  }
-                },
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/workspace-manager" ]
-      },
-      "delete" : {
-        "operationId" : "delete-api-ee-workspace-manager-id",
-        "summary" : "DELETE /api/ee/workspace-manager/{id}",
-        "description" : "Delete a Workspace. Tears down every database's warehouse isolation first\n  (blocking, any state). Each database is either fully torn down (its row is\n  deleted) or kept; when any teardown fails the workspace is kept too — with the\n  failed rows, so the delete can be retried — and the combined failure is\n  returned as the error. 204 on success, no response body.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/workspace-manager" ]
-      }
-    },
-    "/api/ee/workspace-manager/{id}/config" : {
-      "get" : {
-        "operationId" : "get-api-ee-workspace-manager-id-config",
-        "summary" : "GET /api/ee/workspace-manager/{id}/config",
-        "description" : "Download the workspace's developer-instance config as a YAML file. 409 if any\n  of the workspace's databases is not `:provisioned`.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "body" : {
-                      "type" : "string"
-                    },
-                    "headers" : {
-                      "type" : "object",
-                      "additionalProperties" : {
-                        "type" : "string"
-                      }
-                    },
-                    "status" : {
-                      "const" : 200
-                    }
-                  },
-                  "required" : [ "status", "headers", "body" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/workspace-manager" ]
       }
     },
     "/api/eid-translation/translate" : {
@@ -41725,6 +40793,55 @@
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/permissions" ]
+      }
+    },
+    "/api/permissions/invite-group-ids" : {
+      "get" : {
+        "operationId" : "get-api-permissions-invite-group-ids",
+        "summary" : "GET /api/permissions/invite-group-ids",
+        "description" : "IDs of the permission groups holding a stored read (or read-write) grant on the collection of a shareable item (a\n  `dashboard` or a `question`). The \"invite someone to view\" group picker lists all groups and uses these ids to mark\n  the ones whose members can already see the item; the Administrators group has implicit access to everything and is\n  never included. The ids are otherwise unfiltered; system-managed groups like Data Analysts appear when they hold a\n  grant, and clients intersect the ids with the groups they display. Superuser-only, like the invite action itself.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "dashboard", "question" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"

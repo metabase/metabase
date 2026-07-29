@@ -137,7 +137,7 @@
       (let [methods (try
                       (driver/supported-index-methods (:engine database) database)
                       (catch Throwable e
-                        (log/warn e "Failed to fetch supported index methods for transform" (:id transform))
+                        (log/warn "Failed to fetch supported index methods for transform" (:id transform) (ex-message e))
                         nil))]
         (not-empty methods)))))
 

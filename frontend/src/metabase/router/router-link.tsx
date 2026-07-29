@@ -7,7 +7,6 @@ import {
 } from "react-router";
 
 import type { RouterLinkProps } from "./types";
-import { queryToSearch } from "./v7/location";
 
 function hrefFor(target: V7LinkProps["to"]): string {
   if (typeof target === "string") {
@@ -18,9 +17,8 @@ function hrefFor(target: V7LinkProps["to"]): string {
 
 type V3To = RouterLinkProps["to"];
 
-// v3 descriptors carry the query as a `query` object and `state` inline; v7 uses
-// a `search` string and a separate `state` prop. Translate so existing call sites
-// keep working on v7.
+// v3 descriptors carry `state` inline; v7 takes it as a separate prop. Translate
+// so existing call sites keep working on v7.
 /**
  * v3 resolved a bare path against the root, so call sites write `to="reference"`
  * meaning `/reference`. v7 resolves it against the current route instead, which
@@ -48,14 +46,11 @@ function toV7Target(to: V3To): { to: V7LinkProps["to"]; state?: unknown } {
     // v3's function form of `to` has no v7 analog and is not used in the app.
     return { to: "" };
   }
-  const { pathname, search, hash, query, state } = to;
-  // `query` wins over `search`, matching history@3: call sites build
-  // `{ ...location, query }`, where the spread carries a stale `search`.
-  const searchString = query ? queryToSearch(query) : search;
+  const { pathname, search, hash, state } = to;
   return {
     to: {
       pathname: pathname == null ? "" : toRootRelative(pathname),
-      search: searchString,
+      search,
       hash,
     },
     state,

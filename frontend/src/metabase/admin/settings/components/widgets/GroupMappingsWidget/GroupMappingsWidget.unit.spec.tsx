@@ -5,6 +5,7 @@ import { FormProvider } from "metabase/forms";
 import type { GroupId, GroupInfo } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";
 
+import type { MappingSettingKey } from "./GroupMappingsWidgetView";
 import { GroupMappingsWidgetView } from "./GroupMappingsWidgetView";
 
 const defaultGroups: GroupInfo[] = [
@@ -21,7 +22,7 @@ const defaultMappings: Record<string, GroupId[]> = {
 
 type SetupOptions = {
   mappings?: Record<string, GroupId[]>;
-  mappingSetting?: string;
+  mappingSetting?: MappingSettingKey;
   clearGroupMember?: jest.Mock;
   deleteGroup?: jest.Mock;
   updateSetting?: jest.Mock;

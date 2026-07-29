@@ -58,6 +58,7 @@ interface DimensionEntry {
   group?: DimensionGroup;
   canListValues: boolean;
   isPreferred?: boolean;
+  isDefault?: boolean;
   geoSubtype?: GeoSubtype | null;
   sourceId: MetricSourceId;
 }
@@ -91,6 +92,7 @@ function collectAllDimensionEntries(
         group: info.group,
         canListValues: info.canListValues,
         isPreferred: info.isPreferred,
+        ...(info.isDefault ? { isDefault: true } : {}),
         ...(geoSubtype ? { geoSubtype } : {}),
         sourceId,
       });
@@ -157,6 +159,7 @@ export function getAvailableDimensionsForPicker(
         group: first.group,
         canListValues: first.canListValues,
         isPreferred: first.isPreferred,
+        ...(first.isDefault ? { isDefault: true } : {}),
         ...(first.geoSubtype ? { geoSubtype: first.geoSubtype } : {}),
         dimensionBreakoutInfo: {
           type: first.dimensionBreakoutType,
@@ -179,6 +182,7 @@ export function getAvailableDimensionsForPicker(
           group: entry.group,
           canListValues: entry.canListValues,
           isPreferred: entry.isPreferred,
+          ...(entry.isDefault ? { isDefault: true } : {}),
           ...(entry.geoSubtype ? { geoSubtype: entry.geoSubtype } : {}),
           dimensionBreakoutInfo: {
             type: entry.dimensionBreakoutType,
@@ -195,19 +199,8 @@ export function getAvailableDimensionsForPicker(
     }
   }
 
-  result.shared.sort((first, second) =>
-    first.dimensionBreakoutInfo.label.localeCompare(
-      second.dimensionBreakoutInfo.label,
-    ),
-  );
-  for (const sourceId of sourceOrder) {
-    result.bySource[sourceId]?.sort((first, second) =>
-      first.dimensionBreakoutInfo.label.localeCompare(
-        second.dimensionBreakoutInfo.label,
-      ),
-    );
-  }
-
+  // No sorting: entries keep the metric's curated dimension order (shared
+  // entries follow the first source's curation).
   return result;
 }
 
@@ -260,29 +253,15 @@ export function getComparableDimensionKey(item: DimensionPickerItem) {
     return "type:time";
   }
 
-  if (type === "geo" && item.geoSubtype === "country") {
-    return "type:geo:country";
+  if (type === "geo" && item.geoSubtype != null) {
+    return `type:geo:${item.geoSubtype}`;
   }
 
-  return [type, item.group?.id ?? "", item.name].join(":");
-}
-
-function getDimensionPickerItemByDimensionId(
-  sections: DimensionPickerSection[],
-) {
-  const itemsByDimensionId = new Map<string, DimensionPickerItem>();
-
-  for (const item of sections.flatMap((section) => section.items)) {
-    for (const dimensionId of Object.values(
-      item.dimensionBreakoutInfo.dimensionMapping,
-    )) {
-      if (dimensionId != null && !itemsByDimensionId.has(dimensionId)) {
-        itemsByDimensionId.set(dimensionId, item);
-      }
-    }
-  }
-
-  return itemsByDimensionId;
+  const mappingKey = Object.entries(item.dimensionBreakoutInfo.dimensionMapping)
+    .filter(([, dimensionId]) => dimensionId != null)
+    .map(([slotIndex, dimensionId]) => `${slotIndex}=${dimensionId}`)
+    .join("|");
+  return ["item", type, mappingKey].join(":");
 }
 
 export function getComparableDimensionMapping({
@@ -296,69 +275,55 @@ export function getComparableDimensionMapping({
   metricSlots: MetricSlot[];
   activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
 }): Record<number, string | null> {
-  const comparableKey = getComparableDimensionKey(item);
-  const slotIndices = new Set(metricSlots.map((slot) => slot.slotIndex));
-  const mapping: Record<number, string | null> = Object.fromEntries(
-    metricSlots.map((slot) => [slot.slotIndex, null]),
-  );
-  const clickedSlotIndices = new Set(
-    Object.entries(item.dimensionBreakoutInfo.dimensionMapping)
-      .filter(([, dimensionId]) => dimensionId != null)
-      .map(([slotIndex]) => Number(slotIndex)),
-  );
-  const itemsByDimensionId = getDimensionPickerItemByDimensionId(sections);
-  const comparableSectionItems = sections
-    .flatMap((section) => section.items)
-    .filter(
-      (sectionItem) =>
-        sectionItem !== item &&
-        getComparableDimensionKey(sectionItem) === comparableKey,
-    );
+  const type = item.dimensionBreakoutInfo.type;
+  const itemMapping = item.dimensionBreakoutInfo.dimensionMapping;
+  const isRefiningActiveType = activeDimensionBreakout.type === type;
+  const sectionItems = sections.flatMap((section) => section.items);
+  const mapping: Record<number, string | null> = {};
 
-  const comparableItems = [
-    item,
-    ...comparableSectionItems.filter(
-      (sectionItem) => sectionItem.name === item.name,
-    ),
-    ...comparableSectionItems.filter(
-      (sectionItem) => sectionItem.name !== item.name,
-    ),
-  ];
+  for (const slot of metricSlots) {
+    const slotIndex = slot.slotIndex;
 
-  for (const [slotIndex, dimensionId] of Object.entries(
-    activeDimensionBreakout.dimensionMapping,
-  )) {
-    const numericSlotIndex = Number(slotIndex);
-    if (
-      !slotIndices.has(numericSlotIndex) ||
-      clickedSlotIndices.has(numericSlotIndex)
-    ) {
+    if (itemMapping[slotIndex] != null) {
+      mapping[slotIndex] = itemMapping[slotIndex];
       continue;
     }
 
-    const currentItem = dimensionId
-      ? itemsByDimensionId.get(dimensionId)
-      : undefined;
-    if (
-      currentItem &&
-      getComparableDimensionKey(currentItem) === comparableKey
-    ) {
-      mapping[numericSlotIndex] = dimensionId;
+    const activeDimensionId =
+      activeDimensionBreakout.dimensionMapping[slotIndex];
+    if (isRefiningActiveType && activeDimensionId !== undefined) {
+      mapping[slotIndex] = activeDimensionId;
+      continue;
     }
-  }
 
-  for (const comparableItem of comparableItems) {
-    for (const [slotIndex, dimensionId] of Object.entries(
-      comparableItem.dimensionBreakoutInfo.dimensionMapping,
-    )) {
-      const numericSlotIndex = Number(slotIndex);
-      if (slotIndices.has(numericSlotIndex)) {
-        mapping[numericSlotIndex] ??= dimensionId;
-      }
-    }
+    mapping[slotIndex] = findSlotDimensionOfType(
+      sectionItems,
+      slotIndex,
+      type,
+      item.name,
+    );
   }
 
   return mapping;
+}
+
+function findSlotDimensionOfType(
+  sectionItems: DimensionPickerItem[],
+  slotIndex: number,
+  type: MetricsViewerDimensionBreakoutType,
+  name: string,
+) {
+  const candidates = sectionItems.filter(
+    (candidate) =>
+      candidate.dimensionBreakoutInfo.type === type &&
+      candidate.dimensionBreakoutInfo.dimensionMapping[slotIndex] != null,
+  );
+  const match =
+    candidates.find((candidate) => candidate.name === name) ??
+    candidates.find((candidate) => candidate.isDefault) ??
+    candidates[0];
+
+  return match?.dimensionBreakoutInfo.dimensionMapping[slotIndex] ?? null;
 }
 
 export function buildDimensionPickerSidebarCategorySelectRows({

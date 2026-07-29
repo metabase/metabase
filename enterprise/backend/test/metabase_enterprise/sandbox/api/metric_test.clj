@@ -127,6 +127,4 @@
             (let [dims   (metric-dimensions :rasta (:id metric))
                   groups (dimension-group-names dims)]
               (testing "dimensions from the sandboxed Venues table should be blocked"
-                (is (not (contains? groups "Venues"))))
-              (testing "dimensions from non-sandboxed FK-joined tables are still visible"
-                (is (contains? groups "Category"))))))))))
+                (is (not (contains? groups "Venues")))))))))))

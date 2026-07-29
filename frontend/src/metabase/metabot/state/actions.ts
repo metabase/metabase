@@ -78,9 +78,13 @@ export const {
   setConversationTitle,
   setNavigateToPath,
   setProfileOverride,
+  reasoningStart,
+  reasoningDelta,
   toolCallStart,
   toolCallArgs,
   toolCallEnd,
+  toolCallTitled,
+  toolCallSearchResults,
   setMetabotReqIdOverride,
   setDebugMode,
   addSuggestedTransform,
@@ -325,6 +329,7 @@ export const submitInput = createAsyncThunk<
     metabot_id?: string;
     profile?: MetabotProfileId;
     retryMessageId?: string;
+    isTransformsPage?: boolean;
   }
 >(
   "metabase/metabot/submitInput",
@@ -335,6 +340,7 @@ export const submitInput = createAsyncThunk<
       message: rawPrompt,
       profile,
       retryMessageId,
+      isTransformsPage,
       ...data
     } = payload;
     const convo = getMetabotConversation(state, agentId);
@@ -380,6 +386,7 @@ export const submitInput = createAsyncThunk<
         getState(),
         agentId,
         retryMessageId,
+        isTransformsPage ?? false,
       );
       const messageId = createMessageId();
       const userMessageId = retryMessageId ?? uuid();
@@ -602,7 +609,23 @@ export const sendAgentRequest = createAsyncThunk<
                     cardId: part.data.card_id,
                   }),
                 );
+                const { tool_call_id, title } = part.data;
+                if (tool_call_id && title) {
+                  dispatchToConvo(
+                    toolCallTitled({
+                      agentId,
+                      toolCallId: tool_call_id,
+                      title,
+                    }),
+                  );
+                }
                 pushDataPart({ type: "data_part", part });
+              })
+              .with({ type: "data-tool_title" }, (part) => {
+                const { tool_call_id, title } = part.data;
+                dispatchToConvo(
+                  toolCallTitled({ agentId, toolCallId: tool_call_id, title }),
+                );
               })
               .with(
                 { type: "data-navigate_to" },
@@ -610,6 +633,16 @@ export const sendAgentRequest = createAsyncThunk<
                 { type: "data-static_viz" },
                 () => {},
               )
+              .with({ type: "data-search_results" }, (part) => {
+                dispatchToConvo(
+                  toolCallSearchResults({
+                    agentId,
+                    toolCallId: part.data.tool_call_id,
+                    totalCount: part.data.total_count,
+                    results: part.data.results,
+                  }),
+                );
+              })
               .exhaustive();
           },
           onStart: function handleStart(event) {
@@ -622,14 +655,26 @@ export const sendAgentRequest = createAsyncThunk<
             );
           },
           onTextPart: function handleTextPart(delta) {
-            dispatchToConvo(addAgentTextDelta({ agentId, text: delta }));
+            dispatchToConvo(
+              addAgentTextDelta({ agentId, text: delta, nowMs: Date.now() }),
+            );
+          },
+          onReasoningStart: function handleReasoningStart() {
+            dispatchToConvo(reasoningStart({ agentId, nowMs: Date.now() }));
+          },
+          onReasoningDelta: function handleReasoningDelta(event) {
+            dispatchToConvo(
+              reasoningDelta({ agentId, text: event.delta, nowMs: Date.now() }),
+            );
           },
           onToolInputStart: function handleToolInputStart(event) {
             dispatchToConvo(
               toolCallStart({
                 toolCallId: event.toolCallId,
                 toolName: event.toolName,
+                title: event.title,
                 agentId,
+                nowMs: Date.now(),
               }),
             );
           },
@@ -638,8 +683,10 @@ export const sendAgentRequest = createAsyncThunk<
               toolCallArgs({
                 toolCallId: event.toolCallId,
                 toolName: event.toolName,
+                title: event.title,
                 args: JSON.stringify(event.input),
                 agentId,
+                nowMs: Date.now(),
               }),
             );
           },
@@ -652,6 +699,7 @@ export const sendAgentRequest = createAsyncThunk<
                     ? event.output
                     : JSON.stringify(event.output),
                 agentId,
+                nowMs: Date.now(),
               }),
             );
           },
@@ -662,6 +710,7 @@ export const sendAgentRequest = createAsyncThunk<
                 result: event.errorText,
                 isError: true,
                 agentId,
+                nowMs: Date.now(),
               }),
             );
           },
@@ -793,11 +842,12 @@ export const retryPrompt = createAsyncThunk<
     context: MetabotChatContext;
     metabot_id?: string;
     agentId: MetabotAgentId;
+    isTransformsPage?: boolean;
   }
 >(
   "metabase/metabot/retryPrompt",
   async (
-    { messageId, context, metabot_id, agentId },
+    { messageId, context, metabot_id, agentId, isTransformsPage },
     { getState, dispatch },
   ) => {
     const state = getState();
@@ -825,6 +875,7 @@ export const retryPrompt = createAsyncThunk<
         context,
         metabot_id,
         retryMessageId: prompt.externalId,
+        isTransformsPage,
       }),
     ).unwrap();
   },

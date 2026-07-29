@@ -47,7 +47,7 @@ export const getAvailableFonts = (state: SdkStoreState) =>
 export const getHasTokenFeature = (state: SdkStoreState) => {
   // When the setting haven't been loaded or failed to query, we assume that the
   // feature is _enabled_ first.
-  if (!state.settings.values?.["token-features"]) {
+  if (!getSetting(state, "token-features")) {
     return true;
   }
 

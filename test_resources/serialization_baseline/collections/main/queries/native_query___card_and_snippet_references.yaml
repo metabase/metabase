@@ -32,7 +32,7 @@ dataset_query:
   lib/type: mbql/query
 visualization_settings:
   column_settings: null
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: HiBFSt0BNx5s5MxVDLLKB
   label: native_query___card_and_snippet_references

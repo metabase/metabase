@@ -75,25 +75,27 @@
   Output: Chat Completions messages (user, assistant with tool_calls, tool)."
   [parts]
   (->> parts
-       (map (fn [part]
-              (case (:type part)
-                :text        {:role "assistant" :content (:text part)}
-                :tool-input  {:role       "assistant"
-                              :content    nil
-                              :tool_calls [{:id       (:id part)
-                                            :type     "function"
-                                            :function {:name      (:function part)
-                                                       :arguments (let [args (:arguments part)]
-                                                                    (if (string? args) args (json/encode (or args {}))))}}]}
-                :tool-output {:role         "tool"
-                              :tool_call_id (:id part)
-                              :content      (or (get-in part [:result :output])
-                                                (when-let [err (:error part)]
-                                                  (str "Error: " (:message err)))
-                                                (pr-str (:result part)))}
-                ;; User messages pass through
-                {:role    (name (or (:role part) "user"))
-                 :content (or (:content part) "")})))
+       (keep (fn [part]
+               (case (:type part)
+                 ;; reasoning is not replayable over Chat Completions
+                 :reasoning   nil
+                 :text        {:role "assistant" :content (:text part)}
+                 :tool-input  {:role       "assistant"
+                               :content    nil
+                               :tool_calls [{:id       (:id part)
+                                             :type     "function"
+                                             :function {:name      (:function part)
+                                                        :arguments (let [args (:arguments part)]
+                                                                     (if (string? args) args (json/encode (or args {}))))}}]}
+                 :tool-output {:role         "tool"
+                               :tool_call_id (:id part)
+                               :content      (or (get-in part [:result :output])
+                                                 (when-let [err (:error part)]
+                                                   (str "Error: " (:message err)))
+                                                 (pr-str (:result part)))}
+                 ;; User messages pass through
+                 {:role    (name (or (:role part) "user"))
+                  :content (or (:content part) "")})))
        merge-consecutive-assistant-messages))
 
 ;;; Tool definition format
@@ -139,6 +141,7 @@
   OpenRouter model IDs use dots in version numbers (`claude-haiku-4.5`), unlike the
   Anthropic API's hyphenated IDs (`claude-haiku-4-5`)."
   {"anthropic/claude-fable-5"    "Claude Fable 5"
+   "anthropic/claude-opus-5"     "Claude Opus 5"
    "anthropic/claude-opus-4.8"   "Claude Opus 4.8"
    "anthropic/claude-opus-4.7"   "Claude Opus 4.7"
    "anthropic/claude-opus-4.6"   "Claude Opus 4.6"

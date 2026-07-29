@@ -111,6 +111,18 @@
                                            llm-proxy-base-url   "https://proxy.example.com"]
           (is (false? (metabot.settings/llm-metabot-configured?))))))))
 
+(deftest metabot-supports-reasoning-test
+  (testing "only anthropic and openai models that stream reasoning report support"
+    (doseq [[provider-and-model expected]
+            {"anthropic/claude-sonnet-4-6"       true
+             "anthropic/claude-haiku-4-5"        false
+             "openai/gpt-5.4"                    true
+             "openai/gpt-4o"                     false
+             "bedrock/anthropic.claude-opus-4-8" false}]
+      (testing provider-and-model
+        (mt/with-temporary-setting-values [llm-metabot-provider provider-and-model]
+          (is (= expected (metabot.settings/llm-metabot-supports-reasoning?))))))))
+
 ;;; ------------------------------------------- validate-metabot-provider! Tests -------------------------------------------
 ;; The validator is private; exercise it through the setting setter.
 

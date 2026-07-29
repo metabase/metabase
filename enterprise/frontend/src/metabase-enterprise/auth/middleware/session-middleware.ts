@@ -37,7 +37,6 @@ type SessionMiddleware = Middleware<
 
 export const createSessionMiddleware = (
   resetActions: string[] = [],
-  setInterval = global.setInterval,
 ): SessionMiddleware => {
   let intervalId: ReturnType<typeof setInterval> | undefined;
 

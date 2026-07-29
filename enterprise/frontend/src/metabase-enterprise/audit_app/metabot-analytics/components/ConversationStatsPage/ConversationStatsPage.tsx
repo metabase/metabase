@@ -10,7 +10,7 @@ import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { useDispatch } from "metabase/redux";
 import type { WithRouterProps } from "metabase/router";
-import { push } from "metabase/router";
+import { push, queryToSearch } from "metabase/router";
 import { Button, Flex, SimpleGrid, Tabs, Text, Title } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -194,16 +194,18 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
       dispatch(
         push({
           pathname: "/admin/metabot/usage-auditing/conversations",
-          query: conversationsUrlStateConfig.serialize({
-            page: 0,
-            sort_column: "created_at",
-            sort_direction: "desc",
-            date,
-            user,
-            group,
-            tenant,
-            ...filterOverrides,
-          }),
+          search: queryToSearch(
+            conversationsUrlStateConfig.serialize({
+              page: 0,
+              sort_column: "created_at",
+              sort_direction: "desc",
+              date,
+              user,
+              group,
+              tenant,
+              ...filterOverrides,
+            }),
+          ),
         }),
       );
     },

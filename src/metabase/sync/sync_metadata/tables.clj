@@ -407,7 +407,7 @@
                     [0 t]))]
             (when (zero? did-update)
               (if err
-                (log/errorf err "Failed archiving table %s" (sync-util/name-for-logging table))
+                (log/errorf "Failed archiving table %s: %s" (sync-util/name-for-logging table) (ex-message err))
                 (log/warnf "Did not archive table %s" (sync-util/name-for-logging table))))
             (swap! archived + did-update)))))
     @archived))

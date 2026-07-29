@@ -7,7 +7,8 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 
-const AUDIT_DB_ID = 13371337;
+import { AUDIT_DB_ID } from "../../constants";
+
 const CONVERSATIONS_TABLE_ID = 1001;
 const USAGE_LOG_TABLE_ID = 1002;
 const GROUP_MEMBERS_TABLE_ID = 1003;
@@ -112,6 +113,7 @@ export function buildAuditViewsFixture() {
   const provider = Lib.metadataProvider(AUDIT_DB_ID, metadata);
 
   return {
+    database,
     provider,
     conversations: Lib.tableOrCardMetadata(provider, CONVERSATIONS_TABLE_ID)!,
     usageLog: Lib.tableOrCardMetadata(provider, USAGE_LOG_TABLE_ID)!,

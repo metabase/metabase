@@ -39,7 +39,7 @@
   [user]
   (if-let [existing-user (select-user (:email user))]
     (do
-      (log/info (u/format-color :blue "Updating User with email %s" (pr-str (:email user))))
+      (log/info (u/format-color :blue "Updating User %d" (:id existing-user)))
       (let [new-user (update user :login_attributes
                              #(merge % (:login_attributes existing-user)))]
         (t2/update! :model/User (:id existing-user) new-user)))
@@ -47,10 +47,7 @@
     (let [user (cond-> user
                  (not (setup/has-user-setup)) (assoc :is_superuser true))]
       (log/info (u/colorize :green "Creating the first User for this instance. The first user is always created as an admin."))
-      (log/info (u/format-color :green
-                                "Creating new User %s with email %s"
-                                (pr-str (str (:first_name user) \space (:last_name user)))
-                                (pr-str (:email user))))
+      (log/info (u/colorize :green "Creating new User"))
       (t2/insert! :model/User user))))
 
 (defmethod advanced-config.file.i/initialize-section! :users

@@ -125,7 +125,7 @@ result_metadata:
   lib/source-column-alias: avg
 visualization_settings:
   column_settings: null
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: f1C68pznmrpN1F5xFDj6d
   label: product_overview

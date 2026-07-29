@@ -172,7 +172,7 @@
       (ensure-nudge-job! scheduler)
       (.resumeJob scheduler nudge-job-key)
       (catch Throwable t
-        (log/debugf t "Could not wake the Quartz acquire loop after freeing a slot on %s" queue)))))
+        (log/debugf "Could not wake the Quartz acquire loop after freeing a slot on %s: %s" queue (ex-message t))))))
 
 (defn- deliver-batch!
   "Shared job body. Reads the merged job+trigger data and dispatches on the delivery result:

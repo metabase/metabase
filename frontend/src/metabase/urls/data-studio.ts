@@ -264,6 +264,10 @@ export function dataStudioMetricQuery(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/query`;
 }
 
+export function dataStudioMetricDimensions(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/dimensions`;
+}
+
 export function dataStudioMetricDependencies(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/dependencies`;
 }
