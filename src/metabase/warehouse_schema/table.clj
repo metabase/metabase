@@ -38,7 +38,7 @@
   [table]
   (mi/can-read? table))
 
-(defn- filter-readable-table-children
+(defn- table-with-readable-children
   "Remove hydrated `:segments` and `:measures` the current user cannot read. Their `can-read?` is their Table's, so
   the already-fetched `table` is passed along to avoid re-fetching it per row."
   [table]
@@ -61,7 +61,7 @@
     (-> table
         (update :collection nil-if-unreadable)
         (#(apply t2/hydrate % hydration-keys))
-        filter-readable-table-children
+        table-with-readable-children
         (m/dissoc-in [:db :details])
         format-fields-for-response
         present-table
@@ -90,7 +90,7 @@
                                        (not include-sensitive-fields?) (conj :sensitive))]
        (for [table tables]
          (-> table
-             filter-readable-table-children
+             table-with-readable-children
              (m/dissoc-in [:db :details])
              format-fields-for-response
              present-table
