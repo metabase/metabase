@@ -1,9 +1,14 @@
 (ns metabase.metabot.tools.entity-details-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.parameters.field-values :as params.field-values]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -277,6 +282,66 @@
               (let [segment (first segments)]
                 (is (= segment-id (:id segment)))
                 (is (= "Large Orders" (:name segment)))))))))))
+
+(deftest get-field-values-has-stable-shape-test
+  (let [field-id   (mt/id :categories :name)
+        raw-values ["African" "American"]]
+    (testing "cache hits return raw values"
+      (is (= raw-values
+             (#'entity-details/get-field-values {field-id {:values raw-values}} field-id))))
+    (testing "cache misses return the same raw-value shape"
+      (with-redefs [params.field-values/current-user-can-fetch-field-values?        (constantly true)
+                    params.field-values/get-or-create-field-values!                 (constantly {:values raw-values})
+                    params.field-values/get-or-create-field-values-for-current-user!
+                    (constantly {:values (mapv vector raw-values)})]
+        (is (= raw-values
+               (#'entity-details/get-field-values {} field-id)))))))
+
+(deftest get-metric-details-hides-unreadable-fk-target-test
+  (testing "metric dimensions do not reveal metadata for an unreadable FK target table"
+    (mt/with-temp [:model/Database db         {}
+                   :model/Table    target     {:db_id              (:id db)
+                                               :name               "secret_table"
+                                               :schema             "private"}
+                   :model/Field    target-id  {:table_id           (:id target)
+                                               :name               "secret_id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer}
+                   :model/Table    source     {:db_id              (:id db)
+                                               :name               "orders"
+                                               :schema             "public"}
+                   :model/Field    _source-id {:table_id           (:id source)
+                                               :name               "id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer}
+                   :model/Field    _source-fk {:table_id           (:id source)
+                                               :name               "user_id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer
+                                               :semantic_type      :type/FK
+                                               :fk_target_field_id (:id target-id)}]
+      (let [mp           (lib-be/application-database-metadata-provider (:id db))
+            metric-query (-> (lib/query mp (lib.metadata/table mp (:id source)))
+                             (lib/aggregate (lib/count)))]
+        (mt/with-temp [:model/Card {metric-id :id} {:dataset_query metric-query
+                                                    :database_id   (:id db)
+                                                    :table_id      (:id source)
+                                                    :name          "Readable source metric"
+                                                    :type          :metric}]
+          (mt/with-no-data-perms-for-all-users!
+            (perms/set-database-permission! (perms-group/all-users) db :perms/view-data :unrestricted)
+            (perms/set-table-permission! (perms-group/all-users) source
+                                         :perms/create-queries :query-builder-and-native)
+            (mt/with-current-user (mt/user->id :rasta)
+              (let [output     (:structured-output
+                                (entity-details/get-metric-details {:metric-id          metric-id
+                                                                    :with-field-values? false}))
+                    dimensions (:queryable-dimensions output)
+                    source-fk  (some #(when (= "user_id" (:name %)) %) dimensions)]
+                (is (some? source-fk) "the readable source FK column is returned")
+                (is (not (contains? source-fk :fk_target_portable_fk)))
+                (is (not (str/includes? (pr-str output) "secret_table")))
+                (is (not (str/includes? (pr-str output) "secret_id")))))))))))
 
 (deftest get-report-details-skips-related-tables-test
   (testing "get-report-details never computes related-tables"
