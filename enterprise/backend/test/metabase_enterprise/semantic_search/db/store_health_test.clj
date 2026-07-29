@@ -158,22 +158,25 @@
   (testing "a probe stuck on an unresponsive database cannot be cancelled, so no replacement is admitted"
     (let [probe-future @#'semantic.store-health/readiness-probe-future
           request      @#'semantic.store-health/request-pgvector-readiness-refresh!
+          started      (promise)
           release      (promise)
           starts       (atom 0)]
       (try
         (reset! probe-future nil)
         (mt/with-dynamic-fn-redefs
           [semantic.store-health/refresh-pgvector-readiness-metrics!
-           (fn [] (swap! starts inc) (deref release 10000 ::hung))]
+           ;; Counted before it is announced, so awaiting `started` proves the count is in.
+           (fn [] (swap! starts inc) (deliver started true) (deref release 10000 ::hung))]
           (let [first-probe (request)]
             (is (identical? first-probe (request)) "the running probe is returned rather than replaced")
+            ;; The request only submits, so wait for the body rather than racing the scheduler.
+            (is (true? (deref started 10000 ::never-ran)))
             (is (= 1 @starts) "and no second one is started")
             (deliver release true)
             (is (true? (deref first-probe 10000 ::hung)))
             (testing "once it ends, the next request starts a fresh one"
               (let [next-probe (request)]
                 (is (not (identical? first-probe next-probe)))
-                ;; The request only submits, so wait for the body before counting it.
                 (is (true? (deref next-probe 10000 ::hung)))
                 (is (= 2 @starts))))))
         (finally
