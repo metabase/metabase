@@ -30,6 +30,7 @@ import { Box, Radio, Stack, Tabs } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import {
   ColumnSettings,
+  type ColumnSettingsProps,
   hasColumnSettingsWidgets,
 } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
@@ -162,14 +163,13 @@ function DatasetFieldMetadataSidebarInner({
     [onFieldMetadataChange],
   );
 
-  const columnSettingsProps = useMemo(
+  const columnSettingsProps = useMemo<ColumnSettingsProps>(
     () => ({
       column: field,
       value: field.settings,
       onChangeSetting: handleFormattingSettingsChange,
       inheritedSettings: getGlobalSettingsForColumn(),
       variant: "form-field",
-      style: undefined,
     }),
     [field, handleFormattingSettingsChange],
   );

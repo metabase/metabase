@@ -273,6 +273,21 @@
                     {:metabase.collections.models.collection.root/is-root? true
                      :namespace                                collection-namespace}))})))
 
+(mu/defn collection-read-access-group-ids :- [:set ms/PositiveInt]
+  "Set of `PermissionsGroup` ids holding a stored read (or read-write) permission row for the collection with
+  `collection-id`, or for the Root Collection when `collection-id` is `nil`. Reflects explicit grant rows only, so
+  groups whose access is implicit don't appear: the Administrators group never does (it has no stored collection
+  rows in normal operation), and collections that don't use grant rows at all (personal collections and their
+  descendants, trash) return an empty set."
+  [collection-id :- [:maybe ms/PositiveInt]]
+  (let [collection-or-root (or collection-id
+                               {:metabase.collections.models.collection.root/is-root? true})]
+    (or (t2/select-fn-set :group_id :model/Permissions
+                          {:where [:in :object
+                                   [(permissions.path/collection-read-path collection-or-root)
+                                    (permissions.path/collection-readwrite-path collection-or-root)]]})
+        #{})))
+
 (doto :perms/use-parent-collection-perms
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
@@ -398,7 +413,7 @@
     (clear-current-user-cached-permissions!)
     ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
     (catch Throwable e
-      (log/error e (u/format-color 'red "Failed to grant permissions"))
+      (log/error (u/format-color 'red "Failed to grant permissions: %s" (ex-message e)))
       ;; if we're running tests, we're doing something wrong here if duplicate permissions are getting assigned,
       ;; mostly likely because tests aren't properly cleaning up after themselves, and possibly causing other tests
       ;; to pass when they shouldn't. Don't allow this during tests

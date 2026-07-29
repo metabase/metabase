@@ -27,7 +27,7 @@
                                   :is-creation? is-creation?
                                   :message      (:revision-message event)}))
       (catch Throwable e
-        (log/warnf e "Failed to process revision event for model %s" model)))))
+        (log/warnf "Failed to process revision event for model %s: %s" model (ex-message e))))))
 
 (derive ::card-event ::event)
 (derive :event/card-create ::card-event)

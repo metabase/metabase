@@ -165,7 +165,7 @@ result_metadata:
   lib/source-column-alias: Profit
 visualization_settings:
   column_settings: null
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: fLdExPr3sS10nS0ExAmPl
   label: fields_and_expressions

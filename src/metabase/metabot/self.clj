@@ -258,11 +258,12 @@
                                  (retry? e)
                                  (retryable-error? e))
                           (let [delay (retry-delay-ms attempt e)]
-                            (log/warn e "LLM call failed with retryable error, retrying"
+                            (log/warn "LLM call failed with retryable error, retrying"
                                       {:attempt attempt
                                        :max     max-llm-retries
                                        :delay   delay
-                                       :status  (:status (ex-data e))})
+                                       :status  (:status (ex-data e))
+                                       :error   (ex-message e)})
                             (analytics/inc! :metabase-metabot/llm-retries labels)
                             {:retry delay})
                           (do (analytics/inc! :metabase-metabot/llm-errors
@@ -315,6 +316,7 @@
              make-source    (fn []
                               (eduction (comp (core/tool-executor-xf tools)
                                               (core/lite-aisdk-xf)
+                                              (core/stamp-tool-titles-xf tools)
                                               (report-aisdk-errors-xf tracking-opts)
                                               (report-token-usage-xf tracking-opts)
                                               (report-tool-usage-xf tracking-opts))

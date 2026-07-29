@@ -5,7 +5,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.connection :as t2.connection]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.jdbc.options :as t2.jdbc.options])
   (:import
    (java.sql Connection)
    (java.util.concurrent Semaphore)))
@@ -339,3 +340,90 @@
            (throw (ex-info "force savepoint rollback" {})))))
     (is (= {:outer-key "outer-val"} @mdb.connection/*transaction-state*)
         "data stashed by a rolled-back nested transaction is discarded from transaction-state")))
+
+(deftest unshared-connection-not-bound-during-use-test
+  (mdb.connection/with-unshared-connection [conn]
+    (testing "explicitly passing the unshared connection works, but it is never bound as *current-connectable*"
+      (let [rows (reduce (fn [acc row]
+                           ;; the contract is nil, not merely "not this connection": while an unshared
+                           ;; connection is in use there is no ambient connection at all
+                           (is (nil? t2.connection/*current-connectable*)
+                               "ambient resolution must be suppressed mid-reduction")
+                           (conj acc (into {} row)))
+                         []
+                         (t2/reducible-query conn ["select 1 as x"]))]
+        (is (= 1 (count rows)))))
+    (testing "a transaction opened while the unshared connection is in use gets its own connection"
+      (reduce (fn [_ _row]
+                (t2/with-transaction [tx-conn]
+                  (is (not (identical? tx-conn conn)))))
+              nil
+              (t2/reducible-query conn ["select 1 as x"])))))
+
+(deftest unshared-connection-borrower-work-commits-independently-test
+  (let [email (mt/random-email)]
+    (try
+      (testing "toucan work while the unshared connection is in use commits on its own connection"
+        (mdb.connection/with-unshared-connection [conn]
+          ;; open a transaction on the unshared connection that is never committed: if the insert below
+          ;; wrongly rode this connection, it would be rolled back at pool check-in and the user would not exist
+          (.setAutoCommit ^Connection conn false)
+          (reduce (fn [_ _row]
+                    (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email)))
+                  nil
+                  (t2/reducible-query conn ["select 1 as x"])))
+        (is (t2/exists? :model/User :email email)))
+      (finally
+        (t2/delete! :model/User :email email)))))
+
+(deftest unshared-connection-postgres-portal-survival-test
+  ;; postgres streams a result set through a portal that dies if anything commits on the connection
+  ;; mid-iteration -- the failure mode that forced the revert of #76645. Other appdbs buffer, so there is
+  ;; nothing to kill.
+  (when (= (mdb.connection/db-type) :postgres)
+    (let [portal-death? (fn [e]
+                          (loop [e e]
+                            (cond
+                              (nil? e)                                    false
+                              (re-find #"portal" (str (ex-message e)))    true
+                              :else                                       (recur (ex-cause e)))))
+          stream!       (fn [^Connection conn]
+                          ;; fetch-size + autocommit off = pg streams through a portal
+                          (.setAutoCommit conn false)
+                          (binding [t2.jdbc.options/*options* {:fetch-size 50}]
+                            (reduce (fn [n _row]
+                                      ;; unrelated toucan work mid-stream, resolved ambiently, that commits
+                                      (when (= n 30)
+                                        (t2/with-transaction [_]
+                                          (t2/query ["select 1"])))
+                                      (inc n))
+                                    0
+                                    (t2/reducible-query conn ["select g from generate_series(1, 1000) g"]))))]
+      (testing "control: an ordinary connection is ambiently visible mid-reduction; the borrower commit kills the portal"
+        (with-open [^Connection raw (.getConnection (mdb.connection/data-source))]
+          (let [e (try (stream! raw) nil (catch Throwable e e))]
+            (is (portal-death? e)))
+          (.rollback raw)
+          (.setAutoCommit raw true)))
+      (testing "an unshared connection is invisible to the borrower; the portal survives"
+        (mdb.connection/with-unshared-connection [conn]
+          (is (= 1000 (stream! conn))))))))
+
+(deftest unshared-connection-uncommitted-work-rolls-back-on-close-test
+  ;; the with-unshared-connection docstring promises the pool resets state on check-in, rolling
+  ;; back any unresolved transaction — the same mechanism the detached cluster lock relies on to
+  ;; release its row locks after a body throw. Pin the rollback itself.
+  (let [lock-name "connection-test/unshared-rollback"]
+    (try
+      (mdb.connection/with-unshared-connection [conn]
+        (.setAutoCommit ^Connection conn false)
+        (t2/query-one conn {:insert-into :metabase_cluster_lock
+                            :columns     [:lock_name]
+                            :values      [[lock-name]]})
+        (testing "the write is visible on the unshared connection before close"
+          (is (= 1 (count (t2/query conn ["select * from metabase_cluster_lock where lock_name = ?"
+                                          lock-name]))))))
+      (testing "the uncommitted write vanished at pool check-in"
+        (is (not (t2/exists? :metabase_cluster_lock :lock_name lock-name))))
+      (finally
+        (t2/delete! :metabase_cluster_lock :lock_name lock-name)))))

@@ -34,6 +34,7 @@ on:
           - Mongo 5 (SSL)
           - Mongo (latest)
           - MySQL
+          - MySQL 9
           - MySQL (latest)
           - Oracle 18
           - Oracle 21
@@ -336,6 +337,35 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-8-0-ee'
+        test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
+
+  be-tests-mysql-9-ee:
+    if: inputs.driver == 'MySQL 9'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      DRIVERS: mysql
+      MB_DB_TYPE: mysql
+      MB_DB_HOST: localhost
+      MB_DB_PORT: 3306
+      MB_DB_DBNAME: mb_test
+      MB_DB_USER: root
+      MB_MYSQL_TEST_USER: root
+    services:
+      mysql:
+        image: mysql:9
+        ports:
+          - "3306:3306"
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_DATABASE: mb_test
+    steps:
+    - uses: actions/checkout@v6
+    - name: Test MySQL driver (9)
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-mysql-9-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mysql-latest-ee:

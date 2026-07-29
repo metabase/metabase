@@ -108,12 +108,7 @@
            :cljs         true ;; the linter complains when :cljs is not here(?)
            :cljs-dev     true
            :cljs-release false)
-    (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
-               ;; TODO: (Braden 11/04/2025) This logic would make sense in [[metabase.util]].
-               (let [s (pr-str x)]
-                 (if (> (count s) 2000)
-                   (str (subs s 0 1500) " ... " (subs s (- (count s) 500)))
-                   s))
+    (log/warnf "Don't know how to calculate display name. Add an impl for %s for %s"
                `display-name-method
                (lib.dispatch/dispatch-value x)))
   (if (and (vector? x)
@@ -311,7 +306,7 @@
        ;; Throttled: a bulk caller such as a search reindex can hit this for many failing metric Cards,
        ;; so don't log every one.
        (log/throttle (* 10 1000)
-                     (log/errorf e "Error calculating display name for query: %s" (ex-message e)))
+                     (log/errorf "Error calculating display name for query: %s" (ex-message e)))
        nil))))
 
 (defmulti display-info-method

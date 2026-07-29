@@ -230,7 +230,7 @@
                            (throw (ex-info (tru "Card {0} not found." card-id)
                                            {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
     (try
-      (log/tracef "Compiling referenced query for Card %d\n%s" card-id (u/pprint-to-str query))
+      (log/tracef "Compiling referenced query for Card %d" card-id)
       (let [query                  (assoc query :info {:card-id card-id})
             {:keys [query params]} (or (when (qp.persistence/can-substitute? card persisted-info)
                                          {:query (qp.persistence/persisted-info-native-query
@@ -408,8 +408,8 @@
                          (every? string? value))
                     (mapv (partial parse-value-for-field-type effective-type) value))]
     (when (not= value new-value)
-      (log/tracef "update filter for base-type: %s value: %s -> %s"
-                  (pr-str effective-type) (pr-str value) (pr-str new-value)))
+      (log/tracef "updated filter value for base-type: %s"
+                  (pr-str effective-type)))
     (cond-> field-filter
       new-value (assoc-in [:value :value] new-value))))
 
@@ -475,12 +475,12 @@
   [[metabase.query-processor.middleware.parameters/expand-stage]]. "
   [metadata-providerable                                 :- ::lib.schema.metadata/metadata-providerable
    {tags :template-tags, params :parameters, :as _stage} :- ::lib.schema/stage]
-  (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
+  (log/tracef "Building params map out of %d tag(s) and %d param(s)" (count tags) (count params))
   (try
     (into {} (for [{tag-name :name, :as tag} tags
                    :let                      [v (value-for-tag metadata-providerable tag params)]]
                (do
-                 (log/tracef "Value for tag %s\n%s\n->\n%s" (pr-str tag-name) (u/pprint-to-str tag) (u/pprint-to-str v))
+                 (log/tracef "Resolved value for tag %s" (pr-str tag-name))
                  (let [k' (or (lib/match-and-normalize-tag-name tag-name) tag-name)]
                    [k' v]))))
     (catch Throwable e

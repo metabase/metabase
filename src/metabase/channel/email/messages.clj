@@ -397,7 +397,7 @@
          :message      (channel.template/render template-name template-context)
          :bcc?         bcc?})
        (catch Exception e
-         (log/errorf e "Failed to send message to '%s' with subject '%s'" (str/join ", " recipients) subject))))))
+         (log/errorf "Failed to send message to %d recipient(s): %s" (count recipients) (ex-message e)))))))
 
 (defn- send-email!
   "Sends an email on a background thread, returning a future."

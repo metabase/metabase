@@ -242,7 +242,7 @@
                           (is-card-empty? (assoc card :result (:result result))))
              (update result :dashcard assoc :series-results series-results))))
        (catch Throwable e
-         (log/warnf e "Error running query for Card %s" (:card_id dashcard)))))))
+         (log/warnf "Error running query for Card %s: %s" (:card_id dashcard) (ex-message e)))))))
 
 (defn- dashcard->part
   "Given a dashcard returns its part based on its type.
@@ -344,7 +344,7 @@
                should-render-tab? (< 1 (count tabs-with-cards))]
            (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
                              (do
-                               (log/debugf "Rendering tab %s with %d cards" (:name tab) (count cards))
+                               (log/debugf "Rendering tab %s with %d cards" (:id tab) (count cards))
                                (concat
                                 (when should-render-tab?
                                   [(tab->part tab)])

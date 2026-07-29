@@ -306,7 +306,7 @@ describe("MetabaseAIProviderSetup", () => {
         await screen.findByText("Current billing cycle"),
       ).toBeInTheDocument();
       expect(screen.getByText("Total tokens")).toBeInTheDocument();
-      expect(screen.getByText("3,000,000")).toBeInTheDocument();
+      expect(await screen.findByText("3,000,000")).toBeInTheDocument();
       expect(screen.getByText("Total cost")).toBeInTheDocument();
       // (3M - 1M) tokens at $3 per 1M tokens = $6.00
       expect(await screen.findByText("$6.00")).toBeInTheDocument();

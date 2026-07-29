@@ -1,12 +1,12 @@
 import { merge } from "icepick";
 
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
+import { refetchSiteSettings } from "metabase/api";
 import {
   type OnBeforeRequestHandlerConfig,
   PLUGIN_API,
 } from "metabase/api/client";
 import { overrideRequestsForGuestEmbeds } from "metabase/embedding/lib/override-requests-for-embeds";
-import { refreshSiteSettings } from "metabase/redux/settings";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { isJWT } from "metabase/utils/jwt";
 
@@ -72,6 +72,6 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
         };
     }
 
-    await dispatch(refreshSiteSettings());
+    await dispatch(refetchSiteSettings());
   },
 );
