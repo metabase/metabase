@@ -364,6 +364,9 @@
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
+      ;; `:type` is selected for the current user so attribute resolution can check it, but isn't part of this
+      ;; endpoint's response
+      (dissoc :type)
       (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id)
       add-has-question-and-dashboard
       add-first-login
@@ -378,14 +381,15 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
-  "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
+  "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager.
+  Only personal users can be fetched this way; API-key users and the internal user 404."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (try
     (users/check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-group-manager)))
-  (-> (api/check-404 (users/fetch-user :id id))
+  (-> (api/check-404 (users/fetch-user :id id, :type :personal))
       (t2/hydrate :user_group_memberships)
       add-structured-attributes))
 
@@ -463,7 +467,8 @@
 (api.macros/defendpoint :put "/:id"
   "Update an existing, active `User`.
   Self or superusers can update user info and groups.
-  Group Managers can only add/remove users from groups they are manager of."
+  Group Managers can only add/remove users from groups they are manager of.
+  Only personal users can be updated this way; API-key users 404 (manage them via `/api/api-key` instead)."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
@@ -485,7 +490,7 @@
       (perms/check-group-manager)))
   (check-not-internal-user id)
   ;; only allow updates if the specified account is active
-  (api/let-404 [user-before-update (users/fetch-user :id id, :is_active true)]
+  (api/let-404 [user-before-update (users/fetch-user :id id, :is_active true, :type :personal)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
     (when (contains? body :email)
       (api/check-403 (valid-email-update? user-before-update email)))
