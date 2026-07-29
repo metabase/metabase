@@ -29,6 +29,8 @@
     [:maybe [:fn {:error/message "expected a candidate query source"} query-source/candidate-query-source?]]]
    [:min-view-count {:optional true, :description "Lifetime Card view_count used by the default source and as popularity evidence."}
     [:maybe nat-int?]]
+   [:view-count-window-days {:optional true, :description "When set, use Card views within this many days instead of lifetime view_count."}
+    [:maybe pos-int?]]
    [:limit          {:optional true, :description "Maximum number of candidates to return."}
     [:maybe pos-int?]]])
 

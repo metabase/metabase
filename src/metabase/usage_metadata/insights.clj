@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [java-time.api :as t]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -292,6 +293,21 @@
 (def ^:private candidate-card-columns
   [:model/Card :id :name :description :type :database_id :dataset_query :card_schema :collection_id :view_count])
 
+(defn- recent-card-view-counts
+  [card-ids days]
+  (if (and card-ids (empty? card-ids))
+    {}
+    (let [cutoff (t/minus (t/offset-date-time) (t/days days))]
+      (->> (t2/select [:model/ViewLog :model_id [:%count.* :view_count]]
+                      {:where    (cond-> [:and
+                                          [:= :model "card"]
+                                          [:>= :timestamp cutoff]]
+                                   card-ids (conj [:in :model_id card-ids]))
+                       :group-by [:model_id]})
+           (into {}
+                 (map (fn [{:keys [model_id view_count]}]
+                        [model_id (long view_count)])))))))
+
 (defn- select-candidate-source-cards
   [source]
   (if source
@@ -308,27 +324,31 @@
                :type [:in [:question :model]])))
 
 (defn- candidate-source-cards
-  [{:keys [min-view-count query-source]}]
-  (let [min-view-count (or min-view-count candidate-default-min-view-count)
-        cards          (select-candidate-source-cards query-source)
-        card-ids       (into #{} (map :id) cards)
-        collection-ids (into #{} (keep :collection_id) cards)
-        verified-ids   (if (seq card-ids)
-                         (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                                           :moderated_item_id [:in card-ids]
-                                           :moderated_item_type "card"
-                                           :most_recent true
-                                           :status "verified")
-                         #{})
-        official-ids   (if (seq collection-ids)
-                         (t2/select-pks-set :model/Collection
-                                            :id [:in collection-ids]
-                                            :authority_level "official")
-                         #{})]
+  [{:keys [min-view-count query-source view-count-window-days]}]
+  (let [min-view-count     (or min-view-count candidate-default-min-view-count)
+        cards              (select-candidate-source-cards query-source)
+        card-ids           (into #{} (map :id) cards)
+        collection-ids     (into #{} (keep :collection_id) cards)
+        recent-view-counts (when view-count-window-days
+                             (recent-card-view-counts card-ids view-count-window-days))
+        verified-ids       (if (seq card-ids)
+                             (t2/select-fn-set :moderated_item_id :model/ModerationReview
+                                               :moderated_item_id [:in card-ids]
+                                               :moderated_item_type "card"
+                                               :most_recent true
+                                               :status "verified")
+                             #{})
+        official-ids       (if (seq collection-ids)
+                             (t2/select-pks-set :model/Collection
+                                                :id [:in collection-ids]
+                                                :authority_level "official")
+                             #{})]
     (cond->> cards
       true
       (map (fn [{:keys [id collection_id view_count] :as card}]
-             (let [view-count (long (or view_count 0))]
+             (let [view-count (if view-count-window-days
+                                (get recent-view-counts id 0)
+                                (long (or view_count 0)))]
                (assoc card
                       :verified?            (contains? verified-ids id)
                       :official-collection? (contains? official-ids collection_id)
@@ -348,31 +368,37 @@
 
 (defn qualified-card-ids
   "Return the default persisted-cleanup population without loading query definitions."
-  ([] (qualified-card-ids candidate-default-min-view-count))
-  ([min-view-count]
-   (let [cards          (t2/select [:model/Card :id :collection_id :view_count]
-                                   :archived false
-                                   :type [:in [:question :model]])
-         card-ids       (into #{} (map :id) cards)
-         collection-ids (into #{} (keep :collection_id) cards)
-         verified-ids   (if (seq card-ids)
-                          (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                                            :moderated_item_id [:in card-ids]
-                                            :moderated_item_type "card"
-                                            :most_recent true
-                                            :status "verified")
-                          #{})
-         official-ids   (if (seq collection-ids)
-                          (t2/select-pks-set :model/Collection
-                                             :id [:in collection-ids]
-                                             :authority_level "official")
-                          #{})]
+  ([] (qualified-card-ids candidate-default-min-view-count nil))
+  ([min-view-count] (qualified-card-ids min-view-count nil))
+  ([min-view-count view-count-window-days]
+   (let [cards              (t2/select [:model/Card :id :collection_id :view_count]
+                                       :archived false
+                                       :type [:in [:question :model]])
+         card-ids           (into #{} (map :id) cards)
+         collection-ids     (into #{} (keep :collection_id) cards)
+         recent-view-counts (when view-count-window-days
+                              (recent-card-view-counts nil view-count-window-days))
+         verified-ids       (if (seq card-ids)
+                              (t2/select-fn-set :moderated_item_id :model/ModerationReview
+                                                :moderated_item_id [:in card-ids]
+                                                :moderated_item_type "card"
+                                                :most_recent true
+                                                :status "verified")
+                              #{})
+         official-ids       (if (seq collection-ids)
+                              (t2/select-pks-set :model/Collection
+                                                 :id [:in collection-ids]
+                                                 :authority_level "official")
+                              #{})]
      (->> cards
           (keep (fn [{:keys [id collection_id view_count]}]
-                  (when (or (contains? verified-ids id)
-                            (contains? official-ids collection_id)
-                            (>= (long (or view_count 0)) min-view-count))
-                    id)))
+                  (let [view-count (if view-count-window-days
+                                     (get recent-view-counts id 0)
+                                     (long (or view_count 0)))]
+                    (when (or (contains? verified-ids id)
+                              (contains? official-ids collection_id)
+                              (>= view-count min-view-count))
+                      id))))
           sort
           vec))))
 
