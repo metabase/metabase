@@ -100,8 +100,8 @@ const TableSectionBase = ({
   const dispatch = useDispatch();
 
   const handleTabChange = useCallback(
-    (tab: string | null) => {
-      if (!Urls.isDataStudioTableMetadataTab(tab)) {
+    (tab: DataStudioTableMetadataTab | null) => {
+      if (tab == null) {
         return;
       }
 

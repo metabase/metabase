@@ -222,12 +222,10 @@ export const ParameterSidebar = (): JSX.Element | null => {
     }
   };
 
-  const handleTabChange = (newTab: string | null) => {
-    if (!newTab || (newTab !== "settings" && newTab !== "filters")) {
-      return;
+  const handleTabChange = (newTab: "filters" | "settings" | null) => {
+    if (newTab) {
+      setTab(newTab);
     }
-
-    return setTab(newTab);
   };
 
   if (!dashboard || !editingParameter || !parameter) {

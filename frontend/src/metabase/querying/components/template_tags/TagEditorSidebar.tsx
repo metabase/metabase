@@ -68,10 +68,9 @@ export function TagEditorSidebar({
   const parameters = question.parameters();
   const parametersById = _.indexBy(parameters, "id");
 
-  const handleTabChange = (tab: string | null) => {
+  const handleTabChange = (tab: TabId | null) => {
     if (tab) {
-      // Unjustified type cast. FIXME
-      setSection(tab as TabId);
+      setSection(tab);
     }
   };
 

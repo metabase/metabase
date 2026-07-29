@@ -213,13 +213,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
         </ActionIcon>
       </Flex>
 
-      <Tabs
-        value={activeTab}
-        onChange={(value) => {
-          // Unjustified type cast. FIXME
-          setActiveTab(value as SidesheetTab);
-        }}
-      >
+      <Tabs value={activeTab} onChange={setActiveTab}>
         {availableTabs.length > 0 && (
           <Tabs.List px="1.625rem" className={S.tabsList}>
             <Tabs.Tab value="open" data-testid="comments-open-tab">

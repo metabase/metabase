@@ -18,7 +18,6 @@ import { useAuditTable } from "../../metabot-analytics/hooks/useAuditTable";
 import { VIEW_GROUP_MEMBERS, VIEW_MCP_TOOL_CALLS } from "../constants";
 import { useMcpHasData } from "../hooks/useMcpHasData";
 import { buildCallsByDayByStatusQuery } from "../query-utils";
-import type { McpTab } from "../url-state";
 import { mcpUrlStateConfig } from "../url-state";
 
 import { McpAnalyticsEmptyState } from "./McpAnalyticsEmptyState";
@@ -129,8 +128,7 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
           .otherwise(() => (
             <Tabs
               value={tab}
-              // Unjustified type cast. FIXME
-              onChange={(val) => patchUrlState({ tab: val as McpTab })}
+              onChange={(val) => val && patchUrlState({ tab: val })}
               keepMounted={false}
             >
               <Tabs.List mb="lg">

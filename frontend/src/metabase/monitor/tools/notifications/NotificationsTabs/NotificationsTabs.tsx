@@ -70,7 +70,7 @@ export const NotificationsTabs = ({
     });
   }
 
-  const handleTabChange = (value: string | null) => {
+  const handleTabChange = (value: NotificationsTab | null) => {
     const next = tabs.find((config) => config.value === value);
     if (next !== undefined) {
       trackAlertsManagementTabClicked(next.value);

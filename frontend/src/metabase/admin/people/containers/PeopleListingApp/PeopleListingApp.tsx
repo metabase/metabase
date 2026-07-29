@@ -74,10 +74,9 @@ export function PeopleListingApp({
         : t`Invite someone`
       : undefined;
 
-  const handleTabChange = (tab: string | null) => {
+  const handleTabChange = (tab: ActiveStatus | null) => {
     if (tab) {
-      // Unjustified type cast. FIXME
-      updateStatus(tab as ActiveStatus);
+      updateStatus(tab);
     }
   };
 
