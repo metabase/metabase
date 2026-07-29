@@ -530,7 +530,7 @@
 
 (deftest ^:parallel supported-model?-test
   (testing "whitelisted models are supported"
-    (doseq [id ["claude-fable-5" "claude-opus-4-8" "claude-sonnet-5" "claude-haiku-4-5-20251001"]]
+    (doseq [id ["claude-fable-5" "claude-opus-5" "claude-opus-4-8" "claude-sonnet-5" "claude-haiku-4-5-20251001"]]
       (is (true? (#'claude/supported-model? {:id id})) id)))
   (testing "non-whitelisted models are not supported"
     (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514"]]

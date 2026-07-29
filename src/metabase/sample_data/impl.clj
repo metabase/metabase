@@ -108,7 +108,7 @@
       (sync/sync-database! db))
     (log/debug "Finished adding Sample Database.")
     (catch Throwable e
-      (log/error e "Failed to load sample database"))))
+      (log/errorf "Failed to load sample database: %s" (ex-message e)))))
 
 (defn sample-database-id
   "ID of the Sample Database if it exists, otherwise nil."

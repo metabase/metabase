@@ -139,6 +139,7 @@
   OpenRouter model IDs use dots in version numbers (`claude-haiku-4.5`), unlike the
   Anthropic API's hyphenated IDs (`claude-haiku-4-5`)."
   {"anthropic/claude-fable-5"    "Claude Fable 5"
+   "anthropic/claude-opus-5"     "Claude Opus 5"
    "anthropic/claude-opus-4.8"   "Claude Opus 4.8"
    "anthropic/claude-opus-4.7"   "Claude Opus 4.7"
    "anthropic/claude-opus-4.6"   "Claude Opus 4.6"

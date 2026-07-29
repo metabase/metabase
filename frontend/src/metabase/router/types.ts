@@ -44,8 +44,8 @@ export type Query<T = DefaultQuery> = T;
 
 /**
  * The `state` carried through a navigation. history@3 typed this `any` and the
- * legacy route-prop readers were written against that; tightened when the
- * `state.routing` slice is thinned to the pure v7 shape (DEV-2290).
+ * legacy route-prop readers were written against that; tightened once those call
+ * sites migrate off the compat shape onto the pure v7 `Location`.
  */
 export type LocationState = any;
 
@@ -53,8 +53,8 @@ export type LocationState = any;
  * An entry in a history stack. Mirrors history@3's `Location`: alongside the URL
  * parts it carries the parsed `query` object and the navigation `action` that
  * the legacy route-prop call sites still read. The generic is the shape of
- * `query`, not `state`. Thinned to the pure v7 shape (no `query`/`action`) when
- * the `state.routing` slice is retired (DEV-2290).
+ * `query`, not `state`. Thinned to the pure v7 shape (no `query`/`action`) once
+ * those call sites migrate off `query`/`action` (follow-up to DEV-2290).
  *
  * @see https://api.reactrouter.com/v7/interfaces/react-router.Location.html
  */
@@ -69,27 +69,19 @@ export interface Location<Q = DefaultQuery> {
 }
 
 /**
- * The loose query accepted when building a navigation target, where values may
- * still be numbers or other primitives before serialization. Mirrors history@3's
- * `QueryLike`, distinct from the parsed `DefaultQuery` a `Location` carries.
- */
-type QueryLike = Record<string, any>;
-
-/**
- * A location to navigate to, as an object. Mirrors history@3's
- * `LocationDescriptorObject`; the string form is `LocationDescriptor`.
+ * A location to navigate to, as an object. Carries the query as a `search`
+ * string, the only form v7 reads; call sites that hold a query object serialize
+ * it with `queryToSearch` first.
  */
 export interface LocationDescriptorObject {
   pathname?: string;
   search?: string;
-  query?: QueryLike;
   hash?: string;
   state?: LocationState;
 }
 
 /**
  * A location to navigate to: either a path string or a descriptor object.
- * Mirrors history@3's `LocationDescriptor`.
  */
 export type LocationDescriptor = LocationDescriptorObject | string;
 

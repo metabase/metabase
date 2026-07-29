@@ -169,8 +169,9 @@
                      :timeout-ms      title-timeout-ms})
           nil)
         (catch ExecutionException e
-          (log/warn (.getCause e) "Metabot title generation failed"
-                    {:conversation-id conversation-id})
+          (log/warn "Metabot title generation failed"
+                    {:conversation-id conversation-id
+                     :error           (ex-message (.getCause e))})
           nil)
         (catch InterruptedException _
           (.interrupt (Thread/currentThread))
@@ -195,8 +196,9 @@
                           (bound-fn* #(try
                                         (generate-with-timeout! conversation-id profile-id message)
                                         (catch Throwable t
-                                          (log/warn t "Failed to generate Metabot conversation title"
-                                                    {:conversation-id conversation-id})
+                                          (log/warn "Failed to generate Metabot conversation title"
+                                                    {:conversation-id conversation-id
+                                                     :error           (ex-message t)})
                                           nil)
                                         (finally
                                           (when-let [task @task-ref]
@@ -240,8 +242,9 @@
       (or (.get title-future)
           (current-title conversation-id))
       (catch ExecutionException e
-        (log/warn (.getCause e) "Metabot title generation failed"
-                  {:conversation-id conversation-id})
+        (log/warn "Metabot title generation failed"
+                  {:conversation-id conversation-id
+                   :error           (ex-message (.getCause e))})
         nil)
       (catch CancellationException _
         nil)

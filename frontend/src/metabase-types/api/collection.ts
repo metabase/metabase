@@ -87,7 +87,7 @@ export interface Collection {
 
   // Assigned on FE
   originalName?: string;
-  path?: CollectionId[];
+  path?: CollectionId[] | null;
 }
 
 export const COLLECTION_ITEM_MODELS = [

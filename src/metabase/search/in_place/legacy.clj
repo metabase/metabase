@@ -16,9 +16,7 @@
    [metabase.search.in-place.scoring :as scoring]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -732,9 +730,6 @@
 (defn- results
   [search-ctx]
   (let [search-query (full-search-query search-ctx)]
-    (log/tracef "Searching with query:\n%s\n%s"
-                (u/pprint-to-str search-query)
-                (mdb/format-sql (first (mdb/compile search-query))))
     (mdb/streaming-reducible-query search-query)))
 
 (defmethod search.engine/results

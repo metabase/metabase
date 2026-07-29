@@ -77,7 +77,7 @@
     (when-let [rows (-> notification-payload :payload :card_part :result :data :rows)]
       (notification.payload/cleanup! rows))
     (catch Exception e
-      (log/warn e "Error cleaning up temp files for notification" id)))
+      (log/warn "Error cleaning up temp files for notification" id ":" (ex-message e))))
   (when-not skipped?
     (events/publish-event! :event/alert-send
                            {:id      id

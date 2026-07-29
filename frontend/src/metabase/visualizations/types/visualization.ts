@@ -28,6 +28,7 @@ import type {
   DashboardId,
   DatasetColumn,
   DatasetData,
+  Field,
   IconName,
   RawSeries,
   RowValue,
@@ -419,6 +420,14 @@ export type DatasetColumnSettingDefinition<
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = VisualizationSettingDefinition<DatasetColumn, TValue, TProps>;
 
+/**
+ * current we work with DatasetColumn and Field, but their shapes are different
+ */
+export type FormattableColumn = Omit<DatasetColumn, "id" | "source"> & {
+  id?: DatasetColumn["id"] | Field["id"];
+  source?: DatasetColumn["source"];
+};
+
 export type SeriesSettingDefinition<
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
@@ -673,7 +682,7 @@ export type VisualizationDefinition = {
   isSensible?: (data: DatasetData) => boolean;
   columnSettings?:
     | VisualizationSettingsDefinitions
-    | ((column: DatasetColumn) => VisualizationSettingsDefinitions);
+    | ((column: FormattableColumn) => VisualizationSettingsDefinitions);
   // checkRenderable throws an error if a visualization is not renderable
   checkRenderable: (
     series: Series,

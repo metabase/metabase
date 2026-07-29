@@ -156,8 +156,7 @@
 
   agent-api
   {:team    "Metabot"
-   :api     #{metabase.agent-api.api
-              metabase.agent-api.init}
+   :api     #{metabase.agent-api.api metabase.agent-api.init metabase.agent-api.usage}
    :uses    #{ai-tracing
               api
               auth-identity
@@ -169,6 +168,7 @@
               lib-be
               llm
               metabot
+              premium-features
               queries
               query-permissions
               query-processor
@@ -183,7 +183,8 @@
                     :model/DashboardTab
                     :model/Database
                     :model/Table
-                    :model/User}}
+                    :model/User}
+   :model-exports #{:model/AgentApiCallLog}}
 
   agent-lib
   {:team "Metabot"
@@ -2965,6 +2966,17 @@
                     :model/PermissionsGroupMembership
                     :model/Sandbox
                     :model/Table}}
+
+  enterprise/agent-api
+  {:team "Metabot"
+   :api  #{metabase-enterprise.agent-api.init}
+   :uses #{agent-api
+           analytics
+           metabot
+           premium-features
+           task
+           util}
+   :model-imports #{:model/AgentApiCallLog}}
 
   enterprise/analytics
   {:team "UX West"

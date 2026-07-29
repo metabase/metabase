@@ -74,7 +74,7 @@
          :error    (str "Unexpected response from token endpoint (HTTP " status "): "
                         (or (:error_description body) error-code body))}))
     (catch Exception e
-      (log/warnf e "OIDC credential check failed for %s" token-endpoint)
+      (log/warnf "OIDC credential check failed for %s: %s" token-endpoint (ex-message e))
       {:step     :credentials
        :success  false
        :verified false

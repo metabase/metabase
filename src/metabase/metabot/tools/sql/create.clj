@@ -46,10 +46,9 @@
   - :query-id - The ID of the created query
   - :query-content - The SQL content
   - :database - Database ID"
-  [{:keys [database-id sql name]}]
+  [{:keys [database-id sql]}]
   (log/info "Creating SQL query"
             {:database-id database-id
-             :name name
              :sql-length (count sql)})
 
   ;; Validate access

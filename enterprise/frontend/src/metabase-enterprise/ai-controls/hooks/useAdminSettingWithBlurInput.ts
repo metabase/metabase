@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { useAdminSetting } from "metabase/api/utils";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
@@ -6,6 +6,8 @@ import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
 } from "metabase-types/api";
+
+import { useHydratedInput } from "./useHydratedInput";
 
 type StringSettingKey = {
   [K in EnterpriseSettingKey]: EnterpriseSettings[K] extends
@@ -21,16 +23,21 @@ type StringSettingKey = {
  * saves shouldn't be debounced (e.g. Metabot system prompts).
  */
 export function useAdminSettingWithBlurInput(settingName: StringSettingKey) {
-  const { value: settingValue, updateSetting } = useAdminSetting(settingName);
-  const [inputValue, setInputValue] = useState(settingValue);
+  const {
+    value: settingValue,
+    isLoading,
+    updateSetting,
+  } = useAdminSetting(settingName);
   const lastSavedRef = useRef(settingValue);
 
-  useEffect(() => {
-    if (lastSavedRef.current === undefined && settingValue !== undefined) {
-      setInputValue(settingValue);
-      lastSavedRef.current = settingValue;
-    }
-  }, [settingValue]);
+  const { inputValue, setInputValueFromUser: handleInputChange } =
+    useHydratedInput({
+      value: settingValue,
+      isLoading,
+      onHydrate: useCallback((value: typeof settingValue) => {
+        lastSavedRef.current = value;
+      }, []),
+    });
 
   const trimmedInput = (inputValue ?? "").trim();
   const trimmedSaved = (lastSavedRef.current ?? "").trim();
@@ -56,7 +63,7 @@ export function useAdminSettingWithBlurInput(settingName: StringSettingKey) {
 
   return {
     inputValue,
-    handleInputChange: setInputValue,
+    handleInputChange,
     handleBlur: save,
   };
 }

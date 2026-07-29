@@ -7,7 +7,6 @@ import {
   getMetabotVisible,
 } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
-import { createMockLocation } from "metabase/redux/store/mocks";
 import {
   createMockMetabotConversation,
   createMockUser,
@@ -21,14 +20,6 @@ import {
 } from "../../tests/utils";
 
 import { MetabotAsk } from "./MetabotAsk";
-
-const askPageRouting = {
-  routing: {
-    locationBeforeTransitions: createMockLocation({
-      pathname: "/question/ask",
-    }),
-  },
-};
 
 const greetingTitle =
   /What would you like to know\?|What do you want to explore\?|What are you looking to learn\?/;
@@ -170,7 +161,6 @@ describe("MetabotAsk", () => {
     const { store, history } = setupMetabotAsk({
       withRouter: true,
       initialRoute: "/question/ask",
-      storeInitialState: askPageRouting,
     });
     mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
@@ -189,7 +179,6 @@ describe("MetabotAsk", () => {
     const { history } = setupMetabotAsk({
       withRouter: true,
       initialRoute: "/question/ask",
-      storeInitialState: askPageRouting,
       conversations: [
         createMockMetabotConversation({
           conversation_id: "past-conversation-id",

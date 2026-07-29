@@ -199,7 +199,7 @@
                       (swap! pull-collector-last-runs assoc id now)
                       (f)))
                   (catch Throwable e
-                    (log/warn e "Error running pull collector" id)))))
+                    (log/warn "Error running pull collector" id (ex-message e))))))
             [])]
     (delay
       (collector/named
@@ -999,7 +999,7 @@
              (alter-var-root #'system (constantly nil))
              (log/info "Prometheus web-server shut down")
              (catch Exception e
-               (log/warn e "Error stopping prometheus web-server")))))))
+               (log/warnf "Error stopping prometheus web-server: %s" (ex-message e))))))))
 
 (defn observe!
   "Call iapetos.core/observe on the metric in the global registry.

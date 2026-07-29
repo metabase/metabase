@@ -135,7 +135,7 @@
         (try
           (.handle original-handler sig)
           (catch Exception e
-            (log/errorf e "Error calling original signal handler for SIG%s" signal-name)))))))
+            (log/errorf "Error calling original signal handler for SIG%s: %s" signal-name (ex-message e))))))))
 
 (defn- init-signal-logging!
   "Set up signal handlers to log system signals like SIGTERM, SIGINT, etc."
@@ -156,13 +156,13 @@
         (catch IllegalArgumentException e
           (log/debugf "Ignoring invalid signal SIG%s: %s" signal-name (.getMessage e)))
         (catch Exception e
-          (log/warnf e "Failed to register signal handler for SIG%s" signal-name))))))
+          (log/warnf "Failed to register signal handler for SIG%s: %s" signal-name (ex-message e)))))))
 
 (defn- init!*
   "General application initialization function which should be run once at application startup."
   []
   (log/infof "Starting Metabase version %s ..." config/mb-version-string)
-  (log/infof "System info:\n %s" (u/pprint-to-str (u.system-info/system-info)))
+  (log/infof "System info:\n %s" (pr-str (u.system-info/system-info)))
   (perf/maybe-enable-monitoring!)
   (init-signal-logging!)
   (init-status/set-progress! 0.1)
@@ -279,7 +279,7 @@
     (when (config/config-bool :mb-jetty-join)
       (.join (server/instance)))
     (catch Throwable e
-      (log/error e "Metabase Initialization FAILED")
+      (log/errorf "Metabase Initialization FAILED: %s" (ex-message e))
       (System/exit 1))))
 
 (defn- run-cmd [cmd init-fn args]

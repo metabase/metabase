@@ -7,7 +7,7 @@ import NoResults from "assets/img/no_results.svg";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import { trackSearchClick } from "metabase/common/search/analytics";
 import type { Query } from "metabase/router";
-import { Link } from "metabase/router";
+import { Link, queryToSearch } from "metabase/router";
 import {
   Flex,
   Group,
@@ -57,10 +57,10 @@ const FullSearchCTA = ({
       id="search-results-metadata"
       to={{
         pathname: "search",
-        query: {
+        search: queryToSearch({
           ...locationQuery,
           q: debouncedSearchTerm,
-        },
+        }),
       }}
       className={S.viewAndFilterResults}
       onClick={onClick}
