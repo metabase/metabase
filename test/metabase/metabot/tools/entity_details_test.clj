@@ -382,3 +382,23 @@
                 (is (=? {:id card-id :type :question} output))
                 (is (not (contains? output :metrics)))
                 (is (= 0 @calls))))))))))
+
+(deftest get-metric-details-hides-segments-for-unreadable-base-table-test
+  (testing "metric details do not reveal segments for a base table the user cannot read"
+    (let [mp           (mt/metadata-provider)
+          metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))]
+      (mt/with-temp [:model/Card {metric-id :id} {:dataset_query metric-query
+                                                  :database_id   (mt/id)
+                                                  :name          "Restricted base-table metric"
+                                                  :type          :metric}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [output (:structured-output
+                          (entity-details/get-metric-details {:metric-id          metric-id
+                                                              :with-segments?     true
+                                                              :with-field-values? false}))]
+              (is (= metric-id (:id output)) "collection access still makes the metric readable")
+              (is (not (contains? output :segments)))
+              (is (empty? (:queryable-dimensions output)))
+              (is (nil? (:default_time_dimension_field_id output))))))))))
