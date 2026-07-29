@@ -516,6 +516,61 @@
         (is (true? (:popular? (by-id popular-id))))
         (is (= 2 (:view-count (by-id popular-id))))))))
 
+(deftest candidate-source-cards-exclude-personal-collection-subtrees-test
+  (let [query       (orders-base-query)
+        personal-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))]
+    (mt/with-temp [:model/Collection {personal-child-id :id} {:location (format "/%d/" personal-id)}
+                   :model/Collection {shared-id :id} {}
+                   :model/Card {personal-card-id :id} {:name          "candidate mining personal root"
+                                                       :type          :question
+                                                       :dataset_query query
+                                                       :collection_id personal-id
+                                                       :view_count    1000000}
+                   :model/Card {personal-child-card-id :id} {:name          "candidate mining personal child"
+                                                             :type          :model
+                                                             :dataset_query query
+                                                             :collection_id personal-child-id
+                                                             :view_count    1000000}
+                   :model/Card {shared-card-id :id} {:name          "candidate mining shared collection"
+                                                     :type          :question
+                                                     :dataset_query query
+                                                     :collection_id shared-id
+                                                     :view_count    1000000}
+                   :model/Card {root-card-id :id} {:name          "candidate mining root collection"
+                                                   :type          :question
+                                                   :dataset_query query
+                                                   :collection_id nil
+                                                   :view_count    1000000}
+                   :model/ViewLog _ {:user_id   (mt/user->id :crowberto)
+                                     :model     "card"
+                                     :model_id  personal-card-id
+                                     :timestamp (t/offset-date-time)}
+                   :model/ViewLog _ {:user_id   (mt/user->id :crowberto)
+                                     :model     "card"
+                                     :model_id  personal-child-card-id
+                                     :timestamp (t/offset-date-time)}
+                   :model/ViewLog _ {:user_id   (mt/user->id :crowberto)
+                                     :model     "card"
+                                     :model_id  shared-card-id
+                                     :timestamp (t/offset-date-time)}
+                   :model/ViewLog _ {:user_id   (mt/user->id :crowberto)
+                                     :model     "card"
+                                     :model_id  root-card-id
+                                     :timestamp (t/offset-date-time)}]
+      (let [all-ids      #{personal-card-id personal-child-card-id shared-card-id root-card-id}
+            default-ids  (into #{} (map :id)
+                               (candidate-source-cards {:min-view-count 10}))
+            explicit-ids (into #{} (map :id)
+                               (candidate-source-cards
+                                {:query-source (apply selected-cards-source all-ids)
+                                 :min-view-count 10}))
+            qualified-ids (set (insights/qualified-card-ids 1 90))]
+        (doseq [ids [default-ids explicit-ids qualified-ids]]
+          (is (contains? ids shared-card-id))
+          (is (contains? ids root-card-id))
+          (is (not (contains? ids personal-card-id)))
+          (is (not (contains? ids personal-child-card-id))))))))
+
 (deftest candidate-source-cards-accept-custom-query-source-test
   (let [query (orders-base-query)]
     (mt/with-temp [:model/Card {selected-id :id} {:name          "candidate mining explicitly selected"

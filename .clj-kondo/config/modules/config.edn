@@ -3056,6 +3056,7 @@
                     :model/Table
                     :model/ViewLog}
    :uses #{app-db
+           collections
            lib
            lib.be
            lib.schema

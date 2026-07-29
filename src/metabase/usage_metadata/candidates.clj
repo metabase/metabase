@@ -20,7 +20,7 @@
 
 (def ^:const algorithm-version
   "Version of persisted candidate materialization behavior."
-  8)
+  9)
 
 (def ^:const signature-version
   "Version of the canonical identity used by durable dismissals."
