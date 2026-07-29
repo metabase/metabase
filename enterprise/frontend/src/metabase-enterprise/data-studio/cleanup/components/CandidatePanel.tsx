@@ -187,9 +187,10 @@ export function CandidatePanel({
     <>
       <Stack
         h="100%"
-        miw="38rem"
-        w="42rem"
-        maw="48rem"
+        miw="36rem"
+        w="40rem"
+        maw="42rem"
+        flex="0 0 40rem"
         gap={0}
         bg="background_page-secondary"
         bd="0 0 0 1px solid var(--mb-color-border-neutral)"
@@ -278,11 +279,17 @@ function CandidatePanelBody({
   return (
     <Stack h="100%" gap={0}>
       <Group p="lg" justify="space-between" wrap="nowrap">
-        <Group gap="sm" wrap="nowrap" miw={0}>
+        <Group gap="sm" wrap="nowrap" miw={0} flex={1}>
           <Icon name={getCandidateIcon(candidate)} />
-          <Title order={3}>{candidate.suggested_name}</Title>
+          <Title order={3} flex={1} lineClamp={2}>
+            {candidate.suggested_name}
+          </Title>
         </Group>
-        <ActionIcon onClick={onClose} aria-label={t`Close candidate details`}>
+        <ActionIcon
+          onClick={onClose}
+          aria-label={t`Close candidate details`}
+          style={{ flexShrink: 0 }}
+        >
           <Icon name="close" />
         </ActionIcon>
       </Group>
