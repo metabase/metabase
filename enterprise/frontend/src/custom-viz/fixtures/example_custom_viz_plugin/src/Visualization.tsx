@@ -15,7 +15,6 @@ export const Visualization = (
 
   const measuredTextStyle = {
     size: 14,
-    family: renderingContext.fontFamily,
     weight: 700,
   };
   const measuredWidth = Math.round(

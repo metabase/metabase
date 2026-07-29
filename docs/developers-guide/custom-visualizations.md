@@ -355,7 +355,7 @@ formatValue(row[1], settings.column?.(cols[1]));
 
 `formatValue` and the column-type predicates (like `isNumeric` and `isDate`) read formatting and type metadata from Metabase. If you call them outside of Metabase, like in a unit test, they'll throw `Metabase Viz API not initialized`.
 
-For layout math (like fitting labels or sizing axes), `measureText(text, { size, family, weight })` returns `{ width, height }` in pixels. There's also `measureTextWidth` and `measureTextHeight` if you only need one dimension.
+For layout math (like fitting labels or sizing axes), use the `renderingContext` prop: `renderingContext.measureTextWidth(text, { size, weight })` and `renderingContext.measureTextHeight(text, { size, weight })` return pixel measurements. The optional `family` defaults to the font your Metabase is rendering with, so measurements match what people see; pass it explicitly only when you render text in a different font. That font is also available as `renderingContext.fontFamily` for styling your own markup.
 
 To match Metabase's look (and follow [dark mode](../people-and-groups/account-settings.md#theme)), you have two paths. For anything you render as DOM or SVG, you can style with Metabase's CSS variables: `var(--mb-color-brand)` and the other `--mb-color-*` variables, and the theme follows automatically.
 

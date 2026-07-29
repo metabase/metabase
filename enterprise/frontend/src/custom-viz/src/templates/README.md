@@ -151,12 +151,12 @@ export default createVisualization;
 
 Host-provided helpers, so measurements and colors match what Metabase renders.
 
-| Field              | Type                                | Description                                                    |
-| ------------------ | ----------------------------------- | ------------------------------------------------------------- |
-| `getColor`         | `(colorName: string) => string`     | Resolves a Metabase color name to its current theme value.    |
-| `measureTextWidth` | `(text, style) => number`           | Measures the rendered width of a text string.                 |
-| `measureTextHeight`| `(text, style) => number`           | Measures the rendered height of a text string.                |
-| `fontFamily`       | `string`                            | The font family Metabase is rendering with.                   |
+| Field               | Type                            | Description                                                                                  |
+| ------------------- | ------------------------------- | -------------------------------------------------------------------------------------------- |
+| `getColor`          | `(colorName: string) => string` | Resolves a Metabase color name to its current theme value.                                   |
+| `measureTextWidth`  | `(text, style) => number`       | Measures the rendered width of a text string. `style.family` defaults to the instance font.  |
+| `measureTextHeight` | `(text, style) => number`       | Measures the rendered height of a text string. `style.family` defaults to the instance font. |
+| `fontFamily`        | `string`                        | The font family Metabase is rendering with — use it to style your own markup.                |
 
 ## Visualization Settings
 

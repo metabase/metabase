@@ -1,6 +1,6 @@
 export type FontStyle = {
   size: string | number;
-  family: string;
+  family?: string;
   weight: string | number;
 };
 

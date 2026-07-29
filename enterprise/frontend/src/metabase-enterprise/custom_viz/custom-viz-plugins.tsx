@@ -520,8 +520,16 @@ function createCustomVizWrapper(
     const renderingContext = useMemo<GenericVizPluginProps["renderingContext"]>(
       () => ({
         getColor: browserRenderingContext.getColor,
-        measureTextWidth: browserRenderingContext.measureText,
-        measureTextHeight: browserRenderingContext.measureTextHeight,
+        measureTextWidth: (text, style) =>
+          browserRenderingContext.measureText(text, {
+            ...style,
+            family: style.family ?? browserRenderingContext.fontFamily,
+          }),
+        measureTextHeight: (text, style) =>
+          browserRenderingContext.measureTextHeight(text, {
+            ...style,
+            family: style.family ?? browserRenderingContext.fontFamily,
+          }),
         fontFamily: browserRenderingContext.fontFamily,
       }),
       [browserRenderingContext],
