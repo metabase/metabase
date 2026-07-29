@@ -1,8 +1,8 @@
 # visualization_settings — per-chart key reference
 
-Authorable keys per `display`, the data shape each chart suits, and the minimum to render. Set keys only to override defaults — empty `{}` works for a simple aggregate. All column-naming keys take **output column-name strings** (the names the query produces). In a JSON body, `column_settings` keys are escaped strings: `"[\"name\",\"TOTAL\"]"`.
+Authorable keys per `display`, the data shape each chart suits, and the minimum to render. Set keys only to override defaults — empty `{}` works for a simple aggregate. Column-naming keys take **output column-name strings**; `column_settings` keys are escaped JSON strings: `"[\"name\",\"TOTAL\"]"`.
 
-Saved-card settings ride `question_write`'s `visualization_settings`; dashcard-level overrides (and everything marked *dashcards only*) merge in via `dashboard_write`'s `patch_dashcard` op, whose `visualization_settings` patch merges key by key.
+Saved-card settings ride `question_write`'s `visualization_settings`; dashcard overrides and everything marked *dashcards only* merge in via `dashboard_write`'s `patch_dashcard`, whose `visualization_settings` patch merges key by key.
 
 ## Cartesian — `bar`, `line`, `area`, `combo`, `scatter`, `waterfall`, `row`
 
@@ -38,13 +38,13 @@ Extras: `scatter.bubble` (numeric column name → bubble size). Waterfall: `wate
 
 **progress** — `progress.value` (column, only if >1 numeric), `progress.goal` (number or column name), `progress.color`.
 
-**scalar** — `scalar.field` (only if >1 column), `scalar.segments` (`[{min, max, color, label}]` thresholds). Number formatting (currency, decimals) is per-column in `column_settings`, not here.
+**scalar** — `scalar.field` (only if >1 column), `scalar.segments` (`[{min, max, color, label}]` thresholds). Number formatting is per-column in `column_settings`, not here.
 
 **smartscalar** — needs one value grouped by a single time field. `scalar.field`, `scalar.switch_positive_negative`, `scalar.compact_primary_number`, and `scalar.comparisons` (up to 3): `{id, type}` with type `"previousPeriod"` | `"previousValue"` | `"periodsAgo"` (+`value`) | `"staticNumber"` (+`value`,`label`) | `"anotherColumn"` (+`column`,`label`).
 
 ## Tabular, geographic & flow
 
-**table** — always renders. `table.columns` (`[{name, enabled}]` order + visibility), `table.column_formatting` (below), `table.pivot` (bool; simple in-table pivot of 2 dims + 1 metric) with `table.pivot_column`/`table.cell_column`, `table.pagination`, `table.row_index`, `table.freeze_columns` + `table.freeze_columns_count`, `table.freeze_rows` + `table.freeze_rows_count`.
+**table** — always renders. `table.columns` (`[{name, enabled}]` order + visibility), `table.column_formatting` (below), `table.pivot` (bool; in-table pivot of 2 dims + 1 metric) with `table.pivot_column`/`table.cell_column`, `table.pagination`, `table.row_index`, `table.freeze_columns` + `table.freeze_columns_count`, `table.freeze_rows` + `table.freeze_rows_count`.
 
 Conditional formatting — `table.column_formatting` is a list of rules:
 
@@ -61,11 +61,11 @@ Conditional formatting — `table.column_formatting` is a list of rules:
 
 **map** — `map.type`: `"region"` (choropleth), `"pin"`, `"grid"`. Region: `map.region` (`"us_states"`, `"world_countries"`, or a custom-geojson key), `map.dimension`, `map.metric`, `map.colors`. Pin/grid: `map.latitude_column`, `map.longitude_column`, `map.metric_column`, `map.pin_type` (`"tiles"`/`"markers"`/`"grid"`/`"heat"`), `map.heat.radius`/`.blur`/`.min-opacity`/`.max-zoom`.
 
-**sankey** — `sankey.source`, `sankey.target`, `sankey.value` (column names; distinct source/target forming an acyclic flow, ≤150 nodes); `sankey.node_align` (`"left"`/`"right"`/`"justify"`), `sankey.show_edge_labels` (bool), `sankey.label_value_formatting` (`"auto"`/`"compact"`/`"full"`), `sankey.edge_color` (`"gray"`/`"source"`/`"target"`).
+**sankey** — `sankey.source`, `sankey.target`, `sankey.value` (column names; distinct source/target, acyclic, ≤150 nodes); `sankey.node_align` (`"left"`/`"right"`/`"justify"`), `sankey.show_edge_labels` (bool), `sankey.label_value_formatting` (`"auto"`/`"compact"`/`"full"`), `sankey.edge_color` (`"gray"`/`"source"`/`"target"`).
 
 ## `column_settings` — per-column formatting
 
-Keyed by the JSON-string form of `["name", "<output column>"]`. Applies to table, pie, cartesian charts, scalar, and object detail.
+Keyed by the JSON-string form of `["name", "<output column>"]`. Applies to table, pie, cartesian charts, and scalar.
 
 | Key | Values | Applies to |
 |---|---|---|
@@ -78,7 +78,7 @@ Keyed by the JSON-string form of `["name", "<output column>"]`. Applies to table
 | `number_style` | `"decimal"` `"currency"` `"percent"` `"scientific"` | number |
 | `currency` / `currency_style` / `currency_in_header` | ISO code; `"symbol"` `"narrowSymbol"` `"code"` `"name"`; bool | currency |
 | `number_separators` | `".,"` `", "` `",."` `"."` `".’"` | number |
-| `decimals` / `scale` / `prefix` / `suffix` | number, factor, affixes | number |
+| `decimals` / `scale` / `prefix` / `suffix` | number, multiply factor, affixes | number |
 | `date_style` | moment.js format, e.g. `"MMMM D, YYYY"` | date |
 | `date_separator` / `date_abbreviate` | `"/"` `"-"` `"."`; bool | date |
 | `time_enabled` / `time_style` | null `"minutes"` `"seconds"` `"milliseconds"`; e.g. `"h:mm A"` | date+time |
@@ -106,9 +106,9 @@ Keyed by series name: the metric column's name (single series) or the breakout v
 
 ## Click behavior — dashcards only
 
-Click behavior lives on a **dashcard** (`patch_dashcard`'s `visualization_settings` patch, whole-card, or inside `column_settings[<key>].click_behavior` per column) — never on a saved card; the interactive types need the surrounding dashboard. `type` is `"actionMenu"` (default drill menu), `"crossfilter"` (clicked value feeds a dashboard parameter), or `"link"`.
+Lives on a **dashcard** (`patch_dashcard`, whole-card or per-column under `column_settings[<key>].click_behavior`) — never on a saved card; the interactive types need the surrounding dashboard. `type`: `"actionMenu"` (default drill menu), `"crossfilter"` (clicked value feeds a dashboard parameter), `"link"`.
 
-Crossfilter — the driver chart emits the value; map the same parameter onto the follower cards normally (the driver stays unwired to it):
+Crossfilter — the driver chart emits the value; map the same parameter onto follower cards normally (the driver stays unwired to it):
 
 ```
 dashboard_write {"method": "update", "id": 40,
@@ -124,16 +124,14 @@ dashboard_write {"method": "update", "id": 40,
 
 Link — `linkType` `"url"` (a `linkTemplate` like `"https://app/orders/{{ORDER_ID}}"`; `{{column}}` = clicked row value, `{{filter:param}}` = a dashboard parameter's value), or `"question"`/`"dashboard"` (`targetId`, optional `parameterMapping` passing clicked context). Keys are camelCase. A native-SQL card supports only crossfilter and link — no drill-through.
 
-For a complex behavior, build it once in the UI and copy the dashcard's settings via `get_content` rather than hand-authoring.
+For a complex behavior, build it once in the UI and copy the dashcard's settings via `get_content`.
 
 ## Virtual dashcards
 
-Text/heading/link/iframe tiles are created with their own `dashboard_write` ops (`add_text`, `add_heading`, `add_link`, `add_iframe`) — never author their `virtual_card` settings by hand. A text, heading, or iframe card's content may carry `{{param}}` placeholders, bound to a dashboard parameter with a raw text-tag target:
+Text/heading/link/iframe tiles are created with their own ops (`add_text`, `add_heading`, `add_link`, `add_iframe`) — never author their `virtual_card` settings by hand. A text, heading, or iframe card's content may carry `{{param}}` placeholders, bound to a dashboard parameter with a raw text-tag target — the name must appear as `{{region}}` in the card's own text or embed:
 
 ```
 dashboard_write {"method": "update", "id": 40,
  "ops": [{"op": "wire_parameter", "parameter_id": "region", "dashcard_id": 7,
           "target": ["text-tag", "region"]}]}
 ```
-
-The tag name must appear as `{{region}}` in the card's own text (or iframe embed).

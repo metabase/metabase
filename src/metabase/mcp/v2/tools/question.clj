@@ -341,31 +341,30 @@
              [:sql [:string {:min 1}]]
              [:template_tags {:optional true}
               [:maybe [:map-of
-                       {:description (str "One entry per {{tag}} in the SQL, keyed by tag name. "
-                                          "Every named tag must appear in the SQL. The read shape "
-                                          "get_content returns for a question's template_tags is "
-                                          "also accepted verbatim.")}
+                       {:description (str "One entry per {{tag}} in the SQL, keyed by tag name; a name "
+                                          "absent from the SQL is an error. The shape get_content "
+                                          "returns round-trips verbatim.")}
                        :keyword
                        [:map
-                        [:type [:enum {:description (str "\"dimension\" is a field filter (a smart widget bound to a "
-                                                         "column — write it bare in SQL: WHERE {{tag}}); "
-                                                         "\"temporal-unit\" a time-bucket picker for a datetime column; "
-                                                         "\"text\"/\"number\"/\"date\"/\"boolean\" are raw variables "
-                                                         "spliced as literals (you write the operator: WHERE total > "
-                                                         "{{tag}}). \"snippet\"/\"card\"/\"table\" reference tags are "
-                                                         "configured by the SQL text itself — entries for them (as "
-                                                         "get_content returns them) are accepted and ignored.")}
+                        [:type [:enum {:description (str "\"dimension\" = field filter, a widget bound to a column — "
+                                                         "write it bare in SQL (WHERE {{tag}}); \"temporal-unit\" = "
+                                                         "time-bucket picker for a datetime column; text/number/date/"
+                                                         "boolean = raw variables spliced as literals (you write the "
+                                                         "operator: WHERE total > {{tag}}); snippet/card/table "
+                                                         "reference entries are accepted and ignored — the SQL text "
+                                                         "configures them.")}
                                 "text" "number" "date" "boolean" "dimension" "temporal-unit"
                                 "snippet" "card" "table"]]
-                        [:display_name {:optional true} [:maybe [:string {:description "Label shown on the filter widget."}]]]
+                        [:display_name {:optional true} [:maybe [:string {:description "Widget label."}]]]
                         [:field_id {:optional true}
-                         [:maybe [:or {:description (str "Required for \"dimension\" and \"temporal-unit\": the column "
-                                                         "the tag binds, as a numeric field id or 21-char entity_id.")}
+                         [:maybe [:or {:description (str "Required for dimension/temporal-unit: the bound column, as "
+                                                         "a numeric field id or 21-char entity_id.")}
                                   :int :string]]]
                         [:widget_type {:optional true}
-                         [:maybe [:string {:description (str "Required for \"dimension\": the widget/operator, matched to "
-                                                             "the column's type — e.g. \"string/=\", \"string/contains\", "
-                                                             "\"number/between\", \"date/all-options\", \"category\", \"id\".")}]]]
+                         [:maybe [:string {:description (str "Required for dimension: widget/operator matched to the "
+                                                             "column's type — e.g. \"string/=\", \"string/contains\", "
+                                                             "\"number/between\", \"date/all-options\", \"category\", "
+                                                             "\"id\".")}]]]
                         [:required {:optional true} [:maybe :boolean]]
                         [:default {:optional true} [:maybe :any]]]]]]]]]
    [:name {:optional true} [:maybe [:string {:min 1}]]]
@@ -387,7 +386,7 @@
               [:visibility_type {:optional true} [:maybe :string]]]]]]])
 
 (registry/deftool question-write-tool
-  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (a handle from an execute tool — MBQL or native SQL), query (inline MBQL 5, in the same portable dialect execute_query takes — see learn(\"query-dialect\")), or native ({database_id, sql, template_tags?}). The template_tags shape is MCP-specific and not guessable — before first passing template_tags, call learn(\"native-parameters\") if you haven't read it; the shape get_content returns for a question's template_tags is also accepted back verbatim, so read-modify-write round-trips. Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit to save to your personal collection; pass \"root\" to save to the root collection) or dashboard_id (saves the question inside that dashboard; its collection is inferred from the dashboard — pass one or the other, not both), display, visualization_settings (learn(\"visualization-settings\") covers which display fits which data and the settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets the card's result_metadata; typically used with card_type \"model\"). On update, pass id and any fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (its collection follows the dashboard's — pass with collection_id and you'll get an error; a question already saved in another dashboard can't be moved into a different one; moving a card OUT of a dashboard isn't supported yet)."
+  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (inline MBQL 5, the same portable dialect execute_query takes — learn(\"query-dialect\")), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn(\"native-parameters\") unless already read). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit = your personal collection; \"root\" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn(\"visualization-settings\") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type \"model\"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet)."
   {:name         "question_write"
    :scope        metabot.scope/agent-question-create
    :update-scope metabot.scope/agent-question-update

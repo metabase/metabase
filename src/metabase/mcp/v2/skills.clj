@@ -34,22 +34,22 @@
   "The pack catalog, in the order `learn()` lists it. `:description` doubles as the catalog line
    and must say when to read the pack, not just what it is."
   [{:name        "query-dialect"
-    :description "The portable MBQL 5 dialect execute_query and question_write's `query` speak: name-based refs, clause grammar, joins, expressions, multi-stage queries. Read before authoring any non-trivial query. Reference `operators` lists every filter/aggregation/expression operator."
+    :description "Portable MBQL 5 for execute_query and question_write's `query`: name-based refs, clause grammar, joins, expressions, multi-stage queries. Read before any non-trivial query. Reference `operators`: every filter/aggregation/expression operator."
     :references  ["operators"]}
    {:name        "native-parameters"
-    :description "Template tags for native SQL (question_write's `native`): the tag kinds, the field-filter-vs-variable decision, the exact template_tags shape, widget types, optional [[ ]] blocks. Read before first passing template_tags."
+    :description "Template tags for native SQL (question_write's `native`): tag kinds, field filter vs raw variable, the template_tags shape, widget types, [[ ]] optional blocks. Read before first passing template_tags."
     :references  []}
    {:name        "dashboard-filters"
-    :description "Dashboard parameters end to end: add_parameter types, wire_parameter target grammar (target_field vs target_tag vs raw target), autowire, linked filters, value sources, inline parameters. Read before your first add_parameter or wire_parameter."
+    :description "Dashboard parameters: add_parameter types, wire_parameter target grammar, autowire, linked filters, value sources, inline parameters. Read before your first add_parameter or wire_parameter."
     :references  []}
    {:name        "dashboard-layout"
-    :description "The 24-column dashboard grid: per-display default sizes, explicit placement vs autoplace, the KPI-row pattern, tabs and the every-card-needs-a-tab rule."
+    :description "The 24-column grid: per-display default sizes, explicit placement vs autoplace, the KPI-row pattern, tabs and the every-card-needs-a-tab rule."
     :references  []}
    {:name        "documents"
-    :description "document_write's Markdown grammar beyond the basics: the CommonMark subset, {% card %} embeds, {% entity %} links, ::: layout containers, and how surgical `edits` behave."
+    :description "document_write's Markdown grammar: the CommonMark subset, {% card %} embeds, {% entity %} links, ::: layout containers, how `edits` behave."
     :references  []}
    {:name        "visualization-settings"
-    :description "Choosing a card's display and authoring visualization_settings: which chart fits which data, the output-column-name rule, minimum settings per chart family. Reference `settings` is the full per-chart key catalog including column_settings, series_settings, and dashcard click behavior."
+    :description "Choosing a card's display and visualization_settings: which chart fits which data, the output-column-name rule, minimum settings per chart family. Reference `settings`: the per-chart key catalog incl. column_settings, series_settings, click behavior."
     :references  ["settings"]}])
 
 (def ^:private content
@@ -111,10 +111,10 @@
        "  raw variable:  {\"type\": \"text\" | \"number\" | \"date\" | \"boolean\", \"display_name\"?, \"required\"?, \"default\"?}\n"
        "  time grouping: {\"type\": \"temporal-unit\", \"field_id\": <numeric id or entity_id>}\n"
        "Write a field filter BARE in the SQL (WHERE {{tag}}, never col = {{tag}}); a raw variable is a literal you wrap yourself (WHERE total > {{tag}}). "
-       "The shape get_content returns for template_tags is accepted back verbatim — including snippet/card reference-tag entries, which are ignored (the SQL text configures them). Full doc: learn(\"native-parameters\")."))
+       "get_content's template_tags are accepted back verbatim; snippet/card reference entries are ignored (the SQL configures them). Full doc: learn(\"native-parameters\")."))
 
 (def wire-target-grammar
   "The wire_parameter target grammar, embedded in wiring teaching errors."
-  (str "wire_parameter takes exactly one of: `target_field` (a numeric field id — works for MBQL cards and for native cards whose field-filter tag binds that field; the server derives the mapping), "
-       "`target_tag` (a template tag name on a native-SQL card; the server derives [\"dimension\"…] vs [\"variable\"…] from the tag's type), "
+  (str "wire_parameter takes exactly one of: `target_field` (numeric field id — MBQL cards and native field-filter tags; the server derives the mapping), "
+       "`target_tag` (a tag name on a native card; the server derives dimension vs variable from the tag's type), "
        "or raw `target` (advanced, e.g. [\"dimension\", [\"template-tag\", \"category\"]]; [\"text-tag\", \"name\"] binds a {{name}} placeholder in a text/heading/iframe card's own content). Full doc: learn(\"dashboard-filters\")."))

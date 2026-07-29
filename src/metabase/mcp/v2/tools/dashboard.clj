@@ -116,34 +116,30 @@
 ;;; ------------------------------------------------- Schema -------------------------------------------------------
 
 (def ^:private position-schema
-  [:map {:closed true :description "Grid slot. Omit to autoplace below the existing cards."}
-   [:row [:int {:min 0 :description "Zero-based grid row."}]]
-   [:col [:int {:min 0 :max 23 :description "Zero-based grid column; the grid is 24 columns wide."}]]])
+  [:map {:closed true :description "Grid slot; omit to autoplace."}
+   [:row [:int {:min 0 :description "Zero-based row."}]]
+   [:col [:int {:min 0 :max 23 :description "Zero-based column; the grid is 24 wide."}]]])
 
 (def ^:private size-schema
-  [:map {:closed true :description "Grid size in cells; the grid is 24 columns wide."}
-   [:size_x [:int {:min 1 :max 24 :description "Width in grid columns."}]]
-   [:size_y [:int {:min 1 :description "Height in grid rows."}]]])
+  [:map {:closed true :description "Size in grid cells."}
+   [:size_x [:int {:min 1 :max 24 :description "Width in columns (grid is 24 wide)."}]]
+   [:size_y [:int {:min 1 :description "Height in rows."}]]])
 
 (def ^:private new-id-schema
   [:int {:max -1
-         :description (str "A negative id you choose (-1, -2, …). Later ops in this same call "
-                           "reference the new row by it; the server assigns the real id on save.")}])
+         :description "Negative id you choose for the new row (-1, -2, …); later ops may reference it."}])
 
 (def ^:private tab-ref-schema
-  [:maybe [:int {:description (str "Id of the tab to place this on: an existing tab's id, or the "
-                                   "negative id of a tab added earlier in this same call. Omit on "
-                                   "a dashboard with no tabs.")}]])
+  [:maybe [:int {:description "Tab id; negative ids from this call work. Omit when the dashboard has no tabs."}]])
 
 (def ^:private inline-parameters-schema
-  [:maybe [:sequential [:string {:description "Id of a dashboard parameter to render on this card instead of in the header."}]]])
+  [:maybe [:sequential [:string {:description "Parameter id to render on this card, not the header."}]]])
 
 (def ^:private dashcard-ref-schema
-  [:int {:description (str "Id of a dashcard already on the dashboard, or the negative id of one "
-                           "added earlier in this same call.")}])
+  [:int {:description "Dashcard id; negative ids from this call work."}])
 
 (def ^:private parameter-id-schema
-  [:string {:min 1 :description "The parameter's id — a short string you choose and reuse in later ops."}])
+  [:string {:min 1 :description "Parameter id — a short string you choose and reuse in later ops."}])
 
 ;; `add_parameter` and `update_parameter` write REST parameter properties straight through, so the
 ;; camelCase names (`isMultiSelect`, `filteringParameters`, `sectionId`) are preserved verbatim.
@@ -156,24 +152,24 @@
    [:sectionId {:optional true}
     [:maybe [:string {:description "Widget section, e.g. \"string\", \"number\", \"date\", \"id\"."}]]]
    [:default {:optional true}
-    [:maybe [:any {:description "Default value: a scalar, or an array for a multi-select parameter."}]]]
+    [:maybe [:any {:description "Default value: a scalar, or an array for multi-select."}]]]
    [:required {:optional true}
-    [:maybe [:boolean {:description "When true the dashboard cannot be viewed without a value; pair it with a default."}]]]
+    [:maybe [:boolean {:description "When true the dashboard needs a value to view; pair with a default."}]]]
    [:isMultiSelect {:optional true}
-    [:maybe [:boolean {:description "Whether the widget accepts several values at once."}]]]
+    [:maybe [:boolean {:description "Whether the widget accepts several values."}]]]
    [:temporal_units {:optional true}
     [:maybe [:sequential [:string {:description "Allowed unit for a \"temporal-unit\" parameter, e.g. \"month\"."}]]]]
    [:values_query_type {:optional true}
-    [:maybe [:enum {:description "How the value picker behaves: a dropdown list, a search box, or free text."}
+    [:maybe [:enum {:description "Value picker behavior: dropdown list, search box, or free text."}
              "list" "search" "none"]]]
    [:values_source_type {:optional true}
-    [:maybe [:enum {:description "Where picker values come from. Omit to use the connected field's values."}
+    [:maybe [:enum {:description "Picker value source; omit to use the connected field's values."}
              "static-list" "card"]]]
    [:values_source_config {:optional true}
     [:maybe [:map {:description (str "Config for values_source_type: {\"values\": [...]} for "
                                      "static-list, or {\"card_id\": n, \"value_field\": target} for card.")}]]]
    [:filteringParameters {:optional true}
-    [:maybe [:sequential [:string {:description "Id of another parameter whose value narrows this one (a linked filter)."}]]]]])
+    [:maybe [:sequential [:string {:description "Id of a parameter whose value narrows this one (linked filter)."}]]]]])
 
 (defn- op-map
   "One closed op entry for [[op-schema]]: the `op` discriminator plus `fields`."
@@ -239,15 +235,15 @@
             [:position {:optional true} [:maybe position-schema]]
             [:size {:optional true} [:maybe size-schema]]])
    (op-map "duplicate_card"
-           (str "Copy an existing dashcard, keeping its card, visualization settings, and parameter "
-                "mappings. The copy is the same size as the original and gets its own slot.")
+           (str "Copy a dashcard with its card, visualization settings, and parameter mappings; "
+                "same size, its own slot.")
            [[:id new-id-schema]
             [:dashcard_id dashcard-ref-schema]
             [:tab {:optional true} tab-ref-schema]
             [:position {:optional true} [:maybe position-schema]]])
    (op-map "replace_card"
-           (str "Point an existing dashcard at a different card, keeping its slot and size. Series, "
-                "parameter mappings, and visualization settings reset, exactly as the editor does.")
+           (str "Point a dashcard at a different card, keeping slot and size; series, parameter "
+                "mappings, and visualization settings reset, as the editor does.")
            [[:dashcard_id dashcard-ref-schema]
             [:card_id [:int {:description "Numeric id of the card to show instead."}]]])
    (op-map "move" "Move a dashcard to a different slot, a different tab, or both."
@@ -265,19 +261,19 @@
             [:card_ids [:sequential [:int {:description "Numeric id of a card to overlay, in draw order."}]]]])
    (op-map "patch_dashcard"
            (str "Merge content settings into a dashcard — visualization settings, click behavior, "
-                "column settings, a link card's target. Layout and identity keys (row, col, size_x, "
+                "column settings, a link card's target. Layout/identity keys (row, col, size_x, "
                 "size_y, dashboard_tab_id, card_id, action_id, series, id) are rejected; use move, "
-                "resize, replace_card, or set_series for those.")
+                "resize, replace_card, or set_series.")
            [[:dashcard_id dashcard-ref-schema]
-            [:patch [:map {:description (str "Dashcard properties to merge. `visualization_settings` "
+            [:patch [:map {:description (str "Dashcard properties to merge; `visualization_settings` "
                                              "merges key by key rather than replacing the map.")}]]])
-   (op-map "add_tab" (str "Add a tab. Cards already on the dashboard are adopted automatically only "
-                          "when the save ends with exactly one tab; adding several tabs at once "
-                          "leaves them orphaned — `move` them onto a tab in the same call.")
+   (op-map "add_tab" (str "Add a tab. Existing cards are adopted only when the save ends with "
+                          "exactly one tab; adding several at once leaves them orphaned — `move` "
+                          "them onto a tab in the same call.")
            [[:id new-id-schema]
             [:name [:string {:min 1 :description "Tab label."}]]])
    (op-map "rename_tab" "Rename an existing tab."
-           [[:tab_id [:int {:description "Id of the tab to rename, or the negative id of one added earlier in this call."}]]
+           [[:tab_id [:int {:description "Id of the tab to rename (negative ids from this call work)."}]]
             [:name [:string {:min 1 :description "New tab label."}]]])
    (op-map "move_tab" "Reorder the tab strip by moving one tab to a new position."
            [[:tab_id [:int {:description "Id of the tab to move."}]]
@@ -292,14 +288,12 @@
                 "`wire_parameter` connects it to at least one card.")
            (into [[:parameter_id parameter-id-schema]] parameter-fields))
    (op-map "update_parameter"
-           (str "Change properties of an existing parameter. Only the properties you pass change; "
-                "the rest are left alone. Passing null does not clear a property — it is treated as "
-                "omitted — so a default or linked filter already set cannot be removed this way.")
+           (str "Change only the passed properties of an existing parameter. Null reads as omitted, "
+                "so it cannot clear an already-set default or linked filter.")
            (into [[:parameter_id parameter-id-schema]] parameter-fields))
    (op-map "remove_parameter"
-           (str "Delete a parameter, along with its card mappings, its inline placements, and any "
-                "linked-filter reference to it. Subscriptions that depend on it are archived and "
-                "their owners are emailed.")
+           (str "Delete a parameter with its card mappings, inline placements, and linked-filter "
+                "references; dependent subscriptions are archived and their owners emailed.")
            [[:parameter_id parameter-id-schema]])
    (op-map "move_parameter" "Reorder a parameter in the header, or move it onto a card. Pass exactly one of `index` or `dashcard_id`."
            [[:parameter_id parameter-id-schema]
@@ -313,20 +307,20 @@
            [[:parameter_id parameter-id-schema]
             [:dashcard_id dashcard-ref-schema]
             [:target_field {:optional true}
-             [:maybe [:int {:description (str "Numeric field id to filter on. The usual choice: the "
-                                              "server derives the mapping target from the card's query.")}]]]
+             [:maybe [:int {:description (str "Numeric field id to filter on — the usual choice; the "
+                                              "server derives the mapping from the card's query.")}]]]
             [:target_tag {:optional true}
-             [:maybe [:string {:description (str "Name of a template tag on a native-SQL card. The server "
-                                                 "derives the right mapping from the tag's type — field "
-                                                 "filter or raw variable, you never distinguish them.")}]]]
+             [:maybe [:string {:description (str "Template tag name on a native-SQL card; the server "
+                                                 "derives the mapping from the tag's type (field filter "
+                                                 "vs raw variable).")}]]]
             [:target {:optional true}
-             [:maybe [:sequential [:any {:description (str "Raw mapping-target clause as a JSON array, e.g. "
-                                                           "[\"dimension\", [\"template-tag\", \"category\"]]. "
-                                                           "Advanced escape hatch; prefer target_field.")}]]]]
+             [:maybe [:sequential [:any {:description (str "Raw mapping-target clause, e.g. "
+                                                           "[\"dimension\", [\"template-tag\", \"category\"]] or "
+                                                           "[\"text-tag\", \"name\"] for a {{name}} placeholder in a "
+                                                           "text/heading/iframe card. Advanced; prefer target_field.")}]]]]
             [:autowire {:optional true}
-             [:maybe [:boolean {:description (str "With target_field, also map every other card on the "
-                                                  "dashboard that exposes the same field. Cards that "
-                                                  "do not expose it are skipped silently.")}]]]])
+             [:maybe [:boolean {:description (str "With target_field, also map every other card exposing "
+                                                  "the same field; cards that don't are skipped silently.")}]]]])
    (op-map "unwire_parameter" "Disconnect a parameter from one card, or from every card when `dashcard_id` is omitted."
            [[:parameter_id parameter-id-schema]
             [:dashcard_id {:optional true}
@@ -410,24 +404,20 @@
   (merge {:id nil :dashcards [] :tabs [] :parameters []} attrs))
 
 (registry/deftool dashboard-write
-  "Create or update a dashboard, and edit its layout with ordered operations. method: \"create\" requires name;
-  method: \"update\" requires id and accepts archived (true trashes, false restores — there is no hard delete).
-  ops is an ordered list applied as one atomic save: nothing is written unless every op succeeds, so a failed
-  call leaves the dashboard untouched and a retry cannot double-add. Give each new card or tab its own negative
-  id (-1, -2, …); later ops in the same call reference it by that id, and the server assigns the real id on save.
-  Ops: add_card, add_text, add_heading, add_link, add_iframe, add_action, duplicate_card, replace_card, move,
-  resize, remove, set_series, patch_dashcard, add_tab, rename_tab, move_tab, duplicate_tab, remove_tab,
-  add_parameter, update_parameter, remove_parameter, move_parameter, wire_parameter, unwire_parameter.
-  Omit position to autoplace; learn(\"dashboard-layout\") covers the 24-column grid, per-display default sizes, and
-  layout conventions. patch_dashcard merges content only — use move, resize, replace_card, or set_series
-  for layout and identity. Parameter ids are strings you choose. Before your first add_parameter or wire_parameter,
-  read the dashboard-filters skill via learn(\"dashboard-filters\") unless already loaded — it carries the parameter
-  types, the target grammar, linked filters, and value sources. wire_parameter with autowire: true also maps
-  every other card that exposes the same field. validate_only: true returns the layout the ops would produce
-  without writing; it checks the ops and the resulting layout, but per-field parameter-mapping permission checks
-  run only on the real save, so a clean dry run can still be rejected. Returns the resulting dashboard, so no
-  follow-up read is needed. Requires write permission on the dashboard and read permission on every card
-  referenced."
+  "Create or update a dashboard and edit its layout with ordered ops applied as one atomic save — nothing is
+  written unless every op succeeds, so a failed call leaves the dashboard untouched and a retry cannot
+  double-add. method: \"create\" requires name; \"update\" requires id and accepts archived (true trashes,
+  false restores — there is no hard delete). Give each new card or tab its own negative id (-1, -2, …); later
+  ops in the same call reference it, and the server assigns real ids on save. Ops: add_card, add_text,
+  add_heading, add_link, add_iframe, add_action, duplicate_card, replace_card, move, resize, remove,
+  set_series, patch_dashcard, add_tab, rename_tab, move_tab, duplicate_tab, remove_tab, add_parameter,
+  update_parameter, remove_parameter, move_parameter, wire_parameter, unwire_parameter. Before your first
+  add_parameter or wire_parameter, read learn(\"dashboard-filters\") unless already loaded — parameter types,
+  target grammar, linked filters, value sources; learn(\"dashboard-layout\") covers the 24-column grid,
+  per-display default sizes, and layout conventions. validate_only: true returns the layout the ops would
+  produce without writing — but per-field parameter-mapping permission checks run only on the real save, so a
+  clean dry run can still be rejected. Returns the resulting dashboard, so no follow-up read is needed.
+  Requires write permission on the dashboard and read permission on every referenced card."
   {:name         "dashboard_write"
    :scope        metabot.scope/agent-dashboard-create
    :update-scope metabot.scope/agent-dashboard-update

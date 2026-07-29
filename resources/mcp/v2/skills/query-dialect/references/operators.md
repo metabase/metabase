@@ -1,6 +1,6 @@
 # Operator catalog — portable MBQL 5
 
-The complete clause vocabulary for `execute_query` / `question_write` queries. Structure rules (options object at position 1, name-based field refs) are in the query-dialect skill body; this is the catalog of which operators exist and their arguments. `<field>` below abbreviates `["field", {}, ["<db>", "<schema-or-null>", "<table>", "<column>"]]` (or a string-name ref against a previous stage).
+Every operator for `execute_query` / `question_write` queries; structure rules (options at position 1, name-based refs) are in the skill body. `<field>` abbreviates `["field", {}, ["<db>", "<schema-or-null>", "<table>", "<column>"]]` (or a string-name ref against a previous stage).
 
 ## Filters
 
@@ -10,7 +10,7 @@ Boolean:
 
 Equality / membership (variadic):
 - `["=", {}, <a>, <b>, ...]` / `["!=", {}, <a>, <b>, ...]`
-- `["in", {}, <expr>, <v1>, <v2>, ...]` / `["not-in", {}, <expr>, <v1>, ...]` — canonical for multi-value categorical filters.
+- `["in", {}, <expr>, <v1>, <v2>, ...]` / `["not-in", …]` — canonical for multi-value categorical filters.
 
 Comparison:
 - `["<", {}, <a>, <b>]` / `["<=", …]` / `[">", …]` / `[">=", …]`
@@ -27,7 +27,7 @@ String match (options may carry `{"case-sensitive": false}`):
 
 Temporal:
 - `["time-interval", {}, <temporal>, <n | "current" | "last" | "next">, "<unit>"]` — relative window; options may set `{"include-current": true}`.
-- `["during", {}, <temporal>, "<iso-date-or-datetime>", "<unit>"]` — value falls within the bucket containing the literal.
+- `["during", {}, <temporal>, "<iso-date-or-datetime>", "<unit>"]` — value within the bucket containing the literal.
 - `["relative-time-interval", {}, <temporal>, <value>, "<bucket>", <offset-value>, "<offset-bucket>"]` — window offset from now.
 - Absolute ranges: `["between", {}, <temporal>, "2024-01-01", "2024-12-31"]`.
 
@@ -45,9 +45,9 @@ Named reference:
 - `["count-where", {}, <bool-pred>]` / `["sum-where", {}, <num>, <bool-pred>]` / `["distinct-where", {}, <expr>, <bool-pred>]`
 - `["share", {}, <bool-pred>]` — fraction of rows where the predicate holds, 0–1.
 - `["metric", {}, "<entity_id>"]` / `["measure", {}, "<entity_id>"]` — saved definitions; base table must be the stage's source.
-- `["offset", {}, <expr>, <n>]` — window function: the value `<n>` rows back (negative) or ahead (positive). Valid **only** inside `aggregation` or `order-by`, never in `expressions` or a filter.
+- `["offset", {}, <expr>, <n>]` — window function: the value `<n>` rows back (negative) or ahead. Valid **only** inside `aggregation` or `order-by`, never in `expressions` or a filter.
 
-Name the output with options: `["sum", {"name": "revenue", "display-name": "Revenue"}, <field>]` — later stages and visualization settings reference that `name`.
+Name the output in options — `["sum", {"name": "revenue", "display-name": "Revenue"}, <field>]`; later stages and visualization settings reference that `name`.
 
 ## Order-by
 
@@ -77,7 +77,7 @@ Conditional:
 
 Temporal:
 - `["datetime-add", {}, <temporal>, <n>, "<unit>"]` / `["datetime-subtract", …]`
-- `["datetime-diff", {}, <left>, <right>, "<unit>"]` — unit ∈ `second minute hour day week month quarter year`. The only supported date subtraction.
+- `["datetime-diff", {}, <left>, <right>, "<unit>"]` — unit ∈ `second minute hour day week month quarter year`; the only supported date subtraction.
 - `["interval", {}, <n>, "<unit>"]`
 - `["get-year", {}, <t>]`, `["get-quarter", …]`, `["get-month", …]`, `["get-day", …]`, `["get-hour", …]`, `["get-minute", …]`, `["get-second", …]`
 - `["get-week", {}, <t>, "<mode?>"]` / `["get-day-of-week", {}, <t>, "<mode?>"]` — mode `"iso"` / `"us"` / `"instance"`.
@@ -103,4 +103,4 @@ Binning — `{"binning": {...}}` on a numeric/coordinate field ref in a breakout
 
 ## Canonical spellings
 
-Common near-misses are auto-corrected, but write the canonical name so later reads match: `count-where` (not `count-if`), `var` (not `variance`), `stddev` (not `stddev-pop`), `distinct` (not `count-distinct`), `get-day-of-week` (not `dayofweek`), `get-hour`/`get-month`/`get-quarter` (not `hour-of-day` etc. as operators), `datetime-diff` (not `temporal-diff`), `relative-datetime` (not `relative-date`). Clause heads are lowercase and hyphenated, never underscored or camelCase.
+Near-misses are auto-corrected, but write the canonical name so later reads match: `count-where` (not `count-if`), `var` (not `variance`), `stddev` (not `stddev-pop`), `distinct` (not `count-distinct`), `get-day-of-week` (not `dayofweek`), `get-hour`/`get-month`/`get-quarter` (not `hour-of-day` etc. as operators), `datetime-diff` (not `temporal-diff`), `relative-datetime` (not `relative-date`). Clause heads are lowercase and hyphenated, never underscored or camelCase.
