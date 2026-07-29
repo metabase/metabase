@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useSetting } from "metabase/common/hooks";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
@@ -24,11 +25,14 @@ function UnavailablePage({
     <MonitorMain align="center" h="100%">
       <Flex flex={1} align="center" justify="center">
         <EmptyState
-          icon="metabot"
+          illustrationElement={
+            <img src={EmptyDashboardBot} alt="" width={100} height={100} />
+          }
           title={title}
           message={message}
           action={action}
           link={link}
+          actionVariant="default"
         />
       </Flex>
     </MonitorMain>

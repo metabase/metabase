@@ -109,6 +109,9 @@ function getContentWidth<TData extends TreeNodeData>(
   const baseWidth = contentWidths[column.id] ?? MIN_COLUMN_WIDTH;
   const padding = column.widthPadding ?? 0;
   let width = baseWidth + padding;
+  if (typeof column.minWidth === "number") {
+    width = Math.max(width, column.minWidth);
+  }
   if (column.maxAutoWidth != null) {
     width = Math.min(width, column.maxAutoWidth);
   }

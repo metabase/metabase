@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
-import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import { skipToken, useLazyGetAdhocQueryQuery } from "metabase/api";
+import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { Dataset } from "metabase-types/api";
@@ -28,7 +29,10 @@ export function useMcpEventsQuery(
     [query, page, pageSize],
   );
 
-  const { data, isFetching } = useGetAdhocQueryQuery(jsQuery ?? skipToken);
+  const { data, isFetching } = useAbortableQuery(
+    useLazyGetAdhocQueryQuery,
+    jsQuery ?? skipToken,
+  );
 
   return { data, isFetching };
 }

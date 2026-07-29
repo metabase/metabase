@@ -17,6 +17,7 @@ import type {
   MetabotAgentTurnErroredMessage,
   MetabotChatMessage,
   MetabotDataPart,
+  MetabotDebugToolCallMessage,
   MetabotUserChatMessage,
 } from "metabase/metabot/state";
 import {
@@ -185,6 +186,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   onInternalLinkClick?: (link: string) => void;
   extraActions?: ReactNode;
   isStreaming?: boolean;
+  onToolCallSelect?: (message: MetabotDebugToolCallMessage) => void;
 }
 
 export const AgentMessage = ({
@@ -202,6 +204,7 @@ export const AgentMessage = ({
   hideActions,
   extraActions,
   isStreaming = false,
+  onToolCallSelect,
   ...props
 }: AgentMessageProps) => {
   const messageId = "externalId" in message ? (message.externalId ?? "") : "";
@@ -231,7 +234,7 @@ export const AgentMessage = ({
           />
         ))
         .with({ type: "tool_call" }, (m) => (
-          <AgentToolCallMessage message={m} />
+          <AgentToolCallMessage message={m} onSelect={onToolCallSelect} />
         ))
         .with({ type: "turn_aborted" }, (m) => (
           <AbortedTurnAlert messageId={m.id} debug={debug} onRetry={onRetry} />
@@ -470,6 +473,7 @@ export const Messages = ({
   conversationId,
   onInternalLinkClick,
   getExtraActions,
+  onToolCallSelect,
 }: {
   messages: MetabotChatMessage[];
   onRetryMessage?: (messageId: string) => void;
@@ -480,6 +484,7 @@ export const Messages = ({
   conversationId: string;
   onInternalLinkClick?: (navigateToPath: string) => void;
   getExtraActions?: (messageId: string) => ReactNode;
+  onToolCallSelect?: (message: MetabotDebugToolCallMessage) => void;
 }) => {
   const visibleMessages = useMemo(
     () => (debug ? messages : messages.filter(isUserVisibleMessage)),
@@ -561,6 +566,7 @@ export const Messages = ({
             extraActions={getExtraActions?.(message.id)}
             onInternalLinkClick={onInternalLinkClick}
             isStreaming={isDoingScience && !next}
+            onToolCallSelect={onToolCallSelect}
           />
         ) : (
           <UserMessage

@@ -9,6 +9,7 @@ type AdhocQueryResult = {
   data: Dataset | undefined;
   jsQuery: DatasetQuery | null;
   isFetching: boolean;
+  error: unknown;
 };
 
 export function useAdhocBreakoutQuery(query: Query | null): AdhocQueryResult {
@@ -18,11 +19,11 @@ export function useAdhocBreakoutQuery(query: Query | null): AdhocQueryResult {
     [query],
   );
 
-  const { data, isFetching } = useGetAdhocQueryQuery(
+  const { data, isFetching, error } = useGetAdhocQueryQuery(
     // Unjustified type cast. FIXME
     jsQuery ?? ({} as DatasetQuery),
     { skip: !jsQuery },
   );
 
-  return { data, jsQuery, isFetching };
+  return { data, jsQuery, isFetching, error };
 }

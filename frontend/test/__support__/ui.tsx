@@ -585,6 +585,21 @@ export const mockOffsetHeightAndWidth = (value = 50) => {
     .mockReturnValue(value);
 };
 
+export const createMockDOMRect = (
+  overrides: Partial<DOMRect> = {},
+): DOMRect => ({
+  height: 200,
+  width: 200,
+  top: 0,
+  left: 0,
+  bottom: 0,
+  right: 0,
+  x: 0,
+  y: 0,
+  toJSON: () => {},
+  ...overrides,
+});
+
 /**
  * jsdom doesn't have getBoundingClientRect, so we need to mock it for any components
  * with virtualization to work in tests, like the entity picker
@@ -592,20 +607,20 @@ export const mockOffsetHeightAndWidth = (value = 50) => {
 export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
   jest
     .spyOn(window.Element.prototype, "getBoundingClientRect")
-    .mockImplementation(() => {
-      return {
-        height: 200,
-        width: 200,
-        top: 0,
-        left: 0,
-        bottom: 0,
-        right: 0,
-        x: 0,
-        y: 0,
-        toJSON: () => {},
-        ...options,
-      };
-    });
+    .mockImplementation(() => createMockDOMRect(options));
+};
+
+/**
+ * Forces `useIsTruncated` (used by `Ellipsified`) to detect overflow, so a
+ * hover-triggered truncation tooltip becomes testable.
+ */
+export const mockTextOverflow = () => {
+  jest
+    .spyOn(window.Element.prototype, "getBoundingClientRect")
+    .mockReturnValue(createMockDOMRect({ width: 100, height: 20 }));
+  jest
+    .spyOn(window.Range.prototype, "getBoundingClientRect")
+    .mockReturnValue(createMockDOMRect({ width: 500, height: 20 }));
 };
 
 /**

@@ -317,6 +317,7 @@ export interface TreeTableRowProps<
   href?: string | null;
   renderSubRow?: RenderSubRow<TData>;
   hierarchical?: boolean;
+  isClickable?: boolean;
 }
 
 /**

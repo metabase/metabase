@@ -269,12 +269,10 @@ function selectDateFilter(
 
 function assertConversationTableContains(labels: readonly string[]): void {
   H.main()
-    .findByRole("table")
+    .findByRole("treegrid", { name: "Conversations" })
     .within(() => {
       labels.forEach((label) => {
-        cy.findAllByText(label)
-          .filter(":visible")
-          .should("have.length.greaterThan", 0);
+        cy.findAllByText(label).should("have.length.greaterThan", 0);
       });
     });
 }
@@ -283,7 +281,7 @@ function assertConversationTableDoesNotContain(
   labels: readonly string[],
 ): void {
   H.main()
-    .findByRole("table")
+    .findByRole("treegrid", { name: "Conversations" })
     .within(() => {
       labels.forEach((label) => {
         cy.contains(label).should("not.exist");
@@ -388,8 +386,7 @@ function clickRowChartBarForLabel(title: string, label: string): void {
 }
 
 function openConversationFromProfile(profileLabel: string): void {
-  cy.get("tbody")
-    .contains("tr", profileLabel)
+  cy.contains('[data-testid="conversation"]', profileLabel)
     .scrollIntoView()
     .should("be.visible")
     .realClick();
@@ -411,6 +408,9 @@ describe("scenarios > monitor > ai auditing > usage auditing", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
+    // MetabotAnalyticsAvailabilityLayout (usage stats + conversations) shows an empty
+    // state with a "Go to AI Settings" CTA unless llm-metabot-configured? is true.
+    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
     seedUsageAuditingData();
   });
 
@@ -757,8 +757,8 @@ describe("scenarios > monitor > ai auditing > usage auditing", () => {
 
     for (const { headerLabel, sortBy } of sortableColumns) {
       H.main()
-        .findByRole("table")
-        .findByRole("button", { name: headerLabel })
+        .findByRole("treegrid", { name: "Conversations" })
+        .findByRole("columnheader", { name: headerLabel })
         .click();
 
       cy.wait("@conversations")

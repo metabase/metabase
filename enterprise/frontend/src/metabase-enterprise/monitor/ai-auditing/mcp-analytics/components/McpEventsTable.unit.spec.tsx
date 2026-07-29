@@ -45,18 +45,10 @@ describe("eventColumns", () => {
     expect(all).not.toContain("mcp_session_id");
   });
 
-  it("marks the expected columns sortable and leaves the rest static", () => {
+  it("marks every column sortable, keyed by its own view column name", () => {
     const columns = eventColumns(true, true);
-    const sortable = columns.filter((c) => c.sort).map((c) => c.key);
-    expect(sortable).toEqual([
-      "created_at",
-      "tool_name",
-      "client_display_name",
-      "user_display_name",
-      "status",
-      "duration_ms",
-    ]);
-    // the PK and free-text columns are not sortable
-    expect(columns.find((c) => c.key === "tool_call_id")?.sort).toBeUndefined();
+    for (const column of columns) {
+      expect(column.sort).toBe(column.key);
+    }
   });
 });

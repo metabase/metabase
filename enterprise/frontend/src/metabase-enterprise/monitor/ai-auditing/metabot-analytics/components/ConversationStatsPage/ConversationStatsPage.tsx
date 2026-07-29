@@ -2,16 +2,24 @@ import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { useDispatch } from "metabase/redux";
 import type { WithRouterProps } from "metabase/router";
 import { push } from "metabase/router";
-import { Button, Flex, SimpleGrid, Tabs, Text, Title } from "metabase/ui";
+import {
+  Button,
+  Flex,
+  SimpleGrid,
+  Stack,
+  Tabs,
+  Text,
+  Title,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -32,7 +40,6 @@ import {
 } from "../ConversationsPage/utils";
 
 import { BreakoutChart } from "./BreakoutChart";
-import S from "./ConversationStatsPage.module.css";
 import {
   ConversationsByDayChart,
   isSingleDayFilter,
@@ -260,37 +267,10 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
 
   return (
     <MonitorMain>
-      <SettingsPageWrapper
-        mt="sm"
-        title={hasDataComplexityFeature ? t`Usage stats` : undefined}
-      >
-        <Flex align="center" justify="space-between">
-          {hasDataComplexityFeature ? (
-            <Title order={3} display="flex" style={{ alignItems: "center" }}>
-              {t`Usage metrics`}
-            </Title>
-          ) : (
-            <Title order={2} display="flex" style={{ alignItems: "center" }}>
-              {t`Usage stats`}
-            </Title>
-          )}
-
-          <ConversationFilters
-            date={date}
-            onDateChange={(val) => patchUrlState({ date: val })}
-            user={user}
-            onUserChange={(val) => patchUrlState({ user: val })}
-            group={group}
-            onGroupChange={(val) => patchUrlState({ group: val })}
-            groupNoFilterValue={groupNoFilterValue}
-            tenant={tenant}
-            onTenantChange={(val) => patchUrlState({ tenant: val })}
-            userOptions={userOptions}
-            groupOptions={groupOptions}
-            tenantOptions={tenantOptions}
-            hasTenants={hasTenants}
-          />
-        </Flex>
+      <Stack gap="lg">
+        <MonitorHeaderTitle>
+          {hasDataComplexityFeature ? t`Usage metrics` : t`Usage stats`}
+        </MonitorHeaderTitle>
 
         <Tabs
           variant="pills"
@@ -298,22 +278,31 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
           // Unjustified type cast. FIXME
           onChange={(val) => patchUrlState({ metric: val as UsageStatsMetric })}
         >
-          <Tabs.List className={S.metricTabs}>
-            <Tabs.Tab
-              className={S.metricTab}
-              value="conversations"
-            >{t`Conversations`}</Tabs.Tab>
-            <Tabs.Tab
-              className={S.metricTab}
-              value="tokens"
-            >{t`Tokens`}</Tabs.Tab>
-            <Tabs.Tab
-              className={S.metricTab}
-              value="messages"
-            >{t`Messages`}</Tabs.Tab>
+          <Tabs.List>
+            <Tabs.Tab value="conversations">{t`Conversations`}</Tabs.Tab>
+            <Tabs.Tab value="tokens">{t`Tokens`}</Tabs.Tab>
+            <Tabs.Tab value="messages">{t`Messages`}</Tabs.Tab>
           </Tabs.List>
         </Tabs>
+      </Stack>
 
+      <ConversationFilters
+        date={date}
+        onDateChange={(val) => patchUrlState({ date: val })}
+        user={user}
+        onUserChange={(val) => patchUrlState({ user: val })}
+        group={group}
+        onGroupChange={(val) => patchUrlState({ group: val })}
+        groupNoFilterValue={groupNoFilterValue}
+        tenant={tenant}
+        onTenantChange={(val) => patchUrlState({ tenant: val })}
+        userOptions={userOptions}
+        groupOptions={groupOptions}
+        tenantOptions={tenantOptions}
+        hasTenants={hasTenants}
+      />
+
+      <Stack gap="lg">
         <ConversationsByDayChart
           {...sharedChartProps}
           onDimensionClick={handleDayClick}
@@ -375,7 +364,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
         </SimpleGrid>
 
         <DataComplexitySection />
-      </SettingsPageWrapper>
+      </Stack>
     </MonitorMain>
   );
 }

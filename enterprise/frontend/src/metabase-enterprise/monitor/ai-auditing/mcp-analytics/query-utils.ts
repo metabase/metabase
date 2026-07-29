@@ -271,14 +271,20 @@ export function buildTotalCountQuery({
   return query;
 }
 
-/** View columns the events table can sort by (server-side). Others render but aren't sortable. */
+/** View columns the events table can sort by (server-side). */
 export const MCP_EVENT_SORT_COLUMNS = [
+  "tool_call_id",
   "created_at",
   "tool_name",
   "client_display_name",
+  "client_version",
   "user_display_name",
+  "tenant_name",
+  "ip_address",
   "status",
   "duration_ms",
+  "error_type",
+  "error_message",
 ] as const;
 
 export type McpEventSortColumn = (typeof MCP_EVENT_SORT_COLUMNS)[number];

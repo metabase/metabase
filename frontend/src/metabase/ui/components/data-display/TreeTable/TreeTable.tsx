@@ -150,37 +150,41 @@ export function TreeTable<TData extends TreeNodeData>({
     row: Row<TData>,
     index: number,
     virtualItemOrPinnedPosition: VirtualItem | TreeTableRowPinnedPosition,
-  ) => (
-    <TreeTableRow<TData>
-      key={row.id}
-      row={row}
-      rowIndex={index}
-      virtualItemOrPinnedPosition={virtualItemOrPinnedPosition}
-      table={table}
-      columnWidths={columnWidths}
-      showCheckboxes={showCheckboxes}
-      showExpandButtons={hasExpandableRows}
-      indentWidth={indentWidth}
-      activeRowId={activeRowId}
-      selectedRowId={selectedRowId}
-      isExpanded={row.getIsExpanded()}
-      canExpand={row.getCanExpand()}
-      measureElement={measureElement}
-      onRowClick={handleRowClick}
-      onRowDoubleClick={onRowDoubleClick}
-      isDisabled={isRowDisabled?.(row)}
-      isChildrenLoading={isChildrenLoading?.(row)}
-      isLoading={isRowLoading?.(row)}
-      getSelectionState={getSelectionState}
-      onCheckboxClick={onCheckboxClick}
-      classNames={classNames}
-      styles={styles}
-      getRowProps={getRowProps}
-      href={getRowHref?.(row)}
-      renderSubRow={renderSubRow}
-      hierarchical={hierarchical}
-    />
-  );
+  ) => {
+    const href = getRowHref?.(row);
+    return (
+      <TreeTableRow<TData>
+        key={row.id}
+        row={row}
+        rowIndex={index}
+        virtualItemOrPinnedPosition={virtualItemOrPinnedPosition}
+        table={table}
+        columnWidths={columnWidths}
+        showCheckboxes={showCheckboxes}
+        showExpandButtons={hasExpandableRows}
+        indentWidth={indentWidth}
+        activeRowId={activeRowId}
+        selectedRowId={selectedRowId}
+        isExpanded={row.getIsExpanded()}
+        canExpand={row.getCanExpand()}
+        measureElement={measureElement}
+        onRowClick={handleRowClick}
+        onRowDoubleClick={onRowDoubleClick}
+        isDisabled={isRowDisabled?.(row)}
+        isChildrenLoading={isChildrenLoading?.(row)}
+        isLoading={isRowLoading?.(row)}
+        getSelectionState={getSelectionState}
+        onCheckboxClick={onCheckboxClick}
+        classNames={classNames}
+        styles={styles}
+        getRowProps={getRowProps}
+        href={href}
+        renderSubRow={renderSubRow}
+        hierarchical={hierarchical}
+        isClickable={Boolean(onRowClick) || Boolean(href)}
+      />
+    );
+  };
 
   return (
     <Flex

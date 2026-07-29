@@ -7,7 +7,13 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route, withRouteProps } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -170,17 +176,33 @@ const emptyDatasetResponse: Dataset = createMockDataset({
 });
 
 /** Mock the audit-DB metadata, users/groups, and the `/api/dataset` adhoc endpoint (with the given dataset). */
-function setupEndpoints(dataset: Dataset = datasetResponse) {
+function setupEndpoints(
+  dataset: Dataset = datasetResponse,
+  datasetError = false,
+) {
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
   setupUsersEndpoints([createMockUser({ id: 1, first_name: "Ada" })]);
   setupGroupsEndpoint([createMockGroup({ id: 1, name: "All Users" })]);
-  fetchMock.post("path:/api/dataset", dataset, { name: "dataset" });
+  if (datasetError) {
+    fetchMock.post("path:/api/dataset", {
+      status: 500,
+      body: { message: "Audit query failed" },
+    });
+  } else {
+    fetchMock.post("path:/api/dataset", dataset, { name: "dataset" });
+  }
 }
 
 /** Render `McpAnalyticsPage` at its route with EE plugins + `audit_app`, optionally overriding the dataset response. */
-function setup({ dataset }: { dataset?: Dataset } = {}) {
+function setup({
+  dataset,
+  datasetError,
+}: { dataset?: Dataset; datasetError?: boolean } = {}) {
+  // TreeTable measures column/row sizes via the DOM; jsdom needs a stubbed rect
+  // for its virtualized rows to render.
+  mockGetBoundingClientRect({ width: 100, height: 100 });
   setupEnterprisePlugins();
-  setupEndpoints(dataset);
+  setupEndpoints(dataset, datasetError);
 
   return renderWithProviders(
     <Route
@@ -233,7 +255,9 @@ describe("McpAnalyticsPage", () => {
     );
 
     const eventsPanel = screen.getByRole("tabpanel");
-    expect(await within(eventsPanel).findByRole("table")).toBeInTheDocument();
+    expect(
+      await within(eventsPanel).findByRole("treegrid", { name: "Tool calls" }),
+    ).toBeInTheDocument();
     // curated column header + a cell value from the mocked dataset row
     expect(within(eventsPanel).getByText("Tool")).toBeInTheDocument();
     expect(
@@ -250,7 +274,9 @@ describe("McpAnalyticsPage", () => {
     );
 
     // The Tool header is sortable; clicking it re-sorts ascending (it wasn't the active column).
-    await userEvent.click(await screen.findByRole("button", { name: "Tool" }));
+    await userEvent.click(
+      await screen.findByRole("columnheader", { name: "Tool" }),
+    );
 
     await waitFor(() => {
       const sortedAscending = fetchMock.callHistory
@@ -261,7 +287,7 @@ describe("McpAnalyticsPage", () => {
             return false;
           }
           const stage = JSON.parse(body).stages?.[0];
-          return stage?.page != null && stage["order-by"]?.[0]?.[0] === "asc";
+          return stage?.page && stage["order-by"]?.[0]?.[0] === "asc";
         });
       expect(sortedAscending).toBe(true);
     });
@@ -300,6 +326,22 @@ describe("McpAnalyticsPage", () => {
     });
   });
 
+  it("updates the page URL param immediately when Next is clicked", async () => {
+    const { history } = setup({ dataset: multiPageDatasetResponse });
+
+    await screen.findByRole("heading", { name: "MCP analytics" });
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Tool calls" }),
+    );
+
+    const pagination = await screen.findByRole("navigation", {
+      name: "pagination",
+    });
+    await userEvent.click(within(pagination).getByLabelText("Next page"));
+
+    expect(history?.getCurrentLocation().search).toContain("page=1");
+  });
+
   it("orders the events query by a total order (created_at + tool_call_id) for stable paging", async () => {
     setup();
 
@@ -317,7 +359,7 @@ describe("McpAnalyticsPage", () => {
         .map((call) => call.options?.body)
         .filter((body): body is string => typeof body === "string")
         .map((body) => JSON.parse(body).stages?.[0])
-        .find((stage) => stage?.page != null);
+        .find((stage) => stage?.page);
       // pMBQL order-by clause: [direction, opts, ["field", opts, fieldId]]
       const orderBy = eventsStage?.["order-by"] as [
         string,
@@ -331,7 +373,7 @@ describe("McpAnalyticsPage", () => {
     });
   });
 
-  it("shows a single empty state (no tabs, no charts) when there is no activity", async () => {
+  it("keeps the header, tabs, and filters visible and shows an empty state in place of the tab content when there is no activity", async () => {
     setup({ dataset: emptyDatasetResponse });
 
     expect(
@@ -339,12 +381,28 @@ describe("McpAnalyticsPage", () => {
     ).toBeInTheDocument();
     expect(await screen.findByText("No MCP activity")).toBeInTheDocument();
 
-    // No tabs render when the view is empty — so neither the charts nor the events table can.
+    // Tabs and filters stay visible even when the view is empty — only the tab content swaps out.
+    const usageTab = screen.getByRole("tab", { name: "Usage" });
+    expect(usageTab).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Tool calls" })).toBeInTheDocument();
     expect(
-      screen.queryByRole("tab", { name: "Usage" }),
-    ).not.toBeInTheDocument();
+      screen.getByTestId("conversation-filters-date-select"),
+    ).toBeInTheDocument();
+
+    const panel = screen.getByRole("tabpanel");
+    expect(usageTab).toHaveAttribute("aria-controls", panel.id);
+    expect(within(panel).getByText("No MCP activity")).toBeInTheDocument();
+  });
+
+  it("shows an error instead of spinning forever when the count query fails", async () => {
+    setup({ datasetError: true });
+
     expect(
-      screen.queryByRole("tab", { name: "Tool calls" }),
-    ).not.toBeInTheDocument();
+      await screen.findByRole("heading", { name: "MCP analytics" }),
+    ).toBeInTheDocument();
+    // Regression: the count query erroring (e.g. a 500) used to leave isInitialLoading
+    // stuck true forever, so the page never got past the loader.
+    expect(await screen.findByText("Audit query failed")).toBeInTheDocument();
+    expect(screen.queryByText("Calls by tool")).not.toBeInTheDocument();
   });
 });
