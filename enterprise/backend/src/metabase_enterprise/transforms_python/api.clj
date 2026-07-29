@@ -1,8 +1,8 @@
 (ns metabase-enterprise.transforms-python.api
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.transforms-python.executor :as executor]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
-   [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -71,7 +71,7 @@
     (api/check-400 (= (count db-ids) 1) (i18n/deferred-tru "All source tables must belong to the same database."))
     (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (first db-ids))))
   ;; NOTE: we do not test database support, as there is no write target.
-  (let [result (python-runner/execute-and-read-output!
+  (let [result (executor/execute-and-read-output!
                 {:code            code
                  :source-tables   source_tables
                  :per-input-limit per_input_row_limit

@@ -3,7 +3,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.base :as base]
-   [metabase-enterprise.transforms-python.python-runner :as python-runner]
+   [metabase-enterprise.transforms-python.executor :as executor]
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -45,7 +45,7 @@
         (log/debug "Message update loop interrupted")
         (do (let [sleep-ms (.toMillis python-message-loop-sleep-duration)]
               (when (pos? sleep-ms) (Thread/sleep sleep-ms)))
-            (let [{:keys [status body]} (python-runner/get-logs run-id)]
+            (let [{:keys [status body]} (executor/fetch-logs run-id)]
               (cond
                 (<= 200 status 299)
                 (let [{:keys [execution_id events]} body]

@@ -8,9 +8,9 @@
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.transforms-python.executor :as executor]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
-   [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -239,14 +239,6 @@
       :else
       (transfer-with-drop-create-fallback-strategy! driver db-id table-name metadata indexes data-source))))
 
-;;; ------------------------------------------------- Cancellation -------------------------------------------------
-
-(defn- start-cancellation-process!
-  "Starts a core.async process that sends a cancellation request to the python executor if cancel-chan receives a value."
-  [server-url run-id cancel-chan]
-  (a/go (when (a/<! cancel-chan)
-          (python-runner/cancel-python-code-http-call! server-url run-id))))
-
 ;;; ------------------------------------------------- Core Execution -------------------------------------------------
 
 (defn- count-jsonl-rows
@@ -265,9 +257,10 @@
   [{:keys [source] :as transform} db run-id cancel-chan message-log {:keys [with-stage-timing-fn source-range-params]}]
   ;; Resolve name-based source table refs to table IDs (throws if any not found)
   (let [resolved-source-tables (transforms-base.u/resolve-source-tables (:source-tables source))]
-    (with-open [shared-storage-ref (s3/open-shared-storage! resolved-source-tables)]
+    (with-open [shared-storage-ref (s3/open-shared-storage! resolved-source-tables)
+                _registered        (executor/register-run-closeable!
+                                    run-id {:source-tables resolved-source-tables})]
       (let [driver          (:engine db)
-            server-url      (transforms-python.settings/python-runner-url)
             _               (python-runner/copy-tables-to-s3! {:run-id              run-id
                                                                :shared-storage      @shared-storage-ref
                                                                :source              (assoc source :source-tables resolved-source-tables)
@@ -275,14 +268,13 @@
                                                                :limit               (:limit source)
                                                                :transform-id        (:id transform)
                                                                :source-range-params source-range-params})
-            _               (start-cancellation-process! server-url run-id cancel-chan)
             {:keys [status body] :as response}
-            (python-runner/execute-python-code-http-call!
-             {:server-url     server-url
-              :code           (:body source)
+            (executor/run-python-code!
+             {:code           (:body source)
               :run-id         run-id
               :source-tables  resolved-source-tables
               :shared-storage @shared-storage-ref
+              :cancel-chan    cancel-chan
               ;; secrets are never on the instance; fetched explicitly for the run
               :secrets        (some-> (:id transform) transforms.core/secrets-for-run)
               :state          (:sync_state transform)})
