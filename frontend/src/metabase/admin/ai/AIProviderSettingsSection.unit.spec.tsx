@@ -16,7 +16,7 @@ import {
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { AIProviderConfigurationForm } from "metabase/metabot";
+import { AIProviderSetup } from "metabase/metabot";
 import { reinitialize } from "metabase/plugins";
 import type {
   LlmConnectionModels,
@@ -444,7 +444,7 @@ describe("AIProviderSettingsSection", () => {
   });
 });
 
-describe("AIProviderConfigurationForm (ad-hoc connect modal)", () => {
+describe("AIProviderSetup (ad-hoc connect modal)", () => {
   afterEach(() => {
     reinitialize();
   });
@@ -464,22 +464,19 @@ describe("AIProviderConfigurationForm (ad-hoc connect modal)", () => {
     setupLlmModelsEndpoint(CONNECTION_MODELS);
     setupCreateLlmProviderEndpoint(ANTHROPIC_CONNECTION);
 
-    const onClose = jest.fn();
-    renderWithProviders(
-      <AIProviderConfigurationForm isModal onClose={onClose} />,
-      {
-        storeInitialState: {
-          settings: mockSettings(sessionProperties),
-          currentUser: createMockUser({ is_superuser: true }),
-        },
+    const onDone = jest.fn();
+    renderWithProviders(<AIProviderSetup onDone={onDone} />, {
+      storeInitialState: {
+        settings: mockSettings(sessionProperties),
+        currentUser: createMockUser({ is_superuser: true }),
       },
-    );
+    });
 
-    return { onClose };
+    return { onDone };
   }
 
   it("shows the model picker after connecting rather than closing", async () => {
-    const { onClose } = await setupModal();
+    const { onDone } = await setupModal();
 
     await userEvent.click(await screen.findByLabelText("Provider"));
     await selectOption("Anthropic");
@@ -487,10 +484,10 @@ describe("AIProviderConfigurationForm (ad-hoc connect modal)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
     expect(await screen.findByLabelText("Model")).toBeInTheDocument();
-    expect(onClose).not.toHaveBeenCalled();
+    expect(onDone).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole("button", { name: "Done" }));
-    expect(onClose).toHaveBeenCalled();
+    expect(onDone).toHaveBeenCalled();
   });
 
   it("does not offer a way to add a second provider", async () => {

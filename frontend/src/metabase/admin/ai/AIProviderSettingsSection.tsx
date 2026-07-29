@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useListLlmProvidersQuery } from "metabase/api";
-import { AIProviderConfigurationForm } from "metabase/metabot";
+import { AIProviderList } from "metabase/metabot";
 import { Badge, Flex, Group } from "metabase/ui";
 
 export function AIProviderSettingsSection({ id }: { id?: string }) {
@@ -38,7 +38,7 @@ export function AIProviderSettingsSection({ id }: { id?: string }) {
           : t`Metabot can use models from any of these providers.`
       }
     >
-      <AIProviderConfigurationForm />
+      <AIProviderList />
     </SettingsSection>
   );
 }
