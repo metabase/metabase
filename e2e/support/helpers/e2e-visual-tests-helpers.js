@@ -62,14 +62,12 @@ export function timelineEventMarkerLine() {
   return echartsContainer()
     .find(`path[stroke-width='${lineWidth}'][fill='none']`)
     .filter((_, element) => {
-      const twoPointPath = element
-        .getAttribute("d")
-        ?.match(/^M\s*([\d.]+)[ ,]+([\d.]+)\s*L\s*([\d.]+)[ ,]+([\d.]+)$/);
-      if (!twoPointPath) {
-        return false;
-      }
-      const [x1, , x2] = twoPointPath.slice(1).map(Number);
-      return x1 === x2;
+      // a vertical line is drawn as "M x y1 L x y2" — two points with the same x
+      const coordinates = (element.getAttribute("d") ?? "")
+        .split(/[ML\s,]+/)
+        .filter(Boolean);
+      const [x1, , x2] = coordinates;
+      return coordinates.length === 4 && x1 === x2;
     });
 }
 
