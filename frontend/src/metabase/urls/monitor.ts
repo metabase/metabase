@@ -73,12 +73,12 @@ export function monitorErroringQuestions() {
   return `${ROOT_URL}/errors`;
 }
 
-export function monitorModelCaching() {
-  return `${ROOT_URL}/model-caching`;
+export function monitorModelPersistenceLog() {
+  return `${ROOT_URL}/model-persistence-log`;
 }
 
 export function monitorModelCacheRefreshJob(jobId: number) {
-  return `${monitorModelCaching()}/${jobId}`;
+  return `${monitorModelPersistenceLog()}/${jobId}`;
 }
 
 export function monitorNotifications() {

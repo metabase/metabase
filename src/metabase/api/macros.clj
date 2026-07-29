@@ -794,7 +794,7 @@
                                {:api.docs/request-rebuild
                                 (requiring-resolve 'metabase.api.docs/request-spec-regeneration!)})
         (catch Throwable e
-          (log/debug e "Failed to publish api-handler-update event"))))))
+          (log/debugf "Failed to publish api-handler-update event: %s" (ex-message e)))))))
 
 (defn- quote-parsed-args
   "Quote the appropriate parts of the parsed [[defendpoint]] args (body and param bindings) so they can be emitted in

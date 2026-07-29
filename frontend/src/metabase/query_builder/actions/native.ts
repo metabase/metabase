@@ -1,9 +1,8 @@
 import { createAction } from "redux-actions";
 
-import { cardApi } from "metabase/api";
+import { cardApi, settingsApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
-import { updateUserSetting } from "metabase/redux/settings";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
@@ -176,7 +175,7 @@ export const setTemplateTagConfig = createThunkAction(
 );
 
 export const rememberLastUsedDatabase = (id: DatabaseId) =>
-  updateUserSetting({
+  settingsApi.endpoints.updateSetting.initiate({
     key: "last-used-native-database-id",
     value: id,
   });

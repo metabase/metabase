@@ -109,8 +109,7 @@
                    (> text-measure threshold)
                    (do
                      (log/warn
-                      (format "Skipping text that exceeds maximum measure per batch: %s"
-                              (str (subs text 0 (min 10 (count text))) "..."))
+                      "Skipping text that exceeds maximum measure per batch"
                       {:measure text-measure :threshold threshold})
                      acc)
 
@@ -203,7 +202,7 @@
   ;; :continue so an unexpected action error can't wedge the agent for the process lifetime.
   (agent nil
          :error-mode :continue
-         :error-handler (fn [_agent e] (log/error e "Embedder circuit hook runner errored"))))
+         :error-handler (fn [_agent e] (log/errorf "Embedder circuit hook runner errored: %s" (ex-message e)))))
 
 (defn- on-embedder-circuit-state-change!
   "Run the registered [[embedder-circuit-state-change-hooks]] off the failsafe callback thread -- one
@@ -227,7 +226,7 @@
          (catch InterruptedException e
            (throw e))
          (catch Exception e
-           (log/error e "Embedder circuit state-change hook failed")))))))
+           (log/errorf "Embedder circuit state-change hook failed: %s" (ex-message e))))))))
 
 (defn- new-embedder-circuit-breaker []
   (dh.cb/circuit-breaker
@@ -371,7 +370,7 @@
                         :embedding)]
       (first (validate-embeddings! [embedding] 1 vector-dimensions)))
     (catch Exception e
-      (log/error e "Failed to generate Ollama embedding for text of length:" (count text))
+      (log/error "Failed to generate Ollama embedding for text of length" (count text) ":" (ex-message e))
       (throw e))))
 
 (defn- ollama-pull-model [model-name]
@@ -382,7 +381,7 @@
                       {:headers {"Content-Type" "application/json"}
                        :body    (json/encode {:model model-name})}))
     (catch Exception e
-      (log/error e "Failed to pull embedding model")
+      (log/errorf "Failed to pull embedding model: %s" (ex-message e))
       (throw e))))
 
 ;; Ollama is not used in production. Token tracking is not implemented.
@@ -488,7 +487,7 @@
         (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens))
       embeddings)
     (catch ConnectException e
-      (log/error e (str "Failed to connect to " provider) {:endpoint endpoint})
+      (log/error (str "Failed to connect to " provider ": " (ex-message e)) {:endpoint endpoint})
       (throw (ex-info (str provider " unavailable (connection refused)")
                       {:status 502 :endpoint endpoint}
                       e)))
@@ -496,7 +495,7 @@
       ;; The breaker transition already logs the outage once. Fast-failed calls while it remains open are
       ;; expected and can be frequent, so do not emit a redundant error for every guarded request.
       (when-not (= :embedder/circuit-open (:cause (ex-data e)))
-        (log/error e (str "Failed to generate " provider " embeddings")
+        (log/error (str "Failed to generate " provider " embeddings: " (ex-message e))
                    {:documents (count texts) :tokens (count-tokens-batch texts)}))
       (throw e))))
 
