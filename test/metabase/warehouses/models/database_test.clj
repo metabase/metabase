@@ -812,7 +812,7 @@
                (fetch-visible-db-ids [db1-id db2-id db3-id]
                                      {:user-id (mt/user->id :rasta) :is-superuser? true}
                                      default-permission-mapping
-                                     :id)))))))
+                                     :metabase_database.id)))))))
 
 (deftest visible-filter-clause-non-superuser-test
   (testing "Non-superuser should only see databases they have permissions for"
@@ -838,7 +838,7 @@
                (fetch-visible-db-ids [db1-id db2-id db3-id]
                                      {:user-id (mt/user->id :rasta) :is-superuser? false}
                                      default-permission-mapping
-                                     :id)))))))
+                                     :metabase_database.id)))))))
 
 (deftest visible-filter-clause-qualified-column-test
   (testing "Should work with qualified column names"
@@ -890,7 +890,7 @@
                (fetch-visible-db-ids [db1-id db2-id db3-id]
                                      {:user-id (mt/user->id :rasta) :is-superuser? false}
                                      default-permission-mapping
-                                     [:coalesce :id :metabase_database.id])))))))
+                                     [:coalesce :metabase_database.id :metabase_database.id])))))))
 
 (deftest visible-filter-clause-view-data-only-test
   (testing "Requiring only view-data permissions should include databases where user has view permissions"
@@ -917,7 +917,7 @@
                                      {:user-id (mt/user->id :rasta) :is-superuser? false}
                                      {:perms/view-data :unrestricted
                                       :perms/create-queries :no}
-                                     :id)))))))
+                                     :metabase_database.id)))))))
 
 (deftest visible-filter-clause-blocked-level-test
   (testing "Requiring blocked level permissions (most permissive) should include all databases"
@@ -944,7 +944,7 @@
                                      {:user-id (mt/user->id :rasta) :is-superuser? false}
                                      {:perms/view-data :blocked
                                       :perms/create-queries :no}
-                                     :id)))))))
+                                     :metabase_database.id)))))))
 
 (deftest visible-filter-clause-no-permissions-test
   (testing "User with no group memberships should see no databases"
@@ -974,7 +974,7 @@
         (is (empty? (fetch-visible-db-ids [db1-id db2-id db3-id]
                                           {:user-id (mt/user->id :rasta) :is-superuser? false}
                                           default-permission-mapping
-                                          :id)))))))
+                                          :metabase_database.id)))))))
 
 (deftest visible-filter-clause-table-level-permissions-test
   (testing "Database should be visible when user has access to at least one table"
@@ -998,7 +998,7 @@
         (is (contains? (fetch-visible-db-ids [db-id]
                                              {:user-id (mt/user->id :rasta) :is-superuser? false}
                                              default-permission-mapping
-                                             :id)
+                                             :metabase_database.id)
                        db-id))))))
 
 ;;; ---------------------------------------- can-read? permission tests ----------------------------------------
