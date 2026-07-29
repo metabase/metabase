@@ -96,7 +96,7 @@
       (t2/insert! :model/ContentDiagnosticsFinding
                   (for [{:keys [entity-type entity-id finding-type details scope-collection-id last-active-at
                                 duration-ms content-count duplicate-count entity-name entity-created-at
-                                entity-creator-id entity-creator-name]} chunk]
+                                entity-creator-id entity-creator-name card-type]} chunk]
                     {:scan_id             scan-id
                      :entity_type         entity-type
                      :entity_id           entity-id
@@ -110,6 +110,7 @@
                      :entity_created_at   entity-created-at
                      :entity_creator_id   entity-creator-id
                      :entity_creator_name entity-creator-name
+                     :card_type           card-type
                      :details             details})))))
 
 (defn scan!
