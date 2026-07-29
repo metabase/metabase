@@ -20,7 +20,7 @@
 
 (def ^:const algorithm-version
   "Version of persisted candidate materialization behavior."
-  7)
+  8)
 
 (def ^:const signature-version
   "Version of the canonical identity used by durable dismissals."
@@ -28,6 +28,8 @@
 (def ^:private retained-run-count 20)
 (def ^:private source-card-batch-size 100)
 (def ^:private queued-run-startup-grace (t/minutes 5))
+(def ^:private source-usage-window-days 90)
+(def ^:private source-minimum-recent-view-count 10)
 (def ^:private conditional-measure-types #{:count-where :distinct-where :sum-where})
 (defonce ^:private locally-running-run-ids (atom #{}))
 (def ^:private candidate-cutoffs
@@ -85,7 +87,8 @@
                                   :requested_by      requested-by
                                   :algorithm_version algorithm-version
                                   :source_config     {:kind :qualified-cards
-                                                      :minimum-view-count 10
+                                                      :usage-window-days source-usage-window-days
+                                                      :minimum-recent-view-count source-minimum-recent-view-count
                                                       :candidate-cutoffs candidate-cutoffs}}))
 
 (defn fail-run!
@@ -356,6 +359,8 @@
   (let [{:keys [measures segments]}
         (insights/cleanup-candidates
          {:query-source (query-source/card-id-set card-ids)
+          :min-view-count source-minimum-recent-view-count
+          :view-count-window-days source-usage-window-days
           :include-ineligible? true})
         observations (concat measures segments)
         tables       (usable-table-index (into #{} (map observation-table-id) observations))]
@@ -544,7 +549,8 @@
   (t2/update! :model/UsageMetadataCandidateRun run-id
               {:status :running, :started_at (mi/now), :error nil})
   (try
-    (let [card-ids (insights/qualified-card-ids)]
+    (let [card-ids (insights/qualified-card-ids source-minimum-recent-view-count
+                                                source-usage-window-days)]
       (doseq [batch (partition-all source-card-batch-size card-ids)]
         (persist-card-batch! run-id batch))
       (prune-ineligible-candidates! run-id)

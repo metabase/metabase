@@ -465,12 +465,13 @@
            candidates))
 
 (deftest candidate-source-cards-use-curation-or-popularity-test
-  (let [query (orders-base-query)]
+  (let [query (orders-base-query)
+        now   (t/offset-date-time)]
     (mt/with-temp [:model/Collection {official-collection-id :id} {:authority_level "official"}
                    :model/Card {plain-id :id} {:name "candidate mining plain"
                                                :type :question
                                                :dataset_query query
-                                               :view_count 9}
+                                               :view_count 1000000}
                    :model/Card {official-id :id} {:name "candidate mining official"
                                                   :type :model
                                                   :dataset_query query
@@ -483,18 +484,37 @@
                    :model/Card {popular-id :id} {:name "candidate mining popular"
                                                  :type :question
                                                  :dataset_query query
-                                                 :view_count 10}]
+                                                 :view_count 0}
+                   :model/Card {stale-id :id} {:name "candidate mining stale"
+                                               :type :question
+                                               :dataset_query query
+                                               :view_count 1000000}]
       (moderation/create-review! {:moderated_item_id   verified-id
                                   :moderated_item_type "card"
                                   :moderator_id        (mt/user->id :crowberto)
                                   :status              "verified"})
-      (let [cards (candidate-source-cards {:min-view-count 10})
+      (t2/insert! :model/ViewLog
+                  [{:user_id   (mt/user->id :crowberto)
+                    :model     "card"
+                    :model_id  popular-id
+                    :timestamp now}
+                   {:user_id   (mt/user->id :crowberto)
+                    :model     "card"
+                    :model_id  popular-id
+                    :timestamp (t/minus now (t/days 30))}
+                   {:user_id   (mt/user->id :crowberto)
+                    :model     "card"
+                    :model_id  stale-id
+                    :timestamp (t/minus now (t/days 91))}])
+      (let [cards (candidate-source-cards {:min-view-count 2, :view-count-window-days 90})
             by-id (into {} (map (juxt :id identity)) cards)]
         (is (not (contains? by-id plain-id)))
+        (is (not (contains? by-id stale-id)))
         (is (true? (:official-collection? (by-id official-id))))
         (is (= :model (:type (by-id official-id))))
         (is (true? (:verified? (by-id verified-id))))
-        (is (true? (:popular? (by-id popular-id))))))))
+        (is (true? (:popular? (by-id popular-id))))
+        (is (= 2 (:view-count (by-id popular-id))))))))
 
 (deftest candidate-source-cards-accept-custom-query-source-test
   (let [query (orders-base-query)]
@@ -1066,8 +1086,8 @@
               (canonical-signature [:= {:lib/uuid "c"} [:field {:lib/uuid "d"} 1] {:name "B"}])))))
 
 (deftest qualified-card-ids-match-default-candidate-population-test
-  (is (= (set (map :id (candidate-source-cards {})))
-         (set (insights/qualified-card-ids)))))
+  (is (= (set (map :id (candidate-source-cards {:min-view-count 10, :view-count-window-days 90})))
+         (set (insights/qualified-card-ids 10 90)))))
 
 (deftest candidate-measures-support-remaining-direct-aggregations-test
   (let [query (orders-extended-measures-query)]

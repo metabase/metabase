@@ -144,6 +144,30 @@
         (is (t2/exists? :model/UsageMetadataCandidateRun :id (:id old-run)))
         (is (not (t2/exists? :model/UsageMetadataCandidate :id (:id old-candidate))))))))
 
+(deftest persisted-refresh-uses-recent-view-source-configuration-test
+  (let [cleanup-opts (atom nil)]
+    (mt/with-dynamic-fn-redefs
+      [insights/qualified-card-ids (fn [minimum-view-count window-days]
+                                     (is (= 10 minimum-view-count))
+                                     (is (= 90 window-days))
+                                     [1])
+       insights/cleanup-candidates (fn [opts]
+                                     (reset! cleanup-opts opts)
+                                     {:measures [], :segments []})]
+      (let [run (candidates/queue-refresh! :manual (mt/user->id :crowberto))]
+        (is (= :succeeded (:status (candidates/run-refresh! run))))
+        (is (= {:kind                      "qualified-cards"
+                :usage-window-days         90
+                :minimum-recent-view-count 10
+                :candidate-cutoffs         {:verified {:minimum-total-view-count 10}
+                                            :official {:minimum-distinct-source-count 2
+                                                       :minimum-total-view-count      10}
+                                            :general  {:minimum-distinct-source-count 3
+                                                       :minimum-total-view-count      25}}}
+               (:source_config (t2/select-one :model/UsageMetadataCandidateRun :id (:id run)))))
+        (is (= 10 (:min-view-count @cleanup-opts)))
+        (is (= 90 (:view-count-window-days @cleanup-opts)))))))
+
 (deftest fixed-candidate-evidence-cutoffs-test
   (let [base {:candidate_type         :segment
               :semantic_details       {:atom-count 1}
