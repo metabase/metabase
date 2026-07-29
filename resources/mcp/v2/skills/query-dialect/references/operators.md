@@ -32,7 +32,7 @@ Temporal:
 - Absolute ranges: `["between", {}, <temporal>, "2024-01-01", "2024-12-31"]`.
 
 Named reference:
-- `["segment", {}, "<entity_id>"]` — a saved segment; its table must be the stage's source.
+- `["segment", {}, <numeric segment id>]` — a saved segment; its table must be the stage's source.
 
 ## Aggregations
 
@@ -44,7 +44,7 @@ Named reference:
 - `["stddev", {}, <num>]` / `["var", {}, <num>]`
 - `["count-where", {}, <bool-pred>]` / `["sum-where", {}, <num>, <bool-pred>]` / `["distinct-where", {}, <expr>, <bool-pred>]`
 - `["share", {}, <bool-pred>]` — fraction of rows where the predicate holds, 0–1.
-- `["metric", {}, "<entity_id>"]` / `["measure", {}, "<entity_id>"]` — saved definitions; base table must be the stage's source.
+- `["metric", {}, <numeric card id>]` / `["measure", {}, <numeric measure id>]` — saved definitions; base table must be the stage's source.
 - `["offset", {}, <expr>, <n>]` — window function: the value `<n>` rows back (negative) or ahead. Valid **only** inside `aggregation` or `order-by`, never in `expressions` or a filter.
 
 Name the output in options — `["sum", {"name": "revenue", "display-name": "Revenue"}, <field>]`; later stages and visualization settings reference that `name`.

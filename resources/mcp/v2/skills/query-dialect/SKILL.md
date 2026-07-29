@@ -5,7 +5,7 @@ description: The query dialect execute_query and question_write's `query` accept
 
 # The query dialect
 
-`execute_query` (`query`) and `question_write` (inline `query`) name every table and column by its **numeric id** — copy ids from `browse_data` (`list_tables`, `get_fields`), never invent or guess one, never hand-write base64. Saved questions, models, metrics, measures, and segments go by **entity_id** (their 21-char id from `search` / `get_content`; numeric also accepted). The server validates, repairs, and resolves against real metadata, and its errors name what didn't resolve.
+`execute_query` (`query`) and `question_write` (inline `query`) name everything — tables, columns, saved questions, models, metrics, measures, segments — by its **numeric id**. Copy ids from `browse_data` (`list_tables`, `get_fields`), `search`, or `get_content`; never invent or guess one. The server validates, repairs, and resolves against real metadata, and its errors name what didn't resolve.
 
 `get_content`'s `definition` include returns queries in this same shape, so a definition you read can be edited and sent back as-is.
 
@@ -24,7 +24,7 @@ Top level: `{"lib/type": "mbql/query", "database": <numeric db id>, "stages": [.
              "breakout": [["field", {"temporal-unit": "month"}, 42]]}]}
 ```
 
-- `source-table` (numeric table id) **or** `source-card` (entity_id) — exactly one, **first stage only**; later stages read the previous stage's output implicitly.
+- `source-table` (numeric table id) **or** `source-card` (numeric card id) — exactly one, **first stage only**; later stages read the previous stage's output implicitly.
 - Optional stage keys: `filters`, `aggregation`, `breakout`, `expressions`, `fields`, `joins`, `order-by`, `limit`.
 
 ## The two most-violated rules
@@ -107,13 +107,13 @@ Window function: `offset` sits in `aggregation` and reads another breakout row �
 
 ## Saved questions and models as sources
 
-`source-card` takes the card's **21-char entity_id**, copied verbatim from `search` or `get_content` (its numeric id also works) — never guessed. Columns by output **name**:
+`source-card` takes the card's **numeric id**, copied from `search` or `get_content` — never guessed. Columns by output **name**:
 
 ```json
 {"lib/type": "mbql/query",
  "database": 1,
  "stages": [{"lib/type": "mbql.stage/mbql",
-             "source-card": "T4wA_GPFwGb6R4FxIDGTo",
+             "source-card": 137,
              "filters": [[">", {}, ["field", {}, "total"], 100]],
              "limit": 50}]}
 ```
@@ -122,11 +122,11 @@ The card must live in the same database as the rest of the query. Never fall bac
 
 ## Metrics, measures, segments
 
-Referenced by entity_id (copied verbatim from tool responses; numeric id also works) on a stage whose `source-table` is their base table:
+Referenced by numeric id (copied from tool responses) on a stage whose `source-table` is their base table:
 
-- Metric (saved metric card): `"aggregation": [["metric", {}, "<entity_id>"]]`
-- Measure (table-attached aggregation): `"aggregation": [["measure", {}, "<entity_id>"]]`
-- Segment (table-attached filter): `"filters": [["segment", {}, "<entity_id>"]]`
+- Metric (saved metric card): `"aggregation": [["metric", {}, 42]]`
+- Measure (table-attached aggregation): `"aggregation": [["measure", {}, 7]]`
+- Segment (table-attached filter): `"filters": [["segment", {}, 3]]`
 
 `browse_data` `get_fields` lists each table's measures, segments, and metrics with ids. To compose *on top of* one, read its definition via `get_content` (`include: ["definition"]`) — it returns clauses in this dialect you can inline and extend.
 
@@ -139,11 +139,10 @@ Referenced by entity_id (copied verbatim from tool responses; numeric id also wo
 ## Don't
 
 - Don't invent or guess ids — copy them from `browse_data` / `search` output. A wrong name errors loudly; a wrong id can silently hit the wrong column.
-- Don't use `card__<id>` strings or URIs anywhere — `source-card` takes the bare id.
+- Don't use `card__<id>` strings, `metabase://` URIs, or 21-char entity_ids anywhere — `source-card` takes the bare numeric id.
 - Don't omit the `{}` options slot or put options anywhere but position 1.
 - Don't put a stage-container key (`aggregation`, `filters`, `breakout`, `limit`) at a clause head — clauses go *inside* those arrays.
 - Don't reference a same-stage aggregation by name (`["field", {}, "count"]`) in `order-by` — use `["aggregation", {}, <index>]`; name refs to aggregations are for the *next* stage.
 - Don't subtract dates with `-` — use `["datetime-diff", {}, a, b, "day"]`.
 - Don't breakout the same field twice in one stage (bucketed and raw).
 - Don't reference a previous stage's column by display label — machine name only.
-- Don't hand-write base64 — `get_content`'s `definition` include is already in this dialect and can be sent back as-is.
