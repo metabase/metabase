@@ -401,3 +401,21 @@
                                                                        [[1 true] [2 false]] false))]
         (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)) (str driver))
         (is (= [1 true 2 false] params) (str driver))))))
+
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest ^:parallel drop-table-sql-preserves-dashes-test
+  (let [drop-sql #'driver.sql-jdbc/drop-table-sql]
+    (testing "a dash in a schema/catalog segment survives -- munged to an underscore, DROP TABLE IF
+              EXISTS targets a nonexistent object and silently no-ops, leaking the table"
+      (is (= "DROP TABLE IF EXISTS `test-data`.`some_tbl`"
+             (drop-sql :mysql (keyword "test-data" "some_tbl"))))
+      (is (= "DROP TABLE IF EXISTS \"test-data\".\"some_tbl\""
+             (drop-sql :postgres (keyword "test-data" "some_tbl")))))
+    (testing "unqualified name -- the schema travels in the connection's catalog"
+      (is (= "DROP TABLE IF EXISTS `some_tbl`" (drop-sql :mysql (keyword "some_tbl")))))
+    (testing "dot-qualified strings (metabase.upload.impl/table-identifier's shape) split into segments"
+      (is (= "DROP TABLE IF EXISTS \"schema\".\"name\"" (drop-sql :postgres "schema.name")))
+      (is (= "DROP TABLE IF EXISTS `test-data`.`tbl`" (drop-sql :mysql "test-data.tbl"))))
+    (testing "a dot inside the name splits too -- no call site produces this shape, but keep it uniform"
+      (is (= "DROP TABLE IF EXISTS `test-data`.`a`.`b`"
+             (drop-sql :mysql (keyword "test-data" "a.b")))))))

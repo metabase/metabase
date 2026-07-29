@@ -160,11 +160,26 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
       (jdbc/execute! conn sql))))
 
+(defn- dot-qualified
+  "Rewrite a schema-qualified keyword so the whole dotted path lives in its name: `:schema/tbl` -> `:schema.tbl`.
+  Takes a keyword or a dot-qualified string; returns a keyword."
+  [table-name]
+  ;; not (keyword table-name) straight through: HoneySQL munges dashes to underscores in a
+  ;; keyword's namespace but not in its name, so a catalog named `test-data` would reach the
+  ;; database as `test_data`.
+  (let [kw (keyword table-name)]
+    (keyword (if-let [schema (namespace kw)]
+               (str schema "." (name kw))
+               (name kw)))))
+
+(defn- drop-table-sql [driver table-name]
+  (first (sql/format {:drop-table [:if-exists (dot-qualified table-name)]}
+                     :quoted true
+                     :dialect (sql.qp/quote-style driver))))
+
 (defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
-  (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
-                               :quoted true
-                               :dialect (sql.qp/quote-style driver)))]
+  (let [sql (drop-table-sql driver table-name)]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
