@@ -46,7 +46,7 @@ export function BreakoutChart({
   ...rest
 }: Props) {
   if (!provider || !table || !groupMembersTable) {
-    return <Skeleton h={h} />;
+    return <Skeleton h={h} data-testid="breakout-chart-skeleton" />;
   }
   return (
     <BreakoutChartInner

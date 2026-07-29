@@ -497,7 +497,7 @@
        (try
          (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
          (catch Throwable e
-           (log/debug e "Error setting default holdability for connection"))))
+           (log/debugf "Error setting default holdability for connection: %s" (ex-message e)))))
      (f conn))))
 
 (defn- prepare-statement ^PreparedStatement [^Connection conn sql]

@@ -2595,7 +2595,8 @@
         (testing "does not includes undefined keys by default"
           (is (not (contains? (:settings (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))
                               :undefined-setting))))
-        (is (= "Error checking the readability of :undefined-setting setting. The setting will be hidden in API response."
+        (is (= (str "Error checking the readability of :undefined-setting setting. The setting will be hidden in API response."
+                    " Error: Unknown setting: :undefined-setting")
                (-> (messages)
                    first
                    :message)))))))

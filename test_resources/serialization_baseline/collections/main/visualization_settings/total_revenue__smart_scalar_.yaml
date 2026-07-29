@@ -99,7 +99,7 @@ visualization_settings:
     label: Monthly Target
     type: staticNumber
     value: 50000
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: bSj47tilPIkwDIewvMf8z
   label: total_revenue__smart_scalar_

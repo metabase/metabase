@@ -492,8 +492,7 @@
                           :param-slug          searched-param-slug
                           :token-params        slug-token-params}
                          e)]
-          (log/errorf e "embedded card-param-values error\n%s"
-                      (u/pprint-to-str (u/all-ex-data e)))
+          (log/errorf "embedded card-param-values error for Card %s: %s" (u/the-id card) (ex-message e))
           (throw e))))))
 
 (defn card-param-remapped-value
@@ -537,8 +536,7 @@
                           :param-slug          searched-param-slug
                           :token-params        slug-token-params}
                          e)]
-          (log/errorf e "embedded card-param-values error\n%s"
-                      (u/pprint-to-str (u/all-ex-data e)))
+          (log/errorf "embedded card-param-values error for Card %s: %s" (u/the-id card) (ex-message e))
           (throw e))))))
 
 (defn dashboard-param-values
@@ -595,7 +593,7 @@
                           :param-slug          searched-param-slug
                           :token-params        slug-token-params}
                          e)]
-          (log/errorf e "Chain filter error\n%s" (u/pprint-to-str (u/all-ex-data e)))
+          (log/errorf "Chain filter error for Dashboard %s: %s" dashboard-id (ex-message e))
           (throw e))))))
 
 (defn dashboard-param-remapped-value

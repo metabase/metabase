@@ -2,6 +2,7 @@ import type {
   Cell,
   CellContext,
   Column,
+  ColumnDef,
   ColumnDefTemplate,
   ColumnSizingState,
   HeaderContext,
@@ -109,6 +110,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
 
   /** Initial sort direction for this column */
   sortDirection?: "asc" | "desc";
+
+  /** Function used to sort values in this column */
+  sortingFn?: ColumnDef<TRow, TValue>["sortingFn"];
 
   /** Whether this column can be resized */
   enableResizing?: boolean;

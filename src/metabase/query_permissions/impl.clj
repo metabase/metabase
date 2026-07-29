@@ -252,7 +252,7 @@
                         {:query (or (u/ignore-exceptions (mbql.normalize/normalize query))
                                     query)}
                         e)]
-         (if throw-exceptions? (throw e) (log/error e)))
+         (if throw-exceptions? (throw e) (log/error (ex-message e))))
        {:perms/create-queries {0 :query-builder}})))) ; table 0 will never exist
 
 (defn- mbql5-required-perms

@@ -7,24 +7,14 @@ import getExpandedCollectionsById from "metabase/common/collections/getExpandedC
 import { useSetting } from "metabase/common/hooks/use-setting";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import type { ExpandedCollection } from "metabase/redux/store";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
-// getExpandedCollectionsById produces path as CollectionId[] at runtime,
-// but ExpandedCollection types it as string, so we use a corrected type.
-export type ExpandedCollectionNode = Collection & {
-  path: CollectionId[] | null;
-  parent: Collection | null;
-  children: Collection[];
-  is_personal?: boolean;
-};
+export const SHARED_TENANT_COLLECTIONS_ROOT_ID: CollectionId =
+  "shared-tenant-collections-root";
 
-export const SHARED_TENANT_COLLECTIONS_ROOT_ID =
-  // Unjustified type cast. FIXME
-  "shared-tenant-collections-root" as CollectionId;
-
-// Unjustified type cast. FIXME
-export const COLLECTIONS_TOP_LEVEL_ID = "collections-top-level" as CollectionId;
+export const COLLECTIONS_TOP_LEVEL_ID: CollectionId = "collections-top-level";
 
 /**
  * When tenants are enabled, fetches shared tenant collections and merges them
@@ -38,8 +28,8 @@ export const COLLECTIONS_TOP_LEVEL_ID = "collections-top-level" as CollectionId;
  *       └── Shared collection B
  */
 export function useCollectionsWithTenants(
-  collectionsById: Record<CollectionId, Collection>,
-): Record<CollectionId, Collection> {
+  collectionsById: Record<CollectionId, ExpandedCollection>,
+): Record<CollectionId, ExpandedCollection> {
   const useTenants = useSetting("use-tenants");
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
   const isTenantsActive = useTenants && PLUGIN_TENANTS.isEnabled;
@@ -62,7 +52,7 @@ export function useCollectionsWithTenants(
     const sharedCollectionsById = getExpandedCollectionsById(
       sharedTenantCollections,
       userPersonalCollectionId,
-    ) as Record<CollectionId, ExpandedCollectionNode>;
+    );
 
     const displayName =
       PLUGIN_TENANTS.getNamespaceDisplayName(
@@ -88,18 +78,15 @@ export function useCollectionsWithTenants(
  * "Our analytics" and "Shared collections" as siblings.
  */
 export function mergeSharedCollections(
-  baseCollectionsById: Record<CollectionId, Collection>,
-  sharedCollectionsById: Record<CollectionId, ExpandedCollectionNode>,
+  baseCollectionsById: Record<CollectionId, ExpandedCollection>,
+  sharedCollectionsById: Record<CollectionId, ExpandedCollection>,
   displayName: string,
-): Record<CollectionId, Collection> {
+): Record<CollectionId, ExpandedCollection> {
   const sharedRoot = sharedCollectionsById[ROOT_COLLECTION.id];
-  // Unjustified type cast. FIXME
-  const rootCollection = baseCollectionsById[
-    ROOT_COLLECTION.id
-  ] as ExpandedCollectionNode;
+  const rootCollection = baseCollectionsById[ROOT_COLLECTION.id];
 
   // Create the top-level "Collections" node that parents both namespaces
-  const syntheticTopLevel: ExpandedCollectionNode = {
+  const syntheticTopLevel: ExpandedCollection = {
     id: COLLECTIONS_TOP_LEVEL_ID,
     name: t`Collections`,
     description: null,
@@ -114,7 +101,7 @@ export function mergeSharedCollections(
   };
 
   // Create the shared collections synthetic root as a sibling of Our analytics
-  const sharedSyntheticRoot: ExpandedCollectionNode = {
+  const sharedSyntheticRoot: ExpandedCollection = {
     id: SHARED_TENANT_COLLECTIONS_ROOT_ID,
     name: displayName,
     description: null,
@@ -147,7 +134,7 @@ export function mergeSharedCollections(
     ...rootCollection,
     path: [COLLECTIONS_TOP_LEVEL_ID],
     parent: syntheticTopLevel,
-  } as ExpandedCollectionNode;
+  };
 
   // Merge shared collections with rewritten paths
   for (const [id, collection] of Object.entries(sharedCollectionsById)) {
@@ -155,8 +142,7 @@ export function mergeSharedCollections(
       continue;
     }
 
-    // Unjustified type cast. FIXME
-    mergedCollectionsById[id as CollectionId] = {
+    mergedCollectionsById[id] = {
       ...collection,
 
       // Rewrite path: Collections > Shared collections > ...
@@ -177,7 +163,7 @@ export function mergeSharedCollections(
         collection.parent?.id === ROOT_COLLECTION.id
           ? sharedSyntheticRoot
           : collection.parent,
-    } as ExpandedCollectionNode;
+    };
   }
 
   // Rewrite paths for all base collections (children of Our Analytics / root)
@@ -188,15 +174,13 @@ export function mergeSharedCollections(
       continue; // already rewritten above
     }
 
-    // Unjustified type cast. FIXME
-    const collectionNode = collection as ExpandedCollectionNode;
+    const collectionNode = collection;
 
     if (!collectionNode.path) {
       continue;
     }
 
-    // Unjustified type cast. FIXME
-    mergedCollectionsById[id as CollectionId] = {
+    mergedCollectionsById[id] = {
       ...collectionNode,
       // Rewrite path: Collections > Our Analytics > ...
       path: [COLLECTIONS_TOP_LEVEL_ID, ...collectionNode.path],

@@ -38,7 +38,7 @@
 
 (deftest tools-caching-details-url-test
   (mt/with-temporary-setting-values [site-url "https://metabase.com"]
-    (is (= "https://metabase.com/monitor/model-caching/42"
+    (is (= "https://metabase.com/monitor/model-persistence-log/42"
            (urls/tools-caching-details-url 42)))))
 
 (deftest dashcard-url-test

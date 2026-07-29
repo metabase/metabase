@@ -15,8 +15,8 @@ import { setV7Navigate } from "./navigator";
  *
  * - registers the live `navigate` so the redux navigator adapter (and thus
  *   `dispatch(push(...))`) can drive the v7 router;
- * - calls `onLocationChange` for every location, which is how the app mirrors
- *   the location into `state.routing` (see `createLocationMirror`).
+ * - calls `onLocationChange` for every location, which is how the app emits
+ *   LOCATION_CHANGE on navigation (see `createLocationMirror`).
  *
  * The mirror is driven from the history subscription when one is passed, because
  * v3 dispatched LOCATION_CHANGE as part of the transition rather than after a

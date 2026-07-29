@@ -75,7 +75,7 @@
                (when-let [user-info (sso/find-user user-email)]
                  (sso/verify-password user-info password)))
              (catch Exception e
-               (log/warn e "LDAP re-auth failed because the directory is unreachable")
+               (log/warnf "LDAP re-auth failed because the directory is unreachable: %s" (ex-message e))
                false)))))))
 
 ;; Notification emails here are fire-and-log by construction: the messages/send-mfa-*-email!

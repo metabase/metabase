@@ -3,6 +3,7 @@ import { Route } from "metabase/router";
 
 import { DataStudioMetricAboutPage } from "./pages/DataStudioMetricAboutPage";
 import { DataStudioMetricDependenciesPage } from "./pages/DataStudioMetricDependenciesPage";
+import { DataStudioMetricDimensionsPage } from "./pages/DataStudioMetricDimensionsPage";
 import { DataStudioMetricHistoryPage } from "./pages/DataStudioMetricHistoryPage";
 import { DataStudioMetricOverviewPage } from "./pages/DataStudioMetricOverviewPage";
 import { DataStudioMetricQueryPage } from "./pages/DataStudioMetricQueryPage";
@@ -16,6 +17,10 @@ export function getDataStudioMetricRoutes() {
       <Route
         path=":cardId/overview"
         element={<DataStudioMetricOverviewPage />}
+      />
+      <Route
+        path=":cardId/dimensions"
+        element={<DataStudioMetricDimensionsPage />}
       />
       <Route path=":cardId/query" element={<DataStudioMetricQueryPage />} />
       {PLUGIN_DEPENDENCIES.isEnabled && (

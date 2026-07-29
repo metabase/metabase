@@ -5,16 +5,18 @@ import { match } from "ts-pattern";
 
 import {
   METABOT_PROFILE_OVERRIDES,
-  TOOL_CALL_MESSAGES,
+  getToolMessage,
 } from "metabase/metabot/constants";
 import { uuid } from "metabase/utils/uuid";
 
 import type {
+  MetabotAgentChainOfThoughtMessage,
   MetabotAgentId,
   MetabotAgentTurnDisplayError,
   MetabotAgentTurnError,
   MetabotConverstationState,
   MetabotDebugToolCallMessage,
+  MetabotSearchResults,
   MetabotState,
 } from "./types";
 import { createMessageId } from "./utils";
@@ -51,9 +53,182 @@ export const pushNewToolCall = (
   convo.activeToolCalls.push({
     id: toolCallId,
     name: toolName,
-    message: TOOL_CALL_MESSAGES[toolName],
+    message: getToolMessage(toolName)?.active(),
     status: "started",
   });
+};
+
+const activeChain = (convo: WritableDraft<MetabotConverstationState>) => {
+  const chain = convo.activeChainId
+    ? convo.messages.find((m) => m.id === convo.activeChainId)
+    : undefined;
+  return chain?.type === "chain_of_thought" ? chain : undefined;
+};
+
+const stampChainSpan = (
+  chain: WritableDraft<MetabotAgentChainOfThoughtMessage>,
+  nowMs?: number,
+) => {
+  if (nowMs == null) {
+    return;
+  }
+  chain.startedAtMs ??= nowMs;
+  chain.endedAtMs = nowMs;
+};
+
+const ensureChain = (
+  convo: WritableDraft<MetabotConverstationState>,
+  nowMs?: number,
+): WritableDraft<MetabotAgentChainOfThoughtMessage> => {
+  const existing = activeChain(convo);
+  if (existing) {
+    stampChainSpan(existing, nowMs);
+    return existing;
+  }
+  const chain: WritableDraft<MetabotAgentChainOfThoughtMessage> = {
+    id: createMessageId(),
+    role: "agent",
+    type: "chain_of_thought",
+    steps: [],
+    startedAtMs: nowMs,
+    endedAtMs: nowMs,
+  };
+  convo.messages.push(chain);
+  convo.activeChainId = chain.id;
+  return chain;
+};
+
+export const openChain = (convo: WritableDraft<MetabotConverstationState>) => {
+  ensureChain(convo);
+};
+
+const dropChain = (
+  convo: WritableDraft<MetabotConverstationState>,
+  id: string,
+) => {
+  convo.messages = convo.messages.filter((m) => m.id !== id);
+};
+
+export const startChainReasoning = (
+  convo: WritableDraft<MetabotConverstationState>,
+  nowMs?: number,
+) => {
+  ensureChain(convo, nowMs).steps.push({
+    kind: "reasoning",
+    text: "",
+    startedAtMs: nowMs,
+  });
+};
+
+export const appendChainReasoning = (
+  convo: WritableDraft<MetabotConverstationState>,
+  text: string,
+  nowMs?: number,
+) => {
+  const chain = ensureChain(convo, nowMs);
+  const last = chain.steps.at(-1);
+  if (last?.kind === "reasoning") {
+    last.text += text;
+  } else {
+    chain.steps.push({ kind: "reasoning", text, startedAtMs: nowMs });
+  }
+};
+
+export const addChainTool = (
+  convo: WritableDraft<MetabotConverstationState>,
+  {
+    id,
+    name,
+    title,
+    nowMs,
+  }: { id: string; name: string; title?: string; nowMs?: number },
+) => {
+  const existing = findChainToolStep(convo, id);
+  if (!existing) {
+    ensureChain(convo, nowMs).steps.push({
+      kind: "tool",
+      id,
+      name,
+      title,
+      status: "started",
+      startedAtMs: nowMs,
+    });
+    return;
+  }
+  if (title) {
+    existing.step.title = title;
+  }
+  if (existing.chain.id === convo.activeChainId) {
+    stampChainSpan(existing.chain, nowMs);
+  }
+};
+
+const findChainToolStep = (
+  convo: WritableDraft<MetabotConverstationState>,
+  toolCallId: string,
+) => {
+  for (const message of convo.messages) {
+    if (message.type === "chain_of_thought") {
+      const step = message.steps.find(
+        (s) => s.kind === "tool" && s.id === toolCallId,
+      );
+      if (step?.kind === "tool") {
+        return { chain: message, step };
+      }
+    }
+  }
+  return undefined;
+};
+
+export const setChainToolSearchResults = (
+  convo: WritableDraft<MetabotConverstationState>,
+  toolCallId: string,
+  searchResults: MetabotSearchResults,
+) => {
+  const found = findChainToolStep(convo, toolCallId);
+  if (found) {
+    found.step.searchResults = searchResults;
+  }
+};
+
+export const setChainToolTitle = (
+  convo: WritableDraft<MetabotConverstationState>,
+  toolCallId: string,
+  title: string,
+) => {
+  const found = findChainToolStep(convo, toolCallId);
+  if (found) {
+    found.step.title = title;
+  }
+};
+
+export const endChainTool = (
+  convo: WritableDraft<MetabotConverstationState>,
+  id: string,
+  nowMs?: number,
+) => {
+  const found = findChainToolStep(convo, id);
+  if (!found) {
+    return;
+  }
+  found.step.status = "ended";
+  const chainStillActive = found.chain.id === convo.activeChainId;
+  if (chainStillActive && nowMs != null) {
+    found.chain.endedAtMs = nowMs;
+  }
+};
+
+export const closeChain = (
+  convo: WritableDraft<MetabotConverstationState>,
+  nowMs?: number,
+) => {
+  const chain = activeChain(convo);
+  if (chain && chain.steps.length === 0) {
+    dropChain(convo, chain.id);
+  } else if (chain && nowMs != null) {
+    chain.endedAtMs = nowMs;
+  }
+  convo.activeChainId = undefined;
 };
 
 export const getRequestConversation = (
@@ -114,6 +289,7 @@ export const createConversation = (
     visible: false,
     state: {},
     activeToolCalls: [],
+    activeChainId: undefined,
     profileOverride: undefined,
     pendingMessageExternalId: undefined,
     ...overrides,

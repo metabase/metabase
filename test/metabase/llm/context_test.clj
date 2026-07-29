@@ -3,6 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.llm.context :as context]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -285,6 +287,40 @@
         (let [result (context/build-schema-context (:id db) #{(:id orders)})]
           (is (some? result))
           (is (str/includes? result "FK->users.id")))))))
+
+(deftest get-tables-with-columns-hides-unreadable-fk-target-test
+  (testing "an FK on a readable table does not reveal an unreadable target table or field"
+    (mt/with-temp [:model/Database db         {}
+                   :model/Table    target     {:db_id              (:id db)
+                                               :name               "secret_table"
+                                               :schema             "private"}
+                   :model/Field    target-id  {:table_id           (:id target)
+                                               :name               "secret_id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer}
+                   :model/Table    source     {:db_id              (:id db)
+                                               :name               "orders"
+                                               :schema             "public"}
+                   :model/Field    _source-id {:table_id           (:id source)
+                                               :name               "id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer}
+                   :model/Field    _source-fk {:table_id           (:id source)
+                                               :name               "user_id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer
+                                               :semantic_type      :type/FK
+                                               :fk_target_field_id (:id target-id)}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) db :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms-group/all-users) source :perms/create-queries :query-builder-and-native)
+        (mt/with-test-user :rasta
+          (let [result (context/get-tables-with-columns (:id db) #{(:id source)})
+                fk-col (some #(when (= "user_id" (:name %)) %) (-> result first :columns))]
+            (is (some? fk-col) "the readable source FK column is returned")
+            (is (not (contains? fk-col :fk_target)))
+            (is (not (str/includes? (pr-str result) "secret_table")))
+            (is (not (str/includes? (pr-str result) "secret_id")))))))))
 
 (deftest build-schema-context-with-field-values-test
   (mt/with-test-user :crowberto

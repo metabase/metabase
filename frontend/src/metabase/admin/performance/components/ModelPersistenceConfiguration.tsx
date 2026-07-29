@@ -16,8 +16,7 @@ import {
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/redux";
-import { refreshSiteSettings } from "metabase/redux/settings";
+import { useSelector } from "metabase/redux";
 import {
   getApplicationName,
   getShowMetabaseLinks,
@@ -73,7 +72,6 @@ export const ModelPersistenceConfiguration = () => {
     "persisted-model-refresh-cron-schedule",
   );
 
-  const dispatch = useDispatch();
   const [sendToast, removeToast] = useToast();
   const [enablePersist] = useEnablePersistMutation();
   const [disablePersist] = useDisablePersistMutation();
@@ -115,8 +113,8 @@ export const ModelPersistenceConfiguration = () => {
     const promise = shouldEnable
       ? enablePersist().unwrap()
       : disablePersist().unwrap();
+    // The mutations invalidate session-properties, which refetches settings.
     await resolveWithToasts([promise]);
-    dispatch(refreshSiteSettings());
   };
 
   const { url: docsUrl } = useDocsUrl("data-modeling/model-persistence");
@@ -169,7 +167,6 @@ export const ModelPersistenceConfiguration = () => {
               onChange={async (value: string) => {
                 await resolveWithToasts([
                   setRefreshSchedule({ cron: value }).unwrap(),
-                  dispatch(refreshSiteSettings()),
                 ]);
               }}
             />
