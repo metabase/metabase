@@ -171,9 +171,9 @@
 ;;; ------------------------------------------ visible-filter-clause tests ------------------------------------------
 
 (defn- fetch-visible-table-ids
-  "Fetches visible table IDs using `visible-filter-clause` with the `:clause/:with/:left-join` return structure."
+  "Fetches visible table IDs using `visible-table-filter-with-cte`'s `:clause/:with/:left-join` return structure."
   [db-id user-info permission-mapping table-id-field]
-  (let [{:keys [clause with left-join]} (mi/visible-filter-clause :model/Table table-id-field user-info permission-mapping)]
+  (let [{:keys [clause with left-join]} (perms/visible-table-filter-with-cte table-id-field user-info permission-mapping)]
     (t2/select-pks-set [:model/Table]
                        (cond-> {:where [:and [:= :metabase_table.db_id db-id] clause]}
                          with      (assoc :with with)

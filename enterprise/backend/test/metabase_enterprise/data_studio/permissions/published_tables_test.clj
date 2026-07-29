@@ -2,7 +2,6 @@
   "Tests for the can-access-via-collection? function in the published-tables namespace."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.published-tables :as published-tables]
    [metabase.test :as mt]
@@ -171,10 +170,10 @@
           (let [user-info {:user-id user-id :is-superuser? false}
                 run (fn [opts]
                       (let [{:keys [clause with left-join]}
-                            (mi/visible-filter-clause :model/Table :metabase_table.id user-info
-                                                      {:perms/view-data :unrestricted
-                                                       :perms/create-queries :query-builder}
-                                                      opts)]
+                            (perms/visible-table-filter-with-cte :metabase_table.id user-info
+                                                                 {:perms/view-data :unrestricted
+                                                                  :perms/create-queries :query-builder}
+                                                                 opts)]
                         (t2/select-pks-set :model/Table
                                            (cond-> {:where [:and [:= :metabase_table.db_id db-id] clause]}
                                              with      (assoc :with with)
@@ -192,8 +191,8 @@
               (let [visible (run {:include-published-via-collection? true})]
                 (is (not (contains? visible pub-blocked-by-view-data)))))
             (testing "the returned :clause tests the joined CTE id — no top-level :or"
-              (let [{:keys [clause left-join]} (mi/visible-filter-clause
-                                                :model/Table :metabase_table.id user-info
+              (let [{:keys [clause left-join]} (perms/visible-table-filter-with-cte
+                                                :metabase_table.id user-info
                                                 {:perms/view-data :unrestricted
                                                  :perms/create-queries :query-builder}
                                                 {:include-published-via-collection? true})]

@@ -20,6 +20,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -191,14 +192,11 @@
                          [:permissions_group :pg] [:= :perm_grant.group_id :pg.id]]
                   :where [:and [:= :blocked.db_id (:database_id card)]
                           [:not
-                           [:exists {:select [[[:inline 1]]]
-                                     :from   [[(perms/visible-table-filter-select
-                                                :id
-                                                {:user-id user-id
-                                                 :is-superuser? false}
-                                                permissions-granting)
-                                               :visible_table]]
-                                     :where  [:= :visible_table.id :blocked.id]}]]]})
+                           (table/visible-table-filter-clause
+                            :blocked.id
+                            {:user-id user-id
+                             :is-superuser? false}
+                            permissions-granting)]]})
 
        (seq query-tables)
        (t2/query {:select [[:db.name :db_name] :blocked.schema [:blocked.name :table_name] [:pg.name :group_name]]
@@ -211,14 +209,11 @@
                          [:permissions_group :pg] [:= :perm_grant.group_id :pg.id]]
                   :where [:and [:in :blocked.id query-tables]
                           [:not
-                           [:exists {:select [[[:inline 1]]]
-                                     :from   [[(perms/visible-table-filter-select
-                                                :id
-                                                {:user-id user-id
-                                                 :is-superuser? false}
-                                                permissions-granting)
-                                               :visible_table]]
-                                     :where  [:= :visible_table.id :blocked.id]}]]]})
+                           (table/visible-table-filter-clause
+                            :blocked.id
+                            {:user-id user-id
+                             :is-superuser? false}
+                            permissions-granting)]]})
        :else
        nil)
      (map (juxt (juxt :db_name :schema :table_name) :group_name))

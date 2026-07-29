@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sync.core :as sync]
@@ -102,8 +103,8 @@
    Returns a map of table-id -> table record."
   [table-ids]
   (when (seq table-ids)
-    (let [{:keys [clause with left-join]} (mi/visible-filter-clause
-                                           :model/Table :metabase_table.id
+    (let [{:keys [clause with left-join]} (perms/visible-table-filter-with-cte
+                                           :metabase_table.id
                                            {:user-id       api/*current-user-id*
                                             :is-superuser? api/*is-superuser?*}
                                            {:perms/view-data      :unrestricted

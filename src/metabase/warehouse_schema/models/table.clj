@@ -14,7 +14,6 @@
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -320,6 +319,15 @@
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Table pk))))
 
+(defn visible-table-filter-clause
+  "Correlated-EXISTS HoneySQL predicate selecting Tables (by `id-column`) visible to `user-info` given
+  `permission-mapping` — the Table counterpart of `collection/visible-collection-filter-clause`. Qualify
+  `id-column` whenever its bare name is also a `metabase_table` column. For filtering very large table sets
+  (e.g. search) prefer [[perms/visible-table-filter-with-cte]], whose CTE + left-join shape benchmarks faster
+  there."
+  [id-column user-info permission-mapping & [opts]]
+  (perms/visible-table-filter-exists id-column user-info permission-mapping opts))
+
 (defmethod mi/can-query? :model/Table
   ;; Check if user can execute queries against this table.
   ;; True if user has:
@@ -406,20 +414,6 @@
 
                  (:owner_email table)
                  {:email (:owner_email table)}))))))
-
-;;; ------------------------------------------------ SQL Permissions ------------------------------------------------
-
-(mu/defmethod mi/visible-filter-clause :model/Table
-  [_                  :- :keyword
-   column-or-exp      :- :any
-   user-info          :- perms/UserInfo
-   permission-mapping :- perms/PermissionMapping
-   & [{:keys [include-published-via-collection? active-only?]}]]
-  (perms/visible-table-filter-with-cte
-   column-or-exp user-info permission-mapping
-   (cond-> {}
-     (some? active-only?) (assoc :active-only? active-only?)
-     include-published-via-collection? (assoc :include-published-via-collection? true))))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 

@@ -342,9 +342,9 @@
                       [:= :router_database_id router-database-id]
                       [:= :router_database_id nil])]
         where-clause (if filter-by-data-access?
-                       [:and base-where [:or (:clause (mi/visible-filter-clause :model/Database :metabase_database.id user-info {:perms/create-queries :query-builder}))
-                                         (:clause (mi/visible-filter-clause :model/Database :metabase_database.id user-info {:perms/manage-database :yes}))
-                                         (:clause (mi/visible-filter-clause :model/Database :metabase_database.id user-info {:perms/manage-table-metadata :yes}))]]
+                       [:and base-where [:or (database/visible-database-filter-clause :metabase_database.id user-info {:perms/create-queries :query-builder})
+                                         (database/visible-database-filter-clause :metabase_database.id user-info {:perms/manage-database :yes})
+                                         (database/visible-database-filter-clause :metabase_database.id user-info {:perms/manage-table-metadata :yes})]]
                        base-where)
         dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                         :where where-clause})]

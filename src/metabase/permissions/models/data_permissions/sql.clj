@@ -252,6 +252,37 @@
        :left-join [[:permitted_tables :pt] [:= :pt.id column-or-exp]]
        :clause [:not= :pt.id nil]})))
 
+(mu/defn visible-table-filter-exists
+  "Correlated EXISTS predicate testing that `column-or-exp` references a table visible to the provided user given
+  `permission-mapping` (see [[visible-table-filter-select]], which this wraps). Unlike an `IN (SELECT ...)` over
+  that select, the EXISTS shape stays hash-joinable in non-unnestable contexts (under `OR`, or negated), where
+  Postgres degrades an IN-subselect to an O(n^2) subplan past work_mem. Qualify `column-or-exp` whenever its bare
+  name is also a `metabase_table` column."
+  [column-or-exp      :- :any
+   user-info          :- UserInfo
+   permission-mapping :- PermissionMapping
+   & [opts]]
+  [:exists {:select [[[:inline 1]]]
+            :from   [[(visible-table-filter-select :id user-info permission-mapping opts)
+                      :visible_table]]
+            :where  [:= :visible_table.id column-or-exp]}])
+
+(declare visible-database-filter-select)
+
+(mu/defn visible-database-filter-exists
+  "Correlated EXISTS predicate testing that `column-or-exp` references a database visible to the provided user given
+  `permission-mapping` (see [[visible-database-filter-select]], which this wraps). Unlike an `IN (SELECT ...)` over
+  that select, the EXISTS shape stays hash-joinable in non-unnestable contexts (under `OR`, or negated), where
+  Postgres degrades an IN-subselect to an O(n^2) subplan past work_mem. Qualify `column-or-exp` whenever its bare
+  name is also a `metabase_database` column."
+  [column-or-exp      :- :any
+   user-info          :- UserInfo
+   permission-mapping :- PermissionMapping]
+  [:exists {:select [[[:inline 1]]]
+            :from   [[(visible-database-filter-select user-info permission-mapping)
+                      :visible_database]]
+            :where  [:= :visible_database.id column-or-exp]}])
+
 (mu/defn select-tables-and-groups-granting-perm
   "Selects table.id and the group.id of all permissions groups that give the provided user the provided permission level or a
   permission level either more or less restrictive than the supplied level."

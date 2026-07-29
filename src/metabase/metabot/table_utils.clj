@@ -4,7 +4,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.metabot.query-analyzer :as query-analyzer]
-   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
@@ -41,12 +41,12 @@
    (let [priority-table-ids (set (map :id priority-tables))
          {table-where-clause :clause
           table-cte          :with
-          table-join         :left-join} (mi/visible-filter-clause :model/Table
-                                                                   :metabase_table.id
-                                                                   {:user-id       api/*current-user-id*
-                                                                    :is-superuser? api/*is-superuser?*}
-                                                                   {:perms/view-data      :unrestricted
-                                                                    :perms/create-queries :query-builder-and-native})
+          table-join         :left-join} (perms/visible-table-filter-with-cte
+                                          :metabase_table.id
+                                          {:user-id       api/*current-user-id*
+                                           :is-superuser? api/*is-superuser?*}
+                                          {:perms/view-data      :unrestricted
+                                           :perms/create-queries :query-builder-and-native})
          ;; Fetch most viewed tables, excluding priority tables and excluded tables
          fill-tables (t2/select [:model/Table :id :db_id :name :schema :description]
                                 :db_id           database-id
@@ -117,12 +117,12 @@
   []
   (let [{table-where-clause :clause
          table-cte          :with
-         table-join         :left-join} (mi/visible-filter-clause :model/Table
-                                                                  :metabase_table.id
-                                                                  {:user-id       api/*current-user-id*
-                                                                   :is-superuser? api/*is-superuser?*}
-                                                                  {:perms/view-data      :unrestricted
-                                                                   :perms/create-queries :query-builder-and-native})]
+         table-join         :left-join} (perms/visible-table-filter-with-cte
+                                         :metabase_table.id
+                                         {:user-id       api/*current-user-id*
+                                          :is-superuser? api/*is-superuser?*}
+                                         {:perms/view-data      :unrestricted
+                                          :perms/create-queries :query-builder-and-native})]
     (cond-> {:where table-where-clause}
       table-cte  (assoc :with table-cte)
       table-join (assoc :left-join table-join))))

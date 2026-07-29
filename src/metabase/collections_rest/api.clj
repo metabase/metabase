@@ -38,6 +38,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -768,16 +769,13 @@
   (let [user-info {:user-id       api/*current-user-id*
                    :is-superuser? api/*is-superuser?*}
         published-clause (perms/published-table-visible-clause :t.id user-info)
-        visible-exists   (fn [permission-mapping]
-                           [:exists {:select [[[:inline 1]]]
-                                     :from   [[(perms/visible-table-filter-select :id user-info permission-mapping)
-                                               :visible_table]]
-                                     :where  [:= :visible_table.id :t.id]}])
         queryable-clause (cond-> [:or
-                                  (visible-exists {:perms/view-data      :unrestricted
-                                                   :perms/create-queries :query-builder})]
+                                  (table/visible-table-filter-clause :t.id user-info
+                                                                     {:perms/view-data      :unrestricted
+                                                                      :perms/create-queries :query-builder})]
                            published-clause (conj [:and
-                                                   (visible-exists {:perms/view-data :unrestricted})
+                                                   (table/visible-table-filter-clause :t.id user-info
+                                                                                      {:perms/view-data :unrestricted})
                                                    published-clause]))]
     {:select [:t.id
               [:t.id :table_id]

@@ -134,6 +134,13 @@
             ;; Has published table access
             (perms/user-has-published-table-permission-for-database? database-id)))))
 
+(defn visible-database-filter-clause
+  "Correlated-EXISTS HoneySQL predicate selecting Databases (by `id-column`) visible to `user-info` given
+  `permission-mapping` — the Database counterpart of `collection/visible-collection-filter-clause`. Qualify
+  `id-column` whenever its bare name is also a `metabase_database` column."
+  [id-column user-info permission-mapping]
+  (perms/visible-database-filter-exists id-column user-info permission-mapping))
+
 (defmethod mi/can-query? :model/Database
   ;; Check if user can execute queries against this database.
   ;; True if user has:
@@ -186,13 +193,6 @@
   ([_model pk]
    (and (can-write? pk)
         (not (:is_attached_dwh (t2/select-one :model/Database :id pk))))))
-
-(mu/defmethod mi/visible-filter-clause :model/Database
-  [_model column-or-exp user-info permission-mapping]
-  {:clause [:exists {:select [[[:inline 1]]]
-                     :from   [[(perms/visible-database-filter-select user-info permission-mapping)
-                               :visible_database]]
-                     :where  [:= :visible_database.id column-or-exp]}]})
 
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."

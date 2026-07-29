@@ -1,7 +1,6 @@
 (ns metabase.search.permissions
   (:require
    [metabase.collections.models.collection :as collection]
-   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.search.config :refer [SearchContext]]
    [metabase.util.malli :as mu]))
@@ -50,8 +49,7 @@
   "Build the WHERE clause and optional CTEs for table permission filtering.
    Returns a map with :clause (WHERE clause fragment) and :with (optional CTE definitions)."
   [{:keys [current-user-id is-superuser? is-data-analyst?]} :- SearchContext table-id-col :- [:or :keyword [:sequential :any]]]
-  (mi/visible-filter-clause
-   :model/Table
+  (perms/visible-table-filter-with-cte
    table-id-col
    {:user-id current-user-id
     :is-superuser? is-superuser?

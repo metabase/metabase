@@ -708,17 +708,6 @@
     (str (format "%s does not yet have an implementation for `can-update?`. " (name (models.dispatch/model instance)))
          "Please consider adding one. See dox for `can-update?` for more details."))))
 
-(defmulti visible-filter-clause
-  "Return a map with:
-   - :clause - honey SQL WHERE clause fragment to filter records visible to the user
-   - :with - optional vector of CTE definitions [[name query] ...] to be merged into the query
-   - :left-join - optional `[table-spec condition]` join that :clause tests, to be merged into the query
-
-  Uses the map of permission type->minimum permission-level for filtering.
-  Defaults to returning a no-op false statement {:clause [:= 0 1]}."
-  {:arglists '([model column-or-exp user-info perm-type->perm-level])}
-  dispatch-on-model)
-
 (defn superuser?
   "Is [[metabase.api.common/*current-user*]] is a superuser? Ignores args. Intended for use as an implementation
   of [[can-read?]] and/or [[can-write?]]."
@@ -803,10 +792,6 @@
 (defmethod can-create? ::create-policy.superuser
   [_model _m]
   (superuser?))
-
-(defmethod visible-filter-clause :default
-  [_m _column-or-expression _user-info _perm-type->perm-level]
-  {:clause [:= [:inline 0] [:inline 1]]})
 
 ;;;; [[to-json]]
 

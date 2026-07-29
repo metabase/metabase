@@ -638,7 +638,8 @@
            tracing
            transforms
            upload
-           util}
+           util
+           warehouse-schema}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -1212,6 +1213,7 @@
            lib-be
            metabot
            models
+           permissions
            premium-features
            request
            settings
@@ -2044,7 +2046,6 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/Table
                     :model/User}}
 
   secrets
@@ -3198,7 +3199,9 @@
            task
            transforms
            transforms-base
-           util}
+           util
+           warehouse-schema
+           warehouses}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -3418,7 +3421,8 @@
            models
            permissions
            query-processor
-           util}
+           util
+           warehouse-schema}
    :model-imports #{:model/Card :model/User}}
 
   enterprise/premium-features

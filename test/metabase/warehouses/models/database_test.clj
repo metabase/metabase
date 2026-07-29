@@ -777,14 +777,12 @@
 ;;; ---------------------------------------- visible-filter-clause tests ----------------------------------------
 
 (defn- fetch-visible-db-ids
-  "Helper to fetch visible database IDs using visible-filter-clause.
-   Handles the :with/:clause return value format."
+  "Helper to fetch visible database IDs using `visible-database-filter-exists`."
   [db-ids user-info permission-mapping column-field]
-  (let [{:keys [clause]} (mi/visible-filter-clause :model/Database column-field user-info permission-mapping)]
-    (t2/select-pks-set :model/Database
-                       {:where [:and
-                                clause
-                                [:in :id db-ids]]})))
+  (t2/select-pks-set :model/Database
+                     {:where [:and
+                              (database/visible-database-filter-clause column-field user-info permission-mapping)
+                              [:in :metabase_database.id db-ids]]}))
 
 (def ^:private default-permission-mapping
   {:perms/view-data :unrestricted
