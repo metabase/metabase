@@ -124,6 +124,7 @@ describe("CleanupPage", () => {
     expect(screen.getByText("Published")).toBeInTheDocument();
     expect(screen.getByText("6")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Suggested" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Used raw" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Discarded" })).toBeInTheDocument();
     expect(
       screen.queryByRole("tab", { name: "Recommended" }),
@@ -228,8 +229,17 @@ describe("CleanupPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("switches between suggested and discarded candidates", async () => {
+  it("switches between suggested, used raw, and discarded candidates", async () => {
     setup();
+
+    await userEvent.click(await screen.findByRole("tab", { name: "Used raw" }));
+
+    await waitFor(() => {
+      const call = fetchMock.callHistory.lastCall(
+        "path:/api/ee/data-studio/usage-metadata/tables",
+      );
+      expect(call?.url).toContain("queue=used-raw");
+    });
 
     await userEvent.click(
       await screen.findByRole("tab", { name: "Discarded" }),

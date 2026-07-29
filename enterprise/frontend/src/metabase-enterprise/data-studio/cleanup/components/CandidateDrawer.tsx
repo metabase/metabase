@@ -274,9 +274,6 @@ function CandidateDrawerBody({
   onRestore,
   onPublish,
 }: CandidateDrawerBodyProps) {
-  const exactMatch = candidate.matches.find(
-    (match) => match.relation === "exact",
-  );
   const hasPublishedBlocker = candidate.creation_blockers.includes(
     "table-not-published",
   );
@@ -324,56 +321,52 @@ function CandidateDrawerBody({
           ))}
         </Stack>
 
-        {candidate.creation_blockers.length > 0 && (
-          <Stack gap="xs">
-            {candidate.creation_blockers.map((blocker) => (
-              <Text key={blocker} size="sm" c="text-secondary">
-                {getCreationBlockerLabel(blocker)}
-              </Text>
-            ))}
-          </Stack>
-        )}
+        {candidate.modeling_status !== "modeled" &&
+          candidate.creation_blockers.length > 0 && (
+            <Stack gap="xs">
+              {candidate.creation_blockers.map((blocker) => (
+                <Text key={blocker} size="sm" c="text-secondary">
+                  {getCreationBlockerLabel(blocker)}
+                </Text>
+              ))}
+            </Stack>
+          )}
       </Stack>
-      <Box mt="auto" p="lg" bd="1px 0 0 0 solid var(--mb-color-border)">
-        <Group justify="space-between" wrap="nowrap">
-          {candidate.dismissed ? (
-            <Button variant="subtle" onClick={onRestore}>
-              {t`Restore candidate`}
-            </Button>
-          ) : (
-            <Button variant="subtle" color="error" onClick={onDismiss}>
-              {t`Dismiss`}
-            </Button>
-          )}
-          {candidate.modeling_status === "modeled" && exactMatch ? (
-            <Button
-              component={Link}
-              to={getMatchUrl(candidate.table.id, exactMatch)}
-            >
-              {t`View in Library`}
-            </Button>
-          ) : hasPublishedBlocker ? (
-            <Button onClick={onPublish}>{t`Publish table first`}</Button>
-          ) : (
-            <Tooltip
-              label={
-                hasHardBlocker
-                  ? candidate.creation_blockers
-                      .map(getCreationBlockerLabel)
-                      .join(" ")
-                  : undefined
-              }
-              disabled={!hasHardBlocker}
-            >
-              <Button disabled={hasHardBlocker} onClick={onCreate}>
-                {candidate.candidate_type === "measure"
-                  ? t`Create Measure`
-                  : t`Create Segment`}
+      {candidate.modeling_status !== "modeled" && (
+        <Box mt="auto" p="lg" bd="1px 0 0 0 solid var(--mb-color-border)">
+          <Group justify="space-between" wrap="nowrap">
+            {candidate.dismissed ? (
+              <Button variant="subtle" onClick={onRestore}>
+                {t`Restore candidate`}
               </Button>
-            </Tooltip>
-          )}
-        </Group>
-      </Box>
+            ) : (
+              <Button variant="subtle" color="error" onClick={onDismiss}>
+                {t`Dismiss`}
+              </Button>
+            )}
+            {hasPublishedBlocker ? (
+              <Button onClick={onPublish}>{t`Publish table first`}</Button>
+            ) : (
+              <Tooltip
+                label={
+                  hasHardBlocker
+                    ? candidate.creation_blockers
+                        .map(getCreationBlockerLabel)
+                        .join(" ")
+                    : undefined
+                }
+                disabled={!hasHardBlocker}
+              >
+                <Button disabled={hasHardBlocker} onClick={onCreate}>
+                  {candidate.candidate_type === "measure"
+                    ? t`Create Measure`
+                    : t`Create Segment`}
+                </Button>
+              </Tooltip>
+            )}
+          </Group>
+        </Box>
+      )}
     </Stack>
   );
 }

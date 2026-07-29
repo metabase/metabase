@@ -162,7 +162,7 @@ function CleanupTableRow({
         <Stack gap={0} align="flex-end" miw="7rem">
           <Text fw="bold">{candidateCount}</Text>
           <Text c="text-secondary" size="xs">
-            {params.queue === "discarded" ? t`discarded` : t`suggestions`}
+            {getQueueCountLabel(params.queue)}
           </Text>
         </Stack>
         <Icon name="chevronright" />
@@ -202,18 +202,33 @@ function EmptyQueueState({
         <Title order={3}>
           {queue === "discarded"
             ? t`No discarded suggestions`
-            : filtered
-              ? t`No matching tables`
-              : t`Nothing to clean up`}
+            : queue === "used-raw"
+              ? t`No raw usage to clean up`
+              : filtered
+                ? t`No matching tables`
+                : t`Nothing to clean up`}
         </Title>
         <Text c="text-secondary">
           {queue === "discarded"
             ? t`Discarded suggestions will appear here so they can be restored.`
-            : filtered
-              ? t`Try changing or clearing the filters.`
-              : t`No Measure or Segment candidates were found in this snapshot.`}
+            : queue === "used-raw"
+              ? t`No Library Measures or Segments are still being expressed as raw query clauses.`
+              : filtered
+                ? t`Try changing or clearing the filters.`
+                : t`No Measure or Segment candidates were found in this snapshot.`}
         </Text>
       </Stack>
     </Center>
   );
+}
+
+function getQueueCountLabel(queue: Urls.DataStudioCleanupParams["queue"]) {
+  switch (queue) {
+    case "suggested":
+      return t`suggestions`;
+    case "used-raw":
+      return t`used raw`;
+    case "discarded":
+      return t`discarded`;
+  }
 }

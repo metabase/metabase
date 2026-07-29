@@ -125,7 +125,7 @@
    [:candidate-type  {:optional true} [:maybe [:enum :measure :segment]]]
    [:modeling-status {:optional true} [:maybe [:enum :missing :partially-modeled :modeled]]]
    [:signal          {:optional true} [:maybe [:enum :verified :official :popular]]]
-   [:queue           {:default :suggested} [:enum :suggested :discarded]]
+   [:queue           {:default :suggested} [:enum :suggested :used-raw :discarded]]
    [:search          {:optional true} [:maybe :string]]
    [:sort            {:default :priority} [:enum :priority :name :source-count :view-count]]
    [:direction       {:default :asc} [:enum :asc :desc]]])
@@ -170,10 +170,15 @@
            0])
 
     (= queue :suggested)
-    (conj [:= :dismissal.id nil])
+    (conj [:= :dismissal.id nil]
+          [:!= :candidate.modeling_status "modeled"])
+
+    (= queue :used-raw)
+    (conj [:= :candidate.modeling_status "modeled"])
 
     (= queue :discarded)
-    (conj [:!= :dismissal.id nil])
+    (conj [:!= :dismissal.id nil]
+          [:!= :candidate.modeling_status "modeled"])
 
     (not (str/blank? search))
     (conj (let [pattern (str "%" (u/lower-case-en search) "%")]
@@ -330,16 +335,16 @@
   "Return one table's cleanup summary and publication readiness."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [table (api/check-404 ((table-index #{id}) id))
-        run   (candidates/latest-successful-run)
-        row   (when run
-                (first (:rows (table-page run
-                                          {:table-id id, :queue :suggested}
-                                          {:limit 1, :offset 0}))))
-        total (if run
-                (t2/count :model/UsageMetadataCandidate :run_id (:id run) :table_id id)
-                0)
-        summary (table-summary table row)
+  (let [table         (api/check-404 ((table-index #{id}) id))
+        run           (candidates/latest-successful-run)
+        queue-row     (fn [queue]
+                        (when run
+                          (first (:rows (table-page run
+                                                    {:table-id id, :queue queue}
+                                                    {:limit 1, :offset 0})))))
+        suggested-row (queue-row :suggested)
+        discarded-row (queue-row :discarded)
+        summary       (table-summary table suggested-row)
         editable? (table-editable-for-candidate? {:candidate_type :measure} table)]
     (-> summary
         (assoc :table (assoc (:table summary)
@@ -348,7 +353,7 @@
                                                   (not (:is_published table)) (conj :table-not-published)
                                                   (not (:active table))       (conj :table-inactive)
                                                   (not editable?)             (conj :table-uneditable)))
-               :dismissed_count (- total (:candidate_count summary))
+               :dismissed_count (or (:candidate_count discarded-row) 0)
                :snapshot (snapshot-response run)))))
 
 (defn- require-current-candidate

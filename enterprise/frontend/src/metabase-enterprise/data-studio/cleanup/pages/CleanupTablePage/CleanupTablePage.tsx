@@ -288,7 +288,11 @@ export function CleanupTablePage() {
           params={params}
           onChange={updateParams}
           showDatabaseFilter={false}
-          searchPlaceholder={t`Search suggestions`}
+          searchPlaceholder={
+            params.queue === "used-raw"
+              ? t`Search raw usage`
+              : t`Search suggestions`
+          }
         />
 
         {!candidatesQuery.isLoading && candidatesQuery.data && (
@@ -420,7 +424,11 @@ function CandidateRow({
           <Evidence candidate={candidate} />
         </Stack>
         <Group gap="xs" wrap="nowrap">
-          {candidate.dismissed ? (
+          {candidate.modeling_status === "modeled" ? (
+            <Button variant="outline" onClick={onOpen}>
+              {t`View report`}
+            </Button>
+          ) : candidate.dismissed ? (
             <Button variant="outline" loading={isMutating} onClick={onRestore}>
               {t`Restore`}
             </Button>
@@ -476,6 +484,8 @@ function getQueueHeading(queue: Urls.DataStudioCleanupParams["queue"]) {
   switch (queue) {
     case "suggested":
       return t`Suggested candidates`;
+    case "used-raw":
+      return t`Modeled, but still used raw`;
     case "discarded":
       return t`Discarded candidates`;
   }
@@ -485,6 +495,8 @@ function getQueueDescription(queue: Urls.DataStudioCleanupParams["queue"]) {
   switch (queue) {
     case "suggested":
       return t`Measures and Segments mined from saved content on this table.`;
+    case "used-raw":
+      return t`Library definitions that saved content still expresses as raw query clauses.`;
     case "discarded":
       return t`Restore a suggestion if it should return to the cleanup queue.`;
   }

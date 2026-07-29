@@ -168,41 +168,67 @@
                                   {:suggested_name "Missing"
                                    :signature_hash (apply str (repeat 64 "1"))
                                    :signature "[\"missing\"]"})
-                   :model/UsageMetadataCandidate review-candidate
+                   :model/UsageMetadataCandidate _review-candidate
                    (candidate-row (:id run)
                                   {:suggested_name "Review"
                                    :modeling_status :partially-modeled
                                    :signature_hash (apply str (repeat 64 "2"))
                                    :signature "[\"review\"]"})
-                   :model/UsageMetadataCandidate _
+                   :model/UsageMetadataCandidate modeled-candidate
                    (candidate-row (:id run)
                                   {:suggested_name "Modeled"
                                    :modeling_status :modeled
                                    :signature_hash (apply str (repeat 64 "3"))
                                    :signature "[\"modeled\"]"})]
-      (testing "suggested includes every active candidate without heuristic sub-queues"
-        (is (=? {:total 3}
+      (testing "suggested excludes candidates that are already modeled"
+        (is (=? {:total 2}
                 (mt/user-http-request :crowberto :get 200
                                       "ee/data-studio/usage-metadata/candidates?queue=suggested")))
         (is (=? {:total 1
                  :data [{:table {:id (mt/id :orders)}
-                         :candidate_count 3
+                         :candidate_count 2
                          :counts {:segment {:missing 1
                                             :partially-modeled 1
-                                            :modeled 1}}}]}
+                                            :modeled 0}}}]}
                 (mt/user-http-request :crowberto :get 200
                                       "ee/data-studio/usage-metadata/tables?queue=suggested"))))
+      (testing "modeled candidates that are still used raw have a dedicated queue"
+        (is (=? {:total 1
+                 :data [{:id (:id modeled-candidate)
+                         :modeling_status "modeled"}]}
+                (mt/user-http-request :crowberto :get 200
+                                      "ee/data-studio/usage-metadata/candidates?queue=used-raw")))
+        (is (=? {:total 1
+                 :data [{:table {:id (mt/id :orders)}
+                         :candidate_count 1
+                         :counts {:segment {:missing 0
+                                            :partially-modeled 0
+                                            :modeled 1}}}]}
+                (mt/user-http-request :crowberto :get 200
+                                      "ee/data-studio/usage-metadata/tables?queue=used-raw")))
+        (testing "a previous dismissal does not hide raw usage after it becomes modeled"
+          (mt/user-http-request :crowberto :post 200
+                                (str "ee/data-studio/usage-metadata/candidates/" (:id modeled-candidate) "/dismiss")
+                                {})
+          (is (=? {:total 1
+                   :data [{:id (:id modeled-candidate)}]}
+                  (mt/user-http-request :crowberto :get 200
+                                        "ee/data-studio/usage-metadata/candidates?queue=used-raw")))))
       (testing "discarded suggestions have a dedicated queue"
         (mt/user-http-request :crowberto :post 200
                               (str "ee/data-studio/usage-metadata/candidates/" (:id missing-candidate) "/dismiss")
                               {})
-        (is (=? {:total 2}
+        (is (=? {:total 1}
                 (mt/user-http-request :crowberto :get 200
                                       "ee/data-studio/usage-metadata/candidates?queue=suggested")))
         (is (=? {:total 1
                  :data [{:id (:id missing-candidate), :dismissed true}]}
                 (mt/user-http-request :crowberto :get 200
-                                      "ee/data-studio/usage-metadata/candidates?queue=discarded")))))))
+                                      "ee/data-studio/usage-metadata/candidates?queue=discarded")))
+        (is (=? {:candidate_count 1
+                 :dismissed_count 1}
+                (mt/user-http-request :crowberto :get 200
+                                      (str "ee/data-studio/usage-metadata/tables/" (mt/id :orders)))))))))
 
 (deftest create-candidate-is-idempotent-test
   (mt/with-premium-features #{:library}
