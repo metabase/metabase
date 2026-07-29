@@ -1,7 +1,7 @@
 (ns metabase.explorations.query-plan.context
   "Build the context map handed to the query planners, and the per-row
   contexts the runner uses to finalize pending `ExplorationQuery` rows at
-  execution time (see [[build-row-context]] — those never reach a planner).
+  execution time (see [[build-row-context]]).
 
   Takes a thread plus its metric and dimension selections, hydrates them
   against the application metadata provider, and computes the per-pair
