@@ -17,7 +17,7 @@
   (permissions.metric/filter-dimensions-for-user-batch metrics))
 
 (defn sandbox-restricted-fields
-  "For sandboxed tables, returns {table-id -> #{allowed-field-ids}}.
-   Tables not in the returned map have no column restriction. nil means no sandboxes apply."
+  "For sandboxed tables, returns {table-id -> #{allowed-field-ids}}. Tables not in the returned map have no column
+  restriction; nil means no sandboxes apply."
   [table-ids]
   (permissions.metric/sandbox-restricted-fields table-ids))
