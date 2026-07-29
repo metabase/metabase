@@ -19,21 +19,24 @@
 
 (defn- truncate-table-batched!
   [table-name time-column]
-  (t2/query-one
-   (case (mdb/db-type)
-     (:postgres :h2)
-     {:delete-from (keyword table-name)
-      :where [:in
-              :id
-              {:select [:id]
-               :from (keyword table-name)
-               :where [:<=
-                       (keyword time-column)
-                       (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))]
-               :order-by [[:id :asc]]
-               :limit (audit-app.settings/audit-table-truncation-batch-size)}]}
+  (case (mdb/db-type)
+    ;; Postgres/H2 DELETE has no LIMIT, so pick a batch of ids first and delete that literal list. (A subselect
+    ;; would work too, but an id batch keeps the DELETE trivially cheap and the shape linter-clean.)
+    (:postgres :h2)
+    (let [batch-ids (t2/query {:select [:id]
+                               :from (keyword table-name)
+                               :where [:<=
+                                       (keyword time-column)
+                                       (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))]
+                               :order-by [[:id :asc]]
+                               :limit (audit-app.settings/audit-table-truncation-batch-size)})]
+      (if (seq batch-ids)
+        (t2/query-one {:delete-from (keyword table-name)
+                       :where [:in :id (map :id batch-ids)]})
+        0))
 
-     (:mysql :mariadb)
+    (:mysql :mariadb)
+    (t2/query-one
      {:delete-from (keyword table-name)
       :where [:<=
               (keyword time-column)

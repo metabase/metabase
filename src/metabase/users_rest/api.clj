@@ -240,12 +240,13 @@
   (map :user_id
        (t2/query {:select-distinct [:permissions_group_membership.user_id]
                   :from [:permissions_group_membership]
-                  :where [:in :permissions_group_membership.group_id
-                          ;; get all the groups ids that the current user is in
-                          {:select-distinct [:permissions_group_membership.group_id]
-                           :from  [:permissions_group_membership]
-                           :where [:and [:= :permissions_group_membership.user_id user-id]
-                                   [:not= :permissions_group_membership.group_id (:id (perms/all-users-group))]]}]})))
+                  ;; user-ids sharing a group with `user-id` (ignoring All Users)
+                  :where [:exists {:select [[[:inline 1]]]
+                                   :from   [[:permissions_group_membership :their_pgm]]
+                                   :where  [:and
+                                            [:= :their_pgm.group_id :permissions_group_membership.group_id]
+                                            [:= :their_pgm.user_id user-id]
+                                            [:not= :their_pgm.group_id (:id (perms/all-users-group))]]}]})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

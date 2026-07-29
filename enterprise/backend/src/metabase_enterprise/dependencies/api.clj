@@ -278,19 +278,21 @@
                            table-id-column (keyword (name table-name) "table_id")]
                        (branch [:and
                                 ;; Check that user can see the table this entity belongs to
-                                [:in table-id-column
-                                 {:select [:metabase_table.id]
+                                [:exists
+                                 {:select [[[:inline 1]]]
                                   :from   [:metabase_table]
                                   ;; using this clause because we had to change the mi/visible-filter-clause
                                   ;; to allow returning CTE based filters
                                   ;; TODO(ed 2025-12-16: support using CTES in filters in dependency graph)
-                                  :where  [:in :metabase_table.id
-                                           (perms/visible-table-filter-select
-                                            :id
-                                            {:user-id       api/*current-user-id*
-                                             :is-superuser? api/*is-superuser?*}
-                                            {:perms/view-data      :unrestricted
-                                             :perms/create-queries :query-builder})]}]
+                                  :where  [:and
+                                           [:= :metabase_table.id table-id-column]
+                                           [:in :metabase_table.id
+                                            (perms/visible-table-filter-select
+                                             :id
+                                             {:user-id       api/*current-user-id*
+                                              :is-superuser? api/*is-superuser?*}
+                                             {:perms/view-data      :unrestricted
+                                              :perms/create-queries :query-builder})]]}]
                                 ;; Filter by archived status
                                 (case include-archived-items
                                   :exclude [:= archived-column false]

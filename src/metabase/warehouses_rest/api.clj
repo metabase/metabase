@@ -574,9 +574,11 @@
   [_ db-id]
   {:select [[:%count.* :segment]]
    :from   [:segment]
-   :where  [:in :table_id {:select [:id]
-                           :from   [:metabase_table]
-                           :where  [:= :db_id db-id]}]})
+   :where  [:exists {:select [[[:inline 1]]]
+                     :from   [:metabase_table]
+                     :where  [:and
+                              [:= :metabase_table.id :segment.table_id]
+                              [:= :metabase_table.db_id db-id]]}]})
 
 (defmethod database-usage-query :transform
   [_ db-id]
@@ -1320,11 +1322,12 @@
 
 (defn- delete-all-field-values-for-database! [database-or-id]
   (t2/query-one {:delete-from :metabase_fieldvalues
-                 :where      [:in :field_id
-                              {:select     [:f.id]
-                               :from       [[:metabase_field :f]]
-                               :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
-                               :where      [:= :t.db_id (u/the-id database-or-id)]}]}))
+                 :where      [:exists {:select [[[:inline 1]]]
+                                       :from   [[:metabase_field :f]]
+                                       :join   [[:metabase_table :t] [:= :f.table_id :t.id]]
+                                       :where  [:and
+                                                [:= :f.id :metabase_fieldvalues.field_id]
+                                                [:= :t.db_id (u/the-id database-or-id)]]}]}))
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
 ;;

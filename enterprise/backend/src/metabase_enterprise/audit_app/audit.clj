@@ -163,13 +163,8 @@
       :h2
       (do
         (t2/update! :model/Table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
-        (t2/update! :model/Field
-                    {:table_id
-                     [:in
-                      {:select [:id]
-                       :from   [(t2/table-name :model/Table)]
-                       :where  [:= :db_id audit-db-id]}]}
-                    {:name [:upper :name]})
+        (when-let [audit-table-ids (seq (t2/select-pks-vec :model/Table :db_id audit-db-id))]
+          (t2/update! :model/Field {:table_id [:in audit-table-ids]} {:name [:upper :name]}))
         (fix-h2-card-metadata! audit-db-id))
 
       :postgres

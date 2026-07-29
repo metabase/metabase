@@ -128,10 +128,11 @@
                              (mapv #(vector :inline %) ["search_index" "search_index_next" "search_index_retired"])]]
                            ;; Exclude temp tables — they are managed by with-temp-index-table
                            [:not-like [:lower :table_name] [:inline "%\\_temp"]]
-                           [:not-in [:lower :table_name]
-                            {:select [:%lower.index_name]
-                             :from   [(t2/table-name :model/SearchIndexMetadata)]
-                             :where  [:= :engine [:inline "appdb"]]}]]})))
+                           [:not [:exists {:select [[[:inline 1]]]
+                                           :from   [[(t2/table-name :model/SearchIndexMetadata) :sim]]
+                                           :where  [:and
+                                                    [:= :sim.engine [:inline "appdb"]]
+                                                    [:= [:lower :sim.index_name] [:lower :table_name]]]}]]]})))
 
 (defn- delete-obsolete-tables! []
   ;; Delete metadata around indexes that are no longer needed.

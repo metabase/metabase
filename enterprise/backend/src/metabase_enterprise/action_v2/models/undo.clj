@@ -41,7 +41,8 @@
   ;; In the future, we might want to skip multi-table changes when using cmd-Z.
   ;; We may also want to filter based on the type of interaction that caused the change (e.g., grid, workflow, etc)
   (t2/select :model/Undo
-             :batch_num [:in
+             ;; scalar single-row subquery: = instead of IN (both filter everything when the aggregate is NULL)
+             :batch_num [:=
                          {:select [[[(if undo? :max :min) :batch_num]]]
                           :from   [(t2/table-name :model/Undo)]
                           :where  [:and

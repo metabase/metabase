@@ -124,11 +124,13 @@
               parent (when parent_comment_id
                        (t2/select-one :model/Comment :id parent_comment_id))}}]]
   (let [clause     (if parent_comment_id
-                     {:where [:in :id {:from   [:comment]
-                                       :select [:creator_id]
-                                       :where  [:or
-                                                [:= :id parent_comment_id]
-                                                [:= :parent_comment_id parent_comment_id]]}]}
+                     {:where [:exists {:select [[[:inline 1]]]
+                                       :from   [[:comment :c]]
+                                       :where  [:and
+                                                [:= :c.creator_id :core_user.id]
+                                                [:or
+                                                 [:= :c.id parent_comment_id]
+                                                 [:= :c.parent_comment_id parent_comment_id]]]}]}
                      ;; TODO: when we expand to more entity types, add dispatch here if not everyone has `creator_id`
                      {:where [:= :id (:creator_id entity)]})
         mentions   (comment/mentions (:content comment))

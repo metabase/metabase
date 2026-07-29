@@ -85,11 +85,13 @@
           database-id (:id database)
           indexed-field-ids (all-indexes->field-ids database-id indexes)
           existing-indexed-field-ids (t2/select-pks-set :model/Field
-                                                        :table_id [:in {:select [[:t.id]]
-                                                                        :from [[(t2/table-name :model/Table) :t]]
-                                                                        :where [:= :t.db_id database-id]}]
                                                         :parent_id nil
-                                                        :database_indexed true)
+                                                        :database_indexed true
+                                                        {:where [:exists {:select [[[:inline 1]]]
+                                                                          :from [[(t2/table-name :model/Table) :t]]
+                                                                          :where [:and
+                                                                                  [:= :t.id :metabase_field.table_id]
+                                                                                  [:= :t.db_id database-id]]}]})
           [removing adding]           (data/diff existing-indexed-field-ids indexed-field-ids)
           removing-count              (count removing)
           adding-count                (count adding)]

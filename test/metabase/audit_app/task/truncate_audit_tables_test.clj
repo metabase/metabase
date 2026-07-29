@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.task.truncate-audit-tables :as task.truncate-audit-tables]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.util :as qp.util]
@@ -68,6 +69,10 @@
                                                    {:started_at (t/minus (t/offset-date-time) (t/years 4))})]
         (t2/with-call-count [call-count]
           (#'task.truncate-audit-tables/truncate-table! :model/QueryExecution :started_at)
-          ;; Should make deletion queries in two batches (2 rows, then 1 row)
-          (is (= 2 (call-count)))
+          ;; Should delete in two batches (2 rows, then 1 row); on Postgres/H2 each batch is an id SELECT
+          ;; plus a DELETE, on MySQL/MariaDB a single DELETE ... LIMIT
+          (is (= (case (mdb/db-type)
+                   (:postgres :h2) 4
+                   (:mysql :mariadb) 2)
+                 (call-count)))
           (is (nil? (t2/select-fn-set :id :model/QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]}))))))))

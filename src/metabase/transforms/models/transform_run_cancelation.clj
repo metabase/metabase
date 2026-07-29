@@ -43,14 +43,18 @@
   [run-id]
   (t2/delete! :model/TransformRunCancelation
               :run_id run-id
-              :run_id [:not-in {:select :wr.id
-                                :from   [[:transform_run :wr]]
-                                :where  :wr.is_active}]))
+              {:where [:not [:exists {:select [[[:inline 1]]]
+                                      :from   [[:transform_run :wr]]
+                                      :where  [:and
+                                               [:= :wr.id :transform_run_cancelation.run_id]
+                                               :wr.is_active]}]]}))
 
 (defn delete-old-canceling-runs!
   "Delete cancelations for runs that are no longer running."
   []
   (t2/delete! :model/TransformRunCancelation
-              :run_id [:not-in {:select :wr.id
-                                :from   [[:transform_run :wr]]
-                                :where  :wr.is_active}]))
+              {:where [:not [:exists {:select [[[:inline 1]]]
+                                      :from   [[:transform_run :wr]]
+                                      :where  [:and
+                                               [:= :wr.id :transform_run_cancelation.run_id]
+                                               :wr.is_active]}]]}))

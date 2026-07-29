@@ -26,11 +26,9 @@
 
 (defn- notification-name-by-handler-id
   [notification-handler-id]
-  (let [notification (t2/hydrate (t2/select-one :model/Notification
-                                                :id [:in {:select [:notification_id]
-                                                          :from  :notification_handler
-                                                          :where [:= :id notification-handler-id]}])
-                                 :payload)]
+  (let [notification-id (t2/select-one-fn :notification_id :model/NotificationHandler :id notification-handler-id)
+        notification    (t2/hydrate (t2/select-one :model/Notification :id notification-id)
+                                    :payload)]
     (case (:payload_type notification)
       ;; use the card name
       :notification/card (->> notification :payload :card_id (t2/select-one-fn :name :model/Card))

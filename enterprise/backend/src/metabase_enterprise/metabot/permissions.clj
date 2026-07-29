@@ -16,10 +16,11 @@
   (if-not user-id
     scope/all-yes-permissions
     (let [stored  (t2/select :model/MetabotPermissions
-                             {:where [:in :group_id
-                                      {:select [:group_id]
-                                       :from   [(t2/table-name :model/PermissionsGroupMembership)]
-                                       :where  [:= :user_id user-id]}]})
+                             {:where [:exists {:select [[[:inline 1]]]
+                                               :from   [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                                               :where  [:and
+                                                        [:= :pgm.group_id :metabot_permissions.group_id]
+                                                        [:= :pgm.user_id user-id]]}]})
           by-type (group-by :perm_type stored)]
       (reduce-kv
        (fn [acc perm-type default-value]

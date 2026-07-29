@@ -46,16 +46,17 @@
                        (t2/select-one-pk :model/Table
                                          :db_id  (mt/id)
                                          :active true
-                                         :id     [:in {:select [:table_id]
-                                                       :from   [(t2/table-name :model/Field)]
-                                                       ;; Mirror the QP's queryable-column filter (active-column-pred):
-                                                       ;; active, and visibility not sensitive/retired, else the picked
-                                                       ;; table still yields no implicit fields.
-                                                       :where  [:and
-                                                                [:= :active true]
-                                                                [:or [:= :visibility_type nil]
-                                                                 [:not-in :visibility_type ["sensitive" "retired"]]]]}]
-                                         {:order-by [[:id :asc]]}))))
+                                         ;; Mirror the QP's queryable-column filter (active-column-pred):
+                                         ;; active, and visibility not sensitive/retired, else the picked
+                                         ;; table still yields no implicit fields.
+                                         {:where    [:exists {:select [[[:inline 1]]]
+                                                              :from   [[(t2/table-name :model/Field) :mf]]
+                                                              :where  [:and
+                                                                       [:= :mf.table_id :metabase_table.id]
+                                                                       [:= :mf.active true]
+                                                                       [:or [:= :mf.visibility_type nil]
+                                                                        [:not-in :mf.visibility_type ["sensitive" "retired"]]]]}]
+                                          :order-by [[:id :asc]]}))))
 
 (defn drop-target!
   "Drop transform target `target` and clean up its metadata.

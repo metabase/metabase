@@ -271,9 +271,11 @@
                      (conj [:in :transform_id transform-ids])
 
                      (seq transform-tag-ids)
-                     (conj [:in :transform_id {:select [:transform_id]
-                                               :from   [:transform_transform_tag]
-                                               :where  [:in :tag_id transform-tag-ids]}])
+                     (conj [:exists {:select [[[:inline 1]]]
+                                     :from   [[:transform_transform_tag :ttt]]
+                                     :where  [:and
+                                              [:= :ttt.transform_id :transform_run.transform_id]
+                                              [:in :ttt.tag_id transform-tag-ids]]}])
 
                      (seq statuses)
                      (conj [:in :status (set statuses)])
