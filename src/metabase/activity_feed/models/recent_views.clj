@@ -439,21 +439,22 @@
 (defn- table-recents
   "Query to select recent table data"
   [table-ids]
-  (t2/select :model/Table
-             {:select [:t.id :t.name :t.description
-                       :t.display_name :t.active :t.visibility_type :t.schema
-                       [:db.name :database-name]
-                       [:db.id :db_id]
-                       [:db.initial_sync_status :initial-sync-status]]
-              :from [[:metabase_table :t]]
-              :where (let [base-condition [:or
-                                           [:= :visibility_type nil]
-                                           [:!= :visibility_type "hidden"]]]
-                       (if (seq table-ids)
-                         [:and base-condition [:in :t.id table-ids]]
-                         base-condition))
-              :left-join [[:metabase_database :db]
-                          [:= :db.id :t.db_id]]}))
+  (if-not (seq table-ids)
+    []
+    (t2/select :model/Table
+               {:select [:t.id :t.name :t.description
+                         :t.display_name :t.active :t.visibility_type :t.schema
+                         [:db.name :database-name]
+                         [:db.id :db_id]
+                         [:db.initial_sync_status :initial-sync-status]]
+                :from [[:metabase_table :t]]
+                :where [:and
+                        [:or
+                         [:= :visibility_type nil]
+                         [:!= :visibility_type "hidden"]]
+                        [:in :t.id table-ids]]
+                :left-join [[:metabase_database :db]
+                            [:= :db.id :t.db_id]]})))
 
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
   (let [table model_object]

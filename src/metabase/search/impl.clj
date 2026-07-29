@@ -500,7 +500,6 @@
                            (filter (partial check-permissions-for-model search-ctx))
                            (map (partial normalize-result-more search-ctx))
                            (keep #(search.engine/score scoring-ctx %)))]
-    (perms/prime-table-perms-cache (t2/select-pks-set :model/Database))
     (scoring/top-results reducible-results search.config/max-filtered-results xf)))
 
 (mu/defn search
