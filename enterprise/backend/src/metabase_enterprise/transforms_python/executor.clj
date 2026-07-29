@@ -44,11 +44,13 @@
   ;; dispatch through the var so a reload picks up changes (defmulti itself is idempotent)
   #'backend-for)
 
-(defn- known-backend? [backend]
-  (contains? (methods run-python-code!) backend))
+(def ^:private known-backends
+  "Backends a setting may name. Stated rather than derived from the method table so that stubbing
+  [[run-python-code!]] in a test cannot invalidate the check."
+  #{:http-runner :microvm})
 
 (defn- validated-backend [backend setting-name]
-  (if (known-backend? backend)
+  (if (contains? known-backends backend)
     backend
     (do (log/warnf "Unknown %s %s; falling back to :http-runner" setting-name backend)
         :http-runner)))

@@ -3,6 +3,7 @@
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.base :as base]
+   [metabase-enterprise.transforms-python.executor :as executor]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -59,13 +60,12 @@
         {#'transforms-base.u/resolve-source-tables             (constantly [])
          #'s3/open-shared-storage!                             (constantly stub-storage)
          #'python-runner/copy-tables-to-s3!                    (constantly nil)
-         #'python-runner/execute-python-code-http-call!        (constantly {:status 200 :body {:exit_code 0}})
+         #'executor/run-python-code!                           (constantly {:status 200 :body {:exit_code 0}})
          #'python-runner/read-output-manifest                  (constantly {:fields [{:name "a" :base_type "Integer"}]})
          #'python-runner/read-events                           (constantly [])
          #'python-runner/open-output                           (fn [_] (fake-output-stream))
          #'transforms.instrumentation/record-data-transfer!    (fn [_run-id _stage _bytes rows]
                                                                  (reset! recorded-rows rows))
-         #'base/start-cancellation-process!                    (constantly nil)
          #'base/transfer-file-to-db                            (constantly nil)}
         (fn []
           (let [response (#'base/run-python-transform-impl!
