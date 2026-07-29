@@ -77,9 +77,7 @@
                               :visibility_type nil
                               {:order-by [[:%lower.schema :asc]
                                           [:%lower.display_name :asc]]})
-        ;; the per-table checks below fill the full permissions cache one database at a time — batch-prime it
-        _ (perms/prime-full-perms-cache [:perms/view-data :perms/create-queries :perms/manage-table-metadata]
-                                        (map :id dbs))
+        _ (perms/prime-table-perms-cache (map :id dbs))
         filtered-tables (cond->> (filter mi/can-read? all-tables)
                           can-query?          (filter mi/can-query?)
                           can-write-metadata? (filter mi/can-write?))

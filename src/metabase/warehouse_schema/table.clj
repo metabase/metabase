@@ -71,9 +71,7 @@
   ([ids {:keys [include-sensitive-fields?]}]
    (when (seq ids)
      (let [tables (t2/select :model/Table :id [:in ids])
-           ;; the per-table can-read? checks fill the full permissions cache one database at a time — batch-prime it
-           _      (perms/prime-full-perms-cache [:perms/view-data :perms/create-queries :perms/manage-table-metadata]
-                                                (into #{} (map :db_id) tables))
+           _      (perms/prime-table-perms-cache (into #{} (map :db_id) tables))
            tables (filter can-access-table-for-query-metadata? tables)
            tables (t2/hydrate tables
                               [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]

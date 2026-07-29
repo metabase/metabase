@@ -21,45 +21,45 @@
       :blocked         [:perms/view-data #{:blocked}]
       nil              [:perms/view-data #{}])))
 
-(deftest ^:parallel rows->full-perms-test
+(deftest ^:parallel rows->table-perms-test
   (testing "returns an empty map when there are no rows"
-    (is (= {} (#'data-perms/rows->full-perms identity []))))
+    (is (= {} (#'data-perms/rows->table-perms identity []))))
   (testing "duplicate rows keep every distinct value visible to coalescing, and each table-level row keeps its own
             schema_name (data_permissions has no unique constraint on (group_id, perm_type, db_id, table_id), and
             schema_name is denormalized so rows for one table can disagree)"
-    (let [entry (get (#'data-perms/rows->full-perms
-                      identity
-                      [{:perm_type  :perms/create-queries
-                        :db_id      20
-                        :group_id   1
-                        :table_id   nil
-                        :schema_name nil
-                        :perm_value :query-builder}
-                       {:perm_type  :perms/create-queries
-                        :db_id      20
-                        :group_id   1
-                        :table_id   nil
-                        :schema_name nil
-                        :perm_value :no}
-                       {:perm_type  :perms/create-queries
-                        :db_id      20
-                        :group_id   1
-                        :table_id   10
-                        :schema_name "public"
-                        :perm_value :query-builder}
-                       {:perm_type  :perms/create-queries
-                        :db_id      20
-                        :group_id   1
-                        :table_id   10
-                        :schema_name "public"
-                        :perm_value :no}
-                       {:perm_type  :perms/create-queries
-                        :db_id      20
-                        :group_id   2
-                        :table_id   10
-                        :schema_name "legacy"
-                        :perm_value :query-builder}])
-                     20)]
+    (let [entry (get-in (#'data-perms/rows->table-perms
+                         identity
+                         [{:perm_type  :perms/create-queries
+                           :db_id      20
+                           :group_id   1
+                           :table_id   nil
+                           :schema_name nil
+                           :perm_value :query-builder}
+                          {:perm_type  :perms/create-queries
+                           :db_id      20
+                           :group_id   1
+                           :table_id   nil
+                           :schema_name nil
+                           :perm_value :no}
+                          {:perm_type  :perms/create-queries
+                           :db_id      20
+                           :group_id   1
+                           :table_id   10
+                           :schema_name "public"
+                           :perm_value :query-builder}
+                          {:perm_type  :perms/create-queries
+                           :db_id      20
+                           :group_id   1
+                           :table_id   10
+                           :schema_name "public"
+                           :perm_value :no}
+                          {:perm_type  :perms/create-queries
+                           :db_id      20
+                           :group_id   2
+                           :table_id   10
+                           :schema_name "legacy"
+                           :perm_value :query-builder}])
+                        [:perms/create-queries 20])]
       (is (= {1 #{:query-builder :no}}
              (:groups entry)))
       (is (= {10 {1 #{{:schema "public" :value :query-builder}
@@ -67,48 +67,44 @@
                   2 #{{:schema "legacy" :value :query-builder}}}}
              (:tables entry))))))
 
-(deftest ^:parallel rows->distinct-perms-test
-  (is (= {20 #{{:group-id 1, :schema nil,      :value :query-builder, :table-level? false}
-               {:group-id 1, :schema "public", :value :no,            :table-level? true}}}
-         (#'data-perms/rows->distinct-perms
-          [{:db_id 20, :group_id 1, :schema_name nil,
+(deftest ^:parallel rows->schema-perms-test
+  (is (= {:perms/create-queries
+          {20 #{{:group-id 1, :schema nil,      :value :query-builder, :table-level? false}
+                {:group-id 1, :schema "public", :value :no,            :table-level? true}}}}
+         (#'data-perms/rows->schema-perms
+          [{:perm_type :perms/create-queries, :db_id 20, :group_id 1, :schema_name nil,
             :perm_value :query-builder, :table_level 0}
-           {:db_id 20, :group_id 1, :schema_name "public",
+           {:perm_type :perms/create-queries, :db_id 20, :group_id 1, :schema_name "public",
             :perm_value :no, :table_level 1}]))))
 
-(deftest permission-caches-load-per-type-test
-  (let [user-id        1
-        full-loads     (atom [])
-        distinct-loads (atom [])
-        full-cache     (atom {:db-ids {} :perms {}})
-        distinct-cache (atom {:perm-types #{} :perms {}})]
-    (binding [api/*current-user-id*             user-id
-              data-perms/*full-perms-cache*     full-cache
-              data-perms/*distinct-perms-cache* distinct-cache]
-      (mt/with-dynamic-fn-redefs [data-perms/load-full-perms
-                                  (fn [_interner _user-id db-ids perm-type]
-                                    (swap! full-loads conj [perm-type db-ids])
-                                    (zipmap db-ids (repeat {:groups {} :tables {}})))
-                                  data-perms/load-distinct-perms
-                                  (fn [_user-id perm-type _db-ids]
-                                    (swap! distinct-loads conj perm-type)
-                                    {10 #{{:value perm-type}}})]
-        (#'data-perms/full-perms user-id [10] :perms/view-data)
-        (#'data-perms/full-perms user-id [10 11] :perms/view-data)
-        (#'data-perms/full-perms user-id [10] :perms/create-queries)
-        (is (= [[:perms/view-data [10]]
-                [:perms/view-data [11]]
-                [:perms/create-queries [10]]]
-               @full-loads))
-        (is (= {:perms/view-data      #{10 11}
-                :perms/create-queries #{10}}
-               (:db-ids @full-cache)))
-        (#'data-perms/distinct-perms user-id :perms/view-data)
-        (#'data-perms/distinct-perms user-id :perms/view-data)
-        (#'data-perms/distinct-perms user-id :perms/create-queries)
-        (is (= [:perms/view-data :perms/create-queries] @distinct-loads))
-        (is (= #{:perms/view-data :perms/create-queries}
-               (:perm-types @distinct-cache)))))))
+(deftest permission-caches-load-on-demand-test
+  (let [user-id      1
+        table-loads  (atom [])
+        schema-loads (atom [])
+        table-cache  (atom {:db-ids #{} :perms {}})
+        schema-cache (atom {})]
+    (binding [api/*current-user-id*           user-id
+              data-perms/*table-perms-cache*  table-cache
+              data-perms/*schema-perms-cache* schema-cache]
+      (mt/with-dynamic-fn-redefs [data-perms/load-table-perms
+                                  (fn [_interner _user-id db-ids]
+                                    (swap! table-loads conj db-ids)
+                                    {:perms/view-data (zipmap db-ids (repeat {:groups {} :tables {}}))})
+                                  data-perms/load-schema-perms
+                                  (fn [_user-id _db-ids]
+                                    (swap! schema-loads conj :all)
+                                    {:perms/view-data {10 #{{:value :unrestricted}}}})]
+        (testing "the table cache loads only databases not already fetched"
+          (#'data-perms/table-perms user-id [10])
+          (#'data-perms/table-perms user-id [10 11])
+          (#'data-perms/table-perms user-id [10 11])
+          (is (= [[10] [11]] @table-loads))
+          (is (= #{10 11} (:db-ids @table-cache))))
+        (testing "the schema cache loads everything once"
+          (#'data-perms/schema-perms user-id)
+          (#'data-perms/schema-perms user-id)
+          (is (= [:all] @schema-loads))
+          (is (contains? @schema-cache user-id)))))))
 
 (deftest ^:parallel at-least-as-permissive?-test
   (testing "at-least-as-permissive? correctly compares permission values"
