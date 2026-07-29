@@ -12,11 +12,8 @@
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.api.provider]
    [metabase.llm.context :as llm.context]
-   [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.core :as metabot]
-   [metabase.metabot.self :as metabot.self]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -87,22 +84,6 @@
                            :duration_ms  (some-> duration-ms long)
                            :result       result}
                           api/*current-user-id*))
-
-(api.macros/defendpoint :get "/list-models"
-  :- [:map [:models [:sequential [:map
-                                  [:id :string]
-                                  [:display_name :string]]]]]
-  "List available LLM models from the configured provider.
-
-   Requires LLM to be configured for the selected provider in admin settings."
-  [_route-params
-   _query-params]
-  (when-not (metabot.settings/llm-metabot-configured?)
-    (throw (ex-info (tru "LLM is not configured. Please configure the selected provider in admin settings.")
-                    {:status-code 403})))
-  (let [{:keys [type credentials ai-proxy?]}
-        (llm.provider/resolve-model-ref (metabot.settings/llm-metabot-provider))]
-    (metabot.self/list-models type {:credentials credentials :ai-proxy? ai-proxy?})))
 
 (def ^:private table-with-columns-schema
   "Schema for table metadata with columns returned by /extract-sources."
