@@ -20,9 +20,6 @@ export const isWithinIframe = function (): boolean {
   }
 };
 
-// add a global so we can check if the parent iframe is Metabase
-window.METABASE = true;
-
 // check that we're both iframed, and the parent is a Metabase instance
 // used for detecting if we're previewing an embed
 export const IFRAMED_IN_SELF = (function () {
