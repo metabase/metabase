@@ -1,9 +1,20 @@
+import { getColumnIcon } from "metabase/common/utils/columns";
+import * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
-import type { IconName } from "metabase-types/api";
+import type { IconName, MetricDimension } from "metabase-types/api";
 
 export function getDimensionIcon(
-  dimension: LibMetric.DimensionMetadata,
+  dimension: LibMetric.DimensionMetadata | MetricDimension,
 ): IconName {
+  if ("display_name" in dimension) {
+    return getColumnIcon(
+      Lib.legacyColumnTypeInfo({
+        effective_type: dimension.effective_type,
+        semantic_type: dimension.semantic_type,
+      }),
+    );
+  }
+
   // semantic type checks first
   if (LibMetric.isPrimaryKey(dimension)) {
     return "label";

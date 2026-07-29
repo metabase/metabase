@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import { useGetCardQuery } from "metabase/api";
 import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
+import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getResponseErrorMessage } from "metabase/utils/errors";
@@ -10,7 +11,8 @@ import {
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
-import type { IconName, RawSeries } from "metabase-types/api";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Dataset, IconName, RawSeries } from "metabase-types/api";
 
 export interface PinnedQuestionLoaderProps {
   id: number;
@@ -63,7 +65,7 @@ const PinnedQuestionLoader = ({
         children({
           question,
           loading: loading || results == null,
-          rawSeries: getRawSeries(rawSeries),
+          rawSeries: getRawSeries(rawSeries, result, metadata),
           error: getError(error, result),
           errorIcon: getErrorIcon(error, result),
         })
@@ -72,8 +74,20 @@ const PinnedQuestionLoader = ({
   );
 };
 
-const getRawSeries = (rawSeries: RawSeries | null | undefined) => {
-  return rawSeries?.map((series) => ({
+const getRawSeries = (
+  rawSeries: RawSeries | null | undefined,
+  result: Dataset | null,
+  metadata: Metadata,
+) => {
+  const seriesWithQuery = rawSeries?.map((series) => ({
+    ...series,
+    json_query: result?.json_query,
+  }));
+  const seriesWithDisplay = seriesWithQuery
+    ? getMetricSeriesWithDefaultDisplay(seriesWithQuery, metadata)
+    : undefined;
+
+  return seriesWithDisplay?.map((series) => ({
     ...series,
     card: {
       ...series.card,
