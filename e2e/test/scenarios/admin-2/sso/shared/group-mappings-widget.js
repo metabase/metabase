@@ -6,13 +6,6 @@ export function crudGroupMappingsWidget(authenticationMethod) {
   // Create mapping, then delete it along with its groups
   createMapping("cn=People1");
   addGroupsToMapping("cn=People1", ["Administrators", "data", "nosql"]);
-  // Re-read the mapping from committed server state before deleting it.
-  // Each group selection optimistically patches the settings cache, but the
-  // setting update also invalidates and refetches session properties; a
-  // trailing stale refetch can revert the last-added group. Reloading aborts
-  // those in-flight refetches and settles on a single server-read state, so
-  // all mapped groups are present when the delete fires one request per group.
-  reloadAndConfirmMappingGroupsSettled(authenticationMethod, "cn=People1");
   deleteMappingWithGroups("cn=People1");
 
   cy.wait(["@deleteGroup", "@deleteGroup"]);
@@ -23,8 +16,6 @@ export function crudGroupMappingsWidget(authenticationMethod) {
   // Groups deleted along with first mapping should not be offered
   cy.findByText("data").should("not.exist");
   cy.findByText("nosql").should("not.exist");
-
-  reloadAndConfirmMappingGroupsSettled(authenticationMethod, "cn=People2");
 
   cy.findByTestId("admin-content-table").within(() => {
     cy.icon("close").click({ force: true });
@@ -46,6 +37,8 @@ export function checkGroupConsistencyAfterDeletingMappings(
   authenticationMethod,
 ) {
   cy.visit("/admin/settings/authentication/" + authenticationMethod);
+  cy.wait("@getSettings");
+  cy.wait("@getSessionProperties");
 
   createMapping("cn=People1");
   addGroupsToMapping("cn=People1", ["Administrators", "data", "nosql"]);
@@ -76,19 +69,6 @@ export function checkGroupConsistencyAfterDeletingMappings(
   });
 }
 
-// Reload the auth settings page and wait until the mapping row reflects its
-// fully-settled group set (Administrators + two others, or two non-admin
-// groups, both render as "2 other groups"). This is a positive readiness
-// anchor: it only passes once mappings and the groups list have loaded from a
-// clean server read, guaranteeing every group is mapped before we act on it.
-const reloadAndConfirmMappingGroupsSettled = (
-  authenticationMethod,
-  mappingName,
-) => {
-  cy.visit("/admin/settings/authentication/" + authenticationMethod);
-  cy.findByText(mappingName).closest("tr").should("contain", "2 other groups");
-};
-
 const deleteMappingWithGroups = (mappingName) => {
   cy.findByText(mappingName)
     .closest("tr")
@@ -98,12 +78,25 @@ const deleteMappingWithGroups = (mappingName) => {
 
   cy.findByText(/delete the groups/i).click();
   cy.button("Remove mapping and delete groups").click();
+
+  // Removing the mapping PUTs the setting and invalidates session properties,
+  // triggering a refetch. Wait for both to settle so this trailing refetch
+  // can't land mid-flight during a later mapping's edits and revert its state
+  // (same last-write-wins hazard guarded against in addGroupsToMapping).
+  cy.wait("@updateSetting");
+  cy.wait("@getSessionProperties");
 };
 
 const createMapping = (name) => {
   cy.button("New mapping").click();
   cy.findByLabelText("New group mapping name").type(name);
   cy.button("Add").click();
+
+  // Adding the mapping PUTs the setting and triggers a session-properties
+  // refetch. Wait for both so the widget's mappings state is fully settled
+  // from a completed round-trip before we start adding groups to it.
+  cy.wait("@updateSetting");
+  cy.wait("@getSessionProperties");
 };
 
 const addGroupsToMapping = (mappingName, groups) => {
@@ -115,7 +108,17 @@ const addGroupsToMapping = (mappingName, groups) => {
 
   groups.forEach((group) => {
     cy.findByRole("option", { name: group }).click();
-    // Wait for the selection to round-trip before picking the next group
+
+    // Each selection PUTs the mapping (built from the widget's current mappings
+    // cache) and invalidates session properties, triggering a refetch. If the
+    // next selection fires before this round-trip settles, a trailing stale
+    // refetch can revert the just-added group in the cache and the next PUT is
+    // then built from that stale set, dropping the group server-side
+    // (last-write-wins). Fewer groups then remain than the test deletes, so
+    // fewer deleteGroup requests fire and cy.wait times out. Wait for the PUT
+    // and the trailing refetch to settle before picking the next group.
+    cy.wait("@updateSetting");
+    cy.wait("@getSessionProperties");
     cy.findByRole("option", { name: group })
       .find("input[type=checkbox]")
       .should("be.checked");
