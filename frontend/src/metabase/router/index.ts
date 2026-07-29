@@ -6,7 +6,7 @@ export * from "./redirect";
 export * from "./router-link";
 export * from "./route";
 export * from "./Outlet";
-export * from "./routing-reducer";
+export * from "./location-change";
 export * from "./RouterProvider";
 export * from "./types";
 export * from "./use-location";

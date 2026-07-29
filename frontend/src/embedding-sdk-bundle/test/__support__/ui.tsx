@@ -41,11 +41,8 @@ export function renderWithSDKProviders(
 ) {
   // `settings` is served from the `getSessionProperties` RTK Query cache.
   // Capture any seeded settings here and seed the cache through `preloadedState` below.
-  let {
-    routing,
-    settings: seededSettings,
-    ...initialState
-  }: Partial<StoreSeedState> = createMockState(storeInitialState);
+  let { settings: seededSettings, ...initialState }: Partial<StoreSeedState> =
+    createMockState(storeInitialState);
 
   const sdkReducerNames = Object.keys(sdkReducers);
   initialState = _.pick(

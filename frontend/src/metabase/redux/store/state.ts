@@ -1,6 +1,5 @@
 import type { Api } from "metabase/api/api";
 import type { DocumentsState } from "metabase/redux/store/documents";
-import type { RouterState } from "metabase/router";
 import type { User } from "metabase-types/api";
 
 import type { AdminState } from "./admin";
@@ -37,7 +36,6 @@ export interface State {
   parameters: ParametersState;
   pulse: PulseState;
   qb: QueryBuilderState;
-  routing: RouterState;
   setup: SetupState;
   upload: FileUploadState;
   modal: ModalState;
