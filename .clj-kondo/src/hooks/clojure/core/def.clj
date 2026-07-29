@@ -1,7 +1,8 @@
 (ns hooks.clojure.core.def
   (:require
    [clj-kondo.hooks-api :as hooks]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [hooks.honey-sql]))
 
 (defn- uppercase-name?
   "Whether the symbol is clearly an uppercase name like `TYPE-CONSTANTS` or `SOME_CONSTANT` or `TYPE->MODEL`."
@@ -33,6 +34,7 @@
               :type    :metabase/check-def-no-underscores)))))
 
 (defn lint-def* [{:keys [node]}]
+  (hooks.honey-sql/lint-in-subquery node)
   (let [[_def & args] (:children node)
         name-symbol   (some (fn [arg]
                               (when (and (hooks/token-node? arg)

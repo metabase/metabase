@@ -60,6 +60,7 @@
   :metabase/check-defmulti-arglists                          {:level :warning}
   :metabase/check-def-check-not-uppercase-name               {:level :warning}
   :metabase/check-def-no-underscores                         {:level :warning}
+  :metabase/honeysql-in-subquery                             {:level :warning}
   :metabase/check-me-humanize                                {:level :warning}
   :metabase/check-testing-not-empty                          {:level :warning}
   :metabase/defsetting-must-specify-export                   {:level :warning}
@@ -567,6 +568,7 @@
    clojure.core/def                                                                                                          hooks.clojure.core.def/lint-def
    clojure.core/definterface                                                                                                 hooks.clojure.core.def/lint-def
    clojure.core/defmacro                                                                                                     hooks.clojure.core.defmacro/lint-defmacro
+   clojure.core/defmethod                                                                                                    hooks.clojure.core.defmethod/lint-defmethod
    clojure.core/defmulti                                                                                                     hooks.clojure.core.defmulti/lint-defmulti
    clojure.core/defn                                                                                                         hooks.clojure.core.defn/lint-defn
    clojure.core/defn-                                                                                                        hooks.clojure.core.defn/lint-defn

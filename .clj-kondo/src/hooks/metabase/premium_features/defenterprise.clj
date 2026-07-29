@@ -1,9 +1,11 @@
 (ns hooks.metabase.premium-features.defenterprise
   (:require
    [clj-kondo.hooks-api :as hooks]
-   [hooks.common]))
+   [hooks.common]
+   [hooks.honey-sql]))
 
 (defn defenterprise [{node :node}]
+  (hooks.honey-sql/lint-in-subquery node)
   (let [[_defenterprise fn-name & args] (:children node)
         [docstring & args]              (if (hooks/string-node? (first args))
                                           args

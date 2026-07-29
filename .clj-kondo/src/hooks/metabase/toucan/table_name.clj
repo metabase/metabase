@@ -7,7 +7,8 @@
   etc. still work), and additionally check the file location when the
   multimethod being defined is `t2/table-name`."
   (:require
-   [clj-kondo.hooks-api :as hooks]))
+   [clj-kondo.hooks-api :as hooks]
+   [hooks.honey-sql]))
 
 (defn- models-file? [filename]
   (boolean
@@ -26,6 +27,7 @@
   delegates to the vendored methodical hook so kondo's normal analysis of the
   defmethod body still runs."
   [{:keys [filename node] :as input}]
+  (hooks.honey-sql/lint-in-subquery node)
   (let [[_defmethod multimethod & _args] (:children node)
         dispatch (when multimethod
                    (try (hooks/sexpr multimethod) (catch Exception _ nil)))]

@@ -257,6 +257,7 @@
                    :in     (let [cols (mapv keyword unique-key)
                                  lhs  (if (= 1 (count cols)) (first cols) (into [:composite] cols))]
                              {:delete-from target
+                              #_{:clj-kondo/ignore [:metabase/honeysql-in-subquery]}
                               :where       [:in lhs {:select cols, :from [temp]}]}))]
     (sql.qp/format-honeysql driver honeysql)))
 
