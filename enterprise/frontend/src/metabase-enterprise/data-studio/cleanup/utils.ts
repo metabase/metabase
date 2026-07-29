@@ -10,10 +10,9 @@ import type {
 const CANDIDATE_TYPES = ["measure", "segment"] as const;
 const MODELING_STATUSES = ["missing", "partially-modeled", "modeled"] as const;
 const SIGNALS = ["verified", "official", "popular"] as const;
-const DISMISSED_FILTERS = ["exclude", "include", "only"] as const;
 const SORTS = ["priority", "name", "source-count", "view-count"] as const;
 const DIRECTIONS = ["asc", "desc"] as const;
-const QUEUES = ["recommended", "review", "all", "dismissed"] as const;
+const QUEUES = ["suggested", "discarded"] as const;
 
 export function parseCleanupParams(
   searchParams: URLSearchParams,
@@ -32,14 +31,11 @@ export function parseCleanupParams(
       MODELING_STATUSES,
     ),
     signal: Urls.parseEnumParam(searchParams.get("signal"), SIGNALS),
-    dismissed:
-      Urls.parseEnumParam(searchParams.get("dismissed"), DISMISSED_FILTERS) ??
-      "exclude",
     sort: Urls.parseEnumParam(searchParams.get("sort"), SORTS) ?? "priority",
     direction:
       Urls.parseEnumParam(searchParams.get("direction"), DIRECTIONS) ?? "asc",
     queue:
-      Urls.parseEnumParam(searchParams.get("queue"), QUEUES) ?? "recommended",
+      Urls.parseEnumParam(searchParams.get("queue"), QUEUES) ?? "suggested",
     candidateId: Urls.parseNumberParam(searchParams.get("candidate")),
   };
 }
@@ -85,6 +81,6 @@ export function hasActiveFilters(params: Urls.DataStudioCleanupParams) {
   return Boolean(
     params.search ||
     params.databaseId ||
-    (params.queue && params.queue !== "recommended"),
+    (params.queue && params.queue !== "suggested"),
   );
 }

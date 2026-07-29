@@ -485,26 +485,18 @@ function getErrorStatus(error: unknown) {
 
 function getQueueHeading(queue: Urls.DataStudioCleanupParams["queue"]) {
   switch (queue) {
-    case "review":
-      return t`Definitions to review`;
-    case "all":
-      return t`All suggestions`;
-    case "dismissed":
-      return t`Dismissed suggestions`;
-    default:
-      return t`Recommended next`;
+    case "suggested":
+      return t`Suggested candidates`;
+    case "discarded":
+      return t`Discarded candidates`;
   }
 }
 
 function getQueueDescription(queue: Urls.DataStudioCleanupParams["queue"]) {
   switch (queue) {
-    case "review":
-      return t`These definitions differ from related entities in the Library.`;
-    case "all":
-      return t`Browse the complete analysis for this table.`;
-    case "dismissed":
+    case "suggested":
+      return t`Measures and Segments mined from saved content on this table.`;
+    case "discarded":
       return t`Restore a suggestion if it should return to the cleanup queue.`;
-    default:
-      return t`Start with the most actionable, strongly supported suggestions.`;
   }
 }

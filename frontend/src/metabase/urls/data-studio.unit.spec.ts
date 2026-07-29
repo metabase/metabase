@@ -124,14 +124,13 @@ describe("urls > data-studio", () => {
           candidateType: "measure",
           modelingStatus: "partially-modeled",
           signal: "verified",
-          dismissed: "only",
           sort: "view-count",
           direction: "desc",
-          queue: "all",
+          queue: "discarded",
           candidateId: 17,
         }),
       ).toBe(
-        "/data-studio/cleanup?page=2&search=order+total&database=1&schema=analytics&type=measure&status=partially-modeled&signal=verified&dismissed=only&sort=view-count&direction=desc&queue=all&candidate=17",
+        "/data-studio/cleanup?page=2&search=order+total&database=1&schema=analytics&type=measure&status=partially-modeled&signal=verified&sort=view-count&direction=desc&queue=discarded&candidate=17",
       );
     });
 

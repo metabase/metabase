@@ -60,18 +60,13 @@ export function CleanupFilters({
   );
 }
 
-const QUEUES: UsageMetadataCleanupQueue[] = [
-  "recommended",
-  "review",
-  "all",
-  "dismissed",
-];
+const QUEUES: UsageMetadataCleanupQueue[] = ["suggested", "discarded"];
 
 export function CleanupQueueTabs({
   params,
   onChange,
 }: Pick<CleanupFiltersProps, "params" | "onChange">) {
-  const queue = params.queue ?? "recommended";
+  const queue = params.queue ?? "suggested";
 
   return (
     <Tabs
@@ -79,7 +74,7 @@ export function CleanupQueueTabs({
       onChange={(value) =>
         onChange({
           ...params,
-          queue: isCleanupQueue(value) ? value : "recommended",
+          queue: isCleanupQueue(value) ? value : "suggested",
           page: undefined,
           candidateId: undefined,
         })
@@ -104,13 +99,9 @@ function isCleanupQueue(
 
 function getQueueLabel(queue: UsageMetadataCleanupQueue) {
   switch (queue) {
-    case "recommended":
-      return t`Recommended`;
-    case "review":
-      return t`Needs review`;
-    case "all":
-      return t`All suggestions`;
-    case "dismissed":
-      return t`Dismissed`;
+    case "suggested":
+      return t`Suggested`;
+    case "discarded":
+      return t`Discarded`;
   }
 }
