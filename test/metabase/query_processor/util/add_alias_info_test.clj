@@ -15,6 +15,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.lib.test-util.uuid-dogs-metadata-provider :as lib.tu.uuid-dogs-metadata-provider]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -1415,3 +1416,32 @@
               ;; Before the fix, ::add/desired-alias was nil because lib.equality/= failed
               ;; due to :inherited-temporal-unit mismatch (:minute vs :day).
               (is (some? (::add/desired-alias (second created-at-brk)))))))))))
+
+(deftest ^:parallel dangling-join-ref-error-message-test
+  (testing "a join condition ref to a column that's gone missing from the join's own source gets a readable error (#78854)"
+    (let [query      {:stages [{:lib/type                    :mbql.stage/mbql
+                                ::add/desired-alias->escaped {"Marca" "Marca", "Meta_Total" "Meta_Total"}}]}
+          stage-path [:stages 0]
+          join       {:alias "Engajamento - gerencial - marca"}]
+      (testing "without an on-missing callback, the original generic exception is unchanged"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Missing ::desired-alias->escaped for \"Indicador\""
+             (#'add/escaped-desired-alias query stage-path "Indicador"))))
+      (testing "update-ref-from-this-join wires up a friendlier exception via on-missing"
+        (let [e (try
+                  (#'add/escaped-desired-alias
+                   query stage-path "Indicador"
+                   (fn [desired-alias->escaped]
+                     (#'add/dangling-join-ref-exception join "Indicador" desired-alias->escaped)))
+                  nil
+                  (catch clojure.lang.ExceptionInfo e
+                    e))]
+          (is (some? e) "escaped-desired-alias should still throw when on-missing is provided")
+          (is (= (str "Column \"Indicador\" is referenced in the join condition of join "
+                      "\"Engajamento - gerencial - marca\", but this column does not exist in that source. "
+                      "It may have been renamed or removed. Available columns are: Marca, Meta_Total")
+                 (ex-message e)))
+          (is (=? {:type       qp.error-type/dangling-rhs-ref-in-join-condition
+                   :join-alias "Engajamento - gerencial - marca"}
+                  (ex-data e))))))))

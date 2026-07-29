@@ -42,6 +42,7 @@
   this alias. This alias is guaranteed to be unique."
   (:refer-clojure :exclude [mapv select-keys some empty? not-empty get-in])
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
@@ -149,24 +150,35 @@
 
 (defn- escaped-desired-alias
   "Return the escaped desired alias using the `::desired-alias->escaped` info added by [[add-escaped-desired-aliases]]
-  earlier."
-  [query stage-path desired-column-alias]
-  (when desired-column-alias
-    (case (:lib/type (get-in query stage-path))
-      ;; for native stages just return desired-column-alias without escaping (see comment
-      ;; in [[add-escaped-desired-aliases]] for more info)
-      :mbql.stage/native
-      desired-column-alias
+  earlier.
 
-      :mbql.stage/mbql
-      (let [desired-alias->escaped (or (::desired-alias->escaped (get-in query stage-path))
-                                       (throw (ex-info "Stage is missing ::desired-alias->escaped"
-                                                       {:stage-path stage-path})))]
-        (or (get desired-alias->escaped desired-column-alias)
-            (throw (ex-info (format "Missing ::desired-alias->escaped for %s" (pr-str desired-column-alias))
-                            {:path                   stage-path
-                             :desired-alias          desired-column-alias
-                             :desired-alias->escaped desired-alias->escaped})))))))
+  `on-missing`, if provided, is a 1-arg function called with the `::desired-alias->escaped` map when
+  `desired-column-alias` can't be found in it; it should return the exception to throw. Callers with more context
+  about *why* they're looking up this particular alias (e.g. [[update-ref-from-this-join]], which knows which join
+  and which ref triggered the lookup) can use this to throw something more useful than the generic exception thrown
+  by default."
+  ([query stage-path desired-column-alias]
+   (escaped-desired-alias query stage-path desired-column-alias nil))
+
+  ([query stage-path desired-column-alias on-missing]
+   (when desired-column-alias
+     (case (:lib/type (get-in query stage-path))
+       ;; for native stages just return desired-column-alias without escaping (see comment
+       ;; in [[add-escaped-desired-aliases]] for more info)
+       :mbql.stage/native
+       desired-column-alias
+
+       :mbql.stage/mbql
+       (let [desired-alias->escaped (or (::desired-alias->escaped (get-in query stage-path))
+                                        (throw (ex-info "Stage is missing ::desired-alias->escaped"
+                                                        {:stage-path stage-path})))]
+         (or (get desired-alias->escaped desired-column-alias)
+             (throw (if on-missing
+                      (on-missing desired-alias->escaped)
+                      (ex-info (format "Missing ::desired-alias->escaped for %s" (pr-str desired-column-alias))
+                               {:path                   stage-path
+                                :desired-alias          desired-column-alias
+                                :desired-alias->escaped desired-alias->escaped})))))))))
 
 (defn- escaped-join-alias [query stage-path join-alias]
   (when join-alias
@@ -335,6 +347,21 @@
                         {:stage-path stage-path, :stage stage}
                         e))))))
 
+(defn- dangling-join-ref-exception
+  "Build (but don't throw) an exception for when a join condition ref that belongs to THIS join (i.e. its `:join-alias`
+  matches `join`) can't be found among the columns the join actually returns. This happens when the source the join is
+  built on (e.g. an upstream Card) has since had that column renamed or removed. See #78854."
+  [join desired-column-alias desired-alias->escaped]
+  (ex-info
+   (tru "Column {0} is referenced in the join condition of join {1}, but this column does not exist in that source. It may have been renamed or removed. Available columns are: {2}"
+        (pr-str desired-column-alias)
+        (pr-str (:alias join))
+        (str/join ", " (sort (keys desired-alias->escaped))))
+   {:type              qp.error-type/dangling-rhs-ref-in-join-condition
+    :join-alias        (:alias join)
+    :desired-alias     desired-column-alias
+    :available-aliases (keys desired-alias->escaped)}))
+
 (defn- update-ref-from-this-join [query
                                   join-path
                                   join
@@ -370,7 +397,11 @@
                                                    :join join
                                                    :ref  field-ref
                                                    :col  col})))
-        source-alias          (escaped-desired-alias query (lib.walk/join-last-stage-path join-path join) last-stage-alias)
+        source-alias          (escaped-desired-alias query
+                                                     (lib.walk/join-last-stage-path join-path join)
+                                                     last-stage-alias
+                                                     (fn [desired-alias->escaped]
+                                                       (dangling-join-ref-exception join last-stage-alias desired-alias->escaped)))
         source-table          (escaped-join-alias query parent-stage-path (:join-alias opts))]
     ;; don't need to calculate `::desired-alias` because it may not be returned and even if it is it's not getting
     ;; returned in the join conditions
