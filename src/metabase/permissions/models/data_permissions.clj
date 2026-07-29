@@ -338,7 +338,8 @@
 (defn- full-perms
   "Returns `{db-id entry}` (see [[*full-perms-cache*]]) for the given user, database IDs and permission type. When the
   request cache is available, missing databases are loaded and stored for that permission type; otherwise the
-  requested rows are loaded directly."
+  requested rows are loaded directly. A fresh per-call interner is built even in the uncached case: most group values
+  are identical, so interning still collapses the duplicates within a result that is read once and discarded."
   [user-id db-ids perm-type]
   (let [cache?   (use-cache? user-id)
         interner (if cache?
@@ -406,7 +407,10 @@
 
 (defn- distinct-perms
   "Returns `{db-id #{tuple}}` (see [[*distinct-perms-cache*]]) for the given user and permission type. Answered from
-  the cache when available; on the first miss the permission type is loaded across every database."
+  the cache when available; on the first miss the permission type is loaded across every database on purpose, even
+  when the caller asks about a single one: most consumers ask cross-database questions (\"does the user have this
+  permission on any database?\", or a check looping over every database), so preloading all databases turns those
+  into one query while the `SELECT DISTINCT` keeps the result a few tuples per database."
   [user-id perm-type]
   (if (use-cache? user-id)
     (do
