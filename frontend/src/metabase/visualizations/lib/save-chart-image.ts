@@ -2,6 +2,7 @@ import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isStorybookActive } from "metabase/env";
 import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
 
+import { runWithinExportGrant } from "./chart-export-iframe-grant";
 import {
   createBrandingElement,
   getBrandingConfig,
@@ -11,16 +12,6 @@ import { resolveSvgVarPaint, restoreNestedSvgOverflow } from "./image-exports";
 
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
-
-// html2canvas rasterizes by cloning the DOM into a transient same-origin <iframe>.
-// The data-app sandbox guards <iframe> creation, so it installs a grant here that
-// lets this one export create it (safely — the sandbox collapses that iframe's
-// realm to its own gated realm). Everywhere else this is a pass-through.
-type ExportRunner = <T>(fn: () => Promise<T>) => Promise<T>;
-let runWithinExportGrant: ExportRunner = (fn) => fn();
-export const setChartExportIframeGrant = (runner: ExportRunner) => {
-  runWithinExportGrant = runner;
-};
 
 interface Opts {
   selector: string;
