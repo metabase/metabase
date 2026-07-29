@@ -508,3 +508,116 @@
         (let [{:keys [dashcards]} (dashboard-ops/compile-ops
                                    current [{:op "unwire_parameter" :parameter_id "p1"}] {})]
           (is (every? (comp empty? :parameter_mappings) dashcards)))))))
+
+(def ^:private native-card
+  "A native card with one tag of each wireable kind plus a snippet-reference tag, for exercising
+   the tag-type-driven wiring."
+  {:id   9
+   :name "Native revenue"
+   :type "question"
+   :dataset_query
+   {:database 1
+    :type     :native
+    :native   {:query "SELECT 1 WHERE {{cat}} AND total > {{min}} /* {{unit}} {{snippet: base}} */"
+               :template-tags
+               {"cat"           {:id "u1" :name "cat" :display-name "Category" :type :dimension
+                                 :dimension [:field 18 nil] :widget-type :string/=}
+                "min"           {:id "u2" :name "min" :display-name "Min" :type :number}
+                "unit"          {:id "u3" :name "unit" :display-name "Unit" :type :temporal-unit
+                                 :dimension [:field 22 nil]}
+                "snippet: base" {:id "u4" :name "snippet: base" :display-name "base" :type :snippet
+                                 :snippet-name "base"}}}}})
+
+(def ^:private native-current
+  {:id 1 :tabs []
+   :parameters [{:id "p1" :name "Cat" :type "string/="}]
+   :dashcards  [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :parameter_mappings []}]})
+
+(defn- wire-native
+  [op]
+  (-> (dashboard-ops/compile-ops native-current [op] {9 native-card})
+      :dashcards first :parameter_mappings))
+
+(deftest wire-parameter-target-tag-derives-kind-test
+  (testing "target_tag emits a :dimension target for a field-filter tag"
+    (is (= [{:parameter_id "p1" :card_id 9 :target [:dimension [:template-tag "cat"]]}]
+           (wire-native {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_tag "cat"}))))
+  (testing "target_tag emits a :dimension target for a temporal-unit tag"
+    (is (= [{:parameter_id "p1" :card_id 9 :target [:dimension [:template-tag "unit"]]}]
+           (wire-native {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_tag "unit"}))))
+  (testing "target_tag emits a :variable target for a raw-variable tag"
+    (is (= [{:parameter_id "p1" :card_id 9 :target [:variable [:template-tag "min"]]}]
+           (wire-native {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_tag "min"})))))
+
+(deftest wire-parameter-target-tag-rejections-test
+  (testing "a tag that does not exist on the card is a teaching error naming the tags that do"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"op 0.*no template tag named \"nope\".*cat"
+         (wire-native {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_tag "nope"}))))
+  (testing "a snippet-reference tag cannot back a parameter"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"op 0.*snippet-reference tag"
+         (wire-native {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_tag "snippet: base"}))))
+  (testing "a dashcard with no card behind it has nothing to wire"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"op 0.*no card behind it"
+         (dashboard-ops/compile-ops
+          (assoc native-current :dashcards [{:id 7 :row 0 :col 0 :size_x 4 :size_y 4
+                                             :visualization_settings {:virtual_card {:display "text"}}}])
+          [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_tag "cat"}]
+          {})))))
+
+(deftest wire-parameter-raw-target-coerced-and-validated-test
+  (testing "a raw target arrives as JSON strings, is keywordized, and saves when it resolves"
+    (is (= [{:parameter_id "p1" :card_id 9 :target [:dimension [:template-tag "cat"]]}]
+           (wire-native {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7
+                         :target ["dimension" ["template-tag" "cat"]]}))))
+  (testing "a raw target whose kind does not match the tag is rejected, on validate_only and save alike"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"op 0.*resolves to nothing"
+         (wire-native {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7
+                       :target ["variable" ["template-tag" "cat"]]}))))
+  (testing "a raw target naming a nonexistent tag is rejected"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"op 0.*resolves to nothing"
+         (wire-native {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7
+                       :target ["dimension" ["template-tag" "ghost"]]})))))
+
+(deftest wire-parameter-text-tag-target-test
+  (let [text-dashcard {:id 7 :row 0 :col 0 :size_x 12 :size_y 3
+                       :visualization_settings {:virtual_card {:display "text"}
+                                                :text "Sales in {{region}} for {{period}}."}}
+        current       (assoc native-current :dashcards [text-dashcard])]
+    (testing "a text-tag target binds a {{placeholder}} in a text card's own markdown — no card needed"
+      (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+                                 current
+                                 [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7
+                                   :target ["text-tag" "region"]}]
+                                 {})]
+        (is (= [{:parameter_id "p1" :card_id nil :target [:text-tag "region"]}]
+               (:parameter_mappings (first dashcards))))))
+    (testing "an iframe card's embed carries placeholders too"
+      (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+                                 (assoc current :dashcards
+                                        [{:id 7 :row 0 :col 0 :size_x 12 :size_y 8
+                                          :visualization_settings {:virtual_card {:display "iframe"}
+                                                                   :iframe "https://x.test/?r={{region}}"}}])
+                                 [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7
+                                   :target ["text-tag" "region"]}]
+                                 {})]
+        (is (= [[:text-tag "region"]]
+               (mapv :target (:parameter_mappings (first dashcards)))))))
+    (testing "a name absent from the card's text is a teaching error listing its placeholders"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"op 0.*resolves to nothing on dashcard 7.*period.*region"
+           (dashboard-ops/compile-ops
+            current
+            [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target ["text-tag" "ghost"]}]
+            {}))))
+    (testing "a text-tag target on a card-backed dashcard is rejected — it carries no text of its own"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"op 0.*carries none"
+           (dashboard-ops/compile-ops
+            native-current
+            [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target ["text-tag" "region"]}]
+            {9 native-card}))))))

@@ -16,6 +16,7 @@
    [metabase.mcp.v2.tools.dashboard]
    [metabase.mcp.v2.tools.definitions]
    [metabase.mcp.v2.tools.document]
+   [metabase.mcp.v2.tools.learn]
    [metabase.mcp.v2.tools.parameters]
    [metabase.mcp.v2.tools.query]
    [metabase.mcp.v2.tools.question]
@@ -95,6 +96,14 @@
   "Wrap routes so they may only be accessed when the v2 MCP surface is enabled."
   (routes.common/wrap-middleware-for-open-api-spec-generation enforce-mcp-v2-enabled))
 
+(def ^:private server-instructions
+  "The `initialize` result's `instructions` — the only channel that reaches the model before any
+   tool call, so it points at the `learn` skills once, in three lines."
+  (str "This server ships task-shaped docs as skills. learn() lists the topics; learn(topic) returns one.\n"
+       "Before your first complex write — native template_tags, dashboard parameter wiring, a portable MBQL query, "
+       "visualization settings — read the matching skill unless it is already in context.\n"
+       "Teaching errors embed the relevant contract, so a failed call always names its fix."))
+
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the v2 MCP endpoint."
   (transport/make-handler
@@ -102,6 +111,7 @@
     ;; No :resources/:prompts — a surface must not advertise methods it answers with
     ;; method-not-found.
     :capabilities       {:tools {:listChanged true}}
+    :instructions       server-instructions
     :tools-hash-fn      registry/tools-hash
     :endpoint-paths     #{"/api/metabase-mcp/v2"}
     :default-path       "/api/metabase-mcp/v2"}))

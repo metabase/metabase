@@ -547,3 +547,29 @@
                                          :fields ["handlers.channel_type"]}]})]
           (is (nil? (:error row))
               "handlers.* is a valid fields path for a notification-backed subscription"))))))
+
+(deftest question-template-tags-read-from-either-stored-shape-test
+  (testing "template_tags surface for both stored query shapes, keyed by name, so the read round-trips
+            through question_write regardless of which surface created the card"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [tag {:id           "0f8266e0-5df9-4b95-a6d9-fea1e4a4c3ff"
+                 :name         "min"
+                 :display-name "Min"
+                 :type         :number}]
+        (testing "legacy shape: a name-keyed map under [:native :template-tags]"
+          (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
+                                                           :type     :native
+                                                           :native   {:query         "SELECT 1 WHERE x > {{min}}"
+                                                                      :template-tags {"min" tag}}}
+                                           :query_type :native}]
+            (is (=? {:min {:name "min" :type "number"}}
+                    (:template_tags (content-one {:items [{:type "question" :id (:id card)}]}))))))
+        (testing "pMBQL shape: a tag vector on the native stage (what question_write stores)"
+          (mt/with-temp [:model/Card card {:dataset_query {:lib/type :mbql/query
+                                                           :database (mt/id)
+                                                           :stages   [{:lib/type      :mbql.stage/native
+                                                                       :native        "SELECT 1 WHERE x > {{min}}"
+                                                                       :template-tags [tag]}]}
+                                           :query_type :native}]
+            (is (=? {:min {:name "min" :type "number"}}
+                    (:template_tags (content-one {:items [{:type "question" :id (:id card)}]}))))))))))

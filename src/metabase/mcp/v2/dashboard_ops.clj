@@ -11,9 +11,12 @@
    frontend editor sends to `PUT /api/dashboard/:id`: `u/row-diff` treats them as creates, and
    `do-update-tabs!` rewrites each dashcard's `dashboard_tab_id` once the real tab rows exist."
   (:require
+   [clojure.string :as str]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.lib.core :as lib]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.skills :as skills]
    [metabase.parameters.mapping-targets :as mapping-targets]
    [metabase.util :as u]))
 
@@ -446,28 +449,132 @@
 
       :else dashcard)))
 
+(defn- wire-card!
+  "The card behind the dashcard a wire op targets, or a teaching error — a virtual dashcard (text,
+   heading, link, iframe) has no query, so only a `[:text-tag …]` target (handled before this) can
+   wire it."
+  [state idx dashcard]
+  (or (card-for-dashcard state dashcard)
+      (op-error! idx (format (str "wire_parameter): dashcard %s has no card behind it — only a raw "
+                                  "`target` of [\"text-tag\", \"<name>\"] can wire a text, heading, "
+                                  "or iframe card's own {{placeholder}}.")
+                             (:id dashcard)))))
+
+(defn- tag-target!
+  "The mapping target for `target_tag` on `dashcard`'s card — `[:dimension [:template-tag …]]` for a
+   field-filter or temporal-unit tag, `[:variable …]` for a raw variable, derived from the tag's actual
+   type so the caller never has to know the distinction. A tag that doesn't exist on the card, or that
+   can't back a parameter (snippet/card reference tags), is a teaching error naming the tags that do."
+  [state idx dashcard target-tag]
+  (let [card      (wire-card! state idx dashcard)
+        tag-types (mapping-targets/template-tag-types card)
+        tag-type  (get tag-types target-tag)]
+    (cond
+      (nil? tag-type)
+      (op-error! idx (format "wire_parameter): card %s has no template tag named %s.%s %s"
+                             (:card_id dashcard) (pr-str target-tag)
+                             (if (seq tag-types)
+                               (str " Its tags: " (str/join ", " (sort (keys tag-types))) ".")
+                               (str " It has no template tags — `target_tag` wires a native-SQL "
+                                    "card's tags; for an MBQL card pass `target_field`."))
+                             skills/wire-target-grammar))
+
+      :else
+      (or (mapping-targets/target-for-tag target-tag tag-type)
+          (op-error! idx (format (str "wire_parameter): {{%s}} is a %s-reference tag — it splices SQL "
+                                      "text and cannot take a parameter value. Wireable tags on this "
+                                      "card: %s.")
+                                 target-tag (name tag-type)
+                                 (or (->> tag-types
+                                          (filter (fn [[nm t]] (mapping-targets/target-for-tag nm t)))
+                                          (map key)
+                                          sort
+                                          (str/join ", ")
+                                          not-empty)
+                                     "none")))))))
+
+(defn- coerce-target
+  "Keywordize the clause heads of a raw JSON `target` — `[\"dimension\", [\"template-tag\", \"x\"]]`
+   arrives as strings throughout, and the mapping schema wants keyword heads. Only position 0 of each
+   nested vector is a head; every other element (tag names, column names, ids, options maps) is data
+   and passes through untouched."
+  [x]
+  (if (and (sequential? x) (string? (first x)))
+    (into [(keyword (first x))] (map coerce-target) (rest x))
+    x))
+
+(defn- text-tag-names
+  "The `{{tag}}` placeholder names a dashcard's own content carries — a text or heading card's
+   markdown, an iframe card's embed — which are what a `[:text-tag …]` target can bind. Empty for
+   every other dashcard."
+  [dashcard]
+  (let [vs     (:visualization_settings dashcard)
+        source (case (u/qualified-name (get-in vs [:virtual_card :display] ""))
+                 ("text" "heading") (:text vs)
+                 "iframe"           (:iframe vs)
+                 nil)]
+    (if (string? source)
+      (into #{} (map :name) (lib/recognize-template-tags source))
+      #{})))
+
+(defn- check-text-tag-target!
+  "A `[:text-tag <name>]` target binds a `{{name}}` placeholder in a virtual dashcard's own
+   content, so it is validated against the dashcard, not a card — which text, heading, and iframe
+   dashcards don't have."
+  [idx dashcard [_ tag-name :as target]]
+  (let [names (text-tag-names dashcard)]
+    (when-not (contains? names tag-name)
+      (op-error! idx (format (str "wire_parameter): target %s resolves to nothing on dashcard %s — a "
+                                  "text-tag target binds a {{tag}} placeholder in a text, heading, or "
+                                  "iframe card's own content%s")
+                             (pr-str target) (:id dashcard)
+                             (if (seq names)
+                               (str "; this card's placeholders: " (str/join ", " (sort names)) ".")
+                               ", and this dashcard carries none."))))))
+
+(defn- checked-raw-target!
+  "Coerce a raw `target` clause and verify it resolves to something the dashcard actually exposes
+   for `parameter` — a wire whose target resolves to nothing saves cleanly and renders as
+   \"unknown field\", which no teaching error would ever catch. A `[:text-tag …]` target resolves
+   against the dashcard's own content; everything else against its card."
+  [state idx parameter dashcard target]
+  (let [target (coerce-target (vec target))]
+    (if (= :text-tag (first target))
+      (check-text-tag-target! idx dashcard target)
+      (let [card (wire-card! state idx dashcard)]
+        (when-not (mapping-targets/wireable-target? card parameter target)
+          (op-error! idx (format (str "wire_parameter): target %s resolves to nothing on card %s — the "
+                                      "card exposes no matching column or template tag for parameter "
+                                      "%s. Read the card with get_content to see its columns and "
+                                      "template tags. %s")
+                                 (pr-str target) (:card_id dashcard) (pr-str (:id parameter))
+                                 skills/wire-target-grammar)))))
+    target))
+
+(defn- wire-target
+  "Replace `parameter`'s mapping on the dashcard `dashcard-id` with `target`."
+  [state dashcard-id parameter-id target]
+  (update-dashcard state dashcard-id
+                   (fn [dc]
+                     (update dc :parameter_mappings
+                             (fn [ms]
+                               (conj (filterv #(not= parameter-id (:parameter_id %)) (vec ms))
+                                     {:parameter_id parameter-id
+                                      :card_id      (:card_id dc)
+                                      :target       target}))))))
+
 (defmethod apply-op "wire_parameter"
   [state idx {:keys [parameter_id dashcard_id target_field target_tag target autowire]}]
-  (let [parameter (resolve-parameter! state idx parameter_id)]
-    (resolve-dashcard! state idx dashcard_id)
+  (let [parameter (resolve-parameter! state idx parameter_id)
+        dashcard  (resolve-dashcard! state idx dashcard_id)]
     (cond
       target
-      (update-dashcard state dashcard_id
-                       (fn [dc]
-                         (update dc :parameter_mappings
-                                 (fn [ms]
-                                   (conj (filterv #(not= parameter_id (:parameter_id %)) (vec ms))
-                                         {:parameter_id parameter_id :card_id (:card_id dc) :target target})))))
+      (wire-target state dashcard_id parameter_id
+                   (checked-raw-target! state idx parameter dashcard target))
 
       target_tag
-      (update-dashcard state dashcard_id
-                       (fn [dc]
-                         (update dc :parameter_mappings
-                                 (fn [ms]
-                                   (conj (filterv #(not= parameter_id (:parameter_id %)) (vec ms))
-                                         {:parameter_id parameter_id
-                                          :card_id      (:card_id dc)
-                                          :target       [:variable [:template-tag target_tag]]})))))
+      (wire-target state dashcard_id parameter_id
+                   (tag-target! state idx dashcard target_tag))
 
       target_field
       (let [state (update state :dashcards
@@ -482,7 +589,8 @@
           state))
 
       :else
-      (op-error! idx "wire_parameter): pass one of `target_field`, `target_tag`, or `target`."))))
+      (op-error! idx (str "wire_parameter): pass one of `target_field`, `target_tag`, or `target`. "
+                          skills/wire-target-grammar)))))
 
 (defmethod apply-op "unwire_parameter"
   [state idx {:keys [parameter_id dashcard_id] :as op}]

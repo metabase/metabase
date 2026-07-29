@@ -12,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.skills :as skills]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.queries.core :as queries]
    [metabase.util :as u]
@@ -20,29 +21,58 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private tag-type->kw
-  {"text" :text "number" :number "date" :date "dimension" :dimension})
+  {"text" :text "number" :number "date" :date "boolean" :boolean
+   "dimension" :dimension "temporal-unit" :temporal-unit})
+
+(defn- tag-field-id
+  "The field the tag binds: `field_id` (the write dialect), or the id embedded in a read-shape
+   `dimension` ref — `[\"field\", <id>, opts]` legacy or `[\"field\", opts, <id>]` MBQL 5 — so the
+   tags `get_content` returns round-trip through this tool unchanged."
+  [{:keys [field_id dimension]}]
+  (or field_id
+      (when (sequential? dimension)
+        (some #(when (or (int? %) (common/entity-id? %)) %) (rest dimension)))))
 
 (defn- ->lib-template-tag
   "Map the tool's tag shape onto `existing-tag` (the lib-extracted template-tag map, which
-   already carries `:id`/`:name`/`:display-name`). `dimension` tags additionally carry a
-   `field_id` (numeric id or 21-char entity_id, resolved here and built into a pMBQL field
-   ref) and a widget type (`widget_type`) — a JSON caller cannot construct a pMBQL ref
-   directly since it requires a `:lib/uuid`."
-  [existing-tag {tag-type :type :keys [display_name field_id widget_type required default]}]
-  (let [t (or (tag-type->kw tag-type)
-              (common/throw-teaching-error
-               (format "Invalid template tag type %s — use \"text\", \"number\", \"date\", or \"dimension\"."
-                       (pr-str tag-type))))]
-    (when (and (= t :dimension) (str/blank? widget_type))
+   already carries `:id`/`:name`/`:display-name`). `dimension` and `temporal-unit` tags
+   additionally carry a field (`field_id` — numeric id or 21-char entity_id, resolved here and
+   built into a pMBQL field ref, since a JSON caller cannot construct one directly: it requires
+   a `:lib/uuid`); `dimension` tags also carry a widget type (`widget_type`). Alongside the
+   underscore write dialect, the kebab-case read shape `get_content` emits (`display-name`,
+   `widget-type`, a `dimension` ref) is accepted, so a read-modify-write round-trip needs no
+   translation."
+  [existing-tag {tag-type :type :keys [display_name widget_type required default] :as tag}]
+  (let [t            (or (tag-type->kw tag-type)
+                         (common/throw-teaching-error
+                          (format "Invalid template tag type %s — use \"text\", \"number\", \"date\", \"boolean\", \"dimension\", or \"temporal-unit\".\n%s"
+                                  (pr-str tag-type) skills/template-tag-contract)))
+        display-name (or display_name (:display-name tag))
+        widget-type  (or widget_type (:widget-type tag))
+        field-ref?   (contains? #{:dimension :temporal-unit} t)
+        field-id     (when field-ref? (tag-field-id tag))]
+    (when (and (= t :dimension) (str/blank? widget-type))
       (common/throw-teaching-error
-       "A dimension template tag requires a widget_type, e.g. \"number/=\", \"string/=\", or \"date/all-options\"."))
+       (str "A dimension template tag requires a widget_type, e.g. \"string/=\", \"number/=\", or \"date/all-options\".\n"
+            skills/template-tag-contract)))
+    (when (and field-ref? (nil? field-id))
+      (common/throw-teaching-error
+       (format "A %s template tag requires a field_id — the numeric id or 21-character entity_id of the column it binds.\n%s"
+               (name t) skills/template-tag-contract)))
     (cond-> (assoc existing-tag :type t)
-      display_name (assoc :display-name display_name)
+      display-name (assoc :display-name display-name)
       (some? required) (assoc :required (boolean required))
       (some? default) (assoc :default default)
-      (= t :dimension) (assoc :dimension [:field {:lib/uuid (str (random-uuid))}
-                                          (common/resolve-id-or-404 :model/Field field_id)]
-                              :widget-type (keyword widget_type)))))
+      field-ref? (assoc :dimension [:field {:lib/uuid (str (random-uuid))}
+                                    (common/resolve-id-or-404 :model/Field field-id)])
+      (and (= t :dimension) widget-type) (assoc :widget-type (keyword widget-type)))))
+
+(def ^:private reference-tag-types
+  "Tag types that reference server-side SQL text — `{{snippet: …}}`, `{{#42}}` card refs, and
+   source-table tags. They carry no caller-configurable value, but `get_content` emits them
+   alongside the value tags, so a verbatim round-trip must accept them; entries of these types
+   are skipped and the auto-extracted tag stands."
+  #{"snippet" "card" "table"})
 
 (defn- apply-template-tags
   "Apply caller-supplied `template_tags` to a native `query`. Every supplied tag name must
@@ -62,9 +92,10 @@
       (lib/with-template-tags
         query
         (into {}
-              (map (fn [[tag-name tag]]
-                     (let [nm (name tag-name)]
-                       [nm (->lib-template-tag (get existing-by-name nm) tag)])))
+              (keep (fn [[tag-name tag]]
+                      (let [nm (name tag-name)]
+                        (when-not (contains? reference-tag-types (:type tag))
+                          [nm (->lib-template-tag (get existing-by-name nm) tag)]))))
               template_tags)))))
 
 (defn- ensure-pmbql-type
@@ -308,7 +339,35 @@
     [:maybe [:map
              [:database_id [:or :int :string]]
              [:sql [:string {:min 1}]]
-             [:template_tags {:optional true} [:maybe :map]]]]]
+             [:template_tags {:optional true}
+              [:maybe [:map-of
+                       {:description (str "One entry per {{tag}} in the SQL, keyed by tag name. "
+                                          "Every named tag must appear in the SQL. The read shape "
+                                          "get_content returns for a question's template_tags is "
+                                          "also accepted verbatim.")}
+                       :keyword
+                       [:map
+                        [:type [:enum {:description (str "\"dimension\" is a field filter (a smart widget bound to a "
+                                                         "column — write it bare in SQL: WHERE {{tag}}); "
+                                                         "\"temporal-unit\" a time-bucket picker for a datetime column; "
+                                                         "\"text\"/\"number\"/\"date\"/\"boolean\" are raw variables "
+                                                         "spliced as literals (you write the operator: WHERE total > "
+                                                         "{{tag}}). \"snippet\"/\"card\"/\"table\" reference tags are "
+                                                         "configured by the SQL text itself — entries for them (as "
+                                                         "get_content returns them) are accepted and ignored.")}
+                                "text" "number" "date" "boolean" "dimension" "temporal-unit"
+                                "snippet" "card" "table"]]
+                        [:display_name {:optional true} [:maybe [:string {:description "Label shown on the filter widget."}]]]
+                        [:field_id {:optional true}
+                         [:maybe [:or {:description (str "Required for \"dimension\" and \"temporal-unit\": the column "
+                                                         "the tag binds, as a numeric field id or 21-char entity_id.")}
+                                  :int :string]]]
+                        [:widget_type {:optional true}
+                         [:maybe [:string {:description (str "Required for \"dimension\": the widget/operator, matched to "
+                                                             "the column's type — e.g. \"string/=\", \"string/contains\", "
+                                                             "\"number/between\", \"date/all-options\", \"category\", \"id\".")}]]]
+                        [:required {:optional true} [:maybe :boolean]]
+                        [:default {:optional true} [:maybe :any]]]]]]]]]
    [:name {:optional true} [:maybe [:string {:min 1}]]]
    [:description {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe [:or :int :string]]]
@@ -328,7 +387,7 @@
               [:visibility_type {:optional true} [:maybe :string]]]]]]])
 
 (registry/deftool question-write-tool
-  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (a handle from an execute tool — MBQL or native SQL), query (inline MBQL 5), or native ({database_id, sql, template_tags?}). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit to save to your personal collection; pass \"root\" to save to the root collection) or dashboard_id (saves the question inside that dashboard; its collection is inferred from the dashboard — pass one or the other, not both), display, visualization_settings, cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets the card's result_metadata; typically used with card_type \"model\"). On update, pass id and any fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (its collection follows the dashboard's — pass with collection_id and you'll get an error; a question already saved in another dashboard can't be moved into a different one; moving a card OUT of a dashboard isn't supported yet)."
+  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (a handle from an execute tool — MBQL or native SQL), query (inline MBQL 5, in the same portable dialect execute_query takes — see learn(\"query-dialect\")), or native ({database_id, sql, template_tags?}). The template_tags shape is MCP-specific and not guessable — before first passing template_tags, call learn(\"native-parameters\") if you haven't read it; the shape get_content returns for a question's template_tags is also accepted back verbatim, so read-modify-write round-trips. Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit to save to your personal collection; pass \"root\" to save to the root collection) or dashboard_id (saves the question inside that dashboard; its collection is inferred from the dashboard — pass one or the other, not both), display, visualization_settings (learn(\"visualization-settings\") covers which display fits which data and the settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets the card's result_metadata; typically used with card_type \"model\"). On update, pass id and any fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (its collection follows the dashboard's — pass with collection_id and you'll get an error; a question already saved in another dashboard can't be moved into a different one; moving a card OUT of a dashboard isn't supported yet)."
   {:name         "question_write"
    :scope        metabot.scope/agent-question-create
    :update-scope metabot.scope/agent-question-update

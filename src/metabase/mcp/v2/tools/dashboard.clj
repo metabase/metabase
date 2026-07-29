@@ -271,7 +271,9 @@
            [[:dashcard_id dashcard-ref-schema]
             [:patch [:map {:description (str "Dashcard properties to merge. `visualization_settings` "
                                              "merges key by key rather than replacing the map.")}]]])
-   (op-map "add_tab" "Add a tab. The first tab you add adopts the cards already on the dashboard."
+   (op-map "add_tab" (str "Add a tab. Cards already on the dashboard are adopted automatically only "
+                          "when the save ends with exactly one tab; adding several tabs at once "
+                          "leaves them orphaned — `move` them onto a tab in the same call.")
            [[:id new-id-schema]
             [:name [:string {:min 1 :description "Tab label."}]]])
    (op-map "rename_tab" "Rename an existing tab."
@@ -314,9 +316,13 @@
              [:maybe [:int {:description (str "Numeric field id to filter on. The usual choice: the "
                                               "server derives the mapping target from the card's query.")}]]]
             [:target_tag {:optional true}
-             [:maybe [:string {:description "Name of a template tag, for a native-SQL card."}]]]
+             [:maybe [:string {:description (str "Name of a template tag on a native-SQL card. The server "
+                                                 "derives the right mapping from the tag's type — field "
+                                                 "filter or raw variable, you never distinguish them.")}]]]
             [:target {:optional true}
-             [:maybe [:sequential [:any {:description "Raw mapping-target clause. Advanced escape hatch; prefer target_field."}]]]]
+             [:maybe [:sequential [:any {:description (str "Raw mapping-target clause as a JSON array, e.g. "
+                                                           "[\"dimension\", [\"template-tag\", \"category\"]]. "
+                                                           "Advanced escape hatch; prefer target_field.")}]]]]
             [:autowire {:optional true}
              [:maybe [:boolean {:description (str "With target_field, also map every other card on the "
                                                   "dashboard that exposes the same field. Cards that "
@@ -412,8 +418,11 @@
   Ops: add_card, add_text, add_heading, add_link, add_iframe, add_action, duplicate_card, replace_card, move,
   resize, remove, set_series, patch_dashcard, add_tab, rename_tab, move_tab, duplicate_tab, remove_tab,
   add_parameter, update_parameter, remove_parameter, move_parameter, wire_parameter, unwire_parameter.
-  Omit position to autoplace. patch_dashcard merges content only — use move, resize, replace_card, or set_series
-  for layout and identity. Parameter ids are strings you choose. wire_parameter with autowire: true also maps
+  Omit position to autoplace; learn(\"dashboard-layout\") covers the 24-column grid, per-display default sizes, and
+  layout conventions. patch_dashcard merges content only — use move, resize, replace_card, or set_series
+  for layout and identity. Parameter ids are strings you choose. Before your first add_parameter or wire_parameter,
+  read the dashboard-filters skill via learn(\"dashboard-filters\") unless already loaded — it carries the parameter
+  types, the target grammar, linked filters, and value sources. wire_parameter with autowire: true also maps
   every other card that exposes the same field. validate_only: true returns the layout the ops would produce
   without writing; it checks the ops and the resulting layout, but per-field parameter-mapping permission checks
   run only on the real save, so a clean dry run can still be rejected. Returns the resulting dashboard, so no

@@ -65,6 +65,15 @@
       (lib/query mp (lib-be/normalize-query dataset-query))
       (catch Exception _ nil))))
 
+(defn- raw-template-tags
+  "The stored template-tags of a native `dataset-query`, keyed by tag name — read from whichever
+   slot the query keeps them in: the legacy `[:native :template-tags]` map, or a pMBQL native
+   stage's tag vector."
+  [dataset-query]
+  (or (not-empty (get-in dataset-query [:native :template-tags]))
+      (when-let [tags (some (comp not-empty :template-tags) (:stages dataset-query))]
+        (into {} (map (juxt :name identity)) tags))))
+
 (defn- card-content-row
   [card]
   (let [dataset-query (:dataset_query card)
@@ -73,7 +82,7 @@
         query         (card-query mp dataset-query)]
     (assoc card
            :query_summary (some-> query (as-> q (try (lib/describe-query q) (catch Exception _ nil))))
-           :template_tags (when native? (not-empty (get-in dataset-query [:native :template-tags])))
+           :template_tags (when native? (raw-template-tags dataset-query))
            ;; The materialized parameter list — for native cards it is derived from the raw
            ;; template tags above (same data, two views), for MBQL cards it is the stored array.
            :parameters    (if (and native? (empty? (:parameters card)))
@@ -685,7 +694,7 @@
              "concise" "detailed"]]]])
 
 (registry/deftool get-content
-  "Fetch content by {type, id} — the generic typed read for anything discovered via search or browse_collection. Batch up to 10 items of mixed types in one call; each item is permission-checked independently and a bad item returns a per-item {type, id, error} object without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids accept numeric ids or 21-char entity_ids. Concise shapes are task-focused: a question carries its source (database/table/source card), display, one-line query summary, raw template tags, and its materialized parameters (the same tags viewed as parameters — not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters) rather than the raw REST dashcards; a document returns its body text; alerts and subscriptions return condition, schedule, channels, and recipients (redacted for non-admins); a transform returns source type, target, and its latest run. Use include for on-demand sections — definition returns the query in the same external dialect execute_query and the write tools accept, so read-modify-write round-trips; comments returns a document's comment threads, each anchored to the exact character range of its block in the returned markdown. Reading alerts/subscriptions additionally requires the agent:notification:read scope, transforms agent:transforms:read, snippets agent:snippets:read, documents agent:document:read."
+  "Fetch content by {type, id} — the generic typed read for anything discovered via search or browse_collection. Batch up to 10 items of mixed types in one call; each item is permission-checked independently and a bad item returns a per-item {type, id, error} object without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids accept numeric ids or 21-char entity_ids. Concise shapes are task-focused: a question carries its source (database/table/source card), display, one-line query summary, raw template tags (in the stored read shape, which question_write's template_tags accepts back verbatim — read-modify-write round-trips), and its materialized parameters (the same tags viewed as parameters — not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters) rather than the raw REST dashcards; a document returns its body text; alerts and subscriptions return condition, schedule, channels, and recipients (redacted for non-admins); a transform returns source type, target, and its latest run. Use include for on-demand sections — definition returns the query in the same external dialect execute_query and the write tools accept, so read-modify-write round-trips; comments returns a document's comment threads, each anchored to the exact character range of its block in the returned markdown. Reading alerts/subscriptions additionally requires the agent:notification:read scope, transforms agent:transforms:read, snippets agent:snippets:read, documents agent:document:read."
   {:name         "get_content"
    :scope        metabot.scope/agent-resource-read
    :extra-scopes [metabot.scope/agent-notification-read metabot.scope/agent-transforms-read

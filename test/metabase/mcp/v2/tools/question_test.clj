@@ -78,6 +78,79 @@
                  :dimension [:field {} field-id]}
                 (tag-by-name q "d")))))))
 
+(deftest native-template-tags-teaching-errors-carry-the-contract-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (testing "a dimension tag without a field_id names field_id and embeds the tag shape"
+      (is (thrown-with-msg? Exception #"(?s)requires a field_id.*template_tags is a map keyed by \{\{tag\}\} name"
+                            (#'v2.question/resolve-query-source
+                             {:native {:database_id (mt/id)
+                                       :sql "SELECT * FROM orders WHERE {{d}}"
+                                       :template_tags {"d" {:type "dimension"
+                                                            :widget_type "number/="}}}} nil))))
+    (testing "an unknown tag type names the valid types and embeds the tag shape"
+      (is (thrown-with-msg? Exception #"(?s)temporal-unit.*learn\(\"native-parameters\"\)"
+                            (#'v2.question/resolve-query-source
+                             {:native {:database_id (mt/id)
+                                       :sql "SELECT * FROM orders WHERE {{d}}"
+                                       :template_tags {"d" {:type "widget"}}}} nil))))))
+
+(deftest native-template-tags-more-kinds-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (testing "a boolean raw variable is applied"
+      (let [q (#'v2.question/resolve-query-source
+               {:native {:database_id (mt/id)
+                         :sql "SELECT 1 WHERE {{flag}}"
+                         :template_tags {"flag" {:type "boolean"}}}} nil)]
+        (is (= :boolean (:type (tag-by-name q "flag"))))))
+    (testing "a temporal-unit tag takes a field_id and no widget_type"
+      (let [field-id (mt/id :orders :created_at)
+            q (#'v2.question/resolve-query-source
+               {:native {:database_id (mt/id)
+                         :sql "SELECT * FROM orders WHERE {{unit}}"
+                         :template_tags {"unit" {:type "temporal-unit" :field_id field-id}}}} nil)]
+        (is (=? {:type :temporal-unit :dimension [:field {} field-id]}
+                (tag-by-name q "unit")))))))
+
+(deftest native-template-tags-read-shape-round-trip-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (testing "the kebab-case shape get_content emits — display-name, widget-type, a legacy dimension ref — is accepted verbatim"
+      (let [field-id (mt/id :orders :total)
+            q (#'v2.question/resolve-query-source
+               {:native {:database_id (mt/id)
+                         :sql "SELECT * FROM orders WHERE {{d}}"
+                         :template_tags {"d" {:type           "dimension"
+                                              :id             "0f8266e0-5df9-4b95-a6d9-fea1e4a4c3ff"
+                                              :name           "d"
+                                              (keyword "display-name") "Total"
+                                              (keyword "widget-type")  "number/="
+                                              :dimension      ["field" field-id nil]}}}} nil)]
+        (is (=? {:type :dimension
+                 :display-name "Total"
+                 :widget-type :number/=
+                 :dimension [:field {} field-id]}
+                (tag-by-name q "d")))))
+    (testing "reference tags — a snippet as get_content emits it — are accepted and ignored, so a card using one round-trips"
+      (let [q (#'v2.question/resolve-query-source
+               {:native {:database_id (mt/id)
+                         :sql "SELECT * FROM orders WHERE {{min}} > 0 AND {{snippet: base}}"
+                         :template_tags {"min" {:type "number" :display_name "Min"}
+                                         (keyword "snippet: base") {:type          "snippet"
+                                                                    :name          "snippet: base"
+                                                                    (keyword "snippet-name") "base"
+                                                                    (keyword "display-name") "Snippet: base"}}}} nil)]
+        (is (= :number (:type (tag-by-name q "min"))))
+        (is (= :snippet (:type (tag-by-name q "snippet: base"))))))
+    (testing "an MBQL 5 dimension ref (options second, id third) also yields the field"
+      (let [field-id (mt/id :orders :total)
+            q (#'v2.question/resolve-query-source
+               {:native {:database_id (mt/id)
+                         :sql "SELECT * FROM orders WHERE {{d}}"
+                         :template_tags {"d" {:type "dimension"
+                                              (keyword "widget-type") "number/="
+                                              :dimension ["field" {} field-id]}}}} nil)]
+        (is (=? {:dimension [:field {} field-id]}
+                (tag-by-name q "d")))))))
+
 (deftest create-question-happy-path-test
   (mt/with-model-cleanup [:model/Card]
     (mt/with-current-user (mt/user->id :crowberto)

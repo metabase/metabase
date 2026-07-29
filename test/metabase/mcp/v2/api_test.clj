@@ -59,7 +59,9 @@
         (is (= {:name "metabase" :version "0.1.0"} (get-in response [:body :result :serverInfo])))
         (testing "only tools are advertised — v2 answers resources/prompts with method-not-found"
           (is (= {:tools {:listChanged true}}
-                 (get-in response [:body :result :capabilities]))))))))
+                 (get-in response [:body :result :capabilities]))))
+        (testing "the handshake carries the skills instructions — the one pre-tool-call channel"
+          (is (re-find #"learn\(\)" (get-in response [:body :result :instructions]))))))))
 
 (deftest tools-list-test
   (mt/with-temporary-setting-values [mcp.settings/mcp-v2-enabled true]
