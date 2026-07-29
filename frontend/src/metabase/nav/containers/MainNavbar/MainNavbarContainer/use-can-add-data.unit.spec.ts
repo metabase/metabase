@@ -13,20 +13,22 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { useAddDataPermissions } from "./use-add-data-permission";
+import { useCanAddData } from "./use-can-add-data";
 
 function setup({
   isSuperUser = false,
   canUpload = false,
   canAccessSettings = false,
+}: {
+  isSuperUser?: boolean;
+  canUpload?: boolean;
+  canAccessSettings?: boolean;
 }) {
   const database = createMockDatabase({
     uploads_enabled: canUpload,
     can_upload: canUpload,
   });
-  const currentUser = createMockUser({
-    is_superuser: isSuperUser,
-  });
+  const currentUser = createMockUser({ is_superuser: isSuperUser });
 
   if (canAccessSettings) {
     currentUser.permissions = {
@@ -34,13 +36,11 @@ function setup({
       can_access_monitoring: false,
       can_access_subscription: false,
     };
-  }
-  setupTokenStatusEndpoint({ valid: true });
-
-  if (canAccessSettings) {
     // enterprise plugin is needed for advanced permissions to be returned
     setupEnterprisePlugins();
   }
+
+  setupTokenStatusEndpoint({ valid: true });
 
   const storeInitialState = createMockState({
     currentUser,
@@ -49,47 +49,38 @@ function setup({
       collections: [],
     }),
     settings: mockSettings({
-      "token-features": createMockTokenFeatures({
-        advanced_permissions: true,
-      }),
-      "uploads-settings": {
-        db_id: database.id,
-        schema_name: "uploads",
-        table_prefix: "uploaded_",
-      },
+      "token-features": createMockTokenFeatures({ advanced_permissions: true }),
     }),
   });
 
   setupDatabaseListEndpoint([database]);
 
-  return renderHookWithProviders(() => useAddDataPermissions(), {
-    storeInitialState,
-  });
+  return renderHookWithProviders(() => useCanAddData(), { storeInitialState });
 }
 
-describe("correctly sets canPerformMeaningfulActions", () => {
+describe("useCanAddData", () => {
   const testCases = [
+    { description: "an admin", data: { isSuperUser: true } },
+    { description: "a user who can upload", data: { canUpload: true } },
     {
-      description: "admin user can perform meaningful actions",
-      data: { isSuperUser: true },
-    },
-    {
-      description: "user who can upload can perform meaningful actions",
-      data: { canUpload: true },
-    },
-    {
-      description: "user with settings access can perform meaningful actions",
+      description: "a user with settings access",
       data: { canAccessSettings: true },
     },
   ];
 
-  it.each(testCases)("$description", async (testCase) => {
+  it.each(testCases)("offers Add data to $description", async (testCase) => {
     const { result } = setup(testCase.data);
 
     await waitFor(() => {
-      expect(result.current).toEqual(
-        expect.objectContaining({ canPerformMeaningfulActions: true }),
-      );
+      expect(result.current).toBe(true);
+    });
+  });
+
+  it("does not offer Add data to a user who can neither upload nor manage settings", async () => {
+    const { result } = setup({});
+
+    await waitFor(() => {
+      expect(result.current).toBe(false);
     });
   });
 });

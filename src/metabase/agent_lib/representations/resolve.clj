@@ -29,6 +29,8 @@
   encoding or for handing back to the LLM as the canonical MBQL 5 representation."
   (:require
    [clojure.walk :as walk]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
@@ -99,6 +101,29 @@
        node))
    pmbql-query))
 
+(defn- annotate-metric-and-measure-ref-types
+  "BOT-1901: Stamp `:effective-type` on `:metric` / `:measure` refs missing it, computed
+  from the metric's / measure's aggregation definition — mirroring the FE's `lib.ref/ref-method
+  :metadata/metric`. Untyped refs poison arithmetic type inference in
+  [[metabase.agent-lib.representations.repair/assert-editor-accepts-expressions!]]"
+  [pmbql-query]
+  (walk/postwalk
+   (fn [node]
+     (if (and (vector? node)
+              (#{:metric :measure} (nth node 0 nil))
+              (map? (nth node 1 nil))
+              (pos-int? (nth node 2 nil))
+              (not (contains? (nth node 1) :effective-type)))
+       (let [md (case (nth node 0)
+                  :metric  (lib.metadata/metric pmbql-query (nth node 2))
+                  :measure (lib.metadata/measure pmbql-query (nth node 2)))
+             t  (when md (lib.metadata.calculation/type-of pmbql-query md))]
+         (if (and t (isa? t :type/*) (not= t :type/*))
+           (update node 1 assoc :effective-type t)
+           node))
+       node))
+   pmbql-query))
+
 (defn resolve-query
   "Convert a parsed (string-keyed, portable) representations query into a canonical, numeric-ID,
   `:lib/uuid`-stamped MBQL 5 query attached to `metadata-provider`.
@@ -117,7 +142,8 @@
          resolved (resolve/import-mbql resolver kw-form)
          with-mp  (assoc resolved :lib/metadata metadata-provider)]
      (-> (lib.normalize/normalize ::lib.schema/query with-mp)
-         (annotate-field-types metadata-provider)))))
+         (annotate-field-types metadata-provider)
+         annotate-metric-and-measure-ref-types))))
 
 ;;; ============================================================
 ;;; Export final pMBQL back to portable representations
@@ -188,5 +214,5 @@
      (try
        (export-query metadata-provider pmbql-query content-store)
        (catch Exception e
-         (log/warn e "Failed to export pMBQL query to portable representations; omitting from LLM payload")
+         (log/warnf "Failed to export pMBQL query to portable representations; omitting from LLM payload: %s" (ex-message e))
          nil)))))

@@ -82,6 +82,11 @@ export type CollectionBrowserProps = {
   visibleEntityTypes?: UserFacingEntityName[];
 
   /**
+   * Whether to show questions that belong to a dashboard alongside collection saved questions. Set to false to hide them and keep the list focused on collection content, matching the core Metabase app. Defaults to true.
+   */
+  showDashboardQuestions?: boolean;
+
+  /**
    * The columns to display in the collection items table. If not provided, all columns will be shown.
    */
   visibleColumns?: CollectionBrowserListColumns[];
@@ -102,6 +107,7 @@ export const CollectionBrowserInner = ({
   onClick,
   pageSize = COLLECTION_PAGE_SIZE,
   visibleEntityTypes = [...USER_FACING_ENTITY_NAMES],
+  showDashboardQuestions = true,
   EmptyContentComponent = null,
   visibleColumns = COLLECTION_BROWSER_LIST_COLUMNS,
   className,
@@ -189,6 +195,7 @@ export const CollectionBrowserInner = ({
         onClick={onClickItem}
         pageSize={pageSize}
         models={collectionTypes}
+        showDashboardQuestions={showDashboardQuestions}
         visibleColumns={visibleColumns}
         EmptyContentComponent={EmptyContentComponent ?? undefined}
       />

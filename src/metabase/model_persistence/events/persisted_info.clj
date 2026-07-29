@@ -24,4 +24,4 @@
                (nil? (t2/select-one-fn :id :model/PersistedInfo :card_id (:id card))))
       (persisted-info/turn-on-model! user-id card))
     (catch Throwable e
-      (log/warnf e "Failed to process persisted-info event. %s" topic))))
+      (log/warnf "Failed to process persisted-info event. %s: %s" topic (ex-message e)))))

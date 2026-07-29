@@ -129,7 +129,7 @@
                                                       source-table-name table-name})
       (transforms-base.u/drop-table! driver db-id temp-table-name)
       (catch Exception e
-        (log/error e "Failed to transfer data using rename-tables strategy")
+        (log/errorf "Failed to transfer data using rename-tables strategy: %s" (ex-message e))
         (try
           (transforms-base.u/drop-table! driver db-id source-table-name)
           (catch Exception _))
@@ -145,7 +145,7 @@
       (transforms-base.u/drop-table! driver db-id table-name)
       (driver/rename-table! driver db-id source-table-name table-name)
       (catch Exception e
-        (log/error e "Failed to transfer data using create-drop-rename strategy")
+        (log/errorf "Failed to transfer data using create-drop-rename strategy: %s" (ex-message e))
         (try
           (transforms-base.u/drop-table! driver db-id source-table-name)
           (catch Exception _))
@@ -159,7 +159,7 @@
     (transforms-base.u/drop-table! driver db-id table-name)
     (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source)
     (catch Exception e
-      (log/error e "Failed to transfer data using drop-create fallback strategy")
+      (log/errorf "Failed to transfer data using drop-create fallback strategy: %s" (ex-message e))
       (throw e))))
 
 (defn- upsert-with-merge-strategy!
@@ -311,7 +311,7 @@
                 (finally
                   (.delete temp-file))))
             (catch Exception e
-              (log/error e "Failed to create resulting table")
+              (log/errorf "Failed to create resulting table: %s" (ex-message e))
               (throw (ex-info "Failed to create the resulting table"
                               {:transform-message (or (:transform-message (ex-data e))
                                                       (i18n/tru "Failed to create the resulting table"))}
@@ -372,7 +372,7 @@
                               ch))
             start-ms (u/start-timer)]
         (log! message-log (i18n/tru "Executing Python transform"))
-        (log/info "Executing Python transform" transform-id "with target" (pr-str target))
+        (log/info "Executing Python transform" transform-id)
         (let [result (run-python-transform-impl! transform db effective-run-id cancel-chan message-log
                                                  {:with-stage-timing-fn with-stage-timing-fn
                                                   :source-range-params  source-range-params})]
@@ -404,7 +404,7 @@
 
             :else
             (do
-              (log/error e "Error executing Python transform")
+              (log/errorf "Error executing Python transform: %s" (ex-message e))
               {:status :failed
                :error e
                :logs (str logs "\n" error-message)})))))))

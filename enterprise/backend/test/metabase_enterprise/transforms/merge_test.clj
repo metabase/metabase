@@ -26,6 +26,17 @@
      [2 "created" 2]
      [3 "created" 3]]]])
 
+;; Like merge-test but with a temporal checkpoint column (regression coverage for GDGT-2847).
+(mt/defdataset merge-temporal-test
+  "An event-log dataset whose incremental checkpoint column is a timestamp instead of an integer."
+  [["order_status_ts"
+    [{:field-name "order_id" :base-type :type/Integer}
+     {:field-name "status" :base-type :type/Text}
+     {:field-name "changed_at" :base-type :type/DateTime}]
+    [[1 "created" #t "2026-01-30T10:00:00"]
+     [2 "created" #t "2026-01-31T21:00:04"]
+     [3 "created" #t "2026-01-31T21:00:04"]]]])
+
 ;; Two key columns (order_id, region) for testing a composite merge key.
 (mt/defdataset merge-composite-test
   "An event log keyed on (order_id, region), for testing a two-column merge key."
@@ -119,6 +130,73 @@
                 (is (= {1 "shipped", 2 "created", 3 "created", 4 "created"}
                        (target-status-by-order target-table))
                     "order 1 updated (paid->shipped), order 4 inserted")))))))))
+
+(deftest merge-temporal-checkpoint-test
+  (testing "a merge transform with a temporal checkpoint column upserts correctly (GDGT-2847)"
+    (mt/test-drivers (test-drivers)
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/dataset merge-temporal-test
+          (with-transform-cleanup! [target-table {:type     :table
+                                                  :name     "merge_temporal"
+                                                  :schema   (t2/select-one-fn :schema :model/Table
+                                                                              (mt/id :order_status_ts))
+                                                  :database (mt/id)}]
+            (let [q           (fn [f] (sql.u/quote-name driver/*driver* :field f))
+                  ts-field-id (t2/select-one-pk :model/Field :name "changed_at"
+                                                :table_id (mt/id :order_status_ts))
+                  source-query {:database (mt/id)
+                                :type     :native
+                                :native   {:query         (format "SELECT %s, %s FROM {{t}} AS %s"
+                                                                  (q "order_id") (q "status") (q "t"))
+                                           :template-tags {"t" {:id           "t"
+                                                                :name         "t"
+                                                                :display-name "T"
+                                                                :type         "table"
+                                                                :table-id     (mt/id :order_status_ts)
+                                                                :required     true}}}}
+                  payload      {:name               "Temporal Merge"
+                                :source_database_id (mt/id)
+                                :source             {:type                        "query"
+                                                     :query                       source-query
+                                                     :source-incremental-strategy {:type "checkpoint"
+                                                                                   :checkpoint-filter-field-id ts-field-id}}
+                                :target             (merge target-table
+                                                           {:type                        "table-incremental"
+                                                            :target-incremental-strategy {:type "merge"
+                                                                                          :unique-key [{:name "order_id"}]}})}
+                  insert!      (fn [rows]
+                                 (let [[schema tbl] (t2/select-one-fn (juxt :schema :name) :model/Table
+                                                                      (mt/id :order_status_ts))
+                                       spec         (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+                                       values       (str/join ", " (map (fn [[oid st ts]]
+                                                                          (format "(%d, '%s', '%s')" oid st ts))
+                                                                        rows))
+                                       sql          (format "INSERT INTO %s (%s) VALUES %s"
+                                                            (sql.u/quote-name driver/*driver* :table schema tbl)
+                                                            (str/join "," (map q ["order_id" "status" "changed_at"]))
+                                                            values)]
+                                   (driver/execute-raw-queries! driver/*driver* spec [[sql]])))
+                  read-target  (fn []
+                                 (let [sql  (format "SELECT %s, %s FROM %s"
+                                                    (q "order_id") (q "status")
+                                                    (sql.u/quote-name driver/*driver* :table
+                                                                      (:schema target-table) (:name target-table)))
+                                       rows (-> (qp/process-query {:database (mt/id) :type :native :native {:query sql}})
+                                                :data :rows)]
+                                   (into {} (map (fn [[oid st]] [(long oid) st])) rows)))]
+              (mt/with-temp [:model/Transform transform payload]
+                (testing "first run builds the full target"
+                  (transforms.execute/execute! transform {:run-method :manual})
+                  (transforms.tu/wait-for-table (:name target-table) 10000)
+                  (is (= {1 "created", 2 "created", 3 "created"}
+                         (read-target))))
+                (testing "a second run with a temporal watermark upserts changed keys and inserts new ones"
+                  (insert! [[1 "shipped" "2026-02-01T10:00:00"] [4 "created" "2026-02-02T10:00:00"]])
+                  (transforms.execute/execute! (t2/select-one :model/Transform (:id transform))
+                                               {:run-method :manual})
+                  (is (= {1 "shipped", 2 "created", 3 "created", 4 "created"}
+                         (read-target))
+                      "order 1 updated, order 4 inserted"))))))))))
 
 (deftest merge-resolves-field-ids-test
   (testing "after the first build the stored unique key gets its field-ids resolved"

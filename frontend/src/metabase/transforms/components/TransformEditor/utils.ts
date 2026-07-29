@@ -61,6 +61,7 @@ export function getEditorOptions(
       return undefined;
     },
     shouldShowLibrary: false,
+    canUseSampleDatabase: false,
     readOnly,
   };
 }

@@ -182,6 +182,7 @@ Metabase's reference documentation.
 - [Managing people and groups](./people-and-groups/managing.md)
 - [Password complexity](./people-and-groups/changing-password-complexity.md)
 - [Session expiration](./people-and-groups/changing-session-expiration.md)
+- [Two-factor authentication](./people-and-groups/two-factor-authentication.md)
 - [Google Sign-In](./people-and-groups/google-sign-in.md)
 - [LDAP](./people-and-groups/ldap.md)
 - [API keys](./people-and-groups/api-keys.md)

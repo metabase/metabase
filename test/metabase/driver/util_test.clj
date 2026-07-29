@@ -449,12 +449,12 @@
               feature (keyword (name (ns-name *ns*)) (mt/random-name))]
           (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
             (is (false? (driver.u/supports? :test-driver feature db)))
-            (is (some (fn [{:keys [level e message]}]
+            (is (some (fn [{:keys [level message]}]
                         (and (= level :error)
-                             (= (ex-message e) "test exception message")
-                             (= message (u/format-color 'red "Failed to check feature '%s' for database '%s'"
+                             (= message (u/format-color 'red "Failed to check feature '%s' for database %s: %s"
                                                         (u/qualified-name feature)
-                                                        (:name db)))))
+                                                        (:id db)
+                                                        "test exception message"))))
                       (log-messages)))))))))
 
 (deftest supports?-failure-test-2
@@ -467,12 +467,12 @@
                         driver/database-supports? (fn [_ _ _] (Thread/sleep 200) true)]
             (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
               (is (false? (driver.u/supports? :test-driver feature db)))
-              (is (some (fn [{:keys [level e message]}]
+              (is (some (fn [{:keys [level message]}]
                           (and (= level :error)
-                               (= (ex-message e) "Timed out after 100.0 ms")
-                               (= message (u/format-color 'red "Failed to check feature '%s' for database '%s'"
+                               (= message (u/format-color 'red "Failed to check feature '%s' for database %s: %s"
                                                           (u/qualified-name feature)
-                                                          (:name db)))))
+                                                          (:id db)
+                                                          "Timed out after 100.0 ms"))))
                         (log-messages)))))
           (testing "we memoize the results for the same database, so we don't log the error again"
             (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]

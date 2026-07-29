@@ -531,7 +531,7 @@
   (try
     (http/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
     (catch Throwable e
-      (log/error e "Sending usage stats FAILED"))))
+      (log/errorf "Sending usage stats FAILED: %s" (ex-message e)))))
 
 (defn- in-docker?
   "Is the current Metabase process running in a Docker container?
@@ -885,7 +885,7 @@
                  false)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
-    :enabled   (some? (get env/env :mb-config-file-path))}
+    :enabled   (not (str/blank? (get env/env :mb-config-file-path)))}
    {:name      :content-translation
     :available (premium-features/enable-content-translation?)
     :enabled   (premium-features/enable-content-translation?)}

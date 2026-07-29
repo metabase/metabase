@@ -106,8 +106,7 @@
                    (> text-measure threshold)
                    (do
                      (log/warn
-                      (format "Skipping text that exceeds maximum measure per batch: %s"
-                              (str (subs text 0 10) "..."))
+                      "Skipping text that exceeds maximum measure per batch"
                       {:measure text-measure :threshold threshold})
                      acc)
 
@@ -161,7 +160,7 @@
         (json/decode true)
         :embedding)
     (catch Exception e
-      (log/error e "Failed to generate Ollama embedding for text of length:" (count text))
+      (log/error "Failed to generate Ollama embedding for text of length" (count text) ":" (ex-message e))
       (throw e))))
 
 (defn- ollama-get-embeddings-batch [model-name texts]
@@ -177,7 +176,7 @@
                {:headers {"Content-Type" "application/json"}
                 :body    (json/encode {:model model-name})})
     (catch Exception e
-      (log/error e "Failed to pull embedding model")
+      (log/errorf "Failed to pull embedding model: %s" (ex-message e))
       (throw e))))
 
 ;; Ollama is not used in production. Token tracking is not implemented.
@@ -261,12 +260,12 @@
         (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens))
       (decode-embeddings data))
     (catch ConnectException e
-      (log/error e (str "Failed to connect to " provider) {:endpoint endpoint})
+      (log/error (str "Failed to connect to " provider ": " (ex-message e)) {:endpoint endpoint})
       (throw (ex-info (str provider " unavailable (connection refused)")
                       {:status 502 :endpoint endpoint}
                       e)))
     (catch Exception e
-      (log/error e (str provider " embeddings API call failed")
+      (log/error (str "Failed to generate " provider " embeddings: " (ex-message e))
                  {:documents (count texts) :tokens (count-tokens-batch texts)})
       (throw e))))
 

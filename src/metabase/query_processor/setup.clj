@@ -4,6 +4,7 @@
    [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [clojure.set :as set]
    [metabase.config.core :as config]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -150,8 +151,14 @@
       (f query)
 
       :else
-      (qp.store/with-metadata-provider (:database query)
-        (f (maybe-attach-metadata-provider-to-query query))))))
+      ;; `:database` here is whatever the user submitted, so a destination at this point is a direct
+      ;; request to query one; reject it before building a provider. Legitimate routing never passes
+      ;; through this branch: when a router query is routed to a destination, that swap happens later,
+      ;; in the execution middleware, binding its own metadata provider.
+      (do
+        (database-routing/check-allowed-access! (:database query))
+        (qp.store/with-metadata-provider (:database query)
+          (f (maybe-attach-metadata-provider-to-query query)))))))
 
 (mu/defn- do-with-driver :- fn?
   [f :- [:=> [:cat ::qp.schema/any-query] :any]]

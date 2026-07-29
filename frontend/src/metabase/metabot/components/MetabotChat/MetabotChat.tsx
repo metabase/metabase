@@ -59,8 +59,7 @@ export const MetabotChat = ({
 
   const hasMessages = metabot.messages.length > 0;
 
-  const { scrollContainerRef, headerRef, fillerRef } =
-    useScrollManager(hasMessages);
+  const { scrollContainerRef, fillerRef } = useScrollManager(hasMessages);
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(
     {
@@ -78,11 +77,7 @@ export const MetabotChat = ({
 
   return (
     <Box className={cx(Styles.container, className)} data-testid="metabot-chat">
-      {headerActions && (
-        <Box ref={headerRef} className={Styles.header}>
-          {headerActions}
-        </Box>
-      )}
+      {headerActions && <Box className={Styles.header}>{headerActions}</Box>}
 
       {/* chat messages */}
       <Box className={Styles.messagesScrollArea}>
@@ -198,7 +193,12 @@ export const MetabotChat = ({
               }}
             />
           </Paper>
-          <Text mt="sm" pb="0.5rem" fz="sm" c="text-secondary" ta="center">
+          <Text
+            className={Styles.disclaimer}
+            fz="sm"
+            c="text-secondary"
+            ta="center"
+          >
             {t`${metabotName} isn't perfect. Double-check results.`}
           </Text>
         </Box>

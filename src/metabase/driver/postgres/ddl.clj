@@ -61,7 +61,7 @@
        (try
          (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database (:table_name persisted-info))])
          (catch Exception e
-           (log/warn e)
+           (log/warn (ex-message e))
            (throw e)))))))
 
 (defmethod ddl.i/check-can-persist :postgres
@@ -113,10 +113,10 @@
          (set-statement-timeout! tx)
          (loop [[[step stepfn] & remaining] steps]
            (let [result (try (stepfn tx)
-                             (log/infof "Step %s was successful for db %s" step (:name database))
+                             (log/infof "Step %s was successful for db %s" step (:id database))
                              ::valid
                              (catch Exception e
-                               (log/warnf e "Error in `%s` while checking for model persistence permissions." step)
+                               (log/warnf "Error in `%s` while checking for model persistence permissions: %s" step (ex-message e))
                                step))]
              (cond (and (= result ::valid) remaining)
                    (recur remaining)

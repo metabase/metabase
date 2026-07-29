@@ -7,6 +7,7 @@
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.files :as u.files]
    [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
@@ -30,6 +31,13 @@
       (binding [advanced-config.file/*env* (assoc @#'advanced-config.file/*env* :mb-config-file-path filename)]
         (is (= mock-yaml
                (#'advanced-config.file/config-from-disk)))))))
+
+(deftest ^:parallel blank-config-file-path-test
+  (testing "A blank MB_CONFIG_FILE_PATH counts as unset (on JDK 25+ the empty path 'exists' as the current directory)"
+    (doseq [blank ["" "   "]]
+      (binding [advanced-config.file/*env* (assoc @#'advanced-config.file/*env* :mb-config-file-path blank)]
+        (is (= (str (u.files/get-path (System/getProperty "user.dir") "config.yml"))
+               (str (#'advanced-config.file/path))))))))
 
 (deftest ^:parallel validate-config-test
   (testing "Config should throw an error"

@@ -97,7 +97,7 @@
                                                                     {:default :cron/raw}
                                                                     (ms/enum-decode-keyword ui-display-types)]
                                                                    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (log/info "Creating transform job:" name "with schedule:" schedule)
+  (log/info "Creating transform job with schedule:" schedule)
   ;; Validate cron expression
   (api/check-400 (transforms.core/validate-cron-expression schedule)
                  (deferred-tru "Invalid cron expression: {0}" schedule))
@@ -146,7 +146,7 @@
                        (op (:id job))
                        :ok
                        (catch Throwable t
-                         (log/errorf t "Failed to %s transform job %d" verb (:id job))
+                         (log/errorf "Failed to %s transform job %d: %s" verb (:id job) (ex-message t))
                          :failed)))
         outcomes   (frequencies (map try-op candidates))]
     {:updated (get outcomes :ok 0)

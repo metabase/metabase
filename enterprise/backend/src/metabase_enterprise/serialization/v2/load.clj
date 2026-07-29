@@ -88,7 +88,7 @@
     (when-let [entity (serdes/load-find-local path)]
       ((t2/select-pks-fn entity) entity))
     (catch Exception e
-      (log/debugf e "Could not look up local id for %s while building load error data" (serdes/log-path-str path))
+      (log/debugf "Could not look up local id for %s while building load error data: %s" (serdes/log-path-str path) (ex-message e))
       nil)))
 
 (defn- path-error-data [error-type expanding path]

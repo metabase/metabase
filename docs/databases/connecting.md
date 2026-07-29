@@ -48,7 +48,7 @@ The databases listed below have official drivers maintained by the Metabase team
 
 If you don't see your database listed here, see [Community drivers](../developers-guide/community-drivers.md).
 
-As of version 46.6.4, Metabase [no longer supports H2 connections](https://www.metabase.com/blog/vulnerability-post-mortem). But Metabase still ships with an H2 database to include an embedded application database, as well as to provide some sample data out of the box.
+As of version 46.6.4, Metabase [no longer supports H2 connections](https://www.metabase.com/blog/vulnerability-post-mortem). But Metabase still ships with an H2 database to include an embedded application database.
 
 ## Connecting to databases hosted by a cloud provider
 

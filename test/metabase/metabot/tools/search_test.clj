@@ -434,7 +434,7 @@
                   (is (= "No Description" (get-in no-desc-dash [:collection :name]))))))))))))
 
 (deftest enrich-with-portable-entity-ids-test
-  (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up entity_details call"
+  (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up read_resource call"
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Card {q-id :id q-eid :entity_id} {:name "PortableEID Sample Question"
@@ -530,7 +530,7 @@
 
 (deftest enrich-with-metric-base-tables-test
   (testing (str "Metric search results carry `base_table_*` fields so the LLM can write\n"
-                "`source-table:` without a separate entity_details call. We look up\n"
+                "`source-table:` without a separate read_resource call. We look up\n"
                 "`report_card.table_id` → `metabase_table.{schema,name}` and assemble the\n"
                 "portable FK `[database_name, schema, table_name]`. This closes the failure\n"
                 "mode where the LLM saw a metric in search, had its portable_entity_id, but\n"

@@ -458,8 +458,8 @@
       ;; included in trino-jdbc. We check the vendor-specific error code instead.
       ;; See HiveMetadata.java and UnknownTableTypeException.java in trinodb/trino
       (when (= 133001 (.getErrorCode e))
-        (log/debugf e "Table %s.%s is not accessible through this catalog (mixed catalog table type)"
-                    table-schema table-name))
+        (log/debugf "Table %s.%s is not accessible through this catalog (mixed catalog table type): %s"
+                    table-schema table-name (ex-message e)))
       false)))
 
 (defn- describe-schema
@@ -509,7 +509,7 @@
                             [[schema name] comment])))
                   (jdbc/reducible-result-set rs {})))))
       (catch Throwable e
-        (log/debug e "Failed to read table comments from system.metadata.table_comments")
+        (log/debugf "Failed to read table comments from system.metadata.table_comments: %s" (ex-message e))
         {}))))
 
 (defmethod driver/describe-database* :starburst
@@ -608,7 +608,7 @@
        (try
          (.setReadOnly conn true)
          (catch Throwable e
-           (log/warn e "Error setting starburst connection to read-only")))
+           (log/warnf "Error setting starburst connection to read-only: %s" (ex-message e))))
        ;; as with statement and prepared-statement, cannot set holdability on the connection level
        conn
        (catch Throwable e
@@ -792,7 +792,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e "Error setting prepared statement fetch direction to FETCH_FORWARD")))
+          (log/debugf "Error setting prepared statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
       (if (.useExplicitPrepare ^TrinoConnection (.unwrap conn TrinoConnection))
         (proxy-prepared-statement driver conn stmt params)
         (proxy-optimized-prepared-statement driver conn stmt params))
@@ -809,7 +809,7 @@
     (try
       (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
       (catch Throwable e
-        (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
+        (log/debugf "Error setting statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
     (proxy [java.sql.Statement] []
       (execute [sql]
         (try

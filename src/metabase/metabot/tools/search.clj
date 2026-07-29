@@ -96,7 +96,7 @@
   "Fetch and merge database engine + name info for search results that have database IDs.
   `:database_name` is the human-readable name the LLM needs as the first slot of every
   portable FK in `construct_notebook_query`; surfacing it on every table/model search
-  result means the LLM doesn't need a separate `entity_details` round-trip just to learn
+  result means the LLM doesn't need a separate `read_resource` round-trip just to learn
   the DB name."
   [results]
   (let [db-ids (->> results (keep :database_id) distinct)
@@ -113,7 +113,7 @@
   "Attach `:portable_entity_id` (the card's `entity_id` NanoID) to saved-question, model,
   and metric search results so the LLM can use it verbatim as `source-card:` (for
   questions/models) or inside a `[metric, {}, <entity_id>]` aggregation clause (for
-  metrics) without a follow-up `entity_details` / `read_resource` round-trip."
+  metrics) without a follow-up `read_resource` round-trip."
   [results]
   (let [carded-types #{"question" "model" "metric"}
         card-ids (->> results
@@ -137,7 +137,7 @@
   table's portable FK as the `source-table:` when it wants to use the metric. Without this
   enrichment the LLM sees the metric's `portable_entity_id` in search but has to either
   hallucinate the base table (observed failure mode: `[<db>, public, customers]`) or do an
-  extra `entity_details` round-trip. We read the two columns directly from
+  extra `read_resource` round-trip. We read the two columns directly from
   `report_card.table_id` + `metabase_table.{schema,name}` to keep the lookup O(1) extra
   query per search call, regardless of number of metrics in the result set.
 
@@ -241,17 +241,15 @@
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
            entity-types limit metabot-id profile-id search-native-query weights]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
-             {:term-queries        term-queries
-              :semantic-queries    semantic-queries
-              :database-id         database-id
-              :created-at          created-at
-              :last-edited-at      last-edited-at
-              :entity-types        entity-types
-              :limit               limit
-              :metabot-id          metabot-id
-              :profile-id          profile-id
-              :search-native-query search-native-query
-              :weights             weights})
+             {:term-query-count     (count term-queries)
+              :semantic-query-count (count semantic-queries)
+              :database-id          database-id
+              :entity-types         entity-types
+              :limit                limit
+              :metabot-id           metabot-id
+              :profile-id           profile-id
+              :search-native-query  search-native-query
+              :weights              weights})
   (let [search-models   (if (seq entity-types)
                           (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
@@ -293,12 +291,12 @@
                                                   (assoc :search-engine (name search-engine))
                                                   collection-id
                                                   (assoc :collection collection-id)))
-                                _              (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
-                                                          search-string (:models search-context))
+                                _              (log/infof "[METABOT-SEARCH] Search context models: %s"
+                                                          (:models search-context))
                                 search-results (search/search search-context)
                                 data           (:data search-results)
                                 result-models  (frequencies (map :model data))]
-                            (log/infof "[METABOT-SEARCH] Query '%s' returned entity types: %s" search-string result-models)
+                            (log/infof "[METABOT-SEARCH] Query returned entity types: %s" result-models)
                             data))
         search-fn*      (fn [search-engine queries]
                           (let [queries (search.engine/disjunction search-engine queries)]
@@ -506,7 +504,7 @@
                              :data results
                              :total_count (count results)}})
       (catch Exception e
-        (log/error e (str "Error in " label))
+        (log/error (str "Error in " label ": " (ex-message e)))
         {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
 
 (def ^:private search-schema

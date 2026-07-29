@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { screen, within } from "__support__/ui";
 import { mockStorageCloudAddOn } from "metabase-types/api/mocks/add-ons";
 
-import { setupHostedInstance, setupProUpload } from "./setup";
+import { setup, setupHostedInstance, setupProUpload } from "./setup";
 
 describe("Add data modal (Starter: hosted instance without the attached DWH)", () => {
   describe("Google Sheets", () => {
@@ -15,14 +15,18 @@ describe("Add data modal (Starter: hosted instance without the attached DWH)", (
           "To work with spreadsheets, you can add storage to your instance.",
       });
 
-      // The upsell is a single button matching the CSV tab, not the old
-      // bulleted banner. With no in-app add-on it links to the store.
+      // A single button matching the CSV tab, not the old bulleted banner. With
+      // no in-app add-on it links to the store.
       const upsellLink = await screen.findByRole("link", {
         name: /Add Metabase Storage/,
       });
-      expect(upsellLink).toHaveAttribute(
-        "href",
+      const href = new URL(upsellLink.getAttribute("href") ?? "");
+      expect(href.origin + href.pathname).toBe(
         "https://store.metabase.com/account/storage",
+      );
+      expect(href.searchParams.get("utm_campaign")).toBe("storage");
+      expect(href.searchParams.get("utm_content")).toBe(
+        "add-data-modal-sheets",
       );
     });
 
@@ -37,8 +41,7 @@ describe("Add data modal (Starter: hosted instance without the attached DWH)", (
           "To work with spreadsheets, you can add storage to your instance.",
       });
 
-      // When purchasable in-app, the button opens the purchase confirmation
-      // instead of linking to the store.
+      // Purchasable in-app: opens the confirmation instead of linking out.
       const addButton = await screen.findByRole("button", {
         name: /Add Metabase Storage/,
       });
@@ -211,6 +214,83 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
     expect(
       await screen.findByRole("button", { name: "Add new" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("Add data modal (hosted instance whose storage never materialized)", () => {
+  // The token flips at purchase but the database only appears once provisioning
+  // finishes, and on a local hosted build it never does. Reading that gap as
+  // "provisioning" spun and polled on every page load, so only a purchase made
+  // in this tab enters setup.
+  const setupTokenWithoutStorage = (opts: { uploadsEnabled: boolean }) =>
+    setupProUpload({
+      isAdmin: true,
+      hasAttachedDwhDatabase: false,
+      ...opts,
+    });
+
+  it("should tell the admin to refresh on the CSV tab rather than spin", async () => {
+    setupTokenWithoutStorage({ uploadsEnabled: false });
+
+    await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
+
+    expect(
+      await screen.findByText(
+        "You don't have storage provisioned yet. Refresh this page after 1-2 minutes.",
+      ),
+    ).toBeInTheDocument();
+    // "Enable uploads" would be a dead end while the DWH is still absent.
+    expect(screen.queryByText("Enable uploads")).not.toBeInTheDocument();
+    expect(screen.queryByText("Setting up storage")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Storage setup didn't finish"),
+    ).not.toBeInTheDocument();
+    // Already bought, so it must be offered neither as button nor store link.
+    expect(
+      screen.queryByRole("button", { name: /Add Metabase Storage/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Add Metabase Storage/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should keep the uploader on the CSV tab when another database accepts uploads", async () => {
+    setupTokenWithoutStorage({ uploadsEnabled: true });
+
+    await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
+
+    expect(
+      await screen.findByText("Drag and drop a file here"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Setting up storage")).not.toBeInTheDocument();
+  });
+});
+
+/** A settings manager needs both plugins: one to gate uploads, one to be one. */
+const setupSettingsManager = () =>
+  setup({
+    isAdmin: false,
+    canManageSettings: true,
+    isHosted: true,
+    enterprisePlugins: ["upload_management", "application_permissions"],
+    tokenFeatures: {
+      hosting: true,
+      attached_dwh: true,
+      advanced_permissions: true,
+    },
+    uploadsEnabled: false,
+    dwhCanUpload: false,
+  });
+
+describe("Add data modal (Pro: uploads turned off by an admin)", () => {
+  it("should offer the settings manager the enable-uploads CTA", async () => {
+    // Storage presence comes from the databases list, so a settings manager
+    // sees it too. Uploads being off is a choice they can undo.
+    setupSettingsManager();
+
+    await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
+
+    expect(await screen.findByText("Enable uploads")).toBeInTheDocument();
   });
 });
 

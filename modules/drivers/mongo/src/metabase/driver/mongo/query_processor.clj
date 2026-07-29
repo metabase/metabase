@@ -1708,8 +1708,7 @@ function(bin) {
 
 (defn- log-aggregation-pipeline [form]
   (when-not driver-api/*disable-qp-logging*
-    (log/tracef "\nMongo aggregation pipeline:\n%s\n"
-                (u/pprint-to-str 'green (perf/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
+    (log/tracef "Compiled Mongo aggregation pipeline with %d stage(s)" (count form))))
 
 (defn simple-mbql->native
   "Compile a simple (non-nested) MBQL query."

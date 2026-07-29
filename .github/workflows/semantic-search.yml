@@ -61,6 +61,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -72,6 +73,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-mariadb:
     if: ${{ !inputs.skip }}
@@ -134,6 +136,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -145,6 +148,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-mysql:
     if: ${{ !inputs.skip }}
@@ -158,10 +162,17 @@ jobs:
             junit-name: semantic-search-tests-mysql-8-0
             mysql-image: mysql:8.0
             pgvector-image: pgvector/pgvector:pg17
-          - name: MySQL Latest with pgvector pg17
-            junit-name: semantic-search-tests-mysql-latest
-            mysql-image: mysql:latest
+          - name: MySQL 9 with pgvector pg17
+            junit-name: semantic-search-tests-mysql-9
+            mysql-image: mysql:9
             pgvector-image: pgvector/pgvector:pg17
+          # `mysql:latest` now resolves to MySQL 26.x, which fails in a way that floods the log
+          # until the runner cancels the job. A cancelled job can't be soft-failed with
+          # continue-on-error, so the leg is disabled until 26.x is supported.
+          # - name: MySQL Latest with pgvector pg17
+          #   junit-name: semantic-search-tests-mysql-latest
+          #   mysql-image: mysql:latest
+          #   pgvector-image: pgvector/pgvector:pg17
         job:
           - name: Semantic Search Tests
             build-static-viz: false
@@ -207,6 +218,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -218,6 +230,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-postgres:
     if: ${{ !inputs.skip }}
@@ -281,6 +294,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -292,6 +306,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-result:
     needs:

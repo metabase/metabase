@@ -57,7 +57,7 @@
      (format "*%s*\n%s" (:name parameter) (shared.params/value-string parameter (system/site-locale)))
      attachment-text-length-limit)
     (catch Throwable e
-      (log/errorf e "Error rendering filter %s; skipping it" (:name parameter)))))
+      (log/errorf "Error rendering filter %s; skipping it: %s" (:id parameter) (ex-message e)))))
 
 (defn- parameter-fields
   [parameters]
@@ -161,7 +161,7 @@
     (try
       (slack/upload-file-to-channel! (:bytes pdf) (:filename pdf) channel (:comment pdf))
       (catch Throwable e
-        (log/error e "Error sharing dashboard subscription PDF to Slack; posting summary without the PDF")
+        (log/errorf "Error sharing dashboard subscription PDF to Slack; posting summary without the PDF: %s" (ex-message e))
         ;; A DM already delivers the caption as the message that opens the conversation, so don't re-post it.
         (when (and (:comment pdf) (not (::slack/caption-already-posted? (ex-data e))))
           (slack/post-chat-message! {:channel channel :text (:comment pdf)}))))))
@@ -276,7 +276,7 @@
                      (or "dashboard")
                      (str ".pdf"))})
     (catch Throwable e
-      (log/error e "Error rendering dashboard subscription PDF for Slack; skipping PDF attachment")
+      (log/errorf "Error rendering dashboard subscription PDF for Slack; skipping PDF attachment: %s" (ex-message e))
       nil)))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
@@ -299,7 +299,7 @@
                                            (try
                                              (part->sections! all-params part)
                                              (catch Throwable e
-                                               (log/error e "Error rendering dashboard subscription part for Slack; substituting error placeholder")
+                                               (log/errorf "Error rendering dashboard subscription part for Slack; substituting error placeholder: %s" (ex-message e))
                                                [(text->markdown-section (str (tru "An error occurred while displaying this card.")))])))
                                          (:dashboard_parts payload))]
                                 flatten

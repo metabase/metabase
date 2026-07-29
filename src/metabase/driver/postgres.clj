@@ -1032,7 +1032,7 @@
         (parent-thunk)
         (catch Throwable e
           (let [s (.getString rs i)]
-            (log/tracef e "Error in Postgres JDBC driver reading TIME value, fetching as string '%s'" s)
+            (log/tracef "Error in Postgres JDBC driver reading TIME value, fetching as string: %s" (ex-message e))
             (u.date/parse s)))))))
 
 ;; The postgres JDBC driver cannot properly read MONEY columns — see https://github.com/pgjdbc/pgjdbc/issues/425. Work

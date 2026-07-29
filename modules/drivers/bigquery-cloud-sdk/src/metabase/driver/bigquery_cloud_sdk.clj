@@ -164,7 +164,7 @@
   ;; check whether we can connect by seeing whether listing datasets succeeds
   (let [[success? datasets] (try [true (list-datasets details)]
                                  (catch Exception e
-                                   (log/error e "Exception caught in :bigquery-cloud-sdk can-connect?")
+                                   (log/errorf "Exception caught in :bigquery-cloud-sdk can-connect?: %s" (ex-message e))
                                    [false nil]))]
     (cond
       (not success?)
@@ -455,6 +455,15 @@
     (sort-by (juxt :table-name :database-position :name)
              (describe-dataset-rows nested-lookup dataset-id table-name columns))))
 
+(def ^:private max-data-type-length
+  "Truncate `INFORMATION_SCHEMA` `data_type` strings to this many characters, in SQL. Only short prefixes are ever
+  consumed (see [[raw-type->database+base-type]]; the longest verbatim type is `RANGE<TIMESTAMP>`), but a STRUCT
+  column's `data_type` spells out its entire nested schema, and the `COLUMN_FIELD_PATHS` join repeats it on every
+  nested-leaf row -- O(n^2) bytes for a column with n leaves. Dynamic-key STRUCTs (e.g. log-sink tables whose JSON
+  payloads use user IDs as keys) can reach thousands of leaves with ~270KB type strings, which OOMed sync before this
+  truncation."
+  200)
+
 (defn- describe-dataset-fields-reducible
   "Reducibly describe the fields (including nested STRUCT fields) of `table-names` within `dataset-id`.
 
@@ -473,10 +482,12 @@
                (query-honeysql driver database
                                {:select    [[:c.table_name :table_name]
                                             [:c.column_name :column_name]
-                                            [:c.data_type :data_type]
+                                            ;; truncated in SQL: a STRUCT's data_type repeats its whole nested schema
+                                            ;; on every leaf row of the join, O(n^2) bytes -- see [[max-data-type-length]]
+                                            [[:substr :c.data_type 1 max-data-type-length] :data_type]
                                             [:c.ordinal_position :ordinal_position]
                                             [[:= :c.is_partitioning_column "YES"] :partitioned]
-                                            [:p.data_type :nested_data_type]
+                                            [[:substr :p.data_type 1 max-data-type-length] :nested_data_type]
                                             [:p.field_path :field_path]]
                                 :from      [[(information-schema-table project-id dataset-id "COLUMNS") :c]]
                                 :left-join [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :p]
@@ -489,7 +500,7 @@
                                 :where     [:in :c.table_name table-names]
                                 :order-by  [:c.table_name]})
                (catch Throwable e
-                 (log/warnf e "error in describe-fields for dataset: %s" dataset-id)))]
+                 (log/warnf "error in describe-fields for dataset %s: %s" dataset-id (ex-message e))))]
     (eduction
      (partition-by :table_name)
      (mapcat #(describe-dataset-table dataset-id %))
@@ -509,7 +520,7 @@
                                :from [[(information-schema-table project-id dataset-id "TABLES") :t]]
                                :order-by [:table_name]}))
     (catch Throwable e
-      (log/warnf e "error in list-table-names for dataset: %s" dataset-id))))
+      (log/warnf "error in list-table-names for dataset %s: %s" dataset-id (ex-message e)))))
 
 (defmethod driver/describe-fields :bigquery-cloud-sdk
   [driver database & {:keys [schema-names table-names]}]
@@ -849,7 +860,7 @@
              (let [acc' (try
                           (rf acc (.next it))
                           (catch Throwable e
-                            (log/errorf e "error in reducible-bigquery-results! %d rows" n)
+                            (log/errorf "error in reducible-bigquery-results! %d rows: %s" n (ex-message e))
                             (throw e)))]
                (recur page it acc' (inc n)))
 
@@ -877,7 +888,7 @@
                                  (.cancel client job-id)
                                  (catch Throwable e
                                    ;; Just log exception if it can't be cancelled.
-                                   (log/debugf e "Could not cancel job-id: %s" job-id)))
+                                   (log/debugf "Could not cancel job-id %s: %s" job-id (ex-message e))))
         ^Schema schema (some-> page .getSchema)
         parsers (some-> schema get-field-parsers)
         columns (for [column (some-> schema .getFields fields->metabase-field-info)]
@@ -935,7 +946,7 @@
         :cancel (try
                   (.cancel client job-id)
                   (catch Throwable t
-                    (log/warnf t "Couldn't cancel job %s" job-id))
+                    (log/warnf "Couldn't cancel job %s: %s" job-id (ex-message t)))
                   (finally
                     (throw-cancelled sql parameters)))
         :ready  (bigquery-execute-response result job client respond cancel-chan)))))
@@ -1224,7 +1235,7 @@
       (doall
        (for [query queries]
          (let [[sql params] (if (string? query) [query] query)
-               _ (log/debugf "Executing BigQuery DDL: %s" sql)
+               _ (log/debug "Executing BigQuery DDL")
                job-config (-> (QueryJobConfiguration/newBuilder sql)
                               (bigquery.params/set-parameters! params)
                               (.setUseLegacySql false)
@@ -1233,7 +1244,7 @@
            {:rows-affected (or (and table-result (.getTotalRows table-result))
                                0)})))
       (catch Exception e
-        (log/error e "Error executing BigQuery DDL")
+        (log/errorf "Error executing BigQuery DDL: %s" (ex-message e))
         (throw e)))))
 
 (defmethod driver/drop-transform-target! [:bigquery-cloud-sdk :table]

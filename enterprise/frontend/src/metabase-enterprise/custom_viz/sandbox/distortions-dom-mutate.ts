@@ -85,7 +85,7 @@ export function sanitizedSetterDistortion(
 
 // Tags that must never be created — they can load or execute arbitrary
 // code, or are tags we don't want plugins rendering at all.
-const BLOCKED_TAGS = new Set([
+export const BLOCKED_TAGS = new Set([
   "script",
   "iframe",
   "object",

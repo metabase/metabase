@@ -163,7 +163,7 @@
                 "no stack trace, no data-parts.")
     (with-repr-stub!
       (fn [_external-query]
-        (throw (ex-info "Unknown database: `Sample`. Use the exact database name as reported by entity_details."
+        (throw (ex-info "Unknown database: `Sample`. Use the exact database name as reported by search / read_resource."
                         {:agent-error? true
                          :status-code  400
                          :error        :unknown-database
