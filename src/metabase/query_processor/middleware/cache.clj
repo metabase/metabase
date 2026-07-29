@@ -236,13 +236,14 @@
   A fraction rather than a fixed lead time so it scales with each strategy's own duration: a lead time longer than
   the duration would put an entry in the refresh zone the moment it was written. Returns false when `window-ms` is
   nil, since a strategy whose boundary doesn't slide (`:schedule`) has no \"about to expire\"."
-  [updated-at invalidated-at window-ms early-refresh-ratio]
+  [updated-at window-ms early-refresh-ratio]
   (boolean (and updated-at
                 window-ms
-                ;; how much of the window is left: the boundary slides with the clock, so the distance from it to
-                ;; `updated-at` is the time until this entry falls behind it
-                (let [remaining-ms (.toMillis (t/duration (t/instant invalidated-at) (t/instant updated-at)))]
-                  (< remaining-ms (* early-refresh-ratio window-ms))))))
+                ;; how much of the window is left, measured from the clock rather than from the strategy's
+                ;; `invalidated-at`: an explicit invalidation pins that boundary to a fixed instant, and the distance
+                ;; from a pinned boundary is the entry's age since the invalidation, not its remaining freshness
+                (let [age-ms (.toMillis (t/duration (t/instant updated-at) (t/instant)))]
+                  (< (- window-ms age-ms) (* early-refresh-ratio window-ms))))))
 
 (defn- not-too-stale?
   "Whether an entry last written at `updated-at` is close enough to `invalidated-at` (the strategy's freshness
@@ -294,7 +295,6 @@
                    (and (cache-fresh? updated-at invalidated-at)
                         (due-for-early-refresh?
                          updated-at
-                         invalidated-at
                          (fresh-duration-ms strategy)
                          (cache/query-caching-early-refresh-ratio))
                         (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*))
