@@ -357,8 +357,7 @@
                              :metadata/own-model-query? true))]
     (when (seq parameters)
       (validate-card-parameters card-id (:dataset_query card) (lib/normalize ::lib.schema.parameter/parameters parameters)))
-    (log/tracef "Running query for Card %d (dashcard %s):\n%s" card-id dashcard-id
-                (u/pprint-to-str query))
+    (log/tracef "Running query for Card %d (dashcard %s)" card-id dashcard-id)
     (binding [qp.perms/*card-id* card-id]
       (when-let [context (card-read-context info)]
         (events/publish-event! :event/card-read {:object-id card-id

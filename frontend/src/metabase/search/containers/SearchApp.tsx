@@ -23,7 +23,7 @@ import type {
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import type { LocationDescriptorObject } from "metabase/router";
-import { push, useRouter } from "metabase/router";
+import { push, queryToSearch, useRouter } from "metabase/router";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {
   SearchBody,
@@ -85,7 +85,7 @@ export function SearchApp() {
     (newFilters: URLSearchFilterQueryParams) => {
       onChangeLocation({
         pathname: "search",
-        query: { q: searchText.trim(), ...newFilters },
+        search: queryToSearch({ q: searchText.trim(), ...newFilters }),
       });
     },
     [onChangeLocation, searchText],
@@ -94,11 +94,11 @@ export function SearchApp() {
   const advancePage = (howMany = 1) => {
     onChangeLocation({
       pathname: "search",
-      query: {
+      search: queryToSearch({
         q: searchText.trim(),
         ...searchFilters,
         page: String(page + howMany),
-      },
+      }),
     });
   };
 

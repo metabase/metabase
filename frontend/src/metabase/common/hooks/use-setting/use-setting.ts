@@ -1,8 +1,12 @@
 import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
-import { useDispatch, useSelector } from "metabase/redux";
-import { updateUserSetting } from "metabase/redux/settings";
+import {
+  type UpdateSettingArg,
+  useUpdateSettingMutation,
+  useUpdateUserSettingMutation,
+} from "metabase/api";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import type { EnterpriseSettingKey, UserSettings } from "metabase-types/api";
 
@@ -27,12 +31,20 @@ export const useUserSetting = <T extends keyof UserSettings>(
   } = {},
 ): [UserSettings[T], (value: UserSettings[T]) => void] => {
   const currentValue = useSetting(key);
-  const dispatch = useDispatch();
+  // `shouldRefresh` chooses between pessimistic (invalidate + refetch all settings)
+  //  vs optimistic (patch the one value, no refetch).
+  const [updateSetting] = useUpdateSettingMutation();
+  const [updateUserSetting] = useUpdateUserSettingMutation();
   const setter = useCallback(
     (value: UserSettings[T]) => {
-      dispatch(updateUserSetting({ key, value, shouldRefresh }));
+      const mutate = shouldRefresh ? updateSetting : updateUserSetting;
+      // Annotate the argument with the mutations' concrete input type. Passing
+      // the object literal directly would make TypeScript infer through the
+      // generic RTK trigger types, which hits the instantiation depth limit (TS2589).
+      const args: UpdateSettingArg = { key, value };
+      mutate(args);
     },
-    [dispatch, key, shouldRefresh],
+    [updateSetting, updateUserSetting, key, shouldRefresh],
   );
   const debouncedSetter = useMemo(
     () => _.debounce(setter, debounceTimeout, debounceOnLeadingEdge),

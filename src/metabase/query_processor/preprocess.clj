@@ -127,7 +127,6 @@
      identity
      (fn
        ([preprocessed]
-        (log/debugf "Preprocessed query:\n\n%s" (u/pprint-to-str preprocessed))
         preprocessed)
        ([query middleware-fn]
         (try

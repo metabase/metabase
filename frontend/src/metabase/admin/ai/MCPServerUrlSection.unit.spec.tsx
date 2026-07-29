@@ -16,8 +16,9 @@ import { McpServerUrlSection } from "./MCPServerUrlSection";
 const SITE_URL = "https://metabase.example.com";
 const MCP_URL = `${SITE_URL}/api/metabase-mcp`;
 
-function setup({ siteUrl = SITE_URL }: { siteUrl?: string | undefined } = {}) {
-  const settings = createMockSettings({ "site-url": siteUrl });
+function setup({ siteUrl = SITE_URL }: { siteUrl?: string | null } = {}) {
+  // site-url setting can take null, but it's type doesn't reflect that
+  const settings = createMockSettings({ "site-url": siteUrl as string });
 
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
@@ -43,7 +44,7 @@ describe("McpServerUrlSection", () => {
   });
 
   it("renders nothing when site-url is not set", () => {
-    setup({ siteUrl: undefined });
+    setup({ siteUrl: null });
     expect(screen.queryByDisplayValue(MCP_URL)).not.toBeInTheDocument();
   });
 

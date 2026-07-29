@@ -63,7 +63,8 @@
         {:cache      (str (symbol cache-var))
          :entries    entries}))
     (catch Exception e
-      (log/warn e "Error measuring memoization cache size" {:cache (str (symbol cache-var))}))))
+      (log/warn "Error measuring memoization cache size" {:cache (str (symbol cache-var))
+                                                          :error (ex-message e)}))))
 
 (defn- all-cache-stats
   []

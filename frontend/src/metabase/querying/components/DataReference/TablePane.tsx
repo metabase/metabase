@@ -68,6 +68,7 @@ export function TablePane({
             {table.fields?.length ? (
               <>
                 <FieldList
+                  table={table}
                   fields={table.fields}
                   onFieldClick={(field) => {
                     onItemClick({

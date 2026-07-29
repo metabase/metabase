@@ -84,7 +84,7 @@
   (try
     (run! #(some-> % :result :data :rows notification.payload/cleanup!) (->> notification-payload :payload :dashboard_parts))
     (catch Exception e
-      (log/warn e "Error cleaning up temp files for notification" id)))
+      (log/warn "Error cleaning up temp files for notification" id (ex-message e))))
   (when-not skipped?
     (events/publish-event! :event/subscription-send
                            {:id      id

@@ -27,7 +27,6 @@
   See also [[metabase.parameters.chain-filter]] for another explanation of remapping."
   (:refer-clojure :exclude [mapv select-keys some empty? not-empty get-in])
   (:require
-   [clojure.data :as data]
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -439,7 +438,7 @@
     from-display-name :name
     to-name           :human-readable-field-name} :- ::external-remapping]
   (log/trace "Considering column\n"
-             (u/pprint-to-str 'cyan (select-keys column [:id :name :fk_field_id :display_name :options]))
+             (pr-str (select-keys column [:id :fk_field_id :options]))
              (u/colorize :magenta "\nAdd :remapped_to metadata?")
              "\n=>" '(= dimension-id original-field-dimension-id)
              "\n=>" (list '= dimension-id original-field-dimension-id)
@@ -474,11 +473,11 @@
                                   from-name)
                :display_name  from-display-name}))
     (when (not= column <>)
-      (log/tracef "Added metadata:\n%s" (u/pprint-to-str 'green (second (data/diff column <>)))))))
+      (log/trace "Added remapping metadata to column"))))
 
 (mu/defn- merge-metadata-for-externally-remapped-column :- [:maybe [:sequential :map]]
   [columns :- [:maybe [:sequential :map]] dimension :- ::external-remapping]
-  (log/tracef "Merging metadata for external dimension\n%s" (u/pprint-to-str 'yellow (into {} dimension)))
+  (log/tracef "Merging metadata for external dimension %s" (:id dimension))
   (mapv #(merge-metadata-for-externally-remapped-column* columns % dimension)
         columns))
 

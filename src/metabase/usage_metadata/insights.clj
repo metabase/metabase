@@ -83,7 +83,7 @@
     (try
       (vec (lib/all-field-ids predicate))
       (catch Throwable e
-        (log/debug e "usage-metadata: predicate-field-ids failed")
+        (log/debugf "usage-metadata: predicate-field-ids failed: %s" (ex-message e))
         []))))
 
 ;; No SQL LIMIT here: callers filter saved-signature collisions in Clojure, so a SQL LIMIT can under-deliver.
@@ -205,7 +205,7 @@
     (try
       (lib/query (lib-be/application-database-metadata-provider database-id) query-map)
       (catch Throwable e
-        (log/debug e "Failed to wrap query for usage-metadata insights")
+        (log/debugf "Failed to wrap query for usage-metadata insights: %s" (ex-message e))
         nil))))
 
 (defn- extract-facts
@@ -214,7 +214,7 @@
     (try
       (usage-metadata.extract/extract-usage-facts q)
       (catch Throwable e
-        (log/debug e "Failed to extract usage facts for usage-metadata insights")
+        (log/debugf "Failed to extract usage facts for usage-metadata insights: %s" (ex-message e))
         nil))))
 
 (def ^:private cache-ttl-ms

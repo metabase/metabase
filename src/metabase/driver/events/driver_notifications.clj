@@ -31,4 +31,4 @@
                       (remove-irrelevant-data previous-database)))
         (driver/notify-database-updated (:engine database) database)))
     (catch Throwable e
-      (log/warnf e "Failed to process driver notifications event. %s" topic))))
+      (log/warnf "Failed to process driver notifications event %s: %s" topic (ex-message e)))))

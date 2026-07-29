@@ -593,7 +593,7 @@
     item
     (when-not config/is-prod?
       (log/errorf (colorize/red "Invalid recent view item: %s reason: %s")
-                  (pr-str item)
+                  (pr-str (select-keys item [:id :model]))
                   (me/humanize (mr/explain Item item))))))
 
 (mu/defn get-recents

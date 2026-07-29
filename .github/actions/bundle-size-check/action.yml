@@ -1,0 +1,114 @@
+name: Bundle Size Check
+description: |
+  Measures app + embedding SDK bundle sizes from the current and base-ref
+  uberjars (reusing the builds that already ran) plus their bundle-stats
+  artifacts, and flags gzipped size changes beyond the threshold for the main
+  app's initial bundle and the chunked SDK's reachable total. Skips when the
+  base-ref artifacts aren't available rather than rebuilding from source (which
+  would compare across pipelines).
+
+inputs:
+  edition:
+    description: 'Metabase edition (ee or oss)'
+    required: true
+  base-ref-commit:
+    description: 'Commit SHA of the base ref.'
+    required: true
+  threshold-percent:
+    description: 'Percent threshold for bundle size change'
+    required: true
+
+outputs:
+  app_status:
+    description: "App initial bundle status: increased, decreased, or stable"
+    value: ${{ steps.compare.outputs.app_initial_status }}
+  app_size_change_percent:
+    description: "App initial bundle size change percent (positive = increase, negative = decrease)"
+    value: ${{ steps.compare.outputs.app_initial_size_change_percent }}
+  sdk_status:
+    description: "Chunked SDK bundle status: increased, decreased, or stable"
+    value: ${{ steps.compare.outputs.embedding_sdk_chunked_total_status }}
+  sdk_size_change_percent:
+    description: "Chunked SDK bundle size change percent (positive = increase, negative = decrease)"
+    value: ${{ steps.compare.outputs.embedding_sdk_chunked_total_size_change_percent }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download current uberjar
+      uses: ./.github/actions/fetch-artifact
+      with:
+        commit: ${{ github.event.pull_request.head.sha || github.sha }}
+        edition: ${{ inputs.edition }}
+        extract-path: temp/current-uberjar
+    - name: Download base-ref uberjar
+      id: base-jar
+      continue-on-error: true
+      uses: ./.github/actions/fetch-artifact
+      with:
+        commit: ${{ inputs.base-ref-commit }}
+        edition: ${{ inputs.edition }}
+        extract-path: temp/base-uberjar
+    - name: Measure and compare bundle sizes
+      id: compare
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EDITION: ${{ inputs.edition }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        BASE_SHA: ${{ inputs.base-ref-commit }}
+        THRESHOLD: ${{ inputs.threshold-percent }}
+        MEASURE_BUNDLES: app,embedding-sdk-legacy,embedding-sdk-chunked
+        # The gated bundles, as "<bundle>/<kind>". Each one's step outputs are
+        # named after its key (see outputPrefix in compare.js), which is what the
+        # action outputs above read.
+        GATES: app/initial,embedding-sdk-chunked/total
+      run: |
+        set -uo pipefail
+
+        skip() {
+          echo "::notice::Bundle-size check skipped: $1"
+          for gate in ${GATES//,/ }; do
+            prefix=$(printf '%s' "$gate" | tr -c 'a-zA-Z0-9' '_')
+            echo "${prefix}_status=stable" >> "$GITHUB_OUTPUT"
+            echo "${prefix}_size_change_percent=0" >> "$GITHUB_OUTPUT"
+          done
+          exit 0
+        }
+
+        # The base ref needs an already-built uberjar. Rebuilding it from source
+        # would compare across two build pipelines (the bug this check used to
+        # have), so skip instead when it — or its stats — isn't available.
+        [ -f temp/base-uberjar/metabase.jar ] || skip "base-ref uberjar not found for ${BASE_SHA}"
+
+        extract_js() { # $1=jar  $2=dest-root
+          mkdir -p "$2/resources"
+          unzip -o "$1" \
+            "frontend_client/app/dist/*" \
+            "frontend_client/app/embed.js" \
+            "frontend_client/app/embedding-sdk/*" \
+            -d "$2/resources" >/dev/null || true
+        }
+
+        fetch_stats() { # $1=sha  $2=dest-dir
+          local name="metabase-bundle-stats-${EDITION}-$1"
+          local id
+          id=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${name}" --jq '.artifacts[0].id // empty' 2>/dev/null)
+          [ -n "${id}" ] || return 1
+          mkdir -p "$2"
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}/zip" > "$2.zip" 2>/dev/null || return 1
+          unzip -o "$2.zip" -d "$2" >/dev/null || return 1
+        }
+
+        extract_js temp/current-uberjar/metabase.jar temp/current
+        extract_js temp/base-uberjar/metabase.jar temp/base
+
+        fetch_stats "${HEAD_SHA}" temp/current/artifacts || skip "bundle stats not found for current ${HEAD_SHA}"
+        fetch_stats "${BASE_SHA}" temp/base/artifacts || skip "bundle stats not found for base ${BASE_SHA}"
+
+        MEASURE_ROOT=temp/current node ./.github/scripts/measure-bundle-sizes.js > temp/current-sizes.json \
+          || { echo "::error::Failed to measure current bundle sizes"; exit 1; }
+        MEASURE_ROOT=temp/base node ./.github/scripts/measure-bundle-sizes.js > temp/base-sizes.json \
+          || { echo "::error::Failed to measure base bundle sizes"; exit 1; }
+
+        node ./.github/actions/bundle-size-check/compare.js temp/current-sizes.json temp/base-sizes.json
