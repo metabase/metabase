@@ -10,7 +10,8 @@
    [toucan2.core :as t2]))
 
 (def ^:private current-user-fields
-  (into [:model/User] user/admin-or-self-visible-columns))
+  ;; `:type` is needed so [[user/add-attributes]] can refuse to add attributes to non-personal (API-key/internal) users
+  (into [:model/User :type] user/admin-or-self-visible-columns))
 
 (defn- find-user [user-id]
   (when user-id
