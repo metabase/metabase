@@ -28,7 +28,9 @@ databaseChangeLog:
             sql: >-
               DO $$
               BEGIN
-              EXECUTE format('ALTER TABLE query_execution_%s RENAME TO query_execution_old;',
-                             TO_CHAR(current_timestamp + '1 month'::interval, 'YYYY_MM'));
+              EXECUTE format('ALTER TABLE %s RENAME TO query_execution_old;',
+                              (SELECT table_name FROM information_schema.tables
+                                WHERE table_name LIKE 'query_execution_%'
+                                ORDER BY table_name ASC LIMIT 1));
               END
               $$ language plpgsql;

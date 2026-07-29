@@ -24,5 +24,4 @@
  [metabase.audit-app.settings
   analytics-dev-mode
   last-analytics-checksum
-  last-analytics-checksum!
-  audit-max-retention-days])
+  last-analytics-checksum!])

@@ -67,16 +67,19 @@
                    "query_execution_2026_08"}
                  (set (partitions/current-partitions conn))))
           (partitions/manage-partitions conn next-month 25)
-          (is (= #{"query_execution_2026_08"
+          (is (= #{"query_execution_2026_07"
+                   "query_execution_2026_08"
                    "query_execution_2026_09"}
                  (set (partitions/current-partitions conn))))
           (partitions/manage-partitions conn nnext-month 45)
-          (is (= #{"query_execution_2026_08"
+          (is (= #{"query_execution_2026_07"
+                   "query_execution_2026_08"
                    "query_execution_2026_09"
                    "query_execution_2026_10"}
                  (set (partitions/current-partitions conn))))
           (partitions/manage-partitions conn nnext-month 25)
-          (is (= #{"query_execution_2026_09"
+          (is (= #{"query_execution_2026_08"
+                   "query_execution_2026_09"
                    "query_execution_2026_10"}
                  (set (partitions/current-partitions conn)))))
         (testing "Initial run with a multi-month legacy partition"

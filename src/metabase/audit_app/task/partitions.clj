@@ -9,7 +9,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
-   [metabase.audit-app.core :as audit-app]
+   [metabase.audit-app.settings :as settings]
    [metabase.task.core :as task]
    [next.jdbc :as next.jdbc]))
 
@@ -31,6 +31,7 @@
   [partitions now]
   (let [latest-date (apply t/max (t/local-date 1970)
                            (map start-date-for-partition partitions))]
+    ;; current month created in case you shut down metabase for over a month
     (for [date [(t/adjust now :first-day-of-month)
                 (t/adjust now :first-day-of-next-month)]
           :let [name (partition-for date)]
@@ -87,7 +88,7 @@
 (task/defjob ^:private ^{org.quartz.DisallowConcurrentExecution true}
   ManagePartitions [_]
   (when (= :postgres (mdb/db-type)) ; mysql/h2 don't have partitions
-    (let [retention-days (audit-app/audit-max-retention-days)]
+    (let [retention-days (settings/audit-max-retention-days)]
       (with-open [conn (.getConnection (mdb/data-source))]
         (manage-partitions conn (t/local-date) retention-days)))))
 
@@ -107,5 +108,6 @@
                  (triggers/with-schedule
                   (cron/schedule
                    (cron/cron-schedule "0 21 3 * * ? *")
-                   (cron/with-misfire-handling-instruction-do-nothing))))]
+                   ;; we want to make sure it runs if it was shut down for a month
+                   (cron/with-misfire-handling-instruction-fire-and-proceed))))]
     (task/schedule-task! job trigger)))
