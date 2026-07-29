@@ -6,6 +6,7 @@ export type Rule = {
   from: string[];
   allow?: string[];
   disallow?: string[];
+  message?: string;
 };
 
 export type ModuleNode = { type: string; regex: RegExp };

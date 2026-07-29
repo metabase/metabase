@@ -98,7 +98,3 @@ function getLinkUrl(
 
   return null;
 }
-
-export function slugify(name: string) {
-  return name && encodeURIComponent(name.toLowerCase().replace(/\s/g, "_"));
-}

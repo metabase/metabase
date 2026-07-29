@@ -172,6 +172,7 @@ const elements = [
     name: "embedding-sdk-shared",
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
+  createElement({ type: "shared", name: "value-formatting" }),
   createElement({ type: "shared", name: "forms", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "hoc" }),
   createElement({ type: "feature", name: "home" }),
@@ -418,6 +419,19 @@ const baseRules = [
     from: ["shared/*"],
     allow: ["lib/*", "basic/*", "shared/*"],
     message: "Shared modules cannot import from feature modules",
+  },
+  // value-formatting is a leaf module. The JSX rendering it needs is injected
+  // at app boot (see visualizations/lib/register-jsx-formatting), so the module
+  // itself depends on no app code and must stay importable from anywhere.
+  {
+    from: ["shared/value-formatting"],
+    disallow: ["shared/*"],
+    message:
+      "value-formatting is a leaf module - it must not depend on app code (JSX rendering is injected via the registry at app boot)",
+  },
+  {
+    from: ["shared/value-formatting"],
+    allow: ["shared/value-formatting"],
   },
   {
     from: ["feature/*"],
