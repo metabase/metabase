@@ -38,6 +38,10 @@ export function setupGetTransformEndpoint(transform: Transform) {
   fetchMock.get(`path:/api/transform/${transform.id}`, transform);
 }
 
+export function setupGetAnyTransformEndpoint(transform: Transform) {
+  fetchMock.get(/\/api\/transform\/\d+(\?|$)/, transform);
+}
+
 export function setupListTransformTagsEndpoint(tags: TransformTag[]) {
   fetchMock.get(`path:/api/transform-tag`, tags);
 }

@@ -3,7 +3,9 @@ import fetchMock from "fetch-mock";
 
 import {
   setupDatabaseListEndpoint,
+  setupGetAnyTransformEndpoint,
   setupGetTransformJobEndpoint,
+  setupListAnyDatabaseSchemasEndpoint,
   setupListJobRunTransformRunsEndpoint,
   setupListTransformJobRunsEndpoint,
   setupListTransformJobTransformsEndpoint,
@@ -26,6 +28,7 @@ import type {
 import {
   createMockDatabase,
   createMockListTransformJobRunsResponse,
+  createMockTransform,
   createMockTransformJob,
   createMockTransformJobRun,
   createMockTransformRunForJobRun,
@@ -53,6 +56,8 @@ function setup({
   setupGetTransformJobEndpoint(job);
   setupDatabaseListEndpoint([createMockDatabase()]);
   setupListTransformJobTransformsEndpoint(JOB_ID, []);
+  setupGetAnyTransformEndpoint(createMockTransform());
+  setupListAnyDatabaseSchemasEndpoint();
   setupListTransformJobRunsEndpoint(JOB_ID, () =>
     createMockListTransformJobRunsResponse({
       data: currentRuns,

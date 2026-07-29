@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupGetAnyTransformEndpoint,
+  setupListAnyDatabaseSchemasEndpoint,
   setupListTransformRunsEndpoint,
   setupListTransformTagsEndpoint,
   setupListTransformsEndpoint,
@@ -37,6 +39,8 @@ function setup({ runs = [] }: SetupOpts = {}) {
   );
   setupListTransformsEndpoint([]);
   setupListTransformTagsEndpoint([]);
+  setupGetAnyTransformEndpoint(createMockTransform());
+  setupListAnyDatabaseSchemasEndpoint();
   mockGetBoundingClientRect({ width: 1200, height: 800 });
 
   const path = Urls.transformRunList();

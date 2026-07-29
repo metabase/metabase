@@ -1,6 +1,7 @@
-import fetchMock from "fetch-mock";
-
-import { setupGetTransformEndpoint } from "__support__/server-mocks";
+import {
+  setupGetTransformEndpoint,
+  setupListAnyDatabaseSchemasEndpoint,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -26,7 +27,7 @@ function setup({ run = createMockTransformRun() }: SetupOpts = {}) {
       target: createMockTransformTarget({ schema: "public", name: "orders" }),
     }),
   );
-  fetchMock.get(/\/api\/database\/\d+\/schemas/, []);
+  setupListAnyDatabaseSchemasEndpoint();
   renderWithProviders(<InfoSection run={run} />);
 }
 

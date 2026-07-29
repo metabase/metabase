@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupGetTransformEndpoint } from "__support__/server-mocks";
+import {
+  setupGetTransformEndpoint,
+  setupListAnyDatabaseSchemasEndpoint,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -35,7 +38,7 @@ const setup = async ({
       body: { message: error },
     });
   }
-  fetchMock.get(/\/api\/database\/\d+\/schemas/, schemas);
+  setupListAnyDatabaseSchemasEndpoint(schemas);
   renderWithProviders(<TransformOutput transformId={transform.id} />);
   await waitForLoaderToBeRemoved();
 };

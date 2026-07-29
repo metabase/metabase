@@ -3,6 +3,8 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCancelJobRunEndpoint,
+  setupGetAnyTransformEndpoint,
+  setupListAnyDatabaseSchemasEndpoint,
   setupListDagRunTransformRunsEndpoint,
   setupListJobRunTransformRunsEndpoint,
   setupListTransformGraphRunsEndpoint,
@@ -20,6 +22,7 @@ import { Route } from "metabase/router";
 import type { TransformGraphRun } from "metabase-types/api";
 import {
   createMockListTransformGraphRunsResponse,
+  createMockTransform,
   createMockTransformGraphRun,
   createMockTransformRunForJobRun,
 } from "metabase-types/api/mocks";
@@ -43,6 +46,8 @@ function setup({
       total: runs.length,
     }),
   );
+  setupGetAnyTransformEndpoint(createMockTransform());
+  setupListAnyDatabaseSchemasEndpoint();
   mockGetBoundingClientRect({ width: 1200, height: 800 });
 
   const { history } = renderWithProviders(
