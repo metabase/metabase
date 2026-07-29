@@ -1,7 +1,9 @@
 (ns metabase.channel.render.js.graal-test
   (:require
    [clojure.test :refer :all]
-   [metabase.channel.render.js.graal :as graal])
+   [metabase.channel.render.js.common :as js.common]
+   [metabase.channel.render.js.graal :as graal]
+   [metabase.test :as mt])
   (:import
    (org.graalvm.polyglot Context Engine PolyglotException Value)))
 
@@ -12,7 +14,7 @@
   [f]
   (let [^Engine engine (#'graal/new-untrusted-engine)]
     (try
-      (let [^Context context (graal/untrusted-context engine)]
+      (let [^Context context (graal/untrusted-context engine "30s")]
         (try
           (f context)
           (finally
@@ -76,6 +78,27 @@
          (is (and ex (.isResourceExhausted ^PolyglotException ex))
              "termination should be resource exhaustion (heap limit), not some other error"))))))
 
+(deftest untrusted-engine-ref-counted-lifecycle-test
+  (testing "the shared untrusted isolate engine is ref-counted: created with the first context, closed with the last"
+    (let [state          @#'graal/shared-untrusted-engine
+          refs           #(get @state :refs 0)
+          generate!      (fn [bundle-path]
+                           (#'graal/generate-untrusted-context! bundle-path @#'graal/pool-max-cpu-time))
+          before         (refs)
+          plugin-context (generate! js.common/custom-viz-bundle-resource-path)]
+      (is (= (inc before) (refs)) "generating a plugin context should bump the shared-engine ref count")
+      (testing "builtin contexts hold refs on the same shared engine"
+        (let [engine          (:engine @state)
+              builtin-context (generate! js.common/bundle-resource-path)]
+          (is (= (+ 2 before) (refs)) "a builtin context should bump the same ref count")
+          (is (identical? engine (:engine @state)) "builtin and plugin contexts should share one engine")
+          (#'graal/destroy-untrusted-context! builtin-context)
+          (is (= (inc before) (refs)) "destroying the builtin context should drop only its ref")))
+      (#'graal/destroy-untrusted-context! plugin-context)
+      (is (= before (refs)) "destroying the context should drop its ref")
+      (when (zero? before)
+        (is (nil? @state) "the last destroy should close the engine and clear the shared state")))))
+
 (deftest builtin-context-soft-limit-recycles-test
   (let [context-identity (fn []
                            (graal/do-with-untrusted-builtin-context
@@ -97,8 +120,7 @@
                       (fn [^Context context]
                         (swap! max-seen max (swap! active inc))
                         (.eval context "js" "for (var i=0,x=0;i<1e6;i++) x+=i; x")
-                        (swap! active dec))))
-          futs     (doall (repeatedly 4 #(future (render))))]
-      (doseq [f futs] @f)
+                        (swap! active dec))))]
+      (mt/repeat-concurrently 4 render)
       (is (= 1 @max-seen)
           "at most one static-viz render should ever be in flight at once"))))
