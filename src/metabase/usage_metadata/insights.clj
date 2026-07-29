@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [java-time.api :as t]
+   [metabase.collections.models.collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -293,6 +294,19 @@
 (def ^:private candidate-card-columns
   [:model/Card :id :name :description :type :database_id :dataset_query :card_schema :collection_id :view_count])
 
+(defn- exclude-personal-collection-cards
+  [cards]
+  (let [collection-ids          (into #{} (keep :collection_id) cards)
+        collections             (if (seq collection-ids)
+                                  (-> (t2/select [:model/Collection :id :location :personal_owner_id]
+                                                 :id [:in collection-ids])
+                                      (t2/hydrate :is_personal))
+                                  [])
+        personal-collection-ids (into #{} (comp (filter :is_personal) (map :id)) collections)]
+    (into []
+          (remove #(contains? personal-collection-ids (:collection_id %)))
+          cards)))
+
 (defn- recent-card-view-counts
   [card-ids days]
   (if (and card-ids (empty? card-ids))
@@ -310,18 +324,19 @@
 
 (defn- select-candidate-source-cards
   [source]
-  (if source
-    (let [card-ids (set (query-source/card-ids source))]
-      (mu/validate-throw [:set pos-int?] card-ids)
-      (if (seq card-ids)
-        (t2/select candidate-card-columns
-                   :id [:in card-ids]
-                   :archived false
-                   :type [:in [:question :model]])
-        []))
-    (t2/select candidate-card-columns
-               :archived false
-               :type [:in [:question :model]])))
+  (exclude-personal-collection-cards
+   (if source
+     (let [card-ids (set (query-source/card-ids source))]
+       (mu/validate-throw [:set pos-int?] card-ids)
+       (if (seq card-ids)
+         (t2/select candidate-card-columns
+                    :id [:in card-ids]
+                    :archived false
+                    :type [:in [:question :model]])
+         []))
+     (t2/select candidate-card-columns
+                :archived false
+                :type [:in [:question :model]]))))
 
 (defn- candidate-source-cards
   [{:keys [min-view-count query-source view-count-window-days]}]
@@ -371,9 +386,10 @@
   ([] (qualified-card-ids candidate-default-min-view-count nil))
   ([min-view-count] (qualified-card-ids min-view-count nil))
   ([min-view-count view-count-window-days]
-   (let [cards              (t2/select [:model/Card :id :collection_id :view_count]
-                                       :archived false
-                                       :type [:in [:question :model]])
+   (let [cards              (exclude-personal-collection-cards
+                             (t2/select [:model/Card :id :collection_id :view_count]
+                                        :archived false
+                                        :type [:in [:question :model]]))
          card-ids           (into #{} (map :id) cards)
          collection-ids     (into #{} (keep :collection_id) cards)
          recent-view-counts (when view-count-window-days
