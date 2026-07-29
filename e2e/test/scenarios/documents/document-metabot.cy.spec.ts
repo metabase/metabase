@@ -24,11 +24,9 @@ describe("documents > metabot (#73690)", () => {
         },
       },
     });
-    H.setupAnthropicLlmProvider();
-    H.updateSetting(
-      "llm-anthropic-api-base-url",
-      `http://localhost:${MOCK_LLM_PORT}`,
-    );
+    H.setupAnthropicLlmProvider({
+      baseUrl: `http://localhost:${MOCK_LLM_PORT}`,
+    });
   });
 
   afterEach(() => {
