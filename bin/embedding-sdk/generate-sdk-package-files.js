@@ -42,10 +42,16 @@ function generateSdkPackage() {
   );
   const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
 
+  // `sdkRelease` is release-process metadata (distTag/tagAsLatest) read by
+  // .github/workflows/release-embedding-sdk.yml — it must never ship inside
+  // the published npm package.json.
+  const { sdkRelease: _sdkRelease, ...publishableTemplateJsonContent } =
+    sdkPackageTemplateJsonContent;
+
   const todayDate = new Date().toJSON().slice(0, 10).replaceAll("-", "");
 
   const mergedContent = {
-    ...sdkPackageTemplateJsonContent,
+    ...publishableTemplateJsonContent,
     version: maybeCommitHash
       ? `${sdkPackageTemplateJsonContent.version}-${todayDate}-${maybeCommitHash}`
       : sdkPackageTemplateJsonContent.version,

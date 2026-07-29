@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-21T12:00:00
+      author: christruter
+      comment: Index latest health-inspector check lookups
+      changes:
+        - createIndex:
+            tableName: health_inspector_runs
+            indexName: idx_health_inspector_runs_check_time
+            columns:
+              - column:
+                  name: check_name
+              - column:
+                  name: run_at
+              - column:
+                  name: id
+
+  - changeSet:
+      id: v64.2026-07-21T12:01:00
+      author: christruter
+      comment: Index health-inspector retention cleanup
+      changes:
+        - createIndex:
+            tableName: health_inspector_runs
+            indexName: idx_health_inspector_runs_run_at
+            columns:
+              - column:
+                  name: run_at

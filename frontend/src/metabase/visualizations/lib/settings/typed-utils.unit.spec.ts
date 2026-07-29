@@ -11,7 +11,6 @@ import {
   sanitizeDashcardSettings,
 } from "./typed-utils";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
 
 describe("mergeSettings (metabase#14597)", () => {

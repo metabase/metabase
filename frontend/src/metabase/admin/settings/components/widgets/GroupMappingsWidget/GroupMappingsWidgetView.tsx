@@ -28,6 +28,13 @@ import { MappingRow } from "./MappingRow";
 
 const groupIsMappable = (group: GroupInfo) => !isDefaultGroup(group);
 
+/** The auth-provider group-mapping settings this widget can edit. */
+export type MappingSettingKey =
+  | "ldap-group-mappings"
+  | "saml-group-mappings"
+  | "jwt-group-mappings"
+  | "oidc-group-mappings";
+
 const helpText = (mappingSetting: string) => {
   if (mappingSetting === "jwt-group-mappings") {
     return t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If no mappings are defined, groups will automatically be assigned based on exactly matching names.`;
@@ -49,14 +56,14 @@ interface GroupMappingsWidgetViewProps {
   groupHeading: string;
   groupPlaceholder: string;
   allGroups: GroupInfo[];
-  mappingSetting: string; // seems like this should be SettingKey but we pass in values like "jwt-group-mappings"
+  mappingSetting: MappingSettingKey;
   deleteGroup: ({ id }: { id: number }) => Promise<void>;
   clearGroupMember: ({ id }: { id: number }) => Promise<void>;
   updateSetting: ({
     key,
     value,
   }: {
-    key: string;
+    key: MappingSettingKey;
     value: Record<string, GroupId[]>;
   }) => Promise<void>;
   mappings: Record<string, GroupId[]>;

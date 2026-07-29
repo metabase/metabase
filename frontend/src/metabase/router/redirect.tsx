@@ -1,10 +1,25 @@
 import { useState } from "react";
 
 import { Navigate } from "./Navigate";
-import { type PlainRoute, formatPattern } from "./react-router";
+import type { PlainRoute } from "./types";
 import { useRouter } from "./use-router";
 
 type RouteParams = Record<string, string | undefined>;
+
+/**
+ * Interpolate a route pattern's `:params` and `*` splat with the matched values,
+ * replacing v3's `formatPattern`. Params are re-encoded, matching v3, so a
+ * segment that arrived encoded (`1%3APUBLIC`) stays encoded rather than doubling
+ * the path. Only the pattern syntax the app uses (`:name`, `*`) is handled; v3's
+ * optional groups are gone from the route tree.
+ */
+function formatPattern(pattern: string, params: RouteParams): string {
+  return pattern
+    .replace(/:([A-Za-z0-9_]+)\??/g, (_, name) =>
+      encodeURIComponent(params[name] ?? ""),
+    )
+    .replace(/\*/g, () => params.splat ?? "");
+}
 
 function RedirectRoute({ to }: { to: string }): JSX.Element {
   const { routes, params, location } = useRouter();

@@ -131,7 +131,7 @@
                (transduce (map (fn [x]
                                  (let [[updated failed] (try [(mark-fk! database x) 0]
                                                              (catch Exception e
-                                                               (log/error e)
+                                                               (log/error (ex-message e))
                                                                [0 1]))]
                                    {:total-fks    1
                                     :updated-fks  updated

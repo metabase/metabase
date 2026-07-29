@@ -11,7 +11,7 @@ import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTit
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { MonitorPageContent } from "metabase/monitor/components/MonitorPageContent";
 import { useDispatch } from "metabase/redux";
-import { Link, push } from "metabase/router";
+import { Link, push, useParams } from "metabase/router";
 import { Anchor, Box, Flex, Grid, Stack, Text, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
@@ -29,12 +29,9 @@ import { TaskStatusBadge } from "../TaskStatusBadge";
 
 import S from "./TaskRunDetailsPage.module.css";
 
-type TaskRunDetailsPageProps = {
-  params: { runId: number };
-};
-
-export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
-  const { data: taskRun, error, isLoading } = useGetTaskRunQuery(params.runId);
+export const TaskRunDetailsPage = () => {
+  const { runId } = useParams();
+  const { data: taskRun, error, isLoading } = useGetTaskRunQuery(Number(runId));
   const dispatch = useDispatch();
 
   const onClickTask = (task: Task) => {

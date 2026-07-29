@@ -113,7 +113,10 @@
       mi/json-out-without-keywordization
       (update-keys keyword)
       (m/update-existing :query (fn [q] (if (orphan-query? q) q (lib-be/normalize-query q))))
-      (m/update-existing :source-incremental-strategy #(update-keys % keyword))
+      (m/update-existing :source-incremental-strategy
+                         (fn [strategy]
+                           (-> (update-keys strategy keyword)
+                               (m/update-existing :lookback #(some-> % (update-keys keyword))))))
       (m/update-existing :source-tables (fn [st] (mapv #(update-keys % keyword) st)))
       (m/update-existing :type keyword)))
 
@@ -150,7 +153,7 @@
     ;; serdes-imported transform whose source database is missing), not a
     ;; misconfiguration. Only warn when an id is supplied but invalid.
     (when (and target-db-id (not valid-db-id?))
-      (log/warnf "Invalid target database id (%s) ignored for new transform (%s)" target-db-id (:name transform)))
+      (log/warnf "Invalid target database id (%s) ignored for new transform" target-db-id))
     (-> transform
         (assoc-in [:target :database] target-db-id)
         (assoc
@@ -435,10 +438,6 @@
     (for [transform transforms]
       (assoc transform :table
              (get id->table (:target_table_id transform))))))
-
-(defmethod serdes/hash-fields :model/Transform
-  [_transform]
-  [:name :created_at])
 
 (defn- import-maybe-int-database-fk
   "Import a database reference back to an ID. Tolerates raw numeric IDs from older exports

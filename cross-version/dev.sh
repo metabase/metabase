@@ -74,6 +74,8 @@ if [[ ! -d "$SPECS_DIR" ]]; then
   closest=""
   closest_dist=999
   for dir in "$REPO_ROOT"/e2e/cross-version/[0-9]*/; do
+    # Skip the literal pattern when the glob matches no numbered folders
+    [[ -d "$dir" ]] || continue
     v=$(basename "$dir")
     (( v < MAJOR )) && continue
     dist=$(( v - MAJOR ))

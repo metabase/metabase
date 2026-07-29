@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import { userApi } from "metabase/api";
+import { refetchSiteSettings, userApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { refreshSiteSettings } from "metabase/redux/settings";
 import { userUpdated } from "metabase/redux/user";
 
 import {
@@ -62,7 +61,7 @@ export function useMcpUserAndSettingsFetch({
             store.dispatch,
             userApi.endpoints.getCurrentUser,
           ),
-          store.dispatch(refreshSiteSettings()),
+          store.dispatch(refetchSiteSettings()),
         ]);
 
         if (!isMounted) {

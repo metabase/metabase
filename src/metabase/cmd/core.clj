@@ -90,7 +90,7 @@
       (println "Dump complete")
       (system-exit! 0))
     (catch Throwable e
-      (log/error e "Failed to dump application database to H2 file")
+      (log/errorf "Failed to dump application database to H2 file: %s" (ex-message e))
       (system-exit! 1))))
 
 (defn ^:command reset-password
@@ -208,19 +208,6 @@
   [path & options]
   (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump! path (get-parsed-options #'export options)))
 
-(defn ^:command seed-entity-ids
-  "Add entity IDs for instances of serializable models that don't already have them."
-  []
-  (when-not (call-enterprise 'metabase-enterprise.serialization.cmd/seed-entity-ids!)
-    (throw (Exception. "Error encountered while seeding entity IDs"))))
-
-(defn ^:command drop-entity-ids
-  "Drop entity IDs for instances of serializable models. Useful for migrating from v1 serialization (x.46 and earlier)
-  to v2 (x.47+)."
-  []
-  (when-not (call-enterprise 'metabase-enterprise.serialization.cmd/drop-entity-ids!)
-    (throw (Exception. "Error encountered while dropping entity IDs"))))
-
 (defn ^:command rotate-encryption-key
   "Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to
   the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars."
@@ -231,7 +218,7 @@
     (log/info "Encryption key rotation OK.")
     (system-exit! 0)
     (catch Throwable e
-      (log/error e "ERROR ROTATING KEY.")
+      (log/errorf "ERROR ROTATING KEY: %s" (ex-message e))
       (system-exit! 1))))
 
 (defn ^:command remove-encryption
@@ -247,7 +234,7 @@
     (log/info "Encryption removed OK.")
     (system-exit! 0)
     (catch Throwable e
-      (log/error e "ERROR REMOVING ENCRYPTION.")
+      (log/errorf "ERROR REMOVING ENCRYPTION: %s" (ex-message e))
       (system-exit! 1))))
 
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------

@@ -45,10 +45,12 @@
     (let [dashboard-id (:dashboard_id dashboard_subscription)
           dashboard    (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :tabs)
           parameters   (parameters (:parameters dashboard_subscription) (:parameters dashboard))
+          attached-ids (attached-card-ids dashboard_subscription)
           only-card-ids (when (attachment-only? handlers)
-                          (attached-card-ids dashboard_subscription))]
+                          attached-ids)]
       {:dashboard_parts        (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters
-                                                                                {:only-card-ids only-card-ids})
+                                                                                {:only-card-ids     only-card-ids
+                                                                                 :attached-card-ids attached-ids})
                                  (:skip_if_empty dashboard_subscription)
                                  (remove (fn [{part-type :type :as part}]
                                            (and
@@ -82,7 +84,7 @@
   (try
     (run! #(some-> % :result :data :rows notification.payload/cleanup!) (->> notification-payload :payload :dashboard_parts))
     (catch Exception e
-      (log/warn e "Error cleaning up temp files for notification" id)))
+      (log/warn "Error cleaning up temp files for notification" id (ex-message e))))
   (when-not skipped?
     (events/publish-event! :event/subscription-send
                            {:id      id

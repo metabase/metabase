@@ -17,6 +17,7 @@ export const CardAlerts = ({ alerts, fullWidth }: CardAlertsProps) => {
     <Stack gap="xs" w={fullWidth ? "100%" : undefined}>
       {alerts.map((alert) => (
         <Alert
+          size="compact"
           key={alert.id}
           icon={
             <Icon

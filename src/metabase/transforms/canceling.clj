@@ -107,8 +107,8 @@
                              {:object  run
                               :details {:outcome outcome}}))
     (catch Throwable t
-      (log/warnf t "Failed to publish transform-run-canceled event for run %s (outcome=%s)"
-                 run-id outcome))))
+      (log/warnf "Failed to publish transform-run-canceled event for run %s (outcome=%s): %s"
+                 run-id outcome (ex-message t)))))
 
 (defn cancel-run!
   "Cancel a `run` (a `:model/TransformRun` row). `request-time` is the `java.time.OffsetDateTime` of the cancelation
@@ -143,9 +143,9 @@
         (try
           (record-completion! run-id run request-time "timeout")
           (catch Throwable t
-            (log/error t (str "Error recording completion for transform run " run-id))))))
+            (log/error (str "Error recording completion for transform run " run-id ": " (ex-message t)))))))
     (catch Throwable t
-      (log/error t "Error force-canceling stale transform runs.")
+      (log/errorf "Error force-canceling stale transform runs: %s" (ex-message t))
       ;; Transaction rolled back — the row count is unrecoverable, so emit one aggregate error so the failure
       ;; is at least visible in metrics. Magnitude can be inferred from log volume if needed.
       (analytics/inc! :metabase-transforms/cancelation-completed {:outcome "error"}))))
@@ -196,7 +196,7 @@
                                        (when-let [run (t2/select-one :model/TransformRun :id id)]
                                          (cancel-run! run request-time))
                                        (catch Throwable t
-                                         (log/error t (str "Error canceling " id))))))
+                                         (log/error (str "Error canceling " id ": " (ex-message t)))))))
                                  (wr.cancelation/reducible-canceled-local-runs))
                            (catch Throwable t
-                             (log/error t "Error while canceling a transform run."))) 0 20 TimeUnit/SECONDS))
+                             (log/errorf "Error while canceling a transform run: %s" (ex-message t)))) 0 20 TimeUnit/SECONDS))
