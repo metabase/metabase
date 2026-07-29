@@ -1360,7 +1360,6 @@ export function formatDateTimeWithUnit(
     timeFormat = getTimeFormatFromStyle(
       // Unjustified type cast. FIXME
       options.time_style as string,
-      unit,
       options.time_enabled,
     );
   }
