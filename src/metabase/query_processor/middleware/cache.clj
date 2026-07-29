@@ -127,7 +127,11 @@
                              (m/dissoc-in result [:data :rows])
                              {}))
      (let [duration-ms     (/ (- (System/nanoTime) start-time-ns) 1e6)
-           min-duration-ms (:min-duration-ms strategy 0)
+           ;; the strategy map comes from metabase.cache.models.cache-config/row->config, which passes the
+           ;; :config JSON blob through unchanged -- and the API/storage contract for it
+           ;; (metabase.cache.api/cache-strategy.ttl) uses snake_case, so this must match that key, not the
+           ;; usual kebab-case Clojure convention (metabase#78340).
+           min-duration-ms (:min_duration_ms strategy 0)
            ;; cache any query that ran long enough -- including ones that returned no rows, so a slow empty result
            ;; doesn't get re-run at full cost on every request
            eligible?       (> duration-ms min-duration-ms)]

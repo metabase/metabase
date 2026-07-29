@@ -29,7 +29,7 @@
           (testing "strategy = ttl"
             (let [query (assoc query :cache-strategy {:type             :ttl
                                                       :multiplier       10
-                                                      :min-duration-ms  0
+                                                      :min_duration_ms  0
                                                       :avg-execution-ms 500})]
               (testing "Results are stored and available immediately"
                 (mt/with-clock #t "2024-02-13T10:00:00Z"
@@ -50,7 +50,7 @@
             (let [query (assoc query :cache-strategy {:type            :duration
                                                       :duration        1
                                                       :unit            "minutes"
-                                                      :min-duration-ms 0})]
+                                                      :min_duration_ms 0})]
               (testing "Results are stored and available immediately"
                 (mt/with-clock #t "2024-02-13T10:00:00Z"
                   (is (=? (mkres nil)

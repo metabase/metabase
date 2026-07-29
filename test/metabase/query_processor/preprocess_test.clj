@@ -33,7 +33,7 @@
                                     :cache-strategy {:type             :ttl
                                                      :multiplier       60
                                                      :avg-execution-ms 100
-                                                     :min-duration-ms  0})
+                                                     :min_duration_ms  0})
             run-query        (fn []
                                (let [results (qp/process-query query)]
                                  {:cached?  (boolean (:cached (:cache/details results)))

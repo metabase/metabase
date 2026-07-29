@@ -147,7 +147,8 @@
   {:type             :ttl
    :multiplier       60
    :avg-execution-ms 1000
-   :min-duration-ms  *query-caching-min-ttl*})
+   ;; matches the key the real config storage path produces -- see metabase#78340
+   :min_duration_ms  *query-caching-min-ttl*})
 
 (defn- test-query [query-kvs]
   (merge {:cache-strategy (ttl-strategy)

@@ -888,7 +888,7 @@
                                          :cache-strategy {:type :ttl
                                                           :multiplier 60
                                                           :avg-execution-ms 10
-                                                          :min-duration-ms 0})))]
+                                                          :min_duration_ms 0})))]
         (testing "Run the query, should not be cached"
           (let [result (run-query)]
             (is (= nil
@@ -1253,7 +1253,7 @@
                           (let [results (qp/process-query (assoc query :cache-strategy {:type :ttl
                                                                                         :multiplier 60
                                                                                         :avg-execution-ms 10
-                                                                                        :min-duration-ms 0}))]
+                                                                                        :min_duration_ms 0}))]
                             {:cached? (boolean (:cached (:cache/details results)))
                              :num-rows (count (mt/rows results))}))]
           (testing "Make sure the underlying card for the GTAP returns cached results without sandboxing"
@@ -1534,7 +1534,7 @@
                                            :cache-strategy {:type :ttl
                                                             :multiplier 60
                                                             :avg-execution-ms 10
-                                                            :min-duration-ms 0})))]
+                                                            :min_duration_ms 0})))]
           (testing "Run query with login_attributes"
             (met/with-user-attributes! :rasta {"cat" 50}
               (mt/with-test-user :rasta
