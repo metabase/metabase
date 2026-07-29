@@ -145,7 +145,7 @@
   (let [advisories (try
                      (fetch-advisories-from-store)
                      (catch Exception e
-                       (log/warn e "Error fetching advisories from MetaStore")))]
+                       (log/warnf "Error fetching advisories from MetaStore: %s" (ex-message e))))]
     (if (seq advisories)
       (let [total    (count advisories)
             failures (reduce (fn [n advisory]
@@ -153,7 +153,7 @@
                                  (upsert-advisory! advisory)
                                  n
                                  (catch Exception e
-                                   (log/warnf e "Error upserting advisory %s" (:advisory_id advisory))
+                                   (log/warnf "Error upserting advisory %s: %s" (:advisory_id advisory) (ex-message e))
                                    (inc n))))
                              0
                              advisories)

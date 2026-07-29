@@ -5,7 +5,7 @@ import _ from "underscore";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useDispatch } from "metabase/redux";
 import type { Location, Query } from "metabase/router";
-import { push, replace } from "metabase/router";
+import { push, queryToSearch, replace } from "metabase/router";
 
 type BaseState = Record<string, unknown>;
 
@@ -38,7 +38,10 @@ export function useUrlState<State extends BaseState>(
 
   const updateUrl = useCallback(
     (state: State) => {
-      const newLocation = { ...location, query: serialize(state) };
+      const newLocation = {
+        ...location,
+        search: queryToSearch(serialize(state)),
+      };
       dispatch(push(newLocation));
     },
     [dispatch, location, serialize],
@@ -51,7 +54,7 @@ export function useUrlState<State extends BaseState>(
     // Replacing to the identical URL notifies the router, which re-renders every
     // location consumer on the page for nothing.
     if (!_.isEqual(query, location.query)) {
-      dispatch(replace({ ...location, query }));
+      dispatch(replace({ ...location, search: queryToSearch(query) }));
     }
   });
 

@@ -7,8 +7,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (defn- normalize*
@@ -24,8 +22,7 @@
   keywords. Convert query to MBQL 5 if needed."
   [query :- [:map [:database ::lib.schema.id/database]]]
   (try
-    (u/prog1 (normalize* query)
-      (log/tracef "Normalized query:\n%s\n=>\n%s" (u/pprint-to-str query) (u/pprint-to-str <>)))
+    (normalize* query)
     (catch Throwable e
       (throw (ex-info (format "Error normalizing query: %s" (ex-message e))
                       {:type  qp.error-type/qp

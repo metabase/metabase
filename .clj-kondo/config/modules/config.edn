@@ -156,8 +156,7 @@
 
   agent-api
   {:team    "Metabot"
-   :api     #{metabase.agent-api.api
-              metabase.agent-api.init}
+   :api     #{metabase.agent-api.api metabase.agent-api.init metabase.agent-api.usage}
    :uses    #{ai-tracing
               api
               auth-identity
@@ -169,6 +168,7 @@
               lib-be
               llm
               metabot
+              premium-features
               queries
               query-permissions
               query-processor
@@ -183,7 +183,8 @@
                     :model/DashboardTab
                     :model/Database
                     :model/Table
-                    :model/User}}
+                    :model/User}
+   :model-exports #{:model/AgentApiCallLog}}
 
   agent-lib
   {:team "Metabot"
@@ -1325,6 +1326,7 @@
               lib
               lib-be
               llm
+              metrics
               models
               native-query-snippets
               notification
@@ -1376,21 +1378,18 @@
            metabase.metrics.core}
    :uses #{api
            collections
+           events
            lib
            lib-be
            lib-metric
            models
            parameters
            permissions
-           premium-features
            query-processor
            request
            server
            util}
-   :model-imports #{:model/Card
-                    :model/Field
-                    :model/Measure
-                    :model/Table}}
+   :model-imports #{:model/Card :model/Field :model/Measure}}
 
   model-persistence
   {:team "Graphy"
@@ -1583,6 +1582,7 @@
   {:team "UX West"
    :api  #{metabase.permissions.core
            metabase.permissions.init
+           metabase.permissions.metric
            metabase.permissions.schema}
    :uses #{api
            app-db
@@ -1607,6 +1607,7 @@
                     :model/PermissionsRevision}
    :model-imports #{:model/Collection
                     :model/Database
+                    :model/Field
                     :model/Table
                     :model/User}}
 
@@ -1621,7 +1622,9 @@
            request
            settings
            util}
-   :model-imports #{:model/DataPermissions
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DataPermissions
                     :model/Database
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
@@ -1907,6 +1910,7 @@
            legacy-mbql
            lib
            lib-be
+           lib-metric
            model-persistence
            models
            parameters
@@ -2905,6 +2909,17 @@
                     :model/Sandbox
                     :model/Table}}
 
+  enterprise/agent-api
+  {:team "Metabot"
+   :api  #{metabase-enterprise.agent-api.init}
+   :uses #{agent-api
+           analytics
+           metabot
+           premium-features
+           task
+           util}
+   :model-imports #{:model/AgentApiCallLog}}
+
   enterprise/analytics
   {:team "UX West"
    :api  #{}
@@ -3239,6 +3254,7 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.entity-retrieval.init}
    :uses #{analytics-interface
+           app-db
            collections
            entity-retrieval
            health-inspector
@@ -3566,7 +3582,8 @@
            metabase-enterprise.semantic-search.db.datasource
            metabase-enterprise.semantic-search.embedding
            metabase-enterprise.semantic-search.embedding-health
-           metabase-enterprise.semantic-search.init}
+           metabase-enterprise.semantic-search.init
+           metabase-enterprise.semantic-search.util}
    :uses #{activity-feed
            analytics
            analytics-interface

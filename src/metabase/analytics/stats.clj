@@ -530,7 +530,7 @@
   (try
     (http/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
     (catch Throwable e
-      (log/error e "Sending usage stats FAILED"))))
+      (log/errorf "Sending usage stats FAILED: %s" (ex-message e)))))
 
 (defn- in-docker?
   "Is the current Metabase process running in a Docker container?

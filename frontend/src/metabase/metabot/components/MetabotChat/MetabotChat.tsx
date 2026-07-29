@@ -21,7 +21,6 @@ import type { MetabotConfig } from "../Metabot";
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
-import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
 
 const defaultConfig: MetabotConfig = {
@@ -56,6 +55,8 @@ export const MetabotChat = ({
   const metabotName = useMetabotName();
   const { isConfigured } = useUserMetabotPermissions();
   const showIllustrations = useSetting("metabot-show-illustrations");
+  const supportsReasoning =
+    useSetting("llm-metabot-supports-reasoning?") ?? true;
 
   const hasMessages = metabot.messages.length > 0;
 
@@ -177,13 +178,10 @@ export const MetabotChat = ({
                   metabot.loadConversation(metabot.conversationId);
                 }}
                 isDoingScience={metabot.isDoingScience}
+                supportsReasoning={supportsReasoning}
                 debug={metabot.debugMode}
                 conversationId={metabot.conversationId}
               />
-              {/* loading */}
-              {metabot.isDoingScience && (
-                <MetabotThinking toolCalls={metabot.activeToolCalls} />
-              )}
               {/* filler - height gets set via ref mutation */}
               <div ref={fillerRef} data-testid="metabot-message-filler" />
               {/* long convo warning */}

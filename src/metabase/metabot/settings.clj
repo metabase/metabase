@@ -3,6 +3,8 @@
    [clojure.string :as str]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.openai :as openai]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -334,6 +336,24 @@
   :setter     :none
   :export?    false
   :getter     #(llm-provider-configured? (llm-metabot-provider))
+  :doc        false)
+
+(defn- llm-provider-streams-reasoning?
+  "Whether a provider-and-model string names a model that streams its reasoning back to us."
+  [provider-and-model]
+  (let [model (provider-util/provider-and-model->model provider-and-model)]
+    (case (provider-util/provider-and-model->provider provider-and-model)
+      "anthropic" (claude/reasoning-model? model)
+      "openai"    (openai/reasoning-model? model)
+      false)))
+
+(defsetting llm-metabot-supports-reasoning?
+  "Whether the selected Metabot model streams its reasoning."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :export?    false
+  :getter     #(llm-provider-streams-reasoning? (llm-metabot-provider))
   :doc        false)
 
 (def ^:private metabot-llm-setting-keys

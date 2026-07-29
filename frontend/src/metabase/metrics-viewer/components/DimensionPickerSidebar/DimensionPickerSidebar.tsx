@@ -35,10 +35,10 @@ import {
   filterSections,
   getDimensionBreakoutId,
   getSelectedCategoryKey,
+  hasMatchingDimensions,
   hasMultipleMetricSources,
   hasSameDimensions,
   isCategorySelected,
-  isMatchingActiveDimensionBreakout,
 } from "./utils";
 
 type SidebarMode = "default" | "all";
@@ -50,6 +50,7 @@ type DimensionPickerSidebarProps = {
 export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
   const { activeDimensionBreakout } = props;
   const {
+    formulaEntities,
     metricSlots,
     sourceColors,
     sourceDataById,
@@ -75,10 +76,12 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
     categories,
     activeDimensionBreakout,
   );
+  const isStandaloneMetric =
+    formulaEntities.length === 1 && formulaEntities[0]?.type === "metric";
   const isSearching = searchText.trim() !== "";
-  const showAllFields = mode === "all" || isSearching;
+  const showAllFields = !isStandaloneMetric && (mode === "all" || isSearching);
   const hasAllFields = sections.length > 0;
-  const showSeeAll = !showAllFields && hasAllFields;
+  const showSeeAll = !isStandaloneMetric && !showAllFields && hasAllFields;
   let defaultEmptyStateText = t`No dimensions found`;
   let defaultSectionHeader = t`Dimensions`;
 
@@ -121,7 +124,23 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
 
   const handleAllFieldsSelect = useCallback(
     (item: DimensionPickerItem) => {
-      if (isMatchingActiveDimensionBreakout(item, activeDimensionBreakout)) {
+      // Clicking an already-selected dimension deselects it: the item's slots
+      // lose their dimension, excluding those metric instances from the
+      // breakout. All fields items are scoped per metric accordion, so only
+      // that metric is affected.
+      if (hasMatchingDimensions(item, activeDimensionBreakout)) {
+        const clearedSlots = Object.entries(
+          item.dimensionBreakoutInfo.dimensionMapping,
+        )
+          .filter(([, dimensionId]) => dimensionId != null)
+          .map(([slotIndex]) => [Number(slotIndex), null] as const);
+        updateActiveDimensionBreakout((prev) => ({
+          ...prev,
+          dimensionMapping: {
+            ...prev.dimensionMapping,
+            ...Object.fromEntries(clearedSlots),
+          },
+        }));
         return;
       }
 
@@ -131,14 +150,8 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
         metricSlots,
         activeDimensionBreakout,
       });
-      const dimensionBreakoutId = getDimensionBreakoutId(item);
-      const dimensionBreakoutConfig = getDimensionBreakoutConfig(
-        item.dimensionBreakoutInfo.type,
-      );
-      if (
-        activeDimensionBreakout.type === item.dimensionBreakoutInfo.type &&
-        dimensionBreakoutConfig.matchMode === "aggregate"
-      ) {
+
+      if (activeDimensionBreakout.type === item.dimensionBreakoutInfo.type) {
         updateActiveDimensionBreakout((prev) => ({
           ...prev,
           dimensionMapping,
@@ -148,11 +161,17 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
         return;
       }
 
-      onSelectDimensionBreakout({
-        ...item.dimensionBreakoutInfo,
-        ...(dimensionBreakoutId ? { id: dimensionBreakoutId } : {}),
-        dimensionMapping,
-      });
+      const dimensionBreakoutId = getDimensionBreakoutId(item);
+      onSelectDimensionBreakout(
+        {
+          ...item.dimensionBreakoutInfo,
+          ...(dimensionBreakoutId ? { id: dimensionBreakoutId } : {}),
+          dimensionMapping,
+        },
+        // Update in place when the breakout already exists (e.g. re-enabling a
+        // deselected metric), instead of silently keeping the stale mapping.
+        { updateExisting: true },
+      );
       trackMetricsViewerDimensionSelected();
     },
     [
@@ -162,6 +181,17 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
       sections,
       metricSlots,
     ],
+  );
+
+  const handleStandaloneMetricSelect = useCallback(
+    (item: DimensionPickerItem) => {
+      if (hasSameDimensions(item, activeDimensionBreakout)) {
+        return;
+      }
+
+      handleAllFieldsSelect(item);
+    },
+    [activeDimensionBreakout, handleAllFieldsSelect],
   );
 
   const handleCategorySelect = useCallback(
@@ -303,12 +333,12 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
       <ScrollArea pb="lg" offsetScrollbars="present">
         {showAllFields && (
           <AllFieldsList
+            key={isSearching ? "searching" : "browsing"}
             activeDimensionBreakout={activeDimensionBreakout}
             sections={filteredSections}
             metricSourceDataById={sourceDataById}
             sourceColors={sourceColors}
             metricSlots={metricSlots}
-            expandAllMetricGroups={isSearching}
             onSelect={handleAllFieldsSelect}
           />
         )}
@@ -324,7 +354,16 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
                 </Button>
               )}
             </Flex>
-            {showFieldsByCategory ? (
+            {isStandaloneMetric ? (
+              <AllFieldsList
+                activeDimensionBreakout={activeDimensionBreakout}
+                sections={filteredSections}
+                metricSourceDataById={sourceDataById}
+                sourceColors={sourceColors}
+                metricSlots={metricSlots}
+                onSelect={handleStandaloneMetricSelect}
+              />
+            ) : showFieldsByCategory ? (
               <Stack gap="xs">
                 {categories.map((category) => {
                   const isSelected =

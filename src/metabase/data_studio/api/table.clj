@@ -159,8 +159,8 @@
              (doseq [table tables]
                (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
                (sync/sync-table! table))
-             (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
-                                       (:name database))))))))))
+             (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
+                                       (:id database))))))))))
 
 (defn- maybe-sync-unhidden-tables!
   [existing-tables {:keys [data_layer] :as body}]
@@ -246,7 +246,7 @@
           (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
         nil
         (catch Throwable e
-          (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync tables" (:name database)))
+          (log/warn (u/format-color :red "Cannot connect to database %s in order to sync tables" (:id database)))
           (throw (ex-info (ex-message e) {:status-code 422})))))
     (doseq [table tables]
       (sync-schema-async! table api/*current-user-id*))))

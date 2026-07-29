@@ -138,6 +138,7 @@ export const QuestionPane = ({
         )}
         {table.fields && (
           <FieldList
+            table={table}
             fields={table.fields}
             onFieldClick={(field) => {
               onItemClick({

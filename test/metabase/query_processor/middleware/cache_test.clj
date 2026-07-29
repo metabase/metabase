@@ -374,6 +374,16 @@
             (is (= :cached
                    (run-query))
                 "only the lease winner pays for the early refresh")))))
+    (testing "an entry written just after an explicit invalidation has its whole window left, not the sliver since
+              the invalidation"
+      (with-mock-cache! [save-chan]
+        (let [strategy (assoc (ttl-strategy) :invalidated-at (t/offset-date-time t0))]
+          (mt/with-clock (t/plus t0 (t/seconds 1))
+            (run-query :cache-strategy strategy)
+            (mt/wait-for-result save-chan))
+          (mt/with-clock (t/plus t0 (t/seconds 31))
+            (is (= :cached
+                   (run-query :cache-strategy strategy)))))))
     (testing "early refreshing is off when the ratio is 0"
       (with-mock-cache! [save-chan]
         (mt/with-temporary-setting-values [query-caching-early-refresh-ratio 0.0]

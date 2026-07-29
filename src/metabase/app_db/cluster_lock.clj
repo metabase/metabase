@@ -22,12 +22,13 @@
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.query-cancelation :as app-db.query-cancelation]
    [metabase.app-db.transient-error :as transient-error]
+   [metabase.util.connection :as u.connection]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection PreparedStatement SQLIntegrityConstraintViolationException)
+   (java.sql Connection PreparedStatement SQLException SQLIntegrityConstraintViolationException)
    (java.util.concurrent ConcurrentHashMap)
    (java.util.concurrent.locks Lock ReentrantReadWriteLock)
    (java.util.function Function)))
@@ -46,6 +47,7 @@
       (instance? SQLIntegrityConstraintViolationException (ex-cause e))
       ;; Postgres does just uses PSQLException, so we need to fall back to checking the message.
       (some-> (ex-message e) (str/includes? "duplicate key value violates unique constraint \"metabase_cluster_lock_pkey\""))
+      (true? (::acquisition-timeout (ex-data e)))
       (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
 
 (defn- retry-if-error?
@@ -91,15 +93,52 @@
   ^PreparedStatement [^Connection conn lock-name-str timeout mode]
   (let [stmt (.prepareStatement conn (lock-sql mode))]
     (try
+      (u.connection/set-query-timeout! stmt timeout)
       (doto stmt
-        (.setQueryTimeout timeout)
         (.setString 1 lock-name-str)
         (.setMaxRows 1))
       (catch Throwable e
         (.close stmt)
         (throw e)))))
 
-(defn- acquire-lock-row!
+(def ^:private lock-wait-timeout-error-code
+  "MySQL's ER_LOCK_WAIT_TIMEOUT."
+  1205)
+
+(defn- session-lock-wait-timeout
+  [^Connection conn]
+  (with-open [stmt (.createStatement conn)
+              rset (.executeQuery stmt "SELECT @@session.innodb_lock_wait_timeout")]
+    (when (.next rset)
+      (.getLong rset 1))))
+
+(defn- set-session-lock-wait-timeout!
+  [^Connection conn seconds]
+  (with-open [stmt (.createStatement conn)]
+    (.execute stmt (str "SET SESSION innodb_lock_wait_timeout = " (long seconds)))))
+
+(defn- do-with-lock-wait-timeout
+  "Run `f` with InnoDB's session lock-wait timeout set to `timeout-seconds`, restoring the old value afterwards.
+  Used where the driver cannot carry the timeout itself (see [[u.connection/set-query-timeout!]]): acquisition blocks
+  on the lock row, so the lock-wait timeout is what bounds it.
+  A timeout here means we lost the race for the lock, so it surfaces as an acquisition failure the retry loop knows."
+  [^Connection conn timeout-seconds f]
+  ;; the connection is usually pooled, so the old value has to go back before it is handed to anyone else
+  (let [previous (session-lock-wait-timeout conn)]
+    (set-session-lock-wait-timeout! conn timeout-seconds)
+    (try
+      (f)
+      (catch SQLException e
+        (if (= (.getErrorCode e) lock-wait-timeout-error-code)
+          (throw (ex-info "Timed out waiting for the cluster lock row"
+                          {::acquisition-timeout true}
+                          e))
+          (throw e)))
+      (finally
+        (when previous
+          (set-session-lock-wait-timeout! conn previous))))))
+
+(defn- acquire-lock-row!*
   [^Connection conn lock-name-str timeout mode]
   (with-open [stmt (prepare-statement conn lock-name-str timeout mode)
               result-set (.executeQuery stmt)]
@@ -113,11 +152,16 @@
                                       :columns     [:lock_name]
                                       :values      [[[:raw "?"]]]})]
         (with-open [insert-stmt (.prepareStatement conn ^String sql)]
-          (doto insert-stmt
-            (.setQueryTimeout timeout)
-            (.setString 1 lock-name-str))
+          (u.connection/set-query-timeout! insert-stmt timeout)
+          (.setString insert-stmt 1 lock-name-str)
           (.executeUpdate insert-stmt)))))
   (log/debugf "Obtained cluster lock: %s (%s)" lock-name-str mode))
+
+(defn- acquire-lock-row!
+  [^Connection conn lock-name-str timeout mode]
+  (if (u.connection/server-rejects-query-timeout? conn)
+    (do-with-lock-wait-timeout conn timeout #(acquire-lock-row!* conn lock-name-str timeout mode))
+    (acquire-lock-row!* conn lock-name-str timeout mode)))
 
 (def ^:private ^:dynamic *detached-locks-held*
   "Lock-name strings currently held by [[do-with-detached-cluster-lock]] in this dynamic scope. A detached

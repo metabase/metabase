@@ -582,6 +582,7 @@ interface PublicSettings {
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;
   "llm-metabot-configured?"?: boolean | null;
+  "llm-metabot-supports-reasoning?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
   "mfa-enforcement"?: "off" | "optional";
@@ -714,7 +715,7 @@ export type UserSettings = {
  *
  * To further complicate things, there are two endpoints for fetching settings:
  *  - `GET /api/setting` that _can only be used by admins!_ — returns `403` for non-admins.
- *  - `GET /api/session/properties` that can be used by any user (returns `200`), but some settings might be omitted (unavailable).
+ *  - `GET /api/session/properties` that can be used by any user (returns `200`), but some settings might be omitted.
  */
 export type Settings = InstanceSettings &
   PublicSettings &
@@ -768,6 +769,7 @@ export interface EnterpriseSettings extends Settings {
   "llm-openai-api-key"?: string;
   "llm-openai-model"?: string;
   "llm-metabot-configured?"?: boolean | null;
+  "llm-metabot-supports-reasoning?"?: boolean | null;
   "llm-openrouter-api-key"?: string | null;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
@@ -805,6 +807,8 @@ export interface EnterpriseSettings extends Settings {
   "saml-attribute-group": string | null;
   "saml-group-sync": boolean | null;
   "saml-group-mappings": Record<string, GroupId[]> | null;
+  "jwt-group-mappings": Record<string, GroupId[]> | null;
+  "oidc-group-mappings": Record<string, GroupId[]> | null;
   "database-replication-enabled": boolean | null;
   "database-replication-connections"?: DatabaseReplicationConnections | null;
   "embedding-hub-test-embed-snippet-created": boolean;

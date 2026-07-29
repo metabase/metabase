@@ -71,7 +71,7 @@ export function sanitizedSetterDistortion(
   };
 }
 
-const BLOCKED_TAGS = new Set([
+export const BLOCKED_TAGS = new Set([
   "script",
   "iframe",
   "object",
