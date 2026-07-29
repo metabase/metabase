@@ -11,7 +11,7 @@ import {
 import type { ContentDiagnosticsFinding } from "metabase-types/api";
 
 import {
-  getCollectionPath,
+  getCollectionName,
   getEntityIcon,
   getEntityName,
   getEntityTypeLabel,
@@ -25,8 +25,7 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsFinding>[] {
       header: t`Name`,
       enableSorting: true,
       sortDescFirst: false,
-      width: "auto",
-      minWidth: 160,
+      minWidth: "auto",
       maxAutoWidth: 520,
       accessorFn: getEntityName,
       cell: ({ row }) => {
@@ -57,13 +56,17 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsFinding>[] {
       width: "auto",
       minWidth: 120,
       maxAutoWidth: 520,
-      accessorFn: (finding) => getCollectionPath(finding.details.collection),
+      accessorFn: (finding) => getCollectionName(finding.details.collection),
       cell: ({ row }) => {
-        const path = getCollectionPath(row.original.details.collection);
+        const collectionName = getCollectionName(
+          row.original.details.collection,
+        );
         return (
           <Group align="center" gap="sm" miw={0} wrap="nowrap">
             <FixedSizeIcon name="folder" />
-            <Ellipsified tooltipProps={{ openDelay: 300 }}>{path}</Ellipsified>
+            <Ellipsified tooltipProps={{ openDelay: 300 }}>
+              {collectionName}
+            </Ellipsified>
           </Group>
         );
       },
@@ -76,6 +79,11 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsFinding>[] {
       width: "auto",
       minWidth: 120,
       accessorFn: (finding) => getUserName(finding.details.creator),
+      cell: ({ row }) => (
+        <Ellipsified tooltipProps={{ openDelay: 300 }}>
+          {getUserName(row.original.details.creator)}
+        </Ellipsified>
+      ),
     },
     {
       id: "created-at",
@@ -83,12 +91,14 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsFinding>[] {
       enableSorting: true,
       sortDescFirst: false,
       width: "auto",
-      minWidth: 120,
+      minWidth: 150,
       accessorFn: (finding) => finding.created_at,
       cell: ({ row }) => {
         const { created_at } = row.original;
         return created_at != null ? (
-          <DateTime value={created_at} unit="day" />
+          <Ellipsified tooltipProps={{ openDelay: 300 }}>
+            <DateTime value={created_at} unit="day" />
+          </Ellipsified>
         ) : (
           <Text c="text-secondary">{"—"}</Text>
         );
@@ -100,14 +110,18 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsFinding>[] {
       enableSorting: true,
       sortDescFirst: false,
       width: "auto",
-      minWidth: 120,
+      minWidth: 150,
       accessorFn: (finding) => finding.last_active_at,
       cell: ({ row }) => {
         const { last_active_at } = row.original;
         if (last_active_at == null) {
           return <Text c="text-secondary">{t`Never`}</Text>;
         }
-        return <DateTime value={last_active_at} unit="day" />;
+        return (
+          <Ellipsified tooltipProps={{ openDelay: 300 }}>
+            <DateTime value={last_active_at} unit="day" />
+          </Ellipsified>
+        );
       },
     },
   ];

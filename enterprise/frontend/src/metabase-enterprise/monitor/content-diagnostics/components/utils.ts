@@ -103,16 +103,12 @@ export function getEntityUrl(finding: ContentDiagnosticsFinding): string {
     .exhaustive();
 }
 
-export function getCollectionPath(
+export function getCollectionName(
   collection: ContentDiagnosticsCollection | null,
 ): string {
   return match(collection)
     .with(null, () => t`Our analytics`)
-    .otherwise((collection) =>
-      [...collection.effective_ancestors, collection]
-        .map((entry) => entry.name)
-        .join(" / "),
-    );
+    .otherwise((collection) => collection.name);
 }
 
 function getCollectionBreadcrumbUrl(
