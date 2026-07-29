@@ -190,6 +190,49 @@ describe("CleanupPage", () => {
     });
   });
 
+  it("does not show an older failure after a newer analysis succeeds", async () => {
+    setup({
+      status: {
+        ...refreshStatus,
+        failure: {
+          ...refreshStatus.snapshot!,
+          id: 6,
+          status: "failed",
+          summary: null,
+          error: "Interrupted",
+        },
+      },
+    });
+
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "The latest analysis failed. Showing the previous successful results.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a failure that happened after the latest successful analysis", async () => {
+    setup({
+      status: {
+        ...refreshStatus,
+        failure: {
+          ...refreshStatus.snapshot!,
+          id: 8,
+          status: "failed",
+          summary: null,
+          error: "Interrupted",
+        },
+      },
+    });
+
+    expect(
+      await screen.findByText(
+        "The latest analysis failed. Showing the previous successful results.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("uses named queues instead of exposing modeling and evidence filters", async () => {
     setup();
 
