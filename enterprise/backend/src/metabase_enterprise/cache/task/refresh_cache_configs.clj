@@ -241,7 +241,13 @@
   [{model       :model
     model-id    :model_id
     strategy    :strategy
-    last-run-at :last_run_at
+    ;; `cache-config` here is the row as it was fetched by `select-ready-to-run` in `refresh-cache-configs!`,
+    ;; *before* that function's `t2/update!` bumps `:invalidated_at` to `now` -- so this is still the
+    ;; *previous* value, i.e. when this schedule cache was last refreshed (nil on the very first run, which
+    ;; is what the `created-at` fallback below is for). There's no `:last_run_at` column on `cache_config`
+    ;; (see metabase#78341); using that key here always resolved to nil, so every refresh re-warmed the
+    ;; all-time most popular parameter variants since the config was first created, not the recent ones.
+    last-run-at :invalidated_at
     created-at  :created_at
     :as cache-config}]
   (assert (= strategy :schedule))
