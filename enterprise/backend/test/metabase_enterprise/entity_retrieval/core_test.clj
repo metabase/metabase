@@ -22,6 +22,14 @@
 
 (defn- approx [target] #(< (abs (- (double %) (double target))) 1e-9))
 
+(defn- search-unfiltered*
+  "Raw index hits, for the availability, ranking, and vector-compatibility assertions below.
+  These are index-plumbing tests with no user in the loop; the filtering that production callers owe is
+  tested with the Metabot tool."
+  [query limit]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (mirror/search-unfiltered query limit))
+
 (deftest score-shape-matches-regular-search-test
   (let [score (var-get #'entity-retrieval.core/score)]
     (testing "weighted-scorer breakdown: similarity factor + doc_type bump + total_score"
@@ -44,7 +52,7 @@
     ;; write-path nudge no-ops rather than throwing.
     (mt/with-premium-features #{:library :library-retrieval}
       (with-redefs [semantic.db.datasource/db-url nil]
-        (is (= [] (mirror/search "anything" 10)))
+        (is (= [] (search-unfiltered* "anything" 10)))
         (is (nil? (mirror/request-entity-sync! "table" 1)))))))
 
 (deftest targeted-drain-reconciles-each-dirty-entity-test
@@ -156,10 +164,10 @@
         (with-redefs [semantic.db.datasource/db-url nil]
           (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :app-db)]
             (mt/with-premium-features #{:library :library-retrieval}
-              (with-redefs [entity-retrieval.core/app-db-schema-usable? (constantly false)]
+              (mt/with-dynamic-fn-redefs [entity-retrieval.core/app-db-schema-usable? (constantly false)]
                 (is (false? (entity-retrieval.core/available?))
                     "a role that can use semantic_search but cannot create library_retrieval is not ready"))
-              (with-redefs [entity-retrieval.core/app-db-schema-usable? (constantly true)]
+              (mt/with-dynamic-fn-redefs [entity-retrieval.core/app-db-schema-usable? (constantly true)]
                 (is (true? (entity-retrieval.core/available?))))))))
       (testing "a dedicated store needs no app-db schema check"
         (with-redefs [semantic.db.datasource/db-url                    "jdbc:postgresql://stub"
@@ -316,7 +324,7 @@
                     (testing "the nearer table ranks first; each hit carries the entity ref + matched doc"
                       (is (=? [{:entity {:model "table" :id near-id} :doc_type "name" :doc_text "near"}
                                {:entity {:model "table" :id far-id}}]
-                              (mirror/search q 10))))
+                              (search-unfiltered* q 10))))
                     (finally
                       (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
                                               (index-table/vectors-table) ", "
@@ -413,7 +421,8 @@
                     (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
                     ;; raw NN would tie both at distance 0; the 0.02 vs 0.01 doc_type bump puts alpha's name first.
                     (is (= [[alpha "name"] [beta "synonym"]]
-                           (mapv (juxt (comp :id :entity) :doc_type) (take 2 (mirror/search q 10)))))
+                           (mapv (juxt (comp :id :entity) :doc_type)
+                                 (take 2 (search-unfiltered* q 10)))))
                     (finally
                       (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
                                               (index-table/vectors-table) ", "
@@ -441,7 +450,7 @@
                     (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model)))
                   ;; a dim-1 query vector against the dim-4 index column -> pgvector SQLState 22000 -> degrade to []
                   (semantic.tu/with-mock-embeddings {"q" [1.0]}
-                    (is (= [] (entity-retrieval.core/search "q" 10))))
+                    (is (= [] (search-unfiltered* "q" 10))))
                   (finally
                     (jdbc/execute! ds [(str "DROP TABLE IF EXISTS \"" (index-table/vectors-table)
                                             "\", \"" (index-table/meta-table) "\"")])))))))))))

@@ -300,7 +300,9 @@
     metabase.query-processor.util/normalize-token                {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
-  {clojure.core/print                                 {:message "Use metabase.util.log instead of clojure.core/print"}
+  {metabase.entity-retrieval.core/search-unfiltered   {:message "Library-index results are not permission-filtered: resolve each entity against the appdb and keep only what the current user can read before using any result field"}
+   metabase.entity-retrieval.mirror/search-unfiltered {:message "Library-index results are not permission-filtered: resolve each entity against the appdb and keep only what the current user can read before using any result field"}
+   clojure.core/print                                 {:message "Use metabase.util.log instead of clojure.core/print"}
    clojure.core/println                               {:message "Use metabase.util.log instead of clojure.core/println"}
    clojure.core/printf                                {:message "Use metabase.util.log instead of clojure.core/printf"}
    clojure.core/prn                                   {:message "Use metabase.util.log instead of clojure.core/prn"}
