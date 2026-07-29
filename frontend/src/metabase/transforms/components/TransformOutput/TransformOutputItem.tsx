@@ -6,7 +6,6 @@ type TransformOutputItemProps = {
   icon: IconName;
   label: string;
   to?: string;
-  newTab?: boolean;
   "data-testid": string;
 };
 
@@ -14,7 +13,6 @@ export const TransformOutputItem = ({
   icon,
   label,
   to,
-  newTab,
   "data-testid": dataTestId,
 }: TransformOutputItemProps) => {
   const content = (
@@ -32,7 +30,7 @@ export const TransformOutputItem = ({
       maw="max-content"
       component={ForwardRefLink}
       to={to}
-      target={newTab ? "_blank" : undefined}
+      target="_blank"
       lh="inherit"
       fz="inherit"
       data-testid={dataTestId}

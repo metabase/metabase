@@ -68,7 +68,6 @@ export const TransformOutput = ({ transformId }: TransformOutputProps) => {
                 ? Urls.dataModel({ databaseId, schemaName })
                 : undefined
             }
-            newTab={true}
             data-testid="output-schema-link"
           />
         )}
@@ -76,7 +75,6 @@ export const TransformOutput = ({ transformId }: TransformOutputProps) => {
           icon="table2"
           label={tableName}
           to={table ? Urls.queryBuilderTable(table.id, table.db_id) : undefined}
-          newTab={true}
           data-testid="output-table-link"
         />
       </Breadcrumbs>
