@@ -289,15 +289,12 @@ export const FieldValuesWidgetInner = forwardRef<
 
   const search = useRef(
     _.debounce(async (value: string) => {
-      if (!value) {
-        setOptions([]);
-        setLoadingState("LOADED");
-        setLastValue(value);
-      } else {
-        setLoadingState("LOADING");
-        await fetchValues(value);
-        setLastValue(value);
-      }
+      setLoadingState("LOADING");
+      // An empty query isn't a search that came up empty -- it's the search box being
+      // cleared, so re-fetch the same unfiltered list `fetchValues()` loads on mount
+      // rather than wiping the options to an empty array (metabase#78096).
+      await fetchValues(value || undefined);
+      setLastValue(value);
     }, 500),
   );
 
