@@ -788,13 +788,15 @@
           (testing "superusers get a nil clause (no filtering), matching can-read? on every table"
             (mt/with-current-user (mt/user->id :crowberto)
               (is (nil? (table/visible-table-filter-clause :metabase_table.id)))
-              (is (= table-ids (can-read-visible)))))
+              (is (= table-ids (can-read-visible)))
+              (is (= table-ids (clause-visible)))))
           (testing "data analysts get a nil clause, matching can-read?, which grants them implicit
                     manage-table-metadata on every table"
             (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:is_data_analyst true}
               (mt/with-current-user (mt/user->id :rasta)
                 (binding [api/*is-data-analyst?* true]
                   (is (nil? (table/visible-table-filter-clause :metabase_table.id)))
-                  (is (= table-ids (can-read-visible)))))))
+                  (is (= table-ids (can-read-visible)))
+                  (is (= table-ids (clause-visible)))))))
           (testing "no bound user -> nil clause; outside the request cycle filtering is the caller's concern"
             (is (nil? (table/visible-table-filter-clause :metabase_table.id)))))))))

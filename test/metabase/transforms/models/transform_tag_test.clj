@@ -2,6 +2,7 @@
   "Tests for the transform tag model."
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.test :as mt]
    [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.util.i18n :as i18n]
@@ -29,7 +30,11 @@
 (deftest visible-transform-tag-filter-clause-test
   (testing "data analysts and superusers get a nil clause (no filtering), matching can-read?"
     (mt/with-current-user (mt/user->id :crowberto)
-      (is (nil? (transform-tag/visible-transform-tag-filter-clause)))))
+      (is (nil? (transform-tag/visible-transform-tag-filter-clause))))
+    (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:is_data_analyst true}
+      (mt/with-current-user (mt/user->id :rasta)
+        (binding [api/*is-data-analyst?* true]
+          (is (nil? (transform-tag/visible-transform-tag-filter-clause)))))))
   (testing "non-analysts get an always-false clause, matching can-read?"
     (mt/with-current-user (mt/user->id :rasta)
       (is (= [:= [:inline 1] [:inline 0]]
