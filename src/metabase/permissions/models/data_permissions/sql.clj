@@ -149,21 +149,23 @@
 (mu/defn visible-table-exists-clause
   "Correlated EXISTS predicate: true when `table-id-column` references a Table whose metadata the given user can
   read. SQL parity with `mi/can-read? :model/Table`: view-data `:unrestricted` AND (create-queries `:query-builder`
-  OR published-via-collection), OR manage-table-metadata `:yes`. Callers short-circuit the superuser/data-analyst
-  fast paths; qualify `table-id-column` whenever its bare name is also a `metabase_table` column."
-  [{:keys [user-id] :as user-info} :- UserInfo
+  OR published-via-collection), OR manage-table-metadata `:yes`. nil when no filtering is needed (superusers and
+  data analysts can read every table's metadata); qualify `table-id-column` whenever its bare name is also a
+  `metabase_table` column."
+  [{:keys [user-id is-superuser? is-data-analyst?] :as user-info} :- UserInfo
    table-id-column :- [:or :keyword [:sequential :any]]]
-  [:exists {:select [[[:inline 1]]]
-            :from   [[:metabase_table :mt]]
-            :where  [:and
-                     [:= :mt.id table-id-column]
-                     [:or
-                      [:and
-                       (has-perms-for-table-as-honey-sql? user-id :perms/view-data :unrestricted)
+  (when-not (or is-superuser? is-data-analyst?)
+    [:exists {:select [[[:inline 1]]]
+              :from   [[:metabase_table :mt]]
+              :where  [:and
+                       [:= :mt.id table-id-column]
                        [:or
-                        (has-perms-for-table-as-honey-sql? user-id :perms/create-queries :query-builder)
-                        (published-tables/published-table-visible-clause :mt.id user-info)]]
-                      (has-perms-for-table-as-honey-sql? user-id :perms/manage-table-metadata :yes)]]}])
+                        [:and
+                         (has-perms-for-table-as-honey-sql? user-id :perms/view-data :unrestricted)
+                         [:or
+                          (has-perms-for-table-as-honey-sql? user-id :perms/create-queries :query-builder)
+                          (published-tables/published-table-visible-clause :mt.id user-info)]]
+                        (has-perms-for-table-as-honey-sql? user-id :perms/manage-table-metadata :yes)]]}]))
 
 (mu/defn- permission-type-having-clause
   "Builds a HAVING clause condition for a single permission type using conditional aggregation."

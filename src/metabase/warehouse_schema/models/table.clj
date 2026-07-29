@@ -327,10 +327,11 @@
   bare name is also a `metabase_table` column."
   [id-column]
   (when-let [user-id api/*current-user-id*]
-    (when-not (or api/*is-superuser?* api/*is-data-analyst?*)
-      (perms/visible-table-exists-clause
-       {:user-id user-id :is-superuser? false :is-data-analyst? false}
-       id-column))))
+    (perms/visible-table-exists-clause
+     {:user-id          user-id
+      :is-superuser?    api/*is-superuser?*
+      :is-data-analyst? api/*is-data-analyst?*}
+     id-column)))
 
 (defmethod mi/can-query? :model/Table
   ;; Check if user can execute queries against this table.
