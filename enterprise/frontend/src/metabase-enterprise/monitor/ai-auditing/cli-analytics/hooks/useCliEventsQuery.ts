@@ -9,6 +9,7 @@ import type { Dataset } from "metabase-types/api";
 type EventsPageResult = {
   data: Dataset | undefined;
   isFetching: boolean;
+  error: unknown;
 };
 
 /**
@@ -27,7 +28,9 @@ export function useCliEventsQuery(
     [query, page, pageSize],
   );
 
-  const { data, isFetching } = useGetAdhocQueryQuery(jsQuery ?? skipToken);
+  const { data, isFetching, error } = useGetAdhocQueryQuery(
+    jsQuery ?? skipToken,
+  );
 
-  return { data, isFetching };
+  return { data, isFetching, error };
 }

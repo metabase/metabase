@@ -1,7 +1,8 @@
-import { type ReactNode, useMemo, useRef } from "react";
+import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
@@ -151,19 +152,6 @@ type Props = BaseProps & Nullable<MetadataSources>;
 type InnerProps = BaseProps & MetadataSources;
 
 /**
- * Retain the last non-nullish value so a component keeps rendering the previous result while the
- * next one loads. RTK query hooks return `undefined` data mid-fetch; without this a consumer would
- * blank out on every refetch.
- */
-function useRetainedValue<T>(value: T | undefined): T | undefined {
-  const ref = useRef(value);
-  if (value != null) {
-    ref.current = value;
-  }
-  return value ?? ref.current;
-}
-
-/**
  * Row-level events table for the Events tab. Renders nothing until the audit metadata is
  * loaded, then delegates to the inner component.
  */
@@ -255,15 +243,11 @@ function CliEventsTableInner({
     ],
   );
 
-  const { data: latestData, isFetching } = useCliEventsQuery(
+  const { data, isFetching, error } = useCliEventsQuery(
     query,
     page,
     EVENTS_PAGE_SIZE,
   );
-  // Retain the previous page while the next one loads, so the table doesn't blank out on every
-  // page or sort change; we overlay a spinner on the retained rows instead. From here on `data` is
-  // simply the warehouse result — the retention is an implementation detail of the hook.
-  const data = useRetainedValue(latestData);
 
   // The result columns (`data.data.cols`) are the full, warehouse-ordered set the query returns —
   // not the curated `columns` we render. So we map each curated column to its position in the
@@ -347,7 +331,11 @@ function CliEventsTableInner({
         withBorder
         data-testid="cli-events-table"
       >
-        {!data ? (
+        {error ? (
+          <Flex mih="60vh" align="center" justify="center">
+            <LoadingAndErrorWrapper loading={false} error={error} />
+          </Flex>
+        ) : !data ? (
           <TreeTableSkeleton columnWidths={skeletonColumnWidths} />
         ) : (
           <>
@@ -363,7 +351,7 @@ function CliEventsTableInner({
         )}
       </Card>
 
-      {data && (
+      {data && !error && (
         <Flex justify="flex-end">
           <PaginationControls
             page={page}
