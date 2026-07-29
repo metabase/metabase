@@ -113,23 +113,43 @@
 (defn- check-goal-line!
   "A goal condition compares results to the question's goal line; without one the notification
    backend can only fail at send time, silently. Reject it here instead, mirroring
-   [[metabase.util.ui-logic/find-goal-value]]'s reading of where a goal lives per display."
+   [[metabase.util.ui-logic/find-goal-value]]'s reading of where a goal lives per display.
+
+   The FE alert modal gates on `graph.show_goal` instead, and toggling the goal line on persists
+   no `graph.goal_value` (the rendered 0 is a render-time default) — so a chart can draw a goal
+   line the send path can't read, and `goal-met?` throws on the nil. Until FE and BE agree, this
+   check follows the send path (goal_value) and words the show_goal-without-value case as the
+   missing number it is. It also refuses multi-series charts, which the modal doesn't offer:
+   `graph-column-index` compares against whichever series is listed first."
   [card]
-  (case (keyword (:display card))
-    (:area :bar :line)
-    (when-not (get-in card [:visualization_settings :graph.goal_value])
+  (let [viz (:visualization_settings card)]
+    (case (keyword (:display card))
+      (:area :bar :line)
+      (cond
+        (nil? (:graph.goal_value viz))
+        (common/throw-teaching-error
+         (if (:graph.show_goal viz)
+           (format (str "Question %d shows a goal line but has no goal value saved, so alerts can't compare "
+                        "against it — edit the chart's goal line settings and enter a goal number, or use "
+                        "the \"has_result\" condition.")
+                   (:id card))
+           (format (str "Question %d has no goal line, so a \"goal_above\"/\"goal_below\" alert can never fire — "
+                        "set a goal on the chart, or use the \"has_result\" condition.")
+                   (:id card))))
+
+        (< 1 (count (:graph.metrics viz)))
+        (common/throw-teaching-error
+         (format (str "Question %d plots more than one series, so a goal alert has no single value to compare "
+                      "against the goal — use the \"has_result\" condition, or edit the chart down to one series.")
+                 (:id card))))
+
+      :progress
+      nil
+
       (common/throw-teaching-error
-       (format (str "Question %d has no goal line, so a \"goal_above\"/\"goal_below\" alert can never fire — "
-                    "set a goal on the chart, or use the \"has_result\" condition.")
-               (:id card))))
-
-    :progress
-    nil
-
-    (common/throw-teaching-error
-     (format (str "Question %d is displayed as a %s, which has no goal line — \"goal_above\"/\"goal_below\" "
-                  "alerts need a line, area, bar, or progress chart. Use the \"has_result\" condition instead.")
-             (:id card) (u/qualified-name (:display card))))))
+       (format (str "Question %d is displayed as a %s, which has no goal line — \"goal_above\"/\"goal_below\" "
+                    "alerts need a line, area, bar, or progress chart. Use the \"has_result\" condition instead.")
+               (:id card) (u/qualified-name (:display card)))))))
 
 ;;; --------------------------------------------------- handlers ---------------------------------------------------
 

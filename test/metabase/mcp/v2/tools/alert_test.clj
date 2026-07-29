@@ -183,6 +183,38 @@
                                                 :visualization_settings {:graph.goal_value 100}}]
         (is (= "goal_above"
                (-> (create-alert! card-id {:condition {:type "goal_above"}}) :payload :send_condition)))))
+    (testing "a goal line toggled on with no value saved names the missing number. Toggling
+              \"Goal line\" persists only graph.show_goal — the drawn 0 is a render-time default —
+              and the send path throws on the missing value, so \"set a goal on the chart\" would
+              send the user in a circle: they already did"
+      (mt/with-temp [:model/Card {card-id :id} {:display                :line
+                                                :visualization_settings {:graph.show_goal true
+                                                                         :graph.metrics   ["count"]}}]
+        (let [err (tool-error (call-tool! :crowberto nil
+                                          (wire {:method "create" :card_id card-id
+                                                 :schedule (daily-schedule 9)
+                                                 :condition {:type "goal_above"}})))]
+          (is (re-find #"no goal value saved" err))
+          (is (re-find #"enter a goal number" err)))))
+    (testing "a multi-series chart is refused — the alert modal doesn't offer goal alerts there,
+              and the send path would compare against whichever series is listed first"
+      (mt/with-temp [:model/Card {card-id :id} {:display                :line
+                                                :visualization_settings {:graph.show_goal  true
+                                                                         :graph.goal_value 100
+                                                                         :graph.metrics    ["count" "sum"]}}]
+        (is (re-find #"more than one series"
+                     (tool-error (call-tool! :crowberto nil
+                                             (wire {:method "create" :card_id card-id
+                                                    :schedule (daily-schedule 9)
+                                                    :condition {:type "goal_above"}})))))))
+    (testing "a stale goal value with the goal line toggled off is still accepted — the send path
+              reads only graph.goal_value, so the alert works end to end"
+      (mt/with-temp [:model/Card {card-id :id} {:display                :line
+                                                :visualization_settings {:graph.show_goal  false
+                                                                         :graph.goal_value 100
+                                                                         :graph.metrics    ["count"]}}]
+        (is (= "goal_above"
+               (-> (create-alert! card-id {:condition {:type "goal_above"}}) :payload :send_condition)))))
     (testing "GHY-4155: a progress chart always has a goal, so it needs no viz setting"
       (mt/with-temp [:model/Card {card-id :id} {:display :progress}]
         (is (= "goal_below"
