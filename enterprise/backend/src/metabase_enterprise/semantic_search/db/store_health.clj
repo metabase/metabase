@@ -40,11 +40,12 @@
   [[readiness-refresh-due?]] instead, off the last probe that did answer."
   60)
 
-(def ^:private probe-deadline-ms
-  "Hard cap on one connection probe, above the JDBC timeouts that should end it first: the dedicated probe's
-  connect and socket timeouts, the app db's connection checkout plus statement timeout.
-  Only a probe none of those bound reaches it -- a blackholed host on a URL with no socketTimeout.
-  Waiting on one would strand the collector's lock and single-flight flag for the life of the process."
+(def ^:private probe-wait-ms
+  "How long the health check waits on a probe before reporting without it.
+  Above the JDBC timeouts that end one first: the dedicated probe's connect and socket timeouts, the app db's
+  connection checkout plus statement timeouts.
+  Only a probe none of those bound runs past it -- a blackholed host on a URL with no socketTimeout -- and
+  holding the whole health-inspector run behind that would be worse than reporting the previous answer."
   (* 60 1000))
 
 (defn- store-connected?
@@ -55,9 +56,6 @@
       :dedicated   (do (semantic.datasource/probe-dedicated-connection!) true)
       :app-db      (semantic.datasource/probe-app-db-store!)
       :unavailable false)
-    (catch InterruptedException e
-      ;; The deadline gave up on us; let [[probe-store]] report that it never found out.
-      (throw e))
     (catch Exception e
       ;; The exception is the only record of why the gauge dropped.
       (log/warn e "Pgvector connection probe failed" {:mode mode})
@@ -103,33 +101,18 @@
                        (not @semantic.datasource/app-db-support-check-errored?))})))
 
 (defn- probe-store
-  "[[resolve-store]] within `deadline-ms`, reporting no store when it can't answer in that time.
+  "[[resolve-store]], reporting no store when it throws.
   Choosing the mode is itself a database call -- the app-db arm can attempt rolled-back DDL against a host
-  that never answers -- so it runs under the deadline too, not only the connection probe."
-  [deadline-ms]
-  (let [fut (future-call
-             (fn []
-               (try
-                 (resolve-store)
-                 (catch InterruptedException _
-                   ;; Only the cancel below interrupts this thread, and by then nobody wants the answer.
-                   unresolved-store)
-                 ;; Throwable, not Exception: an Error here would otherwise escape the deref and abandon the
-                 ;; gauge writes, freezing every series at its last value instead of dropping it.
-                 (catch Throwable e
-                   ;; The exception is the only record of why the gauges dropped.
-                   (log/warn e "Pgvector store probe failed")
-                   unresolved-store))))]
-    (try
-      (let [result (deref fut deadline-ms ::timeout)]
-        (if (= result ::timeout)
-          (do (log/warn "Pgvector store probe timed out" {:deadline-ms deadline-ms})
-              unresolved-store)
-          result))
-      (finally
-        ;; A finished probe ignores this.
-        ;; A hung one is interrupted, which releases a connection checkout wait, though not a socket read.
-        (future-cancel fut)))))
+  that never answers -- so the whole resolution runs here, not only the connection probe."
+  []
+  (try
+    (resolve-store)
+    ;; Throwable, not Exception: an Error here would otherwise abandon the gauge writes, freezing every
+    ;; series at its last value instead of dropping it.
+    (catch Throwable e
+      ;; The exception is the only record of why the gauges dropped.
+      (log/warn e "Pgvector store probe failed")
+      unresolved-store)))
 
 (defn- clear-stale-last-success!
   "Drop the last-success timestamp when this instance switches from one backing to another.
@@ -143,32 +126,30 @@
 
 (defn- collect-pgvector-readiness-metrics!
   "Record availability and connection health for the selected pgvector store.
-  Ignores engine activation, so a pgvector rollout can be validated before enabling anything that uses it."
+  Ignores engine activation, so a pgvector rollout can be validated before enabling anything that uses it.
+  Needs no lock of its own: [[request-pgvector-readiness-refresh!]] admits one probe at a time."
   []
-  ;; The scrape path and a stale health check both call this.
-  ;; Serialize, so their gauge writes and results can't interleave.
-  (locking last-readiness-probe
-    (let [previous-storage (:storage @last-readiness-probe)
-          {:keys [mode connected? resolved?]} (probe-store probe-deadline-ms)
-          storage          (case mode :dedicated "dedicated" :app-db "appdb" nil)
-          at               (.getEpochSecond (Instant/now))]
-      ;; Publish both stable series on every instance; both are zero when no store is usable.
-      (doseq [candidate storage-labels]
-        (analytics/set-gauge! :metabase-pgvector/store-available
-                              {:storage candidate}
-                              (if (= candidate storage) 1 0))
-        (analytics/set-gauge! :metabase-pgvector/store-connected
-                              {:storage candidate}
-                              (if (and (= candidate storage) connected?) 1 0)))
-      (clear-stale-last-success! previous-storage storage)
-      (reset! last-readiness-probe {:storage    storage
-                                    :connected? connected?
-                                    :resolved?  resolved?
-                                    :at         at})
-      (when connected?
-        (analytics/set-gauge! :metabase-pgvector/store-last-success-timestamp-seconds
-                              {:storage storage}
-                              at)))))
+  (let [previous-storage (:storage @last-readiness-probe)
+        {:keys [mode connected? resolved?]} (probe-store)
+        storage          (case mode :dedicated "dedicated" :app-db "appdb" nil)
+        at               (.getEpochSecond (Instant/now))]
+    ;; Publish both stable series on every instance; both are zero when no store is usable.
+    (doseq [candidate storage-labels]
+      (analytics/set-gauge! :metabase-pgvector/store-available
+                            {:storage candidate}
+                            (if (= candidate storage) 1 0))
+      (analytics/set-gauge! :metabase-pgvector/store-connected
+                            {:storage candidate}
+                            (if (and (= candidate storage) connected?) 1 0)))
+    (clear-stale-last-success! previous-storage storage)
+    (reset! last-readiness-probe {:storage    storage
+                                  :connected? connected?
+                                  :resolved?  resolved?
+                                  :at         at})
+    (when connected?
+      (analytics/set-gauge! :metabase-pgvector/store-last-success-timestamp-seconds
+                            {:storage storage}
+                            at))))
 
 (defn- readiness-probe-stale?
   [{:keys [at]}]
@@ -176,19 +157,53 @@
       (> (- (.getEpochSecond (Instant/now)) ^long at)
          (* 2 readiness-refresh-interval-seconds))))
 
+(defn- readiness-refresh-due?
+  "Whether to probe again on this scrape.
+  A probe that couldn't answer is retried on the next one; one that did answer holds for the full interval."
+  [{:keys [at resolved?]}]
+  (or (nil? at)
+      (not resolved?)
+      (>= (- (.getEpochSecond (Instant/now)) ^long at) readiness-refresh-interval-seconds)))
+
+(defn- refresh-pgvector-readiness-metrics!
+  []
+  (try
+    (collect-pgvector-readiness-metrics!)
+    (catch Throwable e
+      ;; The scrape path never derefs this, so a throw here is otherwise silent.
+      (log/error e "Pgvector readiness metric refresh failed"))))
+
+(defonce ^:private readiness-probe-future (atom nil))
+
+(defn- submit-pgvector-readiness-refresh!
+  [f]
+  (future-call f))
+
+(defn- request-pgvector-readiness-refresh!
+  "Start a readiness probe unless one is still running, and return the running probe.
+  A live probe is never replaced. One stuck in a socket read cannot be cancelled, so admitting a replacement
+  would strand another thread on every scrape; leaving the gauges on their last values until it ends is the
+  better of the two, and only a database that answers nothing at all gets there."
+  []
+  (locking readiness-probe-future
+    (let [running @readiness-probe-future]
+      (if (and running (not (realized? running)))
+        running
+        (reset! readiness-probe-future
+                (submit-pgvector-readiness-refresh! refresh-pgvector-readiness-metrics!))))))
+
 (defn- pgvector-store-health-check
   "Health-inspector row for pgvector store reachability, nil when there is no store to reach.
-  Reports the collector's last probe, refreshing a stale one so an unscraped instance still gets a current row.
-  Runs under the collector's lock, so the row can't disagree with the gauges."
+  Reports the last probe, waiting up to [[probe-wait-ms]] on a fresh one when that is stale, so an unscraped
+  instance still gets a current row without holding up every other check behind an unresponsive database."
   []
-  (locking last-readiness-probe
-    (when (readiness-probe-stale? @last-readiness-probe)
-      (collect-pgvector-readiness-metrics!))
-    (when-let [{:keys [storage connected?]} @last-readiness-probe]
-      (when storage
-        (if connected?
-          (search.index-health/healthy (format "pgvector store (%s) reachable." storage))
-          (search.index-health/degraded (format "pgvector store (%s) unreachable." storage)))))))
+  (when (readiness-probe-stale? @last-readiness-probe)
+    (deref (request-pgvector-readiness-refresh!) probe-wait-ms nil))
+  (let [{:keys [storage connected?]} @last-readiness-probe]
+    (when storage
+      (if connected?
+        (search.index-health/healthy (format "pgvector store (%s) reachable." storage))
+        (search.index-health/degraded (format "pgvector store (%s) unreachable." storage))))))
 
 (health-inspector/register-check! :pgvector-store pgvector-store-health-check)
 
@@ -208,46 +223,16 @@
 ;; observe-initial-values increments rather than sets, so seeding 1 would leave the gauge at 2 wherever a
 ;; scrape had already probed. Both series start at 0 and the first probe corrects them.
 
-(defonce ^:private readiness-refresh-running? (atom false))
-
-(defn- refresh-pgvector-readiness-metrics!
+(defn- scrape-pgvector-readiness-gauges!
+  "Probe when due, and never wait for the answer -- the scrape carries no database latency."
   []
-  (try
-    (collect-pgvector-readiness-metrics!)
-    (catch InterruptedException e
-      (throw e))
-    (catch Exception e
-      ;; Nothing derefs this future, so a throw here is otherwise silent.
-      (log/error e "Pgvector readiness metric refresh failed"))
-    (finally
-      (reset! readiness-refresh-running? false))))
-
-(defn- submit-pgvector-readiness-refresh!
-  [f]
-  (future-call f))
-
-(defn- readiness-refresh-due?
-  "Whether to probe again on this scrape.
-  A probe that couldn't answer is retried on the next one; one that did answer holds for the full interval."
-  [{:keys [at resolved?]}]
-  (or (nil? at)
-      (not resolved?)
-      (>= (- (.getEpochSecond (Instant/now)) ^long at) readiness-refresh-interval-seconds)))
-
-(defn- request-pgvector-readiness-refresh!
-  []
-  (when (and (readiness-refresh-due? @last-readiness-probe)
-             (compare-and-set! readiness-refresh-running? false true))
-    (try
-      (submit-pgvector-readiness-refresh! refresh-pgvector-readiness-metrics!)
-      (catch Exception e
-        (reset! readiness-refresh-running? false)
-        (log/error e "Could not schedule pgvector readiness metric refresh"))))
+  (when (readiness-refresh-due? @last-readiness-probe)
+    (request-pgvector-readiness-refresh!))
   nil)
 
 ;; Prometheus scrapes every Metabase process, whereas a Quartz job runs on only one member of a cluster.
 ;; Start a local, single-flight background probe from the scrape path so every process refreshes its own
-;; gauge series without putting database connection latency on the synchronous scrape.
+;; gauge series.
 (defmethod analytics.core/pull-collector ::pgvector-readiness-gauges [_]
   {:min-interval-s readiness-scrape-interval-seconds
-   :f              request-pgvector-readiness-refresh!})
+   :f              scrape-pgvector-readiness-gauges!})
