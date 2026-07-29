@@ -190,42 +190,42 @@
 (def ^:dynamic *permissions-for-user*
   "A dynamically-bound atom containing a cache of data permissions that have been fetched so far for the current user.
    Keys are:
-    - :db-ids -> A set of the IDs of databases which have already been fetched.
+    - :db-ids   -> A set of the IDs of databases which have already been fetched.
     - :all-dbs? -> True once [[prime-all-dbs-cache]] has primed every database, meaning questions spanning all
-                 databases (e.g. [[user-has-any-perms-of-type?]]) can be answered from the cache.
-    - :intern -> The interner used to dedupe entry values; created on first prime so sharing spans every prime
-                 in the request.
-    - :perms  -> A map of permissions with the structure `{user-id {perm-type {db-id entry}}}` so that we NEVER
-                 accidentally use the cache of the wrong user. Each `entry` is a compact map
+                   databases (e.g. [[user-has-any-perms-of-type?]]) can be answered from the cache.
+    - :intern   -> The interner used to dedupe entry values; created on first prime so sharing spans every prime
+                   in the request.
+    - :perms    -> A map of permissions with the structure `{user-id {perm-type {db-id entry}}}` so that we NEVER
+                   accidentally use the cache of the wrong user. Each `entry` is a compact map
 
-                     {:groups {group-id #{perm-value}}                                    ; db-level rows
-                      :tables {table-id {group-id #{{:schema schema-name                 ; table-level rows
-                                                     :value  perm-value}}}}}
+                       {:groups {group-id #{perm-value}}                                    ; db-level rows
+                        :tables {table-id {group-id #{{:schema schema-name                 ; table-level rows
+                                                       :value  perm-value}}}}}
 
-                 The sets almost always hold exactly one value; see [[rows->cache-entry]] for why every distinct
-                 value of duplicate rows is preserved rather than one row winning.
+                   The sets almost always hold exactly one value; see [[rows->cache-entry]] for why every distinct
+                   value of duplicate rows is preserved rather than one row winning.
 
-                 On instances with many databases these maps are typically identical across most of them, so
-                 they are interned at load time: equal values share one instance. This keeps the cache size
-                 proportional to the number of *distinct* permission profiles rather than `groups * databases`
-                 (see #76077 for how large the raw row count can get). Concretely, on an instance where the
-                 user's groups have the same db-level grants almost everywhere plus one database with
-                 table-level rows:
+                   On instances with many databases these maps are typically identical across most of them, so
+                   they are interned at load time: equal values share one instance. This keeps the cache size
+                   proportional to the number of *distinct* permission profiles rather than `groups * databases`
+                   (see #76077 for how large the raw row count can get). Concretely, on an instance where the
+                   user's groups have the same db-level grants almost everywhere plus one database with
+                   table-level rows:
 
-                     {1
-                      {:perms/view-data
-                       {10 {:groups {1 #{:unrestricted}, 2 #{:blocked}} :tables {}}  ; ─┐ interning makes
-                        11 {:groups {1 #{:unrestricted}, 2 #{:blocked}} :tables {}}  ;  ├ these :groups maps
-                        12 {:groups {1 #{:unrestricted}, 2 #{:blocked}} :tables {}}  ; ─┘ identical
-                        13 {:groups {1 #{:unrestricted}}
-                            :tables
-                            {100 {2 #{{:schema \"public\"    :value :blocked}}}  ; ─┬ identical, and their
-                             101 {2 #{{:schema \"public\"    :value :blocked}}}  ; ─┘ inner :schema/:value
-                             102 {2 #{{:schema \"reporting\" :value :blocked}}}}}}}}  ; maps also identical
+                       {1
+                        {:perms/view-data
+                         {10 {:groups {1 #{:unrestricted}, 2 #{:blocked}} :tables {}}  ; ─┐ interning makes
+                          11 {:groups {1 #{:unrestricted}, 2 #{:blocked}} :tables {}}  ;  ├ these :groups maps
+                          12 {:groups {1 #{:unrestricted}, 2 #{:blocked}} :tables {}}  ; ─┘ identical
+                          13 {:groups {1 #{:unrestricted}}
+                              :tables
+                              {100 {2 #{{:schema \"public\"    :value :blocked}}}  ; ─┬ identical, and their
+                               101 {2 #{{:schema \"public\"    :value :blocked}}}  ; ─┘ inner :schema/:value
+                               102 {2 #{{:schema \"reporting\" :value :blocked}}}}}}}}  ; maps also identical
 
-                 Each annotated group prints as N equal maps but is held as ONE shared instance plus N
-                 pointers — 1,000 databases with the same profile cost one :groups map, not 1,000. The sharing
-                 is established at construction by [[rows->cache-entry]] and is invisible to readers.
+                   Each annotated group prints as N equal maps but is held as ONE shared instance plus N
+                   pointers — 1,000 databases with the same profile cost one :groups map, not 1,000. The sharing
+                   is established at construction by [[rows->cache-entry]] and is invisible to readers.
 
   When checking permissions, if a DB has not been fetched, it will be added to the cache before the check returns."
   (atom {:db-ids #{} :perms {}}))
