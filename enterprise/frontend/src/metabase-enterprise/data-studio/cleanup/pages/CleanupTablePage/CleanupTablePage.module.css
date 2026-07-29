@@ -4,9 +4,8 @@
 }
 
 .candidateRow {
-  display: block;
   width: 100%;
-  text-align: left;
+  min-height: 4.5rem;
 
   &:hover {
     background-color: var(--mb-color-background_surface-hover);
