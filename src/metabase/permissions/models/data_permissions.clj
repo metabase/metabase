@@ -21,9 +21,7 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
-   (clojure.lang PersistentVector)
-   (java.util HashMap HashSet Map$Entry)
-   (java.util.function Function)))
+   (clojure.lang PersistentVector)))
 
 (set! *warn-on-reflection* true)
 
@@ -237,48 +235,27 @@
               [:= :p.table_id nil]
               [:= :mt.active true]]]})))
 
-(def ^:private ^Function new-hash-map
-  (reify Function
-    (apply [_ _]
-      (HashMap.))))
+(defn- add-row-to-full-entry
+  "Fold a single data_permissions row into an in-progress cache entry (see [[rows->full-perms]] for the semantics).
+  `perm_value` is a raw result-set string; `keyword` normalizes it."
+  [interner entry {:keys [table_id schema_name group_id perm_value]}]
+  (let [perm-value (keyword perm_value)]
+    (if table_id
+      (update-in entry [:tables table_id group_id] (fnil conj #{})
+                 (interner {:schema schema_name :value perm-value}))
+      (update-in entry [:groups group_id] (fnil conj #{}) perm-value))))
 
-(def ^:private ^Function new-hash-set
-  (reify Function
-    (apply [_ _]
-      (HashSet.))))
-
-(def ^:private ^Function new-mutable-full-entry
-  (reify Function
-    (apply [_ _]
-      (object-array [(HashMap.) (HashMap.)]))))
-
-(defn- persistent-java-map
-  "Copies a mutable Java map to a persistent Clojure map, applying `value-fn` to each value."
-  [^HashMap m value-fn]
-  (persistent!
-   (reduce (fn [result ^Map$Entry entry]
-             (assoc! result (.getKey entry) (value-fn (.getValue entry))))
-           (transient {})
-           (.entrySet m))))
-
-(defn- persistent-java-set
-  [^HashSet s]
-  (persistent! (reduce conj! (transient #{}) s)))
-
-(defn- finalize-mutable-full-entry
-  [interner ^objects entry]
-  (let [^HashMap groups (aget entry 0)
-        ^HashMap tables (aget entry 1)]
-    {:groups (interner (persistent-java-map groups persistent-java-set))
-     :tables (persistent-java-map
-              tables
-              (fn [^HashMap group-id->values]
-                (interner (persistent-java-map group-id->values persistent-java-set))))}))
+(defn- finalize-full-entry
+  "Intern the shareable pieces of a folded cache entry: the whole :groups map, and each table's group-id->values map."
+  [interner {:keys [groups tables] :or {groups {} tables {}}}]
+  {:groups (interner groups)
+   :tables (update-vals tables interner)})
 
 (defn- rows->full-perms
   "Reduces data_permissions rows for one permission type into `{db-id entry}`, where each compact `entry` is described
-  on [[*full-perms-cache*]]. Rows accumulate in mutable Java maps and sets, then are copied to persistent Clojure
-  values once at the end; this avoids rebuilding several levels of persistent maps for every input row.
+  on [[*full-perms-cache*]]. (A variant of this fold accumulating into mutable Java maps and sets benchmarked only
+  ~25-30% faster on 200-500k rows — under the JDBC fetch cost of that many rows the difference disappears, so it is
+  not worth the interop complexity.)
 
   The `interner` calls are a semantic no-op: they never change what any lookup returns, only object identity,
   collapsing =-equal values to one shared instance so that the same profile repeated across many databases (or the
@@ -292,22 +269,11 @@
   flip with JDBC row order (e.g. duplicate download-results rows {:no, :one-million-rows} granting downloads that
   coalescing would deny)."
   [interner rows]
-  (let [^HashMap entries
-        (reduce (fn [^HashMap entries {:keys [db_id table_id schema_name group_id perm_value]}]
-                  (let [^objects entry  (.computeIfAbsent entries db_id new-mutable-full-entry)
-                        ^HashMap groups (aget entry 0)
-                        ^HashMap tables (aget entry 1)
-                        perm-value     (keyword perm_value)]
-                    (if table_id
-                      (let [^HashMap group-id->values (.computeIfAbsent tables table_id new-hash-map)
-                            ^HashSet values          (.computeIfAbsent group-id->values group_id new-hash-set)]
-                        (.add values (interner {:schema schema_name :value perm-value})))
-                      (let [^HashSet values (.computeIfAbsent groups group_id new-hash-set)]
-                        (.add values perm-value)))
-                    entries))
-                (HashMap.)
-                rows)]
-    (persistent-java-map entries #(finalize-mutable-full-entry interner %))))
+  (-> (reduce (fn [m {:keys [db_id] :as row}]
+                (update m db_id (fnil #(add-row-to-full-entry interner % row) {})))
+              {}
+              rows)
+      (update-vals #(finalize-full-entry interner %))))
 
 (defn- load-full-perms
   "Loads full permissions for `user-id`, `db-ids`, and `perm-type`, using `interner` to dedupe repeated cache entry
