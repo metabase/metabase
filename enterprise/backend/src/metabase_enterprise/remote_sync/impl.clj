@@ -93,9 +93,9 @@
 
 (defn- remove-unsynced-user-settings!
   "Deletes TableUserSettings/FieldUserSettings rows in remote-sync scope whose side-car file was not
-  part of the import. The scope mirrors what an export would write (settings of published tables in
-  synced collections), so a side-car deleted in the remote repo deletes the local settings row on
-  pull. The parent Table/Field rows are never touched — sync owns them."
+  part of the import. The scope mirrors what an export would write (settings of non-archived
+  published tables in synced collections), so a side-car deleted in the remote repo deletes the
+  local settings row on pull. The parent Table/Field rows are never touched — sync owns them."
   [synced-collection-ids {:keys [by-path]}]
   (when (seq synced-collection-ids)
     (let [tus-imported (into #{} (map settings-path-identity) (get by-path :model/TableUserSettings))
@@ -106,6 +106,7 @@
                                            [:metabase_database :db] [:= :db.id :t.db_id]]
                                   :where  [:and
                                            [:= :t.is_published true]
+                                           [:= :t.archived_at nil]
                                            [:in :t.collection_id synced-collection-ids]]})
           stale-tus    (into [] (comp (remove #(tus-imported (settings-path-identity %))) (map :id)) tus-rows)
           fus-imported (into #{} (map settings-path-identity) (get by-path :model/FieldUserSettings))
@@ -117,6 +118,7 @@
                                            [:metabase_database :db] [:= :db.id :t.db_id]]
                                   :where  [:and
                                            [:= :t.is_published true]
+                                           [:= :t.archived_at nil]
                                            [:in :t.collection_id synced-collection-ids]]})
           stale-fus    (into [] (comp (remove #(fus-imported (settings-path-identity %))) (map :id)) fus-rows)]
       (when (seq stale-tus)

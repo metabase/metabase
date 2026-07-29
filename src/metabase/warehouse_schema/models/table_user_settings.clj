@@ -29,12 +29,30 @@
 
 (methodical/defmethod t2/primary-keys :model/TableUserSettings [_model] [:table_id])
 
+(defn- complete-visibility-pair
+  "visibility_type and data_layer are projections of one user choice
+  ([[table/visibility-type->data-layer]]), so recording one half must record the other too —
+  otherwise the mirror row drifts and the merge-back overlay would assert a stale pair."
+  [settings]
+  (let [has-visibility-type? (contains? settings :visibility_type)
+        has-data-layer?      (contains? settings :data_layer)]
+    (cond
+      (and has-data-layer? (not has-visibility-type?))
+      (assoc settings :visibility_type (table/data-layer->visibility-type (some-> (:data_layer settings) keyword)))
+
+      (and has-visibility-type? (not has-data-layer?))
+      (assoc settings :data_layer (table/visibility-type->data-layer (some-> (:visibility_type settings) keyword)))
+
+      :else settings)))
+
 (defn upsert-user-settings!
   "Record user-set values for the Tables with `table-ids`; safe under concurrent first-time inserts.
   Only keys in [[table/table-user-settings]] are recorded; a key explicitly present with a `nil`
-  value is recorded as `nil` (the user unset it)."
+  value is recorded as `nil` (the user unset it). Recording either half of the
+  visibility_type/data_layer pair records the derived value of the other half as well."
   [table-ids settings]
-  (let [filtered-settings (u/select-keys-when settings :present table/table-user-settings)]
+  (let [filtered-settings (-> (u/select-keys-when settings :present table/table-user-settings)
+                              complete-visibility-pair)]
     (when (seq filtered-settings)
       (doseq [id table-ids]
         (mdb.query/update-or-insert! :model/TableUserSettings {:table_id id}

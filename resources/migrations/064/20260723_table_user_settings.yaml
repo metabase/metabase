@@ -157,7 +157,10 @@ databaseChangeLog:
   ## owner_email, owner_user_id) are copied as-is, and columns with a known system default are
   ## recorded only when they differ from it: data_layer 'internal', data_authority 'unconfigured',
   ## field_order 'database' (every in-tree driver's default-field-order), visibility_type NULL,
-  ## is_published/show_in_getting_started FALSE. Columns whose current value cannot be attributed
+  ## is_published/show_in_getting_started FALSE. visibility_type 'cruft' is sync-authored (the
+  ## cruft detector hides tables by setting it), so it is not copied — and since the model keeps
+  ## the pair in sync, the accompanying data_layer of a crufty table is sync-derived too, so
+  ## neither half is recorded for those tables. Columns whose current value cannot be attributed
   ## stay NULL and accumulate from user edits going forward: display_name (the humanization
   ## strategy is env-configurable, so there is no default to compare against), description (may be
   ## user-written or synced from a database comment), entity_type (the sync classifier writes a
@@ -182,8 +185,10 @@ databaseChangeLog:
                 t.id,
                 t.caveats,
                 t.points_of_interest,
-                t.visibility_type,
-                CASE WHEN t.data_layer <> 'internal' THEN t.data_layer END,
+                CASE WHEN t.visibility_type <> 'cruft' THEN t.visibility_type END,
+                CASE WHEN t.data_layer <> 'internal'
+                      AND (t.visibility_type IS NULL OR t.visibility_type <> 'cruft')
+                     THEN t.data_layer END,
                 t.collection_id,
                 CASE WHEN t.is_published = TRUE THEN t.is_published END,
                 t.owner_email,
@@ -197,8 +202,9 @@ databaseChangeLog:
                 AND NOT EXISTS (SELECT 1 FROM metabase_table_user_settings s WHERE s.table_id = t.id)
                 AND (t.caveats IS NOT NULL
                   OR t.points_of_interest IS NOT NULL
-                  OR t.visibility_type IS NOT NULL
-                  OR (t.data_layer IS NOT NULL AND t.data_layer <> 'internal')
+                  OR (t.visibility_type IS NOT NULL AND t.visibility_type <> 'cruft')
+                  OR (t.data_layer IS NOT NULL AND t.data_layer <> 'internal'
+                      AND (t.visibility_type IS NULL OR t.visibility_type <> 'cruft'))
                   OR t.collection_id IS NOT NULL
                   OR t.is_published = TRUE
                   OR t.owner_email IS NOT NULL

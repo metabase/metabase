@@ -583,16 +583,21 @@
 ;;; --------------------------------------------- *UserSettings Spec Tests -------------------------------------------
 
 (deftest table-user-settings-export-roots-test
-  (testing "TableUserSettings export roots are settings rows of published tables in synced collections"
+  (testing "TableUserSettings export roots are settings rows of non-archived published tables in synced collections"
     (mt/with-temp [:model/Collection coll      {:is_remote_synced true :name "Synced" :type "library-data"}
                    :model/Database   db        {}
                    :model/Table      published {:db_id (:id db) :is_published true :collection_id (:id coll)}
-                   :model/Table      unpub     {:db_id (:id db)}]
+                   :model/Table      unpub     {:db_id (:id db)}
+                   :model/Table      archived  {:db_id (:id db) :is_published true :collection_id (:id coll)
+                                                :archived_at :%now}]
       (t2/insert! :model/TableUserSettings {:table_id (:id published) :description "curated"})
       (t2/insert! :model/TableUserSettings {:table_id (:id unpub) :description "not exported"})
+      (t2/insert! :model/TableUserSettings {:table_id (:id archived) :description "not exported"})
       (let [roots (set (spec/query-export-roots (spec/spec-for-model-key :model/TableUserSettings)))]
         (is (contains? roots ["TableUserSettings" (:id published)]))
-        (is (not (contains? roots ["TableUserSettings" (:id unpub)])))))))
+        (is (not (contains? roots ["TableUserSettings" (:id unpub)])))
+        (is (not (contains? roots ["TableUserSettings" (:id archived)]))
+            "the Table export skips archived tables, so their side-cars must not be exported either")))))
 
 (deftest ^:parallel extract-imported-entities-user-settings-test
   (testing "side-car serdes paths extract to path identities under the settings model keys"

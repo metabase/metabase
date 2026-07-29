@@ -2138,8 +2138,11 @@ serdes/meta:
                    :model/Table      stale   {:db_id (:id db) :name "STALE" :schema nil
                                               :is_published true :collection_id (:id coll)}
                    :model/Table      unpub   {:db_id (:id db) :name "UNPUB"}
+                   :model/Table      archived {:db_id (:id db) :name "ARCHIVED" :schema nil
+                                               :is_published true :collection_id (:id coll)
+                                               :archived_at :%now}
                    :model/Field      field   {:table_id (:id kept) :name "F" :base_type :type/Text}]
-      (doseq [t [kept stale unpub]]
+      (doseq [t [kept stale unpub archived]]
         (t2/insert! :model/TableUserSettings {:table_id (:id t) :description "curated"}))
       (t2/insert! :model/FieldUserSettings {:field_id (:id field) :description "curated"})
       (#'impl/remove-unsynced-user-settings!
@@ -2151,6 +2154,8 @@ serdes/meta:
         (is (not (t2/exists? :model/TableUserSettings :table_id (:id stale)))))
       (testing "rows outside the sync scope are untouched"
         (is (t2/exists? :model/TableUserSettings :table_id (:id unpub))))
+      (testing "archived tables are out of scope: the export skips them, so a pull must not delete their rows"
+        (is (t2/exists? :model/TableUserSettings :table_id (:id archived))))
       (testing "field side-cars reconcile the same way"
         (is (not (t2/exists? :model/FieldUserSettings :field_id (:id field)))))
       (testing "the parent table rows are never touched"

@@ -1293,6 +1293,10 @@
                                {:join  [[:metabase_table :t] [:= :t.id :table_id]]
                                 :where [:and
                                         [:= :t.is_published true]
+                                        ;; match the Table export, which skips archived tables — otherwise
+                                        ;; the side-car is exported without its parent table file and the
+                                        ;; import would synthesize a Table that doesn't exist upstream
+                                        [:= :t.archived_at nil]
                                         [:in :t.collection_id synced-collection-ids]]}))))))
 
 (defmethod query-export-roots :library-synced

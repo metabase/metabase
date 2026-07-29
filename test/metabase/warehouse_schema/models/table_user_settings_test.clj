@@ -155,6 +155,49 @@
                  :description  "Rewritten"}
                 (t2/select-one :model/TableUserSettings :table_id table-id)))))))
 
+(deftest visibility-pair-mirror-drift-test
+  (testing "editing one half of the visibility_type/data_layer pair records both halves in the mirror"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id}]
+      (testing "hiding via data_layer"
+        (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
+                              {:table_ids [table-id] :data_layer "hidden"})
+        (is (= {:visibility_type :hidden :data_layer :hidden}
+               (select-keys (t2/select-one :model/Table table-id)
+                            [:visibility_type :data_layer])))
+        (is (= {:visibility_type :hidden :data_layer :hidden}
+               (select-keys (t2/select-one :model/TableUserSettings :table_id table-id)
+                            [:visibility_type :data_layer]))))
+      (testing "unhiding via visibility_type"
+        (mt/user-http-request :crowberto :put 200 (str "table/" table-id) {:visibility_type nil})
+        (is (= {:visibility_type nil :data_layer :internal}
+               (select-keys (t2/select-one :model/Table table-id)
+                            [:visibility_type :data_layer])))
+        (is (= {:visibility_type nil :data_layer :internal}
+               (select-keys (t2/select-one :model/TableUserSettings :table_id table-id)
+                            [:visibility_type :data_layer]))))
+      (testing "an unrelated sync-style write leaves the table visible"
+        (t2/update! :model/Table table-id {:initial_sync_status "complete"})
+        (is (= {:visibility_type nil :data_layer :internal}
+               (select-keys (t2/select-one :model/Table table-id)
+                            [:visibility_type :data_layer])))))))
+
+(deftest visibility-pair-mirror-drift-conflict-test
+  (testing "a table hidden and unhidden through different halves of the pair can still be hidden again"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id}]
+      (mt/user-http-request :crowberto :put 200 (str "table/" table-id) {:visibility_type "hidden"})
+      (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
+                            {:table_ids [table-id] :data_layer "internal"})
+      (is (= {:visibility_type nil :data_layer :internal}
+             (select-keys (t2/select-one :model/Table table-id)
+                          [:visibility_type :data_layer])))
+      (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
+                            {:table_ids [table-id] :data_layer "hidden"})
+      (is (= {:visibility_type :hidden :data_layer :hidden}
+             (select-keys (t2/select-one :model/Table table-id)
+                          [:visibility_type :data_layer]))))))
+
 (deftest bulk-edit-records-user-settings-test
   (testing "POST /api/data-studio/table/edit records the user-set values for every table"
     (mt/with-temp [:model/Database {db-id :id}      {}

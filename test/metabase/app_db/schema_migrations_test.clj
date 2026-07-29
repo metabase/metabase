@@ -3326,7 +3326,16 @@
                                    :display_name "Sync Value"
                                    :is_published true)
             _          (t2/insert! :metabase_table_user_settings {:table_id     edited
-                                                                  :display_name "User Value"})]
+                                                                  :display_name "User Value"})
+            crufty     (new-table! db-id "temp_cache"
+                                   :display_name    "Temp Cache"
+                                   :visibility_type "cruft"
+                                   :data_layer      "hidden")
+            crufty+    (new-table! db-id "temp_cache_curated"
+                                   :display_name    "Temp Cache Curated"
+                                   :visibility_type "cruft"
+                                   :data_layer      "hidden"
+                                   :caveats         "Do not use")]
         (migrate!)
         (testing "unattributable and default-valued columns are recorded as NULL"
           (is (=? {:display_name            nil
@@ -3368,4 +3377,10 @@
           (is (nil? (settings audit-tbl))))
         (testing "pre-existing settings rows are left untouched"
           (is (=? {:display_name "User Value"}
-                  (settings edited))))))))
+                  (settings edited))))
+        (testing "sync-authored cruft visibility (and its derived data_layer) is not a user edit"
+          (is (nil? (settings crufty)))
+          (is (=? {:caveats         "Do not use"
+                   :visibility_type nil
+                   :data_layer      nil}
+                  (settings crufty+))))))))
