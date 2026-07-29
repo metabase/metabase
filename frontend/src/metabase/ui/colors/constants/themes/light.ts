@@ -1,4 +1,3 @@
-/* eslint-disable metabase/no-color-literals */
 import type { MetabaseThemeV2 } from "../../types";
 import { LIGHT_THEME_ACCENT_COLORS } from "../accent-colors";
 import { getBaseColorsForThemeDefinitionOnly } from "../base-colors";
@@ -71,10 +70,10 @@ const deprecatedColors = {
   "border-strong": baseColors.orionAlpha[30],
   "border-stronger": baseColors.orionAlpha[50],
   "border-subtle": baseColors.orionAlpha[10],
-  gold: "hsla(50.6, 100%, 50%, 1)",
+  gold: baseColors.gold,
   "upsell-primary": baseColors.ocean[70],
   "upsell-secondary": baseColors.ocean[20],
-  "upsell-gem": "hsla(190, 100%, 50%, 1)",
+  "upsell-gem": baseColors.upsellGem,
 };
 
 const actualColors = {
@@ -130,7 +129,7 @@ const actualColors = {
   "border-neutral-subtle": baseColors.orionAlpha[10],
   "core-blue-saturated": baseColors.ocean[60],
   "core-brand-hover": baseColors.brand[50],
-  "core-gold": "hsla(50.6, 100%, 50%, 1)",
+  "core-gold": baseColors.gold,
   "core-green-saturated": baseColors.palm[60],
   "core-info": baseColors.orion[40],
   "core-metabase_brand": baseColors.blue[40],

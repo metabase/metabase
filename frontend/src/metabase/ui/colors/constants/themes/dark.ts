@@ -75,10 +75,10 @@ const deprecatedColors = {
   "border-strong": baseColors.orionAlphaInverse[30],
   "border-stronger": baseColors.orionAlphaInverse[50],
   "border-subtle": baseColors.orionAlphaInverse[10],
-  gold: "hsla(50.6, 100%, 50%, 1)",
+  gold: baseColors.gold,
   "upsell-primary": baseColors.ocean[30],
   "upsell-secondary": baseColors.ocean[80],
-  "upsell-gem": "hsla(190, 100%, 50%, 1)",
+  "upsell-gem": baseColors.upsellGem,
 };
 
 const actualColors = {
@@ -131,7 +131,7 @@ const actualColors = {
   "border-neutral-subtle": baseColors.orionAlphaInverse[10],
   "core-blue-saturated": baseColors.ocean[40],
   "core-brand-hover": baseColors.brand[30],
-  "core-gold": "hsla(50.6, 100%, 50%, 1)",
+  "core-gold": baseColors.gold,
   "core-green-saturated": baseColors.palm[40],
   "core-info": baseColors.orion[50],
   "core-metabase_brand": baseColors.blue[40],

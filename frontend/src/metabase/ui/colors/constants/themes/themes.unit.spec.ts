@@ -19,12 +19,9 @@ describe.each([
   ["light", METABASE_LIGHT_THEME],
   ["dark", METABASE_DARK_THEME],
 ])("%s theme", (_name, theme) => {
-  const staticColors = Object.entries(theme.colors ?? {}).filter(
-    ([, value]) => !isWhitelabelDerived(value),
-  );
-
   it("should define every non-whitelabel color as a literal value", () => {
-    const offenders = staticColors
+    const offenders = Object.entries(theme.colors)
+      .filter(([, value]) => !isWhitelabelDerived(value))
       .filter(([, value]) => !LITERAL_COLOR.test(value))
       .map(([key, value]) => `${key}: ${value}`);
 
