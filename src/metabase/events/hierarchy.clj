@@ -15,12 +15,14 @@
 (defn derive!
   "Make `parent` an ancestor of `tag` in the event [[hierarchy]]."
   [tag parent]
-  (derive hierarchy tag parent))
+  (alter-var-root #'hierarchy derive tag parent)
+  nil)
 
 (defn underive!
   "Remove `parent` as an immediate ancestor of `tag` in the event [[hierarchy]]."
   [tag parent]
-  (underive hierarchy tag parent))
+  (alter-var-root #'hierarchy underive tag parent)
+  nil)
 
 (defn event-isa?
   "Whether `child` is `parent` or descends from it in the event [[hierarchy]]."
