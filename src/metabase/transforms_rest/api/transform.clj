@@ -405,12 +405,14 @@
                                                                     [:id pos-int?]
                                                                     [:name :string]]]
   "Preview the transforms a DAG reprocess from this transform would run (see `POST /:id/run-dag`),
-  in execution order."
+  in execution order. Transforms the caller cannot read are omitted."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [direction]} :- [:map [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]]]
   (api/read-check :model/Transform id)
-  (mapv (fn [{xform-id :id, xform-name :name}]
-          {:id xform-id, :name xform-name})
+  (into []
+        (comp (filter mi/can-read?)
+              (map (fn [{xform-id :id, xform-name :name}]
+                     {:id xform-id, :name xform-name})))
         (transforms.core/dag-run-transforms id direction)))
 
 (def ^{:arglists '([request respond raise])} routes
