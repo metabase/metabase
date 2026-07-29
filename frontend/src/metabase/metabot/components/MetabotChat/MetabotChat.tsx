@@ -74,7 +74,10 @@ export const MetabotChat = ({
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
 
-  const title = hasMessages ? metabot.title || t`New conversation` : undefined;
+  const untitledLabel = metabot.forkedFromConversationId
+    ? t`Forked conversation`
+    : t`New conversation`;
+  const title = hasMessages ? metabot.title || untitledLabel : undefined;
 
   const handleEditorSubmit = () => metabot.submitInput(metabot.prompt);
   const shouldShowHeader = headerActions || title;

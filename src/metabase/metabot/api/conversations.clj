@@ -28,15 +28,16 @@
 
 (def ^:private ConversationSummary
   [:map
-   [:conversation_id ms/UUIDString]
-   [:created_at      ms/TemporalInstant]
-   [:title           [:maybe :string]]
+   [:conversation_id             ms/UUIDString]
+   [:created_at                  ms/TemporalInstant]
+   [:title                       [:maybe :string]]
    ;; Wire compatibility: keep the field name `user_id`, but it now means the
    ;; conversation originator (first writer), not "the only allowed reader".
-   [:user_id         [:maybe ms/PositiveInt]]
-   [:profile_id      [:maybe :string]]
-   [:message_count   ms/IntGreaterThanOrEqualToZero]
-   [:last_message_at [:maybe ms/TemporalInstant]]])
+   [:user_id                     [:maybe ms/PositiveInt]]
+   [:profile_id                  [:maybe :string]]
+   [:message_count               ms/IntGreaterThanOrEqualToZero]
+   [:last_message_at             [:maybe ms/TemporalInstant]]
+   [:forked_from_conversation_id [:maybe ms/UUIDString]]])
 
 (def ^:private ListConversationsResponse
   [:map
@@ -47,16 +48,17 @@
 
 (def ^:private ConversationDetail
   [:map
-   [:conversation_id ms/UUIDString]
-   [:created_at      ms/TemporalInstant]
-   [:title           [:maybe :string]]
-   [:user_id         [:maybe ms/PositiveInt]]
-   [:state           {:optional true} [:maybe ::metabot.schema/state]]
-   [:saved_entities  [:sequential
-                      [:map
-                       [:card_id  ms/PositiveInt]
-                       [:chart_id [:maybe :string]]]]]
-   [:messages        [:sequential :map]]])
+   [:conversation_id             ms/UUIDString]
+   [:created_at                  ms/TemporalInstant]
+   [:title                       [:maybe :string]]
+   [:user_id                     [:maybe ms/PositiveInt]]
+   [:forked_from_conversation_id [:maybe ms/UUIDString]]
+   [:state                       {:optional true} [:maybe ::metabot.schema/state]]
+   [:saved_entities              [:sequential
+                                  [:map
+                                   [:card_id  ms/PositiveInt]
+                                   [:chart_id [:maybe :string]]]]]
+   [:messages                    [:sequential :map]]])
 
 (def ^:private ConversationTitleResponse
   [:map
@@ -186,7 +188,7 @@
         ;; soft-deleted messages still count. Legacy rows fall back to
         ;; `metabot_conversation.user_id`.
         rows    (t2/select :model/MetabotConversation
-                           {:select   [:c.id :c.created_at :c.title :c.user_id
+                           {:select   [:c.id :c.created_at :c.title :c.user_id :c.forked_from_conversation_id
                                        [(live-message-count-subquery) :message_count]
                                        [(last-live-message-at-subquery) :last_message_at]
                                        [(last-live-message-profile-id-subquery) :profile_id]]
@@ -196,7 +198,8 @@
                             :limit    limit
                             :offset   offset})]
     {:data   (mapv #(-> %
-                        (select-keys [:created_at :title :user_id :profile_id :message_count :last_message_at])
+                        (select-keys [:created_at :title :user_id :profile_id :message_count :last_message_at
+                                      :forked_from_conversation_id])
                         (assoc :conversation_id (:id %)))
                    rows)
      :total  total

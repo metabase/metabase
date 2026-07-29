@@ -173,6 +173,7 @@ export type MetabotConversation = {
   profile_id: string | null;
   message_count: number;
   last_message_at: string | null;
+  forked_from_conversation_id: string | null;
 };
 
 export type MetabotConversationTitleResponse =
