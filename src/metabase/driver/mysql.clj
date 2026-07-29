@@ -741,14 +741,22 @@
     (merge
      default-connection-args
      ;; newer versions of MySQL will complain if you don't specify this when not using SSL
-     {:useSSL (boolean ssl?)}
+     ;; No :useSSL for IAM — mariadb 3.x's legacy-SSL handler escalates `useSSL` to verify-full,
+     ;; clobbering the :sslMode below (breaks hostname-mismatched endpoints like RDS Proxy custom
+     ;; endpoints); see [[metabase.app-db.spec]] for the appdb equivalent
+     (when-not use-iam?
+       {:useSSL (boolean ssl?)})
      (let [details (cond-> details
                      ssl-cert?
                      (set/rename-keys {:ssl-cert :serverSslCert})
 
                      use-iam?
                      (->
-                      (assoc :subprotocol "aws-wrapper:mysql"
+                      ;; the wrapper's `mariadb` protocol, not `mysql`: `mysql` resolves to Connector/J
+                      ;; (absent from the classpath) and only connects via a DriverManager fallback that
+                      ;; strips the query string; `mariadb` hands the driver a jdbc:mariadb: URL it
+                      ;; accepts unconditionally. See [[metabase.app-db.spec]]
+                      (assoc :subprotocol "aws-wrapper:mariadb"
                              :classname "software.amazon.jdbc.ds.AwsWrapperDataSource"
                              :sslMode "VERIFY_CA"
                              :wrapperPlugins "iam")
