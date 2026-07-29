@@ -161,7 +161,7 @@
   (testing "GHY-4140: alert reads carry condition, schedule, and handlers"
     (notification.tu/with-card-notification
       [notification {:card              {:dataset_query (venues-query)}
-                     :notification_card {:creator_id (mt/user->id :crowberto)}
+                     :notification      {:creator_id (mt/user->id :crowberto)}
                      :subscriptions     [{:type            :notification-subscription/cron
                                           :cron_schedule   "0 0 0 * * ?"
                                           :ui_display_type :cron/builder}]
@@ -261,7 +261,7 @@
   (testing "GHY-4140: alert reads require agent:notification:read on top of the base scope"
     (notification.tu/with-card-notification
       [notification {:card              {:dataset_query (venues-query)}
-                     :notification_card {:creator_id (mt/user->id :crowberto)}
+                     :notification      {:creator_id (mt/user->id :crowberto)}
                      :handlers          []}]
       (mt/with-test-user :crowberto
         (let [row (content-one #{"agent:resource:read"}
