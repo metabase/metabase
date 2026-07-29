@@ -99,9 +99,6 @@ runs:
         && steps.run-test.outcome == 'failure'
         && !(inputs.driver-status == 'info'
              && !(github.ref_name == 'master' || startsWith(github.ref_name, 'release-x')))
-      # No continue-on-error here: the runner evaluates composite-step continue-on-error without the
-      # `inputs` context (actions/runner#2418), so any expression on it silently disables the gate.
-      # Not needed anyway - when not enforcing, the gate runs in dry-run mode and always exits 0.
       uses: ./.github/actions/quarantine-gate
       with:
         adapter: backend
