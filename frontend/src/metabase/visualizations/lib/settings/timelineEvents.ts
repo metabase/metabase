@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { ChartSettingTimelineEvents } from "metabase/visualizations/components/settings/ChartSettingTimelineEvents";
 import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
 
 export const TIMELINE_EVENTS_SETTINGS: VisualizationSettingsDefinitions = {
@@ -9,7 +8,9 @@ export const TIMELINE_EVENTS_SETTINGS: VisualizationSettingsDefinitions = {
     get title() {
       return t`Timeline events`;
     },
-    widget: ChartSettingTimelineEvents,
+    // Registered in metabase/visualizations/register so the widget component is
+    // not pulled into the static-viz bundle through the chart definitions.
+    widget: "timelineEvents",
     getDefault: () => [],
     getHidden: (_series, vizSettings) =>
       vizSettings["graph.x_axis.scale"] !== "timeseries",

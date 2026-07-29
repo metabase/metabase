@@ -26,6 +26,7 @@ import { ChartSettingSegmentsEditor } from "./components/settings/ChartSettingSe
 import { ChartSettingSelect } from "./components/settings/ChartSettingSelect";
 import { ChartSettingSeriesOrder } from "./components/settings/ChartSettingSeriesOrder";
 import { ChartSettingTableColumns } from "./components/settings/ChartSettingTableColumns";
+import { ChartSettingTimelineEvents } from "./components/settings/ChartSettingTimelineEvents";
 import { ChartSettingToggle } from "./components/settings/ChartSettingToggle";
 import { AreaChart } from "./visualizations/AreaChart";
 import { BarChart } from "./visualizations/BarChart";
@@ -101,6 +102,7 @@ function registerVisualizationSettingWidgets() {
     segmentsEditor: ChartSettingSegmentsEditor,
     seriesOrder: ChartSettingSeriesOrder,
     tableColumns: ChartSettingTableColumns,
+    timelineEvents: ChartSettingTimelineEvents,
     nestedColumns: chartSettingNestedSettings(ChartNestedSettingColumns),
     nestedSeries: chartSettingNestedSettings(ChartNestedSettingSeries),
     pieDimensions: DimensionsWidget,
