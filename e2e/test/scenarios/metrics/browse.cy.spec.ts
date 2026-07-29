@@ -209,18 +209,26 @@ describe("scenarios > browse > metrics", () => {
       cy.location("pathname").should("eq", "/browse/metrics");
     });
 
-    it("should render truncated markdown in the table", () => {
+    it("should render truncated name and markdown in the table", () => {
+      const name =
+        "A very long metric name that should be truncated by the metrics table because it does not fit within the name column";
       const description =
         "This is a _very_ **long description** that should be truncated by the metrics table because it is really very long.";
 
       createMetrics([
         {
           ...ORDERS_SCALAR_METRIC,
+          name,
           description,
         },
       ]);
 
       cy.visit("/browse/metrics");
+
+      metricsTable()
+        .findByText(name)
+        .should("be.visible")
+        .then((el) => H.assertIsEllipsified(el[0]));
 
       metricsTable()
         .findByText(/This is a/)
