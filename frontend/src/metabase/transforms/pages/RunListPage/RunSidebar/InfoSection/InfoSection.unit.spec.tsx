@@ -1,6 +1,17 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import fetchMock from "fetch-mock";
+
+import { setupGetTransformEndpoint } from "__support__/server-mocks";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import type { TransformRun } from "metabase-types/api";
-import { createMockTransformRun } from "metabase-types/api/mocks";
+import {
+  createMockTransform,
+  createMockTransformRun,
+  createMockTransformTarget,
+} from "metabase-types/api/mocks";
 
 import { InfoSection } from "./InfoSection";
 
@@ -9,6 +20,13 @@ type SetupOpts = {
 };
 
 function setup({ run = createMockTransformRun() }: SetupOpts = {}) {
+  setupGetTransformEndpoint(
+    createMockTransform({
+      id: 5,
+      target: createMockTransformTarget({ schema: "public", name: "orders" }),
+    }),
+  );
+  fetchMock.get(/\/api\/database\/\d+\/schemas/, []);
   renderWithProviders(<InfoSection run={run} />);
 }
 
@@ -68,5 +86,23 @@ describe("InfoSection", () => {
     setup({ run });
 
     expect(screen.getByText("Schedule")).toBeInTheDocument();
+  });
+
+  it("should render the output table of the run", async () => {
+    const run = createMockTransformRun({
+      transform: createMockTransform({ id: 5 }),
+    });
+    setup({ run });
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByText("Output table")).toBeInTheDocument();
+    expect(screen.getByTestId("output-table-link")).toHaveTextContent("orders");
+  });
+
+  it("should not render the output table when the run has no transform", () => {
+    const run = createMockTransformRun({ transform: undefined });
+    setup({ run });
+
+    expect(screen.queryByText("Output table")).not.toBeInTheDocument();
   });
 });

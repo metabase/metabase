@@ -16,6 +16,8 @@ import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatDurationLong } from "metabase/utils/formatting/time";
 import type { TransformRunForJobRun } from "metabase-types/api";
 
+import { TransformOutput } from "../../../components/TransformOutput";
+
 import S from "./TransformRunItem.module.css";
 
 type TransformRunItemProps = {
@@ -75,6 +77,12 @@ export function TransformRunItem({ transformRun }: TransformRunItemProps) {
             </>
           )}
         </Group>
+        {transformRun.transform_id !== null && (
+          <Group gap="sm" wrap="nowrap" fz="sm" lh="1rem">
+            <Box c="text-secondary">{t`Output:`}</Box>
+            <TransformOutput transformId={transformRun.transform_id} />
+          </Group>
+        )}
         {transformRun.message != null && (
           <ErrorSection run={transformRun} showTitle={false} />
         )}

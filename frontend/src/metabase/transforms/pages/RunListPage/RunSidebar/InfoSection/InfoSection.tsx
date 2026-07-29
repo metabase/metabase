@@ -7,6 +7,7 @@ import type { TransformRun } from "metabase-types/api";
 
 import { CheckpointValue } from "../../../../components/CheckpointValue";
 import { SidebarInfoRow } from "../../../../components/SidebarInfoRow";
+import { TransformOutput } from "../../../../components/TransformOutput";
 import {
   formatRunMethod,
   formatStatus,
@@ -42,6 +43,11 @@ export function InfoSection({ run }: InfoSectionProps) {
       <SidebarInfoRow label={t`Trigger`}>
         {formatRunMethod(run.run_method)}
       </SidebarInfoRow>
+      {run.transform && (
+        <SidebarInfoRow label={t`Output table`}>
+          <TransformOutput transformId={run.transform.id} />
+        </SidebarInfoRow>
+      )}
       {checkpointField != null && (
         <SidebarInfoRow label={t`Checkpoint field`}>
           {checkpointField.display_name}
