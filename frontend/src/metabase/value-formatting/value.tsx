@@ -3,9 +3,8 @@ import dayjs, { type Dayjs } from "dayjs";
 
 import CS from "metabase/css/core/index.css";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { formatNumber } from "metabase/utils/formatting/numbers";
+import { formatNumber } from "metabase/utils/formatting";
 import { removeNewLines } from "metabase/utils/formatting/strings";
-import { formatTime } from "metabase/utils/formatting/time";
 import { parseNumber } from "metabase/utils/number";
 import {
   isBoolean,
@@ -25,6 +24,7 @@ import { formatCoordinate } from "./geography";
 import { formatImage } from "./image";
 import { renderLinkTextForClick } from "./link";
 import { getJsxMarkdownRenderer } from "./registry";
+import { formatTime } from "./time";
 import { formatUrl } from "./url";
 
 export function formatValue(value: unknown, _options: ColumnSettings = {}) {

@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { currency as currencyCljs } from "cljs/metabase.util.currency";
+import type { CurrencyStyle } from "metabase-types/api/formatting";
 
 export const currency: [Currency["symbol"], Currency][] = currencyCljs;
 
@@ -18,8 +19,6 @@ export interface CurrencyOption {
   name: string;
   value: string;
 }
-
-export type CurrencyStyle = Intl.NumberFormatOptionsCurrencyDisplay;
 
 export interface CurrencyStyleOption {
   name: string;

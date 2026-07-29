@@ -3,18 +3,19 @@ import dayjs, { type Dayjs, type OpUnitType, type QUnitType } from "dayjs";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
+import type { ColumnSettings } from "metabase-types/api";
+import type { DatetimeUnit } from "metabase-types/api/query";
+import { SCHEDULE_DAY, isScheduleDay } from "metabase-types/guards/settings";
+
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
   getTimeFormatFromStyle,
   hasDay,
   hasHour,
-} from "metabase/utils/formatting/datetime-utils";
-import { parseTimestamp } from "metabase/utils/time-dayjs";
-import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
-import type { ColumnSettings } from "metabase-types/api";
-import type { DatetimeUnit } from "metabase-types/api/query";
-import { SCHEDULE_DAY, isScheduleDay } from "metabase-types/guards/settings";
+} from "./datetime-utils";
 
 const EN_DASH = `–`;
 

@@ -13,7 +13,7 @@ import {
   Text,
   TextInputBlurChange,
 } from "metabase/ui";
-import { clickBehaviorIsValid } from "metabase/visualizations/lib/formatting/click-data";
+import { clickBehaviorIsValid } from "metabase/value-formatting";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   ArbitraryCustomDestinationClickBehavior,

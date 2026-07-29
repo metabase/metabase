@@ -6,7 +6,7 @@ import type {
   DateFilterDisplayOpts,
   DateFilterValue,
 } from "metabase/querying/common/types";
-import { DEFAULT_TIME_STYLE } from "metabase/utils/formatting/datetime-utils";
+import { DEFAULT_TIME_STYLE } from "metabase/value-formatting";
 import type { ExcludeDateFilterUnit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { DateFormattingSettings } from "metabase-types/api";

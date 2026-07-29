@@ -7,7 +7,7 @@ import { createThunkAction } from "metabase/redux";
 import { UPDATE_DASHBOARD_AND_CARDS } from "metabase/redux/dashboard";
 import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
 import type { Location } from "metabase/router";
-import { clickBehaviorIsValid } from "metabase/visualizations/lib/formatting/click-data";
+import { clickBehaviorIsValid } from "metabase/value-formatting";
 import type {
   DashCardId,
   ParameterId,
