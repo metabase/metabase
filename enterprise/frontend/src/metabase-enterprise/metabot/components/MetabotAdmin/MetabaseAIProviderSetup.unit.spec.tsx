@@ -43,6 +43,7 @@ type SetupOptions = {
   offerMetabaseManagedAi?: boolean;
   metabasePricePerUnit?: number;
   pauseAddOnsResponse?: boolean;
+  purchaseCloudAddOnResponse?: number;
   metabotUsageQuota?: MetabotUsageQuota | null;
   onConnect?: () => void;
 };
@@ -55,6 +56,7 @@ function setup({
   offerMetabaseManagedAi = false,
   metabasePricePerUnit = 3.0,
   pauseAddOnsResponse = false,
+  purchaseCloudAddOnResponse = 200,
   metabotUsageQuota = null,
   onConnect,
 }: SetupOptions = {}) {
@@ -90,6 +92,7 @@ function setup({
 
   setupMetabaseManagedAiEndpoints({
     metabasePricePerUnit,
+    purchaseCloudAddOnResponse,
     metabotUsageQuota: metabotUsageQuota
       ? {
           tokens: metabotUsageQuota.tokens ?? null,
@@ -308,6 +311,41 @@ describe("MetabaseAIProviderSetup", () => {
           { method: "POST", body: { terms_of_service: true } },
         ),
       ).toBe(true);
+
+      const postPaths = fetchMock.callHistory
+        .calls()
+        .filter((call) => call.options.method === "POST")
+        .map((call) => new URL(call.url, location.origin).pathname);
+
+      expect(
+        postPaths.indexOf("/api/ee/cloud-add-ons/metabase-ai-managed"),
+      ).toBeLessThan(postPaths.indexOf("/api/llm/providers"));
+    });
+
+    it("does not create the connection when the add-on purchase fails", async () => {
+      setup({ purchaseCloudAddOnResponse: 500 });
+
+      await userEvent.click(
+        await screen.findByRole("checkbox", {
+          name: /I agree with the Metabase AI Service/i,
+        }),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called(
+            "path:/api/ee/cloud-add-ons/metabase-ai-managed",
+            { method: "POST" },
+          ),
+        ).toBe(true);
+      });
+
+      expect(
+        fetchMock.callHistory.called("path:/api/llm/providers", {
+          method: "POST",
+        }),
+      ).toBe(false);
     });
 
     it("does not offer a Connect button to non-admin users who must accept terms", async () => {

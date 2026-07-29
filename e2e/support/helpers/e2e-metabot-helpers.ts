@@ -15,11 +15,6 @@ type LlmProviderConnectionInput = {
   config?: Record<string, string>;
 };
 
-/**
- * Write the `llm-providers` connection list directly. `POST /api/llm/providers`
- * verifies credentials against the real provider, which a fake key cannot pass,
- * so tests configure the setting instead.
- */
 export function setLlmProviders(connections: LlmProviderConnectionInput[]) {
   return cy.request("PUT", "/api/setting/llm-providers", {
     value: connections.map(({ key, type = key, name = key, config = {} }) => ({
@@ -31,19 +26,22 @@ export function setLlmProviders(connections: LlmProviderConnectionInput[]) {
   });
 }
 
-/** Connect a fake Anthropic provider so Metabot reads as configured. */
-export function setupAnthropicLlmProvider(apiKey = "sk-ant-test-key") {
+export function setupAnthropicLlmProvider({
+  apiKey = "sk-ant-test-key",
+  baseUrl,
+}: { apiKey?: string; baseUrl?: string } = {}) {
   return setLlmProviders([
     {
       key: "anthropic",
       type: "anthropic",
       name: "Anthropic",
-      config: { "api-key": apiKey },
+      config: baseUrl
+        ? { "api-key": apiKey, "base-url": baseUrl }
+        : { "api-key": apiKey },
     },
   ]);
 }
 
-/** Remove every provider connection so Metabot reads as unconfigured. */
 export function clearLlmProviders() {
   return setLlmProviders([]);
 }
