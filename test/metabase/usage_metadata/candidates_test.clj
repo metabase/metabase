@@ -1,6 +1,7 @@
 (ns metabase.usage-metadata.candidates-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -77,6 +78,23 @@
                                                        :source_config     {}}]
     (is (nil? (candidates/queue-refresh! :manual (mt/user->id :crowberto))))
     (is (= (:id run) (:id (candidates/active-run))))))
+
+(deftest refresh-queue-recovers-run-interrupted-before-worker-start-test
+  (mt/with-temp [:model/UsageMetadataCandidateRun interrupted-run {:status            :queued
+                                                                   :trigger           :manual
+                                                                   :algorithm_version 1
+                                                                   :source_config     {}
+                                                                   :created_at        (t/minus (t/offset-date-time) (t/minutes 10))}]
+    (let [replacement-run (candidates/queue-refresh! :manual (mt/user->id :crowberto))
+          interrupted-run (t2/select-one :model/UsageMetadataCandidateRun :id (:id interrupted-run))]
+      (try
+        (is (= :failed (:status interrupted-run)))
+        (is (some? (:finished_at interrupted-run)))
+        (is (re-find #"before processing started" (:error interrupted-run)))
+        (is (= :queued (:status replacement-run)))
+        (is (= (:id replacement-run) (:id (candidates/active-run))))
+        (finally
+          (t2/delete! :model/UsageMetadataCandidateRun :id (:id replacement-run)))))))
 
 (deftest refresh-queue-recovers-run-interrupted-by-server-restart-test
   (mt/with-temp [:model/UsageMetadataCandidateRun interrupted-run {:status            :running
