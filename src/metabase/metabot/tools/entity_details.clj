@@ -168,6 +168,12 @@
                                    with-queryable-dimensions?      true
                                    with-segments?                  false}}]
    (let [id (:id card)
+         ;; Reading the metric Card is collection-based and does not imply permission to see
+         ;; metadata for its physical source Table. Dimensions are filtered column by column
+         ;; below; segments come straight off the Table, so gate them on it being readable.
+         ;; t2 rows carry `:table_id`; `lib.metadata/card` maps reject snake_case, so `:table-id`.
+         source-table-readable? (when-let [table-id (or (:table-id card) (:table_id card))]
+                                  (mi/can-read? :model/Table table-id))
          query-needed? (or with-default-temporal-breakout? with-queryable-dimensions? with-segments?)
          metric-query (when query-needed?
                         (lib/query metadata-provider (lib.metadata/card metadata-provider id)))
@@ -201,7 +207,7 @@
                                                 (map #(metabot.tools.u/->result-column metric-query %)))
                                           queryable-columns))
 
-       with-segments?
+       (and source-table-readable? with-segments?)
        (assoc :segments (if-let [segments (lib/available-segments metric-query)]
                           (mapv #(convert-measure-or-segment % :filters) segments)
                           []))))))
