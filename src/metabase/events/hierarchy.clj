@@ -2,8 +2,8 @@
   "Keyword hierarchy relating event topics to the keywords `publish-event!` methods dispatch on.
 
   Every event topic must reach `:metabase/event` through this hierarchy to be publishable. Kept separate from
-  Clojure's global hierarchy so that event relationships are visible in one place and cannot collide with the
-  model/trait keywords that share the global hierarchy.
+  Clojure's global hierarchy so that event relationships are visible in one place and cannot collide with other
+  users of the global hierarchy.
 
     (derive! ::card-event :metabase/event)
     (derive! :event/card-create ::card-event)"
