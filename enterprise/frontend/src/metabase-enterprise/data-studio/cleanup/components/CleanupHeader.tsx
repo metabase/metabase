@@ -29,6 +29,10 @@ export function CleanupHeader({
 }: CleanupHeaderProps) {
   const effectiveFinishedAt =
     snapshot?.finished_at ?? refreshStatus?.snapshot?.finished_at;
+  const hasNewerFailure =
+    refreshStatus?.failure != null &&
+    (refreshStatus.snapshot == null ||
+      refreshStatus.failure.id > refreshStatus.snapshot.id);
 
   return (
     <Stack gap="sm">
@@ -71,15 +75,13 @@ export function CleanupHeader({
           {t`Analyzing saved questions and models. Existing results remain available while this runs.`}
         </Alert>
       )}
-      {refreshStatus?.failure &&
-        refreshStatus.failure.id !== refreshStatus.snapshot?.id &&
-        !isRefreshing && (
-          <Alert icon={<Icon name="warning" />} color="warning">
-            {refreshStatus.snapshot
-              ? t`The latest analysis failed. Showing the previous successful results.`
-              : t`The analysis failed. Try refreshing it again.`}
-          </Alert>
-        )}
+      {hasNewerFailure && !isRefreshing && (
+        <Alert icon={<Icon name="warning" />} color="warning">
+          {refreshStatus.snapshot
+            ? t`The latest analysis failed. Showing the previous successful results.`
+            : t`The analysis failed. Try refreshing it again.`}
+        </Alert>
+      )}
     </Stack>
   );
 }
