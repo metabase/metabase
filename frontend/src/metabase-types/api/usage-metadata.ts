@@ -13,7 +13,7 @@ export type UsageMetadataModelingStatus =
   | "partially-modeled"
   | "modeled";
 export type UsageMetadataSignal = "verified" | "official" | "popular";
-export type UsageMetadataCleanupQueue = "suggested" | "discarded";
+export type UsageMetadataCleanupQueue = "suggested" | "used-raw" | "discarded";
 export type UsageMetadataCandidateSort =
   | "priority"
   | "name"

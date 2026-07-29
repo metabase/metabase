@@ -12,7 +12,7 @@ const MODELING_STATUSES = ["missing", "partially-modeled", "modeled"] as const;
 const SIGNALS = ["verified", "official", "popular"] as const;
 const SORTS = ["priority", "name", "source-count", "view-count"] as const;
 const DIRECTIONS = ["asc", "desc"] as const;
-const QUEUES = ["suggested", "discarded"] as const;
+const QUEUES = ["suggested", "used-raw", "discarded"] as const;
 
 export function parseCleanupParams(
   searchParams: URLSearchParams,

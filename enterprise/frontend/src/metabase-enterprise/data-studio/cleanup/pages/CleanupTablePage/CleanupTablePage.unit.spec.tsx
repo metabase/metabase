@@ -122,7 +122,10 @@ const refreshStatus: UsageMetadataRefreshStatus = {
   fresh: true,
 };
 
-function setup(candidateOverride = candidate) {
+function setup(
+  candidateOverride = candidate,
+  initialRoute = "/data-studio/cleanup/tables/1",
+) {
   setupDatabaseListEndpoint([createMockDatabase({ id: 1 })]);
   setupTableQueryMetadataEndpoint(
     createMockTable({ id: 1, db_id: 1, display_name: "Orders" }),
@@ -146,7 +149,7 @@ function setup(candidateOverride = candidate) {
     {
       withRouter: true,
       withUndos: true,
-      initialRoute: "/data-studio/cleanup/tables/1",
+      initialRoute,
     },
   );
 }
@@ -225,35 +228,65 @@ describe("CleanupTablePage", () => {
     ).toBeInTheDocument();
   });
 
-  it.each([
-    {
-      modelingStatus: "partially-modeled" as const,
-      title: "Measure differs from related Library definitions",
-      description:
+  it("clearly explains a partially modeled candidate in the drawer", async () => {
+    const statusCandidate = {
+      ...candidate,
+      modeling_status: "partially-modeled" as const,
+    };
+    setupUsageMetadataCandidateEndpoint(candidate.id, statusCandidate);
+    setup(statusCandidate);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Review" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Measure differs from related Library definitions",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
         "Compare the related definitions before deciding whether to create another Measure.",
-    },
-    {
-      modelingStatus: "modeled" as const,
-      title: "Measure is already modeled, but still used raw",
-      description:
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows modeled raw usage as a report without actions", async () => {
+    const modeledCandidate = {
+      ...candidate,
+      modeling_status: "modeled" as const,
+      dismissed: true,
+    };
+    setupUsageMetadataCandidateEndpoint(candidate.id, modeledCandidate);
+    setup(modeledCandidate, "/data-studio/cleanup/tables/1?queue=used-raw");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "View report" }),
+    );
+
+    expect(
+      await screen.findByText("Measure is already modeled, but still used raw"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
         "An exact Library Measure exists, but saved content still uses this raw definition.",
-    },
-  ])(
-    "clearly explains the $modelingStatus case in the drawer",
-    async ({ modelingStatus, title, description }) => {
-      const statusCandidate = {
-        ...candidate,
-        modeling_status: modelingStatus,
-      };
-      setupUsageMetadataCandidateEndpoint(candidate.id, statusCandidate);
-      setup(statusCandidate);
-
-      await userEvent.click(
-        await screen.findByRole("button", { name: "Review" }),
-      );
-
-      expect(await screen.findByText(title)).toBeInTheDocument();
-      expect(screen.getByText(description)).toBeInTheDocument();
-    },
-  );
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("dialog")).queryByRole("button", {
+        name: "Dismiss",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole("dialog")).queryByRole("button", {
+        name: "Create Measure",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole("dialog")).queryByRole("button", {
+        name: "View in Library",
+      }),
+    ).not.toBeInTheDocument();
+  });
 });

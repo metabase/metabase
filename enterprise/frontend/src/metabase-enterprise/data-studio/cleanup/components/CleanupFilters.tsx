@@ -60,7 +60,11 @@ export function CleanupFilters({
   );
 }
 
-const QUEUES: UsageMetadataCleanupQueue[] = ["suggested", "discarded"];
+const QUEUES: UsageMetadataCleanupQueue[] = [
+  "suggested",
+  "used-raw",
+  "discarded",
+];
 
 export function CleanupQueueTabs({
   params,
@@ -101,6 +105,8 @@ function getQueueLabel(queue: UsageMetadataCleanupQueue) {
   switch (queue) {
     case "suggested":
       return t`Suggested`;
+    case "used-raw":
+      return t`Used raw`;
     case "discarded":
       return t`Discarded`;
   }
