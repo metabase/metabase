@@ -16,6 +16,7 @@ export * from "./use-router";
 export * from "./use-search-params";
 export * from "./with-route-props";
 export { getRawBrowserHistory } from "./v7/blocking-history";
+export { queryToSearch, searchToQuery } from "./v7/location";
 export {
   createLocationMirror,
   type LocationMirror,

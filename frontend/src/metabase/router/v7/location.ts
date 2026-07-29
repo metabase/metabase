@@ -20,9 +20,9 @@ export function searchToQuery(
 }
 
 /**
- * Serialize v3's `location.query` object back into a search string, the only form
- * v7 understands. Repeated values become repeated keys, mirroring what
- * `searchToQuery` parses. Returns `""` for an empty query.
+ * Serialize a query object into the `search` string a navigation target carries.
+ * Repeated values become repeated keys, mirroring what `searchToQuery` parses.
+ * Returns `""` for an empty query.
  *
  * Keys are sorted, because history@3 stringified the query with `query-string`,
  * which sorts by default. Call sites build the query from an object whose key
