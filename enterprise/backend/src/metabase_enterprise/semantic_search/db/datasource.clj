@@ -201,17 +201,19 @@
   10)
 
 (defn- probe-jdbc-url
-  "The dedicated pgvector URL with [[probe-timeout-params]] filled in.
-  A timeout already on MB_PGVECTOR_DB_URL wins."
+  "The dedicated pgvector URL with [[probe-timeout-params]] applied.
+  These replace any timeouts on MB_PGVECTOR_DB_URL rather than deferring to them: an operator raises those
+  for long index builds, and a probe left waiting that long strands a thread and a server-side connection
+  every time it is abandoned -- interrupting it can't end a blocking socket read."
   []
-  (let [url        (:jdbc-url (parsed-db-config))
-        [_ pairs]  (split-query url)
-        configured (into #{} (map first) pairs)
-        added      (for [[k v] probe-timeout-params
-                         :when (not (configured k))]
-                     (str k "=" v))]
-    (cond-> url
-      (seq added) (str (if (str/includes? url "?") "&" "?") (str/join "&" added)))))
+  (let [[base pairs] (split-query (:jdbc-url (parsed-db-config)))
+        query        (concat (for [[k v] pairs
+                                   :when (not (probe-timeout-params k))]
+                               (str k "=" v))
+                             (for [[k v] probe-timeout-params]
+                               (str k "=" v)))]
+    (cond-> base
+      (seq query) (str "?" (str/join "&" query)))))
 
 (defn probe-dedicated-connection!
   "Test the dedicated pgvector database, without initializing or borrowing its connection pool.
@@ -309,18 +311,18 @@
                                                                      (not schema-exists)))))
 
 (defn probe-app-db-store!
-  "Whether the app db is a usable pgvector store right now: it answers, and `vector` is installed.
+  "Whether the app db is a usable pgvector store right now: it answers, and it can still host the store.
   Uncached, so an extension dropped under a running instance shows up despite [[app-db-pgvector-support]]
-  latching true. Does not require [[app-db-schema]], which is only created at activation."
+  latching true.
+  Asks [[check-app-db-pgvector-support]], the same question [[pgvector-mode]] selects `:app-db` on, so the
+  two can't disagree. Demanding an installed extension instead would report every instance that has not
+  activated semantic search yet -- where nothing has run `CREATE EXTENSION` -- as permanently unreachable."
   []
-  ;; No timeout of its own beyond the statement: an app db that never answers has already wedged every other
-  ;; app-db read in the process.
   (boolean
-   (:installed
-    (jdbc/execute-one! (mdb/data-source)
-                       ["SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS installed"]
-                       {:builder-fn jdbc.rs/as-unqualified-kebab-maps
-                        :timeout    probe-query-timeout-seconds}))))
+   (and (jdbc/execute-one! (mdb/data-source)
+                           ["SELECT 1 AS test"]
+                           {:timeout probe-query-timeout-seconds})
+        (check-app-db-pgvector-support))))
 
 (defn- app-db-pgvector-supported?
   "Whether the application database can act as the pgvector store, via a cached probe.

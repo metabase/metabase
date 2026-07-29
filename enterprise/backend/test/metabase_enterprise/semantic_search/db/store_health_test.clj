@@ -9,6 +9,7 @@
    [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.app-db.core :as mdb]
    [metabase.test :as mt]))
 
 (defn- readiness-gauges
@@ -53,7 +54,8 @@
                   (readiness-gauges system))))))
     (testing "a connected app-db pgvector store is available and healthy"
       (mt/with-dynamic-fn-redefs
-        [semantic.db.datasource/dedicated-url-configured? (constantly false)
+        [mdb/db-is-set-up?                               (constantly true)
+         semantic.db.datasource/dedicated-url-configured? (constantly false)
          semantic.u/semantic-search-configured?           (constantly true)
          semantic.db.datasource/pgvector-mode             (constantly :app-db)
          semantic.db.datasource/probe-app-db-store!       (constantly true)]
@@ -63,7 +65,8 @@
               (readiness-gauges system))))
     (testing "an app-db store whose vector extension went away reads available but disconnected"
       (mt/with-dynamic-fn-redefs
-        [semantic.db.datasource/dedicated-url-configured? (constantly false)
+        [mdb/db-is-set-up?                               (constantly true)
+         semantic.db.datasource/dedicated-url-configured? (constantly false)
          semantic.u/semantic-search-configured?           (constantly true)
          semantic.db.datasource/pgvector-mode             (constantly :app-db)
          semantic.db.datasource/probe-app-db-store!       (constantly false)]
@@ -87,50 +90,95 @@
 
 (deftest last-success-does-not-outlive-its-storage-test
   (mt/with-prometheus-system! [_ system]
+    ;; Scraping runs the pull collectors, this namespace's included. Stub the submit for the whole test so a
+    ;; read of the exposition can't spawn a real probe that races it by writing the series being read.
     (mt/with-dynamic-fn-redefs
-      [semantic.db.datasource/dedicated-url-configured?   (constantly true)
-       semantic.db.datasource/probe-dedicated-connection! (constantly {:one 1})]
-      (@#'semantic.store-health/collect-pgvector-readiness-metrics!))
-    (is (=? {"dedicated" pos?} (exposed-last-success system)))
-    (testing "switching storage drops the old timestamp, which would otherwise never advance again"
+      [semantic.store-health/submit-pgvector-readiness-refresh! (constantly nil)]
       (mt/with-dynamic-fn-redefs
-        [semantic.db.datasource/dedicated-url-configured? (constantly false)
-         semantic.u/semantic-search-configured?           (constantly true)
-         semantic.db.datasource/pgvector-mode             (constantly :app-db)
-         semantic.db.datasource/probe-app-db-store!       (constantly true)]
+        [semantic.db.datasource/dedicated-url-configured?   (constantly true)
+         semantic.db.datasource/probe-dedicated-connection! (constantly {:one 1})]
         (@#'semantic.store-health/collect-pgvector-readiness-metrics!))
-      (is (=? {"appdb" pos?} (exposed-last-success system)))
-      (is (= #{"appdb"} (set (keys (exposed-last-success system))))
-          "the abandoned label is gone rather than zeroed -- a 0 would read as 1970"))))
+      (is (=? {"dedicated" pos?} (exposed-last-success system)))
+      (testing "switching storage drops the old timestamp, which would otherwise never advance again"
+        (mt/with-dynamic-fn-redefs
+          [mdb/db-is-set-up?                               (constantly true)
+           semantic.db.datasource/dedicated-url-configured? (constantly false)
+           semantic.u/semantic-search-configured?           (constantly true)
+           semantic.db.datasource/pgvector-mode             (constantly :app-db)
+           semantic.db.datasource/probe-app-db-store!       (constantly true)]
+          (@#'semantic.store-health/collect-pgvector-readiness-metrics!))
+        (is (=? {"appdb" pos?} (exposed-last-success system)))
+        (is (= #{"appdb"} (set (keys (exposed-last-success system))))
+            "the abandoned label is gone rather than zeroed -- a 0 would read as 1970"))
+      (testing "losing the store keeps the timestamp: that is when it is worth knowing"
+        (mt/with-dynamic-fn-redefs
+          [mdb/db-is-set-up?                               (constantly true)
+           semantic.db.datasource/dedicated-url-configured? (constantly false)
+           semantic.u/semantic-search-configured?           (constantly false)]
+          (@#'semantic.store-health/collect-pgvector-readiness-metrics!))
+        (is (=? {"appdb" pos?} (exposed-last-success system)))))))
 
 (deftest probe-deadline-test
-  (let [probe @#'semantic.store-health/probe-connected?]
-    (testing "a probe that outruns the deadline reads as disconnected instead of stranding the caller"
+  (let [probe @#'semantic.store-health/probe-store]
+    (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly true)]
+      (testing "a probe that outruns the deadline reports no store instead of stranding the caller"
+        (let [released (promise)]
+          (mt/with-dynamic-fn-redefs
+            [semantic.db.datasource/probe-dedicated-connection!
+             ;; Never returns on its own, so the deadline is the only thing that can end it.
+             (fn [] (try
+                      @(promise)
+                      (catch InterruptedException _ (deliver released true))))]
+            (is (=? {:mode :unavailable, :connected? false, :resolved? false} (probe 50)))
+            (is (true? (deref released 5000 ::still-hung))
+                "the abandoned probe is interrupted, not left holding a pool thread forever"))))
+      (testing "an ordinary failure reads as disconnected, but the store is still known"
+        (mt/with-dynamic-fn-redefs
+          [semantic.db.datasource/probe-dedicated-connection! #(throw (ex-info "nope" {}))]
+          (is (=? {:mode :dedicated, :connected? false, :resolved? true} (probe 60000)))))
+      (testing "an Error does not escape the deref and abandon the gauge writes"
+        (mt/with-dynamic-fn-redefs
+          [semantic.db.datasource/probe-dedicated-connection! #(throw (AssertionError. "boom"))]
+          (is (=? {:mode :unavailable, :connected? false, :resolved? false} (probe 60000)))))
+      (testing "a store that answers reads as connected"
+        (mt/with-dynamic-fn-redefs
+          [semantic.db.datasource/probe-dedicated-connection! (constantly {:one 1})]
+          (is (=? {:mode :dedicated, :connected? true, :resolved? true} (probe 60000))))))
+    (testing "choosing the mode runs under the deadline too, not just the connection probe"
       (let [released (promise)]
         (mt/with-dynamic-fn-redefs
-          [semantic.db.datasource/probe-dedicated-connection!
-           ;; Never returns on its own, so the deadline is the only thing that can end it.
-           (fn [] (try
-                    @(promise)
-                    (catch InterruptedException _ (deliver released true))))]
-          (is (false? (probe :dedicated 50)))
-          (is (true? (deref released 5000 ::still-hung))
-              "the abandoned probe is interrupted, not left holding a pool thread forever"))))
-    (testing "an ordinary failure still reads as disconnected"
+          [mdb/db-is-set-up?                               (constantly true)
+           semantic.db.datasource/dedicated-url-configured? (constantly false)
+           semantic.u/semantic-search-configured?           (constantly true)
+           semantic.db.datasource/pgvector-mode             (fn [] (try
+                                                                     @(promise)
+                                                                     (catch InterruptedException _
+                                                                       (deliver released true))))]
+          (is (=? {:mode :unavailable, :resolved? false} (probe 50)))
+          (is (true? (deref released 5000 ::still-hung))))))
+    (testing "an app db that is not migrated yet is unresolved, not an answer to cache for an hour"
       (mt/with-dynamic-fn-redefs
-        [semantic.db.datasource/probe-dedicated-connection! #(throw (ex-info "nope" {}))]
-        (is (false? (probe :dedicated 60000)))))
-    (testing "a store that answers reads as connected"
-      (mt/with-dynamic-fn-redefs
-        [semantic.db.datasource/probe-dedicated-connection! (constantly {:one 1})]
-        (is (true? (probe :dedicated 60000)))))))
+        [mdb/db-is-set-up?                               (constantly false)
+         semantic.db.datasource/dedicated-url-configured? (constantly false)
+         semantic.db.datasource/pgvector-mode             #(throw (ex-info "must not probe" {}))]
+        (is (=? {:mode :unavailable, :connected? false, :resolved? false} (probe 60000)))))))
+
+(deftest readiness-refresh-due-test
+  (let [due? @#'semantic.store-health/readiness-refresh-due?
+        now  (quot (t/to-millis-from-epoch (t/instant)) 1000)]
+    (is (true? (due? nil)) "nothing probed yet")
+    (is (false? (due? {:at now, :resolved? true})) "a fresh answer holds the interval")
+    (is (true? (due? {:at now, :resolved? false}))
+        "a probe that could not answer is retried rather than holding the hourly slot")
+    (is (true? (due? {:at (- now 3601), :resolved? true})) "the interval has passed")))
 
 (deftest pgvector-readiness-skips-unlicensed-app-db-probe-test
   (testing "an unlicensed instance never resolves pgvector-mode, whose app-db arm probes the app db"
     (mt/with-premium-features #{}
       (mt/with-prometheus-system! [_ system]
         (mt/with-dynamic-fn-redefs
-          [semantic.db.datasource/dedicated-url-configured? (constantly false)
+          [mdb/db-is-set-up?                               (constantly true)
+           semantic.db.datasource/dedicated-url-configured? (constantly false)
            semantic.db.datasource/pgvector-mode             #(throw (ex-info "must not probe" {}))]
           (@#'semantic.store-health/collect-pgvector-readiness-metrics!)
           (is (=? {"dedicated" {:available zero?, :connected zero?}
@@ -145,14 +193,11 @@
     (is (not (contains? (methods analytics.core/known-labels)
                         :metabase-pgvector/store-last-success-timestamp-seconds))
         "a seeded 0 would read as 1970 and fire any staleness alert forever"))
-  (testing "a configured dedicated store starts available without being probed"
+  (testing "every series is seeded at 0, even one a configured dedicated URL already makes available"
     (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly true)]
-      (is (= 1 (analytics.core/initial-value :metabase-pgvector/store-available {:storage "dedicated"})))
-      (is (zero? (analytics.core/initial-value :metabase-pgvector/store-available {:storage "appdb"})))))
-  (testing "app-db availability is left to the background probe"
-    (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly false)]
-      (is (zero? (analytics.core/initial-value :metabase-pgvector/store-available {:storage "dedicated"})))
-      (is (zero? (analytics.core/initial-value :metabase-pgvector/store-available {:storage "appdb"}))))))
+      (doseq [storage ["dedicated" "appdb"]]
+        (is (zero? (analytics.core/initial-value :metabase-pgvector/store-available {:storage storage}))
+            "observe-initial-values increments, so a non-zero seed doubles a gauge a scrape already set")))))
 
 (defn- fresh-probe
   [m]
@@ -181,12 +226,16 @@
 
 (deftest ^:sequential pull-collector-refreshes-pgvector-metrics-on-each-instance-test
   (let [running?    @#'semantic.store-health/readiness-refresh-running?
+        probe       @#'semantic.store-health/last-readiness-probe
+        prior-probe @probe
         collector   (analytics.core/pull-collector ::semantic.store-health/pgvector-readiness-gauges)
         gauge-calls (atom [])
         refreshes   (atom 0)
         submitted   (atom [])]
     (try
       (reset! running? false)
+      ;; Nothing probed yet, so the refresh is due.
+      (reset! probe nil)
       (mt/with-dynamic-fn-redefs
         [analytics/set-gauge!                                       #(swap! gauge-calls conj (vec %&))
          semantic.store-health/collect-pgvector-readiness-metrics!  #(swap! refreshes inc)
@@ -197,8 +246,10 @@
         (is (empty? @gauge-calls) "the scrape path writes no gauges of its own")
         (is (zero? @refreshes) "the database probe does not run on the synchronous scrape path")
         ((first @submitted)))
-      (is (= 3600 (:min-interval-s collector)))
+      (is (= 60 (:min-interval-s collector))
+          "the scrape reconsiders often; the hourly cadence is readiness-refresh-due?'s job")
       (is (= 1 @refreshes))
       (is (false? @running?))
       (finally
-        (reset! running? false)))))
+        (reset! running? false)
+        (reset! probe prior-probe)))))

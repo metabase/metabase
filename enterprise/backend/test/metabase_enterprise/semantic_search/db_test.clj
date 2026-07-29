@@ -68,9 +68,14 @@
     (with-redefs [semantic.db.datasource/db-url base-url]
       (is (= (str base-url "?connectTimeout=5&socketTimeout=10")
              (probe-jdbc-url)))))
-  (testing "a timeout the operator set on MB_PGVECTOR_DB_URL wins"
+  (testing "a timeout the operator set on MB_PGVECTOR_DB_URL is replaced, not deferred to"
+    ;; An abandoned probe can't be interrupted out of a socket read, so it must not inherit a long wait.
     (with-redefs [semantic.db.datasource/db-url (str base-url "?socketTimeout=60")]
-      (is (= (str base-url "?socketTimeout=60&connectTimeout=5")
+      (is (= (str base-url "?connectTimeout=5&socketTimeout=10")
+             (probe-jdbc-url)))))
+  (testing "unrelated connection params pass through, in the order they were written"
+    (with-redefs [semantic.db.datasource/db-url (str base-url "?user=mb&sslmode=require")]
+      (is (= (str base-url "?user=mb&sslmode=require&connectTimeout=5&socketTimeout=10")
              (probe-jdbc-url))))))
 
 (deftest parse-db-url-defaults-test

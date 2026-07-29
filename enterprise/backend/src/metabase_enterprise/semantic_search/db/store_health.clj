@@ -8,6 +8,7 @@
    [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.app-db.core :as mdb]
    [metabase.health-inspector.core :as health-inspector]
    [metabase.search.index-health :as search.index-health]
    [metabase.util.log :as log])
@@ -31,6 +32,14 @@
   Hourly: an app db that can't host pgvector yet re-runs the support check, which may attempt rolled-back DDL."
   (* 60 60))
 
+(def ^:private readiness-scrape-interval-seconds
+  "How often the scrape path reconsiders probing.
+  Far shorter than the probe interval, because the pull collector stamps its throttle before the refresh
+  runs: an hourly slot spent on a probe that couldn't answer -- an app db still migrating at startup -- would
+  leave the gauges wrong for the rest of the hour. The probe's own cadence is enforced by
+  [[readiness-refresh-due?]] instead, off the last probe that did answer."
+  60)
+
 (def ^:private probe-deadline-ms
   "Hard cap on one connection probe, above the JDBC timeouts that should end it first: the dedicated probe's
   connect and socket timeouts, the app db's connection checkout plus statement timeout.
@@ -39,53 +48,92 @@
   (* 60 1000))
 
 (defn- store-connected?
+  "Whether `mode`'s store answers. A refused or failed connection is an answer, and reads as disconnected."
   [mode]
-  (case mode
-    :dedicated   (do (semantic.datasource/probe-dedicated-connection!) true)
-    :app-db      (semantic.datasource/probe-app-db-store!)
-    :unavailable false))
+  (try
+    (case mode
+      :dedicated   (do (semantic.datasource/probe-dedicated-connection!) true)
+      :app-db      (semantic.datasource/probe-app-db-store!)
+      :unavailable false)
+    (catch InterruptedException e
+      ;; The deadline gave up on us; let [[probe-store]] report that it never found out.
+      (throw e))
+    (catch Exception e
+      ;; The exception is the only record of why the gauge dropped.
+      (log/warn e "Pgvector connection probe failed" {:mode mode})
+      false)))
 
-(defn- probe-connected?
-  "Whether `mode`'s store answers within `deadline-ms`. A failure or a timeout reads as disconnected."
-  [mode deadline-ms]
+(defn- app-db-store-allowed?
+  "Whether this instance may check the app db for pgvector support, the same boot-safe gate the semantic
+  metric collector schedules on.
+  Licensed, so an unlicensed instance never runs that check and its rolled-back DDL."
+  []
+  ;; TODO (Chris 2026-07-29) -- `:semantic-search` only.
+  ;; Entity retrieval is dedicated-only today, so its instances never reach here; once it supports pgvector
+  ;; on the app db, an app-db instance licensed for `:library-retrieval` alone would report no store at all.
+  (semantic.u/semantic-search-configured?))
+
+(def ^:private unresolved-store
+  "What the probe reports when it couldn't find out: no store, and due to be retried on the next scrape
+  rather than holding the hourly slot."
+  {:mode :unavailable, :connected? false, :resolved? false})
+
+(defn- resolve-store
+  "Which store this instance uses, and whether it answers."
+  []
+  (cond
+    ;; A dedicated URL always wins, and reading it asks the app db nothing.
+    (semantic.datasource/dedicated-url-configured?)
+    {:mode :dedicated, :connected? (store-connected? :dedicated), :resolved? true}
+
+    ;; Everything below reads the license or probes the app db, and neither can answer until migrations
+    ;; finish. Say so rather than guess, or the guess is what the gauges show for the next hour.
+    (not (mdb/db-is-set-up?))
+    unresolved-store
+
+    (not (app-db-store-allowed?))
+    {:mode :unavailable, :connected? false, :resolved? true}
+
+    :else
+    (let [mode (semantic.datasource/pgvector-mode)]
+      {:mode mode, :connected? (store-connected? mode), :resolved? true})))
+
+(defn- probe-store
+  "[[resolve-store]] within `deadline-ms`, reporting no store when it can't answer in that time.
+  Choosing the mode is itself a database call -- the app-db arm can attempt rolled-back DDL against a host
+  that never answers -- so it runs under the deadline too, not only the connection probe."
+  [deadline-ms]
   (let [fut (future-call
              (fn []
                (try
-                 (store-connected? mode)
+                 (resolve-store)
                  (catch InterruptedException _
                    ;; Only the cancel below interrupts this thread, and by then nobody wants the answer.
-                   false)
-                 (catch Exception e
-                   ;; The exception is the only record of why the gauge dropped.
-                   (log/warn e "Pgvector connection probe failed" {:mode mode})
-                   false))))]
+                   unresolved-store)
+                 ;; Throwable, not Exception: an Error here would otherwise escape the deref and abandon the
+                 ;; gauge writes, freezing every series at its last value instead of dropping it.
+                 (catch Throwable e
+                   ;; The exception is the only record of why the gauges dropped.
+                   (log/warn e "Pgvector store probe failed")
+                   unresolved-store))))]
     (try
       (let [result (deref fut deadline-ms ::timeout)]
-        (when (= result ::timeout)
-          (log/warn "Pgvector connection probe timed out" {:mode mode, :deadline-ms deadline-ms}))
-        (true? result))
+        (if (= result ::timeout)
+          (do (log/warn "Pgvector store probe timed out" {:deadline-ms deadline-ms})
+              unresolved-store)
+          result))
       (finally
         ;; A finished probe ignores this.
         ;; A hung one is interrupted, which releases a connection checkout wait, though not a socket read.
         (future-cancel fut)))))
 
-(defn- readiness-probe-allowed?
-  "Whether this instance may resolve its pgvector store, the same boot-safe gate the semantic metric
-  collector schedules on.
-  Licensed, so an unlicensed instance never runs the app-db support check and its rolled-back DDL."
-  []
-  ;; TODO (Chris 2026-07-29) -- the licensed arm is `:semantic-search` only.
-  ;; Entity retrieval is dedicated-only today, so its instances always pass on the URL arm; once it supports
-  ;; pgvector on the app db, an app-db instance licensed for `:library-retrieval` alone would report no store at all.
-  (or (semantic.datasource/dedicated-url-configured?)
-      (semantic.u/semantic-search-configured?)))
-
 (defn- clear-stale-last-success!
-  "Drop the last-success timestamp when the store this instance selects changes.
+  "Drop the last-success timestamp when this instance switches from one backing to another.
   It is only ever written for the current storage, so the label left behind would otherwise sit at its final
-  value for the life of the process, reading as a store that has not connected since."
+  value for the life of the process, reading as a store that has not connected since.
+  Losing the store is not a switch: that is precisely when the last known good timestamp is worth keeping."
   [previous-storage storage]
-  (when (and previous-storage (not= previous-storage storage))
+  (when (and previous-storage storage (not= previous-storage storage))
     ;; Clearing takes every label with it, which is what we want here -- only one can ever hold a value.
     (analytics/clear! :metabase-pgvector/store-last-success-timestamp-seconds)))
 
@@ -97,11 +145,8 @@
   ;; Serialize, so their gauge writes and results can't interleave.
   (locking last-readiness-probe
     (let [previous-storage (:storage @last-readiness-probe)
-          mode             (if (readiness-probe-allowed?)
-                             (semantic.datasource/pgvector-mode)
-                             :unavailable)
+          {:keys [mode connected? resolved?]} (probe-store probe-deadline-ms)
           storage          (case mode :dedicated "dedicated" :app-db "appdb" nil)
-          connected?       (probe-connected? mode probe-deadline-ms)
           at               (.getEpochSecond (Instant/now))]
       ;; Publish both stable series on every instance; both are zero when no store is usable.
       (doseq [candidate storage-labels]
@@ -114,6 +159,7 @@
       (clear-stale-last-success! previous-storage storage)
       (reset! last-readiness-probe {:storage    storage
                                     :connected? connected?
+                                    :resolved?  resolved?
                                     :at         at})
       (when connected?
         (analytics/set-gauge! :metabase-pgvector/store-last-success-timestamp-seconds
@@ -154,13 +200,9 @@
 ;; staleness alert forever.
 ;; It appears once a probe succeeds.
 
-(defmethod analytics.core/initial-value :metabase-pgvector/store-available
-  [_ {:keys [storage]}]
-  ;; A configured dedicated URL is already known to be available without touching it; app-db availability
-  ;; is discovered by the background probe.
-  (if (and (= storage "dedicated") (semantic.datasource/dedicated-url-configured?))
-    1
-    0))
+;; No initial-value either, though a configured dedicated URL is available without being probed:
+;; observe-initial-values increments rather than sets, so seeding 1 would leave the gauge at 2 wherever a
+;; scrape had already probed. Both series start at 0 and the first probe corrects them.
 
 (defonce ^:private readiness-refresh-running? (atom false))
 
@@ -180,9 +222,18 @@
   [f]
   (future-call f))
 
+(defn- readiness-refresh-due?
+  "Whether to probe again on this scrape.
+  A probe that couldn't answer is retried on the next one; one that did answer holds for the full interval."
+  [{:keys [at resolved?]}]
+  (or (nil? at)
+      (not resolved?)
+      (>= (- (.getEpochSecond (Instant/now)) ^long at) readiness-refresh-interval-seconds)))
+
 (defn- request-pgvector-readiness-refresh!
   []
-  (when (compare-and-set! readiness-refresh-running? false true)
+  (when (and (readiness-refresh-due? @last-readiness-probe)
+             (compare-and-set! readiness-refresh-running? false true))
     (try
       (submit-pgvector-readiness-refresh! refresh-pgvector-readiness-metrics!)
       (catch Exception e
@@ -194,5 +245,5 @@
 ;; Start a local, single-flight background probe from the scrape path so every process refreshes its own
 ;; gauge series without putting database connection latency on the synchronous scrape.
 (defmethod analytics.core/pull-collector ::pgvector-readiness-gauges [_]
-  {:min-interval-s readiness-refresh-interval-seconds
+  {:min-interval-s readiness-scrape-interval-seconds
    :f              request-pgvector-readiness-refresh!})
