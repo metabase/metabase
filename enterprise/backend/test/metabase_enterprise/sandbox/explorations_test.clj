@@ -230,7 +230,9 @@
           {:creator-id (mt/user->id :rasta) :data-access-token token}
           (fn [{:keys [query]}]
             (testing "lucky is a non-admin with full data access and no sandbox"
-              (mt/user-http-request :lucky :get 403 (format "exploration/query/%d" (:id query))))
+              (is (=? {:message #"Cannot show cached results: your data access differs.*"}
+                      (mt/user-http-request :lucky :get 403 (format "exploration/query/%d" (:id query))))
+                  "the denial is the lens refusing, not a missing data perm"))
             (testing "while a superuser streams it (bypass)"
               (mt/user-http-request :crowberto :get 202 (format "exploration/query/%d" (:id query))))))))))
 
@@ -412,7 +414,18 @@
                   (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query)))))
               (testing "an unimpersonated non-admin viewer is blocked — a role's view is not
                         guaranteed contained in the default connection's"
-                (mt/user-http-request :lucky :get 403 (format "exploration/query/%d" (:id query))))
+                ;; Membership in a second group with unrestricted view-data on the db means
+                ;; impersonation is no longer enforced for rasta (`enforce-impersonations?`), so
+                ;; within this scope rasta's impersonation lens is absent — an unimpersonated
+                ;; viewer who nonetheless holds full data perms. The `with-temp` scoping matters:
+                ;; the same-role assertion above needs rasta still impersonated.
+                (mt/with-temp [:model/PermissionsGroup           escape-group {}
+                               :model/PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)
+                                                                    :group_id (:id escape-group)}]
+                  (perms/set-database-permission! escape-group (mt/id) :perms/view-data :unrestricted)
+                  (is (=? {:message #"Cannot show cached results: your data access differs.*"}
+                          (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query))))
+                      "the denial is the lens refusing, not a missing data perm")))
               (testing "a superuser streams the cached result (bypass — superusers see every exploration)"
                 (mt/user-http-request :crowberto :get 202 (format "exploration/query/%d" (:id query)))))))))))
 
