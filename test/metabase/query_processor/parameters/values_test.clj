@@ -112,6 +112,7 @@
              [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])]
       (is (= 9223372036854775808 v))
       ;; `=` does not distinguish BigInteger from BigInt; drivers dispatch parameter binding on class.
+      ;; Unimportant to the product that it's a BigInteger, but if not this test isn't testing what was intended:
       (is (instance? java.math.BigInteger v)))))
 
 (deftest ^:parallel variable-multiple-values-test
