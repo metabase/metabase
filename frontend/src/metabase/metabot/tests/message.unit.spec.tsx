@@ -7,7 +7,6 @@ import {
   enterChatMessage,
   input,
   mockAgentEndpoint,
-  responseLoader,
   sendMessageButton,
   setup,
   whoIsYourFavoriteResponse,
@@ -26,7 +25,9 @@ describe("metabot > message", () => {
     expect(await input()).toHaveTextContent("Who is your favorite?");
 
     await enterChatMessage("Who is your favorite?");
-    expect(await responseLoader()).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("metabot-chain-of-thought"),
+    ).toBeInTheDocument();
 
     sendResponse();
 
@@ -48,6 +49,28 @@ describe("metabot > message", () => {
     expect(
       await screen.findByText("You, but don't tell anyone."),
     ).toBeInTheDocument();
+  });
+
+  it("keeps the reply's actions when reasoning trails the final text", async () => {
+    setup();
+    mockAgentEndpoint({
+      stream: createMockSSEStream(
+        (async function* () {
+          yield { type: "text-delta", id: "t1", delta: "Here you go." };
+          yield { type: "reasoning-start", id: "r1" };
+          yield { type: "reasoning-delta", id: "r1", delta: "double-checking" };
+          yield { type: "reasoning-end", id: "r1" };
+          yield { type: "finish", finishReason: "stop" };
+        })(),
+      ),
+    });
+
+    await enterChatMessage("Question");
+
+    expect(await screen.findByText("Here you go.")).toBeInTheDocument();
+    expect(
+      await screen.findAllByTestId("metabot-chat-message-copy"),
+    ).toHaveLength(2);
   });
 
   it("should properly handle partial messages", async () => {

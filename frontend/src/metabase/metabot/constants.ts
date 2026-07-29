@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { isEmbedding } from "metabase/embedding/config";
 
@@ -110,53 +110,83 @@ export const METABOT_ERR_MSG = {
   },
 };
 
-export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
-  get construct_notebook_query() {
-    return t`Creating a query`;
-  },
-  get analyze_data() {
-    return t`Analyzing the data`;
-  },
-  get analyze_chart() {
-    return t`Inspecting the visualization`;
-  },
-  get save_entity() {
-    return t`Saving`;
-  },
-  get list_available_fields() {
-    return undefined;
-  },
-  get search_data_sources() {
-    return t`Checking available data sources`;
-  },
-  get search() {
-    return t`Searching`;
-  },
-  get search_metabase_documentation() {
-    return t`Consulting the docs`;
-  },
-  get write_transform_python() {
-    return t`Writing Python`;
-  },
-  get write_transform_sql() {
-    return t`Writing SQL`;
-  },
-  get todo_write() {
-    return t`Planning`;
-  },
-  get todo_read() {
-    return t`Planning`;
-  },
-  get search_transforms() {
-    return t`Searching transforms`;
-  },
-  get get_transform_details() {
-    return t`Getting transform details`;
-  },
-  get get_field_values() {
-    return t`Retrieving table metadata`;
-  },
-  get search_tables() {
-    return t`Searching database tables`;
-  },
+export type ToolMessage = {
+  active: (count?: number) => string | undefined;
+  done: (count?: number) => string | undefined;
 };
+
+export const TOOL_MESSAGES = {
+  analyze_chart: {
+    active: () => t`Inspecting the visualization`,
+    done: () => t`Inspected the visualization`,
+  },
+  analyze_data: {
+    active: () => t`Analyzing the data`,
+    done: () => t`Analyzed the data`,
+  },
+  construct_notebook_query: {
+    active: () => t`Creating a query`,
+    done: () => t`Created a query`,
+  },
+  get_field_values: {
+    active: () => t`Retrieving table metadata`,
+    done: () => t`Retrieved table metadata`,
+  },
+  get_transform_details: {
+    active: () => t`Getting transform details`,
+    done: () => t`Got transform details`,
+  },
+  list_available_fields: { active: () => undefined, done: () => undefined },
+  load_skill: { active: () => undefined, done: () => undefined },
+  read_resource: {
+    active: (count) =>
+      count == null
+        ? t`Reading resource`
+        : ngettext(
+            msgid`Reading ${count} resource`,
+            `Reading ${count} resources`,
+            count,
+          ),
+    done: (count) =>
+      count == null
+        ? t`Read resource`
+        : ngettext(
+            msgid`Read ${count} resource`,
+            `Read ${count} resources`,
+            count,
+          ),
+  },
+  save_entity: { active: () => t`Saving`, done: () => t`Saved` },
+  search: { active: () => t`Searching`, done: () => t`Searched` },
+  search_data_sources: {
+    active: () => t`Checking available data sources`,
+    done: () => t`Checked available data sources`,
+  },
+  search_metabase_documentation: {
+    active: () => t`Consulting the docs`,
+    done: () => t`Consulted the docs`,
+  },
+  search_tables: {
+    active: () => t`Searching database tables`,
+    done: () => t`Searched database tables`,
+  },
+  search_transforms: {
+    active: () => t`Searching transforms`,
+    done: () => t`Searched transforms`,
+  },
+  todo_read: { active: () => t`Planning`, done: () => t`Planned` },
+  todo_write: { active: () => t`Planning`, done: () => t`Planned` },
+  write_transform_python: {
+    active: () => t`Writing Python`,
+    done: () => t`Wrote Python`,
+  },
+  write_transform_sql: {
+    active: () => t`Writing SQL`,
+    done: () => t`Wrote SQL`,
+  },
+} satisfies Record<string, ToolMessage>;
+
+// widened view for lookups by dynamic (server-supplied) tool names
+const toolMessagesByName: Record<string, ToolMessage | undefined> =
+  TOOL_MESSAGES;
+export const getToolMessage = (name: string) => toolMessagesByName[name];
