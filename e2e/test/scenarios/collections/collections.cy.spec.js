@@ -513,8 +513,33 @@ describe("scenarios > collection defaults", () => {
     });
 
     it("should be able to drag an item into a sub-collection shown in the items table (metabase#37329)", () => {
+      H.createDocument({
+        name: "Quarterly Notes",
+        collection_id: null,
+        document: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Notes" }],
+              attrs: { _id: "1" },
+            },
+          ],
+        },
+      });
+      H.createQuestion({
+        name: "Count of orders",
+        type: "metric",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
       visitRootCollection();
 
+      cy.log("Drag a question into the sub-collection row");
       cy.findByTestId("collection-table").within(() => {
         cy.findByText("Orders").as("dragSubject");
         cy.findByText("First collection").as("dropTarget");
@@ -528,8 +553,34 @@ describe("scenarios > collection defaults", () => {
         .findByText("Orders")
         .should("not.exist");
 
+      cy.log("Drag a document into the sub-collection row");
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Quarterly Notes").as("documentDragSubject");
+        cy.findByText("First collection").as("documentDropTarget");
+      });
+
+      H.dragAndDrop("documentDragSubject", "documentDropTarget");
+
+      cy.findByTestId("collection-table")
+        .findByText("Quarterly Notes")
+        .should("not.exist");
+
+      cy.log("Drag a metric into the sub-collection row");
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Count of orders").as("metricDragSubject");
+        cy.findByText("First collection").as("metricDropTarget");
+      });
+
+      H.dragAndDrop("metricDragSubject", "metricDropTarget");
+
+      cy.findByTestId("collection-table")
+        .findByText("Count of orders")
+        .should("not.exist");
+
       H.visitCollection(FIRST_COLLECTION_ID);
       cy.findByTestId("collection-table").findByText("Orders");
+      cy.findByTestId("collection-table").findByText("Quarterly Notes");
+      cy.findByTestId("collection-table").findByText("Count of orders");
     });
 
     describe("nested collections with revoked parent access", () => {

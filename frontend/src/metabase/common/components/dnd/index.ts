@@ -13,6 +13,8 @@ export const DragTypes = {
   COLLECTION: "collection",
   PULSE: "pulse",
   DATASET: "dataset",
+  METRIC: "metric",
+  DOCUMENT: "document",
 };
 
 export const PinnableDragTypes = [
@@ -20,6 +22,8 @@ export const PinnableDragTypes = [
   DragTypes.DASHBOARD,
   DragTypes.PULSE,
   DragTypes.DATASET,
+  DragTypes.METRIC,
+  DragTypes.DOCUMENT,
 ];
 
 export const MoveableDragTypes = [
@@ -28,4 +32,6 @@ export const MoveableDragTypes = [
   DragTypes.COLLECTION,
   DragTypes.PULSE,
   DragTypes.DATASET,
+  DragTypes.METRIC,
+  DragTypes.DOCUMENT,
 ];
