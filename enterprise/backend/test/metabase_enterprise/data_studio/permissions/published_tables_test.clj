@@ -76,7 +76,7 @@
           (perms/revoke-collection-permissions! group-id blocked-coll-id)
           (perms/revoke-collection-permissions! (perms/all-users-group) blocked-coll-id)
           (let [clause (published-tables/published-table-visible-clause
-                        :metabase_table.id
+                        :metabase_table
                         {:user-id user-id
                          :is-superuser? false})]
             (is (= #{allowed-table-id}

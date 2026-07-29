@@ -768,7 +768,7 @@
   [_ collection {:keys [archived? pinned-state]}]
   (let [user-info {:user-id       api/*current-user-id*
                    :is-superuser? api/*is-superuser?*}
-        published-clause (perms/published-table-visible-clause :t.id user-info)
+        published-clause (perms/published-table-visible-clause :t user-info)
         queryable-clause (cond-> [:or
                                   (table/visible-table-filter-clause :t.id user-info
                                                                      {:perms/view-data      :unrestricted

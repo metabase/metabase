@@ -51,22 +51,19 @@
     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection table :read))))
 
 (defenterprise published-table-visible-clause
-  "Returns a correlated-EXISTS HoneySQL clause matching published tables that are readable via collection
-  permissions. `table-id-column` must be table-qualified (e.g. `:metabase_table.id`) so the correlation references
-  the outer query."
+  "Row predicate: true for a `metabase_table` row that is published into a collection the user can read. The caller
+  must be selecting from `metabase_table` under `table-alias` (e.g. `:t`, or `:metabase_table` when unaliased) —
+  the predicate reads `is_published` and `collection_id` off that row directly, so no extra self-join is needed."
   :feature :library
-  [table-id-column {:keys [user-id is-superuser?]}]
-  [:exists
-   {:select [[[:inline 1]]]
-    :from   [[:metabase_table :published_table]]
-    :where  [:and
-             [:= :published_table.id table-id-column]
-             [:= :published_table.is_published true]
-             (collection/visible-collection-filter-clause
-              :published_table.collection_id
-              {}
-              {:current-user-id user-id
-               :is-superuser?   is-superuser?})]}])
+  [table-alias {:keys [user-id is-superuser?]}]
+  (let [col (fn [column] (keyword (str (name table-alias) "." (name column))))]
+    [:and
+     [:= (col :is_published) true]
+     (collection/visible-collection-filter-clause
+      (col :collection_id)
+      {}
+      {:current-user-id user-id
+       :is-superuser?   is-superuser?})]))
 
 (defenterprise published-table-perm-grant-rows
   "Returns a HoneySQL SELECT producing (id, perm_type, perm_value) rows for tables that are

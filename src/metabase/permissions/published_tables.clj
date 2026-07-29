@@ -39,10 +39,10 @@
   false)
 
 (defenterprise published-table-visible-clause
-  "Returns a HoneySQL clause for published tables visible via collection permissions.
+  "Row predicate for `metabase_table` rows (under `table-alias`) published into a collection the user can read.
   OSS implementation returns nil."
   metabase-enterprise.data-studio.permissions.published-tables
-  [_table-id-column _user-info]
+  [_table-alias _user-info]
   nil)
 
 (defenterprise published-table-perm-grant-rows
