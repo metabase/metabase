@@ -224,13 +224,13 @@
       (jdbc/execute! ds [(format (str "INSERT INTO \"%s\" "
                                       "(doc_id, entity_type, entity_local_id, doc_type, doc_text, doc_embedding) "
                                       "VALUES ('sentinel', 'table', 1, 'name', 'sentinel', '[0,0,0,0]')")
-                                 index-table/*vectors-table*)])
+                                 (index-table/vectors-table))])
       (testing "the same provider/name/dimensions with a different immutable space is incompatible"
-        (is (false? (index-table/index-compatible? ds changed-space)))
+        (is (= :incompatible (index-table/index-status ds changed-space)))
         (is (= :rebuilt (index-table/ensure-tables! ds changed-space)))
         (is (empty? (index-rows ds))))
       (testing "the rebuilt identity is stable"
-        (is (true? (index-table/index-compatible? ds changed-space)))
+        (is (= :compatible (index-table/index-status ds changed-space)))
         (is (= :ok (index-table/ensure-tables! ds changed-space)))))))
 
 (deftest ^:sequential version-1-meta-upgrade-rebuilds-test
@@ -240,24 +240,24 @@
                                       "id smallint PRIMARY KEY, provider text NOT NULL, model_name text NOT NULL, "
                                       "vector_dimensions int NOT NULL, schema_version int NOT NULL, "
                                       "updated_at timestamptz NOT NULL)")
-                                 index-table/*meta-table*)])
+                                 (index-table/meta-table))])
       (jdbc/execute! ds [(format (str "INSERT INTO \"%s\" "
                                       "(id, provider, model_name, vector_dimensions, schema_version, updated_at) "
                                       "VALUES (1, 'mock', 'model', 4, 1, NOW())")
-                                 index-table/*meta-table*)])
-      (jdbc/execute! ds [(format "CREATE TABLE \"%s\" (sentinel int)" index-table/*vectors-table*)])
-      (jdbc/execute! ds [(format "INSERT INTO \"%s\" VALUES (1)" index-table/*vectors-table*)])
+                                 (index-table/meta-table))])
+      (jdbc/execute! ds [(format "CREATE TABLE \"%s\" (sentinel int)" (index-table/vectors-table))])
+      (jdbc/execute! ds [(format "INSERT INTO \"%s\" VALUES (1)" (index-table/vectors-table))])
       (testing "a legacy table is rebuilt once rather than relabeled as the resolved space"
         (is (= :rebuilt (index-table/ensure-tables! ds model)))
         (is (empty? (index-rows ds))))
       (let [meta-row   (jdbc/execute-one! ds
                                           [(format (str "SELECT embedding_space_id, schema_version "
                                                         "FROM \"%s\" WHERE id = 1")
-                                                   index-table/*meta-table*)]
+                                                   (index-table/meta-table))]
                                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})
             column-row (jdbc/execute-one! ds
                                           ["SELECT is_nullable FROM information_schema.columns WHERE table_name = ? AND column_name = 'embedding_space_id'"
-                                           index-table/*meta-table*]
+                                           (index-table/meta-table)]
                                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
         (is (= {:embedding_space_id (:embedding-space-id model)
                 :schema_version     index-table/schema-version}
@@ -273,13 +273,13 @@
             "steady-state reconcile does not reacquire an ACCESS EXCLUSIVE lock"))
       (testing "a manually nullable metadata column is healed once"
         (jdbc/execute! ds [(format "ALTER TABLE \"%s\" ALTER COLUMN embedding_space_id DROP NOT NULL"
-                                   index-table/*meta-table*)])
+                                   (index-table/meta-table))])
         (is (= :ok (index-table/ensure-tables! ds model)))
         (is (= "NO" (:is_nullable
                      (jdbc/execute-one!
                       ds
                       ["SELECT is_nullable FROM information_schema.columns WHERE table_name = ? AND column_name = 'embedding_space_id'"
-                       index-table/*meta-table*]
+                       (index-table/meta-table)]
                       {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))))))
 
 (deftest ^:sequential measures-and-segments-indexed-and-hydrated-test
