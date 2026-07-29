@@ -3290,16 +3290,7 @@
            util}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
-  enterprise/agent-api
-  {:team "Metabot"
-   :api  #{metabase-enterprise.agent-api.init}
-   :uses #{analytics
-           metabot
-           metabot.agent-api
-           premium-features
-           task
-           util}
-   :model-imports #{:model/AgentApiCallLog}}
+
 
   enterprise/analytics
   {:team "UX West"
@@ -3603,9 +3594,7 @@
                     :model/Table
                     :model/Transform}}
 
-  enterprise/dependencies.checker
-  {:team "Graphy"
-   :ns-prefix "metabase-enterprise.checker"}
+
 
   enterprise/dependencies.replacement
   {:team "Graphy"
@@ -3715,7 +3704,8 @@
 
   enterprise/metabot
   {:team           "Metabot"
-   :module-exports #{enterprise/metabot.analytics
+   :module-exports #{enterprise/metabot.agent-api
+                     enterprise/metabot.analytics
                      enterprise/metabot.data-complexity-score}
    :api            #{metabase-enterprise.metabot.api
               metabase-enterprise.metabot.api.routes
@@ -3739,6 +3729,18 @@
                     :model/PermissionsGroupMembership
                     :model/Transform}
    :model-exports #{:model/MetabotGroupLimit :model/MetabotInstanceLimit :model/MetabotPermissions}}
+
+  enterprise/metabot.agent-api
+  {:team "Metabot"
+   :ns-prefix "metabase-enterprise.agent-api"
+   :api #{metabase-enterprise.agent-api.init}
+   :uses #{analytics
+           metabot
+           metabot.agent-api
+           premium-features
+           task
+           util}
+   :model-imports #{:model/AgentApiCallLog}}
 
   enterprise/metabot.analytics
   {:team "Metabot"

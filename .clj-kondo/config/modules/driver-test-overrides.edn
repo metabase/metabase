@@ -45,7 +45,6 @@
    pulse
    remote-sync
    request
-   sample-data
    search
    search.entity-retrieval
    server
@@ -70,7 +69,6 @@
    warehouses.schema
    warehouses.secrets
    enterprise/api
-   enterprise/serialization
    enterprise/sso
    enterprise/transforms
    enterprise/transforms.inspector
