@@ -16,8 +16,9 @@ import {
   isURL,
 } from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
+import { clickBehaviorIsValid } from "metabase-types/guards";
 
-import { clickBehaviorIsValid, getDataFromClicked } from "./click-data";
+import { getDataFromClicked } from "./click-data";
 import { formatDateTimeWithUnit, formatRange } from "./date";
 import { formatEmail } from "./email";
 import { formatCoordinate } from "./geography";

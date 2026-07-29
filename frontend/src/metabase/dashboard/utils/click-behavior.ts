@@ -3,7 +3,6 @@ import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { checkNotNull } from "metabase/utils/types";
 import type { ValueAndColumnForColumnNameDate } from "metabase/value-formatting";
 import {
-  clickBehaviorIsValid,
   formatDateTimeForParameter,
   formatDateToRangeForParameter,
 } from "metabase/value-formatting";
@@ -30,6 +29,7 @@ import type {
   Parameter,
   QuestionDashboardCard,
 } from "metabase-types/api";
+import { clickBehaviorIsValid } from "metabase-types/guards";
 
 interface Target {
   id: Parameter["id"];
