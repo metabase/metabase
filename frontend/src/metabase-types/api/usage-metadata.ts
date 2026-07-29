@@ -13,12 +13,7 @@ export type UsageMetadataModelingStatus =
   | "partially-modeled"
   | "modeled";
 export type UsageMetadataSignal = "verified" | "official" | "popular";
-export type UsageMetadataDismissedFilter = "exclude" | "include" | "only";
-export type UsageMetadataCleanupQueue =
-  | "recommended"
-  | "review"
-  | "all"
-  | "dismissed";
+export type UsageMetadataCleanupQueue = "suggested" | "discarded";
 export type UsageMetadataCandidateSort =
   | "priority"
   | "name"
@@ -174,7 +169,6 @@ export type ListUsageMetadataRequest = PaginationRequest & {
   "candidate-type"?: UsageMetadataCandidateType;
   "modeling-status"?: UsageMetadataModelingStatus;
   signal?: UsageMetadataSignal;
-  dismissed?: UsageMetadataDismissedFilter;
   queue?: UsageMetadataCleanupQueue;
   search?: string;
   sort?: UsageMetadataCandidateSort;

@@ -180,7 +180,7 @@ describe("CleanupTablePage", () => {
     const listCall = fetchMock.callHistory.lastCall(
       "path:/api/ee/data-studio/usage-metadata/candidates",
     );
-    expect(listCall?.url).toContain("queue=recommended");
+    expect(listCall?.url).toContain("queue=suggested");
     expect(listCall?.url).toContain("limit=20");
     expect(listCall?.url).toContain("sort=priority");
 

@@ -159,13 +159,10 @@ function CleanupTableRow({
             </Text>
           </Stack>
         </Group>
-        <Text c="text-secondary" size="sm" flex={1} ta="right">
-          {getTableQueueSummary(row, params.queue)}
-        </Text>
         <Stack gap={0} align="flex-end" miw="7rem">
           <Text fw="bold">{candidateCount}</Text>
           <Text c="text-secondary" size="xs">
-            {params.queue === "dismissed" ? t`dismissed` : t`suggestions`}
+            {params.queue === "discarded" ? t`discarded` : t`suggestions`}
           </Text>
         </Stack>
         <Icon name="chevronright" />
@@ -203,15 +200,15 @@ function EmptyQueueState({
       <Stack align="center" ta="center">
         <Icon name={filtered ? "search" : "check"} size={40} />
         <Title order={3}>
-          {queue === "dismissed"
-            ? t`No dismissed suggestions`
+          {queue === "discarded"
+            ? t`No discarded suggestions`
             : filtered
               ? t`No matching tables`
               : t`Nothing to clean up`}
         </Title>
         <Text c="text-secondary">
-          {queue === "dismissed"
-            ? t`Dismissed suggestions will appear here so they can be restored.`
+          {queue === "discarded"
+            ? t`Discarded suggestions will appear here so they can be restored.`
             : filtered
               ? t`Try changing or clearing the filters.`
               : t`No Measure or Segment candidates were found in this snapshot.`}
@@ -219,30 +216,4 @@ function EmptyQueueState({
       </Stack>
     </Center>
   );
-}
-
-function getTableQueueSummary(
-  row: UsageMetadataTableSummary,
-  queue: Urls.DataStudioCleanupParams["queue"],
-) {
-  const missing = row.counts.measure.missing + row.counts.segment.missing;
-  const review =
-    row.counts.measure["partially-modeled"] +
-    row.counts.segment["partially-modeled"];
-  const modeled = row.counts.measure.modeled + row.counts.segment.modeled;
-
-  if (queue === "dismissed") {
-    return t`Previously muted suggestions`;
-  }
-  if (queue === "review") {
-    return t`${review} definitions differ from the Library`;
-  }
-
-  const parts = [
-    review > 0 ? t`${review} need review` : null,
-    missing > 0 ? t`${missing} suggested additions` : null,
-    queue === "all" && modeled > 0 ? t`${modeled} already modeled` : null,
-  ].filter(Boolean);
-
-  return parts.join(" · ");
 }

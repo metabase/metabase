@@ -123,19 +123,14 @@ describe("CleanupPage", () => {
     expect(await screen.findByText("Orders")).toBeInTheDocument();
     expect(screen.getByText("Published")).toBeInTheDocument();
     expect(screen.getByText("6")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Suggested" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Discarded" })).toBeInTheDocument();
     expect(
-      screen.getByText("1 need review · 3 suggested additions"),
-    ).toBeInTheDocument();
+      screen.queryByRole("tab", { name: "Recommended" }),
+    ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("tab", { name: "Recommended" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("tab", { name: "Needs review" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("tab", { name: "All suggestions" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Dismissed" })).toBeInTheDocument();
+      screen.queryByRole("tab", { name: "Needs review" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Schema")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Evidence")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Modeling status")).not.toBeInTheDocument();
@@ -233,18 +228,18 @@ describe("CleanupPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("uses named queues instead of exposing modeling and evidence filters", async () => {
+  it("switches between suggested and discarded candidates", async () => {
     setup();
 
     await userEvent.click(
-      await screen.findByRole("tab", { name: "Needs review" }),
+      await screen.findByRole("tab", { name: "Discarded" }),
     );
 
     await waitFor(() => {
       const call = fetchMock.callHistory.lastCall(
         "path:/api/ee/data-studio/usage-metadata/tables",
       );
-      expect(call?.url).toContain("queue=review");
+      expect(call?.url).toContain("queue=discarded");
     });
     expect(screen.queryByLabelText("Schema")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Evidence")).not.toBeInTheDocument();
