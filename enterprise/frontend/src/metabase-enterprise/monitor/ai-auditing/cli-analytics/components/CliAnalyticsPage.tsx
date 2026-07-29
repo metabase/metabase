@@ -53,8 +53,6 @@ export function CliAnalyticsPage() {
     hasTenants,
   } = useFilterOptions({ date, user, group, tenant });
 
-  // IP address and error message are PII (null unless retention is on), so only surface those
-  // columns when they're collected.
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
 
   const callsAudit = useAuditTable(VIEW_AGENT_API_CALLS);
@@ -68,9 +66,6 @@ export function CliAnalyticsPage() {
 
   const chartFilters = { dateFilter, userId, groupId, tenantId };
 
-  // Keep this referentially stable: it feeds the events query's `useMemo`, and each rebuild mints
-  // fresh metabase-lib UUIDs, which change the query's serialized RTK cache key and trigger a
-  // redundant refetch (and loader flash) on every incidental re-render.
   const sortingOptions = useMemo(
     () => ({ sort_column, sort_direction }),
     [sort_column, sort_direction],
@@ -80,9 +75,6 @@ export function CliAnalyticsPage() {
     ...dataSources,
     ...chartFilters,
   });
-  // Initial load shows a loader (never the empty state). After the first result, a filter
-  // change keeps the charts mounted so they show their own skeletons while refetching; the
-  // empty state only appears once a load has resolved to zero rows.
   const showEmpty = !isInitialLoading && !isRefetching && !hasData;
 
   // Only surface the errors section when the current filters actually match failed calls, so a
@@ -139,8 +131,6 @@ export function CliAnalyticsPage() {
 
           {match({ isInitialLoading, showEmpty })
             .with({ isInitialLoading: true }, () => (
-              // Keeps the active tab's panel/tabpanel relationship intact (aria-controls on the
-              // selected tab must point at a rendered element) while the initial load is pending.
               <Tabs.Panel value={tab} mt="md">
                 <Flex mih="60vh" align="center" justify="center">
                   <Loader size="lg" />

@@ -42,18 +42,13 @@ const DEFAULT_SORTING: SortingOptions<CliEventSortColumn> = {
 };
 
 type EventColumn = {
-  /** View column name, matched case-insensitively against the result columns. */
   key: CliEventSortColumn;
   title: string;
-  /** Present when the column can be sorted server-side. */
   sort?: CliEventSortColumn;
   align?: "right";
   render?: (value: RowValue) => ReactNode;
 };
 
-// Display metadata per column, keyed by the canonical column name. Factories (not plain
-// objects) so `t` re-evaluates per call under the active locale, instead of baking in
-// whatever locale was active when this module first loaded.
 const EVENT_COLUMN_META: Record<
   CliEventSortColumn,
   () => Omit<EventColumn, "key">
@@ -90,11 +85,9 @@ const EVENT_COLUMN_META: Record<
 
 /**
  * The curated columns surfaced in the events table, in display order. Derived from the same
- * {@link cliEventColumnKeys} the row-level query projects to (see `buildEventsQuery`), so the
- * displayed columns and the columns actually fetched from the server can never drift — every
- * other view column (raw ids, client_name, group_name, …) is never even requested, and
+ * {@link cliEventColumnKeys} the row-level query projects to (see `buildEventsQuery`). Any other view column (raw ids, client_name, group_name, …) is never even requested, and
  * `tenant_name`/`ip_address`/`error_message` are only requested when tenants/PII retention are
- * enabled, not just hidden client-side.
+ * enabled.
  */
 export function eventColumns(
   hasTenants: boolean,
@@ -116,9 +109,7 @@ function renderCell(column: EventColumn, value: RowValue): ReactNode {
 type EventRow = { id: string } & Record<string, RowValue>;
 
 type PaginationProps = {
-  /** Current page, 0-indexed. */
   page: number;
-  /** Total number of calls matching the filters (across all pages). */
   total: number;
   onPageChange: (page: number) => void;
 };
@@ -132,7 +123,6 @@ type SortProps = {
 
 type Nullable<T> = { [K in keyof T]: T[K] | null };
 
-// The audit metadata sources the inner table needs, all resolved.
 type MetadataSources = {
   provider: MetadataProvider;
   table: TableMetadata | CardMetadata;
@@ -146,15 +136,9 @@ type BaseProps = CliFilters &
     hasPii: boolean;
   };
 
-// Sources are still loading in the outer props (hence nullable); the inner component only renders
-// once they're resolved, so it takes them non-null.
 type Props = BaseProps & Nullable<MetadataSources>;
 type InnerProps = BaseProps & MetadataSources;
 
-/**
- * Row-level events table for the Events tab. Renders nothing until the audit metadata is
- * loaded, then delegates to the inner component.
- */
 export function CliEventsTable({
   provider,
   table,
@@ -174,10 +158,6 @@ export function CliEventsTable({
   );
 }
 
-/**
- * Loaded variant of {@link CliEventsTable}: builds the paginated, sorted row-level query, runs it,
- * and renders the Agent API calls as a sortable {@link TreeTable} with pagination controls.
- */
 function CliEventsTableInner({
   provider,
   table,
@@ -199,10 +179,6 @@ function CliEventsTableInner({
     [hasTenants, hasPii],
   );
 
-  // Derive from the primitive sort values, not the `sortingOptions` object: the object identity
-  // changes on every render of the parent, and a fresh `effectiveSorting` rebuilds the query below,
-  // which mints fresh metabase-lib UUIDs, churns the RTK cache key, and causes a redundant refetch
-  // on incidental re-renders.
   const { sort_column: sortColumn, sort_direction: sortDirection } =
     sortingOptions;
   const effectiveSorting = useMemo(() => {

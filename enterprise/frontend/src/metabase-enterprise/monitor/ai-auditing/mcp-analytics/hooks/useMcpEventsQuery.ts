@@ -11,6 +11,7 @@ import { paginateEventsQuery } from "../query-utils";
 type EventsPageResult = {
   data: Dataset | undefined;
   isFetching: boolean;
+  error: unknown;
 };
 
 /**
@@ -29,10 +30,10 @@ export function useMcpEventsQuery(
     [query, page, pageSize],
   );
 
-  const { data, isFetching } = useAbortableQuery(
+  const { data, isFetching, error } = useAbortableQuery(
     useLazyGetAdhocQueryQuery,
     jsQuery ?? skipToken,
   );
 
-  return { data, isFetching };
+  return { data, isFetching, error };
 }

@@ -1,7 +1,8 @@
-import { type ReactNode, useMemo, useRef } from "react";
+import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
@@ -41,18 +42,13 @@ const DEFAULT_SORTING: SortingOptions<McpEventSortColumn> = {
 };
 
 type EventColumn = {
-  /** View column name, matched case-insensitively against the result columns. */
   key: McpEventSortColumn;
   title: string;
-  /** Present when the column can be sorted server-side. */
   sort?: McpEventSortColumn;
   align?: "right";
   render?: (value: RowValue) => ReactNode;
 };
 
-// Display metadata per column, keyed by the canonical column name. Factories (not plain
-// objects) so `t` re-evaluates per call under the active locale, instead of baking in
-// whatever locale was active when this module first loaded.
 const EVENT_COLUMN_META: Record<
   McpEventSortColumn,
   () => Omit<EventColumn, "key">
@@ -94,11 +90,9 @@ const EVENT_COLUMN_META: Record<
 
 /**
  * The curated columns surfaced in the events table, in display order. Derived from the same
- * {@link mcpEventColumnKeys} the row-level query projects to (see `buildEventsQuery`), so the
- * displayed columns and the columns actually fetched from the server can never drift — every
- * other view column (raw ids, client_name, user_agent, …) is never even requested, and
+ * {@link mcpEventColumnKeys} the row-level query projects to (see `buildEventsQuery`). Any other view column (raw ids, client_name, user_agent, …) is never even requested, and
  * `tenant_name`/`ip_address`/`error_message` are only requested when tenants/PII retention are
- * enabled, not just hidden client-side.
+ * enabled.
  */
 export function eventColumns(
   hasTenants: boolean,
@@ -120,9 +114,7 @@ function renderCell(column: EventColumn, value: RowValue): ReactNode {
 type EventRow = { id: string } & Record<string, RowValue>;
 
 type PaginationProps = {
-  /** Current page, 0-indexed. */
   page: number;
-  /** Total number of tool calls matching the filters (across all pages). */
   total: number;
   onPageChange: (page: number) => void;
 };
@@ -136,7 +128,6 @@ type SortProps = {
 
 type Nullable<T> = { [K in keyof T]: T[K] | null };
 
-// The audit metadata sources the inner table needs, all resolved.
 type MetadataSources = {
   provider: MetadataProvider;
   table: TableMetadata | CardMetadata;
@@ -150,28 +141,9 @@ type BaseProps = McpFilters &
     hasPii: boolean;
   };
 
-// Sources are still loading in the outer props (hence nullable); the inner component only renders
-// once they're resolved, so it takes them non-null.
 type Props = BaseProps & Nullable<MetadataSources>;
 type InnerProps = BaseProps & MetadataSources;
 
-/**
- * Retain the last non-nullish value so a component keeps rendering the previous result while the
- * next one loads. RTK query hooks return `undefined` data mid-fetch; without this a consumer would
- * blank out on every refetch.
- */
-function useRetainedValue<T>(value: T | undefined): T | undefined {
-  const ref = useRef(value);
-  if (value != null) {
-    ref.current = value;
-  }
-  return value ?? ref.current;
-}
-
-/**
- * Row-level events table for the Events tab. Renders nothing until the audit metadata is
- * loaded, then delegates to the inner component.
- */
 export function McpEventsTable({
   provider,
   table,
@@ -191,10 +163,6 @@ export function McpEventsTable({
   );
 }
 
-/**
- * Loaded variant of {@link McpEventsTable}: builds the paginated, sorted row-level query, runs it,
- * and renders the tool calls as a sortable {@link TreeTable} with pagination controls.
- */
 function McpEventsTableInner({
   provider,
   table,
@@ -216,10 +184,6 @@ function McpEventsTableInner({
     [hasTenants, hasPii],
   );
 
-  // Derive from the primitive sort values, not the `sortingOptions` object: the object identity
-  // changes on every render of the parent, and a fresh `effectiveSorting` rebuilds the query below,
-  // which mints fresh metabase-lib UUIDs, churns the RTK cache key, and causes a redundant refetch
-  // on incidental re-renders.
   const { sort_column: sortColumn, sort_direction: sortDirection } =
     sortingOptions;
   const effectiveSorting = useMemo(() => {
@@ -260,15 +224,11 @@ function McpEventsTableInner({
     ],
   );
 
-  const { data: latestData, isFetching } = useMcpEventsQuery(
+  const { data, isFetching, error } = useMcpEventsQuery(
     query,
     page,
     EVENTS_PAGE_SIZE,
   );
-  // Retain the previous page while the next one loads, so the table doesn't blank out on every
-  // page or sort change; we overlay a spinner on the retained rows instead. From here on `data` is
-  // simply the warehouse result — the retention is an implementation detail of the hook.
-  const data = useRetainedValue(latestData);
 
   // The result columns (`data.data.cols`) are the full, warehouse-ordered set the query returns —
   // not the curated `columns` we render. So we map each curated column to its position in the
@@ -352,7 +312,11 @@ function McpEventsTableInner({
         withBorder
         data-testid="mcp-events-table"
       >
-        {!data ? (
+        {error ? (
+          <Flex mih="60vh" align="center" justify="center">
+            <LoadingAndErrorWrapper loading={false} error={error} />
+          </Flex>
+        ) : !data ? (
           <TreeTableSkeleton columnWidths={skeletonColumnWidths} />
         ) : (
           <>
@@ -368,7 +332,7 @@ function McpEventsTableInner({
         )}
       </Card>
 
-      {data && (
+      {data && !error && (
         <Flex justify="flex-end">
           <PaginationControls
             page={page}
