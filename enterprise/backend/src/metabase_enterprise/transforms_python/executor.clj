@@ -137,13 +137,13 @@
     ;; never reused. Cancellation is that termination — user code cannot decline it.
     (microvm/with-microvm
       {:run-id run-id}
-      (fn [{:keys [endpoint auth-token terminate!]}]
+      (fn [{:keys [endpoint auth-headers terminate!]}]
         (set-run-endpoint! run-id endpoint)
         (when cancel-chan
           (a/go (when (a/<! cancel-chan)
                   (log/infof "Cancelling run %s by terminating its MicroVM" run-id)
                   (terminate!))))
-        (microvm/run-job! endpoint payload timeout-secs auth-token)))))
+        (microvm/run-job! endpoint payload timeout-secs auth-headers)))))
 
 ;;; ------------------------------------------------- Ad-hoc execution -------------------------------------------------
 

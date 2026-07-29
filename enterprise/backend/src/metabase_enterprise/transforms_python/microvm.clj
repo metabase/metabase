@@ -33,23 +33,25 @@
 ;; local stand-in.
 
 (defn- vm-request
-  [endpoint method path {:keys [auth-token] :as opts}]
+  "Call the VM's HTTP surface. `:auth-headers` is the map `CreateMicrovmAuthToken` returns — a
+  map rather than a single value because some token schemes need several headers — and AWS
+  checks it before traffic ever reaches our server."
+  [endpoint method path {:keys [auth-headers] :as opts}]
   (http/request (merge {:method           method
                         :url              (str endpoint "/v1" path)
                         :content-type     :json
                         :accept           :json
                         :as               :json
                         :throw-exceptions false}
-                       (dissoc opts :auth-token)
-                       (when auth-token
-                         ;; AWS checks this before traffic reaches our server
-                         {:headers {"X-aws-proxy-auth" auth-token}}))))
+                       (dissoc opts :auth-headers)
+                       (when (seq auth-headers)
+                         {:headers auth-headers}))))
 
 (defn fetch-logs
   "Events logged so far by the job running in the VM at `endpoint`."
   ([endpoint] (fetch-logs endpoint nil))
-  ([endpoint auth-token]
-   (vm-request endpoint :get "/logs" {:auth-token auth-token})))
+  ([endpoint auth-headers]
+   (vm-request endpoint :get "/logs" {:auth-headers auth-headers})))
 
 (defn run-job!
   "Submit `payload` to the VM at `endpoint` and block until the job finishes.
@@ -60,9 +62,9 @@
 
   Returns the runner-shaped `{:status <int> :body {:exit_code ..., :timeout ...}}`."
   ([endpoint payload timeout-secs] (run-job! endpoint payload timeout-secs nil))
-  ([endpoint payload timeout-secs auth-token]
+  ([endpoint payload timeout-secs auth-headers]
    (let [{:keys [status body]} (vm-request endpoint :post "/execute"
-                                           {:body (json/encode payload) :auth-token auth-token})]
+                                           {:body (json/encode payload) :auth-headers auth-headers})]
      (if-not (= 202 status)
        {:status (if (= 200 status) 500 status)
         :body   (if (map? body) body {:error (str body)})}
@@ -70,7 +72,7 @@
        (let [deadline-ms (* 1000 (+ timeout-secs 60))
              result      (u/poll {:thunk       (fn []
                                                  (let [{:keys [body]} (vm-request endpoint :get "/status"
-                                                                                  {:auth-token auth-token})]
+                                                                                  {:auth-headers auth-headers})]
                                                    (when (= "finished" (:state body))
                                                      (:result body))))
                                   :done?       some?
@@ -92,7 +94,7 @@
 ;;; ------------------------------------------------- Control plane -------------------------------------------------
 
 (defmulti ^:private launch!
-  "Start a MicroVM for this run. Returns `{:endpoint <base-url> :auth-token <token-or-nil>
+  "Start a MicroVM for this run. Returns `{:endpoint <base-url> :auth-headers <map-or-nil>
   :id <opaque>}`."
   {:arglists '([opts])}
   (fn [_opts] (transforms-python.settings/python-microvm-control-plane)))
@@ -121,11 +123,11 @@
 
 ;;; --- aws: the real thing
 ;;;
-;;; NOT VERIFIED AGAINST AWS. These request shapes follow the documented `aws lambda-microvms`
-;;; operations (RunMicrovm / CreateMicrovmAuthToken / TerminateMicrovm, API version 2025-09-09),
-;;; but nothing here has been exercised against a real account, and LocalStack does not emulate
-;;; the service. Treat the endpoint host and paths as the first thing to check when wiring this
-;;; up for real; they are settings precisely so that can be corrected without a code change.
+;;; The paths, field names and signing name below were checked against botocore's
+;;; `lambda-microvms/2025-09-09` service model, but nothing here has been *executed* against a
+;;; real account: no emulator covers this service (LocalStack does not list it, and neither moto
+;;; nor SAM CLI implement it), so the first real run is the first test. The endpoint host is a
+;;; setting so it can be pointed elsewhere without a code change.
 
 (defn- sigv4-headers
   [{:keys [method url body region]}]
@@ -186,11 +188,12 @@
                                      (assoc :egressNetworkConnectors
                                             [(transforms-python.settings/python-microvm-egress-connector)])))
         vm-id (:microvmId vm)
-        token (:authToken (control-plane-call! :post (str "/2025-09-09/microvms/" vm-id "/auth-tokens")
+        ;; `authToken` is a map of header name -> value: some token schemes need more than one
+        token (:authToken (control-plane-call! :post (str "/2025-09-09/microvms/" vm-id "/auth-token")
                                                {:expirationInMinutes 60
                                                 :allowedPorts        [{:port 8080}]}))]
     (log/infof "Launched MicroVM %s for run %s" vm-id run-id)
-    {:endpoint (:endpoint vm), :auth-token token, :id vm-id}))
+    {:endpoint (:endpoint vm), :auth-headers token, :id vm-id}))
 
 (defmethod terminate! :aws
   [{:keys [id]}]
@@ -205,7 +208,7 @@
 (defn with-microvm
   "Launch a MicroVM, call `f` with it, and terminate it no matter how `f` ends.
 
-  `f` receives `{:endpoint :auth-token :terminate!}`, where `terminate!` is idempotent and
+  `f` receives `{:endpoint :auth-headers :terminate!}`, where `terminate!` is idempotent and
   zero-arg so the caller can also destroy the VM early — that is how cancellation works."
   [opts f]
   (let [vm          (launch! opts)
