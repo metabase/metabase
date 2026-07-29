@@ -28,6 +28,7 @@ databaseChangeLog:
       changes:
         - sql:
             sql: >-
+              ALTER TABLE query_execution DROP CONSTRAINT query_execution_pkey;
               ALTER TABLE query_execution RENAME TO query_execution_old;
               CREATE TABLE query_execution (LIKE query_execution_old INCLUDING ALL)
                 PARTITION BY RANGE (started_at);
@@ -94,6 +95,8 @@ databaseChangeLog:
                             false);
               DROP TABLE query_execution;
               ALTER TABLE query_execution_old RENAME TO query_execution;
+              ALTER TABLE query_execution
+                ADD CONSTRAINT query_execution_pkey PRIMARY KEY(ID);
 
               DROP VIEW IF EXISTS v_query_log;
               CREATE OR REPLACE VIEW v_query_log AS
