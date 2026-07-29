@@ -28,12 +28,46 @@
 
 ;;; -------------------------------------------------- schedule ----------------------------------------------------
 
+(def ^:private schedule-fields-used
+  "The schedule fields [[metabase.util.cron/schedule-map->cron-string]] reads, per schedule type.
+   Anything outside its type's set the compiler drops on the floor."
+  {"hourly"  #{:schedule_minute}
+   "daily"   #{:schedule_hour}
+   "weekly"  #{:schedule_hour :schedule_day}
+   "monthly" #{:schedule_hour :schedule_frame :schedule_day}})
+
+(def ^:private schedule-field-advice
+  "What to do instead, per field a schedule type doesn't read."
+  {:schedule_minute "only an hourly schedule sends at a minute past the hour"
+   :schedule_hour   "an hourly schedule sends every hour — use \"daily\", \"weekly\", or \"monthly\" to send at one hour"
+   :schedule_day    "use \"weekly\", or \"monthly\" with schedule_frame \"first\" or \"last\", to send on a weekday"
+   :schedule_frame  "only a monthly schedule sends on a frame of the month"})
+
+(defn- check-ignored-schedule-fields!
+  "Reject a schedule field the caller's `schedule_type` doesn't read. The cron compiler drops such
+   a field silently, so the alert would send on a schedule nobody asked for while the call reports
+   success — `{hourly, schedule_hour 9}` fires 24 times a day, not once at nine. Only a
+   non-nil value counts: the strict-client transform lists every property as required and spells
+   \"no value\" as null, so a filled-in null is an omission, not a request."
+  [{:keys [schedule_type] :as schedule}]
+  (let [used    (get schedule-fields-used schedule_type #{})
+        ignored (->> (keys schedule-field-advice)
+                     (filter #(some? (get schedule %)))
+                     (remove used)
+                     sort
+                     first)]
+    (when ignored
+      (common/throw-teaching-error
+       (format "A %s schedule doesn't use %s, so it would be ignored — %s."
+               schedule_type (name ignored) (schedule-field-advice ignored))))))
+
 (defn- check-schedule!
-  "Reject an incomplete schedule by naming the field it is missing. The cron util would otherwise
-   fill an omitted hour with midnight, silently picking a send time the caller never asked for, and
-   fail the other shapes as an opaque error. Kept in step with `subscription_write`'s check of the
-   same vocabulary, so an agent that has learned one tool's schedule has learned the other's."
-  [{:keys [schedule_type schedule_hour schedule_day schedule_frame]}]
+  "Reject a schedule the cron compiler would mis-encode: one missing a field its type needs, or one
+   carrying a field its type doesn't read. The util would otherwise fill an omitted hour with
+   midnight and drop the surplus fields, silently picking a send time the caller never asked for,
+   and fail the other shapes as an opaque error. Kept in step with `subscription_write`'s check of
+   the same vocabulary, so an agent that has learned one tool's schedule has learned the other's."
+  [{:keys [schedule_type schedule_hour schedule_day schedule_frame] :as schedule}]
   (letfn [(require! [v field explanation]
             (when (nil? v)
               (common/throw-teaching-error
@@ -49,7 +83,8 @@
                       (common/throw-teaching-error
                        (str "A monthly schedule with schedule_frame \"mid\" sends on the 15th, so it cannot also "
                             "take a schedule_day — drop schedule_day, or use frame \"first\" or \"last\" to send "
-                            "on a particular weekday.")))))))
+                            "on a particular weekday."))))))
+  (check-ignored-schedule-fields! schedule))
 
 (defn- schedule->cron
   "Compile a ScheduleMap to the cron string the notification API stores, once
@@ -284,7 +319,7 @@
   "Create or update an alert: a notification sent on a schedule when a saved question's results meet a condition.
   method: \"create\" requires card_id (the question) and schedule; method: \"update\" requires id and changes only the
   fields you pass. schedule is {schedule_type: \"hourly\" | \"daily\" | \"weekly\" | \"monthly\", schedule_hour?
-  (0-23, required for daily, weekly, and monthly), schedule_minute? (0-59), schedule_day? (\"mon\"…\"sun\", required
+  (0-23, required for daily, weekly, and monthly), schedule_minute? (0-59, hourly only), schedule_day? (\"mon\"…\"sun\", required
   for weekly, and picks the weekday for a monthly \"first\" or \"last\" frame), schedule_frame? (\"first\" | \"mid\"
   | \"last\", required for monthly — \"mid\" is the 15th and takes no schedule_day)} — never a cron string. condition is {type: \"has_result\" (default) |
   \"goal_above\" | \"goal_below\", send_once?: boolean} — the goal conditions need a goal line on the question's chart,

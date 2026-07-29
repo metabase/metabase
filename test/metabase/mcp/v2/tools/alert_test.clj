@@ -119,7 +119,12 @@
           {:schedule_type "weekly" :schedule_hour 8 :schedule_day "mon"}        "0 0 8 ? * 2 *"
           {:schedule_type "monthly" :schedule_hour 8 :schedule_frame "first"}   "0 0 8 1 * ? *"
           {:schedule_type "monthly" :schedule_hour 8 :schedule_frame "last"
-           :schedule_day "fri"}                                                 "0 0 8 ? * 6L *")))))
+           :schedule_day "fri"}                                                 "0 0 8 ? * 6L *"
+          ;; A null stands for "no value": the strict-client transform lists every property as
+          ;; required, so a filled-in null is an omission and must not read as a surplus field.
+          {:schedule_type "hourly" :schedule_hour nil :schedule_day nil
+           :schedule_frame nil}                                                 "0 0 * * * ? *"
+          {:schedule_type "hourly" :schedule_minute 30}                         "0 30 * * * ? *")))))
 
 (deftest incomplete-schedule-test
   (mt/with-temp [:model/Card {card-id :id} {}]
@@ -139,7 +144,18 @@
                 is a teaching error rather than the underlying util's opaque case mismatch"
         (is (re-find #"cannot also take a schedule_day"
                      (schedule-error {:schedule_type "monthly" :schedule_frame "mid"
-                                      :schedule_day "fri" :schedule_hour 8})))))))
+                                      :schedule_day "fri" :schedule_hour 8}))))
+      (testing "a field the schedule type doesn't read is rejected rather than dropped. The cron
+                compiler ignores it, so the alert would send on a schedule nobody asked for while
+                the call reported success — an {hourly, schedule_hour 9} alert fires 24 times a day"
+        (are [schedule pattern] (re-find pattern (schedule-error schedule))
+          {:schedule_type "hourly" :schedule_hour 9}                       #"hourly schedule doesn't use schedule_hour"
+          {:schedule_type "hourly" :schedule_day "mon"}                    #"hourly schedule doesn't use schedule_day"
+          {:schedule_type "daily" :schedule_hour 9 :schedule_minute 30}    #"daily schedule doesn't use schedule_minute"
+          {:schedule_type "daily" :schedule_hour 9 :schedule_day "mon"}    #"daily schedule doesn't use schedule_day"
+          {:schedule_type "daily" :schedule_hour 9 :schedule_frame "first"} #"daily schedule doesn't use schedule_frame"
+          {:schedule_type "weekly" :schedule_hour 8 :schedule_day "mon"
+           :schedule_frame "first"}                                        #"weekly schedule doesn't use schedule_frame")))))
 
 (deftest condition-test
   (mt/with-model-cleanup [:model/Notification]
