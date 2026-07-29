@@ -24,7 +24,8 @@
     "directory": "enterprise/frontend/src/custom-viz"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "vite build && cp -r src/templates dist/templates",
