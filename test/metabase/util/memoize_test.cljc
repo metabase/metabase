@@ -77,7 +77,15 @@
                                        (swap! calls inc)
                                        x))]
       (is (nil? (intern nil)))
-      (is (zero? @calls)))))
+      (is (zero? @calls))))
+  (testing "a cached false counts as a hit, not a miss"
+    (let [calls  (atom 0)
+          intern (memo/fast-interner (fn [x]
+                                       (swap! calls inc)
+                                       x))]
+      (is (false? (intern false)))
+      (is (false? (intern false)))
+      (is (= 1 @calls)))))
 
 (deftest ^:parallel bounded-evicts-when-keyspace-overflows-test
   (let [keyspace                       (gen-keyspace 100)

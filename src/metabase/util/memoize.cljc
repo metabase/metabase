@@ -82,21 +82,26 @@
   In CLJS (single-threaded) this is a plain atom-backed map with the same contract."
   ([] (fast-interner identity))
   ([canon-fn]
+   ;; `if-some` rather than `or` on the lookups so that a cached `false` counts as a hit
    #?(:clj  (let [cache (java.util.concurrent.ConcurrentHashMap.)]
               (fn [x]
                 (when (some? x)
-                  (or (.get cache x)
-                      (let [canon (canon-fn x)]
-                        ;; key by `canon`, not `x`: `canon` = `x`, so this lookup/insert hits the
-                        ;; same bin a later equal input would, while retaining the canonical object.
-                        (or (.putIfAbsent cache canon canon) canon))))))
+                  (if-some [cached (.get cache x)]
+                    cached
+                    (let [canon (canon-fn x)]
+                      ;; key by `canon`, not `x`: `canon` = `x`, so this lookup/insert hits the
+                      ;; same bin a later equal input would, while retaining the canonical object.
+                      (if-some [existing (.putIfAbsent cache canon canon)]
+                        existing
+                        canon))))))
       :cljs (let [cache (atom {})]
               (fn [x]
                 (when (some? x)
-                  (or (get @cache x)
-                      (let [canon (canon-fn x)]
-                        (swap! cache assoc canon canon)
-                        canon))))))))
+                  (if-some [cached (get @cache x)]
+                    cached
+                    (let [canon (canon-fn x)]
+                      (swap! cache assoc canon canon)
+                      canon))))))))
 
 (defn fast-bounded
   "Variant of [[bounded]] that optimizes a common special case: a function with only a single argument, where that
