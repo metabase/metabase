@@ -19,7 +19,8 @@
   dimension-search-values
   dimension-remapped-value]
  [metrics.perms
-  filter-dimensions-for-user]
+  filter-dimensions-for-user
+  sandbox-restricted-fields]
  [metrics.transforms
   normalize-dimension
   normalize-target-ref
