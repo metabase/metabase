@@ -4,6 +4,7 @@ import { jt, t } from "ttag";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Box, Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
@@ -14,6 +15,8 @@ import S from "./GuidePage.module.css";
 export function GuidePage() {
   usePageTitle(t`Guide`);
   useMarkGuideAsSeen();
+
+  const hasLibraryFeature = useHasTokenFeature("library");
 
   return (
     <PageContainer className={S.page} gap={0}>
@@ -29,62 +32,88 @@ export function GuidePage() {
 
         <Card shadow="none" withBorder>
           <Stack className={S.cardContent} gap="2rem">
-            <Box>
-              <SectionHeading icon="transform">
-                {t`Transform your data to make it easier to query`}
-              </SectionHeading>
-              <Stack gap="md">
-                <Text c="text-secondary">
-                  {jt`Use ${(
-                    <strong key="transforms">{t`Transforms`}</strong>
-                  )} to write new tables to your database. Set up ${(
-                    <strong key="data">{t`Jobs`}</strong>
-                  )} to schedule transforms, and view each transform’s execution under ${(
-                    <strong key="jobs">{t`Runs`}</strong>
-                  )}`}
-                </Text>
-              </Stack>
-            </Box>
-
-            <Box>
-              <SectionHeading icon="repository">
-                {t`Publish query-ready tables to the Semantic Layer`}
-              </SectionHeading>
-              <Stack gap="md">
-                <Text c="text-secondary">
-                  {jt`Find all your tables in ${(
-                    <strong key="connected-data">{t`Connected data`}</strong>
-                  )}. To let people (and agents)  know which tables they should prefer, publish tables to the ${(
-                    <strong key="semantic-layer">{t`Semantic layer`}</strong>
-                  )}. Use ${(
-                    <strong key="segments">{t`Segments`}</strong>
-                  )} to define canonical filters for these tables,  and ${(
-                    <strong key="measures">{t`Measures`}</strong>
-                  )} for key aggregations.`}
-                </Text>
-              </Stack>
-            </Box>
-
-            <Box>
-              <SectionHeading icon="metric">
-                {t`Define key metrics and terms`}
-              </SectionHeading>
-              <Stack gap="md">
-                <Text c="text-secondary">
-                  {jt`Build on tables’ segments and measures to define important numbers like KPIs as ${(
-                    <strong key="metrics">{t`Metrics`}</strong>
-                  )}. Document terms in the  ${(
-                    <strong key="glossary">{t`Glossary`}</strong>
-                  )} to help both your team and your agents understand what they’re looking at.`}
-                </Text>
-              </Stack>
-            </Box>
+            <TransformsSection />
+            {hasLibraryFeature ? (
+              <SemanticLayerSection />
+            ) : (
+              <ConnectedDataSection />
+            )}
+            {hasLibraryFeature ? (
+              <LibraryMetricsSection />
+            ) : (
+              <GlossarySection />
+            )}
           </Stack>
         </Card>
       </Box>
     </PageContainer>
   );
 }
+
+function TransformsSection() {
+  return (
+    <GuideSection
+      icon="transform"
+      title={t`Transform your data to make it easier to query`}
+    >
+      {jt`Use ${(
+        <strong key="transforms">{t`Transforms`}</strong>
+      )} to write new tables to your database. Set up ${(
+        <strong key="data">{t`Jobs`}</strong>
+      )} to schedule transforms, and view each transform’s execution under ${(
+        <strong key="jobs">{t`Runs`}</strong>
+      )}`}
+    </GuideSection>
+  );
+}
+
+const SemanticLayerSection = () => (
+  <GuideSection
+    icon="repository"
+    title={t`Publish query-ready tables to the Semantic Layer`}
+  >
+    {jt`Find all your tables in ${(
+      <strong key="connected-data">{t`Connected data`}</strong>
+    )}. To let people (and agents)  know which tables they should prefer, publish tables to the ${(
+      <strong key="semantic-layer">{t`Semantic layer`}</strong>
+    )}. Use ${(
+      <strong key="segments">{t`Segments`}</strong>
+    )} to define canonical filters for these tables,  and ${(
+      <strong key="measures">{t`Measures`}</strong>
+    )} for key aggregations.`}
+  </GuideSection>
+);
+
+const LibraryMetricsSection = () => (
+  <GuideSection icon="metric" title={t`Define key metrics and terms`}>
+    {jt`Build on tables’ segments and measures to define important numbers like KPIs as ${(
+      <strong key="metrics">{t`Metrics`}</strong>
+    )}. Document terms in the  ${(
+      <strong key="glossary">{t`Glossary`}</strong>
+    )} to help both your team and your agents understand what they’re looking at.`}
+  </GuideSection>
+);
+
+// OSS sections
+const ConnectedDataSection = () => (
+  <GuideSection icon="database" title={t`Add context to your data`}>
+    {jt`Find all your tables in ${(
+      <strong key="connected-data">{t`Connected data`}</strong>
+    )}. Add descriptions to tables and their fields. Use ${(
+      <strong key="segments">{t`Segments`}</strong>
+    )} to define canonical filters for these tables,  and ${(
+      <strong key="measures">{t`Measures`}</strong>
+    )} for key aggregations.`}
+  </GuideSection>
+);
+
+const GlossarySection = () => (
+  <GuideSection icon="glossary" title={t`Define key terms in the Glossary`}>
+    {jt`Document terms in the  ${(
+      <strong key="glossary">{t`Glossary`}</strong>
+    )} to help both your team and your agents understand what they’re looking at.`}
+  </GuideSection>
+);
 
 function useMarkGuideAsSeen() {
   const {
@@ -104,17 +133,24 @@ function useMarkGuideAsSeen() {
   }, [isLoading, hasSeenGuide, setHasSeenGuide]);
 }
 
-function SectionHeading({
+function GuideSection({
   icon,
+  title,
   children,
 }: {
   icon: IconName;
+  title: string;
   children: ReactNode;
 }) {
   return (
-    <Group gap={8} align="center" mb={8} wrap="nowrap">
-      <Icon name={icon} size={20} c="core-brand" />
-      <Title order={3}>{children}</Title>
-    </Group>
+    <Box>
+      <Group gap={8} align="center" mb={8} wrap="nowrap">
+        <Icon name={icon} size={20} c="core-brand" />
+        <Title order={3}>{title}</Title>
+      </Group>
+      <Stack gap="md">
+        <Text c="text-secondary">{children}</Text>
+      </Stack>
+    </Box>
   );
 }

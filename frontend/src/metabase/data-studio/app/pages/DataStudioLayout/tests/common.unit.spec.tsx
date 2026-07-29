@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
+import * as Urls from "metabase/urls";
 
 import { setup } from "./setup";
 
@@ -106,6 +107,33 @@ describe("DataStudioLayout", () => {
 
       expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
       expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
+    });
+  });
+  describe("settings tab", () => {
+    it("shows Settings for admins after transform setup is complete", async () => {
+      setup({ isAdmin: true, transformsSetupComplete: true });
+
+      const tab = await screen.findByLabelText("Settings");
+      expect(tab).toHaveAttribute("href", Urls.dataStudioSettings());
+    });
+
+    it("hides Settings before transform setup is complete", async () => {
+      setup({ isAdmin: true, transformsSetupComplete: false });
+
+      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Settings")).not.toBeInTheDocument();
+    });
+
+    it("hides Settings for non-admins even after transform setup is complete", async () => {
+      setup({
+        isAdmin: false,
+        canAccessTransforms: true,
+        transformsSetupComplete: true,
+        transformsEnabled: true,
+      });
+
+      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Settings")).not.toBeInTheDocument();
     });
   });
 });
