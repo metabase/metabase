@@ -400,6 +400,20 @@
                 (is (= segment-id (:id segment)))
                 (is (= "Large Orders" (:name segment)))))))))))
 
+(deftest get-field-values-has-stable-shape-test
+  (let [field-id   (mt/id :categories :name)
+        raw-values ["African" "American"]]
+    (testing "cache hits return raw values"
+      (is (= raw-values
+             (#'entity-details/get-field-values {field-id {:values raw-values}} field-id))))
+    (testing "cache misses return the same raw-value shape"
+      (with-redefs [params.field-values/current-user-can-fetch-field-values?        (constantly true)
+                    params.field-values/get-or-create-field-values!                 (constantly {:values raw-values})
+                    params.field-values/get-or-create-field-values-for-current-user!
+                    (constantly {:values (mapv vector raw-values)})]
+        (is (= raw-values
+               (#'entity-details/get-field-values {} field-id)))))))
+
 ;;; ============================================================
 ;;; Base-table surfacing on get-metric-details (regression)
 ;;; ============================================================

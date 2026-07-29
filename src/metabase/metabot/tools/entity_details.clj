@@ -11,6 +11,7 @@
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
+   [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.util :as u]
@@ -136,7 +137,7 @@
     (let [field (t2/select-one :model/Field :id id)]
       (when (and field
                  (params.field-values/current-user-can-fetch-field-values? field))
-        (:values (params.field-values/get-or-create-field-values-for-current-user! field))))))
+        (:values (params.field-values/get-or-create-field-values! field))))))
 
 (defn- add-field-values
   [cols]
@@ -146,26 +147,46 @@
     cols))
 
 (defn- permission-filter-columns
-  "Remove columns whose owning Tables are unreadable and hide unreadable FK targets on retained columns."
+  "Remove columns hidden by Table or sandbox permissions and hide inaccessible FK targets on retained columns."
   [columns]
-  (let [columns                   (vec columns)
-        target-field-ids          (into #{} (keep :fk-target-field-id) columns)
-        target-field-id->table-id (when (seq target-field-ids)
-                                    (t2/select-pk->fn :table_id :model/Field :id [:in target-field-ids]))
-        table-ids                 (into #{}
-                                        (concat (keep :table-id columns)
-                                                (vals target-field-id->table-id)))
-        readable-table-ids        (when (seq table-ids)
-                                    (->> (t2/select :model/Table :id [:in table-ids])
-                                         (filter mi/can-read?)
-                                         (map :id)
-                                         set))
-        readable-table?           #(or (nil? %) (contains? readable-table-ids %))]
+  (let [columns                (vec columns)
+        referenced-field-ids   (into #{}
+                                     (comp (mapcat (juxt :fk-field-id :fk-target-field-id))
+                                           (filter some?))
+                                     columns)
+        referenced-fields      (when (seq referenced-field-ids)
+                                 (t2/select [:model/Field :id :table_id]
+                                            :id [:in referenced-field-ids]))
+        field-id->field         (m/index-by :id referenced-fields)
+        table-ids               (into #{}
+                                      (filter pos-int?)
+                                      (concat (keep :table-id columns)
+                                              (keep :table_id referenced-fields)))
+        readable-table-ids      (->> (t2/select :model/Table :id [:in table-ids])
+                                     (filter mi/can-read?)
+                                     (map :id)
+                                     set)
+        sandbox-restricted-ids  (metrics/sandbox-restricted-fields table-ids)
+        field-readable?         (fn [table-id field]
+                                  (and (contains? readable-table-ids table-id)
+                                       (if-let [allowed-field-ids (get sandbox-restricted-ids table-id)]
+                                         (contains? allowed-field-ids (u/id field))
+                                         true)))
+        referenced-field-readable?
+        (fn [field-id]
+          (when-let [field (get field-id->field field-id)]
+            (field-readable? (:table_id field) field)))
+        column-readable?        (fn [{:keys [fk-field-id table-id] :as column}]
+                                  (and (or (not (pos-int? table-id))
+                                           (field-readable? table-id column))
+                                       (or (nil? fk-field-id)
+                                           (referenced-field-readable? fk-field-id))))]
     (->> columns
-         (filter (comp readable-table? :table-id))
+         (filter column-readable?)
          (mapv (fn [{:keys [fk-target-field-id] :as column}]
                  (cond-> column
-                   (not (readable-table? (get target-field-id->table-id fk-target-field-id)))
+                   (and fk-target-field-id
+                        (not (referenced-field-readable? fk-target-field-id)))
                    (dissoc :fk-target-field-id)))))))
 
 (defn metric-details
