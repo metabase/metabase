@@ -1,8 +1,8 @@
 (ns metabase-enterprise.semantic-search.db.store-health
   "Readiness of the pgvector store itself -- can this instance reach a vector database, and which one.
-  Store-level, not index-level: semantic search provisions the store, but entity retrieval and anything
-  else needing vectors shares it, so this reports the store rather than any one feature's index. Index
-  health lives in [[metabase-enterprise.semantic-search.health]]."
+  The store is shared: semantic search provisions it, entity retrieval uses it, and more features are likely
+  in future, so this reports the store rather than any one feature's index.
+  Index health lives in [[metabase-enterprise.semantic-search.health]]."
   (:require
    [metabase-enterprise.semantic-search.db.datasource :as semantic.datasource]
    [metabase-enterprise.semantic-search.util :as semantic.u]
@@ -31,19 +31,45 @@
   check, which may attempt rolled-back DDL."
   (* 60 60))
 
-(defn- probe-connected?
+(def ^:private probe-deadline-ms
+  "Hard cap on one connection probe, well above the JDBC timeouts that should end it first: the dedicated
+  probe's own connect and socket timeouts, the app db's connection checkout plus statement timeout.
+  Reaching it means the probe hit something none of those bound, such as a blackholed app-db host whose URL
+  sets no socketTimeout. Waiting on that would strand both the lock the health check takes and the flag
+  every later refresh needs, freezing the gauges at their last values for the life of the process."
+  (* 60 1000))
+
+(defn- store-connected?
   [mode]
-  (try
-    (case mode
-      :dedicated   (do (semantic.datasource/probe-dedicated-connection!) true)
-      :app-db      (semantic.datasource/probe-app-db-store!)
-      :unavailable false)
-    (catch InterruptedException e
-      (throw e))
-    (catch Exception e
-      ;; The exception is the only record of why the gauge dropped.
-      (log/warn e "Pgvector connection probe failed" {:mode mode})
-      false)))
+  (case mode
+    :dedicated   (do (semantic.datasource/probe-dedicated-connection!) true)
+    :app-db      (semantic.datasource/probe-app-db-store!)
+    :unavailable false))
+
+(defn- probe-connected?
+  "Whether `mode`'s store answers within `deadline-ms`. Anything else -- a failure, a timeout -- reads as
+  disconnected."
+  [mode deadline-ms]
+  (let [fut (future-call
+             (fn []
+               (try
+                 (store-connected? mode)
+                 (catch InterruptedException _
+                   ;; Only the cancel below interrupts this thread, and by then nobody wants the answer.
+                   false)
+                 (catch Exception e
+                   ;; The exception is the only record of why the gauge dropped.
+                   (log/warn e "Pgvector connection probe failed" {:mode mode})
+                   false))))]
+    (try
+      (let [result (deref fut deadline-ms ::timeout)]
+        (when (= result ::timeout)
+          (log/warn "Pgvector connection probe timed out" {:mode mode, :deadline-ms deadline-ms}))
+        (true? result))
+      (finally
+        ;; A finished probe ignores this. A hung one is interrupted, which releases a connection checkout
+        ;; wait, though not a blocking socket read.
+        (future-cancel fut)))))
 
 (defn- readiness-probe-allowed?
   "Whether this instance may resolve its pgvector store, the same boot-safe gate the semantic metric
@@ -56,6 +82,15 @@
   (or (semantic.datasource/dedicated-url-configured?)
       (semantic.u/semantic-search-configured?)))
 
+(defn- clear-stale-last-success!
+  "Drop the last-success timestamp when the store this instance selects changes.
+  It is only ever written for the current storage, so the label left behind would otherwise sit at its final
+  value for the life of the process, reading as a store that has not connected since. Clearing takes every
+  label with it, which is what we want here -- only one can ever hold a value."
+  [previous-storage storage]
+  (when (and previous-storage (not= previous-storage storage))
+    (analytics/clear! :metabase-pgvector/store-last-success-timestamp-seconds)))
+
 (defn- collect-pgvector-readiness-metrics!
   "Record availability and connection health for the selected pgvector store.
   Ignores engine activation, so a pgvector rollout can be validated before enabling anything that uses it."
@@ -63,11 +98,13 @@
   ;; The scrape path and a stale health check both call this. Serialize, so their gauge writes and results
   ;; can't interleave.
   (locking last-readiness-probe
-    (let [mode       (if (readiness-probe-allowed?)
-                       (semantic.datasource/pgvector-mode)
-                       :unavailable)
-          storage    (case mode :dedicated "dedicated" :app-db "appdb" nil)
-          connected? (probe-connected? mode)]
+    (let [previous-storage (:storage @last-readiness-probe)
+          mode             (if (readiness-probe-allowed?)
+                             (semantic.datasource/pgvector-mode)
+                             :unavailable)
+          storage          (case mode :dedicated "dedicated" :app-db "appdb" nil)
+          connected?       (probe-connected? mode probe-deadline-ms)
+          at               (.getEpochSecond (Instant/now))]
       ;; Publish both stable series on every instance; both are zero when no store is usable.
       (doseq [candidate storage-labels]
         (analytics/set-gauge! :metabase-pgvector/store-available
@@ -76,13 +113,14 @@
         (analytics/set-gauge! :metabase-pgvector/store-connected
                               {:storage candidate}
                               (if (and (= candidate storage) connected?) 1 0)))
+      (clear-stale-last-success! previous-storage storage)
       (reset! last-readiness-probe {:storage    storage
                                     :connected? connected?
-                                    :at         (.getEpochSecond (Instant/now))})
+                                    :at         at})
       (when connected?
         (analytics/set-gauge! :metabase-pgvector/store-last-success-timestamp-seconds
                               {:storage storage}
-                              (.getEpochSecond (Instant/now)))))))
+                              at)))))
 
 (defn- readiness-probe-stale?
   [{:keys [at]}]

@@ -1,6 +1,8 @@
 (ns metabase-enterprise.semantic-search.db.store-health-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [iapetos.export :as export]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.db.store-health :as semantic.store-health]
@@ -68,6 +70,52 @@
         (@#'semantic.store-health/collect-pgvector-readiness-metrics!))
       (is (=? {"appdb" {:available #(== 1 %), :connected zero?}}
               (readiness-gauges system))))))
+
+(defn- exposed-last-success
+  "The last-success samples a scrape would actually see, as `{storage value}`.
+  Read from the exposition rather than [[mt/metric-value]], which creates the child it looks up and so
+  reports an absent series as a present zero."
+  [system]
+  (into {}
+        (keep (fn [line]
+                (when-let [[_ storage value]
+                           (re-find #"^metabase_pgvector_store_last_success_timestamp_seconds\{storage=\"([^\"]+)\",?\} (\S+)"
+                                    line)]
+                  [storage (parse-double value)])))
+        (str/split-lines (export/text-format (:registry system)))))
+
+(deftest last-success-does-not-outlive-its-storage-test
+  (mt/with-prometheus-system! [_ system]
+    (mt/with-dynamic-fn-redefs
+      [semantic.db.datasource/dedicated-url-configured?   (constantly true)
+       semantic.db.datasource/probe-dedicated-connection! (constantly {:one 1})]
+      (@#'semantic.store-health/collect-pgvector-readiness-metrics!))
+    (is (=? {"dedicated" pos?} (exposed-last-success system)))
+    (testing "switching storage drops the old timestamp, which would otherwise never advance again"
+      (mt/with-dynamic-fn-redefs
+        [semantic.db.datasource/dedicated-url-configured? (constantly false)
+         semantic.u/semantic-search-configured?           (constantly true)
+         semantic.db.datasource/pgvector-mode             (constantly :app-db)
+         semantic.db.datasource/probe-app-db-store!       (constantly true)]
+        (@#'semantic.store-health/collect-pgvector-readiness-metrics!))
+      (is (=? {"appdb" pos?} (exposed-last-success system)))
+      (is (= #{"appdb"} (set (keys (exposed-last-success system))))
+          "the abandoned label is gone rather than zeroed -- a 0 would read as 1970"))))
+
+(deftest probe-deadline-test
+  (let [probe @#'semantic.store-health/probe-connected?]
+    (testing "a probe that outruns the deadline reads as disconnected instead of stranding the caller"
+      (mt/with-dynamic-fn-redefs
+        [semantic.db.datasource/probe-dedicated-connection! (fn [] @(promise))]
+        (is (false? (probe :dedicated 50)))))
+    (testing "an ordinary failure still reads as disconnected"
+      (mt/with-dynamic-fn-redefs
+        [semantic.db.datasource/probe-dedicated-connection! #(throw (ex-info "nope" {}))]
+        (is (false? (probe :dedicated 60000)))))
+    (testing "a store that answers reads as connected"
+      (mt/with-dynamic-fn-redefs
+        [semantic.db.datasource/probe-dedicated-connection! (constantly {:one 1})]
+        (is (true? (probe :dedicated 60000)))))))
 
 (deftest pgvector-readiness-skips-unlicensed-app-db-probe-test
   (testing "an unlicensed instance never resolves pgvector-mode, whose app-db arm probes the app db"

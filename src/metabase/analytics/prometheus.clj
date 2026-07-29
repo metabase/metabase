@@ -338,11 +338,13 @@
                                         "At most one is 1: a dedicated MB_PGVECTOR_DB_URL always wins over the app db.")
                       :labels      [:storage]})
    (prometheus/gauge :metabase-pgvector/store-connected
-                     {:description "Whether the most recent connection probe to the given pgvector storage backing succeeded."
+                     {:description (str "Whether the most recent connection probe to the given pgvector storage backing "
+                                        "succeeded. Probed hourly, so it trails an outage by up to that long.")
                       :labels      [:storage]})
    (prometheus/gauge :metabase-pgvector/store-last-success-timestamp-seconds
                      {:description (str "Unix timestamp in seconds of the most recent successful connection probe to the "
-                                        "given pgvector storage backing. Absent until one succeeds.")
+                                        "given pgvector storage backing. Absent until one succeeds, and reset when the "
+                                        "instance changes which backing it uses.")
                       :labels      [:storage]})
    (prometheus/counter :metabase-search/index-reindexes
                        {:description "Number of reindexed search entries"
