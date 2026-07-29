@@ -120,6 +120,32 @@
         (testing "the unmasked credentials are what gets persisted"
           (is (= {:api-key "sk-ant-valid"} (stored-config "anthropic"))))))))
 
+(deftest create-selects-a-model-for-the-first-connection-test
+  (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                              (fn [& _] {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]})]
+    (testing "connecting the first provider leaves Metabot pointed at one of its models"
+      (mt/with-temporary-setting-values [llm-providers []]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+          (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                {:type "anthropic" :config {:api-key "sk-ant-valid"}})
+          (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))
+          (is (true? (metabot.settings/llm-metabot-configured?))))))
+    (testing "an explicitly requested model wins over the provider type's default"
+      (mt/with-temporary-setting-values [llm-providers []]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+          (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                {:type  "anthropic"
+                                 :model "claude-haiku-4-5"
+                                 :config {:api-key "sk-ant-valid"}})
+          (is (= "anthropic/claude-haiku-4-5" (metabot.settings/llm-metabot-provider))))))
+    (testing "adding a second provider does not switch Metabot away from a working selection"
+      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                    {:api-key "sk-ant-stored"})]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-opus-4-8"]
+          (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                {:type "openai" :config {:api-key "sk-valid"}})
+          (is (= "anthropic/claude-opus-4-8" (metabot.settings/llm-metabot-provider))))))))
+
 (deftest create-does-not-save-when-credentials-are-rejected-test
   (mt/with-temporary-setting-values [llm-providers []]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (rejected-credentials "Anthropic API key expired or invalid")]

@@ -245,6 +245,22 @@
             (str key "/" model)))
         (llm.provider/connections)))
 
+(defn- metabot-has-a-usable-model?
+  "Whether `llm-metabot-provider` currently names a connection that can serve requests. Callers must read this
+  *before* saving a new connection: the setting's default names the `anthropic` connection, which a freshly saved
+  Anthropic connection would satisfy retroactively."
+  []
+  (llm.provider/connection-usable?
+   (llm.provider/model-ref->connection-key (metabot.settings/llm-metabot-provider))))
+
+(defn- select-model-for-new-connection!
+  "Point Metabot at a freshly created connection when it had nothing usable to run on, so connecting the first
+  provider leaves the instance working rather than connected-but-with-no-model-selected. An existing selection that
+  still resolves is left alone — adding a second provider must not silently switch Metabot over to it."
+  [{conn-key :key :keys [type]} requested-model]
+  (when-let [model (or (not-empty requested-model) (llm.provider/default-model type))]
+    (setting/set! :llm-metabot-provider (str conn-key "/" model))))
+
 ;;; -------------------------------------------------- Endpoints ---------------------------------------------------
 
 (api.macros/defendpoint :get "/provider-types"
@@ -289,9 +305,12 @@
                     :config config}]
       (llm.provider/validate-config! type config)
       (verify-credentials! conn config model)
-      (llm.provider/set-connections! (conj (vec (remove #(= :env (keyword (:source %)))
-                                                        (llm.provider/connections)))
-                                           conn))
+      (let [had-usable-model? (metabot-has-a-usable-model?)]
+        (llm.provider/set-connections! (conj (vec (remove #(= :env (keyword (:source %)))
+                                                          (llm.provider/connections)))
+                                             conn))
+        (when-not had-usable-model?
+          (select-model-for-new-connection! conn model)))
       (connection-response (assoc conn :source :db)))))
 
 (api.macros/defendpoint :put "/providers/:key"

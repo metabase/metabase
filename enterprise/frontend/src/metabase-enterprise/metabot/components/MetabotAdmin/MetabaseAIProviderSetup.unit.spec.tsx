@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
+import fetchMock, { type RouteResponse } from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -43,7 +43,7 @@ type SetupOptions = {
   offerMetabaseManagedAi?: boolean;
   metabasePricePerUnit?: number;
   pauseAddOnsResponse?: boolean;
-  purchaseCloudAddOnResponse?: number;
+  purchaseCloudAddOnResponse?: RouteResponse;
   metabotUsageQuota?: MetabotUsageQuota | null;
   onConnect?: () => void;
 };
@@ -286,8 +286,12 @@ describe("MetabaseAIProviderSetup", () => {
       });
     });
 
-    it("purchases the add-on before creating the connection when terms are accepted", async () => {
-      setup();
+    it("waits for the add-on purchase to finish before creating the connection", async () => {
+      let completePurchase = () => {};
+      const purchased = new Promise<void>((resolve) => {
+        completePurchase = resolve;
+      });
+      setup({ purchaseCloudAddOnResponse: () => purchased.then(() => 200) });
 
       await userEvent.click(
         await screen.findByRole("checkbox", {
@@ -298,28 +302,28 @@ describe("MetabaseAIProviderSetup", () => {
 
       await waitFor(() => {
         expect(
+          fetchMock.callHistory.called(
+            "path:/api/ee/cloud-add-ons/metabase-ai-managed",
+            { method: "POST", body: { terms_of_service: true } },
+          ),
+        ).toBe(true);
+      });
+      expect(
+        fetchMock.callHistory.called("path:/api/llm/providers", {
+          method: "POST",
+        }),
+      ).toBe(false);
+
+      completePurchase();
+
+      await waitFor(() => {
+        expect(
           fetchMock.callHistory.called("path:/api/llm/providers", {
             method: "POST",
             body: { type: "metabase" },
           }),
         ).toBe(true);
       });
-
-      expect(
-        fetchMock.callHistory.called(
-          "path:/api/ee/cloud-add-ons/metabase-ai-managed",
-          { method: "POST", body: { terms_of_service: true } },
-        ),
-      ).toBe(true);
-
-      const postPaths = fetchMock.callHistory
-        .calls()
-        .filter((call) => call.options.method === "POST")
-        .map((call) => new URL(call.url, location.origin).pathname);
-
-      expect(
-        postPaths.indexOf("/api/ee/cloud-add-ons/metabase-ai-managed"),
-      ).toBeLessThan(postPaths.indexOf("/api/llm/providers"));
     });
 
     it("does not create the connection when the add-on purchase fails", async () => {

@@ -8,13 +8,24 @@ import {
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { Button, Card, Group, Icon, Menu, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  Card,
+  Flex,
+  Group,
+  Icon,
+  Menu,
+  Skeleton,
+  Stack,
+  Text,
+} from "metabase/ui";
 import type {
   LlmProviderConnection,
   LlmProviderType,
 } from "metabase-types/api";
 
 import { LlmModelPicker } from "./LlmModelPicker";
+import { ProviderConnectionForm } from "./ProviderConnectionForm";
 import { ProviderConnectionModal } from "./ProviderConnectionModal";
 
 export function AIProviderConfigurationForm({
@@ -24,8 +35,10 @@ export function AIProviderConfigurationForm({
   isModal?: boolean;
   onClose?: (connection?: LlmProviderConnection) => void;
 }) {
-  const { data: connections = [] } = useListLlmProvidersQuery();
-  const { data: providerTypes = [] } = useListLlmProviderTypesQuery();
+  const { data: connections = [], isLoading: isLoadingConnections } =
+    useListLlmProvidersQuery();
+  const { data: providerTypes = [], isLoading: isLoadingProviderTypes } =
+    useListLlmProviderTypesQuery();
   const [deleteProvider] = useDeleteLlmProviderMutation();
 
   const [editing, setEditing] = useState<LlmProviderConnection | undefined>();
@@ -56,6 +69,28 @@ export function AIProviderConfigurationForm({
       !providerType.singleton ||
       !connections.some((connection) => connection.type === providerType.type),
   );
+
+  if (isLoadingConnections || isLoadingProviderTypes) {
+    return <ProviderListSkeleton />;
+  }
+
+  if (isModal) {
+    return hasConnections ? (
+      <Stack gap="lg">
+        <LlmModelPicker />
+        <Flex justify="end">
+          <Button variant="filled" onClick={() => onClose?.()}>
+            {t`Done`}
+          </Button>
+        </Flex>
+      </Stack>
+    ) : (
+      <ProviderConnectionForm
+        providerTypes={addableProviderTypes}
+        onSaved={(saved) => onClose?.(saved)}
+      />
+    );
+  }
 
   return (
     <Stack gap="lg">
@@ -103,6 +138,15 @@ export function AIProviderConfigurationForm({
         confirmButtonText={t`Remove provider`}
         onConfirm={handleConfirmDelete}
       />
+    </Stack>
+  );
+}
+
+function ProviderListSkeleton() {
+  return (
+    <Stack gap="sm" data-testid="provider-list-skeleton">
+      <Skeleton h="4rem" radius="md" />
+      <Skeleton h="4rem" radius="md" />
     </Stack>
   );
 }
