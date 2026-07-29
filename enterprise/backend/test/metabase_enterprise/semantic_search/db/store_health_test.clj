@@ -242,7 +242,9 @@
         (is (=? {:health 0, :message #"Could not determine whether a pgvector store is reachable\."} (check))))
       (testing "a missing or stale probe is refreshed, so an unscraped instance still reports"
         (reset! probe nil)
-        (check)
+        ;; The refresh is stubbed, so the atom is still empty when the wait ends -- the case where a probe
+        ;; is still out there, which must not read as an absent store.
+        (is (=? {:health 0, :message #"Could not determine whether a pgvector store is reachable\."} (check)))
         (reset! probe {:storage "dedicated", :connected? true, :resolved? true, :at 0})
         (check)
         (is (= 2 @collects))))))

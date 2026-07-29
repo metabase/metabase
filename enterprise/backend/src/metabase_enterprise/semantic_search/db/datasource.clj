@@ -13,7 +13,7 @@
    (com.mchange.v2.c3p0 DataSources PooledDataSource)
    (java.net URLDecoder)
    (java.nio.charset StandardCharsets)
-   (java.sql SQLException SQLFeatureNotSupportedException)
+   (java.sql Connection SQLException)
    (java.util.concurrent Executor)
    (org.postgresql PGProperty)))
 
@@ -304,11 +304,10 @@
                  (exception-chain e))))
 
 (def ^:private probe-network-timeout-ms
-  "Socket-level bound on every operation of a probe's app-db connection.
-  A statement timeout needs a working connection to carry the cancel, so it does nothing against a host that
-  has stopped answering. This does, and unlike a statement timeout it also covers the rollback and the
-  check-in that follow -- the readiness probe cannot be interrupted out of any of them, and one stuck there
-  would block every later refresh for the life of the process."
+  "Socket-level bound on a probe's reads, for a host that accepts the connection and then stops answering.
+  A statement timeout needs a working connection to carry the cancel, so it does nothing there; the readiness
+  probe cannot be interrupted out of a stuck read either, and one left in that state blocks every later
+  refresh for the life of the process."
   (int (* 15 1000)))
 
 (def ^:private ^Executor same-thread-executor
@@ -316,16 +315,37 @@
   (reify Executor
     (execute [_ r] (.run ^Runnable r))))
 
+(defn- network-timeout
+  "The connection's network timeout, or nil where the driver has no opinion."
+  [^Connection conn]
+  (try
+    (.getNetworkTimeout conn)
+    (catch SQLException _ nil)))
+
+(defn- set-network-timeout!
+  [^Connection conn ^long timeout-ms]
+  (try
+    (.setNetworkTimeout conn same-thread-executor timeout-ms)
+    (catch SQLException _
+      ;; Unsupported, or the connection is already broken. Either way the statement timeouts still apply.
+      nil)))
+
 (defn- with-probe-connection
-  "Call `f` with an app-db connection bounded by [[probe-network-timeout-ms]] at the socket level."
+  "Call `f` with an app-db connection whose reads are bounded by [[probe-network-timeout-ms]].
+  The bound is lifted again before check-in: this is a pooled connection, and c3p0 hands the same physical one
+  to whoever borrows it next, who is entitled to the app db's own patience -- a migration or a `copy-to-h2`
+  would fail in seconds under the probe's. Both calls are local to the socket, so neither can hang.
+  Check-in is therefore unbounded, which is the lesser problem: a connection whose read just timed out is
+  broken, and c3p0 destroys rather than reuses it."
   [f]
   (with-open [conn (jdbc/get-connection (mdb/data-source))]
-    (try
-      (.setNetworkTimeout conn same-thread-executor probe-network-timeout-ms)
-      (catch SQLFeatureNotSupportedException _
-        ;; Only Postgres app dbs ever host the store, so this skips the bound only where it cannot apply.
-        nil))
-    (f conn)))
+    (let [restore-to (network-timeout conn)]
+      (set-network-timeout! conn probe-network-timeout-ms)
+      (try
+        (f conn)
+        (finally
+          (when restore-to
+            (set-network-timeout! conn restore-to)))))))
 
 (defn- app-db-can-provision-pgvector?
   "Whether the app-db user can create whichever store pieces are still missing, checked without persisting

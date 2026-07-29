@@ -20,6 +20,7 @@
   on it, so it only has to close and accept the bound."
   ^Connection []
   (reify Connection
+    (getNetworkTimeout [_] 0)
     (setNetworkTimeout [_ _ _] nil)
     (close [_] nil)))
 

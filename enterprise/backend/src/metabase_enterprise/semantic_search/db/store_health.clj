@@ -199,13 +199,16 @@
   []
   (when (readiness-probe-stale? @last-readiness-probe)
     (deref (request-pgvector-readiness-refresh!) probe-wait-ms nil))
-  (when-let [{:keys [storage connected? resolved?]} @last-readiness-probe]
+  (let [{:keys [storage connected? resolved?] :as probe} @last-readiness-probe]
     (cond
-      ;; nil is reserved for "this instance has no pgvector store", which is a fact. Not finding out is not.
-      (not resolved?) (search.index-health/degraded "Could not determine whether a pgvector store is reachable.")
-      (not storage)   nil
-      connected?      (search.index-health/healthy (format "pgvector store (%s) reachable." storage))
-      :else           (search.index-health/degraded (format "pgvector store (%s) unreachable." storage)))))
+      ;; nil is reserved for "this instance has no pgvector store", which is a fact. Not finding out is not,
+      ;; whether the probe answered that it couldn't tell or is still out there when the wait runs out.
+      (or (nil? probe) (not resolved?))
+      (search.index-health/degraded "Could not determine whether a pgvector store is reachable.")
+
+      (not storage) nil
+      connected?    (search.index-health/healthy (format "pgvector store (%s) reachable." storage))
+      :else         (search.index-health/degraded (format "pgvector store (%s) unreachable." storage)))))
 
 (health-inspector/register-check! :pgvector-store pgvector-store-health-check)
 
