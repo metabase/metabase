@@ -1,29 +1,12 @@
-import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  useCreateLlmProviderMutation,
-  useUpdateLlmProviderMutation,
-} from "metabase/api";
-import { getErrorMessage } from "metabase/api/utils";
-import { PLUGIN_METABOT } from "metabase/plugins";
-import {
-  Button,
-  Flex,
-  Group,
-  Modal,
-  Stack,
-  Text,
-  TextInput,
-} from "metabase/ui";
+import { Modal } from "metabase/ui";
 import type {
-  LlmProviderConfig,
   LlmProviderConnection,
   LlmProviderType,
 } from "metabase-types/api";
 
-import { ProviderConfigFields } from "./ProviderConfigFields";
-import { ProviderTypeSelect } from "./ProviderTypeSelect";
+import { ProviderConnectionForm } from "./ProviderConnectionForm";
 
 export function ProviderConnectionModal({
   providerTypes,
@@ -32,124 +15,21 @@ export function ProviderConnectionModal({
 }: {
   providerTypes: LlmProviderType[];
   connection?: LlmProviderConnection;
-  onClose: (created?: LlmProviderConnection) => void;
+  onClose: (saved?: LlmProviderConnection) => void;
 }) {
-  const isEditing = connection != null;
-  const [typeName, setTypeName] = useState<string | undefined>(
-    connection?.type,
-  );
-  const [name, setName] = useState(connection?.name ?? "");
-  const [config, setConfig] = useState<LlmProviderConfig>(
-    connection?.config ?? {},
-  );
-  const [error, setError] = useState<string | undefined>();
-
-  const [createProvider, createResult] = useCreateLlmProviderMutation();
-  const [updateProvider, updateResult] = useUpdateLlmProviderMutation();
-  const isSaving = createResult.isLoading || updateResult.isLoading;
-
-  const providerType = useMemo(
-    () => providerTypes.find((option) => option.type === typeName),
-    [providerTypes, typeName],
-  );
-
-  const handleTypeChange = (nextType: string) => {
-    setTypeName(nextType);
-    setError(undefined);
-    const nextProviderType = providerTypes.find(
-      (option) => option.type === nextType,
-    );
-    setName(nextProviderType?.label ?? "");
-    setConfig({});
-  };
-
-  const isComplete =
-    providerType != null &&
-    providerType.fields
-      .filter((field) => field.required)
-      .every((field) => (config[field.key] ?? "").trim() !== "");
-
-  const handleSave = async () => {
-    if (!providerType) {
-      return;
-    }
-    setError(undefined);
-    try {
-      const saved = isEditing
-        ? await updateProvider({
-            key: connection.key,
-            name,
-            config,
-          }).unwrap()
-        : await createProvider({
-            type: providerType.type,
-            name,
-            config,
-          }).unwrap();
-      onClose(saved);
-    } catch (caught) {
-      setError(getErrorMessage(caught, t`Unable to save this provider.`));
-    }
-  };
-
-  const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
-
   return (
     <Modal
       opened
       onClose={() => onClose()}
-      title={isEditing ? t`Edit provider` : t`Add a provider`}
+      title={connection ? t`Edit provider` : t`Add a provider`}
       padding="xl"
     >
-      <Stack gap="lg">
-        {!isEditing && (
-          <ProviderTypeSelect
-            providerTypes={providerTypes}
-            value={typeName}
-            onChange={handleTypeChange}
-          />
-        )}
-
-        {providerType?.managed ? (
-          <MetabaseAIProviderSetup onConnect={() => onClose()} />
-        ) : (
-          providerType && (
-            <>
-              <TextInput
-                label={t`Display name`}
-                description={t`What this connection is called in the model picker.`}
-                value={name}
-                onChange={(event) => setName(event.currentTarget.value)}
-                disabled={isSaving}
-              />
-              <ProviderConfigFields
-                fields={providerType.fields}
-                values={config}
-                onChange={(key, value) =>
-                  setConfig((current) => ({ ...current, [key]: value }))
-                }
-                disabled={isSaving}
-              />
-              {error && <Text c="error">{error}</Text>}
-              <Flex justify="end">
-                <Group gap="sm">
-                  <Button onClick={() => onClose()} disabled={isSaving}>
-                    {t`Cancel`}
-                  </Button>
-                  <Button
-                    variant="filled"
-                    loading={isSaving}
-                    disabled={isSaving || !isComplete}
-                    onClick={handleSave}
-                  >
-                    {isEditing ? t`Save` : t`Connect`}
-                  </Button>
-                </Group>
-              </Flex>
-            </>
-          )
-        )}
-      </Stack>
+      <ProviderConnectionForm
+        providerTypes={providerTypes}
+        connection={connection}
+        onSaved={onClose}
+        onCancel={() => onClose()}
+      />
     </Modal>
   );
 }
