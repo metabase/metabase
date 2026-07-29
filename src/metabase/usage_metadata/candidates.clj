@@ -27,6 +27,7 @@
   2)
 (def ^:private retained-run-count 20)
 (def ^:private source-card-batch-size 100)
+(def ^:private queued-run-startup-grace (t/minutes 5))
 (def ^:private conditional-measure-types #{:count-where :distinct-where :sum-where})
 (defonce ^:private locally-running-run-ids (atom #{}))
 (def ^:private candidate-cutoffs
@@ -98,14 +99,28 @@
   [error]
   (contains? (set (:lock-names (ex-data error))) (str ::candidate-refresh)))
 
-(defn- recover-interrupted-run!
-  "Fail a `:running` row whose execution lock disappeared when its Metabase process stopped.
+(defn- queued-run-stale?
+  [{:keys [status created_at]}]
+  (and (= status :queued)
+       (some-> created_at
+               (t/before? (t/minus (t/offset-date-time) queued-run-startup-grace)))))
 
-  Locally running ids avoid blocking on H2, whose in-process cluster locks do not support
-  acquisition timeouts. On a multi-instance app DB, the execution lock remains authoritative."
+(defn- recover-interrupted-run!
+  "Fail an active row left behind when its Metabase process stopped.
+
+  A run that remains queued beyond the startup grace never reached its worker. For a running
+  row, locally running ids avoid blocking on H2, whose in-process cluster locks do not support
+  acquisition timeouts; on a multi-instance app DB, the execution lock remains authoritative."
   [{run-id :id, status :status :as run}]
-  (if (and (= status :running)
-           (not (contains? @locally-running-run-ids run-id)))
+  (cond
+    (queued-run-stale? run)
+    (do
+      (fail-run! run (ex-info "Usage metadata candidate refresh was interrupted before processing started"
+                              {:run-id run-id}))
+      nil)
+
+    (and (= status :running)
+         (not (contains? @locally-running-run-ids run-id)))
     (try
       (cluster-lock/with-cluster-lock {:lock ::candidate-refresh
                                        :timeout-seconds 1
@@ -118,13 +133,15 @@
         (if (candidate-refresh-lock-timeout? e)
           run
           (throw e))))
+
+    :else
     run))
 
 (defn queue-refresh!
   "Atomically queue a refresh unless one is already queued or running.
 
-  A `:running` row left behind by a stopped server is failed and replaced when
-  the execution lock confirms that no refresh is still running."
+  An orphaned `:queued` row is failed after its startup grace. A `:running` row
+  is failed and replaced when the execution lock confirms no refresh is active."
   [trigger requested-by]
   (cluster-lock/with-cluster-lock {:lock ::candidate-refresh-enqueue, :timeout-seconds 1}
     (when-not (some-> (active-run) recover-interrupted-run!)
