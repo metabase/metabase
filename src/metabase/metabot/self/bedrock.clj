@@ -181,19 +181,20 @@
       (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))
 
 (def ^:private supported-models
-  "Bedrock models offered in the Metabot model picker, as a map of model id -> display name.
+  "Bedrock models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the mantle `/v1/models` catalog.
   Excludes `openai.gpt-oss*`, which are not invokable through the mantle `/openai/v1` routes."
-  {"anthropic.claude-fable-5"   "Claude Fable 5"
-   "anthropic.claude-opus-5"    "Claude Opus 5"
-   "anthropic.claude-opus-4-8"  "Claude Opus 4.8"
-   "anthropic.claude-opus-4-7"  "Claude Opus 4.7"
-   "anthropic.claude-sonnet-5"  "Claude Sonnet 5"
-   "anthropic.claude-haiku-4-5" "Claude Haiku 4.5"
-   "openai.gpt-5.4"             "GPT-5.4"
-   "openai.gpt-5.4-2026-03-05"  "GPT-5.4 (2026-03-05)"
-   "openai.gpt-5.5"             "GPT-5.5"
-   "openai.gpt-5.5-2026-04-23"  "GPT-5.5 (2026-04-23)"})
+  ;; `:max-tokens` is required on `anthropic.*` models
+  {"anthropic.claude-fable-5"   {:display-name "Claude Fable 5"   :max-tokens 128000}
+   "anthropic.claude-opus-5"    {:display-name "Claude Opus 5"    :max-tokens 128000}
+   "anthropic.claude-opus-4-8"  {:display-name "Claude Opus 4.8"  :max-tokens 128000}
+   "anthropic.claude-opus-4-7"  {:display-name "Claude Opus 4.7"  :max-tokens 128000}
+   "anthropic.claude-sonnet-5"  {:display-name "Claude Sonnet 5"  :max-tokens 128000}
+   "anthropic.claude-haiku-4-5" {:display-name "Claude Haiku 4.5" :max-tokens  64000}
+   "openai.gpt-5.4"             {:display-name "GPT-5.4"}
+   "openai.gpt-5.4-2026-03-05"  {:display-name "GPT-5.4 (2026-03-05)"}
+   "openai.gpt-5.5"             {:display-name "GPT-5.5"}
+   "openai.gpt-5.5-2026-04-23"  {:display-name "GPT-5.5 (2026-04-23)"}})
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
@@ -218,7 +219,7 @@
                  (filter (every-pred supported-model? available-model?))
                  (sort-by :id)
                  (mapv (fn [{:keys [id]}]
-                         {:id id :display_name (supported-models id)})))}))
+                         {:id id :display_name (get-in supported-models [id :display-name])})))}))
 
 ;;; --------------------------------------------- API family dispatch -------------------------------------------
 
@@ -251,7 +252,9 @@
   `:ai-proxy?` is not supported for Bedrock and throws when true."
   [{:keys [model input tools ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (let [opts   (assoc opts :model model :reasoning? false)
+  (let [opts   (-> opts
+                   (assoc :model model :reasoning? false)
+                   (update :max-tokens #(or % (get-in supported-models [model :max-tokens]))))
         family (model->family model)
         {:keys [path headers req]}
         (case family

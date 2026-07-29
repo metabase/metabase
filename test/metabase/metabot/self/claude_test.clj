@@ -438,15 +438,27 @@
       (testing "older budget-token models get no thinking (off in v1)"
         (is (nil? (thinking {:model "claude-haiku-4-5"})))
         (is (nil? (thinking {:model "claude-sonnet-4-5"}))))
-      (testing "thinking raises the max_tokens floor to leave room for the answer"
-        (is (= 16384 (:max_tokens (capture-claude-request-body! {:input input :model "claude-opus-4-8"}))))
-        (is (= 32000 (:max_tokens (capture-claude-request-body! {:input input :model "claude-opus-4-8" :max-tokens 32000})))))
       (testing "forced tool choice is incompatible with thinking, so it is suppressed"
         (is (nil? (thinking {:model "claude-opus-4-8"
                              :schema {:type "object" :properties {:answer {:type "string"}}}})))
         (is (nil? (thinking {:model       "claude-opus-4-8"
                              :tools       [(metabot.tu/get-time-tool)]
                              :tool_choice "required"})))))))
+
+(deftest ^:parallel every-supported-model-has-a-ceiling-test
+  (doseq [[id {:keys [display-name max-tokens]}] @#'claude/supported-models]
+    (is (pos-int? max-tokens) id)
+    (is (seq display-name) id)))
+
+(deftest claude-max-tokens-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (let [max-tokens #(:max_tokens (capture-claude-request-body!
+                                    (merge {:input [{:role :user :content "hi"}]} %)))]
+      (are [opts tokens] (= tokens (max-tokens opts))
+        {:model "claude-opus-4-8"}                    128000
+        {:model "claude-haiku-4-5-20251001"}           64000
+        {:model "claude-opus-4-8" :max-tokens 32000}   32000
+        {:model "my-deployment-3"} @#'claude/default-max-tokens))))
 
 (deftest claude-auto-cache-breakpoint-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]

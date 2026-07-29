@@ -330,19 +330,23 @@
       (tru "Anthropic API error (HTTP {0})" status))))
 
 (def ^:private supported-models
-  "Anthropic chat models offered in the Metabot model picker, as a map of model id -> display name.
+  "Anthropic chat models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
-  {"claude-fable-5"             "Claude Fable 5"
-   "claude-opus-5"              "Claude Opus 5"
-   "claude-opus-4-8"            "Claude Opus 4.8"
-   "claude-opus-4-7"            "Claude Opus 4.7"
-   "claude-opus-4-6"            "Claude Opus 4.6"
-   "claude-opus-4-5-20251101"   "Claude Opus 4.5"
-   "claude-opus-4-1-20250805"   "Claude Opus 4.1"
-   "claude-sonnet-5"            "Claude Sonnet 5"
-   "claude-sonnet-4-6"          "Claude Sonnet 4.6"
-   "claude-sonnet-4-5-20250929" "Claude Sonnet 4.5"
-   "claude-haiku-4-5-20251001"  "Claude Haiku 4.5"})
+  {"claude-fable-5"             {:display-name "Claude Fable 5"    :max-tokens 128000}
+   "claude-opus-5"              {:display-name "Claude Opus 5"     :max-tokens 128000}
+   "claude-opus-4-8"            {:display-name "Claude Opus 4.8"   :max-tokens 128000}
+   "claude-opus-4-7"            {:display-name "Claude Opus 4.7"   :max-tokens 128000}
+   "claude-opus-4-6"            {:display-name "Claude Opus 4.6"   :max-tokens 128000}
+   "claude-opus-4-5-20251101"   {:display-name "Claude Opus 4.5"   :max-tokens  64000}
+   "claude-opus-4-1-20250805"   {:display-name "Claude Opus 4.1"   :max-tokens  32000}
+   "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :max-tokens 128000}
+   "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :max-tokens 128000}
+   "claude-sonnet-4-5-20250929" {:display-name "Claude Sonnet 4.5" :max-tokens  64000}
+   "claude-haiku-4-5-20251001"  {:display-name "Claude Haiku 4.5"  :max-tokens  64000}})
+
+(def ^:private default-max-tokens
+  "`max_tokens` for an unresolved model — low enough to be safe on any of them."
+  64000)
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
@@ -376,7 +380,7 @@
                  (filter supported-model?)
                  (sort-by :id)
                  (mapv (fn [{:keys [id display_name]}]
-                         {:id id :display_name (or display_name (supported-models id))})))}))
+                         {:id id :display_name (or display_name (get-in supported-models [id :display-name]))})))}))
 
 (defn- claude-model-version
   "`[family major minor]` for a Claude opus/sonnet model id, or nil. Strips an
@@ -432,11 +436,7 @@
                     (add-tools-cache-breakpoint all-tools)
                     all-tools)]
     (cond-> {:model         model
-             ;; thinking draws from the same max_tokens budget as the answer, so with
-             ;; the 4096 default the model can spend it all thinking and truncate its
-             ;; reply — give thinking requests more headroom.
-             :max_tokens    (cond-> (or max-tokens 4096)
-                              thinking (max 16384))
+             :max_tokens    (or max-tokens (get-in supported-models [model :max-tokens]) default-max-tokens)
              :stream        true
              :cache_control {:type "ephemeral"}
              :messages      messages}
