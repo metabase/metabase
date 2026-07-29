@@ -90,12 +90,34 @@ export function CliAnalyticsPage({ location }: WithRouterProps) {
     errorsOnly: true,
   });
 
-  return (
+  // The Calls tab is a data grid that should scroll internally.
+  const isEventsTab = tab === "events";
+
+  const content = (
     <MonitorMain>
-      <Stack gap="lg">
+      <Stack gap="lg" {...(isEventsTab ? { flex: 1, mih: 0 } : {})}>
         <MonitorHeaderTitle>{t`CLI analytics`}</MonitorHeaderTitle>
 
-        <Flex justify="flex-end">
+        <Tabs
+          variant="pills"
+          value={tab}
+          // tab/val _is_ a CliTab, but Mantine's Tab only deals with strings ¯\_(ツ)_/¯
+          onChange={(val) => patchUrlState({ tab: val as CliTab })}
+          keepMounted={false}
+          {...(isEventsTab
+            ? {
+                flex: 1,
+                mih: 0,
+                display: "flex",
+                style: { flexDirection: "column" as const },
+              }
+            : {})}
+        >
+          <Tabs.List mb="md">
+            <Tabs.Tab value="charts">{t`Usage`}</Tabs.Tab>
+            <Tabs.Tab value="events">{t`Calls`}</Tabs.Tab>
+          </Tabs.List>
+
           <CliCallsFilter
             date={date}
             onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
@@ -111,115 +133,127 @@ export function CliAnalyticsPage({ location }: WithRouterProps) {
             tenantOptions={tenantOptions}
             hasTenants={hasTenants}
           />
-        </Flex>
 
-        {match({ isInitialLoading, showEmpty })
-          .with({ isInitialLoading: true }, () => (
-            <Flex mih="60vh" align="center" justify="center">
-              <Loader size="lg" />
-            </Flex>
-          ))
-          .with({ showEmpty: true }, () => <CliAnalyticsEmptyState />)
-          .otherwise(() => (
-            <Tabs
-              variant="pills"
-              value={tab}
-              // tab/val _is_ a CliTab, but Mantine's Tab only deals with strings ¯\_(ツ)_/¯
-              onChange={(val) => patchUrlState({ tab: val as CliTab })}
-              keepMounted={false}
-            >
-              <Tabs.List mb="lg">
-                <Tabs.Tab value="charts">{t`Usage`}</Tabs.Tab>
-                <Tabs.Tab value="events">{t`Calls`}</Tabs.Tab>
-              </Tabs.List>
-
-              <Tabs.Panel value="charts">
-                <Stack gap="lg">
-                  <CliCallsTimelineChart
-                    {...dataSources}
-                    {...chartFilters}
-                    title={t`Calls by client over time`}
-                  />
-                  <SimpleGrid cols={2} spacing="lg">
-                    <CliBreakoutChart
+          {match({ isInitialLoading, showEmpty })
+            .with({ isInitialLoading: true }, () => (
+              // Keeps the active tab's panel/tabpanel relationship intact (aria-controls on the
+              // selected tab must point at a rendered element) while the initial load is pending.
+              <Tabs.Panel value={tab} mt="md">
+                <Flex mih="60vh" align="center" justify="center">
+                  <Loader size="lg" />
+                </Flex>
+              </Tabs.Panel>
+            ))
+            .with({ showEmpty: true }, () => (
+              <Tabs.Panel value={tab} mt="md">
+                <CliAnalyticsEmptyState />
+              </Tabs.Panel>
+            ))
+            .otherwise(() => (
+              <>
+                <Tabs.Panel value="charts" mt="md">
+                  <Stack gap="lg">
+                    <CliCallsTimelineChart
                       {...dataSources}
                       {...chartFilters}
-                      title={t`Calls by client`}
-                      display="pie"
-                      breakoutColumn="client_display_name"
-                      h={500}
+                      title={t`Calls by client over time`}
                     />
-                    <CliBreakoutChart
-                      {...dataSources}
-                      {...chartFilters}
-                      title={t`Calls by operation`}
-                      display="row"
-                      breakoutColumn="operation"
-                      h={500}
-                    />
-                  </SimpleGrid>
-                  <SimpleGrid cols={2} spacing="lg">
-                    <CliBreakoutChart
-                      {...dataSources}
-                      {...chartFilters}
-                      title={t`Calls by user`}
-                      display="row"
-                      breakoutColumn="user_display_name"
-                      h={500}
-                    />
-                    <CliCallerLivenessTable
-                      {...dataSources}
-                      {...chartFilters}
-                      title={t`User activity`}
-                      h={500}
-                    />
-                  </SimpleGrid>
-
-                  {hasErrors && (
-                    <>
-                      <Title order={3} mt="md">{t`Errors`}</Title>
-                      <CliCallsTimelineChart
+                    <SimpleGrid cols={2} spacing="lg">
+                      <CliBreakoutChart
                         {...dataSources}
                         {...chartFilters}
-                        title={t`Calls by status over time`}
-                        buildQuery={buildCallsByDayByStatusQuery}
+                        title={t`Calls by client`}
+                        display="pie"
+                        breakoutColumn="client_display_name"
+                        h={500}
                       />
                       <CliBreakoutChart
                         {...dataSources}
                         {...chartFilters}
-                        title={t`Errors by operation`}
+                        title={t`Calls by operation`}
                         display="row"
                         breakoutColumn="operation"
-                        errorsOnly
                         h={500}
                       />
-                    </>
-                  )}
-                </Stack>
-              </Tabs.Panel>
+                    </SimpleGrid>
+                    <SimpleGrid cols={2} spacing="lg">
+                      <CliBreakoutChart
+                        {...dataSources}
+                        {...chartFilters}
+                        title={t`Calls by user`}
+                        display="row"
+                        breakoutColumn="user_display_name"
+                        h={500}
+                      />
+                      <CliCallerLivenessTable
+                        {...dataSources}
+                        {...chartFilters}
+                        title={t`User activity`}
+                        h={500}
+                      />
+                    </SimpleGrid>
 
-              <Tabs.Panel value="events">
-                <CliEventsTable
-                  {...dataSources}
-                  {...chartFilters}
-                  hasTenants={hasTenants}
-                  hasPii={hasPii}
-                  page={page}
-                  total={count}
-                  onPageChange={(newPage) => patchUrlState({ page: newPage })}
-                  sortingOptions={sortingOptions}
-                  onSortingOptionsChange={(newSorting) =>
-                    patchUrlState({
-                      sort_column: newSorting.sort_column,
-                      sort_direction: newSorting.sort_direction,
-                      page: 0,
-                    })
-                  }
-                />
-              </Tabs.Panel>
-            </Tabs>
-          ))}
+                    {hasErrors && (
+                      <>
+                        <Title order={3} mt="md">{t`Errors`}</Title>
+                        <CliCallsTimelineChart
+                          {...dataSources}
+                          {...chartFilters}
+                          title={t`Calls by status over time`}
+                          buildQuery={buildCallsByDayByStatusQuery}
+                        />
+                        <CliBreakoutChart
+                          {...dataSources}
+                          {...chartFilters}
+                          title={t`Errors by operation`}
+                          display="row"
+                          breakoutColumn="operation"
+                          errorsOnly
+                          h={500}
+                        />
+                      </>
+                    )}
+                  </Stack>
+                </Tabs.Panel>
+
+                <Tabs.Panel
+                  value="events"
+                  mt="md"
+                  flex={1}
+                  mih={0}
+                  display="flex"
+                  style={{ flexDirection: "column" }}
+                >
+                  <CliEventsTable
+                    {...dataSources}
+                    {...chartFilters}
+                    hasTenants={hasTenants}
+                    hasPii={hasPii}
+                    page={page}
+                    total={count}
+                    onPageChange={(newPage) => patchUrlState({ page: newPage })}
+                    sortingOptions={sortingOptions}
+                    onSortingOptionsChange={(newSorting) =>
+                      patchUrlState({
+                        sort_column: newSorting.sort_column,
+                        sort_direction: newSorting.sort_direction,
+                        page: 0,
+                      })
+                    }
+                  />
+                </Tabs.Panel>
+              </>
+            ))}
+        </Tabs>
       </Stack>
     </MonitorMain>
+  );
+
+  return isEventsTab ? (
+    <Flex h="100%" wrap="nowrap">
+      {content}
+    </Flex>
+  ) : (
+    content
   );
 }
