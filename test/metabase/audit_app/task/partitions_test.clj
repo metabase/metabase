@@ -93,4 +93,6 @@
         (finally
           (drop-all-tables conn)
           ;; make sure we end up in a good state for other tests
-          (partitions/manage-partitions conn (t/local-date) 100))))))
+          (partitions/create-partition conn {:name "query_execution_2026_08"
+                                             :from "1970-01-01"
+                                             :to "2099-01-01"}))))))
