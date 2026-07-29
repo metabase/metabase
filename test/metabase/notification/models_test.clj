@@ -157,7 +157,11 @@
 (deftest notification-subscription-event-name-test
   (mt/with-temp [:model/Notification {n-id :id} {}]
     (testing "success path"
-      (let [random-event (first (events/event-descendants :metabase/event))
+      ;; we derive other keywords into this hierarchy
+      ;; like ::api-events, :metabase.audit-app.events.audit-log/remote-sync-event, etc. This was non-deterministic
+      ;; for a long time
+      (let [random-event (first (filter (comp #{"event"} namespace)
+                                        (events/descendants :metabase/event)))
             sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/system-event
                                                                              :event_name      random-event
                                                                              :notification_id n-id})]
