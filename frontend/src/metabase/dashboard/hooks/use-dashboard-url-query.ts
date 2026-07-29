@@ -10,6 +10,7 @@ import {
   type InjectedRouter,
   type Location,
   push,
+  queryToSearch,
   replace,
 } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -94,7 +95,7 @@ export function useDashboardUrlQuery(
         queryParams.tab !== previousQueryParams.tab;
 
       const action = isDashboardTabChange ? push : replace;
-      dispatch(action({ ...location, query: nextQuery }));
+      dispatch(action({ ...location, search: queryToSearch(nextQuery) }));
     }
   }, [
     dashboardId,

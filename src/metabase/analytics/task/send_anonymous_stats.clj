@@ -18,7 +18,7 @@
       ;; TODO: add in additional request params if anonymous tracking is enabled
       (analytics/phone-home-stats!)
       (catch Throwable e
-        (log/error e "Error sending anonymous usage stats")))))
+        (log/errorf "Error sending anonymous usage stats: %s" (ex-message e))))))
 
 (def ^:private job-key     "metabase.task.anonymous-stats.job")
 (def ^:private trigger-key "metabase.task.anonymous-stats.trigger")

@@ -135,7 +135,7 @@
               (try
                 (replacement.source-swap/swap-source! entity object old-source new-source)
                 (catch Exception e
-                  (log/warnf e "Failed to swap %s, continuing with next entity" entity)
+                  (log/warnf "Failed to swap %s, continuing with next entity: %s" entity (ex-message e))
                   (swap! failures conj {:entity entity :error (ex-message e)})))
               (replacement.protocols/advance! progress)))))
       (when-let [fs (seq @failures)]

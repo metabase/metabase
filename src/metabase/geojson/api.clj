@@ -104,8 +104,8 @@
        :region_key  region_key
        :region_name region_name}
       (catch Throwable e
-        (log/warnf e "Failed to load custom GeoJSON for region %s from %s"
-                   (pr-str region-key) (pr-str url))
+        (log/warnf "Failed to load custom GeoJSON for region %s from %s: %s"
+                   (pr-str region-key) (pr-str url) (ex-message e))
         nil))))
 
 (defn region-geojson

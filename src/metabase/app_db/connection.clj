@@ -191,7 +191,7 @@
             *after-commit-callbacks*      nil]
     (doseq [thunk @callbacks]
       ;; the transaction already committed; a failing callback must not unwind it
-      (try (thunk) (catch Throwable t (log/error t "after-commit callback failed"))))
+      (try (thunk) (catch Throwable t (log/errorf "after-commit callback failed: %s" (ex-message t)))))
     (reset! callbacks [])))
 
 (defn- discard-callbacks-after!
@@ -254,7 +254,7 @@
           (try
             (.setAutoCommit connection true)
             (catch Throwable t
-              (log/warn t "Failed to reset the connection's autocommit flag to true")))))
+              (log/warnf "Failed to reset the connection's autocommit flag to true: %s" (ex-message t))))))
       (thunk))))
 
 (comment
