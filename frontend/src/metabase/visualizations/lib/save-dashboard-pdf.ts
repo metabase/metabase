@@ -231,10 +231,18 @@ export const saveDashboardPdf = async ({
     gridNode.querySelectorAll<HTMLElement>(".react-grid-item"),
   ).map((card) => card.getBoundingClientRect());
   const overflowStart = paintedCards.length
-    ? Math.max(0, Math.round(gridBox.left - Math.min(...paintedCards.map((c) => c.left))))
+    ? Math.max(
+        0,
+        Math.round(gridBox.left - Math.min(...paintedCards.map((c) => c.left))),
+      )
     : 0;
   const overflowEnd = paintedCards.length
-    ? Math.max(0, Math.round(Math.max(...paintedCards.map((c) => c.right)) - gridBox.right))
+    ? Math.max(
+        0,
+        Math.round(
+          Math.max(...paintedCards.map((c) => c.right)) - gridBox.right,
+        ),
+      )
     : 0;
 
   const contentWidth = gridNode.offsetWidth + overflowStart + overflowEnd;

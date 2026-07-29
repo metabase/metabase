@@ -617,8 +617,9 @@ export const defaultFontFiles = ({ baseUrl = "./" } = {}) => {
       font-weight: 400;
       font-style: normal;
       font-display: swap;
-      unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+08A0-08FF,
-        U+FB50-FDFF, U+FE70-FEFF;
+      unicode-range:
+        U+0600-06FF, U+0750-077F, U+0870-088E, U+08A0-08FF, U+FB50-FDFF,
+        U+FE70-FEFF;
     }
 
     @font-face {
@@ -628,8 +629,9 @@ export const defaultFontFiles = ({ baseUrl = "./" } = {}) => {
       font-weight: 700;
       font-style: normal;
       font-display: swap;
-      unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+08A0-08FF,
-        U+FB50-FDFF, U+FE70-FEFF;
+      unicode-range:
+        U+0600-06FF, U+0750-077F, U+0870-088E, U+08A0-08FF, U+FB50-FDFF,
+        U+FE70-FEFF;
     }
 
     @font-face {
