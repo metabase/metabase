@@ -1,6 +1,7 @@
 (ns metabase.llm.api.provider-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.llm.api.provider :as llm.api.provider]
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
@@ -256,6 +257,26 @@
       (is (= ["openai"] (map :key (llm.provider/connections))))
       (testing "a selection that did not point at the deleted connection is left alone"
         (is (= "openai/gpt-4.1-mini" (metabot.settings/llm-metabot-provider)))))))
+
+(deftest delete-cancels-the-managed-subscription-test
+  (testing "removing the managed connection cancels the add-on backing it"
+    (let [cancelled (atom 0)]
+      (mt/with-dynamic-fn-redefs [llm.api.provider/cancel-managed-ai-subscription!
+                                  (fn [] (swap! cancelled inc))]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+          (mt/with-temporary-setting-values [llm-providers [(connection "metabase" "metabase")]]
+            (mt/user-http-request :crowberto :delete 204 "llm/providers/metabase")
+            (is (= 1 @cancelled))
+            (is (= [] (llm.provider/connections))))))))
+  (testing "removing any other connection leaves the subscription alone"
+    (let [cancelled (atom 0)]
+      (mt/with-dynamic-fn-redefs [llm.api.provider/cancel-managed-ai-subscription!
+                                  (fn [] (swap! cancelled inc))]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+          (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                        {:api-key "sk-ant-stored"})]]
+            (mt/user-http-request :crowberto :delete 204 "llm/providers/anthropic")
+            (is (zero? @cancelled))))))))
 
 (deftest delete-repoints-the-metabot-selection-test
   (testing "deleting the connection Metabot was pointed at moves the selection to a remaining one"

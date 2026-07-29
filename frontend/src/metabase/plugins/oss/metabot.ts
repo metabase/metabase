@@ -11,13 +11,11 @@ const getDefaultPluginMetabot = () => ({
   MetabaseAIProviderSetup:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<MetabaseAIProviderSetupProps>,
-  useOnProviderRemoved: () => async (_providerType: string) => {},
 });
 
 export const PLUGIN_METABOT: {
   isEnabled: boolean;
   MetabaseAIProviderSetup: ComponentType<MetabaseAIProviderSetupProps>;
-  useOnProviderRemoved: () => (providerType: string) => Promise<void>;
 } = getDefaultPluginMetabot();
 
 /**

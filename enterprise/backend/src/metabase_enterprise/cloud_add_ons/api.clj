@@ -2,6 +2,7 @@
   "/api/ee/cloud-add-ons endpoints. "
   (:require
    [clj-http.client :as http]
+   [metabase-enterprise.cloud-add-ons.core :as cloud-add-ons]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -65,11 +66,7 @@
    "dwh-rent"
    "etl-connections"])
 
-(def ^:private add-on-bundles
-  "Product types whose purchase provisions additional add-ons in the same upsert call. Purchasing
-  Storage (`dwh-rent`) also provisions `etl-connections`, mirroring the store's storage purchase flow."
-  {"dwh-rent" [{:product-type "dwh-rent" :prepaid-units 0}
-               {:product-type "etl-connections" :prepaid-units 1}]})
+(def ^:private add-on-bundles cloud-add-ons/add-on-bundles)
 
 (def ^:private bundle-only-product-types
   "Product types that are only ever provisioned as part of a bundle (see `add-on-bundles`) and can
@@ -88,14 +85,6 @@
   (or (add-on-bundles product-type)
       [(cond-> {:product-type product-type}
          quantity (assoc :prepaid-units quantity))]))
-
-(defn- add-ons-for-removal
-  "Add-ons to remove for a given `product-type`. Bundled product types (see `add-on-bundles`) expand
-  into all their members; everything else is a single add-on."
-  [product-type]
-  (if-let [bundle (add-on-bundles product-type)]
-    (mapv #(select-keys % [:product-type]) bundle)
-    [{:product-type product-type}]))
 
 (defn- handle-store-api-error
   "Handle exceptions from Store API calls and return appropriate error response."
@@ -228,8 +217,7 @@
 
     :else
     (try
-      (hm.client/call :change-add-ons :remove-add-ons (add-ons-for-removal product-type))
-      (premium-features/clear-cache!)
+      (cloud-add-ons/remove-add-on! product-type)
       response-success-empty
       (catch Exception e
         (log/warnf "Error removing add-on '%s': %s" product-type (ex-message e))

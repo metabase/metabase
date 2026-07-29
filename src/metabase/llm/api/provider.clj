@@ -13,6 +13,7 @@
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
@@ -245,6 +246,13 @@
             (str key "/" model)))
         (llm.provider/connections)))
 
+(defenterprise cancel-managed-ai-subscription!
+  "Cancel the Metabase Cloud add-on that backs the Metabase-managed provider, called when its connection is
+  removed. OSS instances have no subscription to cancel."
+  metabase-enterprise.metabot.provider
+  []
+  nil)
+
 (defn- metabot-has-a-usable-model?
   "Whether `llm-metabot-provider` currently names a connection that can serve requests. Callers must read this
   *before* saving a new connection: the setting's default names the `anthropic` connection, which a freshly saved
@@ -347,6 +355,8 @@
   (let [conn (llm.provider/connection conn-key)]
     (api/check-404 conn)
     (check-not-env-connection! conn)
+    (when (llm.provider/managed-type? (:type conn))
+      (cancel-managed-ai-subscription!))
     (let [remaining (vec (remove #(or (= :env (keyword (:source %)))
                                       (= (:key %) conn-key))
                                  (llm.provider/connections)))]
