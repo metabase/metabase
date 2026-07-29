@@ -409,6 +409,37 @@
           (is (= :unrestricted
                  (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1))))))))
 
+(deftest inactive-table-grants-ignored-test
+  (testing "a grant that exists only on an inactive table does not count for value-aggregating checks"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id}    {}
+                   :model/User                       {user-id :id}     {}
+                   :model/PermissionsGroupMembership {}                {:user_id  user-id
+                                                                        :group_id group-id}
+                   :model/Database                   {database-id :id} {}
+                   :model/Table                      {table-id :id}    {:db_id database-id}]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-table-permission! group-id table-id :perms/manage-table-metadata :yes)
+        (letfn [(check! [has-any? most-permissive]
+                  (testing "\nreading straight from the DB"
+                    (is (= has-any?
+                           (data-perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)))
+                    (is (= most-permissive
+                           (data-perms/most-permissive-database-permission-for-user user-id :perms/manage-table-metadata database-id))))
+                  (testing "\nreading from the request cache"
+                    (mt/with-current-user user-id
+                      (is (= has-any?
+                             (data-perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)))
+                      (is (= most-permissive
+                             (data-perms/most-permissive-database-permission-for-user user-id :perms/manage-table-metadata database-id))))))]
+          (testing "\na grant on an active table counts"
+            (check! true :yes))
+          (testing "\nthe same grant does not count once the table is deactivated"
+            (t2/update! :model/Table table-id {:active false})
+            (check! false :no))
+          (testing "\nreactivating the table restores it"
+            (t2/update! :model/Table table-id {:active true})
+            (check! true :yes)))))))
+
 (deftest permissions-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
                  :model/PermissionsGroup           {group-id-2 :id}    {}
