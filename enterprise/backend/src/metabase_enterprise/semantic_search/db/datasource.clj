@@ -13,6 +13,7 @@
    (com.mchange.v2.c3p0 DataSources PooledDataSource)
    (java.net URLDecoder)
    (java.nio.charset StandardCharsets)
+   (java.sql SQLException)
    (org.postgresql PGProperty)))
 
 (set! *warn-on-reflection* true)
@@ -267,12 +268,29 @@
   (let [timer @probe-cooldown-timer]
     (or (nil? timer) (>= (u/since-ms timer) probe-cooldown-ms))))
 
+(def ^:private provisioning-denied-sql-states
+  "The SQLStates that answer the provisioning question with a no: this role may not create the pieces that
+  are missing, or this server cannot host them at all."
+  #{"42501"   ; insufficient_privilege -- the role lacks CREATE
+    "0A000"   ; feature_not_supported -- e.g. extension "vector" is not available on this server
+    "58P01"   ; undefined_file -- the extension's control file is missing from the installation
+    "42704"}) ; undefined_object
+
+(defn- provisioning-denied?
+  "Whether `e` is the database refusing to provision, rather than failing to answer.
+  Anything else -- a statement timeout, a dropped connection, exhausted resources, interruption -- leaves
+  the question open, and reads as a denial only if we let it."
+  [e]
+  (boolean (some #(and (instance? SQLException %)
+                       (contains? provisioning-denied-sql-states (.getSQLState ^SQLException %)))
+                 (u/full-exception-chain e))))
+
 (defn- app-db-can-provision-pgvector?
   "Whether the app-db user can create whichever store pieces are still missing, checked without persisting
   them: the CREATEs run in a transaction that always rolls back.
   Attempts CREATE EXTENSION only when `create-extension?` and CREATE SCHEMA only when `create-schema?`, so
   an already-installed extension or existing schema needs no create privilege.
-  A privilege error reads as false."
+  A refusal reads as false; a check that never got that far throws, so the caller can tell the two apart."
   [app-datasource create-extension? create-schema?]
   (try
     (jdbc/with-transaction [tx app-datasource {:rollback-only true}]
@@ -284,6 +302,8 @@
                        {:timeout probe-query-timeout-seconds})))
     true
     (catch Exception e
+      (when-not (provisioning-denied? e)
+        (throw e))
       (log/debugf "Semantic search: the application database user cannot provision the pgvector store: %s"
                   (ex-message e))
       false)))
@@ -359,8 +379,10 @@
                                 " (MB_PGVECTOR_DB_URL is not set). Set it if this instance should use a"
                                 " dedicated pgvector database."))
                  (reset! app-db-pgvector-support true)
-                 (reset! probe-cooldown-timer nil)
+                 ;; Outcome before cooldown, always: a reader takes neither under the lock, and one that
+                 ;; saw the new cooldown beside the previous outcome would trust a result we just replaced.
                  (reset! app-db-support-check-errored? false)
+                 (reset! probe-cooldown-timer nil)
                  true)
                (do
                  (when (compare-and-set! logged-pgvector-absent? false true)
@@ -368,12 +390,12 @@
                                   " app-db user cannot create the vector extension or the semantic_search"
                                   " schema). Install pgvector and grant CREATE, or set MB_PGVECTOR_DB_URL;"
                                   " it is picked up automatically, no restart needed.")))
-                 (reset! probe-cooldown-timer (u/start-timer))
                  (reset! app-db-support-check-errored? false)
+                 (reset! probe-cooldown-timer (u/start-timer))
                  false))
              (catch Exception e
-               (reset! probe-cooldown-timer (u/start-timer))
                (reset! app-db-support-check-errored? true)
+               (reset! probe-cooldown-timer (u/start-timer))
                (log/warn (str "Semantic search: pgvector support check on the application database failed;"
                               " will retry after the cooldown:")
                          (ex-message e))

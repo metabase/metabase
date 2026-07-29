@@ -1,7 +1,7 @@
 (ns metabase-enterprise.semantic-search.db.store-health
   "Readiness of the pgvector store itself -- can this instance reach a vector database, and which one.
-  The store is shared: semantic search provisions it, entity retrieval uses it, and more features are likely
-  in future, so this reports the store rather than any one feature's index.
+  The store is shared: semantic search and entity retrieval each provision their own tables in it, as more
+  may later, so this reports the store rather than any one feature's index.
   Index health lives in [[metabase-enterprise.semantic-search.health]]."
   (:require
    [metabase-enterprise.semantic-search.db.datasource :as semantic.datasource]

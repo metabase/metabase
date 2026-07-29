@@ -3,7 +3,9 @@
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource])
   (:import
-   (com.mchange.v2.c3p0 PoolBackedDataSource)))
+   (com.mchange.v2.c3p0 PoolBackedDataSource)
+   (java.sql SQLException SQLTimeoutException)
+   (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -167,3 +169,31 @@
               (is (= "metabase-semantic-search-db" (.getDataSourceName pool-ds))))
             (finally
               (semantic.db.datasource/shutdown-db!))))))))
+
+(def ^:private can-provision? #'semantic.db.datasource/app-db-can-provision-pgvector?)
+
+(defn- failing-datasource
+  "A datasource whose every connection attempt throws `e`, so the provisioning check fails before it can
+  ask the question."
+  ^DataSource [^Exception e]
+  (reify DataSource
+    (getConnection [_] (throw e))
+    (getConnection [_ _ _] (throw e))))
+
+(deftest app-db-can-provision-pgvector-distinguishes-refusal-from-failure-test
+  (testing "the database refusing to provision is an answer, and reads as no"
+    (doseq [[state what] {"42501" "the role lacks CREATE"
+                          "0A000" "the extension is not available on this server"
+                          "58P01" "the extension's control file is missing"}]
+      (testing what
+        (is (false? (can-provision? (failing-datasource (SQLException. what state)) true true))))))
+  (testing "a check that never got an answer throws, rather than reading as a settled no"
+    (doseq [[e what] {(SQLTimeoutException. "statement timeout" "57014") "a timed-out DDL probe"
+                      (SQLException. "connection refused" "08006")      "a dropped connection"
+                      (SQLException. "too many connections" "53300")    "an exhausted server"
+                      (InterruptedException. "abandoned")               "an interrupted probe"}]
+      (testing what
+        (is (thrown? Exception (can-provision? (failing-datasource e) true true))))))
+  (testing "a refusal wrapped in another exception is still recognised"
+    (let [wrapped (SQLException. "rollback failed" "25P02" (SQLException. "denied" "42501"))]
+      (is (false? (can-provision? (failing-datasource wrapped) true true))))))

@@ -331,25 +331,20 @@
    (prometheus/counter :metabase-remote-sync/git-operations-failed
                        {:description "Number of failed git operations"
                         :labels [:operation :remote]})
-   ;; The pgvector store is shared: semantic search provisions it, entity retrieval uses it, and more
-   ;; features are likely in future.
+   ;; Shared: semantic search and entity retrieval each provision their own tables in it, as more may later.
+   ;; At most one is available at a time: a dedicated MB_PGVECTOR_DB_URL always wins over the app db.
    (prometheus/gauge :metabase-pgvector/store-available
-                     {:description (str "Whether the given pgvector storage backing is available to this instance. "
-                                        "At most one is 1: a dedicated MB_PGVECTOR_DB_URL always wins over the app db.")
+                     {:description "Whether the given pgvector storage is available to this instance."
                       :labels      [:storage]})
+   ;; Probed hourly, so an outage takes up to that long to show up. The dedicated probe opens its own
+   ;; connection, so a store that is up but whose pool is saturated still reads as connected --
+   ;; metabase_database_c3p0_* covers that. The app-db probe shares the application pool, and does not.
    (prometheus/gauge :metabase-pgvector/store-connected
-                     {:description (str "Whether the most recent connection probe to the given pgvector "
-                                        "storage backing succeeded. Probed hourly, so an outage takes up "
-                                        "to an hour to show up. The dedicated probe opens its own "
-                                        "connection, so a store that is up but whose pool is saturated "
-                                        "still reads as connected -- watch metabase_database_c3p0_* for "
-                                        "that. The app-db probe shares the application pool, and does not.")
+                     {:description "Whether the last connection probe to the given pgvector storage succeeded."
                       :labels      [:storage]})
+   ;; Absent until a probe succeeds, and reset when the instance changes which backing it uses.
    (prometheus/gauge :metabase-pgvector/store-last-success-timestamp-seconds
-                     {:description (str "Unix timestamp in seconds of the most recent successful "
-                                        "connection probe to the given pgvector storage backing. "
-                                        "Absent until one succeeds, and reset when the instance "
-                                        "changes which backing it uses.")
+                     {:description "Unix timestamp of the last successful probe to the given pgvector storage."
                       :labels      [:storage]})
    (prometheus/counter :metabase-search/index-reindexes
                        {:description "Number of reindexed search entries"
