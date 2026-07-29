@@ -39,20 +39,16 @@ import {
   type Action,
   type History,
   type LocationDescriptor,
-  Route,
-  createLocationMirror,
-  routerMiddleware,
-} from "metabase/router";
-import {
   type MemoryTestHistory,
+  Route,
   RouterProviderV7Memory,
+  createLocationMirror,
   createMemoryTestHistory,
-} from "metabase/router/v7/RouterProviderV7";
-import { toV3Location } from "metabase/router/v7/location";
-import {
   createV7Navigator,
+  routerMiddleware,
   toNavigateArgs,
-} from "metabase/router/v7/navigator";
+  toV3Location,
+} from "metabase/router";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
 import { PortalContainer, ThemeProvider, useMantineTheme } from "metabase/ui";
