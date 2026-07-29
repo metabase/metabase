@@ -1,6 +1,7 @@
 import type { DateFilterValue } from "metabase/querying/common/types";
 import type {
   CardMetadata,
+  ColumnMetadata,
   MetadataProvider,
   Query,
   TableMetadata,
@@ -289,6 +290,34 @@ export const MCP_EVENT_SORT_COLUMNS = [
 
 export type McpEventSortColumn = (typeof MCP_EVENT_SORT_COLUMNS)[number];
 
+/**
+ * The exact `v_mcp_tool_calls` columns the events table is allowed to see, in display order.
+ * `tenant_name` only when tenants are enabled; `ip_address`/`error_message` (PII) only when PII
+ * retention is on. This is the single source of truth for both the row-level query's column
+ * projection ({@link buildEventsQuery}) and the table's display curation (`eventColumns` in
+ * McpEventsTable.tsx) — so the two can never drift and ship a column to the browser that the UI
+ * was never meant to show, regardless of the retention/tenant settings.
+ */
+export function mcpEventColumnKeys(
+  hasTenants: boolean,
+  hasPii: boolean,
+): McpEventSortColumn[] {
+  return [
+    "tool_call_id",
+    "created_at",
+    "tool_name",
+    "client_display_name",
+    "client_version",
+    "user_display_name",
+    ...(hasTenants ? (["tenant_name"] as const) : []),
+    ...(hasPii ? (["ip_address"] as const) : []),
+    "status",
+    "duration_ms",
+    "error_type",
+    ...(hasPii ? (["error_message"] as const) : []),
+  ];
+}
+
 /** Append an order-by on `columnName` in `direction` if it's orderable. No-op if absent. */
 function orderByColumn(
   query: Query,
@@ -303,7 +332,26 @@ type EventsQueryOpts = McpFilters &
   McpDataSources & {
     sortColumn?: McpEventSortColumn;
     sortDirection?: SortDirection;
+    hasTenants: boolean;
+    hasPii: boolean;
   };
+
+/**
+ * Restrict the query to exactly the curated {@link mcpEventColumnKeys} columns. Without this the
+ * query returns the view's full row (every column, including PII like `ip_address` and
+ * `error_message`) regardless of the tenant/retention settings — the frontend only *hid* those
+ * columns from the rendered table, they still shipped to the browser and sat in the RTK cache.
+ */
+function projectToEventColumns(
+  query: Query,
+  hasTenants: boolean,
+  hasPii: boolean,
+): Query {
+  const fields = mcpEventColumnKeys(hasTenants, hasPii)
+    .map((name) => findColumn(query, name, Lib.fieldableColumns))
+    .filter((column): column is ColumnMetadata => column != null);
+  return Lib.withFields(query, 0, fields);
+}
 
 /**
  * Build the row-level events query for the Events tab: the filtered view with no aggregation,
@@ -323,6 +371,8 @@ export function buildEventsQuery({
   tenantId,
   sortColumn = "created_at",
   sortDirection = "desc",
+  hasTenants,
+  hasPii,
 }: EventsQueryOpts): Query {
   let query = buildBaseQuery({
     provider,
@@ -336,6 +386,7 @@ export function buildEventsQuery({
 
   query = orderByColumn(query, sortColumn, sortDirection);
   query = orderByColumn(query, "tool_call_id", "desc");
+  query = projectToEventColumns(query, hasTenants, hasPii);
 
   return query;
 }

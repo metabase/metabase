@@ -30,6 +30,7 @@ import {
   MCP_EVENT_SORT_COLUMNS,
   type McpEventSortColumn,
   type McpFilters,
+  mcpEventColumnKeys,
 } from "../query-utils";
 import { buildEventsQuery } from "../query-utils";
 
@@ -42,7 +43,7 @@ const DEFAULT_SORTING: SortingOptions<McpEventSortColumn> = {
 
 type EventColumn = {
   /** View column name, matched case-insensitively against the result columns. */
-  key: string;
+  key: McpEventSortColumn;
   title: string;
   /** Present when the column can be sorted server-side. */
   sort?: McpEventSortColumn;
@@ -50,64 +51,60 @@ type EventColumn = {
   render?: (value: RowValue) => ReactNode;
 };
 
+// Display metadata per column, keyed by the canonical column name. Factories (not plain
+// objects) so `t` re-evaluates per call under the active locale, instead of baking in
+// whatever locale was active when this module first loaded.
+const EVENT_COLUMN_META: Record<
+  McpEventSortColumn,
+  () => Omit<EventColumn, "key">
+> = {
+  tool_call_id: () => ({ title: t`ID`, sort: "tool_call_id" }),
+  created_at: () => ({
+    title: t`Created at`,
+    sort: "created_at",
+    render: (value) =>
+      value == null ? EMPTY_CELL_PLACEHOLDER : <DateTime value={String(value)} />,
+  }),
+  tool_name: () => ({ title: t`Tool`, sort: "tool_name" }),
+  client_display_name: () => ({
+    title: t`Client`,
+    sort: "client_display_name",
+  }),
+  client_version: () => ({
+    title: t`Client version`,
+    sort: "client_version",
+  }),
+  user_display_name: () => ({ title: t`User`, sort: "user_display_name" }),
+  tenant_name: () => ({ title: t`Tenant`, sort: "tenant_name" }),
+  ip_address: () => ({ title: t`IP address`, sort: "ip_address" }),
+  status: () => ({ title: t`Status`, sort: "status" }),
+  duration_ms: () => ({
+    title: t`Duration (ms)`,
+    sort: "duration_ms",
+    align: "right",
+    render: (value) =>
+      value == null ? EMPTY_CELL_PLACEHOLDER : formatNumber(Number(value)),
+  }),
+  error_type: () => ({ title: t`Error type`, sort: "error_type" }),
+  error_message: () => ({ title: t`Error message`, sort: "error_message" }),
+};
+
 /**
- * The curated columns surfaced in the events table, in display order. Only these are ever
- * rendered — every other view column (raw ids, client_name, user_agent, …) stays hidden by
- * construction, so nothing sensitive can leak. `tenant_name` shows only when tenants are enabled;
- * `ip_address`/`error_message` only when PII retention is on (they're null otherwise).
+ * The curated columns surfaced in the events table, in display order. Derived from the same
+ * {@link mcpEventColumnKeys} the row-level query projects to (see `buildEventsQuery`), so the
+ * displayed columns and the columns actually fetched from the server can never drift — every
+ * other view column (raw ids, client_name, user_agent, …) is never even requested, and
+ * `tenant_name`/`ip_address`/`error_message` are only requested when tenants/PII retention are
+ * enabled, not just hidden client-side.
  */
 export function eventColumns(
   hasTenants: boolean,
   hasPii: boolean,
 ): EventColumn[] {
-  const columns: (EventColumn | false)[] = [
-    { key: "tool_call_id", title: t`ID`, sort: "tool_call_id" },
-    {
-      key: "created_at",
-      title: t`Created at`,
-      sort: "created_at",
-      render: (value) =>
-        value == null ? (
-          EMPTY_CELL_PLACEHOLDER
-        ) : (
-          <DateTime value={String(value)} />
-        ),
-    },
-    { key: "tool_name", title: t`Tool`, sort: "tool_name" },
-    {
-      key: "client_display_name",
-      title: t`Client`,
-      sort: "client_display_name",
-    },
-    {
-      key: "client_version",
-      title: t`Client version`,
-      sort: "client_version",
-    },
-    { key: "user_display_name", title: t`User`, sort: "user_display_name" },
-    hasTenants && {
-      key: "tenant_name",
-      title: t`Tenant`,
-      sort: "tenant_name",
-    },
-    hasPii && { key: "ip_address", title: t`IP address`, sort: "ip_address" },
-    { key: "status", title: t`Status`, sort: "status" },
-    {
-      key: "duration_ms",
-      title: t`Duration (ms)`,
-      sort: "duration_ms",
-      align: "right",
-      render: (value) =>
-        value == null ? EMPTY_CELL_PLACEHOLDER : formatNumber(Number(value)),
-    },
-    { key: "error_type", title: t`Error type`, sort: "error_type" },
-    hasPii && {
-      key: "error_message",
-      title: t`Error message`,
-      sort: "error_message",
-    },
-  ];
-  return columns.filter((column): column is EventColumn => column !== false);
+  return mcpEventColumnKeys(hasTenants, hasPii).map((key) => ({
+    key,
+    ...EVENT_COLUMN_META[key](),
+  }));
 }
 
 function renderCell(column: EventColumn, value: RowValue): ReactNode {
@@ -243,6 +240,8 @@ function McpEventsTableInner({
         tenantId,
         sortColumn: effectiveSorting.sort_column,
         sortDirection: effectiveSorting.sort_direction,
+        hasTenants,
+        hasPii,
       }),
     [
       provider,
@@ -253,6 +252,8 @@ function McpEventsTableInner({
       groupId,
       tenantId,
       effectiveSorting,
+      hasTenants,
+      hasPii,
     ],
   );
 
