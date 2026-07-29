@@ -276,6 +276,23 @@
     "58P01"   ; undefined_file -- the extension's control file is missing from the installation
     "42704"}) ; undefined_object
 
+(defn- exception-chain
+  "Every exception reachable from `e`, following causes and, for a SQLException, its next exception.
+  JDBC hangs sibling errors off the latter, which the usual cause walk never reaches, so the refusal can sit
+  a link off the path [[u/full-exception-chain]] takes."
+  [e]
+  (loop [pending [e], seen #{}, found []]
+    (if-let [^Throwable x (first pending)]
+      (if (seen x)
+        (recur (rest pending) seen found)
+        (recur (into (vec (rest pending))
+                     (remove nil?)
+                     [(.getCause x)
+                      (when (instance? SQLException x) (.getNextException ^SQLException x))])
+               (conj seen x)
+               (conj found x)))
+      found)))
+
 (defn- provisioning-denied?
   "Whether `e` is the database refusing to provision, rather than failing to answer.
   Anything else -- a statement timeout, a dropped connection, exhausted resources, interruption -- leaves
@@ -283,7 +300,7 @@
   [e]
   (boolean (some #(and (instance? SQLException %)
                        (contains? provisioning-denied-sql-states (.getSQLState ^SQLException %)))
-                 (u/full-exception-chain e))))
+                 (exception-chain e))))
 
 (defn- app-db-can-provision-pgvector?
   "Whether the app-db user can create whichever store pieces are still missing, checked without persisting

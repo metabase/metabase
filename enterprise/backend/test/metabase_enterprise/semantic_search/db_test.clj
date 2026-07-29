@@ -196,4 +196,9 @@
         (is (thrown? Exception (can-provision? (failing-datasource e) true true))))))
   (testing "a refusal wrapped in another exception is still recognised"
     (let [wrapped (SQLException. "rollback failed" "25P02" (SQLException. "denied" "42501"))]
-      (is (false? (can-provision? (failing-datasource wrapped) true true))))))
+      (is (false? (can-provision? (failing-datasource wrapped) true true)))))
+  (testing "a refusal hung off getNextException is still recognised"
+    ;; JDBC chains sibling errors there rather than through getCause, so a cause-only walk misses it.
+    (let [chained (doto (SQLException. "batch failed" "25P02")
+                    (.setNextException (SQLException. "denied" "42501")))]
+      (is (false? (can-provision? (failing-datasource chained) true true))))))
