@@ -6,7 +6,8 @@
   model/trait keywords that share the global hierarchy.
 
     (derive! ::card-event :metabase/event)
-    (derive! :event/card-create ::card-event)")
+    (derive! :event/card-create ::card-event)"
+  (:refer-clojure :exclude [descendants isa?]))
 
 (defonce ^{:doc "The event hierarchy. A var holding a hierarchy map, mutated by [[derive!]] and [[underive!]]."}
   hierarchy
@@ -24,12 +25,12 @@
   (alter-var-root #'hierarchy underive tag parent)
   nil)
 
-(defn event-isa?
+(defn isa?
   "Whether `child` is `parent` or descends from it in the event [[hierarchy]]."
   [child parent]
-  (isa? hierarchy child parent))
+  (clojure.core/isa? hierarchy child parent))
 
-(defn event-descendants
+(defn descendants
   "The set of keywords that descend from `parent` in the event [[hierarchy]], or `nil` if there are none."
   [parent]
-  (descendants hierarchy parent))
+  (clojure.core/descendants hierarchy parent))

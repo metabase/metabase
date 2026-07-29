@@ -61,7 +61,7 @@
   [topic {:keys [user-id object-id] :as _event}]
   (audit-log/record-event! topic
                            {:user-id  user-id
-                            :model    (if (events/event-isa? topic ::publicize-dashboard)
+                            :model    (if (events/isa? topic ::publicize-dashboard)
                                         :model/Dashboard
                                         :model/Card)
                             :model-id object-id}))

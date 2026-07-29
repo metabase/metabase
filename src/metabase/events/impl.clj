@@ -33,7 +33,7 @@
    qualified-keyword?
    [:fn
     {:error/message "Events should derive from :metabase/event"}
-    #(events.hierarchy/event-isa? % :metabase/event)]])
+    #(events.hierarchy/isa? % :metabase/event)]])
 
 (s/def ::publish-event-dispatch-value
   (s/and
@@ -98,7 +98,7 @@
                             model
                             (assoc :model model))))))
   (assert (and (qualified-keyword? topic)
-               (events.hierarchy/event-isa? topic :metabase/event))
+               (events.hierarchy/isa? topic :metabase/event))
           (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
   (assert (map? event)
           (format "Invalid event %s: event must be a map." (pr-str event)))

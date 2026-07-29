@@ -1,4 +1,5 @@
 (ns metabase.events.core
+  (:refer-clojure :exclude [descendants isa?])
   (:require
    [metabase.events.hierarchy]
    [metabase.events.impl]
@@ -10,8 +11,8 @@
 (p/import-vars
  [metabase.events.hierarchy
   derive!
-  event-descendants
-  event-isa?
+  descendants
+  isa?
   underive!]
  [metabase.events.impl
   Topic

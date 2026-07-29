@@ -65,7 +65,7 @@
    events/Topic
    [:fn
     {:error/message "Sync event deriving from :metabase.sync.util/event"}
-    #(events/event-isa? % ::event)]])
+    #(events/isa? % ::event)]])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          SYNC OPERATION "MIDDLEWARE"                                           |
