@@ -427,6 +427,8 @@
       (cancel-managed-ai-subscription!))
     (let [remaining (vec (remove #(= (:key %) conn-key) (llm.provider/stored-connections)))]
       (llm.provider/set-connections! remaining)
+      (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/explicit-title-model)))
+        (setting/set! :llm-title-model nil))
       (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/llm-metabot-provider)))
         (repoint-metabot! (fallback-model-ref)))))
   nil)

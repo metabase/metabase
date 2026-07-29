@@ -136,14 +136,14 @@
                            (pr-str model) (str/join ", " (sort allowed)))
                       {:status-code 400 :model model})))))
 
-(defn- validate-metabot-provider!
+(defn- validate-model-ref!
   "Validate that `value` is a `connection-key/model` string with a non-blank model, plus whatever extra rules the
   named connection's provider type imposes on its models.
 
-  Deliberately does *not* require the connection to exist. The setting can legitimately be written before the
-  connection it names — an env var, a config file, or a serdes import can land in either order — and a value naming
-  a missing connection is already reported where it is actionable: [[llm-metabot-configured?]] reads false, and
-  resolving it for a request throws a 400 that names the connection.
+  Deliberately does *not* require the connection to exist. A model-reference setting can legitimately be written
+  before the connection it names — an env var, a config file, or a serdes import can land in either order — and a
+  value naming a missing connection is already reported where it is actionable: [[llm-metabot-configured?]] reads
+  false, and resolving it for a request throws a 400 that names the connection.
 
   Throws an exception with `:status-code 400` on invalid input."
   [value]
@@ -169,8 +169,45 @@
   :deprecated-name  :ee-ai-metabot-provider
   :setter           (fn [new-value]
                       (when new-value
-                        (validate-metabot-provider! new-value))
+                        (validate-model-ref! new-value))
                       (setting/set-value-of-type! :string :llm-metabot-provider new-value)))
+
+(defn- mini-model-ref
+  "The model reference for the fastest model of the connection `model-ref` names, or nil when that connection's
+  provider type has no such model."
+  [model-ref]
+  (let [conn-key (llm.provider/model-ref->connection-key model-ref)]
+    (when-let [model (llm.provider/mini-model (:type (llm.provider/connection conn-key)))]
+      (str conn-key "/" model))))
+
+(defn explicit-title-model
+  "The model reference [[llm-title-model]] was explicitly set to, or nil while it is being derived
+  from [[llm-metabot-provider]]. Callers that act on the admin's choice rather than on the model titles happen to
+  run on want this: [[llm-title-model]] itself resolves, so it names a connection even when none was ever picked."
+  []
+  (setting/get-value-of-type :string :llm-title-model))
+
+(defn- -llm-title-model
+  "Titles are a short, high-volume call that does not need the model Metabot chats on, so with nothing stored this
+  resolves to the fastest model of the connection [[llm-metabot-provider]] names. Connections whose provider type
+  has no such model (Azure, the managed provider) fall through to the Metabot model itself, so this always names
+  a model as long as Metabot does."
+  []
+  (or (explicit-title-model)
+      (let [metabot-ref (llm-metabot-provider)]
+        (or (mini-model-ref metabot-ref) metabot-ref))))
+
+(defsetting llm-title-model
+  (deferred-tru "The AI provider connection and model used to name Metabot conversations, in the same connection-key/model-name format as `llm-metabot-provider`. Defaults to the fastest model offered by the connection Metabot runs on.")
+  :type       :string
+  :encryption :no
+  :visibility :settings-manager
+  :export?    false
+  :getter     #'-llm-title-model
+  :setter     (fn [new-value]
+                (when new-value
+                  (validate-model-ref! new-value))
+                (setting/set-value-of-type! :string :llm-title-model new-value)))
 
 (defsetting llm-metabot-configured?
   "Whether the connection selected for Metabot has the credentials it needs."
