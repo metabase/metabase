@@ -70,7 +70,14 @@
   (testing "the zero-arg arity interns values as-is"
     (let [intern (memo/fast-interner)]
       (is (= :kw (intern :kw)))
-      (is (identical? (intern :kw) (intern :kw))))))
+      (is (identical? (intern :kw) (intern :kw)))))
+  (testing "nil is returned unchanged without calling the canonicalizer"
+    (let [calls  (atom 0)
+          intern (memo/fast-interner (fn [x]
+                                       (swap! calls inc)
+                                       x))]
+      (is (nil? (intern nil)))
+      (is (zero? @calls)))))
 
 (deftest ^:parallel bounded-evicts-when-keyspace-overflows-test
   (let [keyspace                       (gen-keyspace 100)

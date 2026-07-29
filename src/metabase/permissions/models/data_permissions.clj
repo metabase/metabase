@@ -238,14 +238,6 @@
               [:= :p.table_id nil]
               [:= :mt.active true]]]})))
 
-(defn- cache-interner
-  "A nil-tolerant [[u.memo/fast-interner]]."
-  []
-  (let [intern! (u.memo/fast-interner)]
-    (fn [v]
-      (when (some? v)
-        (intern! v)))))
-
 (defn- add-row-to-full-entry
   "Fold a single data_permissions row into an in-progress cache entry (see [[rows->full-perms]] for the semantics).
   `perm_value` may be a raw result-set string or an already-transformed keyword depending on the fetch path;
@@ -345,7 +337,7 @@
         {cached-db-ids :db-ids
          cached-interner :intern
          cached-perms :perms} (when cache? @*full-perms-cache*)
-        interner (or cached-interner (cache-interner))]
+        interner (or cached-interner (u.memo/fast-interner))]
     (if cache?
       (let [missing-db-ids (remove cached-db-ids db-ids)]
         (when (seq missing-db-ids)
