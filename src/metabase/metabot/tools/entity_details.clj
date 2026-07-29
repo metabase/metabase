@@ -9,6 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.metrics.core :as metrics]
@@ -319,6 +320,13 @@
   50)
 
 (defn- table-details
+  "Details for the table with `id`.
+
+  PERMISSIONS: the two lookup branches below are *not* equivalent. Without `:metadata-provider` the table is fetched
+  through [[metabot.tools.u/get-table]], which `api/read-check`s it. With `:metadata-provider` the lookup goes through
+  `lib.metadata/table` on the app-DB provider, which applies no permission filtering at all — callers passing a
+  provider must have already established that the current user can read `id`. [[related-tables]], the only such
+  caller, pre-filters its FK targets with `table-utils/readable-table-ids`."
   ([id] (table-details id nil))
   ([id {:keys [metadata-provider field-values-fn with-fields? with-related-tables? with-metrics?
                with-measures? with-segments?]
@@ -409,7 +417,8 @@
   "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key.
   Creates separate entries for each FK path when the same table is reachable through multiple foreign keys. We surface
   up to [[max-related-tables]] FK paths; only the first [[max-related-tables-with-fields]] carry their column set to
-  keep memory usage bounded (metabase#76493), even when `with-fields?` is true. Returns nil when the query has no
+  keep memory usage bounded (metabase#76493), even when `with-fields?` is true. FK targets the current user cannot
+  read are dropped — see the permissions note on [[table-details]]. Returns nil when the query has no readable
   FK-related tables, otherwise a map:
 
     :related_tables                vector of related-table maps, one per FK path. When `with-fields?` is true they
@@ -425,8 +434,13 @@
                                    that total exceeds [[max-related-tables]] (i.e. some were dropped entirely), so
                                    the LLM knows the surfaced set is truncated."
   [query with-fields? field-values-fn]
-  (let [fk-groups (fk-related-table-groups query)
-        total     (count fk-groups)]
+  (let [all-groups (fk-related-table-groups query)
+        ;; Drop unreadable FK targets *before* the caps below: they must neither be rendered nor consume the
+        ;; surfaced-table budget, and `total` (surfaced to the LLM as :related_tables_total) must count only what the
+        ;; user may see, so it can't be read as an oracle for how many tables were hidden.
+        readable   (table-utils/readable-table-ids (map first all-groups))
+        fk-groups  (filterv (comp readable first) all-groups)
+        total      (count fk-groups)]
     (when (pos? total)
       (when (and with-fields? (> total max-related-tables-with-fields))
         (log/infof "Capping related-tables column expansion to %d of %d." max-related-tables-with-fields total))

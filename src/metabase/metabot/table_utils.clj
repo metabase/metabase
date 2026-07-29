@@ -121,6 +121,24 @@
     (cond-> {:where table-where-clause}
       table-cte (assoc :with table-cte))))
 
+(defn readable-table-ids
+  "The subset of `table-ids` the current user can read, as a set.
+
+  Uses `mi/can-read?` rather than a SQL visibility clause so the result matches exactly what a per-table
+  `api/read-check` would allow — including the `:perms/manage-table-metadata` branch, which the SQL clause does not
+  synthesize. Selects whole rows because `can-read?`'s published-collection branch reads `:is_published` and
+  `:collection_id`.
+
+  One query regardless of how many ids are passed: the per-table permission lookups behind `can-read?` are served
+  from the request-scoped permissions cache."
+  [table-ids]
+  (if-let [ids (not-empty (set table-ids))]
+    (into #{}
+          (comp (filter mi/can-read?)
+                (map :id))
+          (t2/select :model/Table :id [:in ids]))
+    #{}))
+
 (defn find-matching-tables
   "Find tables in the database that are similar to the unrecognized tables using fuzzy matching.
 

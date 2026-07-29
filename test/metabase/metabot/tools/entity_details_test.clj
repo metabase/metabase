@@ -165,6 +165,31 @@
                 (str "Products related table should have " expected-products-field-count
                      " fields (only its own fields, not implicitly joinable fields)"))))))))
 
+(deftest related-tables-are-permission-filtered-test
+  (testing (str "FK-related tables are fetched through the metadata provider, which applies no permission filtering, "
+                "so `related-tables` must drop the ones the current user cannot read")
+    (mt/with-no-data-perms-for-all-users!
+      ;; ORDERS is readable; its FK targets (PRODUCTS, PEOPLE) are not.
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+      (mt/with-test-user :rasta
+        (let [output (:structured-output (entity-details/get-table-details {:entity-type        :table
+                                                                            :entity-id          (mt/id :orders)
+                                                                            :with-field-values? false}))]
+          (testing "the requested table itself is still returned"
+            (is (= (mt/id :orders) (:id output))))
+          (testing "unreadable FK targets are not surfaced"
+            (is (empty? (:related_tables output)))
+            (is (empty? (:related_tables_without_fields output))))
+          (testing ":related_tables_total does not leak a count of hidden tables"
+            (is (nil? (:related_tables_total output))))))))
+  (testing "readable FK targets are still surfaced"
+    (mt/with-test-user :crowberto
+      (let [output (:structured-output (entity-details/get-table-details {:entity-type        :table
+                                                                          :entity-id          (mt/id :orders)
+                                                                          :with-field-values? false}))]
+        (is (some #(= (mt/id :products) (:id %)) (:related_tables output)))))))
+
 (defn- measure-definition
   "Create an MBQL5 measure definition with a sum aggregation."
   [table-id field-id]
