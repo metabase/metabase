@@ -11,20 +11,31 @@ import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Transform, TransformJobId } from "metabase-types/api";
+import type {
+  Transform,
+  TransformJobId,
+  TransformRun,
+} from "metabase-types/api";
 
+import type { TransformRunByTransformId } from "./types";
+import { useJobRunTransformRuns } from "./use-job-run-transform-runs";
 import { getColumns } from "./utils";
 
 type TransformsSectionProps = {
   jobId: TransformJobId;
+  lastJobRun?: TransformRun | null;
 };
 
-export function TransformsSection({ jobId }: TransformsSectionProps) {
+export function TransformsSection({
+  jobId,
+  lastJobRun,
+}: TransformsSectionProps) {
   const {
     data: transforms = [],
     error,
     isLoading,
   } = useListTransformJobTransformsQuery(jobId);
+  const transformRunByTransformId = useJobRunTransformRuns(jobId, lastJobRun);
 
   return (
     <TitleSection
@@ -38,7 +49,10 @@ export function TransformsSection({ jobId }: TransformsSectionProps) {
           <ListEmptyState label={t`There are no transforms for this job.`} />
         </Card>
       ) : (
-        <TransformTable transforms={transforms} />
+        <TransformTable
+          transforms={transforms}
+          transformRunByTransformId={transformRunByTransformId}
+        />
       )}
     </TitleSection>
   );
@@ -46,10 +60,17 @@ export function TransformsSection({ jobId }: TransformsSectionProps) {
 
 type TransformTableProps = {
   transforms: Transform[];
+  transformRunByTransformId: TransformRunByTransformId;
 };
 
-export function TransformTable({ transforms }: TransformTableProps) {
-  const columns = useMemo(() => getColumns(), []);
+export function TransformTable({
+  transforms,
+  transformRunByTransformId,
+}: TransformTableProps) {
+  const columns = useMemo(
+    () => getColumns(transformRunByTransformId),
+    [transformRunByTransformId],
+  );
   const dispatch = useDispatch();
 
   const handleRowActivate = useCallback(
