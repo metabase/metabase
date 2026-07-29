@@ -8,7 +8,9 @@
   routing all silently change *which rows* the creator sees. Replaying that blob for another
   viewer is only safe when the viewer's lens is *compatible* with the creator's.
 
-  The token is a per-dimension, per-target map. The convention is **absent = unrestricted**:
+  The token is a per-dimension, per-target map. An absent key means the dimension does not
+  restrict the user there — absence is itself a lens, not a wildcard; see
+  [[data-access-compatible?]]:
 
       {:sandbox       {table-id <digest>}   ; per touched table; absent key => not sandboxed there
        :impersonation {db-id    <digest>}   ; absent => not impersonated on that db
@@ -99,23 +101,18 @@
       routing       (assoc :routing {database-id (digest routing)}))))
 
 (defn data-access-compatible?
-  "True when a viewer holding `viewer-token` may be served a blob computed under `creator-token`.
+  "True when a viewer holding `viewer-token` may be served a blob computed under `creator-token`:
+  the lenses must be identical, dimension for dimension, target for target.
 
-  Per dimension and per target key: the viewer must be **absent** (unrestricted there) OR hold
-  the **same** token as the creator. AND'd across every key in either token and across all three
-  dimensions. This yields exactly the intended semantics:
+  This gate only ever adjudicates non-superusers — superusers bypass it upstream
+  ([[metabase.queries.cached-result]]), by the rule that superusers may see every exploration.
 
-    - same sandbox / role / destination     => compatible
-    - viewer unsandboxed / unimpersonated / admin (absent) => compatible (sees creator's lens)
-    - viewer restricted where creator is not (creator absent, viewer present) => NOT compatible"
+  Absence is not a wildcard: unsandboxed matches only unsandboxed, unimpersonated only
+  unimpersonated, router-db only router-db. There is deliberately no subset reasoning. It is
+  intended that an unsandboxed viewer be denied a sandboxed creator's snapshot (even though
+  the sandbox's rows are a subset of a table they could query directly).
+
+  Bare equality suffices because [[data-access-token]] emits one canonical representation per lens,
+  with empty dimensions omitted."
   [creator-token viewer-token]
-  (every?
-   (fn [dimension]
-     (let [cm (get creator-token dimension {})
-           vm (get viewer-token dimension {})]
-       (every? (fn [k]
-                 (let [vv (get vm k ::absent)]
-                   (or (= vv ::absent)
-                       (= vv (get cm k ::absent)))))
-               (into #{} (concat (keys cm) (keys vm))))))
-   [:sandbox :impersonation :routing]))
+  (= creator-token viewer-token))

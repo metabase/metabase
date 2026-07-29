@@ -216,15 +216,25 @@
                     (str "the discovered value " (pr-str discovered-value)
                          " must not appear anywhere in the response"))))))))))
 
-(deftest unsandboxed-viewer-with-perms-sees-cached-result-test
-  (testing "an unsandboxed viewer with data perms may stream a sandboxed creator's result (superset)"
+(deftest unsandboxed-viewer-blocked-from-sandboxed-result-test
+  (testing "a NON-ADMIN unsandboxed viewer with data perms is BLOCKED from a sandboxed creator's
+            result"
     (met/with-gtaps-for-user! :rasta (price-sandbox)
       (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
-        ;; crowberto is a superuser -> unsandboxed, full data access -> sees the snapshot
+        ;; `with-gtaps-for-user!` revokes All Users' data perms (that is what makes rasta's sandbox
+        ;; enforced). Restore ordinary self-service for the unsandboxed viewer, so the 403 below is
+        ;; the LENS refusing, not a missing data perm.
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
         (with-done-exploration!
-          {:creator-id (mt/user->id :lucky) :data-access-token token}
+          {:creator-id (mt/user->id :rasta) :data-access-token token}
           (fn [{:keys [query]}]
-            (mt/user-http-request :crowberto :get 202 (format "exploration/query/%d" (:id query)))))))))
+            (testing "lucky is a non-admin with full data access and no sandbox"
+              (is (=? {:message #"Cannot show cached results: your data access differs.*"}
+                      (mt/user-http-request :lucky :get 403 (format "exploration/query/%d" (:id query))))
+                  "the denial is the lens refusing, not a missing data perm"))
+            (testing "while a superuser streams it (bypass)"
+              (mt/user-http-request :crowberto :get 202 (format "exploration/query/%d" (:id query))))))))))
 
 (deftest admin-sees-sandboxed-result-when-sandbox-is-on-all-users-test
   (testing "an admin (superuser) is a member of All Users, but must NOT pick up a phantom sandbox
@@ -353,12 +363,14 @@
     (met/with-gtaps-for-user! :rasta (price-sandbox)
       (with-redefs [sandbox.field-values/field->sandbox-attributes-for-current-user (constantly nil)]
         (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
-          (testing "the sandbox dimension is present, scoped to the user (fail closed)"
+          (testing "the sandbox dimension is present and scoped to the user (fail closed)"
             (is (= (venues-token-for-lens
                     {:sandbox [::sandbox.field-values/indeterminate-sandbox (mt/user->id :rasta)]})
                    token)))
           (testing "an indeterminate viewer cannot see an unrestricted creator's snapshot"
             (is (false? (perms/data-access-compatible? {} token))))
+          (testing "an unsandboxed viewer cannot see an indeterminate creator's snapshot"
+            (is (false? (perms/data-access-compatible? token {}))))
           (testing "an indeterminate viewer cannot see a genuinely-sandboxed creator's snapshot"
             (is (false? (perms/data-access-compatible?
                          (venues-token-for-lens {:sandbox [1 "2026-01-01" {"price" "1"}]})
@@ -400,7 +412,21 @@
               (testing "a viewer resolving to a different role is blocked"
                 (sandbox.tu/with-user-attributes! :rasta {"db_role" "readwrite"}
                   (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query)))))
-              (testing "an unimpersonated superuser streams the cached result"
+              (testing "an unimpersonated non-admin viewer is blocked — a role's view is not
+                        guaranteed contained in the default connection's"
+                ;; Membership in a second group with unrestricted view-data on the db means
+                ;; impersonation is no longer enforced for rasta (`enforce-impersonations?`), so
+                ;; within this scope rasta's impersonation lens is absent — an unimpersonated
+                ;; viewer who nonetheless holds full data perms. The `with-temp` scoping matters:
+                ;; the same-role assertion above needs rasta still impersonated.
+                (mt/with-temp [:model/PermissionsGroup           escape-group {}
+                               :model/PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)
+                                                                    :group_id (:id escape-group)}]
+                  (perms/set-database-permission! escape-group (mt/id) :perms/view-data :unrestricted)
+                  (is (=? {:message #"Cannot show cached results: your data access differs.*"}
+                          (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query))))
+                      "the denial is the lens refusing, not a missing data perm")))
+              (testing "a superuser streams the cached result (bypass — superusers see every exploration)"
                 (mt/user-http-request :crowberto :get 202 (format "exploration/query/%d" (:id query)))))))))))
 
 (deftest routing-token-for-db-producer-test
@@ -458,7 +484,10 @@
             (testing "a viewer routed to a different destination is blocked"
               (sandbox.tu/with-user-attributes! :rasta {"db_name" "sr-dest-b"}
                 (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query)))))
-            (testing "a superuser (router cohort, absent routing dimension) streams the cached result"
+            (testing "a non-admin __METABASE_ROUTER__ viewer is blocked"
+              (sandbox.tu/with-user-attributes! :rasta {"db_name" "__METABASE_ROUTER__"}
+                (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query)))))
+            (testing "a superuser streams the cached result (bypass — superusers see every exploration)"
               (mt/user-http-request :crowberto :get 202 (format "exploration/query/%d" (:id query))))))))))
 
 (defn- products-count-card
@@ -573,8 +602,7 @@
 (deftest unresolvable-card-chain-fails-closed-test
   (testing "when the source-card chain cannot be resolved (the card was deleted), the viewer's lens
             is indeterminate: non-admins are denied rather than treating the query as touching no
-            tables, while an admin — never sandboxed, impersonated, or routed off the router db —
-            falls back to the same admin-only access as a nil token"
+            tables, while an admin still streams it — superusers see every exploration (bypass)"
     (mt/with-temp [:model/Card base {:name          "venues model"
                                      :database_id   (mt/id)
                                      :dataset_query (venues-rows-query)}]

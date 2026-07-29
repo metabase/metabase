@@ -1,9 +1,10 @@
 (ns metabase.queries.cached-result
   "Read-side permission gating for the `stored_result` snapshot table. The blob was computed
   once by its creator with their effective permissions baked in, so replaying it for any
-  other viewer must respect *that viewer's* data permissions, sandboxing, and
-  impersonation — otherwise we'd leak data the QP would have filtered out if the viewer
-  had executed the query themselves."
+  other viewer must respect *that viewer's* data permissions and their sandboxing /
+  impersonation / database-routing lens — otherwise we'd leak data the QP would have filtered
+  out (or fetched from a different database entirely) if the viewer had executed the query
+  themselves. The one exemption: superusers may see every snapshot, by product decision."
   (:require
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
@@ -16,21 +17,28 @@
 (defn- viewer-lens-compatible?
   "True when the current user's effective data-access lens (sandbox / impersonation / routing) is
   compatible with the lens the `stored-result` blob was computed under — i.e. the viewer may be
-  served the creator's snapshot. See [[metabase.permissions.data-access-token]].
+  served the creator's snapshot. See [[metabase.permissions.data-access-token]]. Only ever reached
+  for non-superusers — [[cached-result-blocked-reason]] passes superusers before any lens check.
 
   When both the token and the query are present we compare lenses strictly. Two degenerate cases
-  make that comparison impossible: a `nil` `:data_access_token` (a pre-token snapshot, or a write
-  that failed to capture one) and token computation throwing (the viewer is missing a
-  routing/impersonation attribute the snapshot's database requires, or the query's source-card
-  chain can no longer be resolved to its underlying tables). Both fall back to admin-only: a
-  superuser is never sandboxed or impersonated and resolves to the router db itself, so serving
-  them cannot leak; everyone else is denied.
+  make that comparison impossible, and both deny (the viewer here is a non-admin):
+
+    - a `nil` `:data_access_token` — either never captured (the write path fails the query
+      rather than persist a token-less snapshot) or stored but unreadable (the model transform
+      decodes an unparseable token to nil; see [[metabase.queries.models.stored-result]]).
+    - token computation throwing (the viewer is missing a routing/impersonation attribute the
+      snapshot's database requires, or the query's source-card chain can no longer be resolved to
+      its underlying tables). An expected condition for some viewers — such a viewer could not run
+      the query themselves either.
 
   A missing `:dataset_query` is not a degenerate case but a caller bug — the schema forbids NULL —
   and [[cached-result-blocked-reason]] throws on it before we get here."
   [stored-result]
   (if (nil? (:data_access_token stored-result))
-    (boolean api/*is-superuser?*)
+    (do
+      (log/errorf "Cached result %s has no readable data_access_token (never captured, or failed to parse). Denying."
+                  (:id stored-result))
+      false)
     (try
       (perms/data-access-compatible?
        (:data_access_token stored-result)
@@ -38,31 +46,33 @@
                                  :table-ids   (query-perms/query->resolved-source-table-ids
                                                (:dataset_query stored-result))}))
       (catch Exception e
-        (log/debugf e "Cached result %s: computing the viewer's data-access lens threw; falling back to admin-only"
+        (log/debugf e "Cached result %s: computing the viewer's data-access lens threw; denying"
                     (:id stored-result))
-        (boolean api/*is-superuser?*)))))
+        false))))
 
 (defn- viewer-can-run-underlying-query?
-  "Whether the current user holds the data perms to run the snapshot's own query.
+  "Whether the current user holds the data perms to run the snapshot's own query. Only ever reached
+  for non-superusers — [[cached-result-blocked-reason]] passes superusers before any check.
 
   `can-run-query?` absorbs the ordinary permission-denial `ExceptionInfo`s itself; anything else it
   throws — a stored query malformed enough to trip its `:- :map` schema, a source table that no
-  longer exists — must not escape an authorization gate as a 500. It falls back to the same
-  admin-only access [[viewer-lens-compatible?]] gives its degenerate cases, sound here for the same
-  kind of reason: a superuser holds every data perm unconditionally, so serving them cannot leak."
+  longer exists — must not escape an authorization gate as a 500: deny instead."
   [stored-result]
   (try
     (query-perms/can-run-query? (:dataset_query stored-result))
     (catch Exception e
-      (log/debugf e "Cached result %s: the data-perms check threw; falling back to admin-only"
-                  (:id stored-result))
-      (boolean api/*is-superuser?*))))
+      (log/debugf e "Cached result %s: the data-perms check threw; denying" (:id stored-result))
+      false)))
 
 (defn- cached-result-blocked-reason
   "If the current user must NOT be served the cached blob for `stored-result`, return a keyword
   describing why. Returns nil when the cached blob is safe to stream.
 
   Throws when `stored-result` has no `:dataset_query` (this should never happen).
+
+  Superusers pass unconditionally — \"superusers see every exploration\" is a deliberate product
+  exemption from the same-lens rule. They hold every data perm, so the bypass skips nothing
+  the data-perms check would catch.
 
   Reasons (in priority order):
     `:no-data-perms`        — current user lacks the data perms required to run the underlying query.
@@ -73,6 +83,9 @@
     (throw (ex-info "stored-result is missing its dataset_query"
                     {:stored-result-id (:id stored-result)})))
   (cond
+    api/*is-superuser?*
+    nil
+
     (not (viewer-can-run-underlying-query? stored-result))
     :no-data-perms
 

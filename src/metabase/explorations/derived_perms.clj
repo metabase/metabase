@@ -6,10 +6,10 @@
   viewer whose lens is incompatible with the creator's must not see them.
 
   The per-result rule is exactly the cached-read gate the results themselves are streamed
-  through ([[metabase.queries.cached-result]]): the viewer must hold the data perms to run the
-  underlying query AND a lens compatible with the one the snapshot was computed under (nil
-  token or token computation throwing => admin-only; a missing dataset_query throws — the schema
-  forbids it). The gate is applied to *every*
+  through ([[metabase.queries.cached-result]]): superusers pass unconditionally; any other viewer
+  must hold the data perms to run the underlying query AND a lens compatible with the one the
+  snapshot was computed under (nil token or token computation throwing => denied; a missing
+  dataset_query throws — the schema forbids it). The gate is applied to *every*
   viewer, the snapshot's creator included — being the creator once is not a permanent pass, since
   the creator's own permissions may have narrowed since the snapshot was taken. This namespace
   only rolls that per-`StoredResult` verdict up to thread granularity: a thread's derived data is

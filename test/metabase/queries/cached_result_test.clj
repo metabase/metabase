@@ -27,10 +27,10 @@
   {:database 1 :type :query :query {:source-table 1}})
 
 (def ^:private a-sandbox-token
-  {:sandbox {1 [1 "2026-01-01" {"price" "1"}]}})
+  {:sandbox {1 "d-price-1"}})
 
 (def ^:private a-different-sandbox-token
-  {:sandbox {1 [2 "2026-01-01" {"price" "2"}]}})
+  {:sandbox {1 "d-price-2"}})
 
 (defn- denial!
   "`ex-data` of the 403 [[cached-result/assert-can-view-cached-result!]] throws for `stored-result`,
@@ -54,10 +54,24 @@
                                {:id 1 :database_id 1 :data_access_token {}}))
             (str "superuser? " superuser?))))))
 
-(deftest nil-token-is-admin-only-test
-  (testing "a pre-token snapshot (or a write that failed to capture one) can't be compared against
-            any viewer lens. The fallback is admin-only: a superuser is never sandboxed or
-            impersonated and resolves to the router db itself, so serving them cannot leak"
+(deftest superuser-bypasses-lens-gate-test
+  (testing "superusers may see every exploration — a deliberate product exemption, applied before
+            any lens comparison, so even a superuser whose own computed lens mismatches the
+            snapshot's (e.g. one who routed themselves to a destination db) still streams it"
+    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query? (constantly true)
+                                            query-perms/query->resolved-source-table-ids (constantly #{1})
+                                            perms/data-access-token (constantly a-different-sandbox-token)]
+      (let [sr {:id 1 :database_id 1 :data_access_token a-sandbox-token :dataset_query a-query}]
+        (binding [api/*is-superuser?* true]
+          (is (true? (cached-result/viewer-can-view-cached-result? sr))))
+        (testing "while a non-admin with the same mismatched lens is blocked"
+          (binding [api/*is-superuser?* false]
+            (is (false? (cached-result/viewer-can-view-cached-result? sr)))))))))
+
+(deftest nil-token-denies-non-admins-test
+  (testing "a snapshot with no token can't be compared against any viewer lens — and the write path
+            never persists one, so it is a bug, logged at ERROR. Non-admins are denied; a superuser
+            still streams it via the bypass"
     (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query? (constantly true)]
       (let [sr {:id 1 :database_id 1 :data_access_token nil :dataset_query a-query}]
         (binding [api/*is-superuser?* true]
@@ -66,12 +80,12 @@
           (is (false? (cached-result/viewer-can-view-cached-result? sr)))
           (is (= :incompatible-context (:reason (denial! sr)))))))))
 
-(deftest lens-computation-throwing-is-admin-only-test
+(deftest lens-computation-throwing-denies-non-admins-test
   (testing "the viewer's lens is uncomputable when they are missing a routing/impersonation attribute
             the snapshot's database requires, or when the query's source-card chain no longer
-            resolves to tables (deleted card). Either throw lands on the same admin-only fallback as
-            a nil token — never a 500 out of an authorization gate"
-    (let [assert-admin-only!
+            resolves to tables (deleted card). Either throw denies the (non-admin) viewer — never a
+            500 out of an authorization gate; superusers never reach the check (bypass)"
+    (let [assert-superuser-only!
           (fn []
             (let [sr {:id 1 :database_id 1 :data_access_token a-sandbox-token :dataset_query a-query}]
               (binding [api/*is-superuser?* true]
@@ -87,18 +101,18 @@
         (testing "resolving the query's source tables throws (deleted source card)"
           (dynamic-redefs/with-dynamic-fn-redefs [query-perms/query->resolved-source-table-ids
                                                   (fn [_] (throw (ex-info "Card 7 does not exist." {})))]
-            (assert-admin-only!)))
+            (assert-superuser-only!)))
         (testing "computing the viewer's token throws (missing routing/impersonation attribute)"
           (dynamic-redefs/with-dynamic-fn-redefs [perms/data-access-token
                                                   (fn [_] (throw (ex-info "Required user attribute is missing" {})))]
-            (assert-admin-only!)))))))
+            (assert-superuser-only!)))))))
 
-(deftest data-perms-check-throwing-is-admin-only-test
+(deftest data-perms-check-throwing-denies-non-admins-test
   (testing "the data-perms dimension must fail the same controlled way the lens dimension does. A
             throw out of the perms check — a stored query malformed enough to trip its schema, an NPE
             from a source table that no longer exists — is not an exception to escape an
-            authorization gate (`can-run-query?` itself only absorbs `ExceptionInfo`); it falls back
-            to admin-only, sound because a superuser holds every data perm unconditionally"
+            authorization gate (`can-run-query?` itself only absorbs `ExceptionInfo`); the
+            (non-admin) viewer is denied, while superusers never reach the check (bypass)"
     (doseq [thrown [(NullPointerException. "boom")
                     (ex-info "malformed query" {})]]
       (testing (str "threw " (class thrown))
