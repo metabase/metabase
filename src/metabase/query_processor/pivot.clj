@@ -637,15 +637,12 @@
   6)
 
 (defn- round-numeric
-  "If `x` is fractional (Double / Float / BigDecimal), quantise it to a `BigDecimal` at
-  [[float-compare-decimals]] scale. Integral numbers and non-numbers pass through unchanged. Normalising
-  both floats and BigDecimals to `BigDecimal` at the same scale lets `=` succeed regardless of which type
-  each path returned."
+  "Normalise any numeric `x` to a `BigDecimal` at [[float-compare-decimals]] scale. Non-numbers pass through
+  unchanged."
   [x]
-  (cond
-    (float? x)   (.setScale ^java.math.BigDecimal (bigdec x) (int float-compare-decimals) java.math.RoundingMode/HALF_UP)
-    (decimal? x) (.setScale ^java.math.BigDecimal x          (int float-compare-decimals) java.math.RoundingMode/HALF_UP)
-    :else        x))
+  (if (number? x)
+    (.setScale ^java.math.BigDecimal (bigdec x) (int float-compare-decimals) java.math.RoundingMode/HALF_UP)
+    x))
 
 (defn- pivot-rows-equivalent?
   "Compare pivot result maps from the two pivot paths. The candidate always uses `default-rff` and so carries

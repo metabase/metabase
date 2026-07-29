@@ -41,7 +41,7 @@
   "Return a HoneySQL form producing the pivot-grouping bitmask, one bit per expression in `exprs`. The default emits
   `GROUPING(exprs...)` (the Postgres/Oracle/Snowflake multi-arg extension). Drivers whose SQL dialect wants a
   different function or shape override this method."
-  {:arglists '([driver exprs])}
+  {:added "0.64.0", :arglists '([driver exprs])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -134,8 +134,11 @@
         non-remap-hsql    (mapv breakout-hsql non-remap-poss)
         ;; Args reversed so the bitmask convention matches `pivot.common/group-bitmask`: bit 0 = first non-remap breakout.
         grouping-fn       (pivot-grouping-hsql driver (rseq non-remap-hsql))
-        grouping-sets     (into [::grouping-sets] sets-hsql)]
+        grouping-sets     (into [::grouping-sets] sets-hsql)
+        ;; With only one grouping set the grouping bitmask is constant; skip the ORDER BY prefix so dialects that
+        ;; reject constants in ORDER BY (e.g. SQL Server) don't fail, and to avoid the redundant sort.
+        prefix-order-by   (if (= 1 (count sets-hsql)) [] [[grouping-fn :asc]])]
     (-> honeysql-form
         (update :select splice-pivot-grouping-select (count breakout) [grouping-fn lib.pivot/pivot-grouping-column-name])
         (assoc :group-by [grouping-sets]
-               :order-by (into [[grouping-fn :asc]] (:order-by honeysql-form))))))
+               :order-by (into prefix-order-by (:order-by honeysql-form))))))

@@ -119,3 +119,11 @@
       (is (=? [[[::sql-mbql5.pivot/grouping-fn some?] :asc]
                [:count :desc]]
               (:order-by out))))))
+
+(deftest ^:parallel order-by-skips-grouping-when-single-set-test
+  (testing "When there is only one grouping set, the grouping bitmask is constant and the ORDER BY prefix is omitted"
+    (let [out (lower-pivot-with-order-by
+               [(b1) (b2)]
+               {:rows [b1-uuid] :columns [b2-uuid] :show-row-totals false :show-column-totals false}
+               [[:count :desc]])]
+      (is (= [[:count :desc]] (:order-by out))))))
