@@ -157,7 +157,7 @@
     (try
       (json/decode s keywordize-keys?)
       (catch Throwable e
-        (log/error e "Error parsing JSON")
+        (log/errorf "Error parsing JSON: %s" (ex-message e))
         s))
     s))
 
@@ -206,7 +206,7 @@
     (try
       (doall (f x))
       (catch Throwable e
-        (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red x))
+        (log/errorf "Unable to normalize: %s" (ex-message e))
         nil))))
 
 (def ^{:deprecated "0.57.0"} transform-legacy-field-ref
@@ -314,8 +314,8 @@
       (catch Throwable e
         (if (or (encryption/possibly-encrypted-string? decrypted)
                 (encryption/possibly-encrypted-bytes? decrypted))
-          (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
-          (log/error e "Error parsing JSON"))  ; same message as in `json-out`
+          (log/error "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
+          (log/errorf "Error parsing JSON: %s" (ex-message e)))  ; same message as in `json-out`
         v))))
 
 ;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
@@ -366,7 +366,7 @@
                          :else                 (try
                                                  (mbql.normalize/normalize x)
                                                  (catch Throwable e
-                                                   (log/debugf e "Error normalizing column settings key %s" (pr-str x))
+                                                   (log/debugf "Error normalizing column settings key %s: %s" (pr-str x) (ex-message e))
                                                    nil)))))
                     json/encode))
           (normalize-column-settings [column-settings]
@@ -393,7 +393,7 @@
                 (mbql.normalize/normalize form)
                 (catch Exception e
                   (log/warnf "Unable to normalize visualization-settings part %s: %s"
-                             (u/pprint-to-str 'red form)
+                             (pr-str form)
                              (ex-message e))
                   form))
 

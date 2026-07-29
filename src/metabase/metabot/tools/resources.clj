@@ -728,7 +728,7 @@
         {:uri uri :error (or (:output result) result)}
         {:uri uri :content result}))
     (catch Exception e
-      (log/warn "Error fetching resource" {:uri uri :error (ex-message e)})
+      (log/warn "Error fetching resource" {:error (ex-message e)})
       {:uri uri :error (or (ex-message e) "Unknown error")})))
 
 (defn- format-with-instructions
@@ -839,5 +839,5 @@
   (try
     (read-resource {:uris uris})
     (catch Exception e
-      (log/error e "Error in read_resource tool")
+      (log/errorf "Error in read_resource tool: %s" (ex-message e))
       {:output (str "Failed to read resources: " (or (ex-message e) "Unknown error"))})))

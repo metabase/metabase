@@ -174,8 +174,8 @@
               diff    (reconcile/reconcile-entity! ds embedding/get-configured-model entity-type entity-local-id)]
           (record-run! "targeted" diff (elapsed-ms started)))
         (catch Throwable e
-          (log/error e "library entity index: targeted reconcile failed; re-queuing"
-                     entity-type entity-local-id)
+          (log/error "library entity index: targeted reconcile failed; re-queuing"
+                     entity-type entity-local-id (ex-message e))
           (locking run-lock (swap! dirty-entities conj entity-key)))))))
 
 (defn reconcile-full-coalesced!
@@ -287,7 +287,7 @@
                         ;; reports the search as unavailable rather than as an empty library.
                         (case (.getSQLState e)
                           "42P01" []
-                          "22000" (do (log/warn e "library entity index incompatible with the query vector; returning no results")
+                          "22000" (do (log/warnf "library entity index incompatible with the query vector; returning no results: %s" (ex-message e))
                                       [])
                           (do (analytics/inc! :metabase-entity-retrieval/search-failed)
                               (throw e)))))]

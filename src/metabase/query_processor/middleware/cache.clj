@@ -61,7 +61,7 @@
       (i/purge-old-entries! backend (cache/query-caching-max-ttl))
       (log/trace "Successfully purged old cache entries.")
       (catch Throwable e
-        (log/errorf e "Error purging old cache entries: %s" (ex-message e))))))
+        (log/errorf "Error purging old cache entries: %s" (ex-message e))))))
 
 (defonce ^:private purge-queue
   (delay (grouper/start!
@@ -111,8 +111,8 @@
           true)))
     (catch Throwable e
       (if (= (:type (ex-data e)) ::impl/max-bytes)
-        (log/debugf e "Not caching results: results are larger than %s KB" (cache/query-caching-max-kb))
-        (log/errorf e "Error saving query results to cache: %s" (ex-message e)))
+        (log/debugf "Not caching results: results are larger than %s KB" (cache/query-caching-max-kb))
+        (log/errorf "Error saving query results to cache: %s" (ex-message e)))
       false)))
 
 (defn- save-results-xform [start-time-ns metadata query-hash strategy rf]
@@ -326,7 +326,7 @@
         (log/debug "Request is closed; no one to return cached results to")
         [::canceled nil])
       (catch Throwable e
-        (log/errorf e "Error attempting to fetch cached results for query with hash %s: %s"
+        (log/errorf "Error attempting to fetch cached results for query with hash %s: %s"
                     (i/short-hex-hash query-hash)
                     (ex-message e))
         [::miss nil]))))

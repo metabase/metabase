@@ -147,7 +147,7 @@
           (when (pos? deleted-count)
             (log/infof "Cleaned up %d old tombstone records from gate table" deleted-count)))))
     (catch Exception e
-      (log/error e "Failed to clean up tombstone records from gate table"))))
+      (log/errorf "Failed to clean up tombstone records from gate table: %s" (ex-message e)))))
 
 (defn- cleanup-stale-indexes!
   [pgvector index-metadata]

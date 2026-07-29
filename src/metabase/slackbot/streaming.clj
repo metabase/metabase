@@ -307,7 +307,7 @@
                                           :thread_ts thread-ts
                                           :text      (viz-error-message e)})
     (catch Exception post-e
-      (log/error post-e "Failed to post visualization error"))))
+      (log/errorf "Failed to post visualization error: %s" (ex-message post-e)))))
 
 (defn- collect-viz-blocks
   "Wait for all in-flight visualization futures and return blocks to include in stop-stream.
@@ -323,10 +323,10 @@
          (assoc acc :blocks (into blocks (viz-output->blocks output filename resolved-title link))))
        (catch ExecutionException e
          (let [cause (or (.getCause e) e)]
-           (log/errorf cause "Visualization future %d failed" idx)
+           (log/errorf "Visualization future %d failed: %s" idx (ex-message cause))
            {:blocks blocks :errors (conj errors cause)}))
        (catch Exception e
-         (log/errorf e "Visualization future %d failed" idx)
+         (log/errorf "Visualization future %d failed: %s" idx (ex-message e))
          {:blocks blocks :errors (conj errors e)})))
    {:blocks [] :errors []}
    (sort-by first prefetched-viz)))
@@ -423,7 +423,7 @@
         thinking-ts       (atom nil)
         slack-writer      (agent nil
                                  :error-mode    :continue
-                                 :error-handler (fn [_ e] (log/warn e "[slackbot] Async Slack write failed")))
+                                 :error-handler (fn [_ e] (log/warnf "[slackbot] Async Slack write failed: %s" (ex-message e))))
         stream-opts       {:channel   channel
                            :thread_ts thread-ts
                            :team_id   team-id
@@ -603,7 +603,7 @@
           (slackbot.client/post-thread-reply client message-ctx "I wasn't able to generate a response. Please try again.")))
       (catch Exception e
         (cancel-prefetched-viz! prefetched-viz)
-        (log/error e "[slackbot] Error in streaming response")
+        (log/errorf "[slackbot] Error in streaming response: %s" (ex-message e))
         (when-not (await-for slack-writer-await-timeout-ms slack-writer)
           (log/warn "[slackbot] Timed out waiting for slack-writer agent to flush"))
         (if-let [{:keys [stream_ts channel]} @stream-state]
@@ -619,7 +619,7 @@
                   (when-not (:ok fallback-result)
                     (log/errorf "[slackbot] cleanup fallback post-message failed: %s" (:error fallback-result))))))
             (catch Exception stop-e
-              (log/debug stop-e "[slackbot] Failed to stop stream during error cleanup")))
+              (log/debugf "[slackbot] Failed to stop stream during error cleanup: %s" (ex-message stop-e))))
           (slackbot.client/post-thread-reply client message-ctx "Something went wrong. Please try again."))))))
 
 (defn send-response

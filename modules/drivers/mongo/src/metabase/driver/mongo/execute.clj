@@ -199,7 +199,7 @@
                     (.next cursor))
         {row-col-names :row
          unescaped-col-names :unescaped} (result-col-names native-query query (row-keys first-row))]
-    (log/tracef "Renaming columns in results %s -> %s" (pr-str row-col-names) (pr-str unescaped-col-names))
+    (log/tracef "Renaming %d columns in results" (count row-col-names))
     (respond (result-metadata unescaped-col-names)
              (if-not first-row
                []

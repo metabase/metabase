@@ -64,7 +64,7 @@
                   (channel.settings/unobfuscated-slack-app-token))]
     (when token
       (let [url     (str "https://slack.com/api/" (name endpoint))
-            _       (log/tracef "Slack API request: %s %s" (pr-str url) (pr-str request))
+            _       (log/tracef "Slack API request: %s" (pr-str url))
             request (m/deep-merge
                      {:headers        {:authorization (str "Bearer\n" token)}
                       :as             :stream
@@ -322,7 +322,7 @@
   (try
     (POST "conversations.join" {:query-params {:channel channel-id}})
     (catch Throwable e
-      (log/warnf e "Could not join Slack channel %s; a file share may fail" channel-id))))
+      (log/warnf "Could not join Slack channel %s; a file share may fail: %s" channel-id (ex-message e)))))
 
 (declare post-chat-message!)
 

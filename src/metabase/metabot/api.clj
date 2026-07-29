@@ -138,10 +138,11 @@
             ;; the socket cleanly when this body fn returns. The error is fully
             ;; captured in the row via the `finally` below and in the log here.
             (vreset! thrown t)
-            (log/error t "Native agent stream failed"
+            (log/error "Native agent stream failed"
                        {:conversation-id conversation-id
                         :assistant-msg-id assistant-msg-id
-                        :external-id     external-id})
+                        :external-id     external-id
+                        :error           (ex-message t)})
             ;; Stream a well-formed AI SDK error part so the client surfaces the failure
             ;; instead of treating the truncated stream as a silent success. Unlike binary
             ;; downloads (which abort the connection), an event stream carries its own error
@@ -173,10 +174,11 @@
                  :finished?  (not aborted?)
                  :error      error-data))
               (catch Exception e
-                (log/error e "Failed to finalize assistant turn"
+                (log/error "Failed to finalize assistant turn"
                            {:conversation-id  conversation-id
                             :assistant-msg-id assistant-msg-id
-                            :external-id      external-id})))))))))
+                            :external-id      external-id
+                            :error            (ex-message e)})))))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc.

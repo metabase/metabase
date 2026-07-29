@@ -31,7 +31,7 @@
           (semantic-search.core/repair-index! (search.ingestion/searchable-documents)))
         (log/info "Completed semantic search index repair")
         (catch Exception e
-          (log/error e "Failed to complete semantic search index repair"))))))
+          (log/errorf "Failed to complete semantic search index repair: %s" (ex-message e)))))))
 
 (defmethod task/init! ::SemanticIndexRepair [_]
   (when (semantic.u/semantic-search-configured?)

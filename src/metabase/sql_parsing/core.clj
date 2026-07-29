@@ -173,7 +173,7 @@
   (try
     (strip-large-values* sql)
     (catch Exception e
-      (log/warn e "Error stripping VALUES clauses, passing SQL through unchanged")
+      (log/warnf "Error stripping VALUES clauses, passing SQL through unchanged: %s" (ex-message e))
       sql)))
 
 ;;; -------------------------------------------------- Public API --------------------------------------------------

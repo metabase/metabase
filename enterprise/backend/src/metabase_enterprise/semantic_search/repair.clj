@@ -86,7 +86,7 @@
                                 (sql/format :quoted true)))
     (log/infof "Cleaned up repair table: %s" repair-table-name)
     (catch Exception e
-      (log/warnf e "Failed to drop repair table: %s" repair-table-name))))
+      (log/warnf "Failed to drop repair table %s: %s" repair-table-name (ex-message e)))))
 
 (defn- repair-table-name
   "Generates a unique name for a repair table with timestamp for cleanup.

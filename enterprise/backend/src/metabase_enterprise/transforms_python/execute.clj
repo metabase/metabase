@@ -62,12 +62,12 @@
                   (recur))
                 :else
                 (do
-                  (log/warnf "Unexpected status polling for logs %s %s, run-id: %s" status body run-id)
+                  (log/warnf "Unexpected status polling for logs %s, run-id: %s" status run-id)
                   (log/debug "Exiting due to poll error")))))))
     (catch SocketException se (when-not (= "Closed by interrupt" (ex-message se)) (throw se)))
     (catch InterruptedException _)
     (catch Throwable e
-      (log/errorf e "An exception was caught during msg update loop, run-id: %s" run-id))))
+      (log/errorf "An exception was caught during msg update loop, run-id: %s: %s" run-id (ex-message e)))))
 
 (defn- open-python-message-update-future! ^Closeable [run-id message-log]
   (if (app-db/in-transaction?)
@@ -141,5 +141,5 @@
                 (transforms-base.u/complete-execution! transform {})
                 {:run_id run-id :result result}))))))
     (catch Throwable t
-      (log/error t "Error executing Python transform")
+      (log/errorf "Error executing Python transform: %s" (ex-message t))
       (throw t))))
