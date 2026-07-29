@@ -601,7 +601,7 @@ export const defaultFontFiles = ({ baseUrl = "./" } = {}) => {
     }
 
     /*
-     * RTL script coverage. Metabase's built-in fonts are Latin-only, so Arabic,
+     * RTL script coverage. The bundled faces above are Latin-only, so Arabic,
      * Persian, Urdu and Hebrew text otherwise falls back to whatever the OS
      * happens to provide. The unicode-range below keeps these files from being
      * downloaded at all unless the page actually renders those scripts, so LTR
