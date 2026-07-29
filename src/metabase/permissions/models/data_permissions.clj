@@ -152,6 +152,10 @@
 ;;;
 ;;;  - [[*full-perms-cache*]]     -> every permission row, table-level rows included; loaded per database
 ;;;  - [[*distinct-perms-cache*]] -> `table_id`-collapsed distinct rows; loaded per permission type across all databases
+;;;
+;;; Both caches are point-in-time snapshots for the request: nothing invalidates them when data_permissions is
+;;; written, so code that mutates permissions and re-checks them within the same request scope reads pre-write
+;;; answers, and the two caches may observe a concurrent write at different first-load moments.
 
 (def ^:dynamic *full-perms-cache*
   "A dynamically-bound atom caching the current user's full permission rows — every table-level row included — for
@@ -211,6 +215,25 @@
   [[*full-perms-cache*]]."
   (atom {:perm-types #{} :perms {}}))
 
+(defn- perm-rows-query-base
+  "The FROM/JOIN/WHERE shared by [[full-perm-rows]] and [[distinct-perm-rows]]: one user's groups' rows for one
+  permission type, excluding rows for deactivated tables. Both caches must select from this same row set so they can
+  never answer the same permission question differently — change the row set here, not in one of the two queries.
+  `db-ids` of nil means every database."
+  [user-id perm-type db-ids]
+  {:from [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+   :join [[(t2/table-name :model/PermissionsGroup) :pg] [:= :pg.id :pgm.group_id]
+          [(t2/table-name :model/DataPermissions) :p] [:= :p.group_id :pg.id]]
+   :left-join [[(t2/table-name :model/Table) :mt] [:= :mt.id :p.table_id]]
+   :where [:and
+           [:= :pgm.user_id user-id]
+           [:= :p.perm_type (u/qualified-name perm-type)]
+           (when (seq db-ids)
+             [:in :p.db_id db-ids])
+           [:or
+            [:= :p.table_id nil]
+            [:= :mt.active true]]]})
+
 (defn- full-perm-rows
   "Returns a reducible of all relevant permission rows for the user, excluding permissions for deactivated tables, for
   the given sequence of database IDs and permission type. Reducing it folds rows one at a time instead of realizing
@@ -222,18 +245,8 @@
   (eduction
    (map t2.realize/realize)
    (t2/reducible-query
-    {:select [:p.group_id :p.db_id :p.table_id :p.schema_name :p.perm_value]
-     :from [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
-     :join [[(t2/table-name :model/PermissionsGroup) :pg] [:= :pg.id :pgm.group_id]
-            [(t2/table-name :model/DataPermissions) :p] [:= :p.group_id :pg.id]]
-     :left-join [[(t2/table-name :model/Table) :mt] [:= :mt.id :p.table_id]]
-     :where [:and
-             [:= :pgm.user_id user-id]
-             [:in :p.db_id db-ids]
-             [:= :p.perm_type (u/qualified-name perm-type)]
-             [:or
-              [:= :p.table_id nil]
-              [:= :mt.active true]]]})))
+    (assoc (perm-rows-query-base user-id perm-type db-ids)
+           :select [:p.group_id :p.db_id :p.table_id :p.schema_name :p.perm_value]))))
 
 (defn- add-row-to-full-entry
   "Fold a single data_permissions row into an in-progress cache entry (see [[rows->full-perms]] for the semantics).
@@ -270,7 +283,7 @@
   coalescing would deny)."
   [interner rows]
   (-> (reduce (fn [m {:keys [db_id] :as row}]
-                (update m db_id (fnil #(add-row-to-full-entry interner % row) {})))
+                (update m db_id #(add-row-to-full-entry interner % row)))
               {}
               rows)
       (update-vals #(finalize-full-entry interner %))))
@@ -327,12 +340,10 @@
   request cache is available, missing databases are loaded and stored for that permission type; otherwise the
   requested rows are loaded directly."
   [user-id db-ids perm-type]
-  (let [cache?    (use-cache? user-id)
-        interner (or (when cache?
-                       (:intern @*full-perms-cache*))
-                     (if cache?
-                       (:intern (swap! *full-perms-cache* update :intern #(or % (u.memo/fast-interner))))
-                       (u.memo/fast-interner)))]
+  (let [cache?   (use-cache? user-id)
+        interner (if cache?
+                   (:intern (swap! *full-perms-cache* update :intern #(or % (u.memo/fast-interner))))
+                   (u.memo/fast-interner))]
     (if cache?
       (let [loaded-db-ids  (get-in @*full-perms-cache* [:db-ids perm-type] #{})
             missing-db-ids (into [] (remove loaded-db-ids) db-ids)]
@@ -352,25 +363,27 @@
   [user-id perm-type db-id]
   (get (full-perms user-id [db-id] perm-type) db-id))
 
+(defn prime-full-perms-cache
+  "Eagerly load [[*full-perms-cache*]] for the given permission types and database IDs for the current user.
+  Table-level checks fill the cache one database at a time, so call this before checking permissions across many
+  databases to pay one query per permission type instead of one per database. A no-op when the request cache is
+  unavailable."
+  [perm-types db-ids]
+  (when (and (use-cache? api/*current-user-id*) (seq db-ids))
+    (doseq [perm-type perm-types]
+      (full-perms api/*current-user-id* db-ids perm-type))))
+
 (defn- distinct-perm-rows
   "Returns a reducible of the distinct permission rows described on [[*distinct-perms-cache*]] for `user-id`.
-  Rows are realized one at a time before key access, for the same reasons as [[full-perm-rows]]."
-  [user-id perm-type]
+  `db-ids` of nil covers every database. Rows are realized one at a time before key access, for the same reasons as
+  [[full-perm-rows]]."
+  [user-id perm-type db-ids]
   (eduction
    (map t2.realize/realize)
    (t2/reducible-query
-    {:select-distinct [:p.db_id :p.group_id :p.schema_name :p.perm_value
-                       [[:case [:= :p.table_id nil] [:inline 0] :else [:inline 1]] :table_level]]
-     :from [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
-     :join [[(t2/table-name :model/PermissionsGroup) :pg] [:= :pg.id :pgm.group_id]
-            [(t2/table-name :model/DataPermissions) :p] [:= :p.group_id :pg.id]]
-     :left-join [[(t2/table-name :model/Table) :mt] [:= :mt.id :p.table_id]]
-     :where [:and
-             [:= :pgm.user_id user-id]
-             [:= :p.perm_type (u/qualified-name perm-type)]
-             [:or
-              [:= :p.table_id nil]
-              [:= :mt.active true]]]})))
+    (assoc (perm-rows-query-base user-id perm-type db-ids)
+           :select-distinct [:p.db_id :p.group_id :p.schema_name :p.perm_value
+                             [[:case [:= :p.table_id nil] [:inline 0] :else [:inline 1]] :table_level]]))))
 
 (defn- rows->distinct-perms
   "Reduces distinct permission rows for one permission type into `{db-id #{tuple}}` (see
@@ -387,9 +400,9 @@
 
 (defn- load-distinct-perms
   "Loads the distinct permission tuples described on [[*distinct-perms-cache*]] for one user and permission type,
-  nested as `{db-id #{tuple}}`."
-  [user-id perm-type]
-  (rows->distinct-perms (distinct-perm-rows user-id perm-type)))
+  nested as `{db-id #{tuple}}`. `db-ids` of nil loads every database."
+  [user-id perm-type db-ids]
+  (rows->distinct-perms (distinct-perm-rows user-id perm-type db-ids)))
 
 (defn- distinct-perms
   "Returns `{db-id #{tuple}}` (see [[*distinct-perms-cache*]]) for the given user and permission type. Answered from
@@ -398,22 +411,23 @@
   (if (use-cache? user-id)
     (do
       (when-not (contains? (:perm-types @*distinct-perms-cache*) perm-type)
-        (let [by-db (load-distinct-perms user-id perm-type)]
+        (let [by-db (load-distinct-perms user-id perm-type nil)]
           (swap! *distinct-perms-cache*
                  (fn [cache]
-                   (if (contains? (:perm-types cache) perm-type)
-                     cache
-                     (-> cache
-                         (update :perm-types conj perm-type)
-                         (assoc-in [:perms user-id perm-type] by-db)))))))
+                   (-> cache
+                       (update :perm-types conj perm-type)
+                       (assoc-in [:perms user-id perm-type] by-db))))))
       (get-in @*distinct-perms-cache* [:perms user-id perm-type]))
-    (load-distinct-perms user-id perm-type)))
+    (load-distinct-perms user-id perm-type nil)))
 
 (defn- distinct-db-perms
   "Returns the set of distinct permission tuples (see [[*distinct-perms-cache*]]) for the given user, permission type
-  and database, or nil when the user has no permission rows for it."
+  and database, or nil when the user has no permission rows for it. Without a request cache the load is scoped to the
+  one database instead of scanning all of the user's rows."
   [user-id perm-type db-id]
-  (get (distinct-perms user-id perm-type) db-id))
+  (if (use-cache? user-id)
+    (get (distinct-perms user-id perm-type) db-id)
+    (get (load-distinct-perms user-id perm-type [db-id]) db-id)))
 
 ;;; ---------------------------------------- Fetching a user's permissions --------------------------------------------
 

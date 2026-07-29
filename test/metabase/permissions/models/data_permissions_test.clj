@@ -85,33 +85,30 @@
     (binding [api/*current-user-id*             user-id
               data-perms/*full-perms-cache*     full-cache
               data-perms/*distinct-perms-cache* distinct-cache]
-      (with-redefs-fn
-        {#'data-perms/load-full-perms
-         (fn [_interner _user-id db-ids perm-type]
-           (swap! full-loads conj [perm-type db-ids])
-           (zipmap db-ids (repeat {:groups {} :tables {}})))
-         #'data-perms/load-distinct-perms
-         (fn [_user-id perm-type]
-           (swap! distinct-loads conj perm-type)
-           {10 #{{:value perm-type}}})}
-        (fn []
-          (#'data-perms/full-perms user-id [10] :perms/view-data)
-          (#'data-perms/full-perms user-id [10 11] :perms/view-data)
-          (#'data-perms/full-perms user-id [10] :perms/create-queries)
-          (is (= [[:perms/view-data [10]]
-                  [:perms/view-data [11]]
-                  [:perms/create-queries [10]]]
-                 @full-loads))
-          (is (= {:perms/view-data      #{10 11}
-                  :perms/create-queries #{10}}
-                 (:db-ids @full-cache)))
-
-          (#'data-perms/distinct-perms user-id :perms/view-data)
-          (#'data-perms/distinct-perms user-id :perms/view-data)
-          (#'data-perms/distinct-perms user-id :perms/create-queries)
-          (is (= [:perms/view-data :perms/create-queries] @distinct-loads))
-          (is (= #{:perms/view-data :perms/create-queries}
-                 (:perm-types @distinct-cache))))))))
+      (mt/with-dynamic-fn-redefs [data-perms/load-full-perms
+                                  (fn [_interner _user-id db-ids perm-type]
+                                    (swap! full-loads conj [perm-type db-ids])
+                                    (zipmap db-ids (repeat {:groups {} :tables {}})))
+                                  data-perms/load-distinct-perms
+                                  (fn [_user-id perm-type _db-ids]
+                                    (swap! distinct-loads conj perm-type)
+                                    {10 #{{:value perm-type}}})]
+        (#'data-perms/full-perms user-id [10] :perms/view-data)
+        (#'data-perms/full-perms user-id [10 11] :perms/view-data)
+        (#'data-perms/full-perms user-id [10] :perms/create-queries)
+        (is (= [[:perms/view-data [10]]
+                [:perms/view-data [11]]
+                [:perms/create-queries [10]]]
+               @full-loads))
+        (is (= {:perms/view-data      #{10 11}
+                :perms/create-queries #{10}}
+               (:db-ids @full-cache)))
+        (#'data-perms/distinct-perms user-id :perms/view-data)
+        (#'data-perms/distinct-perms user-id :perms/view-data)
+        (#'data-perms/distinct-perms user-id :perms/create-queries)
+        (is (= [:perms/view-data :perms/create-queries] @distinct-loads))
+        (is (= #{:perms/view-data :perms/create-queries}
+               (:perm-types @distinct-cache)))))))
 
 (deftest ^:parallel at-least-as-permissive?-test
   (testing "at-least-as-permissive? correctly compares permission values"

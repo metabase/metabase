@@ -150,7 +150,7 @@
   []
   "Everything else")
 
-(defn cards->card-id->metadata-fields
+(defn- cards->card-id->metadata-fields
   "Batch-fetch the underlying Fields for the `:result_metadata` columns of `cards`, returning a map of card ID to its
   hydrated Fields. One select (plus hydration) covers every card, instead of the per-card lookup
   [[card-result-metadata->virtual-fields]] falls back to."
@@ -201,6 +201,19 @@
                                                            (:result_metadata card)
                                                            (when card-id->metadata-fields
                                                              (card-id->metadata-fields (u/the-id card))))))))
+
+(defn cards->virtual-tables
+  "Return [[card->virtual-table]] metadata for `cards`, batching the Field fetch that `:include-fields?` needs so it
+  costs one select for the whole list instead of one per card."
+  [cards & {:keys [include-database? include-fields? databases]}]
+  (let [card-id->metadata-fields (when include-fields?
+                                   (cards->card-id->metadata-fields cards))]
+    (for [card cards]
+      (card->virtual-table card
+                           :include-database? include-database?
+                           :include-fields? include-fields?
+                           :databases databases
+                           :card-id->metadata-fields card-id->metadata-fields))))
 
 (defn- remove-nested-pk-fk-semantic-types
   "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a semantic

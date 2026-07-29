@@ -199,13 +199,14 @@
                 (card-has-ambiguous-columns? card)))))
 
 (defn- ids-of-dbs-that-support-source-queries []
+  ;; the nested-queries check only reads the engine — don't realize full rows (decrypted :details etc.) for it
   (set (keep (fn [db]
                (try
                  (when (driver.u/supports? (driver.u/database->driver db) :nested-queries db)
                    (:id db))
                  (catch Throwable e
                    (log/errorf "Error determining whether Database supports nested queries: %s" (ex-message e)))))
-             (t2/select :model/Database))))
+             (t2/select [:model/Database :id :engine]))))
 
 (mu/defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
@@ -251,13 +252,8 @@
    Builder.)"
   [card-type :- ::queries.schema/card-type
    & {:keys [include-fields?]}]
-  (let [cards                    (source-query-cards card-type)
-        card-id->metadata-fields (when include-fields?
-                                   (schema.table/cards->card-id->metadata-fields cards))]
-    (for [card cards]
-      (schema.table/card->virtual-table card
-                                        :include-fields? include-fields?
-                                        :card-id->metadata-fields card-id->metadata-fields))))
+  (schema.table/cards->virtual-tables (source-query-cards card-type)
+                                      :include-fields? include-fields?))
 
 (mu/defn- saved-cards-virtual-db-metadata
   [card-type :- ::queries.schema/card-type
