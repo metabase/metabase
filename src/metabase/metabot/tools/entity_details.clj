@@ -11,6 +11,7 @@
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
+   [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
@@ -175,8 +176,11 @@
          ;; We accept both. `report_card.table_id` / metadata `:table-id` already points
          ;; to the metric's base table and is kept in sync, so we use it verbatim instead
          ;; of digging through `:dataset_query`.
+         ;; Reading the metric Card is collection-based and does not imply permission to
+         ;; reveal metadata for this physical Table.
          source-table-id (or (:table-id card) (:table_id card))
-         source-table (when source-table-id
+         source-table (when (and source-table-id
+                                 (mi/can-read? :model/Table source-table-id))
                         (lib.metadata/table metadata-provider source-table-id))
          base-table-portable-fk (when (and database-name source-table)
                                   [database-name (:schema source-table) (:name source-table)])
@@ -201,11 +205,6 @@
               ;; Database identity — same shape as in `table-details` / `card-details`.
               :database_id database-id
               :database_name database-name
-              ;; Base table the metric aggregates. The LLM uses `:base_table_portable_fk`
-              ;; verbatim as `source-table:` in the query that consumes the metric.
-              :base_table_id source-table-id
-              :base_table_name (:name source-table)
-              :base_table_portable_fk base-table-portable-fk
               ;; Portable entity id — the string the LLM must copy verbatim into a
               ;; `[metric, {}, <entity_id>]` aggregation clause to reference this metric.
               ;; Accept both shapes (see `source-table-id` note above): t2 rows use
@@ -215,6 +214,14 @@
                                                        (->> (metabot.tools.u/->result-column metric-query))
                                                        :field_id)
               :verified (verified-review? id "card")}
+       ;; Base table the metric aggregates. The LLM uses `:base_table_portable_fk`
+       ;; verbatim as `source-table:` in the query that consumes the metric. These fields
+       ;; are added only when the base Table is readable.
+       source-table
+       (assoc :base_table_id source-table-id
+              :base_table_name (:name source-table)
+              :base_table_portable_fk base-table-portable-fk)
+
        with-queryable-dimensions?
        (assoc :queryable-dimensions (into []
                                           (comp (map #(metabot.tools.u/add-table-reference base-query %))

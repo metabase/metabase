@@ -426,6 +426,26 @@
                    (:base_table_portable_fk output))
                 "portable FK should be `[database_name, schema, table_name]`")))))))
 
+(deftest get-metric-details-hides-unreadable-base-table-test
+  (testing "metric details do not reveal metadata for a base table the user cannot read"
+    (let [mp (mt/metadata-provider)
+          metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))]
+      (mt/with-temp [:model/Card {metric-id :id} {:dataset_query metric-query
+                                                  :database_id   (mt/id)
+                                                  :name          "Restricted base-table metric"
+                                                  :type          :metric}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [output (:structured-output
+                          (entity-details/get-metric-details
+                           {:metric-id                  metric-id
+                            :with-queryable-dimensions? false
+                            :with-field-values?         false}))]
+              (is (= metric-id (:id output)) "collection access still makes the metric readable")
+              (is (not-any? #(contains? output %)
+                            [:base_table_id :base_table_name :base_table_portable_fk])))))))))
+
 ;;; ============================================================
 ;;; Portable entity_id in card details (step 11.2)
 ;;; ============================================================
