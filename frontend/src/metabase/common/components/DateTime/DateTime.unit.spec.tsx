@@ -2,11 +2,11 @@ import dayjs from "dayjs";
 
 import { render, screen } from "__support__/ui";
 import { DateTime } from "metabase/common/components/DateTime";
-import MetabaseSettings from "metabase/utils/settings";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
-} from "metabase/value-formatting";
+} from "metabase/utils/formatting";
+import MetabaseSettings from "metabase/utils/settings";
 
 describe("DateTime", () => {
   const TEST_DATE = "2021-06-08T14:40:10";

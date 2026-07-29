@@ -5,7 +5,7 @@ import { DateTimePicker } from "metabase/ui";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
-} from "metabase/value-formatting";
+} from "metabase/utils/formatting";
 
 import type { TableActionInputSharedProps } from "./types";
 import { useDateValueWithoutTimezone } from "./use-date-value-without-timezone";

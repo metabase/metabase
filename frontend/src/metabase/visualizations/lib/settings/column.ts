@@ -8,6 +8,7 @@ import {
   getCurrencyNarrowSymbol,
   getCurrencyStyleOptions,
   getCurrencySymbol,
+  hasHour,
   numberFormatterForOptions,
 } from "metabase/utils/formatting";
 import MetabaseSettings from "metabase/utils/settings";
@@ -16,7 +17,6 @@ import {
   getDateFormatFromStyle,
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
-  hasHour,
 } from "metabase/value-formatting";
 import { getVisualization, getVisualizationRaw } from "metabase/visualizations";
 import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";

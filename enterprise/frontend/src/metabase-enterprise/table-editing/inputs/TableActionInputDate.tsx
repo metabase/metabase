@@ -1,7 +1,7 @@
 import { type KeyboardEvent, useCallback, useState } from "react";
 
 import { DateInput } from "metabase/ui";
-import { DEFAULT_DATE_STYLE } from "metabase/value-formatting";
+import { DEFAULT_DATE_STYLE } from "metabase/utils/formatting";
 
 import type { TableActionInputSharedProps } from "./types";
 import {

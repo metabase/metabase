@@ -12,6 +12,13 @@ export {
   getCurrencyStyleOptions,
   getCurrencySymbol,
 } from "./currency";
+export {
+  DEFAULT_DATE_STYLE,
+  DEFAULT_TIME_STYLE,
+  getTimeFormatFromStyle,
+  hasDay,
+  hasHour,
+} from "./datetime-utils";
 export { duration, formatDurationLong } from "./duration";
 export { formatField } from "./field";
 export { formatNullable } from "./nullable";
