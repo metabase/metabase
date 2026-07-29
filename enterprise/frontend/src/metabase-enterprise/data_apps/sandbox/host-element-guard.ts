@@ -104,24 +104,25 @@ class HostRealmElementGuard {
       }
     };
 
-    // The natives carry tag-name overloads the guards don't reproduce; the casts
-    // keep the patched document assignable to `Document`.
-    document.createElement = ((
-      tag: string,
-      options?: ElementCreationOptions,
-    ) => {
+    const guardedCreate = (tag: string, options?: ElementCreationOptions) => {
       rejectIfBlocked(tag, "createElement");
       return createElement(tag, options);
-    }) as Document["createElement"];
+    };
 
-    document.createElementNS = ((
+    const guardedCreateNS = (
       namespaceURI: string | null,
       qualifiedName: string,
       options?: ElementCreationOptions,
     ) => {
       rejectIfBlocked(qualifiedName, "createElementNS");
       return createElementNS(namespaceURI, qualifiedName, options);
-    }) as Document["createElementNS"];
+    };
+
+    // The natives carry tag-name overloads the guards don't reproduce; assert back to
+    // the native property type so the patched document still satisfies `Document`.
+    document.createElement = guardedCreate as Document["createElement"];
+    // Same overload-preserving assertion as `createElement`.
+    document.createElementNS = guardedCreateNS as Document["createElementNS"];
   }
 
   private guardMarkupInsertion(): void {
