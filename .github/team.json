@@ -124,6 +124,13 @@
         "losrebellos",
         "tmashara"
       ]
+    },
+    {
+      "name": "Security Engineering",
+      "label": ".Team/SecurityEngineering",
+      "members": [
+        "enthym-aa"
+      ]
     }
   ]
 }
