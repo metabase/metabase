@@ -48,6 +48,32 @@ describe("getErrorMessage", () => {
     expect(result).toEqual("Fallback message");
   });
 
+  it("should build a message from a malli param-validation payload's specific-errors (metabase#78092)", () => {
+    const result = getErrorMessage({
+      data: {
+        "specific-errors": {
+          source_tables: ["should have at least 1 elements, received: []"],
+        },
+        errors: {
+          source_tables:
+            "sequence with length >= 1 of A source table entry in the array format. Combines alias with table reference.",
+        },
+      },
+    });
+    expect(result).toEqual(
+      "source_tables: should have at least 1 elements, received: []",
+    );
+  });
+
+  it("should fall back to a malli param-validation payload's errors when specific-errors is absent", () => {
+    const result = getErrorMessage({
+      data: {
+        errors: { source_tables: "must have at least 1 element" },
+      },
+    });
+    expect(result).toEqual("source_tables: must have at least 1 element");
+  });
+
   it("should return a default fallback message if payload is null", () => {
     const result = getErrorMessage(null);
     expect(result).toEqual("Something went wrong");
