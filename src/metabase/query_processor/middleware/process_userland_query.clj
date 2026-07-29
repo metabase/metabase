@@ -57,7 +57,7 @@
       (try
         (query/save-queries-and-update-average-execution-times! entries)
         (catch Throwable e
-          (log/error e "Error updating query average execution times"))))
+          (log/errorf "Error updating query average execution times: %s" (ex-message e)))))
     (try
       (let [{with-context true, no-context false} (group-by (comp some? :context) query-executions)]
         (when (seq no-context)
@@ -65,7 +65,7 @@
         (when (seq with-context)
           (t2/insert! :model/QueryExecution (map #(dissoc % :json_query) with-context))))
       (catch Throwable e
-        (log/error e "Error saving query execution info")))))
+        (log/errorf "Error saving query execution info: %s" (ex-message e))))))
 
 (defonce ^:private save-execution-metadata-queue
   (delay (grouper/start!
@@ -100,7 +100,7 @@
   (try
     (save-execution-metadata! (assoc query-execution :error (str message)))
     (catch Throwable e
-      (log/errorf e "Unexpected error saving failed query execution: %s" (ex-message e)))))
+      (log/errorf "Unexpected error saving failed query execution: %s" (ex-message e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
@@ -240,7 +240,7 @@
 
   3. Add extra info like `running_time` and `started_at` to the results
 
-  4. Submit a background job to analyze field usages"
+  4. Submit a background job to save execution info"
   [qp :- ::qp.schema/qp]
   (mu/fn [query :- ::qp.schema/any-query
           rff   :- ::qp.schema/rff]
@@ -257,8 +257,7 @@
         (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
               execution-info (query-execution-info query)]
           (letfn [(rff* [metadata]
-                    (let [;; we only need the preprocessed query to find field usages, so make sure we don't return it
-                          result         (rff (dissoc metadata :preprocessed_query))
+                    (let [result         (rff metadata)
                           execution-info (enrich-with-execution-context execution-info)]
                       (add-and-save-execution-metadata-xform! execution-info result)))]
             (try

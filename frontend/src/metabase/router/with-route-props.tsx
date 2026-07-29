@@ -1,9 +1,8 @@
 import type { ComponentType } from "react";
 
 import { useRoute } from "./Outlet";
-import type { InjectedRouter, PlainRoute } from "./react-router";
 import type { Route } from "./route";
-import type { Location, Params } from "./types";
+import type { InjectedRouter, Location, Params, PlainRoute } from "./types";
 import { useRouter } from "./use-router";
 
 /**

@@ -91,16 +91,6 @@
     ;; headings render without a card background, matching the frontend default
     (= display "heading") (assoc :dashcard.background false)))
 
-(defmethod serdes/hash-fields :model/DashboardCard
-  [_dashboard-card]
-  [(serdes/hydrated-hash :card) ; :card is optional, eg. text cards
-   (comp serdes/identity-hash
-         #(t2/select-one 'Dashboard :id %)
-         :dashboard_id)
-   :visualization_settings
-   :row :col
-   :created_at])
-
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
 
 (mi/define-batched-hydration-method series

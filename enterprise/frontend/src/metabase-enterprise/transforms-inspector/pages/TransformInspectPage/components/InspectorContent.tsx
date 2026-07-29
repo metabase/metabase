@@ -15,7 +15,7 @@ import { getLensKey } from "./LensNavigator/utils";
 
 type InspectorContentProps = {
   transform: Transform;
-  params: RouteParams;
+  params: Partial<RouteParams>;
   location: Location;
 };
 

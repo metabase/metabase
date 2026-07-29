@@ -132,7 +132,7 @@
                            (cond-> {:object run}
                              (:user_id run) (assoc :user-id (:user_id run))))
     (catch Throwable t
-      (log/warnf t "Failed to publish transform-run-timeout event for run %s" (pr-str (:id run))))))
+      (log/warnf "Failed to publish transform-run-timeout event for run %s: %s" (pr-str (:id run)) (ex-message t)))))
 
 (defn timeout-run!
   "Mark a started run as timed out."

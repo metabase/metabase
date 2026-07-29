@@ -30,8 +30,8 @@
   "Lightweight non-archived `(id, name)` rows for one entity type, for name clustering. card/dashboard/document
   (`::collection-item`) filter on their `archived` column and add any `common/candidate-cols` (card carries
   `:card_schema`, required by its after-select hook); transform has no `archived` column (hard-deleted), so
-  every row counts. Scan-time and instance-wide - deliberately un-permissioned, unlike the serve layer's
-  `read-entity-rows`."
+  every row counts; collection narrows to the shared collection-subject set. Scan-time and instance-wide -
+  deliberately un-permissioned, unlike the serve layer's `read-entity-rows`."
   {:arglists '([entity-type])}
   identity
   :hierarchy #'common/hierarchy)
@@ -45,6 +45,11 @@
 (defmethod candidate-rows :transform
   [_]
   (t2/select [:model/Transform :id :name]))
+
+(defmethod candidate-rows :collection
+  [_]
+  ;; the shared collection-subject definition, so no two checkers can scan divergent collection sets
+  (t2/select [:model/Collection :id :name] {:where common/eligible-collection-where}))
 
 (defn- cluster-findings
   "One `:duplicated` finding per member of a name cluster; peers are the other members (symmetric: in
@@ -71,13 +76,9 @@
     finding))
 
 (defn checker
-  "Instance-wide `:duplicated` finding maps across every covered entity type except `:collection` - a
-  duplicate-name check the imbalanced-only `:collection` subject deliberately sits out (it has no
-  `candidate-rows` method; mirrors `api.common/covered-entity-types`). The denormalized display attrs are
-  stamped by `common/attach-entity-attrs`; `:duration-ms`/`:last-active-at` are left unset (those columns
-  stay NULL on duplicated findings)."
+  "Instance-wide `:duplicated` finding maps across all covered entity types. The denormalized display
+  attrs are stamped by `common/attach-entity-attrs`; `:duration-ms`/`:last-active-at` are left unset
+  (those columns stay NULL on duplicated findings)."
   []
   (common/attach-entity-attrs
-   ;; exclude :collection - it is an imbalanced-only subject with no candidate-rows method, so iterating it
-   ;; would throw at dispatch. duplicated covers the collection-resident content types only.
-   (into [] (mapcat findings-for-type) (remove #{:collection} (keys common/entity-type->model)))))
+   (into [] (mapcat findings-for-type) (keys common/entity-type->model))))

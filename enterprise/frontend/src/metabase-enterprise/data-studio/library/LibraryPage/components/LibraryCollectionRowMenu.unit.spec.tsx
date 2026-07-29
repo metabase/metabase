@@ -117,7 +117,7 @@ describe("LibraryCollectionRowMenu", () => {
 
     expect(
       screen.getByText(
-        "Archiving this collection will also unpublish the tables inside it and archive any other child items.",
+        "Archiving this collection will also unpublish the tables inside it (and any tables that depend on them) and archive any other child items.",
       ),
     ).toBeInTheDocument();
   });

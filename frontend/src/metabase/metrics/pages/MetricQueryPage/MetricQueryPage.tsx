@@ -8,13 +8,14 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { getResultMetadata } from "metabase/common/data-studio/utils/get-result-metadata";
 import type {
+  MetricPageParams,
   MetricPageProps,
   MetricUrls,
 } from "metabase/common/metrics/types";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
-import type { Route } from "metabase/router";
+import { useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -27,24 +28,19 @@ import { MetricQueryEditor } from "../../components/MetricQueryEditor";
 import { metricUrls as defaultUrls } from "../../urls";
 import { getValidationResult } from "../../utils/validation";
 
-interface MetricQueryPageProps extends MetricPageProps {
-  route: Route;
-}
-
 export function MetricQueryPage({
-  params,
-  route,
   urls = defaultUrls,
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
-}: MetricQueryPageProps) {
+}: MetricPageProps) {
+  const { cardId } = useParams<MetricPageParams>();
+
   return (
-    <MetricPageCard cardId={params.cardId}>
+    <MetricPageCard cardId={cardId}>
       {(card) => (
         <MetricQueryPageBody
           card={card}
-          route={route}
           urls={urls}
           renderBreadcrumbs={renderBreadcrumbs}
           showAppSwitcher={showAppSwitcher}
@@ -55,17 +51,13 @@ export function MetricQueryPage({
   );
 }
 
-interface MetricQueryPageBodyProps extends Omit<
-  MetricQueryPageProps,
-  "params"
-> {
+interface MetricQueryPageBodyProps extends MetricPageProps {
   card: CardApiType;
   urls: MetricUrls;
 }
 
 function MetricQueryPageBody({
   card,
-  route,
   urls,
   renderBreadcrumbs,
   showAppSwitcher,
@@ -166,7 +158,7 @@ function MetricQueryPageBody({
           />
         </Card>
       </PageContainer>
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </>
   );
 }

@@ -19,8 +19,9 @@
 
 (def covered-entity-types
   "Entity types the stale/slow finding types can emit - deliberately a hardcoded set, NOT derived from
-  `common/entity-type->model` (which also covers `:collection`, an imbalanced-only subject). Shared by
-  the stale/slow endpoints' `entity-types` param; endpoints spanning other subjects pin their own enum."
+  `common/entity-type->model` (which also covers `:collection`, a subject only the imbalanced and
+  duplicated finding types span). Shared by the stale/slow endpoints' `entity-types` param; endpoints
+  spanning other subjects pin their own enum."
   #{:card :dashboard :document :transform})
 
 (defn valid-clause
@@ -121,26 +122,6 @@
 ;;; name/created_at/creator are denormalized (frozen at scan time); description, the collection
 ;;; breadcrumb, the transform owner, and slow roll-up culprits are live-hydrated, batched per entity-type.
 
-(defn- collection-context
-  "The `entity-context` arm for `:collection` subjects, which have no `collection_id`/`creator_id`
-  columns. Its breadcrumb anchor is the **parent** collection parsed from `location` (nil at root - the
-  collection itself is already the finding's identity), and `owner` is the owning user when the collection
-  is personal (nil otherwise; a collection never has a `creator`)."
-  [ids]
-  (let [rows   (t2/select [:model/Collection :id :description :location :personal_owner_id]
-                          :id [:in (set ids)])
-        ;; default-fields select: :common_name is computed from first/last name, not a real column
-        owners (when-let [owner-ids (not-empty (into #{} (keep :personal_owner_id) rows))]
-                 (t2/select-pk->fn #(select-keys % [:id :common_name :email])
-                                   :model/User :id [:in owner-ids]))]
-    (m/index-by :id
-                (for [{:keys [location personal_owner_id] :as row} rows]
-                  (assoc row
-                         :collection_id (collection/location-path->parent-id location)
-                         ;; same {:id :common_name :email} shape the transform :owner hydrate returns,
-                         ;; so normalized-owner serves both
-                         :owner (get owners personal_owner_id))))))
-
 (defmulti ^:private hydrate-owner
   "Batch-hydrate the per-type `owner` onto already-selected rows. card/dashboard/document have no owner, so
   `::collection-item` returns rows unchanged; transform hydrates its `:owner` (a user row, or an `{:email …}`
@@ -175,6 +156,30 @@
 
 (defmethod entity-context ::common/collection-item [entity-type ids] (context-rows entity-type ids))
 (defmethod entity-context :transform [entity-type ids] (context-rows entity-type ids))
+
+(defn- collection-context
+  "The `entity-context` arm for `:collection` subjects, which have no `collection_id`/`creator_id`
+  columns: `collection_id` (the breadcrumb anchor) is the **parent** parsed from `location` - consistent
+  \"where it lives\" semantics; the subject itself is already the finding's identity - and `owner` is the
+  owning user when the collection is personal (api-design: collection carries `owner` only when personal,
+  `creator` always null). Nil at root / for regular collections respectively. Empty `ids` → nil (skips a
+  degenerate `IN ()`; callers use `get-in`, so nil is fine)."
+  [ids]
+  (when (seq ids)
+    (let [rows   (t2/select [:model/Collection :id :description :location :personal_owner_id]
+                            :id [:in (set ids)])
+          owners (when-let [owner-ids (not-empty (into #{} (keep :personal_owner_id) rows))]
+                   (t2/select-pk->fn #(select-keys % [:id :common_name :email])
+                                     [:model/User :id :email :first_name :last_name]
+                                     :id [:in owner-ids]))]
+      (m/index-by :id
+                  (for [{:keys [location personal_owner_id] :as row} rows]
+                    (assoc row
+                           :collection_id (collection/location-path->parent-id location)
+                           ;; same {:id :common_name :email} shape the transform :owner hydrate returns,
+                           ;; so normalized-owner serves both
+                           :owner (get owners personal_owner_id)))))))
+
 (defmethod entity-context :collection [_ ids] (collection-context ids))
 
 (defn- collection-breadcrumbs
@@ -271,6 +276,16 @@
   (t2/select (into [(common/entity-type->model entity-type) :id :name] (common/peer-select-cols entity-type))
              {:where (readable-entities-where ids excluded-personal-ids)}))
 
+(defmethod read-entity-rows :collection
+  [_ ids excluded-personal-ids]
+  ;; a `:collection` subject *is* the read-permission unit, so it gates on its own `:id` rather than a
+  ;; parent `:collection_id`, and has no root row to preserve.
+  (t2/select [:model/Collection :id :name]
+             {:where [:and
+                      [:in :id ids]
+                      (collection/visible-collection-filter-clause :id)
+                      (when excluded-personal-ids [:not [:in :id excluded-personal-ids]])]}))
+
 (defmethod read-entity-rows :transform
   [_ ids excluded-personal-ids]
   ;; mi/can-read? on a transform = source-type feature gate + (superuser, or data-analyst with readable
@@ -295,8 +310,9 @@
               row   (read-entity-rows etype ids excluded-personal-ids)]
           [[etype (:id row)]
            (cond-> {:id (:id row) :name (:name row) :entity_type etype}
-             (not= etype :transform) (assoc :view_count (:view_count row))
-             (= etype :card)         (assoc :card_type (:type row)))])))
+             ;; only card/dashboard/document carry view_count (transform + collection have none)
+             (contains? #{:card :dashboard :document} etype) (assoc :view_count (:view_count row))
+             (= etype :card)                                 (assoc :card_type (:type row)))])))
 
 (defn- normalized-owner
   "Normalized `owner` from the transform `:owner` hydrate or a personal collection's owning user:

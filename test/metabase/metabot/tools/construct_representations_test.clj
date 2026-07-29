@@ -1012,3 +1012,100 @@
               opts      (nth field-ref 1)]
           (is (= "TOTAL" (nth field-ref 2)))
           (is (= "type/Float" (get opts "base-type"))))))))
+
+;;; ============================================================
+;;; Metric aggregations end-to-end: YoY growth via metric + offset
+;;; ============================================================
+
+(def ^:private metric-entity-id
+  "A valid 21-char NanoID so `import-mbql` dispatches on the `[\"metric\" ...]` branch."
+  "MetricRevenue_0000001")
+
+(def ^:private mp-with-metric
+  "ORDERS plus a metric card summing TOTAL. `CREATED_AT` supports the month breakout and the
+  trailing time-interval filter."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "TOTAL"      :table-id 10 :base-type :type/Float}
+               {:id 105 :name "CREATED_AT" :table-id 10 :base-type :type/DateTime}]
+    :cards    [{:id            900
+                :name          "Revenue"
+                :database-id   1
+                :table-id      10
+                :type          :metric
+                :entity-id     metric-entity-id
+                :dataset-query {:lib/type :mbql/query
+                                :database 1
+                                :stages   [{:lib/type     :mbql.stage/mbql
+                                            :source-table 10
+                                            :aggregation  [[:sum {}
+                                                            [:field {:base-type :type/Float} 101]]]}]}}]}))
+
+(defn- lookup-metric-stub [model eid]
+  (when (and (or (= model 'Card) (= model :model/Card))
+             (= eid metric-entity-id))
+    {:id 900 :database_id 1 :entity_id eid}))
+
+(defn- with-metric-mp-and-stubs! [f]
+  (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-with-metric)
+                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                serdes/lookup-by-id                             lookup-metric-stub
+                api/read-check                                  allow-read-check
+                api/query-check                                 allow-read-check]
+    (f)))
+
+(deftest metric-offset-growth-ratio-end-to-end-test
+  (testing
+   (str "a monthly YoY growth query built from a saved metric - `metric`, `offset(metric, -12)`,\n"
+        "and the ratio `(metric - offset) / offset` - resolves to structured output: the metric\n"
+        "refs get :effective-type stamped from the metric's definition, so the expression-editor\n"
+        "gate accepts the nested arithmetic")
+    (with-metric-mp-and-stubs!
+      (fn []
+        (let [m      ["metric" {} metric-entity-id]
+              off    ["offset" {} m -12]
+              result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "filters"      [["time-interval" {}
+                                                      ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+                                                      -24 "month"]]
+                                     "aggregation"  [m
+                                                     off
+                                                     ["/" {} ["-" {} m off] off]]
+                                     "breakout"     [["field" {"temporal-unit" "month"}
+                                                      ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]]}
+                                    {"lib/type" "mbql.stage/mbql"
+                                     "filters"  [["time-interval" {}
+                                                  ["field" {} "CREATED_AT"]
+                                                  -12 "month"]]}]}))
+              structured (:structured-output result)
+              q          (:query structured)
+              metric-refs (let [acc (volatile! [])]
+                            (walk/postwalk (fn [x]
+                                             (when (and (vector? x)
+                                                        (= :metric (first x)))
+                                               (vswap! acc conj x))
+                                             x)
+                                           (:stages q))
+                            @acc)]
+          (testing "the tool returns structured output rather than an expression-editor rejection"
+            (is (string? (:query-id structured)))
+            (is (vector? (:result-columns structured))))
+          (testing "every resolved :metric ref carries :effective-type"
+            (is (= 5 (count metric-refs)))
+            (is (every? #(= :type/Float (:effective-type (nth % 1))) metric-refs)))
+          (testing "query-json exports the metric back to its portable entity_id with the stamp"
+            (let [exported     (:query-json structured)
+                  exported-agg (get-in exported ["stages" 0 "aggregation" 0])]
+              (is (= "metric" (nth exported-agg 0)))
+              (is (= metric-entity-id (nth exported-agg 2)))
+              (is (= "type/Float" (get-in exported-agg [1 "effective-type"])))
+              (testing "and the export round-trips: re-running the exported form yields an equal export"
+                (let [redo (construct/execute-representations-query (walk/keywordize-keys exported))]
+                  (is (= exported (get-in redo [:structured-output :query-json]))))))))))))

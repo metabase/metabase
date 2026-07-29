@@ -4,6 +4,7 @@
   Requires nothing module-internal, so both `checkers/*` and `serve` can depend on it acyclically."
   (:require
    [clojure.set :as set]
+   [metabase.collections.models.collection :as collection]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -23,6 +24,27 @@
   "Inverse of [[entity-type->model]] - some candidate sources (e.g. `find-candidates`) return `:model`
   keywords like `:model/Card`."
   (set/map-invert entity-type->model))
+
+(def eligible-collection-where
+  "The WHERE defining a collection *subject* - the finalized content-diagnostics eligibility set, stated
+  directly (not via `mi/exclude-internal-content-hsql`) so the scope is visible here and stable against
+  platform changes to \"internal content\". Included: the default (nil), transforms, and tenant namespaces.
+  Excluded: the snippet and analytics namespaces, the Trash and instance-analytics types, archived
+  collections, and sample content. Personal collections ARE included (the scan is permission-agnostic;
+  serve-time filters handle exclusion). The single definition of what a collection subject is, so no two
+  checkers can ever scan divergent collection sets."
+  [:and
+   [:= :archived false]
+   [:= :is_sample false]
+   ;; namespace denylist: drop snippets + analytics (the audit tree); keep default/transforms/tenant.
+   ;; NULL-safe - the nil arm keeps default-namespace collections the NOT-IN would otherwise drop.
+   [:or [:= :namespace nil]
+    [:not-in :namespace [(name collection/snippets-ns) "analytics"]]]
+   ;; type denylist: Trash lives in the default namespace, so only this arm drops it; instance-analytics is
+   ;; already dropped by the analytics-namespace arm, listed here too to mirror the spec.
+   [:or [:= :type nil]
+    [:not-in :type [collection/trash-collection-type
+                    collection/instance-analytics-collection-type]]]])
 
 ;;; ----------------------------- entity-type multimethod dispatch (shared) -----------------------------
 ;;; What the serve/scan multimethods dispatch on: a module-local `hierarchy` (keeping bare entity-type
@@ -46,9 +68,9 @@
   bodies. Per type: `:context` = extra display cols beyond `[:id :collection_id]`; `:peer` / `:candidate` =
   extra cols the duplicate-entity hydrate / duplicated checker select beyond `[:id :name]`. Only card carries
   the `:card_schema` its after-select hook requires; transform has only `:context` (its peer/candidate reads
-  are explicit methods). `collection` is absent: it isn't
-  column-resident (its breadcrumb comes from `location`, via its own `entity-context` method) and isn't
-  a duplicated subject (no peer/candidate reads)."
+  are explicit methods). `collection` is absent - it is not
+  column-resident (its breadcrumb anchor is parsed from `location`), so it carries its own `entity-context`
+  method rather than going through the shared column path; its peer/candidate reads are explicit methods too."
   {:card      {:context   [:description :view_count :type :card_schema]
                :peer      [:view_count :type :card_schema]
                :candidate [:card_schema]}

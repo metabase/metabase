@@ -1,14 +1,14 @@
 (ns metabase.api.macros.scope
   "OAuth-style scope enforcement for API endpoints.
 
-  Endpoints declare their required scope via `defendpoint` metadata (e.g. `{:scope \"agent:workspaces\"}`).
+  Endpoints declare their required scope via `defendpoint` metadata (e.g. `{:scope \"agent:query\"}`).
   A per-endpoint middleware rejects requests whose token doesn't carry the required scope.
 
   Endpoints that do NOT declare `:scope` automatically reject requests carrying `:token-scopes`,
   ensuring that scoped tokens can only reach endpoints that explicitly opt in.
 
   Scopes are space-delimited strings (mirroring OAuth's `scope` semantics) and support hierarchical
-  wildcards: `agent:*` covers `agent:workspaces`.
+  wildcards: `agent:*` covers `agent:query`.
 
   The `::unrestricted` keyword is used as a sentinel in `:token-scopes` to indicate an unrestricted token
   (session auth or unscoped JWT). Unlike `\"*\"` which is a valid wildcard scope that could appear in a
@@ -26,7 +26,7 @@
 
 (defn scope-satisfied?
   "Check if `token-scopes` (a set) satisfies `required-scope` (a string).
-   Supports hierarchical wildcards: `\"agent:*\"` covers `\"agent:workspaces\"`."
+   Supports hierarchical wildcards: `\"agent:*\"` covers `\"agent:query\"`."
   [token-scopes required-scope]
   (api-scope/scope-matches? token-scopes required-scope))
 

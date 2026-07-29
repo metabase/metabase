@@ -56,18 +56,13 @@
               etype        api.common/covered-entity-types]
         (is (some? (get-method mm etype))
             (format "%s has no method for covered type %s" mm-name etype))))
-    (testing "entity-context additionally covers :collection - the imbalanced-only subject the serve layer
-              still hydrates (its context comes from collection-context, keyed off location, not a column)"
-      (is (some? (get-method @#'api.common/entity-context :collection))
-          "entity-context must resolve a method for :collection"))
-    (testing "collection is NOT a hydrate-owner / read-entity-rows / candidate-rows subject: its owner is
-              baked into collection-context, and duplicated detection excludes it (imbalanced-only)"
+    (testing ":collection resolves candidate-rows/read-entity-rows/entity-context,
+              but is intentionally NOT a hydrate-owner subject (collections have no owner column)"
+      (doseq [[mm-name mm] (dissoc mm-by-name "hydrate-owner")]
+        (is (some? (get-method mm :collection))
+            (format "%s must resolve :collection" mm-name)))
       (is (nil? (get-method @#'api.common/hydrate-owner :collection))
-          "collection must not resolve a hydrate-owner method - its owner is baked into collection-context")
-      (is (nil? (get-method @#'api.common/read-entity-rows :collection))
-          "collection must not resolve a read-entity-rows method - duplicated excludes collection")
-      (is (nil? (get-method @#'checkers.duplicated/candidate-rows :collection))
-          "collection must not resolve a candidate-rows method - duplicated excludes collection"))
+          "hydrate-owner must stay collection-free - collection context comes from entity-context"))
     (testing "an unregistered entity-type resolves no method (no catch-all :default)"
       (doseq [[mm-name mm] mm-by-name]
         (is (nil? (get-method mm :not-an-entity-type))

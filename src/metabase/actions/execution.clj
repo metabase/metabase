@@ -24,7 +24,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (mu/defn- execute-query-action!
@@ -36,14 +35,13 @@
                                                               [:model_id      ::lib.schema.id/card]
                                                               [:dataset_query ::lib.schema/native-only-query]]
    request-parameters]
-  (log/tracef "Executing action\n\n%s" (u/pprint-to-str action))
+  (log/tracef "Executing action for model %d" model-id)
   (driver.conn/with-write-connection
     (try
       (let [parameters (for [parameter (:parameters action)]
                          (assoc parameter :value (get request-parameters (:id parameter))))
             query      (-> query
                            (assoc :parameters parameters))]
-        (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
         (binding [qp.perms/*card-id* model-id]
           (qp/execute-write-query! query)))
       (catch Throwable e
@@ -76,7 +74,7 @@
         :http
         (http-action/execute-http-action! action request-parameters))
       (catch Exception e
-        (log/error e "Error executing action.")
+        (log/errorf "Error executing action: %s" (ex-message e))
         (if-let [ed (ex-data e)]
           (let [ed (cond-> ed
                      (and (nil? (:status-code ed))
@@ -191,7 +189,6 @@
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
   [action request-parameters]
-  (workspaces/check-not-in-workspace-mode! "Actions")
   (let [;; if a value is supplied for a hidden parameter, it should raise an error
         field-settings         (get-in action [:visualization_settings :fields])
         hidden-param-ids       (->> (vals field-settings)
