@@ -18,17 +18,20 @@
 (set! *warn-on-reflection* true)
 
 (def covered-entity-types
-  "Entity types the Content Diagnostics finding types cover - every covered type can emit today (see
-  `common/entity-type->model`). Shared by every per-finding-type endpoint's `entity-types` param."
+  "Entity types the stale/slow finding types can emit - deliberately a hardcoded set, NOT derived from
+  `common/entity-type->model` (which also covers `:collection`, a subject only the imbalanced and
+  duplicated finding types span). Shared by the stale/slow endpoints' `entity-types` param; endpoints
+  spanning other subjects pin their own enum."
   #{:card :dashboard :document :transform})
 
 (defn valid-clause
-  "Result set for one `finding-type`: its latest finding per entity, excluding entities whose latest row
-  is invalidated (an older valid row does not resurface)."
-  [finding-type]
+  "Result set for one **or many** `finding-types` (an umbrella endpoint spans several): the latest
+  finding per entity, excluding entities whose latest row is invalidated (an older valid row does not
+  resurface)."
+  [finding-types]
   [:and
    [:= :invalidated_at nil]
-   [:= :finding_type finding-type]
+   [:in :finding_type (u/one-or-many finding-types)]
    ;; latest finding per entity = MAX(id) per (entity_type, entity_id, finding_type). id is the recency
    ;; key (monotonic; scan_id is a random UUID). Latest-per-entity, not newest-scan-only, so an entity a
    ;; partial scan hasn't re-written yet still shows its last finding.
@@ -55,8 +58,8 @@
                       :where  (coll-pred-fn (if (= etype :collection) :id :collection_id))}]]))
 
 (defn visible-findings-clause
-  "Keep only findings whose entity is in a collection the current user can read - always applied.
-  Fail-closed: an entity-type with no collection model is dropped."
+  "Keep only findings whose entity is in a collection the current user can read (a collection subject must
+  itself be readable) - always applied. Fail-closed: an entity-type with no collection model is dropped."
   []
   (into [:or] (entity-collection-clauses collection/visible-collection-filter-clause)))
 
@@ -88,8 +91,9 @@
 
 (defn exclude-personal-collections-clause
   "WHERE fragment dropping findings whose entity currently lives in one of `excluded-personal-ids`
-  (see `excluded-personal-collection-ids`; root and regular-collection entities are kept). Nil when
-  there is nothing to exclude."
+  (see `excluded-personal-collection-ids`) - or, for a collection subject, *is* one (the set already
+  includes descendants). Root and regular-collection entities are kept. Nil when there is nothing to
+  exclude."
   [excluded-personal-ids]
   (when excluded-personal-ids
     (into [:and]
@@ -97,17 +101,17 @@
           (entity-collection-clauses (fn [coll-col] [:in coll-col excluded-personal-ids])))))
 
 (defn findings-where
-  "Base WHERE for one finding-type's list: the valid + caller-visible base narrowed by the filters every
-  endpoint shares - personal-collection exclusion (when `:excluded-personal-collection-ids` is provided;
-  see `excluded-personal-collection-ids`), `entity-types`, and `query` name search - plus any
-  finding-type-specific `extra-filters`. Each filter is precomputed so a nil (no-op) is skipped, not
-  conjoined as a null AND-term."
-  [finding-type {:keys [excluded-personal-collection-ids entity-types query]} & extra-filters]
+  "Base WHERE for one endpoint's finding list (one finding-type, or an umbrella's several): the valid +
+  caller-visible base narrowed by the filters every endpoint shares - personal-collection exclusion
+  (when `:excluded-personal-collection-ids` is provided; see `excluded-personal-collection-ids`),
+  `entity-types`, and `query` name search - plus any finding-type-specific `extra-filters`. Each filter
+  is precomputed so a nil (no-op) is skipped, not conjoined as a null AND-term."
+  [finding-types {:keys [excluded-personal-collection-ids entity-types query]} & extra-filters]
   (let [personal-filter    (exclude-personal-collections-clause excluded-personal-collection-ids)
         entity-type-filter (when-let [types (not-empty (u/one-or-many entity-types))]
                              [:in :entity_type (mapv name types)])
         name-search-filter (name-search-clause query)]
-    (into (cond-> [:and (valid-clause finding-type) (visible-findings-clause)]
+    (into (cond-> [:and (valid-clause finding-types) (visible-findings-clause)]
             personal-filter    (conj personal-filter)
             entity-type-filter (conj entity-type-filter)
             name-search-filter (conj name-search-filter))
@@ -121,7 +125,7 @@
 (defmulti ^:private hydrate-owner
   "Batch-hydrate the per-type `owner` onto already-selected rows. card/dashboard/document have no owner, so
   `::collection-item` returns rows unchanged; transform hydrates its `:owner` (a user row, or an `{:email …}`
-  external stand-in)."
+  external stand-in). Collection sets its owner in [[collection-context]], not here."
   {:arglists '([entity-type rows])}
   (fn [entity-type _rows] entity-type)
   :hierarchy #'common/hierarchy)
@@ -144,7 +148,8 @@
 (defmulti ^:private entity-context
   "For one entity-type's id set → `{entity-id → row}` of the live display fields (description, collection_id,
   view_count, transform owner). card/dashboard/document (`::collection-item`) and transform share the
-  column-based [[context-rows]]; a non-column-resident type (e.g. collection) would get its own method."
+  column-based [[context-rows]]; collection is not column-resident, so it derives its breadcrumb anchor from
+  `location` via [[collection-context]]. An unregistered type throws - fail-closed, no `:default`."
   {:arglists '([entity-type ids])}
   (fn [entity-type _ids] entity-type)
   :hierarchy #'common/hierarchy)
@@ -180,10 +185,17 @@
 (defn- collection-breadcrumbs
   "For a set of collection ids → `{collection-id → {:id :name :effective_ancestors [{:id :name} …]}}`.
   Hydrates the permission-filtered `:effective_ancestors` breadcrumb. Selects the full row (the hydrate
-  needs `:location`). No entry for root/nil collections."
+  needs `:location`). No entry for root/nil collections.
+
+  A breadcrumb can be a collection the primary gate never checked (a `:collection` subject's breadcrumb
+  is its **parent**), so caller visibility is re-applied here - an unreadable breadcrumb collection gets
+  no entry and the finding's `collection` degrades to null, same as root."
   [coll-ids]
   (when (seq coll-ids)
-    (let [colls (t2/hydrate (t2/select :model/Collection :id [:in (set coll-ids)])
+    (let [colls (t2/hydrate (t2/select :model/Collection
+                                       {:where [:and
+                                                [:in :id (set coll-ids)]
+                                                (collection/visible-collection-filter-clause :id)]})
                             :effective_ancestors)]
       (into {}
             (map (fn [c]
@@ -238,9 +250,9 @@
   link/icon; `view_count` is the card's live usage counter. Batched.
 
   Culprit cards can live outside their container's collection, so the per-caller read-time filters are
-  re-applied here: caller visibility (the same gate as `visible-findings-clause`) always, and the
-  personal-collection exclusion when `excluded-personal-ids` is provided. A filtered-out culprit drops
-  out of `slow_entities` exactly like a deleted one."
+  re-applied here via [[readable-entities-where]]: caller visibility always, and the personal-collection
+  exclusion when `excluded-personal-ids` is provided. A filtered-out culprit drops out of `slow_entities`
+  exactly like a deleted one."
   [card-ids excluded-personal-ids]
   (when (seq card-ids)
     ;; `:card_schema` is required on any Card select - its after-select schema-upgrade hook reads it.
@@ -303,8 +315,9 @@
              (= etype :card)                                 (assoc :card_type (:type row)))])))
 
 (defn- normalized-owner
-  "Normalized `owner` from the transform `:owner` hydrate: `{id,name,email,type:user}` or, for an external
-  email-only owner, `{email,type:external}`. Nil for entity types with no owner (card/dashboard/document)."
+  "Normalized `owner` from the transform `:owner` hydrate or a personal collection's owning user:
+  `{id,name,email,type:user}` or, for an external email-only transform owner, `{email,type:external}`.
+  Nil for entity types with no owner (card/dashboard/document, non-personal collections)."
   [{:keys [owner]}]
   (when owner
     (let [{:keys [id common_name email]} owner]
@@ -339,8 +352,8 @@
 (defmulti ^:private finalize-finding
   "Apply the finding-type-specific tail to one assembled finding `base`: hoist the type's native top-level
   column(s) from `row`, and rewrite `details` from the batch-hydrated `ctx` (`{:culprits _ :entities _}`).
-  Dispatches per row on `finding_type`, so a page may mix finding types (an umbrella endpoint); an
-  unregistered type throws - fail-closed, no `:default`."
+  Dispatches per row on `finding_type`, so a page may mix finding types (an umbrella endpoint; the imbalanced
+  umbrella spans three); an unregistered type throws - fail-closed, no `:default`."
   {:arglists '([finding-type base row ctx])}
   (fn [finding-type _base _row _ctx] finding-type))
 
@@ -355,6 +368,11 @@
   (-> (merge base (select-keys row [:duplicate_count]))
       (update :details with-duplicate-peers (:entity_type row) entities)))
 
+;; the imbalanced umbrella - all three types hoist the same measured magnitude, no details rewrite
+(defmethod finalize-finding :empty   [_ base row _ctx] (merge base (select-keys row [:content_count])))
+(defmethod finalize-finding :sparse  [_ base row _ctx] (merge base (select-keys row [:content_count])))
+(defmethod finalize-finding :crowded [_ base row _ctx] (merge base (select-keys row [:content_count])))
+
 (defn hydrate-findings
   "Project stored findings into the response shape: flat identity + denormalized display fields, plus a
   nested `details` = stored verdict + {collection, description, owner, creator, view_count?}. `view_count`
@@ -364,8 +382,9 @@
 
   The finding-type-specific tail - the hoisted native column(s) and any `details` rewrite (slow culprits /
   duplicated peers) - is dispatched per row on each finding's `finding_type` via [[finalize-finding]], so a
-  page may mix finding types. `excluded-personal-ids` (the request's resolved exclusion set) gates the
-  culprit/peer hydration so it matches the findings filter without re-querying."
+  page may mix finding types (an umbrella endpoint; the imbalanced umbrella spans three).
+  `excluded-personal-ids` (the request's resolved exclusion set) gates the culprit/peer hydration so it
+  matches the findings filter without re-querying."
   [findings excluded-personal-ids]
   (let [ctx-by-type (into {} (for [[etype rows] (group-by :entity_type findings)]
                                [etype (entity-context etype (map :entity_id rows))]))

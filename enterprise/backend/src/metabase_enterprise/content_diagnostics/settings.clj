@@ -29,3 +29,60 @@
   :type       :positive-integer
   :export?    true
   :doc        false)
+
+;;; imbalanced (empty/sparse/crowded) thresholds - one setting per bound. `empty` has none (0 is
+;;; naturally empty). crowded flags strictly more than its threshold, sparse strictly fewer.
+
+(defsetting content-diagnostics-crowded-collection-threshold-items
+  (deferred-tru "Collections holding more direct items than this are flagged crowded by Content Diagnostics.")
+  :encryption :no
+  :visibility :admin
+  :default    100
+  :type       :positive-integer
+  :export?    true
+  :doc        false)
+
+(defsetting content-diagnostics-crowded-dashboard-threshold-dashcards-per-tab
+  (deferred-tru "Dashboards with more cards than this on any one tab are flagged crowded by Content Diagnostics.")
+  :encryption :no
+  :visibility :admin
+  :default    20
+  :type       :positive-integer
+  :export?    true
+  :doc        false)
+
+(defsetting content-diagnostics-crowded-dashboard-threshold-tabs
+  (deferred-tru "Dashboards with more tabs than this are flagged crowded by Content Diagnostics.")
+  :encryption :no
+  :visibility :admin
+  :default    5
+  :type       :positive-integer
+  :export?    true
+  :doc        false)
+
+(defsetting content-diagnostics-crowded-document-threshold-cards
+  (deferred-tru "Documents embedding more cards than this are flagged crowded by Content Diagnostics.")
+  :encryption :no
+  :visibility :admin
+  :default    20
+  :type       :positive-integer
+  :export?    true
+  :doc        false)
+
+(defsetting content-diagnostics-sparse-collection-threshold-items
+  (deferred-tru "Non-empty collections holding fewer direct items than this are flagged sparse by Content Diagnostics.")
+  :encryption :no
+  :visibility :admin
+  :default    5
+  :type       :positive-integer
+  :export?    true
+  :doc        false)
+
+(defsetting content-diagnostics-sparse-dashboard-threshold-dashcards
+  (deferred-tru "Non-empty dashboards with fewer total cards than this are flagged sparse by Content Diagnostics.")
+  :encryption :no
+  :visibility :admin
+  :default    4
+  :type       :positive-integer
+  :export?    true
+  :doc        false)

@@ -68,7 +68,7 @@
 (defn- findings-for-type
   "Group one entity type's rows by normalized name and emit findings for every cluster of ≥ 2 (cards cluster
   across all sub-kinds - grouping is by name alone). Clusters with a blank normalized name are skipped:
-  `name` is NOT NULL on all four models but can be whitespace-only, and unknown is not duplicate."
+  `name` is NOT NULL on every covered model but can be whitespace-only, and unknown is not duplicate."
   [entity-type]
   (for [[norm-name rows] (group-by (comp normalize-name :name) (candidate-rows entity-type))
         :when   (and (not (str/blank? norm-name)) (>= (count rows) 2))
