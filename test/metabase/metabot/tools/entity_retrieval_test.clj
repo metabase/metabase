@@ -9,6 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
+;; Stubbing the raw index is the only way to hand the tool a hit for an entity the user can't read.
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defmacro with-unfiltered-search
   "Run `body` with the index search stubbed to `search-fn`, so a test can hand the tool synthetic hits — the

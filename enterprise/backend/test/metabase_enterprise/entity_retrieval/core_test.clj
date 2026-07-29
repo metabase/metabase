@@ -27,6 +27,7 @@
   These are index-plumbing tests with no user in the loop; the filtering that production callers owe is
   tested with the Metabot tool."
   [query limit]
+  ;; No user in the loop: these assertions read scores and doc text that never leave the test process.
   #_{:clj-kondo/ignore [:discouraged-var]}
   (mirror/search-unfiltered query limit))
 
@@ -450,7 +451,10 @@
                     (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model)))
                   ;; a dim-1 query vector against the dim-4 index column -> pgvector SQLState 22000 -> degrade to []
                   (semantic.tu/with-mock-embeddings {"q" [1.0]}
-                    (is (= [] (search-unfiltered* "q" 10))))
+                    ;; Call the EE impl, not the shim: [] is also the shim's OSS answer, so a broken
+                    ;; defenterprise dispatch would pass this assertion without running the query.
+                    #_{:clj-kondo/ignore [:discouraged-var]}
+                    (is (= [] (entity-retrieval.core/search-unfiltered "q" 10))))
                   (finally
                     (jdbc/execute! ds [(str "DROP TABLE IF EXISTS \"" (index-table/vectors-table)
                                             "\", \"" (index-table/meta-table) "\"")])))))))))))

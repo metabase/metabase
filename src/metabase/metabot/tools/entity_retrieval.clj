@@ -85,22 +85,16 @@
                [#{} []])
        second))
 
-(defn- search-unfiltered*
-  "Raw index hits for `user-search-prompt`, with no permission filtering applied.
-  Only [[build-matches]] may call this, and only to feed the hydration that drops entities the user can't
-  read."
-  [user-search-prompt limit]
-  ;; Wrapped here so the one lint exemption sits next to the filtering that makes it safe.
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (entity-retrieval/search-unfiltered user-search-prompt limit))
-
+;; The one production read of the raw index — hence the lint exemption. Every field of every hit either is
+;; dropped here or survives the hydration below, which keeps only entities the current user can read.
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defn- build-matches
   "Fetch, dedupe to distinct entities, hydrate each match's entity ref into a full search record, and
   return the top `n` the current user can read.
   Each match: `{:doc_type :matched_text :usage_instructions :score :similarity :weak? :entity hydrated-hit}`."
   [user-search-prompt n]
   (let [fetch-n  (min over-fetch-cap (* over-fetch-factor n))
-        raw      (search-unfiltered* user-search-prompt fetch-n)
+        raw      (entity-retrieval/search-unfiltered user-search-prompt fetch-n)
         deduped  (dedupe-by-entity raw)
         refs     (distinct (map :entity deduped))
         ;; Hydration permission-filters (entity-refs->search-results drops entities the user can't read),
