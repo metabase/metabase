@@ -343,7 +343,7 @@
   for weekly, and picks the weekday for a monthly \"first\" or \"last\" frame), schedule_frame? (\"first\" | \"mid\"
   | \"last\", required for monthly — \"mid\" is the 15th and takes no schedule_day)} — never a cron string. condition is {type: \"has_result\" (default) |
   \"goal_above\" | \"goal_below\", send_once?: boolean} — the goal conditions need a goal line on the question's chart,
-  and send_once deletes the alert after it fires. Delivery is one channel: \"email\" (default) with recipients, a list
+  and send_once archives the alert after it fires. Delivery is one channel: \"email\" (default) with recipients, a list
   mixing user ids and email addresses that defaults to you, or \"slack\" with slack_channel, a channel name like
   \"#data-team\" (recipients don't apply). Passing any of channel, slack_channel, or recipients on update replaces the
   alert's delivery; omit them all to leave it alone. active: false pauses an alert and true resumes it — alerts have no
