@@ -316,10 +316,13 @@
 
   `context` is a keyword describing the situation in which this query is being ran, e.g. `:question` (from a Saved
   Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.legacy-mbql.schema/Context]] for
-  all valid options."
+  all valid options.
+
+  `card-transform` is applied after the Card read check and must preserve the Card's identity. Result metadata from a
+  transformed query is returned but not persisted to the Card."
   [card :- ::queries.schema/card
    export-format
-   & {:keys [parameters constraints context dashboard-id dashcard middleware qp make-run ignore-cache]
+   & {:keys [parameters constraints context dashboard-id dashcard middleware qp make-run ignore-cache card-transform]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
@@ -327,6 +330,11 @@
              make-run    process-query-for-card-default-run-fn}}]
   {:pre [(map? card) (pos-int? (:id card)) (u/maybe? sequential? parameters)]}
   (let [card        (api/read-check card)
+        stored-query (:dataset_query card)
+        card        ((or card-transform identity) card)
+        middleware  (cond-> middleware
+                      (not= stored-query (:dataset_query card))
+                      (assoc :skip-result-metadata-persistence? true))
         card-id     (:id card)
         dashcard-id (:id dashcard)
         parameters  (some-> parameters parameters.schema/normalize-parameters-without-adding-default-types)

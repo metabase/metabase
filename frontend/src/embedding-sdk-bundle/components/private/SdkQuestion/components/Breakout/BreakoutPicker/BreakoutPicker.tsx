@@ -53,7 +53,6 @@ export const BreakoutPickerInner = ({
           breakoutItem?.updateBreakout(column)
         }
         onClose={() => onClose?.()}
-        isMetric={false}
       />
     </Stack>
   );

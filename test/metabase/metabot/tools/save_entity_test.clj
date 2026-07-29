@@ -63,7 +63,10 @@
             (is (= "c-1" (get-in part [:data :chart_id])))
             (is (= (:id card) (get-in part [:data :card_id])))
             (is (= {:type "collection" :id (:id coll)}
-                   (get-in part [:data :destination])))))))))
+                   (get-in part [:data :destination]))))
+          (testing "carries a markdown entity link the chain of thought shows as the Saved label"
+            (is (= (str "[Venues by price](metabase://question/" (:id card) ")")
+                   (get-in part [:data :title])))))))))
 
 (deftest save-rehydrated-chart-test
   (mt/with-current-user (mt/user->id :crowberto)
