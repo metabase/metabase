@@ -293,7 +293,7 @@ function CandidateDrawerBody({
         </ActionIcon>
       </Group>
       <Divider />
-      <Stack p="lg" gap="xl" style={{ overflowY: "auto" }}>
+      <Stack p="lg" gap="xl" flex={1} mih={0} style={{ overflowY: "auto" }}>
         <Stack gap="sm">
           <CandidateStatusCard candidate={candidate} />
           <CandidateDefinition candidate={candidate} />
