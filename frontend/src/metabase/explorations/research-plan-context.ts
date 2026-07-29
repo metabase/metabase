@@ -1,15 +1,10 @@
 import type { ExplorationBlock } from "metabase/explorations/hooks";
 import { isMetricBlock } from "metabase/explorations/hooks";
 import type {
-  MetricDimension,
   ResearchPlanContext,
   ResearchPlanGroup,
   Timeline,
 } from "metabase-types/api";
-
-function dimensionName(dimension: MetricDimension): string {
-  return dimension.display_name || dimension.name;
-}
 
 function blockToGroup(block: ExplorationBlock): ResearchPlanGroup {
   if (isMetricBlock(block)) {
@@ -19,13 +14,14 @@ function blockToGroup(block: ExplorationBlock): ResearchPlanGroup {
       metric: { id: block.metric.id, name: block.metric.name },
       dimensions: block.dimensions
         .filter((d) => block.selectedDimensionIds.has(d.id))
-        .map((d) => ({ id: d.id, name: dimensionName(d) })),
+        .map((d) => ({ id: d.id, name: d.display_name })),
     };
   }
+
   return {
     block_id: block.id,
     anchor: "dimension",
-    dimension: { id: block.dimension.id, name: dimensionName(block.dimension) },
+    dimension: { id: block.dimension.id, name: block.dimension.display_name },
     metrics: block.metrics
       .filter((m) => block.selectedMetricIds.has(m.id))
       .map((m) => ({ id: m.id, name: m.name })),

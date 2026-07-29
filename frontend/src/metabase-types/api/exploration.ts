@@ -1,8 +1,12 @@
 import type { CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { RowValue } from "./dataset";
-import type { DimensionId, DimensionMapping, MetricDimension } from "./measure";
-import type { Metric } from "./metric";
+import type {
+  DimensionId,
+  DimensionMapping,
+  Metric,
+  MetricDimension,
+} from "./metric";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery, DimensionReference } from "./query";
 import type { SegmentId } from "./segment";
