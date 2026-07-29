@@ -23,8 +23,8 @@
 
 ;;; ------------------------------------------------ Constants ------------------------------------------------
 
-;; Slug must not collide with the literal `repo-status` sub-route.
-(def ^:private slug-regex #"(?!repo-status$)[^/]+")
+;; Slug must not collide with the literal `repo-status`/`sandbox-host` sub-routes.
+(def ^:private slug-regex #"(?!repo-status$|sandbox-host$)[^/]+")
 
 (def ^:private bundle-response-headers
   ;; `no-cache` so the browser may cache but must revalidate via
@@ -86,6 +86,41 @@
   []
   (api/check-superuser)
   (repo-status))
+
+;;; --------------------------------------------- Sandbox host ---------------------------------------------
+
+(def ^:private sandbox-host-html
+  "Empty document loaded as the Near-Membrane realm iframe. It only needs to exist and carry the
+   CSP below; the membrane populates the realm itself."
+  "<!doctype html><html><head><meta charset=\"utf-8\"></head><body></body></html>")
+
+(def ^:private sandbox-host-csp
+  "CSP for the sandbox realm document ONLY.
+
+   `'unsafe-eval'` is what Near-Membrane needs to evaluate the app bundle inside the realm.
+   Serving the realm from its own document is what lets the data-app document drop that grant:
+   an `about:blank` realm would instead inherit the data-app document's CSP, forcing
+   `'unsafe-eval'` there and handing an attacker `eval`/`Function` in the host realm.
+
+   `default-src 'none'` gives the realm no network of its own — unlike the inherited case, where
+   it would pick up the data-app document's `connect-src` (which includes the instance origin)."
+  (str "default-src 'none'; "
+       "script-src 'unsafe-eval'; "
+       "frame-ancestors 'self';"))
+
+(api.macros/defendpoint :get "/sandbox-host" :- :any
+  "Serve the document used as the `src` of the Near-Membrane realm iframe, carrying a
+   per-document CSP that confines `'unsafe-eval'` to that realm. See [[sandbox-host-csp]]."
+  []
+  {:status  200
+   :headers {"Content-Type"                 "text/html; charset=utf-8"
+             "Content-Security-Policy"      sandbox-host-csp
+             "X-Frame-Options"              "SAMEORIGIN"
+             "X-Content-Type-Options"       "nosniff"
+             "Cross-Origin-Resource-Policy" "same-origin"
+             "Referrer-Policy"              "no-referrer"
+             "Cache-Control"                "public, max-age=60"}
+   :body    sandbox-host-html})
 
 ;;; ------------------------------------------------ Apps ------------------------------------------------
 

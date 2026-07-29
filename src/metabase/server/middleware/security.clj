@@ -263,13 +263,13 @@
                                  (when config/is-dev?
                                    ["'unsafe-eval'"
                                     (str "http://localhost:" cljs-dev-port)])
-                                 ;; Custom data apps run their uploaded bundle inside a Near-Membrane
-                                 ;; sandbox, which executes the bundle source via `eval` (its sandbox
-                                 ;; lives in a same-origin child iframe that inherits this document's
-                                 ;; CSP). So the data-app entrypoint must allow 'unsafe-eval' — scoped
-                                 ;; to this route only; the main app CSP stays strict.
-                                 (when data-app-iframe?
-                                   ["'unsafe-eval'"])
+                                 ;; NOTE: data-app routes deliberately do NOT get 'unsafe-eval'.
+                                 ;; Near-Membrane needs `eval` to run the app bundle, but it runs it
+                                 ;; inside a realm iframe served from `/api/apps/sandbox-host`, whose
+                                 ;; own CSP grants 'unsafe-eval' for that document alone. Granting it
+                                 ;; here instead would also hand `eval`/`Function` to anything running
+                                 ;; in the data-app document itself — including guest code that escaped
+                                 ;; the membrane.
                                  (when-not config/is-dev?
                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
@@ -302,13 +302,21 @@
                   :font-src     (into (cond-> always-allowed-resource-hosts
                                         config/is-dev? (conj frontend-address))
                                       (application-font-files->hosts))
-                  :img-src      (cond-> (if (server.settings/csp-img-enabled)
-                                          (cond-> (into (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
-                                                        (map-tile-server->hosts))
-                                            config/is-dev? (conj frontend-address))
-                                          (into ["*"] always-allowed-resource-hosts))
-                                  ;; Data apps need blob: to load icons for custom viz
-                                  data-app-iframe? (conj "blob:"))
+                  :img-src      (let [restricted (cond-> (into (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
+                                                               (map-tile-server->hosts))
+                                                   config/is-dev? (conj frontend-address))]
+                                  (cond
+                                    ;; A sandboxed data-app document NEVER gets `*`: an ungated
+                                    ;; `new Image()`/`<img>` under `img-src *` would beacon the viewing
+                                    ;; user's data off-origin (the `img` tag can't be blocked — the SDK
+                                    ;; uses it). Always use the restricted allowlist: `'self'` (the
+                                    ;; instance) + the admin's "Allowed domains for images"
+                                    ;; (`csp-img-allowed-hosts`, so custom viz still renders) + blob:, plus
+                                    ;; the app's own `allowed_hosts` (mirroring connect-src/frame-src —
+                                    ;; the app can already fetch those, so this adds no exfil channel).
+                                    data-app-iframe?                  (-> restricted (conj "blob:") (into data-app-connect-hosts))
+                                    (server.settings/csp-img-enabled) restricted
+                                    :else                             (into ["*"] always-allowed-resource-hosts)))
                   :connect-src  (into
                                  ["'self'"
                                   ;; Google Identity Services
@@ -356,11 +364,16 @@
   (cond-> (update (content-security-policy-header nonce data-app-iframe? data-app-connect-hosts)
                   "Content-Security-Policy"
                   #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode)))
-    ;; Restrict native `<form action="…">` submissions to the app's declared
-    ;; `allowed_hosts` (mirroring `connect-src`); with none declared this is
-    ;; `'none'`, blocking every native submit. `form-action` does not fall back to
-    ;; `default-src`, so it must be set explicitly. Client-side `onSubmit` handlers
-    ;; are unaffected — they `preventDefault`, so no submission is ever checked.
+    ;; MANDATORY for data apps — do not remove/weaken. Sole barrier (no JS backstop)
+    ;; against a hostile bundle native-submitting a HOST `<form action="/api/user">`
+    ;; to provision an admin: the backend takes `:form-params` before the JSON body
+    ;; and a `:normal-cookie` session needs no anti-CSRF token, so `form-action` is
+    ;; what stops it. Restricts native submits to the app's `allowed_hosts` (any
+    ;; entry that would match the instance origin — exact or wildcard — is filtered
+    ;; out upstream by `drop-instance-origin`), or `'none'` when none are declared;
+    ;; it does not fall back to `default-src`, so it must be set explicitly.
+    ;; Client-side `onSubmit` (preventDefault) is unaffected. Covered by
+    ;; security-test/data-app-form-action-test; keep in sync if duplicated downstream.
     data-app-iframe? (update "Content-Security-Policy"
                              #(str % " form-action "
                                    (if (seq data-app-connect-hosts)
@@ -523,16 +536,22 @@
            :port     (let [p (.getPort uri)] (when-not (neg? p) (str p)))}))
       (catch Exception _ nil))))
 
+(defn- covers-instance-origin?
+  "True if `allowed_hosts` entry `host` (possibly a `*.company.com` wildcard) matches the
+   instance's own origin `self`, using the same host-source matching as [[approved-origin?]]."
+  [self host]
+  (when-let [pattern (parse-url host)]
+    (and (approved-domain?   (:domain self)   (:domain pattern))
+         (approved-protocol? (:protocol self) (:protocol pattern))
+         (approved-port?     (:port self)     (:port pattern)))))
+
 (defn- drop-instance-origin
-  "Removes any `allowed_hosts` entry that resolves to this Metabase instance's own
-   origin. A native `<form>` submit or frame to the instance would carry the
-   user's session cookies, and the SDK is the only sanctioned way to reach
-   Metabase — so we keep the instance out of the app's `form-action`/`frame-src`/
-   `connect-src` even when an app mistakenly lists it (mirroring the JS fetch/XHR
-   sandbox, which blocks the instance origin regardless)."
+  "Removes any `allowed_hosts` entry that would match this instance's own origin (exact or
+   wildcard). A native `<form>`/frame to the instance carries the user's session cookies, so
+   the instance is kept out of the app's `form-action`/`frame-src`/`connect-src`."
   [hosts]
   (if-let [self (site-origin)]
-    (remove #(= self (parse-url %)) hosts)
+    (remove #(covers-instance-origin? self %) hosts)
     hosts))
 
 (defn- add-security-headers* [request response]

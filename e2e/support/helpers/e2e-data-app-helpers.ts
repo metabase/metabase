@@ -117,7 +117,12 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
       {
         statusCode: 200,
         headers: {
-          "content-type": "text/javascript",
+          // Match the REAL bundle endpoint (`data_apps/api.clj`), which serves
+          // `application/javascript` + `nosniff`. The runtime fetch-and-evals the
+          // bundle, so the type is irrelevant there — but a stricter mock (e.g.
+          // `text/plain`) would diverge from production, so keep it aligned.
+          "content-type": "application/javascript",
+          "X-Content-Type-Options": "nosniff",
           "X-Metabase-Data-App-Allowed-Hosts": JSON.stringify(allowedHosts),
         },
         body: prelude + bundleCode,

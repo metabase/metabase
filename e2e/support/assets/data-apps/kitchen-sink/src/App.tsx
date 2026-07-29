@@ -113,6 +113,43 @@ function QueryStates() {
   );
 }
 
+function DownloadQuestionPage() {
+  const { downloadQuestionId } = getTestEnv();
+
+  return (
+    <div data-testid="data-app-download-question" style={{ padding: 24 }}>
+      <h1>Download question</h1>
+      <div style={{ height: 360 }}>
+        {downloadQuestionId != null ? (
+          <StaticQuestion questionId={downloadQuestionId} withDownloads />
+        ) : (
+          <div data-testid="download-question-loading">…</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// An InteractiveQuestion on a single-column (count) query, so a spec can switch it
+// to a custom viz — the example `demo-viz` requires exactly one result column.
+function CustomVizPage() {
+  const { scalarQuery } = getTestEnv();
+  const q = useMetabaseQueryObject(scalarQuery);
+
+  return (
+    <div data-testid="data-app-custom-viz" style={{ padding: 24 }}>
+      <h1>Custom viz</h1>
+      <div style={{ height: 360 }}>
+        {q.query ? (
+          <InteractiveQuestion card={{ query: q.query }} />
+        ) : (
+          <div data-testid="custom-viz-loading">…</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function StaticQuestionPage() {
   const { questionQuery } = getTestEnv();
   const q = useMetabaseQueryObject(questionQuery);
@@ -126,6 +163,34 @@ function StaticQuestionPage() {
         ) : (
           <div data-testid="static-question-loading">…</div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Data apps may not run native SQL: the backend rejects native queries from the
+// `data-app` client. The `card` prop takes a raw query with no native/structured
+// check, so this page hand-builds a native query to prove the backend refuses it.
+function NativeQueryPage() {
+  const { nativeQuery } = getTestEnv();
+
+  if (!nativeQuery) {
+    return <div data-testid="data-app-native-query">no-native-query-env</div>;
+  }
+
+  return (
+    <div data-testid="data-app-native-query" style={{ padding: 24 }}>
+      <h1>Native query</h1>
+      <div style={{ height: 360 }}>
+        <StaticQuestion
+          card={{
+            query: {
+              type: "native",
+              database: nativeQuery.database,
+              native: { query: nativeQuery.query },
+            },
+          }}
+        />
       </div>
     </div>
   );
@@ -383,6 +448,9 @@ const ROUTES: Record<string, ComponentType> = {
   "/isolation": Isolation,
   "/query-states": QueryStates,
   "/static-question": StaticQuestionPage,
+  "/native-query": NativeQueryPage,
+  "/download-question": DownloadQuestionPage,
+  "/custom-viz": CustomVizPage,
   "/combinators": Combinators,
   "/actions": Actions,
   "/clipboard": Clipboard,

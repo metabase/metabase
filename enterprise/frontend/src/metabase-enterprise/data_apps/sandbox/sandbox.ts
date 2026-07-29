@@ -1,7 +1,11 @@
 import createVirtualEnvironment from "@locker/near-membrane-dom";
 
+import { setChartExportIframeGrant } from "metabase/visualizations/lib/save-chart-image";
+
+import { blockHostRealmXhr } from "./allowed-hosts";
 import { makeDistortionCallback } from "./distortions";
 import { DATA_APP_GLOBAL_NAMES } from "./globals";
+import { hostRealmElementGuard } from "./host-element-guard";
 import type { DataAppFactory, SandboxBlockedListener } from "./types";
 
 /**
@@ -42,8 +46,12 @@ export interface CreateDataAppSandboxOptions {
   label?: string;
   /** Realm the membrane binds to. Defaults to the current `window`. */
   targetWindow?: Window & typeof globalThis;
-  /** Origins the bundle may fetch/XHR; empty keeps the default hard block. */
+  /** Origins the bundle may fetch; empty keeps the default hard block. */
   allowedHosts?: string[];
+  /**
+   * Same-origin URL serving the document Near-Membrane loads as its realm iframe.
+   */
+  realmHostUrl?: string;
   /** The realm's React/SDK exposed to the bundle. See [[DataAppSandboxEndowments]]. */
   endowments: DataAppSandboxEndowments;
   /**
@@ -61,16 +69,26 @@ function isDataAppFactory(value: unknown): value is DataAppFactory {
   return typeof value === "function";
 }
 
-export function createDataAppSandbox({
+export async function createDataAppSandbox({
   label = "",
   targetWindow = window,
   allowedHosts = [],
+  realmHostUrl,
   endowments,
   onBlocked,
 }: CreateDataAppSandboxOptions) {
   let captured: unknown;
 
-  const env = createVirtualEnvironment(targetWindow, {
+  // Before the membrane, so the guest is handed the blocked stub rather than
+  // the native constructor. See [[blockHostRealmXhr]] — XHR is removed from the
+  // data-app document entirely, host realm included.
+  blockHostRealmXhr(targetWindow);
+
+  const env = await createVirtualEnvironment(targetWindow, {
+    ...(realmHostUrl ? { iframeSrc: realmHostUrl } : {}),
+    // Default `true` leaves the realm iframe attached as a reachable same-origin
+    // ancestor window; detach it so the guest can't reach one.
+    keepAlive: false,
     distortionCallback: makeDistortionCallback(
       label,
       targetWindow,
@@ -106,6 +124,39 @@ export function createDataAppSandbox({
       },
     }),
   });
+
+  // Gate `Error.prepareStackTrace` in the guest realm before any bundle runs: a
+  // function formatter receives V8 `CallSite[]` that can hand back non-membrane
+  // host references, so keep the guest from installing one.
+  // A non-configurable accessor drops function assignments but allows `undefined`
+  // (React dev sets it so, then restores). Must be an evaluate prelude, not a
+  // distortion — it's a red-realm property the guest owns. (Host storage is handled
+  // separately, in the shared distortion.)
+  env.evaluate(`(() => {
+    try {
+      let stored;
+      Object.defineProperty(Error, "prepareStackTrace", {
+        configurable: false,
+        get() {
+          return stored;
+        },
+        set(value) {
+          if (typeof value !== "function") {
+            stored = value;
+          }
+        },
+      });
+    } catch (e) {}
+  })();`);
+
+  // After the membrane built its own realm iframe — from here on, nothing in this
+  // document may create another realm, whichever React renders it.
+  hostRealmElementGuard.install(targetWindow);
+
+  // Let the chart PNG export create html2canvas's transient clone <iframe> despite
+  // the guard above — safe because the distortion collapses that iframe's realm to
+  // the gated realm, so the guest can't reach it.
+  setChartExportIframeGrant(hostRealmElementGuard.withIframeGrant);
 
   return {
     evaluate(code: string): DataAppFactory {

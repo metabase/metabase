@@ -12,6 +12,16 @@ import { resolveSvgVarPaint, restoreNestedSvgOverflow } from "./image-exports";
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
 
+// html2canvas rasterizes by cloning the DOM into a transient same-origin <iframe>.
+// The data-app sandbox guards <iframe> creation, so it installs a grant here that
+// lets this one export create it (safely — the sandbox collapses that iframe's
+// realm to its own gated realm). Everywhere else this is a pass-through.
+type ExportRunner = <T>(fn: () => Promise<T>) => Promise<T>;
+let runWithinExportGrant: ExportRunner = (fn) => fn();
+export const setChartExportIframeGrant = (runner: ExportRunner) => {
+  runWithinExportGrant = runner;
+};
+
 interface Opts {
   selector: string;
   fileName: string;
@@ -45,38 +55,40 @@ export const saveChartImage = async ({
   await document.fonts.ready;
 
   const { default: html2canvas } = await import("html2canvas-pro");
-  const canvas = await html2canvas(node, {
-    scale: 2,
-    useCORS: true,
-    cspNonce: window.MetabaseNonce,
-    height: canvasHeight,
-    onclone: (_doc: Document, node: HTMLElement) => {
-      node.classList.add(SAVING_DOM_IMAGE_CLASS);
-      node.classList.add(EmbedFrameS.WithThemeBackground);
+  const canvas = await runWithinExportGrant(() =>
+    html2canvas(node, {
+      scale: 2,
+      useCORS: true,
+      cspNonce: window.MetabaseNonce,
+      height: canvasHeight,
+      onclone: (_doc: Document, node: HTMLElement) => {
+        node.classList.add(SAVING_DOM_IMAGE_CLASS);
+        node.classList.add(EmbedFrameS.WithThemeBackground);
 
-      node.style.borderRadius = "0px";
-      node.style.border = "none";
+        node.style.borderRadius = "0px";
+        node.style.border = "none";
 
-      if (includeBranding) {
-        const branding = createBrandingElement(size);
-        /**
-         * The DOM node that encapsulates the dashboard card is absolutely positioned.
-         * That node is the container for the chart, and for the branding element.
-         * Unless we sanitize the container, we have to position the branding content
-         * appropriately, or it will not be visible.
-         */
-        branding.style.position = "absolute";
-        branding.style.left = "0";
-        branding.style.bottom = `-${brandingHeight}px`;
-        branding.style.zIndex = "1000";
+        if (includeBranding) {
+          const branding = createBrandingElement(size);
+          /**
+           * The DOM node that encapsulates the dashboard card is absolutely positioned.
+           * That node is the container for the chart, and for the branding element.
+           * Unless we sanitize the container, we have to position the branding content
+           * appropriately, or it will not be visible.
+           */
+          branding.style.position = "absolute";
+          branding.style.left = "0";
+          branding.style.bottom = `-${brandingHeight}px`;
+          branding.style.zIndex = "1000";
 
-        node.appendChild(branding);
-      }
+          node.appendChild(branding);
+        }
 
-      resolveSvgVarPaint(node);
-      restoreNestedSvgOverflow(node);
-    },
-  });
+        resolveSvgVarPaint(node);
+        restoreNestedSvgOverflow(node);
+      },
+    }),
+  );
 
   if (isStorybookActive) {
     // In storybook/loki we must wait for the blob and image to be ready
