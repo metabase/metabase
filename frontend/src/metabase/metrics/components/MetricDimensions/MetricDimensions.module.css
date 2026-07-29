@@ -1,0 +1,129 @@
+.root {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.columns {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+.column {
+  display: flex;
+  flex: 1 1 50%;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--mantine-spacing-xl);
+
+  .searchInput {
+    border-radius: var(--mantine-radius-md);
+  }
+}
+
+.scrollArea {
+  flex: 1;
+  min-height: 0;
+}
+
+.emptyState {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+}
+
+.row {
+  min-height: 2.5rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+}
+
+.row:hover {
+  background-color: var(--mb-color-background-hover);
+}
+
+.rowActive,
+.rowActive:hover {
+  border-color: var(--mb-color-brand);
+}
+
+.rowButton {
+  flex: 1;
+  min-width: 0;
+}
+
+.grabber {
+  display: flex;
+  align-items: center;
+  cursor: grab;
+  touch-action: none;
+}
+
+.addableRow {
+  min-height: 2.5rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+}
+
+.addableRow:hover {
+  background-color: var(--mb-color-background-hover);
+}
+
+.accordion .item,
+.accordion .item[data-active] {
+  border: none;
+  border-radius: var(--mantine-radius-md);
+}
+
+.accordion .item + .item {
+  margin-top: var(--mantine-spacing-sm);
+}
+
+.accordion .control {
+  padding: var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background-secondary);
+}
+
+.accordion .control:hover {
+  background-color: var(--mb-color-background-hover);
+}
+
+.accordion .label {
+  padding: 0;
+  color: var(--mb-color-text-primary);
+  font-weight: 700;
+  font-size: var(--mantine-font-size-md);
+  line-height: normal;
+}
+
+.accordion .chevron {
+  width: auto;
+  height: auto;
+  margin-left: var(--mantine-spacing-sm);
+  border: none;
+  border-radius: 0;
+  color: var(--mb-color-text-secondary);
+}
+
+.accordion .content {
+  padding: var(--mantine-spacing-sm) 0 0 var(--mantine-spacing-lg);
+  border-top: none;
+}
+
+.column .deleteIconButton {
+  border: 1px solid var(--mb-color-border);
+  height: 2.25rem;
+  width: 2.25rem;
+
+  &:hover {
+    border: 1px solid var(--mb-color-border-strong);
+  }
+}

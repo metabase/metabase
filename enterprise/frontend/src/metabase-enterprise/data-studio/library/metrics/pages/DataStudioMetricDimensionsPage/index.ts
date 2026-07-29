@@ -1,0 +1,1 @@
+export { DataStudioMetricDimensionsPage } from "./DataStudioMetricDimensionsPage";

@@ -54,7 +54,7 @@ visualization_settings:
     label: High
     max: 300000
     min: 150000
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: GWrIQqjbzxysSCm8PLU5j
   label: revenue_gauge

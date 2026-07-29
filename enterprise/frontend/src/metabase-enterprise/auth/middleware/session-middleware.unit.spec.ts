@@ -1,4 +1,3 @@
-import FakeTimers from "@sinonjs/fake-timers";
 import Cookie from "js-cookie";
 
 import { logout, refreshSession } from "metabase/redux/auth";
@@ -20,8 +19,6 @@ jest.mock("metabase/router", () => ({
   replace: jest.fn(),
 }));
 
-let clock;
-
 const actionStub = { type: "ANY_ACTION" };
 
 /**
@@ -34,21 +31,18 @@ const actionStub = { type: "ANY_ACTION" };
  *
  * NOTE: This does not change the origin which would result in a security exception.
  */
-function changeJSDOMURL(url) {
+function changeJSDOMURL(url: string) {
   const newURL = new URL(url);
   const href = `${window.origin}${newURL.pathname}${newURL.search}${newURL.hash}`;
-  history.replaceState(history.state, null, href);
+  history.replaceState(history.state, "", href);
 }
 
 const setup = () => {
   const dispatchMock = jest.fn();
-  const storeMock = { dispatch: dispatchMock };
+  const storeMock = { dispatch: dispatchMock, getState: jest.fn() };
   const nextMock = jest.fn();
 
-  const sessionMiddleware = createSessionMiddleware(
-    [],
-    clock.setInterval.bind(clock),
-  );
+  const sessionMiddleware = createSessionMiddleware([]);
 
   return {
     handleAction: sessionMiddleware(storeMock)(nextMock),
@@ -59,7 +53,11 @@ const setup = () => {
 
 describe("createSessionMiddleware", () => {
   beforeEach(() => {
-    clock = FakeTimers.createClock();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it("should read metabase.TIMEOUT cookie to check the session", () => {
@@ -97,7 +95,7 @@ describe("createSessionMiddleware", () => {
 
       handleAction(actionStub);
 
-      clock.tick(COOKIE_POOLING_TIMEOUT);
+      jest.advanceTimersByTime(COOKIE_POOLING_TIMEOUT);
 
       expect(dispatchMock).not.toHaveBeenCalled();
     });
@@ -112,7 +110,7 @@ describe("createSessionMiddleware", () => {
 
       handleAction(actionStub);
 
-      clock.tick(COOKIE_POOLING_TIMEOUT);
+      jest.advanceTimersByTime(COOKIE_POOLING_TIMEOUT);
 
       expect(dispatchMock).toHaveBeenCalled();
       expect(logout).toHaveBeenCalledWith("/question/1?query=5#hash");
@@ -120,8 +118,6 @@ describe("createSessionMiddleware", () => {
   });
 
   describe("logged in redirect", () => {
-    beforeEach(() => {});
-
     it("should not redirect to the redirectUrl if visiting login page", async () => {
       changeJSDOMURL(
         "https://metabase.com/auth/login?redirect=%2Fquestion%2F1%3Fquery%3D5%23hash",
@@ -135,7 +131,7 @@ describe("createSessionMiddleware", () => {
       const { handleAction, dispatchMock } = setup();
 
       handleAction(actionStub);
-      clock.tick(COOKIE_POOLING_TIMEOUT);
+      jest.advanceTimersByTime(COOKIE_POOLING_TIMEOUT);
 
       expect(dispatchMock).not.toHaveBeenCalled();
       expect(replace).not.toHaveBeenCalled();
@@ -154,7 +150,7 @@ describe("createSessionMiddleware", () => {
       const { handleAction, dispatchMock } = setup();
 
       handleAction(actionStub);
-      clock.tick(COOKIE_POOLING_TIMEOUT);
+      jest.advanceTimersByTime(COOKIE_POOLING_TIMEOUT);
 
       expect(dispatchMock).toHaveBeenCalled();
       expect(replace).toHaveBeenCalledWith("/question/1?query=5#hash");
@@ -178,7 +174,7 @@ describe("createSessionMiddleware", () => {
 
       handleAction(actionStub);
 
-      clock.tick(COOKIE_POOLING_TIMEOUT);
+      jest.advanceTimersByTime(COOKIE_POOLING_TIMEOUT);
 
       expect(dispatchMock).toHaveBeenCalled();
       expect(refreshSession).toHaveBeenCalledWith();
