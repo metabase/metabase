@@ -200,13 +200,13 @@
                 (card-has-ambiguous-columns? card)))))
 
 (defn- ids-of-dbs-that-support-source-queries []
-  (set (filter (fn [db-id]
-                 (try
-                   (when-let [db (t2/select-one :model/Database :id db-id)]
-                     (driver.u/supports? (driver.u/database->driver db) :nested-queries db))
-                   (catch Throwable e
-                     (log/errorf "Error determining whether Database supports nested queries: %s" (ex-message e)))))
-               (t2/select-pks-set :model/Database))))
+  (set (keep (fn [db]
+               (try
+                 (when (driver.u/supports? (driver.u/database->driver db) :nested-queries db)
+                   (:id db))
+                 (catch Throwable e
+                   (log/errorf "Error determining whether Database supports nested queries: %s" (ex-message e)))))
+             (t2/select :model/Database))))
 
 (mu/defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
@@ -252,8 +252,13 @@
    Builder.)"
   [card-type :- ::queries.schema/card-type
    & {:keys [include-fields?]}]
-  (for [card (source-query-cards card-type)]
-    (schema.table/card->virtual-table card :include-fields? include-fields?)))
+  (let [cards                    (source-query-cards card-type)
+        card-id->metadata-fields (when include-fields?
+                                   (schema.table/cards->card-id->metadata-fields cards))]
+    (for [card cards]
+      (schema.table/card->virtual-table card
+                                        :include-fields? include-fields?
+                                        :card-id->metadata-fields card-id->metadata-fields))))
 
 (mu/defn- saved-cards-virtual-db-metadata
   [card-type :- ::queries.schema/card-type

@@ -294,6 +294,15 @@
                  :intern interner
                  :perms  (update perms user-id #(merge-with merge % new-by-type))})))))
 
+(defn- prime-all-dbs-cache
+  "Prime the permissions cache for every database, so that questions spanning all databases (like
+  [[user-has-any-perms-of-type?]]) can be answered from the cache. Records completeness by adding `::all-dbs` to the
+  cache's `:db-ids` set, so repeated calls within a request don't re-fetch the database ID list."
+  []
+  (when-not (contains? (:db-ids @*permissions-for-user*) ::all-dbs)
+    (prime-db-cache (t2/select-pks-vec :model/Database))
+    (swap! *permissions-for-user* update :db-ids conj ::all-dbs)))
+
 (defenterprise enforced-sandboxes-for-user
   "Given a user-id, returns the set of sandboxes that should be enforced for the provided user ID. This result is
   cached for the duration of a request. Empty on OSS instances."
@@ -658,25 +667,51 @@
                     (most-restrictive-per-group :perms/download-results pairs))
           (least-permissive-value :perms/download-results)))))
 
+(defn- cache-entry-has-value?
+  "True if a permissions cache entry (see [[*permissions-for-user*]]) contains `value` in any db-level or table-level
+  row."
+  [entry value]
+  (boolean
+   (or (some #(contains? % value)
+             (vals (:groups entry)))
+       (some (fn [group-id->rows]
+               (some (fn [rows]
+                       (some #(= (:value %) value) rows))
+                     (vals group-id->rows)))
+             (vals (:tables entry))))))
+
 (mu/defn user-has-any-perms-of-type? :- :boolean
   "Returns a Boolean indicating whether the user has the highest level of access for the given permission type in any
-  group, for at least one database or table. Optionally takes `:exclude-db-ids` to exclude specific databases from the check."
+  group, for at least one database or table. Optionally takes `:exclude-db-ids` to exclude specific databases from the
+  check.
+
+  When the request-scoped permissions cache is available it primes it for all databases and answers from it, so
+  callers that invoke this repeatedly within one request (e.g. once per snippet in a list) cost one fetch rather than
+  one query per call. Note the cache excludes permission rows for inactive tables, so a grant that exists only on an
+  inactive table does not count."
   [user-id perm-type & {:keys [exclude-db-ids]}]
   (or (is-superuser? user-id)
       (and (= perm-type :perms/manage-table-metadata)
            (is-data-analyst? user-id))
       (let [value (most-permissive-value perm-type)]
-        (t2/exists? :model/DataPermissions
-                    {:select [[:p.perm_value :value]]
-                     :from [[:permissions_group_membership :pgm]]
-                     :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                            [:data_permissions :p]   [:= :p.group_id :pg.id]]
-                     :where (into [:and
-                                   [:= :pgm.user_id user-id]
-                                   [:= :p.perm_type (u/qualified-name perm-type)]
-                                   [:= :p.perm_value (u/qualified-name value)]]
-                                  (when (seq exclude-db-ids)
-                                    [[:not-in :p.db_id exclude-db-ids]]))}))))
+        (if (use-cache? user-id)
+          (let [exclude? (set exclude-db-ids)]
+            (prime-all-dbs-cache)
+            (boolean (some (fn [[db-id entry]]
+                             (and (not (exclude? db-id))
+                                  (cache-entry-has-value? entry value)))
+                           (get-in (:perms @*permissions-for-user*) [user-id perm-type]))))
+          (t2/exists? :model/DataPermissions
+                      {:select [[:p.perm_value :value]]
+                       :from [[:permissions_group_membership :pgm]]
+                       :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
+                              [:data_permissions :p]   [:= :p.group_id :pg.id]]
+                       :where (into [:and
+                                     [:= :pgm.user_id user-id]
+                                     [:= :p.perm_type (u/qualified-name perm-type)]
+                                     [:= :p.perm_value (u/qualified-name value)]]
+                                    (when (seq exclude-db-ids)
+                                      [[:not-in :p.db_id exclude-db-ids]]))})))))
 
 (defn- admin-permission-graph
   "Returns the graph representing admin permissions for all groups"

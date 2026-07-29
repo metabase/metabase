@@ -150,16 +150,33 @@
   []
   "Everything else")
 
+(defn cards->card-id->metadata-fields
+  "Batch-fetch the underlying Fields for the `:result_metadata` columns of `cards`, returning a map of card ID to its
+  hydrated Fields. One select (plus hydration) covers every card, instead of the per-card lookup
+  [[card-result-metadata->virtual-fields]] falls back to."
+  [cards]
+  (let [metadata-field-ids (into #{}
+                                 (comp (mapcat :result_metadata)
+                                       (keep :id))
+                                 cards)
+        metadata-fields    (if (seq metadata-field-ids)
+                             (-> (t2/select :model/Field :id [:in metadata-field-ids])
+                                 (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
+                                 (->> (m/index-by :id)))
+                             {})]
+    (into {}
+          (map (fn [card]
+                 [(:id card) (into []
+                                   (keep (comp metadata-fields :id))
+                                   (:result_metadata card))]))
+          cards)))
+
 (defn card->virtual-table
   "Return metadata for a 'virtual' table for a `card` in the Saved Questions 'virtual' database. Optionally include
   'virtual' fields as well."
   [{:keys [database_id] :as card} & {:keys [include-database? include-fields? databases card-id->metadata-fields]}]
-  ;; if collection isn't already hydrated then do so
   (let [card-type     (:type card)
-        dataset-query (:dataset_query card)
-        database      (when (int? database_id)
-                        (or (get databases database_id)
-                            (t2/select-one :model/Database :id database_id)))]
+        dataset-query (:dataset_query card)]
     (cond-> {:id               (str "card__" (u/the-id card))
              :db_id            (:database_id card)
              :display_name     (:name card)
@@ -174,7 +191,10 @@
       (assoc :dataset_query dataset-query)
 
       include-database?
-      (assoc :db (when (and database (mi/can-read? database)) database))
+      (assoc :db (when-let [database (when (int? database_id)
+                                       (or (get databases database_id)
+                                           (t2/select-one :model/Database :id database_id)))]
+                   (when (mi/can-read? database) database)))
 
       include-fields?
       (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
@@ -218,21 +238,7 @@
           dbs (if (seq cards)
                 (t2/select-pk->fn identity :model/Database :id [:in (into #{} (map :database_id) cards)])
                 {})
-          metadata-field-ids (into #{}
-                                   (comp (mapcat :result_metadata)
-                                         (keep :id))
-                                   cards)
-          metadata-fields (if (seq metadata-field-ids)
-                            (-> (t2/select :model/Field :id [:in metadata-field-ids])
-                                (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
-                                (->> (m/index-by :id)))
-                            {})
-          card-id->metadata-fields (into {}
-                                         (map (fn [card]
-                                                [(:id card) (into []
-                                                                  (keep (comp metadata-fields :id))
-                                                                  (:result_metadata card))]))
-                                         cards)
+          card-id->metadata-fields (cards->card-id->metadata-fields cards)
           readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]
       (for [card readable-cards]
         ;; Models can have user configured FK columns which, for MBQL models, we cannot distinguish from
