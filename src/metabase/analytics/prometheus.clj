@@ -331,6 +331,19 @@
    (prometheus/counter :metabase-remote-sync/git-operations-failed
                        {:description "Number of failed git operations"
                         :labels [:operation :remote]})
+   ;; The pgvector store is shared: semantic search provisions it, entity retrieval uses it, and more
+   ;; features are likely in future.
+   (prometheus/gauge :metabase-pgvector/store-available
+                     {:description (str "Whether the given pgvector storage backing is available to this instance. "
+                                        "At most one is 1: a dedicated MB_PGVECTOR_DB_URL always wins over the app db.")
+                      :labels      [:storage]})
+   (prometheus/gauge :metabase-pgvector/store-connected
+                     {:description "Whether the most recent connection probe to the given pgvector storage backing succeeded."
+                      :labels      [:storage]})
+   (prometheus/gauge :metabase-pgvector/store-last-success-timestamp-seconds
+                     {:description (str "Unix timestamp in seconds of the most recent successful connection probe to the "
+                                        "given pgvector storage backing. Absent until one succeeds.")
+                      :labels      [:storage]})
    (prometheus/counter :metabase-search/index-reindexes
                        {:description "Number of reindexed search entries"
                         :labels      [:model]})
@@ -365,15 +378,6 @@
                      {:description "Number of rows in the active semantic index dead-letter-queue table."})
    (prometheus/gauge :metabase-search/semantic-gate-size
                      {:description "Number of rows in the semantic gate table"})
-   (prometheus/gauge :metabase-search/pgvector-store-available
-                     {:description "Whether a pgvector store is available to this instance."
-                      :labels      [:storage]})
-   (prometheus/gauge :metabase-search/pgvector-store-connected
-                     {:description "Whether the most recent connection probe to a pgvector store succeeded."
-                      :labels      [:storage]})
-   (prometheus/gauge :metabase-search/pgvector-store-last-success-timestamp-seconds
-                     {:description "Unix timestamp in seconds of the most recent successful pgvector store connection probe."
-                      :labels      [:storage]})
    (prometheus/gauge :metabase-search/queue-size
                      {:description "Number of updates on the search indexing queue."})
    (prometheus/counter :metabase-search/response-ok
