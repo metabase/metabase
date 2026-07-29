@@ -644,18 +644,37 @@
     (.setScale ^java.math.BigDecimal (bigdec x) (int float-compare-decimals) java.math.RoundingMode/HALF_UP)
     x))
 
+(defn- cache-updated-at
+  "The `updated_at` timestamp stamped on a result when it was served from the QP cache, or `nil` for a fresh
+  result. Handles both the raw shape (`:cache/details` set by the cache middleware) and the userland-processed
+  shape (`:cached` set by `process-userland-query`)."
+  [result]
+  (or (:cached result)
+      (get-in result [:cache/details :updated_at])))
+
 (defn- pivot-rows-equivalent?
   "Compare pivot result maps from the two pivot paths. The candidate always uses `default-rff` and so carries
   `(:data :rows)` and `:row_count`; the control uses the caller's rff and may carry anything.
 
   When comparing rows, each cell is normalised via [[round-numeric]] to tolerate float-associativity noise
-  between multi-`SUM` per-subquery and native `SUM` over `GROUPING SETS`."
+  between multi-`SUM` per-subquery and native `SUM` over `GROUPING SETS`.
+
+  On mismatch — when at least one side was served from the QP cache — logs each side's cache `updated_at` so
+  that mismatches caused by asymmetric cache freshness (control served from a stale multi-path cache while
+  candidate ran fresh, or vice versa) can be distinguished from true code regressions."
   [r1 r2]
-  (cond
-    (-> r1 :data :rows) (= (frequencies (mapv #(mapv round-numeric %) (-> r1 :data :rows)))
-                           (frequencies (mapv #(mapv round-numeric %) (-> r2 :data :rows))))
-    (:row_count r1)     (= (:row_count r1) (:row_count r2))
-    :else               true))
+  (let [equivalent? (cond
+                      (-> r1 :data :rows) (= (frequencies (mapv #(mapv round-numeric %) (-> r1 :data :rows)))
+                                             (frequencies (mapv #(mapv round-numeric %) (-> r2 :data :rows))))
+                      (:row_count r1)     (= (:row_count r1) (:row_count r2))
+                      :else               true)
+        control-cached-at   (cache-updated-at r1)
+        candidate-cached-at (cache-updated-at r2)]
+    (when (and (not equivalent?)
+               (or control-cached-at candidate-cached-at))
+      (log/warnf "pivot parity mismatch with cache asymmetry — control cache updated_at=%s, candidate cache updated_at=%s"
+                 control-cached-at candidate-cached-at))
+    equivalent?))
 
 (defn- ensure-pivot-clause
   "Return `query` unchanged when its last stage already carries `:pivot`; otherwise attach a default `:pivot`
