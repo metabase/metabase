@@ -9,39 +9,9 @@
 
   This namespace exists separately to break what would otherwise be a cycle:
   the orchestrator requires every concrete planner, and every concrete
-  planner needs the protocol it implements."
-  (:require
-   [metabase.util.malli :as mu]))
+  planner needs the protocol it implements.")
 
 (set! *warn-on-reflection* true)
-
-(mu/defn plan-item-schema
-  "Returns the Malli schema for a single plan item. Public so concrete
-  planners and tests can reuse it. Plan items are emitted by `plan!`
-  implementations and consumed by the orchestrator's
-  variant-builder dispatch."
-  []
-  [:map
-   [:block_id     pos-int?]
-   [:metric_id    pos-int?]
-   [:dimension_id :string]
-   [:variant      :string]
-   [:params       {:optional true} :map]
-   [:rationale    {:optional true} [:maybe :string]]])
-
-(mu/defn result-schema
-  "Returns the Malli schema for a planner result — the orchestrator validates
-  every `plan!` return value against it and treats a mismatch as a planner
-  failure. `:ok` carries a `:plan` of items; `:failed` carries `:final-errors`;
-  `:skip-not-applicable` is a soft exit (planner had nothing to emit,
-  orchestrator should treat the thread as empty, not failed)."
-  []
-  [:map
-   [:outcome      [:enum :ok :failed :skip-not-applicable]]
-   [:plan         {:optional true} [:maybe [:sequential (plan-item-schema)]]]
-   [:rationale    {:optional true} [:maybe :string]]
-   [:transcript   {:optional true} :any]
-   [:final-errors {:optional true} [:maybe [:sequential :string]]]])
 
 (defprotocol QueryPlanner
   "Pluggable query-planner contract for Explorations.
@@ -65,7 +35,14 @@
        :creator-id         long|nil
        :thread-blocks      [ExplorationBlock ...]}
 
-    Returns a map matching `result-schema` (the orchestrator validates it).
+    Returns a map with an `:outcome` of `:ok` (carrying a `:plan` of items),
+    `:failed` (carrying `:final-errors`), or `:skip-not-applicable` (a soft
+    exit — the planner had nothing to emit, and the orchestrator treats the
+    thread as empty, not failed), plus optional `:rationale` and
+    `:transcript`. Each plan item is a map of `:block_id`, `:metric_id`,
+    `:dimension_id`, and `:variant`, with optional `:params` and
+    `:rationale`.
+
     The orchestrator handles materialization, transcript persistence, and
     failure-doc writing — every planner just builds plan items and reports
     its outcome."))

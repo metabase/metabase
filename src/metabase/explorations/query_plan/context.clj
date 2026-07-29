@@ -9,8 +9,8 @@
   doesn't emit pairs the variant builders would just reject.
 
   This namespace exists to keep `metabase.explorations.query-plan` (the
-  orchestrator) focused on the plan/validate/materialize loop — hydration
-  and applicability are their own concern."
+  orchestrator) focused on the plan/materialize loop — hydration and
+  applicability are their own concern."
   (:require
    [clojure.string :as str]
    [metabase.explorations.blocks :as explorations.blocks]

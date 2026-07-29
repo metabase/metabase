@@ -14,14 +14,12 @@
   instance, and teaching `pick-planner!` to dispatch to it."
   (:require
    [clojure.set :as set]
-   [malli.error :as me]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.mechanical :as qp.mechanical]
    [metabase.explorations.query-plan.planner :as planner]
    [metabase.explorations.query-plan.variants :as qp.variants]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
    (java.time Instant OffsetDateTime)))
@@ -322,26 +320,11 @@
 ;; Public entry point — called from the worker
 ;; ---------------------------------------------------------------------------
 
-(defn- validate-planner-result
-  "Check a `plan!` return value against [[planner/result-schema]]. A valid
-  result passes through untouched; an invalid one is coerced to a `:failed`
-  result carrying the humanized schema error (with the offending value kept in
-  the transcript), so a misbehaving planner is recorded and stamped like any
-  other planner failure instead of feeding garbage to materialization."
-  [result]
-  (if-let [explanation (mr/explain (planner/result-schema) result)]
-    {:outcome      :failed
-     :final-errors [(str "Planner returned an invalid result: "
-                         (pr-str (me/humanize explanation)))]
-     :transcript   {:invalid-result result}}
-    result))
-
 (defn- run-planner!
   "Invoke the picked planner, persist rows / mark terminal as appropriate, and
   return the outcome keyword (`:ok`, `:skip-empty`, or `:failed`)."
   [{:keys [thread-id metric-by-key] :as ctx} picked planner-id pre]
-  (let [{:keys [outcome plan rationale transcript final-errors]} (validate-planner-result
-                                                                  (planner/plan! picked ctx))
+  (let [{:keys [outcome plan rationale transcript final-errors]} (planner/plan! picked ctx)
         transcript-body {:outcome      outcome
                          :rationale    rationale
                          :plan         plan
