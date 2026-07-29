@@ -2,7 +2,10 @@ import { t } from "ttag";
 
 import type { DimensionDescriptor } from "metabase/common/metrics/utils/dimension-descriptors";
 import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
-import { GEO_SUBTYPE_PRIORITY } from "metabase/common/metrics/utils/dimension-types";
+import {
+  GEO_SUBTYPE_PRIORITY,
+  getGeoSubtype,
+} from "metabase/common/metrics/utils/dimension-types";
 import { getObjectEntries, objectFromEntries } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
@@ -666,9 +669,78 @@ export function computeDefaultDimensionBreakouts(
 
   dimensionBreakouts.sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
 
-  return dimensionBreakouts.map(
-    ({ index, ...dimensionBreakout }) => dimensionBreakout,
+  return promoteDefaultDimensionBreakout(
+    dimensionBreakouts.map(
+      ({ index, ...dimensionBreakout }) => dimensionBreakout,
+    ),
+    dimensionsBySlotIndex,
+    slotOrder,
   );
+}
+
+function findDefaultDimension(
+  dimensionsBySlotIndex: Map<number, Map<string, DimensionDescriptor>>,
+  slotOrder: number[],
+): DimensionDescriptor | null {
+  for (const slotIndex of slotOrder) {
+    for (const [, info] of dimensionsBySlotIndex.get(slotIndex) ?? []) {
+      if (info.isDefault) {
+        return info;
+      }
+    }
+  }
+  return null;
+}
+
+function promoteDefaultDimensionBreakout(
+  dimensionBreakouts: MetricsViewerDimensionBreakoutState[],
+  dimensionsBySlotIndex: Map<number, Map<string, DimensionDescriptor>>,
+  slotOrder: number[],
+): MetricsViewerDimensionBreakoutState[] {
+  const defaultDimension = findDefaultDimension(
+    dimensionsBySlotIndex,
+    slotOrder,
+  );
+  if (!defaultDimension) {
+    return dimensionBreakouts;
+  }
+
+  const config = getDimensionBreakoutConfig(defaultDimension.dimensionType);
+  const defaultBreakoutId =
+    config.matchMode === "aggregate" ? config.fixedId : defaultDimension.id;
+
+  const existing = dimensionBreakouts.find(
+    (dimensionBreakout) => dimensionBreakout.id === defaultBreakoutId,
+  );
+  if (existing) {
+    return [
+      existing,
+      ...dimensionBreakouts.filter(
+        (dimensionBreakout) => dimensionBreakout !== existing,
+      ),
+    ];
+  }
+  if (config.matchMode === "aggregate") {
+    return dimensionBreakouts;
+  }
+
+  const mapping: Record<number, string> = {};
+  for (const slotIndex of slotOrder) {
+    if (dimensionsBySlotIndex.get(slotIndex)?.has(defaultDimension.id)) {
+      mapping[slotIndex] = defaultDimension.id;
+    }
+  }
+  return [
+    {
+      id: defaultDimension.id,
+      type: defaultDimension.dimensionType,
+      label: defaultDimension.displayName,
+      display: config.defaultDisplayType,
+      dimensionMapping: mapping,
+      projectionConfig: {},
+    },
+    ...dimensionBreakouts,
+  ];
 }
 
 // ── Manual dimensionBreakout creation ──
@@ -719,6 +791,69 @@ function createScalarDimensionBreakout(): MetricsViewerDimensionBreakoutState | 
 
 export function getScalarDimensionBreakoutLabel() {
   return t`Totals`;
+}
+
+export function getDimensionBreakoutTypeLabel(
+  type: MetricsViewerDimensionBreakoutType,
+): string | null {
+  switch (type) {
+    case "time":
+      return t`Time`;
+    case "category":
+      return t`Category`;
+    case "boolean":
+      return t`Boolean`;
+    case "numeric":
+      return t`Number`;
+
+    // Geo has per-subtype naming and scalar has its own label
+    default:
+      return null;
+  }
+}
+
+export function getDimensionBreakoutLabel(
+  dimensionBreakout: MetricsViewerDimensionBreakoutState,
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  metricSlots: MetricSlot[],
+): string | null {
+  if (dimensionBreakout.type === "time") {
+    return getDimensionBreakoutTypeLabel("time");
+  }
+
+  const dimensions = metricSlots.flatMap((slot) => {
+    const dimensionId = dimensionBreakout.dimensionMapping[slot.slotIndex];
+    const definition = definitions[slot.sourceId]?.definition;
+    if (!dimensionId || !definition) {
+      return [];
+    }
+
+    const dimension = getDimensionDescriptors(definition).get(dimensionId);
+    return dimension ? [dimension] : [];
+  });
+
+  if (
+    dimensionBreakout.type === "geo" &&
+    dimensions.some(
+      (dimension) => getGeoSubtype(dimension.dimensionMetadata) === "state",
+    )
+  ) {
+    return t`State`;
+  }
+
+  if (dimensions.length === 0) {
+    return dimensionBreakout.label;
+  }
+
+  const [firstDimension] = dimensions;
+  const haveSameDisplayName = dimensions.every(
+    (dimension) => dimension.displayName === firstDimension.displayName,
+  );
+
+  return haveSameDisplayName && !!firstDimension.displayName
+    ? firstDimension.displayName
+    : (getDimensionBreakoutTypeLabel(dimensionBreakout.type) ??
+        dimensionBreakout.label);
 }
 
 // ── DimensionBreakout dimension matching ──
@@ -831,10 +966,11 @@ function resolveSubtypeFallback(
 }
 
 /**
- * Resolve a stored breakout to a dimension in `dimensions` by exact identity:
- * first by dimension id, then by matching an already-mapped slot's reference
- * and requiring a shared underlying source (same physical column/table) via
- * `LibMetric.isSameSource`.
+ * Resolve a stored breakout to a dimension in `dimensions`: first by dimension
+ * id, then from an already-mapped slot's reference via the shared-source →
+ * curated-name → compatible-type ladder. The fallbacks let metrics pair
+ * dimensions of the same type even without a shared physical column (e.g.
+ * across databases).
  */
 function findExactColumnMatch(
   dimensions: Map<string, DimensionDescriptor>,
@@ -854,29 +990,9 @@ function findExactColumnMatch(
     slotIndexToSourceId,
   );
   if (reference) {
-    return findStrictExactColumnMatch(dimensions, reference)?.id ?? null;
-  }
-
-  return null;
-}
-
-function findStrictExactColumnMatch(
-  dimensions: Map<string, DimensionDescriptor>,
-  reference: DimensionDescriptor,
-): DimensionDescriptor | null {
-  for (const [, info] of dimensions) {
-    if (info.dimensionType !== reference.dimensionType) {
-      continue;
-    }
-
-    if (
-      LibMetric.isSameSource(
-        info.dimensionMetadata,
-        reference.dimensionMetadata,
-      )
-    ) {
-      return info;
-    }
+    return (
+      findSourceMatch(dimensions, dimensionBreakout.type, reference)?.id ?? null
+    );
   }
 
   return null;

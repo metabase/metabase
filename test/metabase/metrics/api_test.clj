@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -190,6 +192,38 @@
           (is (seq (:dimensions updated-card)))
           (is (seq (:dimension_mappings updated-card))))))))
 
+(deftest fetch-metric-excludes-orphaned-dimensions-test
+  (testing "GET /api/metric/:id excludes orphaned dimensions unless explicitly requested"
+    (mt/with-temp [:model/Card metric {:name          "Metric with orphaned dimension"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :venues)
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+      (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id (:id metric))
+            orphan-id      (:id (first dimensions))
+            orphan-mapping (some #(when (= orphan-id (:dimension-id %)) %) dimension_mappings)
+            mappings       (mapv #(if (= orphan-id (:dimension-id %))
+                                    (assoc-in % [:target 2] (mt/id :users :name))
+                                    %)
+                                 dimension_mappings)]
+        (is (some? orphan-mapping))
+        (t2/update! :model/Card (:id metric) {:dimension_mappings mappings})
+        (let [response             (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+              response-ids         (into #{} (map :id) (:dimensions response))
+              response-mapping-ids (into #{} (map :dimension-id) (:dimension_mappings response))]
+          (is (not (contains? response-ids orphan-id)))
+          (is (not (contains? response-mapping-ids orphan-id))))
+        (let [response (mt/user-http-request :rasta :get 200
+                                             (str "metric/" (:id metric))
+                                             :include-orphaned true)
+              orphan   (some #(when (= orphan-id (:id %)) %) (:dimensions response))]
+          (is (= "status/orphaned" (:status orphan)))
+          (is (some #(= orphan-id (:dimension-id %)) (:dimension_mappings response))))
+        (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id (:id metric))]
+          (is (= :status/orphaned (:status (some #(when (= orphan-id (:id %)) %) dimensions))))
+          (is (some #(= orphan-id (:dimension-id %)) dimension_mappings)))))))
+
 (deftest fetch-metric-dimensions-have-has-field-values-test
   (testing "GET /api/metric/:id returns dimensions with has-field-values populated"
     (mt/with-temp [:model/Card metric {:name          "Metric with HFV"
@@ -279,6 +313,19 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "metric/dataset"
                                      {:definition {:expression [:metric {:lib/uuid "a"} (:id metric)]}})))))))
+
+(deftest dataset-endpoint-metric-without-query-building-permissions-test
+  (testing "POST /api/metric/dataset runs a readable metric without query-building permissions"
+    (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+        (is (= [[100]]
+               (-> (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                         {:definition {:expression [:metric {:lib/uuid "a"} (:id metric)]}})
+                   (get-in [:data :rows]))))))))
 
 (deftest dataset-endpoint-rejects-non-metric-card-test
   (testing "POST /api/metric/dataset returns 404 for non-metric cards"
