@@ -27,27 +27,27 @@
             {:name "query_execution_2026_10" :from "2026-10-01" :to "2026-11-01"}]
            (partitions/partitions-to-create existing nnext-month)))))
 
-(deftest partitions-to-detach-test
+(deftest partitions-to-drop-test
   (let [existing (partitions-for-months 4 5 6 7)]
-    (is (= [] (partitions/partitions-to-detach existing now 0)))
+    (is (= [] (partitions/partitions-to-drop existing now 0)))
     (is (= (partitions-for-months 4 5)
-           (set (partitions/partitions-to-detach existing now 7))))
+           (set (partitions/partitions-to-drop existing now 7))))
     (is (= (partitions-for-months 4 5 6)
-           (set (partitions/partitions-to-detach existing mid-month 7))))
+           (set (partitions/partitions-to-drop existing mid-month 7))))
     (is (= (partitions-for-months 4 5)
-           (set (partitions/partitions-to-detach existing now 30))))
-    (is (= [] (partitions/partitions-to-detach existing now 100)))
+           (set (partitions/partitions-to-drop existing now 30))))
+    (is (= [] (partitions/partitions-to-drop existing now 100)))
     (testing "future months"
       (is (= (partitions-for-months 4 5 6)
-             (set (partitions/partitions-to-detach existing next-month 7))))
+             (set (partitions/partitions-to-drop existing next-month 7))))
       (is (= (partitions-for-months 4 5 6)
-             (set (partitions/partitions-to-detach existing next-month 30))))
+             (set (partitions/partitions-to-drop existing next-month 30))))
       (is (= (partitions-for-months 4)
-             (set (partitions/partitions-to-detach existing next-month 90))))
+             (set (partitions/partitions-to-drop existing next-month 90))))
       (is (= (partitions-for-months 4 5 6 7)
-             (set (partitions/partitions-to-detach existing nnext-month 30))))
+             (set (partitions/partitions-to-drop existing nnext-month 30))))
       (is (= (partitions-for-months 4)
-             (set (partitions/partitions-to-detach existing nnext-month 100)))))))
+             (set (partitions/partitions-to-drop existing nnext-month 100)))))))
 
 (defn drop-all-tables [conn]
   ;; can't use current-partitions because we want to get rid of them regardless

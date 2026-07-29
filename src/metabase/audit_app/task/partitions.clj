@@ -1,7 +1,7 @@
 (ns metabase.audit-app.task.partitions
   "The query_execution table is partitioned by date for performance.
   As time goes on, we need to ensure that new partitions are added and old ones
-  get detached as they cycle out of the retention window.
+  get dropped as they cycle out of the retention window.
   All public functions here are public only for testing purposes."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
@@ -45,8 +45,8 @@
                            :first-day-of-next-month)]
     (t/after? end-date retention-earliest)))
 
-(defn partitions-to-detach
-  "Given current partitions, time and retention days, which are due to be detached?"
+(defn partitions-to-drop
+  "Given current partitions, time and retention days, which are due to be dropped?"
   [partitions now retention-days]
   (if (or (nil? retention-days) (zero? retention-days))
     []
@@ -61,9 +61,8 @@
   (next.jdbc/execute! conn [(format "CREATE TABLE \"%s\" PARTITION OF query_execution
                                         FOR VALUES FROM ('%s') TO ('%s')" name from to)]))
 
-(defn- detach-partition [conn partition]
-  (next.jdbc/execute! conn [(format "ALTER TABLE query_execution DETACH PARTITION \"%s\""
-                                    partition)]))
+(defn- drop-partition [conn partition]
+  (next.jdbc/execute! conn [(format "DROP TABLE \"%s\"" partition)]))
 
 (defn current-partitions
   "List the names of the currently-attached query_execution partition tables."
@@ -75,13 +74,13 @@
                                    WHERE p.relname='query_execution'"])))
 
 (defn manage-partitions
-  "Create new partitions and detach unnecessary partitions under Postgres."
+  "Create new partitions and drop unnecessary partitions under Postgres."
   [conn now retention-days]
   (let [partitions (current-partitions conn)]
     (doseq [partition (partitions-to-create partitions now)]
       (create-partition conn partition))
-    (doseq [partition (partitions-to-detach partitions now retention-days)]
-      (detach-partition conn partition))))
+    (doseq [partition (partitions-to-drop partitions now retention-days)]
+      (drop-partition conn partition))))
 
 ;;; scheduling the jobs
 
