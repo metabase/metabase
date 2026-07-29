@@ -71,6 +71,11 @@
    [:map
     [:profile_id {:optional true} [:maybe ms/NonBlankString]]]])
 
+(def ^:private ForkConversationBody
+  [:map
+   ;; the `external_id` of the assistant message to fork at (the FE's message id)
+   [:message_id ms/UUIDString]])
+
 (def ^:private SaveEntityCard
   [:map
    [:name                   ms/NonBlankString]
@@ -213,6 +218,25 @@
   [{:keys [id]} :- ConversationIdParams]
   (api/read-check :model/MetabotConversation id)
   (metabot.persistence/conversation-detail id))
+
+(api.macros/defendpoint :post "/:id/fork" :- ConversationDetail
+  "Fork a conversation at an assistant message, returning a brand-new conversation
+  that copies the thread from the start up to and including that message.
+
+  Only the conversation's originator may fork it, for now. `message_id` is the
+  `external_id` of the message to fork at, which must be a live, finished,
+  non-errored assistant message. The clone gets fresh conversation/message ids,
+  fresh timestamps, the current user as owner, and zeroed token usage so the fork
+  does not double-count tokens in the analytics views."
+  [{:keys [id]} :- ConversationIdParams
+   _query-params
+   {:keys [message_id]} :- ForkConversationBody]
+  (let [conversation (api/check-404 (t2/select-one [:model/MetabotConversation :id :user_id] :id id))]
+    (api/check-403 (= (:user_id conversation) api/*current-user-id*))
+    (let [new-conversation-id (metabot.persistence/fork-conversation! id message_id api/*current-user-id*)]
+      (api/check-400 (some? new-conversation-id)
+                     (tru "Can only fork from a completed Metabot response."))
+      (metabot.persistence/conversation-detail new-conversation-id))))
 
 (api.macros/defendpoint :post "/:id/saved-entity" :- SaveEntityResponse
   "Save a Metabot-generated chart from this conversation as a card, stamping the
