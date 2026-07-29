@@ -8316,6 +8316,10 @@
         "description" : "schema for a valid MBQL 4 :value clause",
         "allOf" : [ ]
       },
+      "metabase.lib-metric.schema..dimension-mapping.target" : {
+        "description" : "Target field reference for a dimension mapping, e.g. [:field {:source-field 1} 2].",
+        "$ref" : "#/components/schemas/mbql.clause.field"
+      },
       "metabase.lib-metric.schema..dimension-reference.options" : {
         "description" : "Options map for dimension references.",
         "type" : "object",
@@ -10798,6 +10802,10 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "skip-result-metadata-persistence?" : {
+            "description" : "Should we skip persisting `result_metadata` to a saved Card while still returning it in query results? Used by\n       `metabase.query-processor.middleware.results-metadata`; default `false`. Has no effect when\n       `skip-results-metadata?` is true.",
+            "type" : "boolean"
           },
           "skip-results-metadata?" : {
             "description" : "Should we skip adding `results_metadata` to query results after running the query? Used by\n     `metabase.query-processor.middleware.results-metadata`; default `false`. (Note: we may change the name of this\n     column in the near future, to `result_metadata`, to fix inconsistencies in how we name things.)",
@@ -18228,6 +18236,15 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "dashboard_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "ignore_cache" : {
                     "oneOf" : [ {
                       "type" : "boolean"
@@ -36456,6 +36473,17 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "include-orphaned",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -38392,6 +38420,17 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "include-orphaned",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -38409,6 +38448,428 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/{id}/dimension" : {
+      "get" : {
+        "operationId" : "get-api-metric-id-dimension",
+        "summary" : "GET /api/metric/{id}/dimension",
+        "description" : "List a metric's curated dimensions, and (when `with-addable=true`) the columns still available to\n  add, grouped by source table. Both can be filtered with a `query` name substring.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "with-addable",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include-orphaned",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "addable" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : { }
+                      }
+                    },
+                    "added" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : { }
+                      }
+                    }
+                  },
+                  "required" : [ "added", "addable" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/{id}/dimension/add" : {
+      "post" : {
+        "operationId" : "post-api-metric-id-dimension-add",
+        "summary" : "POST /api/metric/{id}/dimension/add",
+        "description" : "Add dimensions to a metric. Each entry carries its UUID and mapping target; the column-derived fields and mapping\n  are recomputed server-side.\n\n  Returns the updated list of dimensions.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : { }
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "dimensions" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : {
+                        "description" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "display_name" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        },
+                        "id" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        },
+                        "mapping_target" : {
+                          "$ref" : "#/components/schemas/metabase.lib-metric.schema..dimension-mapping.target"
+                        }
+                      },
+                      "required" : [ "id", "mapping_target" ]
+                    }
+                  }
+                },
+                "required" : [ "dimensions" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/{id}/dimension/remove" : {
+      "post" : {
+        "operationId" : "post-api-metric-id-dimension-remove",
+        "summary" : "POST /api/metric/{id}/dimension/remove",
+        "description" : "Remove dimensions (by UUID) from a metric. Returns the updated list of added dimensions.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : { }
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "dimension_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  }
+                },
+                "required" : [ "dimension_ids" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/{id}/dimension/reorder" : {
+      "post" : {
+        "operationId" : "post-api-metric-id-dimension-reorder",
+        "summary" : "POST /api/metric/{id}/dimension/reorder",
+        "description" : "Persist a new ordering for a metric's dimensions. `dimension_ids` is the desired order; dimensions\n  not listed keep their relative order after the listed ones. Returns the updated list of added\n  dimensions.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : { }
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "dimension_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  }
+                },
+                "required" : [ "dimension_ids" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/{id}/dimension/set-default" : {
+      "post" : {
+        "operationId" : "post-api-metric-id-dimension-set-default",
+        "summary" : "POST /api/metric/{id}/dimension/set-default",
+        "description" : "Mark exactly one dimension as the metric's default, clearing any previous default. Returns the\n  updated list of added dimensions. (It is legal for a metric to have no default; this always leaves\n  exactly one.)",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : { }
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "dimension_id" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "dimension_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/{id}/dimension/{dimension-key}" : {
+      "post" : {
+        "operationId" : "post-api-metric-id-dimension-dimension-key",
+        "summary" : "POST /api/metric/{id}/dimension/{dimension-key}",
+        "description" : "Update a metric dimension's `display_name`, `description`, and/or source column.\n\n  `source` is a `{type, field-id}`; the new column must have the same effective type.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "dimension-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : { }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "description" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "display_name" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "source" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "properties" : {
+                        "field-id" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        }
+                      },
+                      "required" : [ "field-id" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                }
+              }
+            }
           }
         },
         "tags" : [ "/api/metric" ]
