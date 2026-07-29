@@ -22,7 +22,7 @@ import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResu
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { LocationDescriptorObject } from "metabase/router";
-import { push, useRouter } from "metabase/router";
+import { push, queryToSearch, useRouter } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Flex, Icon, UnstyledButton, rem } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
@@ -156,7 +156,7 @@ function SearchBar({
     };
     onChangeLocation({
       pathname: "search",
-      query,
+      search: queryToSearch(query),
     });
   }, [onChangeLocation, previousLocation, searchFilters, searchText]);
 

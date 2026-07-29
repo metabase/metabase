@@ -20,7 +20,7 @@ type GsheetsStatus = GdrivePayload["status"];
 
 export const GdriveSyncStatus = () => {
   const dispatch = useDispatch();
-  const showGdrive = useShowGdrive();
+  const { showGdrive } = useShowGdrive();
 
   const [forceHide, setForceHide] = useState(true);
   const [dbId, setDbId] = useState<DatabaseId | undefined>();

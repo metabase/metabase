@@ -4,8 +4,11 @@ import type { VisualizationProps } from "../../types";
 
 import { SCATTER_PLOT_DEFINITION } from "./definition";
 
-Object.assign(ScatterPlot, SCATTER_PLOT_DEFINITION);
-
-export function ScatterPlot(props: VisualizationProps) {
+function ScatterPlotComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
 }
+
+export const ScatterPlot = Object.assign(
+  ScatterPlotComponent,
+  SCATTER_PLOT_DEFINITION,
+);

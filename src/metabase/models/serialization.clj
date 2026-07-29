@@ -424,7 +424,7 @@
 (defn log-and-extract-one
   "Extracts a single entity; will replace `extract-one` as public interface once `extract-one` overrides are gone."
   [model opts instance]
-  (log/tracef "Extracting %s" (log-path-str (generate-path model instance)))
+  (log/tracef "Extracting %s %s" model (:id instance))
   (try
     (extract-one model opts instance)
     (catch Exception e
@@ -684,7 +684,7 @@
   (let [model    (t2.model/resolve-model (symbol model-name))
         pk       (first (t2/primary-keys model))
         id       (get local pk)]
-    (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
+    (log/tracef "Upserting %s %d" model-name id)
     (t2/update! model id ingested)
     (t2/select-one model pk id)))
 
@@ -709,7 +709,7 @@
   (fn [model _] model))
 
 (defmethod load-insert! :default [model-name ingested]
-  (log/tracef "Inserting %s: %s" model-name (pr-str ingested))
+  (log/tracef "Inserting %s" model-name)
   (first (t2/insert-returning-instances! (t2.model/resolve-model (symbol model-name)) ingested)))
 
 (defmulti load-one!
@@ -883,7 +883,7 @@
   `(try
      ~@body
      (catch clojure.lang.ExceptionInfo e#
-       (log/debugf e# "Caught error in fk-elide")
+       (log/debugf "Caught error in fk-elide: %s" (ex-message e#))
        (when-not (= (::type (ex-data e#)) :target-not-found)
          (throw e#))
        nil)))
@@ -1282,7 +1282,7 @@
         (normalize-mbql-ref x)
         (lib/normalize x))
       (catch Throwable e
-        (log/warn e "Error normalizing imported MBQL")
+        (log/warnf "Error normalizing imported MBQL: %s" (ex-message e))
         x))))
 
 (defn- import-mbql*
@@ -1462,6 +1462,16 @@
        (map import-mbql)
        (map #(m/update-existing % :card_id *import-fk* 'Card))))
 
+(defn- export-parameter
+  "Convert a single parameter to portable form. A values source pointing at a Card that no longer exists has no
+  portable id, so the source is dropped and the parameter falls back to its connected fields — the same shape the app
+  produces when the source Card is archived."
+  [parameter]
+  (if (get-in parameter [:values_source_config :card_id])
+    (or (fk-elide (export-mbql parameter))
+        (export-mbql (dissoc parameter :values_source_type :values_source_config)))
+    (export-mbql parameter)))
+
 (mu/defn export-parameters
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
   it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references.
@@ -1471,7 +1481,7 @@
   (->> parameters
        (map-indexed (fn [i p] (assoc p :position i)))
        (sort-by :id)
-       (mapv export-mbql)))
+       (mapv export-parameter)))
 
 (defn import-parameters
   "Given the :parameter field as exported by serialization convert its field references

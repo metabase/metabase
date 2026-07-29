@@ -14,7 +14,6 @@ import {
 } from "../constants/bundle";
 import {
   DATA_APP_DIAGNOSTICS_CHANGED_EVENT,
-  DATA_APP_DIAGNOSTICS_EVENT,
   DATA_APP_DIAGNOSTICS_URL,
 } from "../constants/diagnostics-channel";
 
@@ -36,6 +35,8 @@ type ConnectReq = {
   url?: string;
   method?: string;
   headers?: Record<string, string>;
+  // The POST branch reads the body by async-iterating the request stream.
+  [Symbol.asyncIterator]?: () => AsyncIterator<Buffer>;
 };
 type ConnectRes = { statusCode: number; setHeader: jest.Mock; end: jest.Mock };
 type ConnectHandler = (
@@ -110,9 +111,18 @@ class FakeDevServer {
 
   async request(
     url: string,
-    { method = "GET", headers = {} }: RequestOptions = {},
+    { method = "GET", headers = {}, body }: RequestOptions = {},
   ): Promise<RequestResult> {
-    const req: ConnectReq = { url, method, headers };
+    const req: ConnectReq = {
+      url,
+      method,
+      headers,
+      ...(body !== undefined && {
+        [Symbol.asyncIterator]: async function* () {
+          yield Buffer.from(JSON.stringify(body));
+        },
+      }),
+    };
     const res: ConnectRes = {
       statusCode: 0,
       setHeader: jest.fn(),
@@ -140,6 +150,12 @@ class FakeDevServer {
 
     await next();
 
+    // Middlewares follow connect's convention of calling `next()` without
+    // awaiting it, so an async handler further down the stack (the POST
+    // branch reads the body) may still be running — let it settle before
+    // reading the response.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     const [payload] = res.end.mock.calls[0] ?? [];
 
     return {
@@ -154,7 +170,11 @@ class FakeDevServer {
   }
 }
 
-type RequestOptions = { method?: string; headers?: Record<string, string> };
+type RequestOptions = {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+};
 
 type TestPlugin = {
   name: string;
@@ -352,7 +372,27 @@ describe("dataAppSandboxDevPlugin", () => {
         );
 
         expect(mockedBuild).toHaveBeenCalledTimes(1);
-        expect(server.ws.send).not.toHaveBeenCalled();
+        expect(server.ws.send).not.toHaveBeenCalledWith({
+          type: "custom",
+          event: DATA_APP_REBUILT_EVENT,
+        });
+      });
+
+      it("nudges clients to re-read the feed when data_app.yaml changes", async () => {
+        const { server } = await setup();
+
+        await server.watcher.emit(
+          "all",
+          "change",
+          path.join("/app", "data_app.yaml"),
+        );
+
+        // The manifest is served from the feed, so the toolbar's Manifest tab
+        // only refreshes when told to re-read — otherwise it lags the edit.
+        expect(server.ws.send).toHaveBeenCalledWith({
+          type: "custom",
+          event: DATA_APP_DIAGNOSTICS_CHANGED_EVENT,
+        });
       });
     });
 
@@ -404,15 +444,20 @@ describe("dataAppSandboxDevPlugin", () => {
     });
 
     describe("diagnostics feed", () => {
+      // The page's reporter delivers over POST (see the middleware's note on
+      // why not the HMR socket).
       const report = (
         server: FakeDevServer,
         entries: unknown[],
         sessionId?: string,
       ) =>
-        server.ws.emit(DATA_APP_DIAGNOSTICS_EVENT, {
-          sessionId,
-          entries,
-          connection: { reachable: true },
+        server.request(DATA_APP_DIAGNOSTICS_URL, {
+          method: "POST",
+          body: {
+            sessionId,
+            entries,
+            connection: { reachable: true },
+          },
         });
 
       it("refuses a method it does not serve", async () => {
@@ -420,17 +465,39 @@ describe("dataAppSandboxDevPlugin", () => {
 
         const { statusCode, res } = await server.request(
           DATA_APP_DIAGNOSTICS_URL,
-          { method: "POST" },
+          { method: "PUT" },
         );
 
         expect(statusCode).toBe(405);
-        expect(res.setHeader).toHaveBeenCalledWith("Allow", "GET, DELETE");
+        expect(res.setHeader).toHaveBeenCalledWith(
+          "Allow",
+          "GET, POST, DELETE",
+        );
+      });
+
+      it("accepts a reporter batch on POST and rejects a non-JSON body", async () => {
+        const { server } = await setup();
+
+        const posted = await report(server, [{ summary: "boom" }], "page-1");
+        expect(posted.statusCode).toBe(204);
+
+        const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
+        expect(
+          body.entries.map((entry: { summary: string }) => entry.summary),
+        ).toEqual(["boom"]);
+
+        const rejected = await server.request(DATA_APP_DIAGNOSTICS_URL, {
+          method: "POST",
+          // A raw string is valid JSON but not a message object.
+          body: "not-a-message",
+        });
+        expect(rejected.statusCode).toBe(400);
       });
 
       it("serves what the page reported, and passes other URLs through", async () => {
         const { server } = await setup();
 
-        report(server, [
+        await report(server, [
           { id: 1, kind: "error", summary: "boom", alert: true },
           { id: 2, kind: "sdk-call", summary: "POST /api/dataset → 400" },
         ]);
@@ -461,7 +528,7 @@ describe("dataAppSandboxDevPlugin", () => {
 
       it("keeps the manifest even when the page reports without one", async () => {
         const { server } = await setup();
-        report(server, [{ eventId: 1, summary: "boom" }]);
+        await report(server, [{ eventId: 1, summary: "boom" }]);
 
         const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
 
@@ -470,7 +537,7 @@ describe("dataAppSandboxDevPlugin", () => {
 
       it("returns only events from `startEventId` onward", async () => {
         const { server } = await setup();
-        report(server, [
+        await report(server, [
           { id: 1, summary: "old" },
           { id: 2, summary: "new" },
         ]);
@@ -495,7 +562,7 @@ describe("dataAppSandboxDevPlugin", () => {
         });
 
         server.ws.clients.add({});
-        report(server, []);
+        await report(server, []);
 
         const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
         expect(body.clients).toBe(1);
@@ -510,7 +577,7 @@ describe("dataAppSandboxDevPlugin", () => {
       it("nudges readers when a report brings something new", async () => {
         const { server } = await setup();
 
-        report(server, [{ summary: "boom" }], "page-1");
+        await report(server, [{ summary: "boom" }], "page-1");
 
         // The nudge carries no payload: readers re-read the endpoint, so the
         // toolbar and a shell agent still see the same bytes.
@@ -524,13 +591,31 @@ describe("dataAppSandboxDevPlugin", () => {
       it("stays quiet when a report brings nothing new", async () => {
         const { server } = await setup();
 
-        report(server, [{ summary: "boom" }], "page-1");
-        report(server, [], "page-1");
-        report(server, [], "page-1");
+        await report(server, [{ summary: "boom" }], "page-1");
+        await report(server, [], "page-1");
+        await report(server, [], "page-1");
 
         // The reporter flushes on a timer whether or not anything happened.
         // Nudging on those would rebuild the poll loop from the other side.
         expect(changeNudges(server)).toBe(1);
+      });
+
+      it("clears on DELETE and nudges every reader, so Clear is global", async () => {
+        const { server } = await setup();
+        await report(server, [{ summary: "boom" }], "page-1");
+        const nudgesBefore = changeNudges(server);
+
+        const { statusCode } = await server.request(DATA_APP_DIAGNOSTICS_URL, {
+          method: "DELETE",
+        });
+
+        expect(statusCode).toBe(204);
+        // Other open toolbars only re-read on the nudge — without it they'd
+        // keep showing the entries that were just cleared.
+        expect(changeNudges(server)).toBe(nudgesBefore + 1);
+
+        const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
+        expect(body.entries).toEqual([]);
       });
     });
   });

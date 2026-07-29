@@ -2327,6 +2327,85 @@
                 (is (some? transform))
                 (is (= (:id db) (:source_database_id transform)))))))))))
 
+(deftest transform-checkpoint-field-remap-test
+  (testing "checkpoint-filter-field-id survives serdes into an instance with different field IDs (GDGT-2906)"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [serialized (atom nil)]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (t2/delete! :model/TransformTag)
+            (let [db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                  field (ts/create! :model/Field :name "updated_at" :table_id (:id table)
+                                    :base_type :type/DateTime)
+                  _     (ts/create! :model/Transform
+                                    :name "Checkpoint Transform"
+                                    :source {:type "query"
+                                             :query (mbql5-query (:id db) (:id table))
+                                             :source-incremental-strategy {:type "checkpoint"
+                                                                           :checkpoint-filter-field-id (:id field)
+                                                                           :lookback {:value 4 :unit "day"}}}
+                                    :target {:database (:id db)
+                                             :type "table-incremental"
+                                             :schema "public"
+                                             :name "target_table"
+                                             :target-incremental-strategy {:type "append"}})]
+              (reset! serialized (into [] (serdes.extract/extract {})))))
+          (testing "the export contains a portable field ref, not a numeric ID"
+            (let [transform (first (filter #(= "Transform" (-> % :serdes/meta last :model)) @serialized))]
+              (is (= ["my-db" nil "customers" "updated_at"]
+                     (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id])))))
+          (ts/with-db dest-db
+            (t2/delete! :model/TransformTag)
+            ;; shift the ID sequences so a raw numeric ID could not accidentally resolve
+            (let [db    (ts/create! :model/Database :name "padding-db")
+                  table (ts/create! :model/Table :name "padding" :db_id (:id db))]
+              (ts/create! :model/Field :name "padding_field" :table_id (:id table)))
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (let [transform (t2/select-one :model/Transform :name "Checkpoint Transform")
+                  field     (t2/select-one :model/Field :name "updated_at")]
+              (is (some? transform))
+              (is (some? field))
+              (is (= (:id field)
+                     (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id]))
+                  "the imported checkpoint field id points at the destination's field row")
+              (testing "the lookback config rides along unchanged"
+                (is (= {:value 4 :unit "day"}
+                       (get-in transform [:source :source-incremental-strategy :lookback])))))))))))
+
+(deftest transform-dangling-checkpoint-field-export-test
+  (testing "a checkpoint field id whose field no longer exists exports as-is and doesn't fail the import (GDGT-2906)"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [serialized (atom nil)]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (t2/delete! :model/TransformTag)
+            (let [db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                  _     (ts/create! :model/Transform
+                                    :name "Stale Checkpoint Transform"
+                                    :source {:type "query"
+                                             :query (mbql5-query (:id db) (:id table))
+                                             :source-incremental-strategy {:type "checkpoint"
+                                                                           :checkpoint-filter-field-id 999999999}}
+                                    :target {:database (:id db)
+                                             :type "table-incremental"
+                                             :schema "public"
+                                             :name "target_table"
+                                             :target-incremental-strategy {:type "append"}})]
+              (reset! serialized (into [] (serdes.extract/extract {})))))
+          (testing "the dangling id is exported as a raw number, not a broken field ref"
+            (let [transform (first (filter #(= "Transform" (-> % :serdes/meta last :model)) @serialized))]
+              (is (= 999999999
+                     (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id])))))
+          (ts/with-db dest-db
+            (t2/delete! :model/TransformTag)
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (is (= 999999999
+                   (get-in (t2/select-one :model/Transform :name "Stale Checkpoint Transform")
+                           [:source :source-incremental-strategy :checkpoint-filter-field-id]))
+                "the stale numeric id survives the import unchanged")))))))
+
 (deftest transform-with-deleted-source-database-load-test
   (testing "An orphaned transform (source database was deleted before export) round-trips through serdes as a tombstone (GDGT-2447)"
     (mt/with-premium-features #{:transforms-basic}

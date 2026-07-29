@@ -182,7 +182,7 @@
           (t2/with-transaction [_conn]
             (insert-query-entries! new-entry))
           (catch Throwable e
-            (log/tracef e "Error inserting concurrently created Query entries: %s" (ex-message e))))))))
+            (log/tracef "Error inserting concurrently created Query entries: %s" (ex-message e))))))))
 
 (mr/def ::database-and-table-ids
   [:map

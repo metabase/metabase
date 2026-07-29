@@ -88,7 +88,7 @@ export function getFieldRemappedValues(
 }
 
 /**
- * Adds 3 extra attributes to every Field, so that DataSelector does not break.
+ * Adds 4 extra attributes to every Field, so that DataSelector does not break.
  * DataSelector component expects metabase-lib/v1/metadata/Field objects (entity framework),
  * but this modern module uses Field from metabase-types/api/field.ts instead.
  */
@@ -105,6 +105,7 @@ export function hydrateTableFields(
       ...field,
       displayName: () => field.display_name,
       icon: () => getColumnIcon(Lib.legacyColumnTypeInfo(field)),
+      getPlainObject: () => field,
       table,
     })),
   };

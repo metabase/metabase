@@ -258,11 +258,12 @@
                                  (retry? e)
                                  (retryable-error? e))
                           (let [delay (retry-delay-ms attempt e)]
-                            (log/warn e "LLM call failed with retryable error, retrying"
+                            (log/warn "LLM call failed with retryable error, retrying"
                                       {:attempt attempt
                                        :max     max-llm-retries
                                        :delay   delay
-                                       :status  (:status (ex-data e))})
+                                       :status  (:status (ex-data e))
+                                       :error   (ex-message e)})
                             (analytics/inc! :metabase-metabot/llm-retries labels)
                             {:retry delay})
                           (do (analytics/inc! :metabase-metabot/llm-errors

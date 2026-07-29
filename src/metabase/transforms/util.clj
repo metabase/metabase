@@ -208,7 +208,7 @@
                      rp
                      full-incremental?)))
                 (catch Throwable t
-                  (log/warnf t "Failed to emit incremental-rows metric for transform %s" (:id transform)))))
+                  (log/warnf "Failed to emit incremental-rows metric for transform %s: %s" (:id transform) (ex-message t)))))
             ret))
         (catch Throwable t
           (if (:timeout (ex-data t))
