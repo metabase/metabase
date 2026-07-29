@@ -1,5 +1,7 @@
 (ns metabase.explorations.query-plan.context
-  "Build the context map handed to the query planners.
+  "Build the context map handed to the query planners, and the per-row
+  contexts the runner uses to finalize pending `ExplorationQuery` rows at
+  execution time (see [[build-row-context]] — those never reach a planner).
 
   Takes a thread plus its metric and dimension selections, hydrates them
   against the application metadata provider, and computes the per-pair
@@ -54,8 +56,9 @@
   resolved column's `:fingerprint` (or nil). Thread-dim rows don't carry
   fingerprints — the metadata provider does, via the underlying Field. Without
   this lookup, categorical-dim cardinality probes (`effective-cardinality`)
-  always come up nil for text dims, so eligibility heuristics like
-  `top-n-other-eligible?` fail closed every time."
+  always come up nil for text dims, so cardinality-gated eligibility heuristics
+  (`default-eligible?`, `time-facet-eligible?`) always disqualify and every
+  categorical dim falls through to `top-n-other`."
   [base-query columns target]
   (try
     (let [ref-clause (qp.mbql/normalize-target-ref target)
@@ -66,7 +69,7 @@
 (defn- applicability
   "For each chosen `dim`, decide whether it has a resolvable target on
   `card`'s `dimension_mappings`. Returns
-  `{dimension_id {:target :enriched-dim} | nil}` keyed by dim id. The dim
+  `{dimension_id {:target :dim}}` keyed by dim id. The dim
   is enriched with the resolved column's `:fingerprint`, looked up through
   the metadata provider — bare thread-dim rows don't store fingerprints, so
   categorical-cardinality probes have nothing to read without this lookup."
@@ -352,10 +355,8 @@
   can't be loaded.
 
   Looks up the metric Card, derives the metadata provider, finds the dim's
-  target via the row's block's metric `:dimension_mappings`, resolves any
-  selected segment, and — for `per-value-time-series` rows that carry
-  `:params.temporal_dimension_id` — also resolves the override temporal
-  axis. The metric selection + dim snapshot are read from the row's
+  target via the row's block's metric `:dimension_mappings`, and resolves any
+  selected segment. The metric selection + dim snapshot are read from the row's
   `ExplorationBlock`, reached via the row's `ExplorationPage`, not from
   per-thread metric/dimension tables. The runner calls this per claimed row."
   [{:keys [card_id dimension_id segment_id params page_id]}]
@@ -383,10 +384,7 @@
                                 (let [q (lib/query mp (:dataset_query card))]
                                   (some #(when (= segment_id (:id %)) %)
                                         (lib/available-segments q)))
-                                (catch Exception _ nil)))
-            t-dim-id        (:temporal_dimension_id params)
-            t-target        (when t-dim-id (qp.mbql/find-dimension-target t-dim-id mappings))
-            t-thread-dim    (when t-dim-id (get dim-by-id t-dim-id))]
+                                (catch Exception _ nil)))]
         {:mp              mp
          :card            card
          :target          target
@@ -394,6 +392,4 @@
          :dim-label       (or (:display-name thread-dim) dimension_id)
          :segment         segment
          :params          params
-         :explore-filters explore-filters
-         :temporal-target t-target
-         :temporal-dim    t-thread-dim}))))
+         :explore-filters explore-filters}))))

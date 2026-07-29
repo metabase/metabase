@@ -30,10 +30,11 @@
    [:rationale    {:optional true} [:maybe :string]]])
 
 (mu/defn result-schema
-  "Returns the Malli schema for a planner result. `:ok` carries a `:plan` of
-  items; `:failed` carries `:final-errors`; `:skip-not-applicable` is a soft
-  exit (planner had nothing to emit, orchestrator should treat the thread as
-  empty, not failed)."
+  "Returns the Malli schema for a planner result — the orchestrator validates
+  every `plan!` return value against it and treats a mismatch as a planner
+  failure. `:ok` carries a `:plan` of items; `:failed` carries `:final-errors`;
+  `:skip-not-applicable` is a soft exit (planner had nothing to emit,
+  orchestrator should treat the thread as empty, not failed)."
   []
   [:map
    [:outcome      [:enum :ok :failed :skip-not-applicable]]
@@ -54,8 +55,7 @@
     be traced back to the implementation that produced it.")
 
   (plan! [this ctx]
-    "Produce a plan for `ctx`. The ctx shape is documented on
-    `metabase.explorations.query-plan/generate-query-plan!` and is the same
+    "Produce a plan for `ctx`. The ctx shape is the same
     for every implementation:
 
       {:thread-id          long
@@ -65,6 +65,7 @@
        :creator-id         long|nil
        :thread-blocks      [ExplorationBlock ...]}
 
-    Returns a map matching `result-schema`. The orchestrator handles
-    materialization, transcript persistence, and failure-doc writing — every
-    planner just builds plan items and reports its outcome."))
+    Returns a map matching `result-schema` (the orchestrator validates it).
+    The orchestrator handles materialization, transcript persistence, and
+    failure-doc writing — every planner just builds plan items and reports
+    its outcome."))

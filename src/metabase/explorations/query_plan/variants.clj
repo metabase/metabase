@@ -378,26 +378,12 @@
             filtered               (lib/filter snapshot filter-clause)]
         (maybe-segment-filtered filtered segment)))))
 
-(defn- resolve-temporal-axis
-  "Pick the temporal breakout for `per-value-time-series`. Prefers the
-  LLM-chosen `temporal-target`/`temporal-dim` threaded through from the
-  runner ctx; falls back to the metric Card's own default temporal
-  breakout. Returns `[col unit]` or nil."
-  [{:keys [mp card temporal-target temporal-dim]}]
-  (or (when temporal-target
-        (let [base                       (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
-              [ref-clause temporal-col]  (resolve-target base temporal-target)
-              resolved-col               (or temporal-col ref-clause)
-              [_ unit]                   (qp.mbql/default-bucket-for-dim temporal-dim)]
-          (when resolved-col
-            [resolved-col unit])))
-      (qp.mbql/extract-default-temporal-breakout-col mp (:dataset_query card))))
-
 (defmethod dataset-query "per-value-time-series"
   [_ {:keys [mp card target segment params] :as ctx}]
   (let [v (nth (cached-discovery ctx) (:value_index params) nil)]
     (when (some? v)
-      (when-let [[temporal-col raw-unit] (resolve-temporal-axis ctx)]
+      (when-let [[temporal-col raw-unit] (qp.mbql/extract-default-temporal-breakout-col
+                                          mp (:dataset_query card))]
         (let [base-query             (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
               [ref-clause field-ref] (resolve-target base-query target)
               temporal-breakout      (lib/with-temporal-bucket temporal-col (or raw-unit :month))]
@@ -429,14 +415,3 @@
     (update-in [:data :rows]
                (fn [rows]
                  (vec (sort-by #(= other-bucket-label (first %)) rows))))))
-
-(def known-variants
-  "Set of variant names the multimethods dispatch on. Exposed for the LLM
-  validator so the schema enum and the dispatch table can't drift."
-  #{"default"
-    "temporal-pattern-day"
-    "temporal-pattern-hour"
-    "time-facet"
-    "top-n-other"
-    "per-value-time-series"
-    "filtered-subset"})
