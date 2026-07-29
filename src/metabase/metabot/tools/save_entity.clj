@@ -231,9 +231,12 @@
        :data-parts        [(streaming/entity-saved-part
                             {:chart_id    chart_id
                              :card_id     (:id card)
-                             :destination saved-destination})]})
+                             :destination saved-destination
+                             ;; markdown entity link the chain-of-thought renders
+                             ;; as the settled "Saved …" step label
+                             :title       (te/link question-name link)})]})
     (catch Exception e
-      (log/error e "Error saving entity")
+      (log/errorf "Error saving entity: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to save: " (or (ex-message e) "Unknown error"))}))))

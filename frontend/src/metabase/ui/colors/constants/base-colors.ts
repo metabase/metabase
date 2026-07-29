@@ -8,6 +8,8 @@
 const baseColors = {
   white: "hsla(0, 0%, 100%, 1.00)",
   black: "hsla(0, 0%, 0%, 1.00)",
+  gold: "hsla(50.6, 100%, 50%, 1)",
+  upsellGem: "hsla(190, 100%, 50%, 1)",
 
   // Brand colors (dynamic based on --mb-color-core-brand). Expanded to roughly match the values in the new color palette (but these should be reworked).
   brand: {
@@ -87,6 +89,7 @@ const baseColors = {
   orion: {
     110: "hsla(205, 63%, 5%, 1)",
     100: "hsla(204, 66%, 8%, 1)",
+    95: "hsla(204, 53%, 10%, 1)",
     90: "hsla(204, 34%, 14%, 1)",
     80: "hsla(205, 19%, 23%, 1)",
     70: "hsla(204, 12%, 32%, 1)",

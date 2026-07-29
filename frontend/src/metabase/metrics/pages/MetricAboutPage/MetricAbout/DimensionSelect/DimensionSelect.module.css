@@ -1,0 +1,18 @@
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  font-size: var(--mantine-font-size-md);
+  font-weight: 700;
+  line-height: var(--mantine-line-height-md);
+  text-align: center;
+}
+
+.label {
+  overflow-wrap: anywhere;
+}
+
+.dropdown {
+  min-width: 15rem;
+  max-width: calc(100vw - var(--mantine-spacing-xl));
+}

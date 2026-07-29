@@ -23,6 +23,10 @@
   }
 }
 
+.autoLoadTrigger {
+  height: 1px;
+}
+
 .skeletonCard {
   aspect-ratio: 8 / 5;
   overflow: hidden;

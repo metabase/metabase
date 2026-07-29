@@ -59,7 +59,7 @@ dataset_query:
   lib/type: mbql/query
 visualization_settings:
   column_settings: null
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: sk02d7sPWAk2TYH2Y7JhZ
   label: native_query___field_filter_and_temporal_unit

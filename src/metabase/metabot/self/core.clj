@@ -49,7 +49,9 @@
     :max-tokens  - Maximum tokens in the response
     :schema      - JSON Schema map for structured output; each provider forces a
                    tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
-    :ai-proxy?   - When true, skip provider auth and use the Metabase AI proxy"
+    :ai-proxy?   - When true, skip provider auth and use the Metabase AI proxy
+    :reasoning?  - When false, don't request thinking/reasoning and strip
+                   :reasoning parts from the replayed input (defaults true)"
   [:map
    [:model       {:optional true} :string]
    [:system      {:optional true} [:maybe :string]]
@@ -59,7 +61,8 @@
    [:temperature {:optional true} [:maybe number?]]
    [:max-tokens  {:optional true} [:maybe :int]]
    [:schema      {:optional true} :any]
-   [:ai-proxy?   {:optional true} [:maybe :boolean]]])
+   [:ai-proxy?   {:optional true} [:maybe :boolean]]
+   [:reasoning?  {:optional true} [:maybe :boolean]]])
 
 (defn mkid
   "Generate a random id"
@@ -110,7 +113,7 @@
 
                 :else
                 (do
-                  (log/warn "SSE unexpected line" {:line line})
+                  (log/warn "SSE unexpected line" {:line-len (count line)})
                   (recur acc)))
               acc)))))
 
@@ -154,6 +157,12 @@
                             :id   (:id chunk)
                             :text (->> (map :delta chunks)
                                        (str/join ""))}
+    :reasoning-start       (let [pm (some :providerMetadata chunks)]
+                             (cond-> {:type :reasoning
+                                      :id   (:id chunk)
+                                      :text (->> (map :delta chunks)
+                                                 (str/join ""))}
+                               pm (assoc :provider-metadata pm)))
     :tool-input-start      {:type      :tool-input
                             :id        (:toolCallId chunk)
                             :function  (:toolName chunk)
@@ -204,6 +213,15 @@
                   ;; TODO: check if I can just pass through text-delta?
                   (rf {:type :text :id (:id chunk) :text (:delta chunk)}))
 
+              (and stream-text? (#{:reasoning-start :reasoning-end} (:type chunk)))
+              (cond-> (flush! result)
+                (:providerMetadata chunk)
+                (rf {:type :reasoning :id (:id chunk) :text "" :provider-metadata (:providerMetadata chunk)}))
+
+              (and stream-text? (= :reasoning-delta (:type chunk)))
+              (-> (flush! result)
+                  (rf {:type :reasoning :id (:id chunk) :text (:delta chunk)}))
+
               (not= chunk-id @current-id)
               (u/prog1 (flush! result)
                 (vreset! current-id chunk-id)
@@ -217,6 +235,22 @@
   "Like `aisdk-xf` but text is streamed through as chunks"
   []
   (aisdk-xf {:stream-text? true}))
+
+(defn stamp-tool-titles-xf
+  "Stamp a client-facing `:title` onto `:tool-input` parts via each tool's
+  optional `:title-fn`. A throwing title-fn leaves the part untitled."
+  [tools]
+  (map (fn [part]
+         (if-let [title-fn (and (= :tool-input (:type part))
+                                (:title-fn (get tools (:function part))))]
+           (let [title (try
+                         (title-fn (:arguments part))
+                         (catch Throwable e
+                           (log/debug e "tool title-fn failed" {:tool (:function part)})
+                           nil))]
+             (cond-> part
+               (string? title) (assoc :title title)))
+           part))))
 
 ;;; AI SDK SSE Output
 ;;
@@ -317,6 +351,7 @@
     :start (1st)      -> start + start-step
     :start (Nth)      -> finish-step + start-step
     :text             -> [text-end]? [text-start]? text-delta
+    :reasoning        -> [reasoning-end]? [reasoning-start]? reasoning-delta (empty text -> nothing)
     :tool-input-start -> tool-input-start
     :tool-input       -> tool-input-available
     :tool-output      -> tool-output-available | tool-output-error
@@ -335,6 +370,11 @@
            ;; non-nil while a text block is open; holds the block id so we can
            ;; emit a matching text-end when the block closes
            current-text-id   (volatile! nil)
+           ;; providers' native reasoning ids are long; emit short sequential wire
+           ;; ids, keeping the provider id only to detect block boundaries
+           current-reasoning-id (volatile! nil)
+           reasoning-n          (volatile! 0)
+           reasoning-wire-id    (volatile! nil)
            start-event       (fn [id]
                                (format-sse-event
                                 (cond-> {:type "start" :messageId id}
@@ -344,6 +384,12 @@
                                  (do (vreset! current-text-id nil)
                                      (rf result (format-sse-event {:type "text-end" :id id})))
                                  result))
+           close-reasoning-block (fn [result]
+                                   (if @current-reasoning-id
+                                     (let [wid @reasoning-wire-id]
+                                       (vreset! current-reasoning-id nil)
+                                       (rf result (format-sse-event {:type "reasoning-end" :id wid})))
+                                     result))
            ensure-started    (fn [result]
                                (if @started?
                                  result
@@ -358,6 +404,7 @@
                                 (when @finish-error-code {:errorCode @finish-error-code}))]
             (-> result
                 close-text-block
+                close-reasoning-block
                 (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
                 (rf (format-sse-event
                      (cond-> {:type         "finish"
@@ -366,12 +413,12 @@
                 (rf done-sse-line)
                 (rf))))
          ([result part]
-          ;; Any non-text part implicitly closes the current text block before
-          ;; its own events are emitted; the :text branch handles its own
-          ;; closing semantics (only closes when the id changes).
-          (let [result (if (= :text (:type part))
-                         result
-                         (close-text-block result))]
+          ;; Any part of a different kind implicitly closes the open text or
+          ;; reasoning block before its own events are emitted; the :text and
+          ;; :reasoning branches handle their own closing (only on id change).
+          (let [result (cond-> result
+                         (not= :text (:type part))      close-text-block
+                         (not= :reasoning (:type part)) close-reasoning-block)]
             (case (:type part)
               :start
               (if @started?
@@ -394,16 +441,32 @@
                         (rf (format-sse-event {:type "text-start" :id id}))
                         (rf (format-sse-event {:type "text-delta" :id id :delta (:text part)}))))))
 
+              ;; empty-text parts (signature/metadata carriers, redacted blocks) open
+              ;; no reasoning block; whitespace-only deltas (paragraph separators) flow
+              :reasoning
+              (if (empty? (:text part))
+                result
+                (let [id (or (:id part) (mkid))]
+                  (if (= id @current-reasoning-id)
+                    (rf result (format-sse-event {:type "reasoning-delta" :id @reasoning-wire-id :delta (:text part)}))
+                    (let [result (close-reasoning-block result)]
+                      (vreset! current-reasoning-id id)
+                      (vreset! reasoning-wire-id (str (vswap! reasoning-n inc)))
+                      (-> result
+                          (rf (format-sse-event {:type "reasoning-start" :id @reasoning-wire-id}))
+                          (rf (format-sse-event {:type "reasoning-delta" :id @reasoning-wire-id :delta (:text part)})))))))
+
               :tool-input-start
               (rf result (format-sse-event {:type       "tool-input-start"
                                             :toolCallId (:id part)
                                             :toolName   (:function part)}))
 
               :tool-input
-              (rf result (format-sse-event {:type       "tool-input-available"
-                                            :toolCallId (:id part)
-                                            :toolName   (:function part)
-                                            :input      (:arguments part)}))
+              (rf result (format-sse-event (cond-> {:type       "tool-input-available"
+                                                    :toolCallId (:id part)
+                                                    :toolName   (:function part)
+                                                    :input      (:arguments part)}
+                                             (:title part) (assoc :title (:title part)))))
 
               :tool-output
               (rf result
@@ -544,7 +607,7 @@
                              arguments (or (coerce-stringified-json arguments) {})
                              decode    (tool-decode-fn tool)
                              arguments (cond-> arguments decode decode)]
-                         (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
+                         (log/debug "Executing tool" {:tool-name tool-name})
                          (when (ait/capture-active?)
                            (ait/record! {:ai/tool-args arguments}))
                          (let [tool-fn (tool-call-fn tool)
@@ -554,7 +617,7 @@
                        (catch Exception e
                          (if (:agent-error? (ex-data e))
                            (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
-                           (log/warn e "Tool execution failed" {:tool-name tool-name}))
+                           (log/warn "Tool execution failed" {:tool-name tool-name :error (ex-message e)}))
                          [{:type         :tool-output-available
                            :toolCallId   tool-call-id
                            :toolName     tool-name
@@ -735,15 +798,16 @@
 
 (def ^:private auth-error-statuses
   "Statuses whose upstream body may carry provider-side auth/account detail
-  (raw API keys, org/account names, tenant IDs). The full body still hits the
-  warn log; we just don't splice it into the message the caller sees."
+  (raw API keys, org/account names, tenant IDs). For these we don't splice a
+  body preview into the message the caller sees."
   #{401 403})
 
 (defn rethrow-api-error!
   "Rethrow a provider HTTP exception with a translated, user-facing message.
   `res->message` receives the decoded response map and returns the provider-specific message.
   A body preview is appended to the message except on 401/403 (see [[auth-error-statuses]]),
-  where the body may carry sensitive auth/account detail; the full body is still logged.
+  where the body may carry sensitive auth/account detail. The warn log carries provider and
+  status only — response bodies are never logged; the full body travels on the thrown ex-data.
   ex-data is an explicit allow-list of `:status`, `:reason-phrase`, `:headers`, `:body`, plus provider tags.
   Exceptions already tagged `:api-error true` are rethrown unchanged."
   [provider res->message ^Throwable e]
@@ -759,11 +823,8 @@
                       (body-preview (:body res)))
             msg     (cond-> base
                       preview (str " — " preview))]
-        ;; warnf (not warn) so the body renders into the message string, not as MDC.
-        ;; body-for-log caps the pr-str so a near-cap slurped stream can't flood the logs;
-        ;; the full body still survives in ex-data below.
-        (log/warnf "Provider API request failed: provider=%s status=%s body=%s"
-                   provider (:status res) (body-for-log (:body res)))
+        (log/warnf "Provider API request failed: provider=%s status=%s"
+                   provider (:status res))
         ;; Allow-list explicitly — clj-http responses carry :http-client (a Closeable),
         ;; :trace-redirects, :orig-content-encoding, etc., none of which should propagate downstream.
         ;; :headers is included so the retry path in metabase.metabot.self/parse-retry-after-header

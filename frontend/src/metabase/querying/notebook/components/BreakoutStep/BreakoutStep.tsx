@@ -29,9 +29,7 @@ export function BreakoutStep({
   );
 
   const metricColumns = useMemo(() => {
-    return isMetric
-      ? Lib.breakoutableColumns(query, stageIndex).filter(Lib.isDateOrDateTime)
-      : [];
+    return isMetric ? Lib.breakoutableColumns(query, stageIndex) : [];
   }, [query, stageIndex, isMetric]);
 
   const hasAddButton = !readOnly && (!isMetric || breakouts.length === 0);
@@ -80,7 +78,7 @@ export function BreakoutStep({
       items={breakouts}
       initialAddText={
         isAddButtonDisabled
-          ? t`No datetime columns available`
+          ? t`No columns available`
           : t`Pick a column to group by`
       }
       readOnly={readOnly}
@@ -96,7 +94,6 @@ export function BreakoutStep({
             stageIndex={stageIndex}
             breakout={breakout}
             breakoutIndex={index}
-            isMetric={isMetric}
             onAddBreakout={handleAddBreakout}
             onUpdateBreakoutColumn={handleUpdateBreakoutColumn}
             onClose={onClose}
@@ -116,7 +113,6 @@ interface BreakoutPopoverProps {
   stageIndex: number;
   breakout: Lib.BreakoutClause | undefined;
   breakoutIndex: number | undefined;
-  isMetric: boolean;
   onAddBreakout: (column: Lib.ColumnMetadata) => void;
   onUpdateBreakoutColumn: (
     breakout: Lib.BreakoutClause,
@@ -131,7 +127,6 @@ export const BreakoutPopover = ({
   stageIndex,
   breakout,
   breakoutIndex,
-  isMetric,
   onAddBreakout,
   onUpdateBreakoutColumn,
   onClose,
@@ -141,9 +136,7 @@ export const BreakoutPopover = ({
     const filteredColumns = columns.reduce(
       (columns: Lib.ColumnMetadata[], column) => {
         const columnInfo = Lib.displayInfo(query, stageIndex, column);
-        if (isMetric && !Lib.isDateOrDateTime(column)) {
-          return columns;
-        } else if (breakout && checkColumnSelected(columnInfo, breakoutIndex)) {
+        if (breakout && checkColumnSelected(columnInfo, breakoutIndex)) {
           const column = Lib.breakoutColumn(query, stageIndex, breakout);
           if (column != null) {
             columns.push(column);
@@ -156,7 +149,7 @@ export const BreakoutPopover = ({
       [],
     );
     return Lib.groupColumns(filteredColumns);
-  }, [query, stageIndex, breakout, breakoutIndex, isMetric]);
+  }, [query, stageIndex, breakout, breakoutIndex]);
 
   return (
     <QueryColumnPicker

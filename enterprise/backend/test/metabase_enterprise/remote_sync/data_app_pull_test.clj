@@ -56,7 +56,7 @@
 (deftest data-app-only-pull-counts-app-changes-test
   (testing "a pull whose only change is a data app is reported as a real pull, not pull-skipped / 0 changes"
     (search.tu/with-index-disabled
-      (mt/with-premium-features #{:data-apps}
+      (mt/with-premium-features #{:data-apps-preview}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
           (mt/with-model-cleanup [:model/DataApp]
             (let [outcome (pull-outcome! (app-tree "sales" "BUNDLE-V1")
@@ -67,7 +67,7 @@
 (deftest data-only-pull-excludes-unchanged-apps-test
   (testing "a serdes-only pull counts serdes content; unchanged data apps add nothing"
     (search.tu/with-index-disabled
-      (mt/with-premium-features #{:data-apps}
+      (mt/with-premium-features #{:data-apps-preview}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
           (mt/with-model-cleanup [:model/DataApp :model/Collection]
             ;; v1 adds a collection; the data app is byte-for-byte the same as v0.
@@ -79,7 +79,7 @@
 (deftest mixed-pull-counts-serdes-and-apps-test
   (testing "a mixed pull counts serdes content AND the changed data apps"
     (search.tu/with-index-disabled
-      (mt/with-premium-features #{:data-apps}
+      (mt/with-premium-features #{:data-apps-preview}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
           (mt/with-model-cleanup [:model/DataApp :model/Collection]
             ;; v1 adds a collection AND changes the data app's bundle.

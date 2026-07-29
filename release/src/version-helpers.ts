@@ -1,4 +1,5 @@
 import type { GithubProps, Tag } from "./types";
+import { isLtsVersion } from "./version-info";
 
 // https://regexr.com/7l1ip
 export const isValidVersionString = (versionString: string) => {
@@ -116,6 +117,12 @@ export const getMajorVersionFromRef = (ref: string) => {
   return getMajorVersionNumberFromReleaseBranch(ref.replace("refs/heads/", ""));
 };
 
+// creates tag in format: `v<oss|ee>.<major>-lts`, for example: v0.58-lts
+const getLtsTag = (version: string) => {
+  const pieces = version.replace(/-.+/, "").split("."); // ignore any -suffixes
+  return pieces.slice(0, 2).join(".") + "-lts";
+}
+
 export const getDotXs = (version: string, number: number) => {
   const pieces = version.replace(/-.+/, "").split("."); // ignore any -suffixes
   return pieces.slice(0, number + 1).join(".") + ".x";
@@ -142,7 +149,7 @@ const shouldAddLatestTag = ({
   return majorVersion === latestMajorVersion;
 };
 
-export const getExtraTagsForVersion = ({
+export const getExtraTagsForVersion = async ({
   version,
   latestMajorVersion,
 }: {
@@ -165,6 +172,7 @@ export const getExtraTagsForVersion = ({
     ...baseTags,
     ...minorTags,
     ...(shouldAddLatestTag({ version, latestMajorVersion }) ? ["latest"] : []),
+    ...(await isLtsVersion({ version }) ? [getLtsTag(ossVersion), getLtsTag(eeVersion)] : [])
   ];
 };
 

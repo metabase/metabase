@@ -166,7 +166,7 @@
 
 (defn- parse-timestamp-str [timezone-id s]
   ;; Timestamp strings either come back as ISO-8601 strings or Unix timestamps in seconds, e.g. "1.3963104E9"
-  (log/tracef "Parse timestamp string '%s' (default timezone ID = %s)" s timezone-id)
+  (log/tracef "Parsing timestamp string (default timezone ID = %s)" timezone-id)
   (if-let [seconds (u/ignore-exceptions (Double/parseDouble s))]
     (let [full-seconds (long seconds)
           ;; BigQuery timestamps have microsecond precision
@@ -381,8 +381,7 @@
 
         (contains? #{:date :time :datetime :timestamp} target-type)
         (do
-          (log/tracef "Coercing %s (temporal type = %s) to %s"
-                      (binding [*print-meta* true] (pr-str x))
+          (log/tracef "Coercing expression (temporal type = %s) to %s"
                       (pr-str (temporal-type x))
                       target-type)
           (let [expr (if-let [report-zone (when (or (= current-type :timestamp)
@@ -907,13 +906,13 @@
     (into [tag] (map reconcile-temporal-types) args)
     (if-let [target-type (some temporal-type args)]
       (do
-        (log/tracef "Coercing args in %s to temporal type %s" (binding [*print-meta* true] (pr-str clause)) target-type)
+        (log/tracef "Coercing args in %s clause to temporal type %s" tag target-type)
         (u/prog1 (into [tag]
                        (map (partial ->temporal-type target-type))
                        args)
           (when (or (not= clause <>)
                     (not= (meta clause) (meta <>)))
-            (log/tracef "Coerced -> %s" (binding [*print-meta* true] (pr-str <>))))))
+            (log/trace "Coerced args to temporal type"))))
       clause)))
 
 (doseq [filter-type [:between := :!= :> :>= :< :<=]]

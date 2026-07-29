@@ -95,7 +95,7 @@
                                     {:channel-type :channel/email})))))))
 
 (deftest channel-template-create-logging-test
-  (testing "creating a user-provided template logs the template body"
+  (testing "creating a user-provided template logs template metadata, without leaking the template body"
     (mt/with-log-messages-for-level [messages :info]
       (mt/with-model-cleanup [:model/ChannelTemplate]
         (t2/insert-returning-instance! :model/ChannelTemplate
@@ -106,6 +106,9 @@
                                                        :body    "Secret {{password}}"}})
         (is (some (fn [{:keys [message]}]
                     (and (re-find #"ChannelTemplate create" message)
-                         (re-find #"handlebars-text" message)
-                         (re-find #"Secret" message)))
-                  (messages)))))))
+                         (re-find #"handlebars-text" message)))
+                  (messages)))
+        (testing "the template body itself is not logged"
+          (is (not (some (fn [{:keys [message]}]
+                           (re-find #"Secret" message))
+                         (messages)))))))))

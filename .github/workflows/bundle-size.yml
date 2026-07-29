@@ -1,0 +1,88 @@
+name: Bundle Size
+
+# Warns on PRs that move a shipped bundle's gzipped size past the threshold,
+# comparing the PR's uberjar against the base ref's. Both gates are measured in
+# a single job: downloading and extracting two uberjars is the expensive part,
+# so adding a bundle costs a comment step, not another job.
+
+on:
+  workflow_call:
+    inputs:
+      skip:
+        description: Whether to skip the check (e.g. no front-end sources changed, or the uberjar failed to build).
+        required: true
+        type: boolean
+
+concurrency:
+  group: bundle-size-${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  bundle-size-check:
+    name: "Bundle size check"
+    if: ${{ !inputs.skip }}
+    continue-on-error: true
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
+    env:
+      BUNDLE_SIZE_THRESHOLD_PERCENT: 2
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/bundle-size-check
+        id: compare
+        with:
+          edition: ee
+          base-ref-commit: ${{ github.event.pull_request.base.sha }}
+          threshold-percent: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}
+
+      - name: Comment on PR if app bundle size has increased
+        uses: ./.github/actions/notify-pull-request
+        if: success() && steps.compare.outputs.app_status == 'increased'
+        with:
+          remove-previous-comment: true
+          add-new-comment: true
+          message: "⚠️ Main app initial bundle size (gzipped) increased by ${{ steps.compare.outputs.app_size_change_percent }}% compared to the ${{ github.base_ref }} branch (threshold: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}%). This is the JavaScript every user downloads before the app renders, so check whether the new code can be loaded lazily instead."
+          include-log: false
+
+      - name: Comment on PR if app bundle size has decreased
+        uses: ./.github/actions/notify-pull-request
+        if: success() && steps.compare.outputs.app_status == 'decreased'
+        with:
+          remove-previous-comment: true
+          add-new-comment: true
+          message: "🎉 Main app initial bundle size (gzipped) decreased by ${{ steps.compare.outputs.app_size_change_percent }}% compared to the ${{ github.base_ref }} branch. Nice work!"
+          include-log: false
+
+      - name: Comment on PR if SDK bundle size has increased
+        uses: ./.github/actions/notify-pull-request
+        if: success() && steps.compare.outputs.sdk_status == 'increased'
+        with:
+          remove-previous-comment: true
+          add-new-comment: true
+          message: "⚠️ Embedding SDK chunked bundle size (gzipped) increased by ${{ steps.compare.outputs.sdk_size_change_percent }}% compared to the ${{ github.base_ref }} branch (threshold: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}%). Please contact Embedding team."
+          include-log: false
+
+      - name: Send notification to Slack via Zapier
+        if: success() && steps.compare.outputs.sdk_status == 'increased'
+        shell: bash
+        env:
+          ZAPIER_WEBHOOK_URL: ${{ secrets.EMBEDDING_ZAPIER_WEBHOOK_URL }}
+          SIZE_CHANGE_PERCENT: ${{ steps.compare.outputs.sdk_size_change_percent }}
+          BUNDLE_SIZE_THRESHOLD_PERCENT: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          curl -s -X POST "$ZAPIER_WEBHOOK_URL" \
+            -d "⚠️ Embedding SDK chunked bundle size (gzipped) increased by ${SIZE_CHANGE_PERCENT}% (threshold: ${BUNDLE_SIZE_THRESHOLD_PERCENT}%)
+
+          PR #${PR_NUMBER} ${PR_TITLE} (${PR_URL})"
+
+      - name: Comment on PR if SDK bundle size has decreased
+        uses: ./.github/actions/notify-pull-request
+        if: success() && steps.compare.outputs.sdk_status == 'decreased'
+        with:
+          remove-previous-comment: true
+          add-new-comment: true
+          message: "🎉 Embedding SDK chunked bundle size (gzipped) decreased by ${{ steps.compare.outputs.sdk_size_change_percent }}% compared to the ${{ github.base_ref }} branch. Nice work!"
+          include-log: false
