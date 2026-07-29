@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useScrollToTop } from "metabase/common/hooks";
+import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import {
   Card,
   TreeTable,
@@ -21,9 +22,7 @@ import {
   type ContentDiagnosticsSortColumn,
 } from "metabase-types/api";
 
-import { DiagnosticsEmptyState } from "../DiagnosticsEmptyState";
-
-import { COLUMN_WIDTHS, getColumns } from "./columns";
+import { SKELETON_COLUMN_WIDTHS, getColumns } from "./columns";
 
 type ContentDiagnosticsTableProps = {
   findings: ContentDiagnosticsFinding[];
@@ -96,13 +95,11 @@ export function ContentDiagnosticsTable({
       data-testid="stale-content-list"
     >
       {isLoading ? (
-        <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
+        <TreeTableSkeleton columnWidths={SKELETON_COLUMN_WIDTHS} />
       ) : (
         <TreeTable
           instance={treeTableInstance}
-          emptyState={
-            <DiagnosticsEmptyState label={t`No stale content found`} />
-          }
+          emptyState={<MonitorEmptyState label={t`No stale content found`} />}
           onRowClick={handleRowActivate}
         />
       )}

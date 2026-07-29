@@ -127,4 +127,4 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsFinding>[] {
   ];
 }
 
-export const COLUMN_WIDTHS = [0.28, 0.12, 0.24, 0.13, 0.12, 0.11];
+export const SKELETON_COLUMN_WIDTHS = [0.28, 0.12, 0.24, 0.13, 0.12, 0.11];

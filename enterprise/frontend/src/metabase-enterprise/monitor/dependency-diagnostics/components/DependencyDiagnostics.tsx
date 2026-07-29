@@ -22,6 +22,7 @@ import {
   getDependencyTypes,
   isSameNode,
 } from "metabase-enterprise/dependencies/utils";
+import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import type { DependencyEntry } from "metabase-types/api";
 
 import { DiagnosticsFilterBar } from "./DiagnosticsFilterBar";
@@ -29,7 +30,6 @@ import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
 import { DiagnosticsSidebar } from "./DiagnosticsSidebar";
 import { DiagnosticsTable } from "./DiagnosticsTable";
-import { PAGE_SIZE } from "./constants";
 import type {
   DependencyDiagnosticsMode,
   DependencyDiagnosticsParamsOptions,

@@ -14,6 +14,7 @@ import {
   useListStaleFindingsQuery,
   useRunContentDiagnosticsScanMutation,
 } from "metabase-enterprise/api";
+import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import type { ContentDiagnosticsSortColumn } from "metabase-types/api";
 
 import { ContentDiagnosticsSidebar } from "./ContentDiagnosticsSidebar";
@@ -21,7 +22,6 @@ import { ContentDiagnosticsTable } from "./ContentDiagnosticsTable";
 import { DiagnosticsFilterBar } from "./DiagnosticsFilterBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
-import { PAGE_SIZE } from "./constants";
 import type {
   ContentDiagnosticsFilterOptions,
   ContentDiagnosticsParamsOptions,
