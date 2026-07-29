@@ -49,13 +49,12 @@ describe("dashboard entity-id deep links", () => {
   const TAB_EID = "N-o1tJ9swdO4YJycqMA8P";
   const DASHCARD_EID = "19JbScZRjz5mSQ7chtjuY";
   const DASHBOARD_ID = 1;
+  const TAB_ID = 2;
 
-  // Only the dashboard entity_id in the path is translated up front. The `?tab=`
-  // and `#scrollTo=` entity IDs must survive the redirect so the dashboard can
-  // resolve them client-side
   const dashboardRedirectConfig: EntityIdRedirectProps = {
     parametersToTranslate: [
       { name: "entity_id", resourceType: "dashboard", type: "param" },
+      { name: "tab", resourceType: "dashboard-tab", type: "search" },
     ],
   };
 
@@ -64,6 +63,7 @@ describe("dashboard entity-id deep links", () => {
     fetchMock.post("path:/api/eid-translation/translate", () => ({
       entity_ids: {
         [DASHBOARD_EID]: { status: "ok", id: DASHBOARD_ID, type: "dashboard" },
+        [TAB_EID]: { status: "ok", id: TAB_ID, type: "dashboard-tab" },
       },
     }));
 
@@ -92,7 +92,7 @@ describe("dashboard entity-id deep links", () => {
     expect(await screen.findByText("dashboard app")).toBeInTheDocument();
   });
 
-  it("preserves the tab query param and scrollTo hash entity IDs through the redirect", async () => {
+  it("translates the tab entity_id and preserves the scrollTo hash through the redirect", async () => {
     const history = setupDashboard(
       `/dashboard/entity/${DASHBOARD_EID}?tab=${TAB_EID}#scrollTo=${DASHCARD_EID}`,
     );
@@ -104,9 +104,17 @@ describe("dashboard entity-id deep links", () => {
     );
 
     const location = history!.getCurrentLocation();
-    // The tab entity_id is left for the dashboard to resolve...
-    expect(location.search).toBe(`?tab=${TAB_EID}`);
-    // ...and the scrollTo hash must not be dropped on the way through.
+    expect(location.search).toBe(`?tab=${TAB_ID}`);
     expect(location.hash).toBe(`#scrollTo=${DASHCARD_EID}`);
+  });
+
+  it("shows a 404 for a tab entity_id that doesn't exist, even when it starts with a number", async () => {
+    setupDashboard(
+      `/dashboard/entity/${DASHBOARD_EID}?tab=${"12".padEnd(21, "x")}`,
+    );
+
+    expect(
+      await screen.findByText("We're a little lost..."),
+    ).toBeInTheDocument();
   });
 });
