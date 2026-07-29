@@ -3,9 +3,9 @@ import fetchMock from "fetch-mock";
 
 import {
   setupDatabaseListEndpoint,
-  setupGetAnyTransformEndpoint,
+  setupGetTransformEndpoint,
   setupGetTransformJobEndpoint,
-  setupListAnyDatabaseSchemasEndpoint,
+  setupListDatabaseSchemasEndpoint,
   setupListJobRunTransformRunsEndpoint,
   setupListTransformJobRunsEndpoint,
   setupListTransformJobTransformsEndpoint,
@@ -37,6 +37,7 @@ import {
 import { JobRunListPage } from "./JobRunListPage";
 
 const JOB_ID = 3;
+const TRANSFORM_ID = 1;
 
 type SetupOpts = {
   runs?: TransformJobRun[];
@@ -49,6 +50,7 @@ function setup({
   transformRunsByRunId = {},
   initialRoute = `/data-studio/transforms/jobs/${JOB_ID}/runs`,
 }: SetupOpts = {}) {
+  const transform = createMockTransform({ id: TRANSFORM_ID });
   const job = createMockTransformJob({ id: JOB_ID, name: "Nightly job" });
   let currentRuns = runs;
 
@@ -56,8 +58,8 @@ function setup({
   setupGetTransformJobEndpoint(job);
   setupDatabaseListEndpoint([createMockDatabase()]);
   setupListTransformJobTransformsEndpoint(JOB_ID, []);
-  setupGetAnyTransformEndpoint(createMockTransform());
-  setupListAnyDatabaseSchemasEndpoint();
+  setupGetTransformEndpoint(transform);
+  setupListDatabaseSchemasEndpoint(transform.target.database, []);
   setupListTransformJobRunsEndpoint(JOB_ID, () =>
     createMockListTransformJobRunsResponse({
       data: currentRuns,
@@ -120,6 +122,7 @@ describe("JobRunListPage", () => {
           createMockTransformRunForJobRun({
             id: 17,
             status: "succeeded",
+            transform_id: TRANSFORM_ID,
             transform_name: "transform_2",
           }),
         ],
@@ -142,6 +145,7 @@ describe("JobRunListPage", () => {
           createMockTransformRunForJobRun({
             id: 21,
             status: "failed",
+            transform_id: TRANSFORM_ID,
             transform_name: "broken_transform",
             message: 'relation "abc" does not exist',
           }),
@@ -170,6 +174,7 @@ describe("JobRunListPage", () => {
         createMockTransformRunForJobRun({
           id: 17,
           status: isFinished ? "succeeded" : "started",
+          transform_id: TRANSFORM_ID,
           transform_name: "transform_f",
         }),
       ]);

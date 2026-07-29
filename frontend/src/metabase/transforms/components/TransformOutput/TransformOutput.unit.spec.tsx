@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   setupGetTransformEndpoint,
-  setupListAnyDatabaseSchemasEndpoint,
+  setupListDatabaseSchemasEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -38,7 +38,7 @@ const setup = async ({
       body: { message: error },
     });
   }
-  setupListAnyDatabaseSchemasEndpoint(schemas);
+  setupListDatabaseSchemasEndpoint(transform.target.database, schemas);
   renderWithProviders(<TransformOutput transformId={transform.id} />);
   await waitForLoaderToBeRemoved();
 };

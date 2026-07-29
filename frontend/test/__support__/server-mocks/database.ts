@@ -6,6 +6,7 @@ import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type {
   Database,
+  DatabaseId,
   DatabaseUsageInfo,
   SchemaName,
 } from "metabase-types/api";
@@ -119,11 +120,12 @@ export const setupSchemaEndpoints = (db: Database) => {
   });
 };
 
-export function setupListAnyDatabaseSchemasEndpoint(
-  schemaNames: SchemaName[] = [],
-) {
-  fetchMock.get(/\/api\/database\/\d+\/schemas/, schemaNames);
-}
+export const setupListDatabaseSchemasEndpoint = (
+  databaseId: DatabaseId,
+  schemaNames: SchemaName[],
+) => {
+  fetchMock.get(`path:/api/database/${databaseId}/schemas`, schemaNames);
+};
 
 export function setupDatabaseIdFieldsEndpoints({
   database: { id, tables = [] },

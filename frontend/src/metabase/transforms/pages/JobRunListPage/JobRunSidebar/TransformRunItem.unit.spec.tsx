@@ -1,6 +1,6 @@
 import {
   setupGetTransformEndpoint,
-  setupListAnyDatabaseSchemasEndpoint,
+  setupListDatabaseSchemasEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -23,13 +23,16 @@ type SetupOpts = {
 const setup = async ({
   transformRun = createMockTransformRunForJobRun(),
 }: SetupOpts = {}) => {
-  setupGetTransformEndpoint(
-    createMockTransform({
-      id: 5,
-      target: createMockTransformTarget({ schema: "public", name: "orders" }),
+  const transform = createMockTransform({
+    id: 5,
+    target: createMockTransformTarget({
+      database: 2,
+      schema: "public",
+      name: "orders",
     }),
-  );
-  setupListAnyDatabaseSchemasEndpoint();
+  });
+  setupGetTransformEndpoint(transform);
+  setupListDatabaseSchemasEndpoint(transform.target.database, ["public"]);
   renderWithProviders(<TransformRunItem transformRun={transformRun} />);
   await waitForLoaderToBeRemoved();
 };

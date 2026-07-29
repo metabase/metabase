@@ -3,9 +3,9 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCancelJobRunEndpoint,
-  setupGetAnyTransformEndpoint,
-  setupListAnyDatabaseSchemasEndpoint,
+  setupGetTransformEndpoint,
   setupListDagRunTransformRunsEndpoint,
+  setupListDatabaseSchemasEndpoint,
   setupListJobRunTransformRunsEndpoint,
   setupListTransformGraphRunsEndpoint,
   setupListTransformsEndpoint,
@@ -25,9 +25,14 @@ import {
   createMockTransform,
   createMockTransformGraphRun,
   createMockTransformRunForJobRun,
+  createMockTransformTarget,
 } from "metabase-types/api/mocks";
 
 import { TransformGraphRunListPage } from "./TransformGraphRunListPage";
+
+const DATABASE_ID = 1;
+const MEMBER_TRANSFORM_ID = 1;
+const STANDALONE_TRANSFORM_ID = 20;
 
 type SetupOpts = {
   runs?: TransformGraphRun[];
@@ -38,16 +43,23 @@ function setup({
   runs = [],
   initialRoute = "/data-studio/transforms/runs",
 }: SetupOpts = {}) {
+  const transforms = [MEMBER_TRANSFORM_ID, STANDALONE_TRANSFORM_ID].map((id) =>
+    createMockTransform({
+      id,
+      target: createMockTransformTarget({ database: DATABASE_ID }),
+    }),
+  );
+
   setupUserMetabotPermissionsEndpoint();
-  setupListTransformsEndpoint([]);
+  setupListTransformsEndpoint(transforms);
   setupListTransformGraphRunsEndpoint(
     createMockListTransformGraphRunsResponse({
       data: runs,
       total: runs.length,
     }),
   );
-  setupGetAnyTransformEndpoint(createMockTransform());
-  setupListAnyDatabaseSchemasEndpoint();
+  transforms.forEach((transform) => setupGetTransformEndpoint(transform));
+  setupListDatabaseSchemasEndpoint(DATABASE_ID, []);
   mockGetBoundingClientRect({ width: 1200, height: 800 });
 
   const { history } = renderWithProviders(
@@ -82,7 +94,7 @@ const DAG_RUN = createMockTransformGraphRun({
 const TRANSFORM_RUN = createMockTransformGraphRun({
   run_type: "transform",
   id: 301,
-  entity_id: 20,
+  entity_id: STANDALONE_TRANSFORM_ID,
   name: "Products normalized",
 });
 

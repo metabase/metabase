@@ -1,6 +1,6 @@
 import {
   setupGetTransformEndpoint,
-  setupListAnyDatabaseSchemasEndpoint,
+  setupListDatabaseSchemasEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -21,8 +21,10 @@ type SetupOpts = {
 
 function setup({ run = createMockTransformRun() }: SetupOpts = {}) {
   const onClose = jest.fn();
-  setupGetTransformEndpoint(run.transform ?? createMockTransform());
-  setupListAnyDatabaseSchemasEndpoint();
+  if (run.transform) {
+    setupGetTransformEndpoint(run.transform);
+    setupListDatabaseSchemasEndpoint(run.transform.target.database, []);
+  }
   renderWithProviders(
     <RunSidebar
       run={run}

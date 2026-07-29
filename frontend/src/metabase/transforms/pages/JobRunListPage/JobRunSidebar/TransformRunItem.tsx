@@ -4,19 +4,26 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { ErrorSection } from "metabase/transforms/components/ErrorSection";
+import { TransformOutput } from "metabase/transforms/components/TransformOutput";
 import {
   formatStatus,
   getRunDurationMs,
   getTransformRunName,
   isErrorStatus,
 } from "metabase/transforms/utils";
-import { Anchor, Box, FixedSizeIcon, Group, Stack, Tooltip } from "metabase/ui";
+import {
+  Anchor,
+  Box,
+  FixedSizeIcon,
+  Group,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatDurationLong } from "metabase/utils/formatting/time";
 import type { TransformRunForJobRun } from "metabase-types/api";
-
-import { TransformOutput } from "../../../components/TransformOutput";
 
 import S from "./TransformRunItem.module.css";
 
@@ -79,7 +86,11 @@ export function TransformRunItem({ transformRun }: TransformRunItemProps) {
         </Group>
         {transformRun.transform_id !== null && (
           <Group gap="sm" wrap="nowrap" fz="sm" lh="1rem">
-            <Box c="text-secondary">{t`Output:`}</Box>
+            <Text
+              c="text-secondary"
+              fz="inherit"
+              lh="inherit"
+            >{t`Output:`}</Text>
             <TransformOutput transformId={transformRun.transform_id} />
           </Group>
         )}

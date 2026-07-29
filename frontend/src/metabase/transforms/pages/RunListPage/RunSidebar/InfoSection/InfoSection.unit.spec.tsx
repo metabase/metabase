@@ -1,6 +1,6 @@
 import {
   setupGetTransformEndpoint,
-  setupListAnyDatabaseSchemasEndpoint,
+  setupListDatabaseSchemasEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -21,13 +21,10 @@ type SetupOpts = {
 };
 
 function setup({ run = createMockTransformRun() }: SetupOpts = {}) {
-  setupGetTransformEndpoint(
-    createMockTransform({
-      id: 5,
-      target: createMockTransformTarget({ schema: "public", name: "orders" }),
-    }),
-  );
-  setupListAnyDatabaseSchemasEndpoint();
+  if (run.transform) {
+    setupGetTransformEndpoint(run.transform);
+    setupListDatabaseSchemasEndpoint(run.transform.target.database, ["public"]);
+  }
   renderWithProviders(<InfoSection run={run} />);
 }
 
@@ -91,7 +88,10 @@ describe("InfoSection", () => {
 
   it("should render the output table of the run", async () => {
     const run = createMockTransformRun({
-      transform: createMockTransform({ id: 5 }),
+      transform: createMockTransform({
+        id: 5,
+        target: createMockTransformTarget({ schema: "public", name: "orders" }),
+      }),
     });
     setup({ run });
     await waitForLoaderToBeRemoved();
