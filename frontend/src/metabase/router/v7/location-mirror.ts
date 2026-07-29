@@ -1,6 +1,6 @@
 import type { NavigationType, Location as V7Location } from "react-router";
 
-import { LOCATION_CHANGE } from "../routing-reducer";
+import { LOCATION_CHANGE } from "../location-change";
 import type { Location } from "../types";
 
 import { toV3Location } from "./location";
@@ -22,15 +22,13 @@ type DispatchLocationChange = (action: {
 }) => void;
 
 /**
- * Mirrors each location into `state.routing` and the `router.listen`
+ * Emits LOCATION_CHANGE on every navigation and notifies the `router.listen`
  * subscribers. Replaces v3's `syncHistoryWithStore`.
  *
  * Pass the result to `RouterProvider` as `onLocationChange`: it runs inside the
- * history subscription, so the store is current before any thunk reads it.
- * Thunks read the store synchronously right after navigating
- * (`setEditingDashboard` pushes `{ ...getLocation(getState()) }`), so a store
- * that lags a render makes them push a stale location and clobber query params
- * that were just set.
+ * history subscription, so the reducers keyed off LOCATION_CHANGE
+ * (`isNavbarOpen`, `errorPage`) and trace-id rotation settle as part of the
+ * transition rather than after a render.
  */
 export function createLocationMirror(
   dispatch: DispatchLocationChange,

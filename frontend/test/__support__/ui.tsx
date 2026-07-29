@@ -42,7 +42,6 @@ import {
   Route,
   createLocationMirror,
   routerMiddleware,
-  routing as routingReducer,
 } from "metabase/router";
 import {
   type MemoryTestHistory,
@@ -190,7 +189,6 @@ export function getTestStoreAndWrapper({
   theme,
 }: GetTestStoreAndWrapperOptions) {
   let {
-    routing,
     settings, // pull settings out because they aren't in the store
     ...initialState
   }: Partial<StoreSeedState> = createMockState(storeInitialState);
@@ -215,10 +213,6 @@ export function getTestStoreAndWrapper({
     reducers = makeMainReducers();
   }
 
-  if (withRouter) {
-    Object.assign(reducers, { routing: routingReducer });
-    Object.assign(initialState, { routing });
-  }
   if (customReducers) {
     reducers = { ...reducers, ...customReducers };
   }

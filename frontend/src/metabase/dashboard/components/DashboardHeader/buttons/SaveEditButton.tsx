@@ -6,11 +6,15 @@ import { getMissingRequiredParameters } from "metabase/dashboard/selectors";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { useDispatch, useSelector } from "metabase/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
+import { useMaybeLocation } from "metabase/router";
 import { Tooltip } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
 export const SaveEditButton = () => {
   const dispatch = useDispatch();
+  // The SDK renders the dashboard header outside the app router, and has no URL
+  // hash to strip, so leaving edit mode there simply skips the navigation.
+  const location = useMaybeLocation() ?? undefined;
   const {
     setEditingDashboard,
     updateDashboardAndCards,
@@ -26,14 +30,14 @@ export const SaveEditButton = () => {
 
   const handleDoneEditing = () => {
     onRefreshPeriodChange(null);
-    setEditingDashboard(null);
+    setEditingDashboard(null, location);
   };
 
   const onSave = async () => {
     // optimistically dismissing all the undos before the saving has finished
     // clicking on them wouldn't do anything at this moment anyway
     dispatch(dismissAllUndo());
-    await updateDashboardAndCards();
+    await updateDashboardAndCards(location);
 
     handleDoneEditing();
   };

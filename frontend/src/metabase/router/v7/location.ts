@@ -51,8 +51,9 @@ export function queryToSearch(query: Record<string, unknown>): string {
 }
 
 /**
- * Build the v3-shaped `history` location the facade context and `state.routing`
- * expect from a v7 location plus the current navigation type.
+ * Build the v3-shaped `history` location the facade context and the
+ * LOCATION_CHANGE payload expect from a v7 location plus the current navigation
+ * type.
  */
 export function toV3Location(
   location: V7Location,
