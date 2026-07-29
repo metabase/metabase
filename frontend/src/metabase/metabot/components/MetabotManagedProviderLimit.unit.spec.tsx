@@ -35,9 +35,7 @@ describe("getMetabotManagedProviderLimitToastProps", () => {
       screen.getByRole("button", { name: "Use a different AI provider" }),
     );
 
-    expect(
-      await screen.findByRole("button", { name: /Add a provider/ }),
-    ).toBeInTheDocument();
+    expect(await screen.findByLabelText("Provider")).toBeInTheDocument();
     expect(store.getState().undo).toHaveLength(1);
 
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
