@@ -1242,6 +1242,41 @@
           (is (not-any? :is_saved_questions
                         (:data (mt/user-http-request :lucky :get 200 "database?saved=true")))))))))
 
+(deftest databases-list-saved-questions-call-count-test
+  (testing "GET /api/database?saved=true&include=tables app-DB call count should not scale with the number of Cards"
+    (letfn [(insert-cards! [n]
+              (vec (for [_ (range n)]
+                     (:id (first (t2/insert-returning-instances!
+                                  :model/Card
+                                  (assoc (card-with-native-query (mt/random-name))
+                                         :creator_id             (mt/user->id :crowberto)
+                                         :display                :table
+                                         :visualization_settings {}
+                                         ;; a column with a real Field :id exercises the per-card Field
+                                         ;; fetch + hydration path
+                                         :result_metadata        [{:id           (mt/id :venues :name)
+                                                                   :name         "NAME"
+                                                                   :display_name "Name"
+                                                                   :base_type    :type/Text}])))))))
+            (warm-call-count! []
+              ;; first request pays one-time priming; measure the second
+              (mt/user-http-request :crowberto :get 200 "database?saved=true&include=tables")
+              (t2/with-call-count [call-count]
+                (mt/user-http-request :crowberto :get 200 "database?saved=true&include=tables")
+                (call-count)))]
+      (let [batch-1       (insert-cards! 2)
+            calls-with-2  (warm-call-count!)
+            batch-2       (insert-cards! 16)
+            calls-with-18 (warm-call-count!)]
+        (try
+          ;; [[mi/do-after-select]] re-runs each Card row through toucan2's identity-query, which
+          ;; `with-call-count` counts even though it never hits the DB — so growth of 1 per Card is
+          ;; expected and allowed. The slack of 6 stays well under the pre-batching behavior of one
+          ;; real `metabase_database` select per additional Card on top of that (#78919).
+          (is (<= calls-with-18 (+ calls-with-2 (count batch-2) 6)))
+          (finally
+            (t2/delete! :model/Card :id [:in (into batch-1 batch-2)])))))))
+
 (deftest fetch-databases-with-invalid-driver-test
   (testing "GET /api/database"
     (testing "\nEndpoint should still work even if there is a Database saved with a invalid driver"
