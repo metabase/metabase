@@ -42,7 +42,7 @@ describe("useDataGridInstance", () => {
       expect(after?.header).toBe(before?.header);
     });
 
-    it("populates column meta with the width-dependent values instead of closing over them", () => {
+    it("puts values that depend on the column width on meta, to avoid remounting cells on resize", () => {
       const { result } = renderHook(() =>
         useDataGridInstance<TestRow, string>({
           data: DATA,
@@ -52,8 +52,10 @@ describe("useDataGridInstance", () => {
 
       const meta = result.current.table.getColumn("value")?.columnDef.meta;
 
-      expect(meta?.isTruncated).toBe(false);
-      expect(typeof meta?.onExpand).toBe("function");
+      expect(meta).toMatchObject({
+        isTruncated: false,
+        onExpand: expect.any(Function),
+      });
     });
   });
 });

@@ -22,7 +22,7 @@ describe("ExecutionOutputTable", () => {
     jest.clearAllMocks();
   });
 
-  it("keeps column options stable between renders", () => {
+  it("keeps column options stable between renders, so the grid does not remount every cell (metabase#78557)", () => {
     const { rerender } = render(<ExecutionOutputTable output={OUTPUT} />);
     const initialColumnsOptions =
       mockUseDataGridInstance.mock.calls[0][0].columnsOptions;
