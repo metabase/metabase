@@ -271,9 +271,11 @@
   (try
     (jdbc/with-transaction [tx app-datasource {:rollback-only true}]
       (when create-extension?
-        (jdbc/execute! tx ["CREATE EXTENSION IF NOT EXISTS vector"]))
+        (jdbc/execute! tx ["CREATE EXTENSION IF NOT EXISTS vector"]
+                       {:timeout probe-query-timeout-seconds}))
       (when create-schema?
-        (jdbc/execute! tx [(str "CREATE SCHEMA IF NOT EXISTS " (quoted/postgres app-db-schema))])))
+        (jdbc/execute! tx [(str "CREATE SCHEMA IF NOT EXISTS " (quoted/postgres app-db-schema))]
+                       {:timeout probe-query-timeout-seconds})))
     true
     (catch Exception e
       (log/debugf "Semantic search: the application database user cannot provision the pgvector store: %s"
@@ -288,7 +290,9 @@
   pg_available_extensions: managed Postgres often lists the extension as available while denying the DDL.
   The probe persists nothing, so the unlicensed and disabled instances whose availability predicates reach
   here never mutate the app db; the persisted CREATE EXTENSION / CREATE SCHEMA run only on the activation
-  path ([[metabase-enterprise.semantic-search.pgvector-api/init-semantic-search!]])."
+  path ([[metabase-enterprise.semantic-search.pgvector-api/init-semantic-search!]]).
+  Every statement is timeout-bounded: the readiness probe calls this on a thread it can abandon but cannot
+  interrupt out of a stuck query, so the statement timeout is what actually ends one."
   []
   (let [app-datasource (mdb/data-source)
         ;; The schema_exists SQL alias reads information_schema.schemata (privilege-filtered), not
@@ -302,7 +306,8 @@
                                  " EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') AS available,"
                                  " EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = ?) AS schema_exists")
                             app-db-schema]
-                           {:builder-fn jdbc.rs/as-unqualified-kebab-maps})]
+                           {:builder-fn jdbc.rs/as-unqualified-kebab-maps
+                            :timeout    probe-query-timeout-seconds})]
     (cond
       (not (or installed available)) false
       (and installed schema-exists)  true

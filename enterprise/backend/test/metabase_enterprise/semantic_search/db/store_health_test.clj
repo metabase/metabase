@@ -122,14 +122,20 @@
   (let [probe @#'semantic.store-health/probe-store]
     (mt/with-dynamic-fn-redefs [semantic.db.datasource/dedicated-url-configured? (constantly true)]
       (testing "a probe that outruns the deadline reports no store instead of stranding the caller"
-        (let [released (promise)]
+        (let [started  (promise)
+              released (promise)]
           (mt/with-dynamic-fn-redefs
             [semantic.db.datasource/probe-dedicated-connection!
              ;; Never returns on its own, so the deadline is the only thing that can end it.
-             (fn [] (try
-                      @(promise)
-                      (catch InterruptedException _ (deliver released true))))]
-            (is (=? {:mode :unavailable, :connected? false, :resolved? false} (probe 50)))
+             (fn []
+               (deliver started true)
+               (try
+                 @(promise)
+                 (catch InterruptedException _ (deliver released true))))]
+            ;; A second, not a few milliseconds: a loaded worker may not schedule the probe before a short
+            ;; deadline expires, and cancelling one that never ran would prove nothing about interruption.
+            (is (=? {:mode :unavailable, :connected? false, :resolved? false} (probe 1000)))
+            (is (true? (deref started 5000 ::never-ran)) "the probe body did run, and was then abandoned")
             (is (true? (deref released 5000 ::still-hung))
                 "the abandoned probe is interrupted, not left holding a pool thread forever"))))
       (testing "an ordinary failure reads as disconnected, but the store is still known"
@@ -145,16 +151,20 @@
           [semantic.db.datasource/probe-dedicated-connection! (constantly {:one 1})]
           (is (=? {:mode :dedicated, :connected? true, :resolved? true} (probe 60000))))))
     (testing "choosing the mode runs under the deadline too, not just the connection probe"
-      (let [released (promise)]
+      (let [started  (promise)
+            released (promise)]
         (mt/with-dynamic-fn-redefs
           [mdb/db-is-set-up?                               (constantly true)
            semantic.db.datasource/dedicated-url-configured? (constantly false)
            semantic.u/semantic-search-configured?           (constantly true)
-           semantic.db.datasource/pgvector-mode             (fn [] (try
-                                                                     @(promise)
-                                                                     (catch InterruptedException _
-                                                                       (deliver released true))))]
-          (is (=? {:mode :unavailable, :resolved? false} (probe 50)))
+           semantic.db.datasource/pgvector-mode             (fn []
+                                                              (deliver started true)
+                                                              (try
+                                                                @(promise)
+                                                                (catch InterruptedException _
+                                                                  (deliver released true))))]
+          (is (=? {:mode :unavailable, :resolved? false} (probe 1000)))
+          (is (true? (deref started 5000 ::never-ran)))
           (is (true? (deref released 5000 ::still-hung))))))
     (testing "an app db that is not migrated yet is unresolved, not an answer to cache for an hour"
       (mt/with-dynamic-fn-redefs
