@@ -48,10 +48,6 @@ jest.mock("metabase/metabot/components/MetabotChat/MetabotChatMessage", () => ({
     ) : null,
 }));
 
-jest.mock("metabase/metabot/components/MetabotChat/MetabotThinking", () => ({
-  MetabotThinking: () => null,
-}));
-
 jest.mock("metabase/explorations/analytics", () => ({
   trackExplorationAgentMessageSent: jest.fn(),
   trackExplorationPlanEdited: jest.fn(),

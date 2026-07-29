@@ -18,7 +18,6 @@ import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProv
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotChatEditor } from "metabase/metabot/components/MetabotChat/MetabotChatEditor";
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
-import { MetabotThinking } from "metabase/metabot/components/MetabotChat/MetabotThinking";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import {
   useMetabotAgent,
@@ -94,7 +93,6 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     conversationId,
     retryMessage,
     isDoingScience,
-    activeToolCalls,
     submitInput,
     cancelRequest,
   } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
@@ -336,7 +334,6 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
               debug={false}
               conversationId={conversationId}
             />
-            {isDoingScience && <MetabotThinking toolCalls={activeToolCalls} />}
           </Stack>
         ) : (
           <Box flex={1} mih={0} />
