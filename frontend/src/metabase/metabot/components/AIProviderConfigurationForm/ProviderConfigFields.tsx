@@ -41,7 +41,7 @@ function ProviderConfigField({
   onChange: (value: string) => void;
   disabled?: boolean;
 }) {
-  const docsUrl = field["docs-url"];
+  const docsUrl = field.docs_url;
   const description = docsUrl ? (
     <ExternalLink href={docsUrl}>{t`Where do I find this?`}</ExternalLink>
   ) : (

@@ -31,7 +31,7 @@
    [:placeholder {:optional true} [:maybe :string]]
    [:default {:optional true} [:maybe :string]]
    [:help {:optional true} [:maybe :string]]
-   [:docs-url {:optional true} [:maybe :string]]
+   [:docs_url {:optional true} [:maybe :string]]
    [:options {:optional true} [:maybe [:sequential [:map [:value :string] [:label :string]]]]]])
 
 (def ^:private provider-type-response-schema
@@ -41,7 +41,7 @@
    [:managed :boolean]
    [:singleton :boolean]
    [:available :boolean]
-   [:default-model [:maybe :string]]
+   [:default_model [:maybe :string]]
    [:fields [:sequential field-response-schema]]])
 
 (def ^:private connection-response-schema
@@ -85,7 +85,7 @@
     placeholder (assoc :placeholder (str placeholder))
     default     (assoc :default default)
     help        (assoc :help (str help))
-    docs-url    (assoc :docs-url docs-url)
+    docs-url    (assoc :docs_url docs-url)
     options     (assoc :options options)))
 
 (defn- provider-type-response
@@ -95,7 +95,7 @@
    :managed       (boolean managed?)
    :singleton     (boolean singleton?)
    :available     (llm.provider/type-available? type)
-   :default-model default-model
+   :default_model default-model
    :fields        (mapv field-response fields)})
 
 (defn- connection-response

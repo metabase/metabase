@@ -16,6 +16,7 @@ import {
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { AIProviderSetup } from "metabase/metabot";
 import { reinitialize } from "metabase/plugins";
 import type {
@@ -121,6 +122,7 @@ type SetupOpts = {
   providerTypes?: LlmProviderType[];
   models?: LlmConnectionModels[];
   modelRef?: string | null;
+  modelRefEnvVar?: string;
   createdConnection?: LlmProviderConnection;
   updatedConnection?: LlmProviderConnection;
 };
@@ -130,6 +132,7 @@ async function setup({
   providerTypes = [ANTHROPIC_TYPE, AZURE_TYPE],
   models = [],
   modelRef = null,
+  modelRefEnvVar,
   createdConnection = ANTHROPIC_CONNECTION,
   updatedConnection = ANTHROPIC_CONNECTION,
 }: SetupOpts = {}) {
@@ -145,6 +148,8 @@ async function setup({
     createMockSettingDefinition({
       key: "llm-metabot-provider",
       value: modelRef,
+      is_env_setting: modelRefEnvVar != null,
+      env_name: modelRefEnvVar,
     }),
   ]);
   setupUpdateSettingEndpoint();
@@ -155,12 +160,18 @@ async function setup({
   setupUpdateLlmProviderEndpoint(updatedConnection);
   setupDeleteLlmProviderEndpoint();
 
-  const view = renderWithProviders(<AIProviderSettingsSection />, {
-    storeInitialState: {
-      settings: mockSettings(sessionProperties),
-      currentUser: createMockUser({ is_superuser: true }),
+  const view = renderWithProviders(
+    <>
+      <AIProviderSettingsSection />
+      <UndoListing />
+    </>,
+    {
+      storeInitialState: {
+        settings: mockSettings(sessionProperties),
+        currentUser: createMockUser({ is_superuser: true }),
+      },
     },
-  });
+  );
 
   if (connections.length > 0) {
     await screen.findByText(connections[0].name);
@@ -444,6 +455,46 @@ describe("AIProviderSettingsSection", () => {
         }),
       ).toBe(true);
     });
+
+    expect(await screen.findAllByText("Changes saved")).toHaveLength(1);
+  });
+
+  it("surfaces a failure to save the picked model", async () => {
+    await setup({
+      connections: [ANTHROPIC_CONNECTION, AZURE_CONNECTION],
+      models: CONNECTION_MODELS,
+      modelRef: "anthropic/claude-sonnet-4-5",
+    });
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Model")).toHaveValue("Claude Sonnet 4.5"),
+    );
+
+    fetchMock.modifyRoute("update-setting", {
+      response: { status: 400, body: { message: "Unsupported model" } },
+    });
+
+    const listbox = await openModelPicker();
+    await userEvent.click(
+      within(listbox).getByRole("option", { name: "GPT-5" }),
+    );
+
+    expect(await screen.findByText("Unsupported model")).toBeInTheDocument();
+    expect(screen.queryByText("Changes saved")).not.toBeInTheDocument();
+  });
+
+  it("locks the model picker and names the env var when the model is set by one", async () => {
+    await setup({
+      connections: [ANTHROPIC_CONNECTION],
+      models: CONNECTION_MODELS,
+      modelRef: "anthropic/claude-sonnet-4-5",
+      modelRefEnvVar: "MB_LLM_METABOT_PROVIDER",
+    });
+
+    expect(
+      await screen.findByTestId("setting-env-var-message"),
+    ).toHaveTextContent("MB_LLM_METABOT_PROVIDER");
+    expect(screen.getByLabelText("Model")).toBeDisabled();
   });
 });
 
