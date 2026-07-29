@@ -3,6 +3,9 @@ const YAML = require("json-to-pretty-yaml");
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
 
 const { WEBPACK_BUNDLE } = require("./frontend/build/shared/constants");
+const {
+  SIDE_EFFECT_FREE_RULE,
+} = require("./frontend/build/shared/rspack/side-effect-free-modules");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
@@ -55,6 +58,7 @@ module.exports = (env) => {
 
     module: {
       rules: [
+        SIDE_EFFECT_FREE_RULE,
         {
           test: /\.css$/i,
           use: "null-loader",
