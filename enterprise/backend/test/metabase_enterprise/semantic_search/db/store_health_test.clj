@@ -71,6 +71,9 @@
       (is (=? {"appdb" {:available #(== 1 %), :connected zero?}}
               (readiness-gauges system))))))
 
+(def ^:private last-success-sample-re
+  #"^metabase_pgvector_store_last_success_timestamp_seconds\{storage=\"([^\"]+)\",?\} (\S+)")
+
 (defn- exposed-last-success
   "The last-success samples a scrape would actually see, as `{storage value}`.
   Read from the exposition rather than [[mt/metric-value]], which creates the child it looks up and so
@@ -78,9 +81,7 @@
   [system]
   (into {}
         (keep (fn [line]
-                (when-let [[_ storage value]
-                           (re-find #"^metabase_pgvector_store_last_success_timestamp_seconds\{storage=\"([^\"]+)\",?\} (\S+)"
-                                    line)]
+                (when-let [[_ storage value] (re-find last-success-sample-re line)]
                   [storage (parse-double value)])))
         (str/split-lines (export/text-format (:registry system)))))
 
