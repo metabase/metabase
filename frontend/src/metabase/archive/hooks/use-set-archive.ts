@@ -14,6 +14,7 @@ import {
   useUpdateTimelineEventMutation,
   useUpdateTimelineMutation,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type {
@@ -216,7 +217,24 @@ export function useSetArchive() {
         );
       }
 
-      await setArchived(item, archived).unwrap();
+      try {
+        await setArchived(item, archived).unwrap();
+      } catch (error) {
+        // e.g. a question that can't be trashed because a remote-synced dashboard still
+        // references it -- the backend already has a specific message for this, it just
+        // wasn't reaching the user (metabase#73831)
+        dispatch(
+          addUndo({
+            icon: "warning",
+            toastColor: "feedback-negative",
+            message: getErrorMessage(
+              error,
+              archived ? t`Failed to trash item` : t`Failed to restore item`,
+            ),
+          }),
+        );
+        throw error;
+      }
 
       if (notify) {
         const labels = LABELS[item.model];
