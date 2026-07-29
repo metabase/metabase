@@ -13,26 +13,77 @@ import {
   TYPE,
   UNKNOWN,
 } from "metabase-lib/v1/types/constants";
+import type { FieldTypeInfo } from "metabase-lib/v1/types/utils/isa";
 import {
   isBoolean,
   isDate,
   isLongitude,
   isNumeric,
 } from "metabase-lib/v1/types/utils/isa";
+import type { FieldId, ParameterOptions } from "metabase-types/api";
 
-function freeformArgument(field, table) {
+type FilterArgumentField = FieldTypeInfo & {
+  id: FieldId;
+  display_name: string;
+};
+
+type FilterArgumentTable = {
+  fields: FilterArgumentField[];
+};
+
+type FilterArgument =
+  | { type: "text" }
+  | { type: "number" }
+  | { type: "date" }
+  | { type: "hidden"; default: FieldId }
+  | {
+      type: "select";
+      values: { key: boolean | FieldId; name: string }[];
+      default?: boolean;
+    };
+
+type FilterArgumentFn = (
+  field: FilterArgumentField,
+  table: FilterArgumentTable,
+) => FilterArgument;
+
+export type FieldFilterOperator = {
+  validArgumentsFilters: FilterArgumentFn[];
+  multi?: boolean;
+  placeholders?: string[];
+  formatOptions?: Record<string, unknown>[];
+  options?: Record<string, { defaultValue: boolean }>;
+  optionsDefaults?: ParameterOptions;
+};
+
+type NamedFilterOperator = {
+  name: string;
+  verboseName: string;
+  multi?: boolean;
+};
+
+function freeformArgument(
+  _field: FilterArgumentField,
+  _table: FilterArgumentTable,
+): FilterArgument {
   return {
     type: "text",
   };
 }
 
-function numberArgument(field, table) {
+function numberArgument(
+  _field: FilterArgumentField,
+  _table: FilterArgumentTable,
+): FilterArgument {
   return {
     type: "number",
   };
 }
 
-function comparableArgument(field, table) {
+function comparableArgument(
+  field: FilterArgumentField,
+  _table: FilterArgumentTable,
+): FilterArgument {
   if (isDate(field)) {
     return {
       type: "date",
@@ -50,7 +101,10 @@ function comparableArgument(field, table) {
   };
 }
 
-function equivalentArgument(field, table) {
+function equivalentArgument(
+  field: FilterArgumentField,
+  _table: FilterArgumentTable,
+): FilterArgument {
   if (isBoolean(field)) {
     return {
       type: "select",
@@ -79,7 +133,10 @@ function equivalentArgument(field, table) {
   };
 }
 
-function longitudeFieldSelectArgument(field, table) {
+function longitudeFieldSelectArgument(
+  _field: FilterArgumentField,
+  table: FilterArgumentTable,
+): FilterArgument {
   const values = table.fields
     .filter((field) => isLongitude(field))
     .map((field) => ({
@@ -106,7 +163,7 @@ const CASE_SENSITIVE_OPTION = {
 };
 
 // each of these has an implicit field argument, followed by 0 or more additional arguments
-export const FIELD_FILTER_OPERATORS = {
+export const FIELD_FILTER_OPERATORS: Record<string, FieldFilterOperator> = {
   "=": {
     validArgumentsFilters: [equivalentArgument],
     multi: true,
@@ -196,7 +253,7 @@ export const FIELD_FILTER_OPERATORS = {
   },
 };
 
-const DEFAULT_FILTER_OPERATORS = [
+const DEFAULT_FILTER_OPERATORS: NamedFilterOperator[] = [
   {
     name: "=",
     get verboseName() {
@@ -223,7 +280,7 @@ const DEFAULT_FILTER_OPERATORS = [
   },
 ];
 
-const KEY_FILTER_OPERATORS = [
+const KEY_FILTER_OPERATORS: NamedFilterOperator[] = [
   {
     name: "=",
     get verboseName() {
@@ -281,7 +338,10 @@ const KEY_FILTER_OPERATORS = [
 ];
 
 // ordered list of operators and metadata per type
-export const FILTER_OPERATORS_BY_TYPE_ORDERED = {
+export const FILTER_OPERATORS_BY_TYPE_ORDERED: Record<
+  string,
+  NamedFilterOperator[]
+> = {
   [NUMBER]: [
     {
       name: "=",
