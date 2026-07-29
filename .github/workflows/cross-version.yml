@@ -11,6 +11,11 @@ on:
         description: "Target version (e.g., v1.58.7 or HEAD)"
         required: true
         type: string
+      health_timeout:
+        description: "Amount of time to wait for Metabase to get healthy"
+        required: false
+        type: number
+        default: 120
 
   # NOTE: this workflow is temporarily disabled until the cross version tests are fixed.
   # pull_request:
@@ -204,6 +209,7 @@ jobs:
       - name: Run cross-version test
         env:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
+          HEALTH_TIMEOUT: ${{ inputs.health_timeout }}
         run: |
           cd cross-version
           ./test.sh --source "${{ inputs.source_version }}" --target "${{ inputs.target_version }}"
