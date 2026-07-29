@@ -43,7 +43,7 @@ export interface LlmProviderField {
   placeholder?: string | null;
   default?: string | null;
   help?: string | null;
-  "docs-url"?: string | null;
+  docs_url?: string | null;
   options?: { value: string; label: string }[] | null;
 }
 
@@ -53,7 +53,7 @@ export interface LlmProviderType {
   managed: boolean;
   singleton: boolean;
   available: boolean;
-  "default-model": string | null;
+  default_model: string | null;
   fields: LlmProviderField[];
 }
 

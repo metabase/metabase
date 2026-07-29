@@ -35,12 +35,12 @@
                :label         "Anthropic"
                :managed       false
                :available     true
-               :default-model "claude-sonnet-4-6"
+               :default_model "claude-sonnet-4-6"
                :fields        [{:key      "api-key"
                                 :label    "API key"
                                 :type     "password"
                                 :required true
-                                :docs-url "https://console.anthropic.com/settings/keys"}
+                                :docs_url "https://console.anthropic.com/settings/keys"}
                                {:key      "base-url"
                                 :label    "API base URL"
                                 :type     "text"

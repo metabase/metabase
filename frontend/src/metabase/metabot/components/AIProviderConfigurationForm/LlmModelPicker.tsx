@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useListLlmModelsQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { useToast } from "metabase/common/hooks";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
 import { Select, Stack, Text } from "metabase/ui";
 import type { LlmConnectionModels } from "metabase-types/api";
@@ -15,24 +15,18 @@ export function LlmModelPicker() {
     settingDetails,
   } = useAdminSetting("llm-metabot-provider");
   const { data: connections = [], isLoading, error } = useListLlmModelsQuery();
-  const [sendToast] = useToast();
 
   const options = useMemo(() => getModelOptions(connections), [connections]);
   const failed = connections.filter((connection) => connection.error);
 
   const isEnvSetting = !!settingDetails?.is_env_setting;
+  const envVarName = isEnvSetting ? settingDetails?.env_name : undefined;
 
   const handleChange = async (value: string | null) => {
     if (!value) {
       return;
     }
-    const result = await updateSetting({
-      key: "llm-metabot-provider",
-      value,
-    });
-    if (!result?.error) {
-      sendToast({ message: t`Settings saved successfully`, icon: "check" });
-    }
+    await updateSetting({ key: "llm-metabot-provider", value });
   };
 
   return (
@@ -49,6 +43,7 @@ export function LlmModelPicker() {
         searchable
         nothingFoundMessage={t`No models found`}
       />
+      {envVarName && <SetByEnvVar varName={envVarName} />}
       {failed.map((connection) => (
         <Text key={connection.key} size="sm" c="error">
           {t`Couldn't load models from ${connection.name}: ${connection.error}`}

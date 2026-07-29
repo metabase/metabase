@@ -24,7 +24,7 @@ export const createMockLlmProviderType = (
   managed: false,
   singleton: false,
   available: true,
-  "default-model": null,
+  default_model: null,
   fields: [createMockLlmProviderField()],
   ...opts,
 });
