@@ -1,6 +1,10 @@
 name: Build & push private Metabase Docker image
 
 on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full sha of commit to build, optional
   workflow_call:
     inputs:
       commit:
@@ -13,13 +17,13 @@ on:
         value: ${{ jobs.dockerize.outputs.tag }}
 
 concurrency:
-  group: build-private-ee-docker-image-${{ github.event.pull_request.head.sha || github.sha }}
+  group: build-private-ee-docker-image-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: false
 
 jobs:
 
   build:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
     with:
