@@ -51,6 +51,7 @@ export interface LlmProviderType {
   type: string;
   label: string;
   managed: boolean;
+  singleton: boolean;
   available: boolean;
   "default-model": string | null;
   fields: LlmProviderField[];

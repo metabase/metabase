@@ -97,20 +97,23 @@
           (is (= metabot.settings/default-metabase-llm-metabot-provider
                  (metabot.settings/llm-metabot-provider))))))))
 
-(deftest add-managed-connection-test
-  (testing "the managed connection is materialized when the LLM proxy is configured"
+(deftest managed-connection-is-materialized-only-by-the-legacy-sync-test
+  (testing "switching a legacy instance to the managed provider materializes the connection it names"
     (with-llm-proxy "https://proxy.example.com"
       (mt/with-temporary-setting-values [llm-providers []]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
-          (with-entitlements nil nil false
+          (with-entitlements true false false
             (llm.startup/check-and-sync-settings-on-startup!)
             (is (= [{:key "metabase" :type "metabase" :name "Metabase" :config {}}]
                    (vec (llm.settings/llm-providers))))
+            (testing "and the reference it just wrote resolves against it"
+              (is (=? {:connection-key "metabase" :type "anthropic" :ai-proxy? true}
+                      (llm.provider/resolve-model-ref (metabot.settings/llm-metabot-provider)))))
             (testing "and is not added a second time"
               (llm.startup/check-and-sync-settings-on-startup!)
               (is (= ["metabase"] (map :key (llm.settings/llm-providers))))))))))
-  (testing "the managed connection is not materialized without an LLM proxy to route through"
-    (with-llm-proxy nil
+  (testing "a configured proxy on its own does not connect the managed provider"
+    (with-llm-proxy "https://proxy.example.com"
       (mt/with-temporary-setting-values [llm-providers []]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
           (with-entitlements nil nil false
@@ -123,9 +126,21 @@
                                                          :name   "Anthropic"
                                                          :config {:api-key "sk-ant-stored"}}]]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
-          (with-entitlements nil nil false
+          (with-entitlements true false false
             (llm.startup/check-and-sync-settings-on-startup!)
             (is (= ["anthropic" "metabase"] (map :key (llm.settings/llm-providers))))))))))
+
+(deftest managed-connection-is-migrated-for-an-instance-already-using-it-test
+  (testing "an instance whose saved provider is the managed one gets a connection for it"
+    (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil]
+      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-stored"]
+        (mt/with-temporary-raw-setting-values
+          [llm-providers        nil
+           llm-metabot-provider metabot.settings/default-metabase-llm-metabot-provider]
+          (with-entitlements nil nil false
+            (llm.startup/check-and-sync-settings-on-startup!)
+            (is (= #{"anthropic" "metabase"}
+                   (set (map :key (llm.settings/llm-providers)))))))))))
 
 (deftest migrates-legacy-credential-settings-onto-llm-providers-test
   (testing "credentials stored in the app DB become connections keyed by their provider type"

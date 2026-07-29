@@ -22,6 +22,7 @@ export const createMockLlmProviderType = (
   type: "anthropic",
   label: "Anthropic",
   managed: false,
+  singleton: false,
   available: true,
   "default-model": null,
   fields: [createMockLlmProviderField()],

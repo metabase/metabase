@@ -347,20 +347,16 @@
                  {:key "outage-openai" :models [{:id "gpt-5.4"}]}]
                 (mt/user-http-request :crowberto :get 200 "llm/models")))))))
 
-(deftest models-for-the-managed-connection-are-namespaced-test
+(deftest models-for-the-managed-connection-come-from-the-fixed-catalog-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-temporary-setting-values [llm-providers      [(connection "metabase" "metabase")]
                                        llm-proxy-base-url "https://proxy.example.com"]
       (mt/with-dynamic-fn-redefs [metabot.self/list-models
-                                  (fn [provider opts]
-                                    (is (= "anthropic" provider))
-                                    (is (= {:ai-proxy? true} opts))
-                                    {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
-                                              {:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}]})]
-        (testing "proxied model ids are qualified with the wire family the proxy forwards to"
+                                  (fn [& _]
+                                    (throw (ex-info "the proxy must not be listed against" {})))]
+        (testing "the proxy serves one fixed model, so nothing is fetched over the wire"
           (is (= [{:key    "metabase"
                    :name   "metabase"
                    :type   "metabase"
-                   :models [{:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5" :group "Haiku"}
-                            {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6" :group "Sonnet"}]}]
+                   :models [{:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]}]
                  (mt/user-http-request :crowberto :get 200 "llm/models"))))))))

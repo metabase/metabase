@@ -161,9 +161,7 @@ async function setup({
   if (connections.length > 0) {
     await screen.findByText(connections[0].name);
   } else {
-    await screen.findByText(
-      "Connect an AI provider to use AI explorations, SQL generation and Metabot.",
-    );
+    await screen.findByRole("button", { name: /Add a provider/ });
   }
 
   return view;
