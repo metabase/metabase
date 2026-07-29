@@ -974,6 +974,115 @@
      ::extents  extents
      ::ast      ast}))
 
+;;; --------------------------------------------- Node reconciliation ----------------------------------------------
+
+(def ^:private convertible-block-types
+  "Block types the editor turns into one another in place. Tiptap's input rules, `setNode` and
+  the list toggles rewrite the node while keeping its attrs, so typing `## ` in front of a
+  paragraph leaves the block's `:_id` — and any comment anchored to it — intact. Reconciliation
+  treats a change within this set as the same block; every other type matches only its own kind,
+  so a comment on a chart can never migrate onto prose."
+  #{"paragraph" "heading" "blockquote" "bulletList" "orderedList" "codeBlock"})
+
+(def ^:private block-content-types
+  "Node types whose `:content` holds block nodes rather than inline content. Reconciliation
+  recurses through these to reach nested ids: a paragraph inside a blockquote or a list item is
+  an anchor target in its own right."
+  #{"blockquote" "listItem" "bulletList" "orderedList" "supportingText" "flexContainer" "resizeNode"})
+
+(defn- node-key
+  "Content-identity key for a block: its type plus its canonical Markdown. Equal keys mean the
+  two nodes are byte-identical in the projection, which is what makes a block the edit didn't
+  touch recognisable wherever it moved to. A `listItem` has no standalone rendering — its marker
+  belongs to the parent list — so it is keyed by its children's text."
+  [{:keys [type content] :as node}]
+  [type (render-blocks (if (= "listItem" type) content [node]))])
+
+(defn- lcs-pairs
+  "Index pairs `[i j]` of a longest common subsequence of `a` and `b`, ascending. Ties resolve
+  toward advancing `a`, making the alignment a pure function of the two vectors."
+  [a b]
+  (let [n  (count a)
+        m  (count b)
+        ;; dp[i][j] = length of the LCS of a[i:] and b[j:]; row n and column m are the zero base.
+        dp (reduce (fn [dp i]
+                     (assoc dp i
+                            (reduce (fn [row j]
+                                      (assoc row j
+                                             (if (= (nth a i) (nth b j))
+                                               (inc (long (get-in dp [(inc i) (inc j)])))
+                                               (max (long (get-in dp [(inc i) j]))
+                                                    (long (get row (inc j)))))))
+                                    (vec (repeat (inc m) 0))
+                                    (range (dec m) -1 -1))))
+                   (vec (repeat (inc n) (vec (repeat (inc m) 0))))
+                   (range (dec n) -1 -1))]
+    (loop [i 0, j 0, acc []]
+      (cond
+        (or (= i n) (= j m))
+        acc
+
+        (= (nth a i) (nth b j))
+        (recur (inc i) (inc j) (conj acc [i j]))
+
+        (>= (long (get-in dp [(inc i) j])) (long (get-in dp [i (inc j)])))
+        (recur (inc i) j acc)
+
+        :else
+        (recur i (inc j) acc)))))
+
+(defn- align
+  "Pairs `[old-index new-index]` matching `old-nodes` to `new-nodes`. Blocks the edit left alone
+  match on content wherever they moved; the runs between those anchors pair up head-first, which
+  is how ProseMirror resolves the ambiguous cases — a split leaves the id on the first of the two
+  halves, a merge keeps the head block's id and drops the tail's."
+  [old-nodes new-nodes]
+  (let [anchors (lcs-pairs (mapv node-key old-nodes) (mapv node-key new-nodes))]
+    (loop [oi 0, ni 0, anchors (seq anchors), acc []]
+      (let [[ao an] (first anchors)
+            o-stop  (or ao (count old-nodes))
+            n-stop  (or an (count new-nodes))
+            acc     (into acc
+                          (map (fn [k] [(+ oi k) (+ ni k)]))
+                          (range (min (- o-stop oi) (- n-stop ni))))]
+        (if anchors
+          (recur (inc (long ao)) (inc (long an)) (next anchors) (conj acc [ao an]))
+          acc)))))
+
+(defn- same-block?
+  [old new]
+  (let [ot (:type old)
+        nt (:type new)]
+    (or (= ot nt)
+        (and (convertible-block-types ot) (convertible-block-types nt)))))
+
+(defn- carry-id
+  [new-node old-node]
+  (let [id (get-in old-node [:attrs :_id])]
+    (cond-> new-node
+      (and id (contains? (:attrs new-node) :_id)) (assoc-in [:attrs :_id] id))))
+
+(defn- reconcile-ids
+  "Give freshly parsed `new-nodes` the `:_id`s of the `old-nodes` they replace, so a block whose
+  text an edit rewrote keeps the identity its comments anchor to — the same guarantee the editor
+  gives, where a node survives its own text changing. Follows [[align]]'s pairs and recurses
+  through nested block content. A new node with no counterpart keeps the id [[parse]] minted for
+  it, and an old id with no counterpart is dropped: that block is genuinely gone."
+  [old-nodes new-nodes]
+  (let [old (vec old-nodes)
+        new (vec new-nodes)]
+    (reduce (fn [acc [oi ni]]
+              (let [o (nth old oi)
+                    n (nth acc ni)]
+                (if-not (same-block? o n)
+                  acc
+                  (assoc acc ni
+                         (cond-> (carry-id n o)
+                           (and (block-content-types (:type n)) (seq (:content n)))
+                           (update :content #(reconcile-ids (:content o) %)))))))
+            new
+            (align old new))))
+
 ;;; ------------------------------------------------ Splice --------------------------------------------------------
 
 (defn- touched-range
@@ -1051,7 +1160,7 @@
             new-text     (str (subs markdown region-start s)
                               replacement
                               (subs markdown e region-end))
-            new-nodes    (parse-content new-text)
+            new-nodes    (reconcile-ids (subvec nodes i (inc j)) (parse-content new-text))
             result       (into (into (subvec nodes 0 i) new-nodes) (subvec nodes (inc j)))]
         (validate-spliced! parent-type result)
         result))))
@@ -1063,8 +1172,9 @@
   Finds the minimal children array whose combined span contains [start end), recursing into
   layout containers as needed. Every sibling whose own text doesn't overlap the span is reused
   by identity from `old-ast` — same `:_id`, same attrs, same nested content. The overlapping
-  sibling(s) are discarded: their serialized text, with the edit applied, is re-parsed via
-  [[parse]] and the resulting nodes (fresh `:_id`s) take their place. Throws a 400 `ex-info`
+  sibling(s) have their serialized text, with the edit applied, re-parsed via [[parse]], and
+  [[reconcile-ids]] then carries the old nodes' `:_id`s onto the parsed result, so editing a
+  block's text preserves the identity its comments anchor to. Throws a 400 `ex-info`
   when `markdown` doesn't match `old-ast`'s serialization (a stale source map), when the span
   is out of bounds, or when the re-parsed result violates a container's content model."
   [old-ast {:keys [markdown] ::keys [extents ast] trusted-markdown ::markdown} start end replacement-text]

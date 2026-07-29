@@ -80,7 +80,7 @@
                                      :name             "No peeking"
                                      :content_markdown (str "{% card id=" card-id " %}")})))))))
 
-(deftest edits-preserve-untouched-ids-and-report-orphans-test
+(deftest edits-preserve-comment-anchors-test
   (mt/with-current-user (mt/user->id :crowberto)
     (with-tool-documents
       (fn [created!]
@@ -105,10 +105,33 @@
             (testing "untouched blocks keep their node ids"
               (is (= heading-id (id-of after #(= "heading" (:type %)))))
               (is (some #(= "Leave me alone." (get-in % [:content 0 :text])) after)))
-            (testing "the edited block gets a fresh id and its comment thread is reported orphaned"
-              (is (not= edited-id (id-of after #(str/includes? (str (get-in % [:content 0 :text])) "Edited"))))
-              (is (= [{:child_target_id edited-id :comment_count 1}]
-                     (:orphaned_comment_threads updated))))))))))
+            (testing "the rewritten block keeps its id, so its comment thread stays anchored"
+              (is (= edited-id (id-of after #(str/includes? (str (get-in % [:content 0 :text])) "Edited"))))
+              (is (= [] (:orphaned_comment_threads updated))))))))))
+
+(deftest edits-report-orphans-only-for-deleted-blocks-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (with-tool-documents
+      (fn [created!]
+        (let [payload (created! (call {:method           "create"
+                                       :name             "Delete test"
+                                       :content_markdown "Keep me.\n\nDelete me.\n\nKeep me too."}))
+              doc-id  (:id payload)
+              blocks  (:content (t2/select-one-fn :document :model/Document :id doc-id))
+              id-of   (fn [pred] (some #(when (pred %) (get-in % [:attrs :_id])) blocks))
+              doomed  (id-of #(= "Delete me." (get-in % [:content 0 :text])))]
+          (t2/insert! :model/Comment {:target_type     "document"
+                                      :target_id       doc-id
+                                      :child_target_id doomed
+                                      :content         {:type "doc" :content []}
+                                      :creator_id      (mt/user->id :crowberto)})
+          (let [updated (call {:method "update"
+                               :id     doc-id
+                               :edits  [{:old_str "\n\nDelete me." :new_str ""}]})]
+            (testing "a block the edit removed reports its thread orphaned"
+              (is (= [{:child_target_id doomed :comment_count 1}]
+                     (:orphaned_comment_threads updated))))
+            (is (= "Keep me.\n\nKeep me too." (:content_markdown updated)))))))))
 
 (deftest rename-and-metadata-only-update-test
   (mt/with-current-user (mt/user->id :crowberto)

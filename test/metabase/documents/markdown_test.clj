@@ -319,8 +319,9 @@
     (is (identical? (nth (:content ast) 0) (nth (:content out) 0)))
     (is (identical? (nth (:content ast) 2) (nth (:content out) 2)))
     (is (= "block TWO" (get-in out [:content 1 :content 0 :text])))
-    (is (not= (get-in ast [:content 1 :attrs :_id])
-              (get-in out [:content 1 :attrs :_id])))))
+    (testing "the rewritten block keeps its node id, so comments anchored to it stay anchored"
+      (is (= (get-in ast [:content 1 :attrs :_id])
+             (get-in out [:content 1 :attrs :_id]))))))
 
 (deftest ^:parallel splice-descends-into-containers-test
   (let [ast {:type "doc"
@@ -348,6 +349,74 @@
         ser (md/serialize ast)]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"re-serialize"
                           (md/splice ast (update ser :markdown str "x") 0 1 "y")))))
+
+;;; --------------------------------------------- Node reconciliation ----------------------------------------------
+
+(defn- ids-of
+  "Every `:_id` in the ast, mapped to the type and leading text of the node carrying it."
+  [ast]
+  (into {} (for [n     (tree-seq :content :content ast)
+                 :let  [id (get-in n [:attrs :_id])]
+                 :when id]
+             [id [(:type n) (some :text (:content n))]])))
+
+(defn- edit-text
+  "Splice the first occurrence of `old` in the ast's Markdown to `new`."
+  [ast old new]
+  (let [ser (md/serialize ast)
+        i   (str/index-of (:markdown ser) old)]
+    (md/splice ast ser i (+ i (count old)) new)))
+
+(deftest ^:parallel splice-keeps-ids-of-edited-blocks-test
+  (testing "editing a block's text leaves every node id in the document intact"
+    (let [ast (md/parse "## Heading\n\nEdit me please.\n\nLeave me alone.")
+          out (edit-text ast "Edit me please." "Edited!")]
+      (is (= (set (keys (ids-of ast))) (set (keys (ids-of out)))))))
+  (testing "ids nested inside blockquotes and lists survive too"
+    (let [ast (md/parse "> quoted text\n\n- alpha\n- beta\n\nplain")
+          out (edit-text ast "alpha" "ALPHA")]
+      (is (= (set (keys (ids-of ast))) (set (keys (ids-of out)))))))
+  (testing "a sweep touching every block keeps every id"
+    (let [ast   (md/parse "# Unit DS-7\n\nDS-7 did not sleep.\n\n> DS-7 wrote a memo.\n\n- DS-7 alpha\n- untouched\n\nDS-7 logged it.")
+          out   (loop [a ast]
+                  (let [ser (md/serialize a)
+                        i   (str/last-index-of (:markdown ser) "DS-7")]
+                    (if i (recur (md/splice a ser i (+ i 4) "DS-10")) a)))]
+      (is (= (set (keys (ids-of ast))) (set (keys (ids-of out)))))
+      (is (not (str/includes? (:markdown (md/serialize out)) "DS-7"))))))
+
+(deftest ^:parallel splice-id-reconciliation-follows-editor-semantics-test
+  (testing "a split leaves the id on the first of the two halves, as the editor's node-id plugin does"
+    (let [ast (md/parse "one two three")
+          out (edit-text ast "two" "two\n\nsplit")]
+      (is (= 2 (count (:content out))))
+      (is (= (get-in ast [:content 0 :attrs :_id]) (get-in out [:content 0 :attrs :_id])))
+      (is (not= (get-in ast [:content 0 :attrs :_id]) (get-in out [:content 1 :attrs :_id])))))
+  (testing "a merge keeps the head block's id and drops the tail's"
+    (let [ast (md/parse "head block\n\ntail block")
+          out (edit-text ast "head block\n\ntail block" "head block tail block")]
+      (is (= (get-in ast [:content 0 :attrs :_id]) (get-in out [:content 0 :attrs :_id])))
+      (is (not (contains? (ids-of out) (get-in ast [:content 1 :attrs :_id]))))))
+  (testing "converting a paragraph to a heading keeps the id, matching setNode in the editor"
+    (let [ast (md/parse "Some title")
+          out (edit-text ast "Some title" "## Some title")]
+      (is (= "heading" (get-in out [:content 0 :type])))
+      (is (= (get-in ast [:content 0 :attrs :_id]) (get-in out [:content 0 :attrs :_id])))))
+  (testing "a deleted block's id is dropped rather than handed to a surviving neighbour"
+    (let [ast   (md/parse "alpha\n\nbeta\n\ngamma")
+          alpha (get-in ast [:content 0 :attrs :_id])
+          beta  (get-in ast [:content 1 :attrs :_id])
+          out   (edit-text ast "alpha\n\nbeta" "beta")]
+      (is (= "beta" (get-in out [:content 0 :content 0 :text])))
+      (is (= beta (get-in out [:content 0 :attrs :_id])))
+      (is (not (contains? (ids-of out) alpha)))))
+  (testing "a card embed never donates its id to prose that replaces it"
+    (let [ast  (md/parse "::: flex\n{% card id=118 %}\n::: supporting\nwords\n:::\n:::")
+          card (some #(when (= "cardEmbed" (:type %)) (get-in % [:attrs :_id]))
+                     (tree-seq :content :content ast))
+          out  (edit-text ast "{% card id=118 %}" "::: supporting\njust words now\n:::")]
+      (is (some? card))
+      (is (not (contains? (ids-of out) card))))))
 
 (deftest ^:parallel splice-without-fast-path-keys-test
   (testing "a caller passing only :markdown gets the re-serialize fallback"
