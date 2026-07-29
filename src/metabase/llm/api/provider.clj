@@ -38,6 +38,7 @@
    [:type :string]
    [:label :string]
    [:managed :boolean]
+   [:singleton :boolean]
    [:available :boolean]
    [:default-model [:maybe :string]]
    [:fields [:sequential field-response-schema]]])
@@ -87,10 +88,11 @@
     options     (assoc :options options)))
 
 (defn- provider-type-response
-  [{:keys [type label managed? default-model fields]}]
+  [{:keys [type label managed? singleton? default-model fields]}]
   {:type          type
    :label         (str label)
    :managed       (boolean managed?)
+   :singleton     (boolean singleton?)
    :available     (llm.provider/type-available? type)
    :default-model default-model
    :fields        (mapv field-response fields)})
@@ -156,12 +158,6 @@
     "openrouter" (assoc model :group (openrouter-model-group model))
     model))
 
-(defn- normalize-managed-model
-  [model]
-  (update model :id (fn [id]
-                      (when id
-                        (if (str/includes? id "/") id (str "anthropic/" id))))))
-
 (defn- decorate-provider-models
   [provider models]
   (let [decorated (map #(decorate-provider-model provider %) models)]
@@ -180,13 +176,14 @@
 
 (defn- list-connection-models*
   "List `conn`'s models. `config-override` stands in for the stored credentials when validating a connection that has
-  not been saved yet. Returns `{:models [...]}` or `{:models [] :error msg}` for a credential-level failure."
+  not been saved yet. Returns `{:models [...]}` or `{:models [] :error msg}` for a credential-level failure.
+
+  Types whose catalog is fixed (the managed provider, which serves one model through the proxy) are answered from
+  the registry — there is nothing to fetch, and calling out would fail on instances that cannot reach the proxy."
   [{:keys [type config]} config-override model]
-  (let [config (or config-override config)]
-    (if (llm.provider/managed-type? type)
-      {:models (decorate-provider-models "anthropic"
-                                         (map normalize-managed-model
-                                              (:models (metabot.self/list-models "anthropic" {:ai-proxy? true}))))}
+  (if-let [models (llm.provider/fixed-models type)]
+    {:models (vec models)}
+    (let [config (or config-override config)]
       (try
         {:models (decorate-provider-models
                   type
@@ -281,6 +278,9 @@
     (api/check-400 provider-type (tru "Unknown provider type {0}." (pr-str type)))
     (api/check-400 (llm.provider/type-available? type)
                    (tru "The {0} provider is not available on this instance." (pr-str type)))
+    (api/check-400 (not (and (llm.provider/singleton-type? type)
+                             (some #(= type (:type %)) (llm.provider/connections))))
+                   (tru "The {0} provider is already connected." (pr-str type)))
     (let [conn-key (llm.provider/unique-key (or (not-empty key) type))
           config   (or config {})
           conn     {:key    conn-key

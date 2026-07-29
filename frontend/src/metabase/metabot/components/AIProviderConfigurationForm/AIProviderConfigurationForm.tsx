@@ -9,7 +9,10 @@ import {
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { Button, Card, Group, Icon, Menu, Stack, Text } from "metabase/ui";
-import type { LlmProviderConnection } from "metabase-types/api";
+import type {
+  LlmProviderConnection,
+  LlmProviderType,
+} from "metabase-types/api";
 
 import { LlmModelPicker } from "./LlmModelPicker";
 import { ProviderConnectionModal } from "./ProviderConnectionModal";
@@ -21,7 +24,7 @@ export function AIProviderConfigurationForm({
   isModal?: boolean;
   onClose?: (connection?: LlmProviderConnection) => void;
 }) {
-  const { data: connections = [], isLoading } = useListLlmProvidersQuery();
+  const { data: connections = [] } = useListLlmProvidersQuery();
   const { data: providerTypes = [] } = useListLlmProviderTypesQuery();
   const [deleteProvider] = useDeleteLlmProviderMutation();
 
@@ -48,6 +51,12 @@ export function AIProviderConfigurationForm({
 
   const hasConnections = connections.length > 0;
 
+  const addableProviderTypes = providerTypes.filter(
+    (providerType) =>
+      !providerType.singleton ||
+      !connections.some((connection) => connection.type === providerType.type),
+  );
+
   return (
     <Stack gap="lg">
       {hasConnections && (
@@ -56,17 +65,14 @@ export function AIProviderConfigurationForm({
             <ProviderConnectionCard
               key={connection.key}
               connection={connection}
+              providerType={providerTypes.find(
+                (type) => type.type === connection.type,
+              )}
               onEdit={() => setEditing(connection)}
               onDelete={() => setDeleting(connection)}
             />
           ))}
         </Stack>
-      )}
-
-      {!hasConnections && !isLoading && (
-        <Text c="text-secondary">
-          {t`Connect an AI provider to use AI explorations, SQL generation and Metabot.`}
-        </Text>
       )}
 
       <Group justify="space-between">
@@ -83,7 +89,7 @@ export function AIProviderConfigurationForm({
 
       {(isAdding || editing) && (
         <ProviderConnectionModal
-          providerTypes={providerTypes}
+          providerTypes={editing ? providerTypes : addableProviderTypes}
           connection={editing}
           onClose={handleModalClose}
         />
@@ -103,14 +109,22 @@ export function AIProviderConfigurationForm({
 
 function ProviderConnectionCard({
   connection,
+  providerType,
   onEdit,
   onDelete,
 }: {
   connection: LlmProviderConnection;
+  providerType?: LlmProviderType;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const isEnvManaged = connection.source === "env";
+  const isEditable = !providerType?.managed;
+  const typeLabel =
+    providerType && providerType.label !== connection.name
+      ? providerType.label
+      : undefined;
+  const subtitle = isEnvManaged ? t`Set by environment variables` : typeLabel;
 
   return (
     <Card p="md" withBorder>
@@ -122,9 +136,11 @@ function ProviderConnectionCard({
           />
           <Stack gap={0}>
             <Text fw="bold">{connection.name}</Text>
-            <Text size="sm" c="text-secondary">
-              {isEnvManaged ? t`Set by environment variables` : connection.type}
-            </Text>
+            {subtitle && (
+              <Text size="sm" c="text-secondary">
+                {subtitle}
+              </Text>
+            )}
           </Stack>
         </Group>
 
@@ -139,9 +155,14 @@ function ProviderConnectionCard({
               />
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Item leftSection={<Icon name="pencil" />} onClick={onEdit}>
-                {t`Edit`}
-              </Menu.Item>
+              {isEditable && (
+                <Menu.Item
+                  leftSection={<Icon name="pencil" />}
+                  onClick={onEdit}
+                >
+                  {t`Edit`}
+                </Menu.Item>
+              )}
               <Menu.Item
                 leftSection={<Icon name="trash" />}
                 c="error"

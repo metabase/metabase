@@ -126,24 +126,15 @@
                       {:status-code 400
                        :value       value})))))
 
-(def ^:private proxied-models
-  "Models the Metabase managed AI proxy will serve, keyed by the wire family that fronts them."
-  {"anthropic" #{"claude-sonnet-4-6"}})
-
 (defn- validate-managed-model!
+  "Check `model` against the fixed catalog the Metabase AI proxy serves (see the `metabase` entry in
+  [[metabase.llm.provider/provider-types]])."
   [model]
-  (let [family       (llm.provider/model-ref->connection-key model)
-        inner-model  (llm.provider/model-ref->model model)
-        allowed      (get proxied-models family)]
-    (when-not allowed
-      (throw (ex-info (tru "Unsupported provider {0} for Metabase managed AI. Supported providers: {1}"
-                           (pr-str family)
-                           (str/join ", " (sort (keys proxied-models))))
-                      {:status-code 400 :provider family})))
-    (when-not (contains? allowed inner-model)
-      (throw (ex-info (tru "Unsupported model {0} for Metabase managed provider {1}. Supported models: {2}"
-                           (pr-str inner-model) (pr-str family) (str/join ", " (sort allowed)))
-                      {:status-code 400 :provider family :model inner-model})))))
+  (let [allowed (into #{} (map :id) (llm.provider/fixed-models llm.provider/managed-connection-key))]
+    (when-not (contains? allowed model)
+      (throw (ex-info (tru "Unsupported model {0} for Metabase managed AI. Supported models: {1}"
+                           (pr-str model) (str/join ", " (sort allowed)))
+                      {:status-code 400 :model model})))))
 
 (defn- validate-metabot-provider!
   "Validate that `value` is a `connection-key/model` string with a non-blank model, plus whatever extra rules the

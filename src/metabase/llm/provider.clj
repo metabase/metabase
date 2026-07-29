@@ -117,7 +117,11 @@
    {:type          "metabase"
     :label         (deferred-tru "Metabase")
     :managed?      true
+    :singleton?    true
     :default-model "anthropic/claude-sonnet-4-6"
+    ;; The proxy serves one benchmarked model rather than a listable catalog, so the models are fixed here instead
+    ;; of fetched. This is also the allow-list `llm-metabot-provider` is validated against.
+    :models        [{:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]
     :fields        []}])
 
 (def ^:private provider-type-by-name
@@ -153,6 +157,18 @@
   (into #{}
         (comp (filter #(= :password (:type %))) (map :key))
         (:fields (provider-type type-name))))
+
+(defn singleton-type?
+  "Whether at most one connection of `type-name` can exist. True for the Metabase-managed provider, which is a
+  property of the instance's subscription rather than a credential an admin can hold several of."
+  [type-name]
+  (boolean (:singleton? (provider-type type-name))))
+
+(defn fixed-models
+  "The models `type-name` serves, for types whose catalog is fixed rather than fetched from the provider. Returns nil
+  for types whose models are listed over the wire."
+  [type-name]
+  (:models (provider-type type-name)))
 
 (defn default-model
   "The model a new connection of `type-name` starts on, or nil when the type has no sensible default (Azure, whose

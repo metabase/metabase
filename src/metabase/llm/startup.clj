@@ -11,6 +11,22 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- managed-connection
+  []
+  {:key    llm.provider/managed-connection-key
+   :type   llm.provider/managed-connection-key
+   :name   "Metabase"
+   :config {}})
+
+(defn- ensure-managed-connection!
+  "Materialize the connection for the Metabase-managed provider. It holds no credentials of its own, so it exists
+  purely so that a `metabase/...` model reference resolves."
+  []
+  (when-not (llm.provider/connection llm.provider/managed-connection-key)
+    (llm.provider/set-connections!
+     (conj (vec (remove #(= :env (keyword (:source %))) (llm.provider/connections)))
+           (managed-connection)))))
+
 (defn- sync-managed-metabot-provider!
   []
   (let [raw-provider (setting/db-stored-value :llm-metabot-provider)
@@ -20,6 +36,7 @@
       (do
         (log/infof "Configuring llm-metabot-provider to %s for legacy Metabot entitlement"
                    metabot.settings/default-metabase-llm-metabot-provider)
+        (ensure-managed-connection!)
         (setting/set! :llm-metabot-provider metabot.settings/default-metabase-llm-metabot-provider))
       nil)))
 
@@ -37,32 +54,24 @@
   Runs only when `llm-providers` has never been written, so it is a one-shot that a later edit cannot undo. Each
   legacy provider whose credentials are stored in the app DB becomes a connection keyed by its provider type, which
   is the key the existing `llm-metabot-provider` value already refers to. Credentials that come from an env var are
-  left alone — those are synthesized into read-only connections on every read instead."
+  left alone — those are synthesized into read-only connections on every read instead.
+
+  An instance already pointed at the managed provider gets a `metabase` connection too: it carries no credentials to
+  migrate, but the model reference naming it has to resolve to something."
   []
   (when (nil? (setting/db-stored-value :llm-providers))
-    (when-let [conns (not-empty (llm.provider/db-stored-legacy-connections))]
+    (when-let [conns (not-empty
+                      (cond-> (llm.provider/db-stored-legacy-connections)
+                        (llm.provider/managed-model-ref? (setting/db-stored-value :llm-metabot-provider))
+                        (conj (managed-connection))))]
       (log/infof "Migrating %d LLM provider credential setting(s) to llm-providers: %s"
                  (count conns) (str/join ", " (map :key conns)))
       (llm.provider/set-connections! conns))))
 
-(defn- add-managed-connection!
-  "Ensure a connection exists for the Metabase-managed provider when this instance routes through the LLM proxy.
-  It holds no credentials of its own, so it is materialized rather than configured."
-  []
-  (when (and (llm.provider/type-available? llm.provider/managed-connection-key)
-             (nil? (llm.provider/connection llm.provider/managed-connection-key)))
-    (llm.provider/set-connections!
-     (conj (vec (remove #(= :env (keyword (:source %))) (llm.provider/connections)))
-           {:key    llm.provider/managed-connection-key
-            :type   llm.provider/managed-connection-key
-            :name   "Metabase"
-            :config {}}))))
-
 (defn check-and-sync-settings-on-startup!
   "Reconcile LLM provider configuration at startup: migrate legacy per-provider credential settings onto the
-  `llm-providers` connection list, materialize the managed connection when the LLM proxy is configured, and — for
-  legacy `:metabot-v3` customers that do not have `:metabase-ai-managed` — switch the default unmanaged Metabot
-  provider to the managed `metabase/...` provider.
+  `llm-providers` connection list, and — for legacy `:metabot-v3` customers that do not have
+  `:metabase-ai-managed` — switch the default unmanaged Metabot provider to the managed `metabase/...` provider.
 
   This is a migration for existing instances only: it is skipped until initial setup has completed, so fresh
   instances choose their AI provider in the setup wizard instead of booting pre-configured.
@@ -72,6 +81,5 @@
   []
   (when (setup/has-user-setup)
     (when-not (setting/env-var-value :llm-providers)
-      (migrate-legacy-provider-connections!)
-      (add-managed-connection!))
+      (migrate-legacy-provider-connections!))
     (maybe-sync-managed-metabot-provider!)))

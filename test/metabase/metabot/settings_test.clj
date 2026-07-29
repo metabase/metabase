@@ -284,10 +284,10 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo #"for Metabase managed AI"
                (metabot.settings/llm-metabot-provider! model-ref)))))
-      (testing "rejects a model the proxy does not serve for an allow-listed family"
+      (testing "rejects a model the proxy does not serve"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Unsupported model \"claude-haiku-4-5\" for Metabase managed provider \"anthropic\""
+             #"Unsupported model \"anthropic/claude-haiku-4-5\" for Metabase managed AI"
              (metabot.settings/llm-metabot-provider! "metabase/anthropic/claude-haiku-4-5"))))
       (testing "rejects a managed reference with no model"
         (is (thrown-with-msg?
