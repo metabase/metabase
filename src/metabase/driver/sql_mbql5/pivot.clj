@@ -49,6 +49,31 @@
   [_driver exprs]
   (into [::grouping-fn] exprs))
 
+(defn synthesise-grouping-bitmask
+  "HoneySQL form that computes the pivot-grouping bitmask as a sum of single-arg
+  `GROUPING(expr) * 2^n` terms — for dialects whose `GROUPING()` accepts only one argument and
+  that have no `GROUPING_ID()` equivalent. `exprs` follow the same left=highest-bit convention as
+  `GROUPING(a, b, ...)` / `GROUPING_ID(a, b, ...)`.
+
+  For `exprs = [a b c]`, produces the HoneySQL equivalent of
+  `GROUPING(a) * 4 + GROUPING(b) * 2 + GROUPING(c)`. When only one expression is supplied the
+  result is a bare `GROUPING(a)`."
+  [exprs]
+  (let [n     (count exprs)
+        ;; The least-significant term (shift = 0) omits the `* 1`; this also unwraps the whole
+        ;; sum to a bare `GROUPING(expr)` in the single-expression case.
+        terms (map-indexed
+               (fn [i expr]
+                 (let [g     [::grouping-fn expr]
+                       shift (- n i 1)]
+                   (if (zero? shift)
+                     g
+                     [:* g [:inline (bit-shift-left 1 shift)]])))
+               exprs)]
+    (if (next terms)
+      (into [:+] terms)
+      (first terms))))
+
 (defn- format-grouping-sets
   "Render `GROUPING SETS ((expr1, expr2), (expr1), ())` from a HoneySQL form
   `[::grouping-sets [expr1 expr2] [expr1] []]`. Each argument is one grouping set (a sequence of expressions)."

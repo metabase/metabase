@@ -17,6 +17,7 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-mbql5.pivot :as sql-mbql5.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as-alias like-escape-char-built-in]
    [metabase.driver.sql.util :as sql.u]
@@ -1006,6 +1007,7 @@
                               :index/inline-create              true
                               :metadata/key-constraints         false
                               :metadata/table-existence-check   true
+                              :native-pivot-tables              true
                               :nested-fields                    true
                               :now                              true
                               :percentile-aggregations          true
@@ -1042,6 +1044,12 @@
 (defmethod driver.sql/db-slot-value :bigquery-cloud-sdk
   [_driver database]
   (:project-id (:details database)))
+
+;; BigQuery's `GROUPING()` is single-arg only and has no `GROUPING_ID()`. Synthesise the bitmask by
+;; summing `GROUPING(col) * 2^n` terms.
+(defmethod sql-mbql5.pivot/pivot-grouping-hsql :bigquery-cloud-sdk
+  [_driver exprs]
+  (sql-mbql5.pivot/synthesise-grouping-bitmask exprs))
 
 ;; BigQuery is always in UTC
 (defmethod driver/db-default-timezone :bigquery-cloud-sdk [_ _]
