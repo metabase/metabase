@@ -24,7 +24,7 @@ export const EnableTransformsPage = () => {
 
   return (
     <PageContainer data-testid="enable-transform-page">
-      <TransformsHeader />
+      <TransformsHeader showTabs={false} />
       <Center>
         <EnableTransformsCard
           onEnableClick={enableTransforms}
