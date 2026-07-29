@@ -44,12 +44,24 @@ export function AIProviderConfigurationForm({
   const [editing, setEditing] = useState<LlmProviderConnection | undefined>();
   const [isAdding, setIsAdding] = useState(false);
   const [deleting, setDeleting] = useState<LlmProviderConnection | undefined>();
+  const [hasConnectedHere, setHasConnectedHere] = useState(false);
   const onProviderRemoved = PLUGIN_METABOT.useOnProviderRemoved();
 
   const handleModalClose = (saved?: LlmProviderConnection) => {
     setIsAdding(false);
     setEditing(undefined);
     if (saved && isModal) {
+      onClose?.(saved);
+    }
+  };
+
+  const handleConnectedInModal = (saved?: LlmProviderConnection) => {
+    const providerType = providerTypes.find(
+      (type) => type.type === saved?.type,
+    );
+    if (providerType && !providerType.managed) {
+      setHasConnectedHere(true);
+    } else {
       onClose?.(saved);
     }
   };
@@ -75,7 +87,7 @@ export function AIProviderConfigurationForm({
   }
 
   if (isModal) {
-    return hasConnections ? (
+    return hasConnections || hasConnectedHere ? (
       <Stack gap="lg">
         <LlmModelPicker />
         <Flex justify="end">
@@ -87,7 +99,7 @@ export function AIProviderConfigurationForm({
     ) : (
       <ProviderConnectionForm
         providerTypes={addableProviderTypes}
-        onSaved={(saved) => onClose?.(saved)}
+        onSaved={handleConnectedInModal}
       />
     );
   }
