@@ -65,9 +65,7 @@ function getModelOptions(connections: LlmConnectionModels[]) {
       group: connection.name,
       items: connection.models.map((model) => ({
         value: `${connection.key}/${model.id}`,
-        label: model.group
-          ? `${model.group} · ${model.display_name}`
-          : model.display_name,
+        label: model.display_name,
       })),
     }));
 }
