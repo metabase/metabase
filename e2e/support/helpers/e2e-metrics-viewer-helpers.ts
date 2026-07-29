@@ -1,26 +1,31 @@
 export const MetricsViewer = {
   goToViewer: () => cy.visit("/explore"),
+  formulaInput: () => cy.findByTestId("metrics-formula-input"),
   searchInput: () => {
     // Click the right edge of the container to focus the CodeMirror input
     // without accidentally hitting a pill (which would trigger the swap-metric flow).
-    cy.findByTestId("metrics-formula-input").click("right");
+    MetricsViewer.formulaInput().click("right");
     return cy.findByTestId("metrics-viewer-search-input");
   },
-  searchBarPills: () => cy.findAllByTestId("metrics-viewer-search-pill"),
-  searchResults: () => cy.findByTestId("mini-picker"),
+  searchBarPills: () =>
+    cy.get(
+      "[data-testid='metrics-viewer-pill'], [data-testid='metrics-viewer-expression-pill']",
+    ),
   breakoutLegend: () => cy.findByTestId("metrics-viewer-breakout-legend"),
   getFilterButton: () => cy.findByRole("button", { name: /Filter/ }),
   getAllFilterPills: () => cy.findAllByTestId("metrics-viewer-filter-pill"),
-  getDimensionPillContainer: () =>
-    cy.findByTestId("metrics-viewer-dimension-pill-container"),
-  tablist: () => cy.findByRole("tablist"),
-  getTab: (tab: string) =>
-    MetricsViewer.tablist().findByRole("tab", { name: tab }),
-  tabsShouldBe: (tabs: string[]) => {
-    tabs.forEach((tab) =>
-      MetricsViewer.tablist().findByRole("tab", { name: tab }).should("exist"),
-    );
+  getDimensionPillBarContainer: () =>
+    cy.findByTestId("metrics-viewer-dimension-pill-bar"),
+  dimensionPickerSidebar: () =>
+    cy.findByTestId("metrics-viewer-dimension-picker-sidebar"),
+  getColumnPickerButton: () =>
+    MetricsViewer.getMetricControls().findByLabelText("Change column"),
+  openDimensionPickerSidebar: () => {
+    MetricsViewer.getColumnPickerButton().click();
+    return MetricsViewer.dimensionPickerSidebar();
   },
+  closeDimensionPickerSidebar: () =>
+    MetricsViewer.dimensionPickerSidebar().findByLabelText("Close").click(),
   getMetricVisualization: () => cy.findByTestId("visualization-root"),
   getMetricVisualizationDataPoints: () =>
     MetricsViewer.getMetricVisualization().get(
@@ -43,20 +48,10 @@ export const MetricsViewer = {
       cy.wrap($el).should("have.attr", "data-viz-ui-name", displayType);
     });
   },
-  getMerticControls: () => cy.findByTestId("metrics-viewer-controls"),
+  getMetricControls: () => cy.findByTestId("metrics-viewer-controls"),
   changeVizType: (display: string) =>
-    MetricsViewer.getMerticControls()
+    MetricsViewer.getMetricControls()
       .findByRole("button", { name: display })
       .click(),
-  getLayoutControls: () => cy.findByTestId("metrics-viewer-layout-controls"),
-  getAllCards: () => cy.findAllByTestId("metrics-viewer-card"),
-  getAddDimensionButton: () =>
-    cy.findByRole("button", { name: "Add dimension tab" }),
-  getRemoveTabButton: (tabLabel: string) =>
-    cy.findByRole("button", { name: `Remove ${tabLabel} tab` }),
-  openMetricHomePage: (metricName: string) => {
-    MetricsViewer.searchBarPills().contains(metricName).rightclick();
-    cy.findByText(/Go to metric home page/).click();
-  },
   runButton: () => cy.findByTestId("run-expression-button"),
 };

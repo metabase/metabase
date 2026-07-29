@@ -60,11 +60,13 @@ export const ThemeProvider = ({
     resolvedColorSchemeProp ?? colorSchemeContext.resolvedColorScheme;
 
   const theme = useMemo(() => {
+    // Unjustified type cast. FIXME
     const baseTheme = merge(
       getThemeOverrides(resolvedColorScheme, whitelabelColors),
       themeOverride,
     ) as MantineTheme;
 
+    // Unjustified type cast. FIXME
     return {
       ...baseTheme,
       other: {
@@ -78,8 +80,11 @@ export const ThemeProvider = ({
           const { primaryShade, primaryColor } = baseTheme;
 
           return color in baseTheme.colors
-            ? baseTheme.colors[color][primaryShade as number]
-            : baseTheme.colors[primaryColor as ColorName][
+            ? // Unjustified type cast. FIXME
+              baseTheme.colors[color][primaryShade as number]
+            : // Unjustified type cast. FIXME
+              baseTheme.colors[primaryColor as ColorName][
+                // Unjustified type cast. FIXME
                 primaryShade as number
               ];
         },

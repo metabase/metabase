@@ -1,6 +1,4 @@
 import { useMemo, useState } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,20 +7,17 @@ import {
   useLazyGetTransformJobQuery,
 } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
+import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { trackTransformJobCreated } from "../../analytics";
 import { JobEditor, type TransformJobInfo } from "../../components/JobEditor";
 
-type NewJobPageProps = {
-  route: Route;
-};
-
-export function NewJobPage({ route }: NewJobPageProps) {
+export function NewJobPage() {
   const initialJob = useMemo(() => getNewJobInfo(), []);
   const [job, setJob] = useState(initialJob);
   const isDirty = useMemo(() => !_.isEqual(job, initialJob), [job, initialJob]);
@@ -83,7 +78,7 @@ export function NewJobPage({ route }: NewJobPageProps) {
         onScheduleChange={handleScheduleChange}
         onTagListChange={handleTagListChange}
       />
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </>
   );
 }

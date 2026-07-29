@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -20,6 +19,7 @@ import { useSetting } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Alert,
@@ -139,7 +139,7 @@ export const DatabaseRoutingSection = ({
             <Text lh="lg">{t`Enable database routing`}</Text>
           </Label>
           {error ? (
-            <Error role="alert" color="error">
+            <Error role="alert" color="feedback-negative">
               {getErrorMessage(error)}
             </Error>
           ) : null}
@@ -167,8 +167,8 @@ export const DatabaseRoutingSection = ({
         <>
           <DatabaseInfoSectionDivider />
           <Alert
+            size="compact"
             variant="light"
-            color="info"
             icon={<Icon name="info" />}
             mb="md"
           >
@@ -183,8 +183,8 @@ export const DatabaseRoutingSection = ({
 
           {hasDbRoutingEnabled(database) && (
             <Alert
+              size="compact"
               variant="light"
-              color="info"
               icon={<Icon name="info" />}
               mb="md"
             >
@@ -196,7 +196,7 @@ export const DatabaseRoutingSection = ({
               <Box>
                 <Label htmlFor="db-routing-user-attribute">
                   {t`User attribute to match destination database slug`}{" "}
-                  <Text component="span" c="error">
+                  <Text component="span" c="feedback-negative">
                     *
                   </Text>
                 </Label>

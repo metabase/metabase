@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupBookmarksEndpoints,
   setupCommentEndpoints,
   setupDocumentEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route } from "metabase/router";
 import { createMockDocument } from "metabase-types/api/mocks";
 
 import { DocumentPage } from "./DocumentPage";
@@ -24,11 +24,23 @@ const setup = () => {
 
   renderWithProviders(
     <>
-      <Route path="/document/:entityId" component={DocumentPage}></Route>
+      <Route path="/document/:entityId" element={<DocumentPage />}></Route>
     </>,
     {
       withRouter: true,
       initialRoute: "/document/1",
+    },
+  );
+};
+
+const setupNewDocument = () => {
+  setupBookmarksEndpoints([]);
+
+  return renderWithProviders(
+    <Route path="/document/:entityId" element={<DocumentPage />} />,
+    {
+      withRouter: true,
+      initialRoute: "/document/new",
     },
   );
 };
@@ -62,5 +74,20 @@ describe("Document Page", () => {
         screen.queryByRole("button", { name: "Save" }),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  it("warns about unsaved changes only once a navigation lands back on /document/new", async () => {
+    const { history } = setupNewDocument();
+
+    await userEvent.type(await getDocumentTitle(), "Draft");
+
+    expect(screen.queryByTestId("leave-confirmation")).not.toBeInTheDocument();
+
+    // The "New document" menu item links to the URL we are already on, which v7
+    // resolves as a replace. The page stays mounted, so the fresh location is
+    // what tells it the user asked to start over.
+    act(() => history?.replace("/document/new"));
+
+    expect(await screen.findByTestId("leave-confirmation")).toBeInTheDocument();
   });
 });

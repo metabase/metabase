@@ -1,19 +1,17 @@
-import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
+import { useState } from "react";
 
-import { OverviewVisualization } from "metabase/data-studio/common/components/OverviewVisualization";
-import { useMetricDefinition } from "metabase/metrics/common/hooks";
-import { useDispatch } from "metabase/redux";
+import { MetricCardVisualization } from "metabase/common/data-studio/components/OverviewVisualization";
+import type { MetricUrls } from "metabase/common/metrics/types";
+import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { Box, Flex, Stack } from "metabase/ui";
-import * as Urls from "metabase/urls";
-import * as LibMetric from "metabase-lib/metric";
 import type { Card } from "metabase-types/api";
-
-import type { MetricUrls } from "../../../types";
 
 import { AboutVisualization } from "./AboutVisualization";
 import { DescriptionSection } from "./DescriptionSection";
+import { DimensionSelect } from "./DimensionSelect";
+import { ExploreMetricButton } from "./ExploreMetricButton";
 import S from "./MetricAbout.module.css";
+import { useMetricAboutQuery } from "./use-metric-about-query";
 
 interface MetricAboutProps {
   card: Card;
@@ -21,37 +19,50 @@ interface MetricAboutProps {
 }
 
 export function MetricAbout({ card, urls }: MetricAboutProps) {
-  const { definition } = useMetricDefinition(card.id ?? null);
-  const dispatch = useDispatch();
-
-  const hasTimeDimension = useMemo(
-    () =>
-      definition
-        ? LibMetric.defaultBreakoutDimensions(definition).some(
-            LibMetric.isDateOrDateTime,
-          )
-        : false,
-    [definition],
+  const [selectedDimensionId, setSelectedDimensionId] = useState<string | null>(
+    null,
   );
-
-  const handleChartClick = useCallback(() => {
-    if (card.id != null) {
-      dispatch(push(Urls.exploreMetric(card.id)));
-    }
-  }, [dispatch, card.id]);
+  const {
+    activeDimensionId,
+    activeDimensionSelectLabel,
+    data,
+    dimensionOptions,
+    isLoading,
+    isTimeSeries,
+    visualizationCard,
+  } = useMetricAboutQuery(card, selectedDimensionId);
 
   return (
-    <Flex className={S.root} flex={1}>
-      <Box
-        className={S.chartContainer}
-        flex={1}
-        mah={700}
-        onClick={handleChartClick}
-      >
-        {hasTimeDimension ? (
-          <AboutVisualization card={card} />
+    <Flex className={S.root} flex={1} gap="md">
+      <Box className={S.chartContainer} flex={1} mah={700}>
+        {isNumericMetric(card) && (
+          <Box className={S.exploreButtonOverlay}>
+            <ExploreMetricButton cardId={card.id} />
+          </Box>
+        )}
+        {isTimeSeries ? (
+          <AboutVisualization
+            card={visualizationCard}
+            data={data}
+            isLoading={isLoading}
+          />
         ) : (
-          <OverviewVisualization card={card} />
+          <MetricCardVisualization
+            card={visualizationCard}
+            data={data}
+            isLoading={isLoading}
+            className={S.visualizationPanel}
+          />
+        )}
+        {activeDimensionId && activeDimensionSelectLabel && (
+          <Box className={S.dimensionSelectContainer}>
+            <DimensionSelect
+              label={activeDimensionSelectLabel}
+              options={dimensionOptions}
+              value={activeDimensionId}
+              onChange={setSelectedDimensionId}
+            />
+          </Box>
         )}
       </Box>
       <Stack flex="0 0 360px" className={S.descriptionSection} mah={700}>

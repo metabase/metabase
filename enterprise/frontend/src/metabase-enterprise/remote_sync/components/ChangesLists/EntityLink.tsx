@@ -22,6 +22,7 @@ export const EntityLink = ({ entity }: EntityLinkProps) => {
     }
 
     return getIcon({
+      // Unjustified type cast. FIXME
       model: entity.model as IconModel,
       id: entity.id,
       display: entity.display,

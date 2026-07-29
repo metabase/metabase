@@ -93,6 +93,11 @@ type SdkQuestionConfig = {
   targetCollection?: SdkCollectionId;
 
   /**
+   * The collection to preselect in the save modal's collection picker. Unlike `targetCollection`, the picker remains visible and the user can choose a different collection. Ignored when `targetCollection` is set.
+   */
+  initialCollection?: SdkCollectionId;
+
+  /**
    * Additional mapper function to override or add drill-down menu
    */
   componentPlugins?: MetabasePluginsConfig;
@@ -141,6 +146,18 @@ type SdkQuestionConfig = {
    * @param display the new display type
    */
   onVisualizationChange?: (display: CardDisplayType) => void;
+
+  /**
+   * The visualization type to select when the question loads, overriding the
+   * question's saved visualization. Accepts chart types such as `"bar"` or
+   * `"table"`, and custom visualization displays (`"custom:<identifier>"`,
+   * requires the plugin to be installed and enabled via
+   * `allowedCustomVisualizations`).
+   * <br/>
+   * Falls back to the question's saved visualization when the requested one
+   * doesn't exist or isn't allowed.
+   **/
+  initialVisualization?: CardDisplayType | `custom:${string}`;
 };
 
 export type QuestionMockLocationParameters = {
@@ -197,6 +214,7 @@ export type SdkQuestionContextType = Omit<
     | "onNavigateBack"
     | "isSaveEnabled"
     | "targetCollection"
+    | "initialCollection"
     | "withDownloads"
     | "withAlerts"
     | "backToDashboard"

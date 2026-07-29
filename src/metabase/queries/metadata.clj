@@ -150,10 +150,7 @@
    (batch-fetch-query-metadata queries nil))
   ([queries opts]
    (batch-fetch-query-metadata*
-    (into []
-          (comp (filter not-empty)
-                (map lib-be/normalize-query))
-          queries)
+    (into [] (keep (comp not-empty lib-be/normalize-query)) queries)
     opts)))
 
 (mu/defn batch-fetch-card-metadata

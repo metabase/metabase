@@ -6,7 +6,7 @@ import { useWindowSize } from "react-use";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { useSetting } from "metabase/common/hooks";
-import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
+import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -179,15 +179,11 @@ export function QueryEditorBody({
         proposedQuestion={proposedQuestion}
         query={query}
         placeholder="SELECT * FROM TABLE_NAME"
-        hasTopBar
-        hasRunButton={!readOnly && !hideRunButton}
         isInitiallyOpen
         isNativeEditorOpen
         readOnly={readOnly}
         resizable={resizable}
         canChangeDatabase={canChangeDatabase}
-        hasParametersList
-        hasEditingSidebar
         isRunnable={isRunnable}
         isRunning={isRunning}
         isResultDirty={isResultDirty}
@@ -199,7 +195,6 @@ export function QueryEditorBody({
         databaseIsDisabled={shouldDisableDatabase}
         databaseDisabledTooltip={databaseDisabledTooltip}
         setDatasetQuery={handleNativeQueryChange}
-        sidebarFeatures={NATIVE_EDITOR_SIDEBAR_FEATURES}
         toggleDataReference={onToggleDataReference}
         toggleSnippetSidebar={onToggleSnippetSidebar}
         toggleTemplateTagsEditor={onToggleTemplateTagsSidebar}
@@ -212,9 +207,18 @@ export function QueryEditorBody({
         onOpenModal={onOpenModal}
         onAcceptProposed={onAcceptProposed}
         onRejectProposed={onRejectProposed}
-        topBarInnerContent={topBarInnerContent}
-        extraButton={extraButton}
-      />
+      >
+        <NativeQueryEditor.TopBar>
+          <NativeQueryEditor.ParametersList />
+          {topBarInnerContent}
+          <NativeQueryEditor.Sidebar
+            features={NATIVE_EDITOR_SIDEBAR_FEATURES}
+          />
+          <NativeQueryEditor.VisibilityToggler />
+        </NativeQueryEditor.TopBar>
+        {extraButton}
+        {!readOnly && !hideRunButton && <NativeQueryEditor.RunButton />}
+      </NativeQueryEditor>
     );
   }
 

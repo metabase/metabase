@@ -3,8 +3,8 @@ import { Avatar, rem } from "@mantine/core";
 import type { ColorName } from "metabase/ui/colors/types";
 
 const avatarColors: ColorName[] = [
-  "brand",
-  "error",
+  "core-brand",
+  "feedback-negative",
   "accent1",
   "accent2",
   "accent3",

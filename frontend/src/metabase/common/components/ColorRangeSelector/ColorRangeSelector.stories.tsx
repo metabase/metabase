@@ -27,8 +27,12 @@ export const Default = {
   render: Template,
 
   args: {
-    value: [color("white"), color("brand")],
-    colors: [color("brand"), color("summarize"), color("filter")],
+    value: [color("core-white"), color("core-brand")],
+    colors: [
+      color("core-brand"),
+      color("core-summarize"),
+      color("core-filter"),
+    ],
   },
 };
 
@@ -36,11 +40,23 @@ export const WithColorRanges = {
   render: Template,
 
   args: {
-    value: [color("white"), color("brand")],
-    colors: [color("brand"), color("summarize"), color("filter")],
+    value: [color("core-white"), color("core-brand")],
+    colors: [
+      color("core-brand"),
+      color("core-summarize"),
+      color("core-filter"),
+    ],
     colorRanges: [
-      [color("error"), color("white"), color("success")],
-      [color("error"), color("warning"), color("success")],
+      [
+        color("feedback-negative"),
+        color("core-white"),
+        color("feedback-positive"),
+      ],
+      [
+        color("feedback-negative"),
+        color("feedback-warning"),
+        color("feedback-positive"),
+      ],
     ],
   },
 };
@@ -49,16 +65,28 @@ export const WithColorMapping = {
   render: Template,
 
   args: {
-    value: [color("white"), color("brand")],
-    colors: [color("brand"), color("summarize"), color("filter")],
+    value: [color("core-white"), color("core-brand")],
+    colors: [
+      color("core-brand"),
+      color("core-summarize"),
+      color("core-filter"),
+    ],
     colorMapping: {
-      [color("brand")]: [color("brand"), color("white"), color("brand")],
-      [color("summarize")]: [
-        color("summarize"),
-        color("white"),
-        color("error"),
+      [color("core-brand")]: [
+        color("core-brand"),
+        color("core-white"),
+        color("core-brand"),
       ],
-      [color("filter")]: [color("filter"), color("white"), color("filter")],
+      [color("core-summarize")]: [
+        color("core-summarize"),
+        color("core-white"),
+        color("feedback-negative"),
+      ],
+      [color("core-filter")]: [
+        color("core-filter"),
+        color("core-white"),
+        color("core-filter"),
+      ],
     },
   },
 };

@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { useFormik } from "formik";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -14,6 +13,7 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
+import { push } from "metabase/router";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { FieldId, User } from "metabase-types/api";
 
@@ -55,6 +55,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         dbId: database.id,
         tableId: table.id,
+        // Unjustified type cast. FIXME
         fieldId: field.id as FieldId,
         getCount: true,
         visualization: "bar",
@@ -67,6 +68,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         dbId: database.id,
         tableId: table.id,
+        // Unjustified type cast. FIXME
         fieldId: field.id as FieldId,
         getCount: true,
         visualization: "pie",
@@ -79,6 +81,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         dbId: database.id,
         tableId: table.id,
+        // Unjustified type cast. FIXME
         fieldId: field.id as FieldId,
         metadata,
       }),
@@ -287,4 +290,5 @@ const FieldDetail = (props: FieldDetailProps) => {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(FieldDetail as unknown as React.ComponentType);

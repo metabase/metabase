@@ -28,16 +28,24 @@
       (< 1)))
 
 (defn- check-entities!
-  "Process entities, draining all stale entities before returning.
-  Continues looping as long as there are stale entities — this is important because
-  [[deps.findings/analyze-and-propagate!]] marks immediate dependents stale during processing,
-  which need to be picked up in subsequent waves."
+  "Drain the currently-stale entities, analyzing each one.
+
+  Staleness is propagated up front, at the moment an entity changes (see the dependencies event handlers, which mark the
+  whole affected subtree via [[deps.findings/mark-entity-and-transitive-dependents-stale!]]). The drain therefore works through a
+  fixed set that only shrinks — it never re-marks anything stale during draining — so it always terminates, even when the
+  dependency graph has cycles.
+
+  As a safety net, the loop also stops as soon as a pass fails to reduce the stale count (e.g. an entity whose analysis
+  can't be persisted). That keeps a single unprocessable entity from spinning the loop forever; the next scheduled run
+  retries it."
   []
   (when (premium-features/has-feature? :dependencies)
-    (loop []
+    (loop [prev-stale nil]
       (process-one-batch!)
-      (when (deps.analysis-finding/has-stale-entities?)
-        (recur)))))
+      (let [stale (deps.analysis-finding/stale-entity-count)]
+        (when (and (pos? stale)
+                   (or (nil? prev-stale) (< stale prev-stale)))
+          (recur stale))))))
 
 (declare schedule-run!)
 

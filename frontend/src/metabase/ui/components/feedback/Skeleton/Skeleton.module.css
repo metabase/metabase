@@ -1,11 +1,11 @@
 .Skeleton {
-  background-color: var(--mb-color-background-disabled);
+  background-color: var(--mb-color-background_surface-disabled);
 
   &::before {
     background: linear-gradient(
       100deg,
       transparent,
-      var(--mb-color-background-tertiary),
+      var(--mb-color-background_page-tertiary),
       transparent
     );
     animation: shimmer 1.4s linear infinite;

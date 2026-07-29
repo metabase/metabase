@@ -48,11 +48,11 @@
    ["dayjs/plugin/objectSupport" :as objectSupport]
    ["dayjs/plugin/quarterOfYear" :as quarterOfYear]
    ["dayjs/plugin/utc" :as utc]
-   ["dayjs/plugin/weekOfYear" :as weekOfYear]
    ;; cljfmt reorders these namespaces to be out of order, then kondo complains about it.
    ;; so let's just live with the 1 unordered namespace require for now. :skull:
    ^{:clj-kondo/ignore [:unsorted-required-namespaces]}
    ["dayjs/plugin/weekday" :as weekday]
+   ["dayjs/plugin/weekOfYear" :as weekOfYear]
    [metabase.util.time.impl-common :as common]))
 
 ;; Initialize dayjs plugins
@@ -538,7 +538,6 @@
                                 ;; Same year: abbreviate year on first value
                                 year-matches?
                                 ["MMM D, h:mm A " " MMM D, YYYY, h:mm A"])]
-
         (if lhs-fmt
           (str (.format lhs lhs-fmt) "–" (.format rhs rhs-fmt))
           (default-format)))

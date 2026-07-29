@@ -1,16 +1,20 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
+  tableApi,
   useDismissDatabaseSyncSpinnerMutation,
   useRescanDatabaseFieldValuesMutation,
   useSyncDatabaseSchemaMutation,
 } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { ActionButton } from "metabase/common/components/ActionButton";
-import { isDbModifiable } from "metabase/common/utils/database";
-import { Tables } from "metabase/entities/tables";
+import {
+  getDbNotModifiableMessage,
+  isDbModifiable,
+} from "metabase/common/utils/database";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Button, Flex, Tooltip } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import type { Database } from "metabase-types/api";
@@ -37,8 +41,8 @@ export const DatabaseConnectionInfoSection = ({
 
   const handleSyncDatabaseSchema = async () => {
     await syncDatabaseSchema(database.id).unwrap();
-    // FIXME remove when MetadataEditor uses RTK query directly to load tables
-    dispatch({ type: Tables.actionTypes.INVALIDATE_LISTS_ACTION });
+    // refresh any table lists now that the schema may have changed
+    dispatch(tableApi.util.invalidateTags([listTag("table")]));
   };
 
   const handleDismissSyncSpinner = useCallback(
@@ -61,7 +65,7 @@ export const DatabaseConnectionInfoSection = ({
         <DatabaseConnectionHealthInfo databaseId={database.id} />
         <Tooltip
           disabled={isDbModifiable(database)}
-          label={t`This database is managed by Metabase Cloud and cannot be modified.`}
+          label={getDbNotModifiableMessage(database)}
         >
           <Button
             onClick={openDbDetailsModal}

@@ -15,8 +15,11 @@
 
 (p/import-vars
  [notification.payload.execute
+  dashcard-link-card->part
   execute-dashboard
-  process-virtual-dashcard]
+  execute-dashboard-subscription-card
+  process-virtual-dashcard
+  virtual-card-of-type?]
  [notification.payload.temp-storage
   cleanup!
   cleanable?])

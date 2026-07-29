@@ -43,6 +43,7 @@ function getAction(
   // "dashboard-filter" and "dashboard-reset" drill types are produced.
   const setOrUnsetParameterValues = clicked.extraData
     ?.setOrUnsetParameterValues as SetOrUnsetParameterValues;
+  // Unjustified type cast. FIXME
   const setParameterValue = clicked.extraData
     ?.setParameterValue as SetParameterValue;
 
@@ -63,6 +64,7 @@ function getAction(
     case "dashboard-filter":
       return {
         action: () => {
+          // Unjustified type cast. FIXME
           const parameterIdValuePairs = getDashboardDrillParameters(
             clicked,
           ) as [string, ParameterValueOrArray | null][];
@@ -78,6 +80,7 @@ function getAction(
             dispatch(selectTab({ tabId }));
           }
 
+          // Unjustified type cast. FIXME
           const parameterIdValuePairs = getDashboardDrillParameters(
             clicked,
           ) as [string, ParameterValueOrArray | null][];

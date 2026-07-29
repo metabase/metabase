@@ -6,6 +6,7 @@
   `enterprise/backend/README.md` for more details."
   (:require
    [metabase-enterprise.action-v2.api]
+   [metabase-enterprise.advanced-config.api]
    [metabase-enterprise.advanced-config.api.logs]
    [metabase-enterprise.advanced-permissions.api.routes]
    [metabase-enterprise.api.core :as ee.api]
@@ -16,6 +17,7 @@
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.custom-viz-plugin.api]
+   [metabase-enterprise.data-apps.api]
    [metabase-enterprise.data-complexity-score.api]
    [metabase-enterprise.data-studio.api]
    [metabase-enterprise.database-replication.api :as database-replication.api]
@@ -23,11 +25,13 @@
    [metabase-enterprise.dependencies.api]
    [metabase-enterprise.email.api]
    [metabase-enterprise.embedding-hub.api]
+   [metabase-enterprise.erd.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
    [metabase-enterprise.metabot-analytics.api]
    [metabase-enterprise.metabot.api]
    [metabase-enterprise.metabot.api.routes]
+   [metabase-enterprise.mfa.routes]
    [metabase-enterprise.permission-debug.api]
    [metabase-enterprise.remote-sync.api]
    [metabase-enterprise.replacement.api]
@@ -44,6 +48,7 @@
    [metabase-enterprise.upload-management.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
+   [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (comment metabase-enterprise.advanced-config.api.logs/keep-me)
@@ -56,8 +61,10 @@
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :content-translation        (deferred-tru "Content translation")
    :custom-viz                 (deferred-tru "Custom Visualizations")
+   :data-apps-preview          (deferred-tru "Data Apps")
    :library                    (deferred-tru "Library")
    :dependencies               (deferred-tru "Dependency Tracking")
+   :schema-viewer              (deferred-tru "Schema Viewer")
    :embedding                  (deferred-tru "Embedding")
    :remote-sync                (deferred-tru "Remote Sync")
    :etl-connections            (deferred-tru "ETL Connections")
@@ -87,6 +94,10 @@
 
   TODO -- Please fix them! See #22687"
   {"/moderation-review" metabase-enterprise.content-verification.api.routes/routes
+   ;; Data-app bundle hosting. Naughty because the FE route lives at `/apps/:slug`
+   ;; (and `/api/apps/...`), NOT `/api/ee/...` — `/app/*` is reserved for static
+   ;; assets, so we keep the public path stable here. Superuser-only inside the handler.
+   (str "/" request/data-app-url-segment) (premium-handler metabase-enterprise.data-apps.api/routes :data-apps-preview)
    "/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
    "/table"             metabase-enterprise.sandbox.api.routes/sandbox-table-routes})
 
@@ -96,6 +107,7 @@
   routes here and follow the convention."
   ;; Postponing a granular flag for :actions until it's used more widely.
   {"/action-v2"                    (premium-handler metabase-enterprise.action-v2.api/routes :table-data-editing)
+   "/advanced-config"              (api.macros/ns-handler 'metabase-enterprise.advanced-config.api)
    "/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
    "/ai-controls"                  (premium-handler metabase-enterprise.metabot.api.routes/routes :ai-controls)
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
@@ -115,6 +127,7 @@
    "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
    "/dependencies"                 (premium-handler metabase-enterprise.dependencies.api/routes :dependencies)
    "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
+   "/erd"                          (premium-handler metabase-enterprise.erd.api/routes :schema-viewer)
    "/remote-sync"                  (premium-handler metabase-enterprise.remote-sync.api/routes :remote-sync)
    "/replacement"                  (premium-handler metabase-enterprise.replacement.api/routes :dependencies)
    "/embedding-hub"                (premium-handler metabase-enterprise.embedding-hub.api/routes :embedding)
@@ -125,6 +138,11 @@
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot"                      (premium-handler 'metabase-enterprise.metabot.api :metabot-v3)
    "/metabot-analytics"            (premium-handler metabase-enterprise.metabot-analytics.api/routes :audit-app)
+   ;; Deliberately NOT premium-handler-gated: managing an existing enrollment (disable/status/recover)
+   ;; must keep working through a license lapse — the fail-closed rationale applies here too, since
+   ;; a lapsed-license user still needs to manage their enrolled second factor. The :multi-factor-auth
+   ;; feature gates setup paths. MFA verification lives under /api/session/mfa/* (OSS mount).
+   "/mfa"                          metabase-enterprise.mfa.routes/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)

@@ -2,13 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  createDraftCard,
-  generateDraftCardId,
-  loadMetadataForDocumentCard,
-} from "metabase/documents/documents.slice";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
@@ -33,6 +29,7 @@ export const ModifyQuestionModal = ({
 }: ModifyQuestionModalProps) => {
   const store = useStore();
   const dispatch = useDispatch();
+  const host = useEditorHost();
   const metadata = useSelector(getMetadata);
   const reportTimezone = useSelector((state) =>
     getSetting(state, "report-timezone-long"),
@@ -43,9 +40,9 @@ export const ModifyQuestionModal = ({
 
   useEffect(() => {
     if (isOpen && card) {
-      dispatch(loadMetadataForDocumentCard(card));
+      dispatch(host.actions.loadMetadataForDocumentCard(card));
     }
-  }, [isOpen, card, dispatch]);
+  }, [isOpen, card, dispatch, host.actions]);
 
   const question = useMemo(() => {
     if (!card || !metadata || !isOpen) {
@@ -75,7 +72,9 @@ export const ModifyQuestionModal = ({
     );
 
     if (!_.isEqual(currentDependencies, nextDependencies)) {
-      await dispatch(loadMetadataForDocumentCard(newQuestion.card()));
+      await dispatch(
+        host.actions.loadMetadataForDocumentCard(newQuestion.card()),
+      );
       const freshMetadata = getMetadata(store.getState());
       const questionWithFreshMetadata = new Question(
         newQuestion.card(),
@@ -100,10 +99,10 @@ export const ModifyQuestionModal = ({
           modifiedQuestion.card().visualization_settings ?? {},
       };
 
-      const newCardId = generateDraftCardId();
+      const newCardId = host.actions.generateDraftCardId();
 
       dispatch(
-        createDraftCard({
+        host.actions.createDraftCard({
           originalCard: card,
           modifiedData,
           draftId: newCardId,

@@ -89,13 +89,14 @@
   "Create a new piece of content to insert into the document. Kept for backwards compatibility; now uses the native Clojure agent."
   [_route-params
    _query-params
-
    {:keys [instructions references]} :- generate-content-body-schema]
   (let [metabot-id (metabot.config/resolve-dynamic-metabot-id nil)]
     (metabot.config/check-metabot-enabled! metabot-id)
     (metabot.usage/check-metabase-managed-free-limit!)
     (let [context      (assoc
-                        (metabot.context/create-context {:capabilities #{"permission:write_sql_queries"}})
+                        (metabot.context/create-context {:capabilities #{"permission:write_sql_queries"}}
+                                                        {:metabot-id metabot-id
+                                                         :profile-id :document-generate-content})
                         :references references)
           parts        (into [] (metabot.agent/run-agent-loop
                                  {:messages      [{:role    :user

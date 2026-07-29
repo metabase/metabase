@@ -6,8 +6,8 @@ import { getColorScale } from "./color-scales";
 
 describe("getColorScale", () => {
   const colors = [
-    Color(color("background-primary")).hex(),
-    Color(color("background-primary-inverse")).hex(),
+    Color(color("background_page-primary")).hex(),
+    Color(color("background_page-primary-inverse")).hex(),
   ];
 
   it("should interpolate colors by default", () => {

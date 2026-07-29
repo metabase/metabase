@@ -1,3 +1,5 @@
+import type { NotificationRecipient } from "./notification";
+
 export type AdvisoryMatchStatus =
   | "active"
   | "resolved"
@@ -7,6 +9,11 @@ export type AdvisoryMatchStatus =
 export type AdvisoryVersionRange = {
   min: string;
   fixed: string;
+};
+
+export type AdvisoryDownloadJarUrl = {
+  version: string;
+  url: string;
 };
 
 export type AdvisorySeverity = "critical" | "high" | "medium" | "low";
@@ -26,6 +33,7 @@ export type Advisory = {
   acknowledged_by: { id: number; common_name: string; email: string } | null;
   acknowledged_at: string | null;
   affected_versions: AdvisoryVersionRange[];
+  download_jar_urls: AdvisoryDownloadJarUrl[];
 };
 
 export type ListAdvisoriesResponse = {
@@ -41,3 +49,8 @@ export type AcknowledgeAdvisoryResponse = {
 };
 
 export type AcknowledgeAdvisoriesResponse = AcknowledgeAdvisoryResponse[];
+
+export type SendTestNotificationRequest = {
+  emailRecipients: NotificationRecipient[];
+  slackChannel: string | null;
+};

@@ -9,6 +9,7 @@ import { CollectionBrowser } from "./CollectionBrowser";
 const COLLECTION_ID = "root";
 const config = getStorybookSdkAuthConfigForUser("admin");
 
+// Unjustified type cast. FIXME
 (window as any).onCollectionClick = (collection: MetabaseCollectionItem) => {
   // eslint-disable-next-line no-console
   console.log(collection);

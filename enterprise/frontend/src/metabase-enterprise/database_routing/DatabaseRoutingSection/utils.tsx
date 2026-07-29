@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -8,6 +7,7 @@ import {
   hasTableEditingEnabled,
   hasWritableConnectionDetails,
 } from "metabase/common/utils/database";
+import { Link } from "metabase/router";
 import { Text } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 

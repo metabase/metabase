@@ -1,10 +1,8 @@
-import { withRouter } from "react-router";
-
 import {
   isInstanceAnalyticsCollection,
   isLibraryCollection,
   isTrashedCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import type { Collection } from "metabase-types/api";
 
 import { CollectionMenu } from "../CollectionMenu";
@@ -102,4 +100,4 @@ const CollectionHeader = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default withRouter(CollectionHeader);
+export default CollectionHeader;

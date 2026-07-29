@@ -2,7 +2,7 @@ import { useMount } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
 import { PLUGIN_CACHING, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";

@@ -1,10 +1,10 @@
 import { useState } from "react";
 
 import { useSearchQuery } from "metabase/api";
+import { enabledSearchTypes } from "metabase/common/search/constants";
+import type { SearchFilterDropdown } from "metabase/common/search/types";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
-import { enabledSearchTypes } from "metabase/search/constants";
-import type { SearchFilterDropdown } from "metabase/search/types";
 import { Checkbox, Stack } from "metabase/ui";
 import type { EnabledSearchModel } from "metabase-types/api";
 
@@ -12,6 +12,7 @@ const EMPTY_SEARCH_QUERY = {
   models: ["dataset" as const],
   limit: 1,
   calculate_available_models: true as const,
+  context: "type-filter" as const,
 };
 
 export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"] =
@@ -37,6 +38,7 @@ export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"]
           data-testid="type-filter-checkbox-group"
           w="100%"
           value={selectedTypes}
+          // Unjustified type cast. FIXME
           onChange={(value) => setSelectedTypes(value as EnabledSearchModel[])}
         >
           <Stack gap="md" p="md" justify="center" align="flex-start">

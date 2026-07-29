@@ -9,8 +9,8 @@ import {
   updateDashboardEmbeddingParams,
   updateDashboardEnableEmbedding,
 } from "metabase/api";
-import { Questions } from "metabase/entities/questions";
 import { handleActions } from "metabase/redux";
+import { CARD_UPDATED } from "metabase/redux/cards";
 import {
   INITIALIZE,
   RESET,
@@ -305,10 +305,11 @@ export const dashboards = createReducer(
       }))
       .addCase(
         setDashboardAttributes,
-        (state, { payload: { id, attributes, isDirty = true } }) => ({
-          ...state,
-          [id]: newDashboard(state[id], attributes, isDirty),
-        }),
+        (state, { payload: { id, attributes, isDirty = true } }) => {
+          // Cast to avoid infinite type instantiation error.
+          const dashboards = state as Record<string, StoreDashboard>;
+          dashboards[id] = newDashboard(dashboards[id], attributes, isDirty);
+        },
       )
       .addCase(addCardToDash, (state, { payload: dashcard }) => {
         state[dashcard.dashboard_id].dashcards.push(dashcard.id);
@@ -432,7 +433,7 @@ export const dashcardData = createReducer(
         return dissocIn(state, [dashcardId, cardId]);
       })
       .addCase<string, { type: string; payload: { object?: Card } }>(
-        Questions.actionTypes.UPDATE,
+        CARD_UPDATED,
         (state, { payload: { object: card } }) => {
           if (card) {
             const { id } = card;

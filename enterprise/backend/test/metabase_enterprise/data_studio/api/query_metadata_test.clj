@@ -24,7 +24,6 @@
               (is (some? response))
               (is (= (u/the-id table) (:id response)))
               (is (= 2 (count (:fields response))))))))
-
       (testing "Published tables in root collection should be accessible with root collection read permission"
         (mt/with-temp [:model/Database db         {}
                        :model/Table    table      {:db_id (u/the-id db) :is_published true :collection_id nil}
@@ -35,7 +34,6 @@
             (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (u/the-id table)))]
               (is (some? response))
               (is (= (u/the-id table) (:id response)))))))
-
       (testing "Unpublished tables require data permissions"
         (mt/with-temp [:model/Database db         {}
                        :model/Table    table      {:db_id (u/the-id db) :is_published false}
@@ -48,7 +46,6 @@
               (data-perms/set-database-permission! group-id db :perms/create-queries :no)
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :get 403 (format "table/%d/query_metadata" (u/the-id table))))))
-
             (testing "Data permissions ARE required for unpublished tables"
               (data-perms/set-database-permission! group-id db :perms/view-data :unrestricted)
               (data-perms/set-database-permission! group-id db :perms/create-queries :query-builder)

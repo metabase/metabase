@@ -2,12 +2,12 @@ import type { Editor, Range } from "@tiptap/core";
 import { forwardRef, useCallback, useImperativeHandle } from "react";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/redux";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import {
   LoadingSuggestionPaper,
   SuggestionPaper,
-} from "metabase/documents/components/Editor/shared/SuggestionPaper";
-import { getCurrentDocument } from "metabase/documents/selectors";
-import { useSelector } from "metabase/redux";
+} from "metabase/rich_text_editing/tiptap/extensions/shared/SuggestionPaper";
 import type { SearchResult } from "metabase-types/api";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";
@@ -50,7 +50,8 @@ const MentionSuggestionComponent = forwardRef<
   },
   ref,
 ) {
-  const document = useSelector(getCurrentDocument);
+  const host = useEditorHost();
+  const document = useSelector(host.selectors.getCurrentDocument);
   const onSelectEntity = useCallback(
     (item: {
       id: number | string;
@@ -63,10 +64,12 @@ const MentionSuggestionComponent = forwardRef<
         model: item.model,
         label: item.label,
         href: item.href,
-        document, // currently only used for analytics tracking purposes
       });
+      if (document) {
+        host.analytics.trackAddSmartLink(document);
+      }
     },
-    [command, document],
+    [command, document, host],
   );
 
   const {

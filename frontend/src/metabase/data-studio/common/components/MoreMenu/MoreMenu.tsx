@@ -1,8 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { Link } from "metabase/router";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 
 type MoreMenuProps = {
@@ -56,7 +56,7 @@ export function MoreMenu({
           )}
           {onRemove && (
             <Menu.Item
-              c="danger"
+              c="feedback-negative"
               leftSection={<Icon name="trash" />}
               onClick={openConfirm}
             >

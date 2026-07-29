@@ -283,7 +283,6 @@
                             [:and
                              [:= :collection.id :card.collection_id]
                              [:= :collection.archived false]]
-
                             [:report_dashboard :dashboard]
                             [:= :dashboard.id :card.dashboard_id]]})))
 
@@ -417,7 +416,6 @@
                                           [:in :id collection-ids]
                                           [:= :archived false]]})]
       (->> (t2/hydrate collections :effective_parent)
-
            (map #(m/dissoc-in % [:effective_parent :type]))))))
 
 (defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp model_object]}]
@@ -525,7 +523,6 @@
                                                 ;; only want to join on card_type if it's a card
                                                 [:= :rv.model "card"]
                                                 [:= :rc.id :rv.model_id]]
-
                                                [:collection :coll]
                                                [:and
                                                 [:= :rv.model "collection"]
@@ -596,7 +593,7 @@
     item
     (when-not config/is-prod?
       (log/errorf (colorize/red "Invalid recent view item: %s reason: %s")
-                  (pr-str item)
+                  (pr-str (select-keys item [:id :model]))
                   (me/humanize (mr/explain Item item))))))
 
 (mu/defn get-recents

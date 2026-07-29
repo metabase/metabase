@@ -19,6 +19,7 @@ export function LdapAuthCard() {
 
   const handleDeactivate = () => {
     return updateSettings(
+      // Unjustified type cast. FIXME
       LDAP_SCHEMA.getDefault() as Partial<EnterpriseSettings>,
     );
   };

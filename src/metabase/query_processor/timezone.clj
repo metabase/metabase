@@ -10,6 +10,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms])
   (:import
    (java.time ZonedDateTime)))
@@ -41,6 +42,12 @@
 ;;; |                                                Public Interface                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(mr/def ::database
+  [:or
+   ::lib.schema.metadata/database
+   (ms/InstanceOf :model/Database)
+   [:= ::db-from-store]])
+
 (mu/defn report-timezone-id-if-supported
   "Timezone ID for the report timezone, if the current driver and database supports it. (If the current driver supports it, this is
   bound by the `bind-effective-timezone` middleware.)"
@@ -48,10 +55,7 @@
    (report-timezone-id-if-supported driver/*driver* (lib.metadata/database (qp.store/metadata-provider))))
 
   (^String [driver   :- :keyword
-            database :- [:or
-                         ::lib.schema.metadata/database
-                         (ms/InstanceOf :model/Database)
-                         [:= ::db-from-store]]]
+            database :- ::database]
    (when-let [database (if (= database ::db-from-store)
                          (when (qp.store/initialized?)
                            (lib.metadata/database (qp.store/metadata-provider)))
@@ -85,7 +89,7 @@
   ^String []
   (valid-timezone-id (report-timezone-id*)))
 
-(defn results-timezone-id
+(mu/defn results-timezone-id :- :string
   "The timezone that a query is actually ran in ­ report timezone, if set and supported by the current driver;
   otherwise the timezone of the database (if known), otherwise the system timezone. Guaranteed to always return a
   timezone ID,­ never returns `nil`."
@@ -95,8 +99,10 @@
   (^String [database]
    (results-timezone-id (:engine database) database))
 
-  (^String [driver database & {:keys [use-report-timezone-id-if-unsupported?]
-                               :or   {use-report-timezone-id-if-unsupported? false}}]
+  (^String [driver   :- :keyword
+            database :- ::database
+            & {:keys [use-report-timezone-id-if-unsupported?]
+               :or   {use-report-timezone-id-if-unsupported? false}}]
    (valid-timezone-id
     (or *results-timezone-id-override*
         (if use-report-timezone-id-if-unsupported?

@@ -1,2 +1,2 @@
-export { Badge } from "@mantine/core";
-export * from "./Badge.config";
+export { Badge, type BadgeColor, type BadgeProps } from "./Badge";
+export { badgeOverrides } from "./Badge.config";

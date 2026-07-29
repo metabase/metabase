@@ -19,7 +19,7 @@
     }
 
     &[data-position="left"] {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
   }
 }
@@ -72,6 +72,6 @@
 
 .metricLink {
   :hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }

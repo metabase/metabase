@@ -27,11 +27,10 @@ npm run build      # Compiles src/ → dist/, then packages it into a .tgz
 ```
 src/
   index.tsx             # Your visualization code — start here
-metabase-plugin.json    # Plugin manifest (name, icon, assets, version)
+metabase-plugin.json    # Plugin manifest (name, icon, version)
 public/
   assets/
     icon.svg            # Visualization icon (shown in chart type picker)
-    ...                 # Any other static assets
 vite.config.ts          # Build configuration (do not edit)
 tsconfig.json
 ```
@@ -62,19 +61,17 @@ To develop against a live Metabase instance with hot-reload:
 {
   "name": "__CUSTOM_VIZ_NAME__",
   "icon": "icon.svg",
-  "assets": ["image.png"],
   "metabase": {
     "version": ">=1.60.0"
   }
 }
 ```
 
-| Field              | Description                                                                                      |
-| ------------------ | ------------------------------------------------------------------------------------------------ |
-| `name`             | Unique identifier for the plugin. Must match the `id` returned by your visualization factory.    |
-| `icon`             | Path to the visualization icon (SVG recommended). Automatically served — do not add to `assets`. |
-| `assets`           | Additional static files to bundle (images and JSON only). Reference them via `getAssetUrl()`.    |
-| `metabase.version` | Semver range of compatible Metabase versions (e.g. `">=1.60.0"`, `"^1.60"`).                     |
+| Field              | Description                                                                                   |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| `name`             | Unique identifier for the plugin. Must match the `id` returned by your visualization factory. |
+| `icon`             | Path to the visualization icon (SVG recommended). Served automatically.                      |
+| `metabase.version` | Semver range of compatible Metabase versions (e.g. `">=1.60.0"`, `"^1.60"`).                  |
 
 ---
 
@@ -91,7 +88,6 @@ type Settings = {
 
 const createVisualization: CreateCustomVisualization<Settings> = ({
   defineSetting,
-  getAssetUrl,
   locale,
 }) => {
   const VisualizationComponent = ({ series, settings, width, height }) => {
@@ -180,7 +176,7 @@ settings: {
 | `group`                        | Sub-heading within a section for grouping related settings.                          |
 | `index`                        | Display order within a group.                                                        |
 | `inline`                       | When `true`, renders the widget on the same line as `title` (useful for `"toggle"`). |
-| `widget`                       | Built-in widget name (see below).                                                    |
+| `widget`                       | Built-in widget name or a custom React component.                                    |
 | `getDefault(series, settings)` | Computes the default value when none is stored.                                      |
 | `getValue(series, settings)`   | Always-computed value — overrides stored value on every render.                      |
 | `getProps(series, settings)`   | Returns widget-specific props.                                                       |
@@ -205,26 +201,30 @@ settings: {
 | `"field"`            | `{ columns, options: { name, value }[], showColumnSetting? }`              | Single column picker     |
 | `"fields"`           | `{ columns, options: { name, value }[], addAnother?, showColumnSetting? }` | Multi-column picker      |
 
+You can also pass a **custom React component** as `widget`. Its props (minus the base props injected by Metabase) are returned by `getProps`.
+
 ---
 
-## Using Assets
+## Using Images
 
-1. Declare assets in `metabase-plugin.json` under `"assets"` (images and JSON files only).
-2. Place files in `public/assets/` during development — they're copied to `dist/assets/` on build.
-3. Reference them in code using `getAssetUrl("filename.png")`.
+A custom visualization is a single JS bundle — it cannot load separate image files
+from the Metabase instance. To use an image, **inline it into your bundle**:
+
+- Draw it as inline `<svg>` (best for icons and simple graphics — this is what the
+  generated `src/index.tsx` does), or
+- Embed a raster image as a base64 `data:` URL:
 
 ```tsx
-const createVisualization: CreateCustomVisualization<Settings> = ({
-  getAssetUrl,
-}) => {
-  // ...
-  return <img src={getAssetUrl("my-image.png")} />;
-};
+const myImage = "data:image/png;base64,iVBORw0KGgo...";
+
+// ...
+return <img src={myImage} alt="My image" />;
 ```
 
-`getAssetUrl()` returns the correct URL in both interactive rendering and development mode.
+You can also reference images hosted on your own domain (`<img src="https://example.com/1.png" />`).
 
-> **Note:** The plugin icon is declared separately as `"icon"` in the manifest and is served automatically — do not add it to `"assets"`.
+> **Note:** The only file served from the instance is the plugin `icon`, declared via
+> `"icon"` in the manifest.
 
 ---
 
@@ -245,7 +245,7 @@ The icon appears in the chart type picker and elsewhere in the Metabase UI.
 You can also use Metabase CSS variables inside inline SVG for more control:
 
 ```svg
-<path fill="var(--mb-color-brand)" .../>
+<path fill="var(--mb-color-core-brand)" .../>
 ```
 
 Keep the icon **simple and monochromatic** — avoid gradients and multiple colors.

@@ -1,6 +1,7 @@
 (ns metabase.permissions.models.permissions-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit.impl]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
@@ -94,7 +95,6 @@
     [{:collection_id 1337} :write] #{"/collection/1337/"}
     [{:collection_id nil} :read]   #{"/collection/root/read/"}
     [{:collection_id nil} :write]  #{"/collection/root/"})
-
   (testing "invalid input"
     (doseq [[reason inputs] {"map must have `:collection_id` key"
                              [[{} :read]]
@@ -124,7 +124,6 @@
          (perms/revoke-collection-permissions!
           (perms-group/all-users)
           (u/the-id (t2/select-one :model/Collection :personal_owner_id (mt/user->id :lucky))))))
-
     (testing "(should apply to descendants as well)"
       (mt/with-temp [:model/Collection collection {:location (collection/children-location
                                                               (collection/user->personal-collection
@@ -153,7 +152,6 @@
              Exception
              (f (perms-group/all-users)
                 (u/the-id (t2/select-one :model/Collection :personal_owner_id (mt/user->id :lucky))))))
-
         (testing "(should apply to descendants as well)"
           (is (thrown?
                Exception
@@ -287,6 +285,32 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (testing "admin can create dashboard in any collection"
           (is (true? (mi/can-create? :model/Dashboard {:collection_id (:id coll)}))))
-
         (testing "admin can create dashboard in root collection"
           (is (true? (mi/can-create? :model/Dashboard {}))))))))
+
+(deftest ^:parallel can-read-via-parent-collection?-test
+  (testing "read perm is true iff the current user has read on the parent collection"
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (is (true?  (boolean (perms/can-read-via-parent-collection? 42))))
+      (is (true?  (boolean (perms/can-read-via-parent-collection? nil)))))
+    (binding [api/*current-user-permissions-set* (atom #{})]
+      (is (false? (boolean (perms/can-read-via-parent-collection? 42))))
+      (is (false? (boolean (perms/can-read-via-parent-collection? nil)))))
+    (binding [api/*current-user-permissions-set* (atom #{"/collection/42/read/"})]
+      (is (true?  (boolean (perms/can-read-via-parent-collection? 42))))
+      (is (false? (boolean (perms/can-read-via-parent-collection? 99)))))))
+
+(deftest collection-id-only-read-methods-not-overridden-test
+  (testing "no one has redefmethod'd mi/can-read? for a model registered as collection-id-only"
+    ;; Load the model namespaces so their `define-collection-based-visibility!` calls populate the registry.
+    (require 'metabase.queries.models.card
+             'metabase.dashboards.models.dashboard)
+    (let [registered (perms/collection-id-only-read-models)]
+      (is (seq registered))
+      (doseq [t2-model registered]
+        (is (identical? (perms/collection-id-only-read-method t2-model)
+                        (get-method mi/can-read? t2-model))
+            (str t2-model ": `mi/can-read?` was overridden after "
+                 "`define-collection-based-visibility!` installed it. "
+                 "If this model needs richer read perms, remove the macro call so downstream consumers "
+                 "(e.g., semantic search's fast path) don't assume the collection-id-only contract."))))))

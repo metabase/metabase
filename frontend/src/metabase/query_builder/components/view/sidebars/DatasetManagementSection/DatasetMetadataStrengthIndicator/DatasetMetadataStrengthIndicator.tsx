@@ -12,12 +12,12 @@ import DatasetMetadataStrengthIndicatorS from "./DatasetMetadataStrengthIndicato
 
 function getIndicationColor(percentage: number, isHovered: boolean): ColorName {
   if (percentage <= 0.5) {
-    return "danger";
+    return "feedback-negative";
   }
   if (!isHovered) {
     return "text-secondary";
   }
-  return percentage >= 0.9 ? "success" : "warning";
+  return percentage >= 0.9 ? "feedback-positive" : "feedback-warning";
 }
 
 function getTooltipMessage(percentage: number) {

@@ -24,12 +24,12 @@ Toggle **Enable guest embeds**.
 
 ## Creating a guest embed
 
-![Sharing button to embed dashboard](./images/sharing-embed.png)
+![Share button to embed dashboard](./images/sharing-embed.png)
 
 To create a guest embed:
 
 1. Go to the item that you want to embed in your website. You can also open a command palette with Ctrl/Cmd+K and type "New embed".
-2. Click the **sharing icon**.
+2. Click the **Share** icon.
 3. Select **Embed**.
 4. Under **Authentication**, select **Guest**.
 5. Optional: [customize the appearance of the embed](./appearance.md)
@@ -130,7 +130,7 @@ Parameters are disabled by default, which also makes them hidden from end-users.
 To configure parameters:
 
 1. Go to your embedded question or dashboard.
-2. Click the **sharing icon** and select **Embed**.
+2. Click the **Share** icon and select **Embed**.
 3. Under **Parameters**, select the visibility option for each parameter, and optionally default value(s).
 4. Click **Publish**.
 
@@ -196,6 +196,8 @@ See [Modular embedding parameters](./parameters.md#pass-parameter-values-to-embe
 ### Locked parameters
 
 Locked parameters let you filter data without exposing the filter to the end-user. Locking parameters is useful for restricting data based on who's viewing the embed (for example, showing each customer only their own data).
+
+![Locked parameters](./images/locked-parameters.png)
 
 To use locked parameters, you need to:
 
@@ -451,7 +453,7 @@ function paramsFor(user, customContext) {
 ## Disabling embedding for a question or dashboard
 
 1. Visit the embeddable question or dashboard.
-2. Click the **sharing icon** (square with an arrow pointing to the top right).
+2. Click the **Share** icon (square with an arrow pointing to the top right).
 3. Select **Embed**.
 4. Select **Guest embedding**
 5. Click **Unpublish**.
@@ -511,7 +513,7 @@ For interactive filters, you can pass initial parameter values via the `initial-
 
 The signed JWT is generated using your [Metabase secret key](#regenerating-the-embedding-secret-key). The secret key tells Metabase that the request can be trusted. Note that this secret key is shared for all guest embeds, so whoever has access to that key will have access to all embedded artifacts.
 
-If you want to embed charts with additional interactive features, like [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) and [self-service querying](../questions/query-builder/editor.md), see [Modular embedding](./modular-embedding.md).
+If you want to embed charts with additional interactive features, like [drill-down](../questions/visualizations/drill-through.md) and [self-service querying](../questions/query-builder/editor.md), see [Modular embedding](./modular-embedding.md).
 
 ## Using guest embeds with the SDK
 
@@ -527,7 +529,7 @@ Guest embeds can't take advantage of:
 
 - [Row and column security](../permissions/row-and-column-security.md)
 - [Database routing](../permissions/database-routing.md)
-- [Drill-through](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through)
+- [Drill-through](../questions/visualizations/drill-through.md)
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
 - [Query builder](../questions/query-builder/editor.md)
 - [AI chat](./sdk/ai-chat.md)

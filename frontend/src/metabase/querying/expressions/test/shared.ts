@@ -317,6 +317,7 @@ function findFields<const T extends { [key: string]: unknown }>(
 ): {
   [K in keyof T]: Lib.ColumnMetadata;
 } {
+  // Unjustified type cast. FIXME
   const res = {} as unknown as {
     [K in keyof T]: Lib.ColumnMetadata;
   };

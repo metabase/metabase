@@ -1,8 +1,8 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";

@@ -4,8 +4,12 @@ type SuccessfulFetchDashboardResult = {
   payload: { dashboard: Dashboard };
 };
 
+// A cancelled fetch surfaces as a `payload` matching the standard
+// `DOMException` AbortError shape. It also satisfies
+// `FailedFetchDashboardResult` shape-wise, so consumers use
+// `isAbortError(result.payload)` to distinguish.
 type CancelledFetchDashboardResult = {
-  payload: { isCancelled: true };
+  payload: { name: "AbortError" };
 };
 
 export type FailedFetchDashboardResult = { error: unknown; payload: unknown };

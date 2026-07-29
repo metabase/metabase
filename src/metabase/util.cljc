@@ -228,6 +228,18 @@
       (str (upper-case-en (subs s 0 1))
            (lower-case-en (subs s 1))))))
 
+(def ^String utf8-bom
+  "The UTF-8 byte-order mark"
+  "\ufeff")
+
+(defn strip-bom
+  "Strip a leading UTF-8 BOM from string `s`, if present. `clojure.data.csv` and many other parsers do not strip it
+  automatically, so it can leak into the first cell. Returns `s` unchanged when there is no BOM (or `s` is nil)."
+  ^String [^String s]
+  (if (and s (str/starts-with? s utf8-bom))
+    (subs s 1)
+    s))
+
 (defn truncate
   "Truncate a string to `n` characters."
   [s n]
@@ -241,27 +253,33 @@
      request handled by Jetty will be over HTTP."
      [{{:strs [x-forwarded-proto x-forwarded-protocol x-url-scheme x-forwarded-ssl front-end-https origin]} :headers
        :keys                                                                                                [scheme]}]
-     (cond
-       ;; If `X-Forwarded-Proto` is present use that. There are several alternate headers that mean the same thing. See
-       ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto
-       (or x-forwarded-proto x-forwarded-protocol x-url-scheme)
-       (= "https" (lower-case-en (or x-forwarded-proto x-forwarded-protocol x-url-scheme)))
+     (let [;; Take the first hop of a comma-separated chain (`https, http`), trim, and drop blanks, mirroring
+           ;; `misc/forwarded-scheme`. Branching on the normalized value (not raw presence) lets a blank proto header
+           ;; (e.g. `X-Forwarded-Proto: ""`) fall through to the boolean-style HTTPS indicators below.
+           proto (some-> (or x-forwarded-proto x-forwarded-protocol x-url-scheme)
+                         (str/split #",") first str/trim not-empty lower-case-en)
+           ssl   (or x-forwarded-ssl front-end-https)]
+       (cond
+         ;; If `X-Forwarded-Proto` is present use that. There are several alternate headers that mean the same thing. See
+         ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto
+         proto
+         (= "https" proto)
 
-       ;; If none of those headers are present, look for presence of `X-Forwarded-Ssl` or `Frontend-End-Https`, which
-       ;; will be set to `on` if the original request was over HTTPS.
-       (or x-forwarded-ssl front-end-https)
-       (= "on" (lower-case-en (or x-forwarded-ssl front-end-https)))
+         ;; If none of those headers are present, look for presence of `X-Forwarded-Ssl` or `Front-End-Https`, which
+         ;; will be set to `on` if the original request was over HTTPS.
+         ssl
+         (= "on" (lower-case-en ssl))
 
-       ;; If none of the above are present, we are most not likely being accessed over a reverse proxy. Still, there's a
-       ;; good chance `Origin` will be present because it should be sent with `POST` requests, and most auth requests are
-       ;; `POST`. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin
-       origin
-       (str/starts-with? (lower-case-en origin) "https")
+         ;; If none of the above are present, we are most likely not being accessed over a reverse proxy. Still, there's a
+         ;; good chance `Origin` will be present because it should be sent with `POST` requests, and most auth requests are
+         ;; `POST`. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin
+         origin
+         (str/starts-with? (lower-case-en origin) "https")
 
-       ;; Last but not least, if none of the above are set (meaning there are no proxy servers such as ELBs or nginx in
-       ;; front of us), we can look directly at the scheme of the request sent to Jetty.
-       scheme
-       (= scheme :https))))
+         ;; Last but not least, if none of the above are set (meaning there are no proxy servers such as ELBs or nginx in
+         ;; front of us), we can look directly at the scheme of the request sent to Jetty.
+         scheme
+         (= scheme :https)))))
 
 (defn regex->str
   "Returns the contents of a regex as a string.
@@ -772,7 +790,6 @@
       (with-out-str
         #_{:clj-kondo/ignore [:discouraged-var]}
         (pp/pprint x {:max-width 120}))
-
       :cljs-dev
       ;; we try to set this permanently above, but it doesn't seem to work in Cljs, so just bind it every time. The
       ;; default value wastes too much space, 120 is a little easier to read actually.
@@ -780,7 +797,6 @@
         (with-out-str
           #_{:clj-kondo/ignore [:discouraged-var]}
           (pprint/pprint x)))
-
       :default
       ;; For CLJS release, we don't pull cljs.pprint to reduce bundle size.
       (str x)))
@@ -1031,16 +1047,16 @@
   [nodes traverse-fn]
   (loop [to-traverse (zipmap nodes (repeat nil))
          traversed   {}]
-    (let [item        (first to-traverse)
-          found       (traverse-fn (key item))
-          traversed   (conj traversed item)
-          ;; `merge-with into` allows us to not lose dependency info if an entity was required from a few different
-          ;; locations
-          to-traverse (merge-with into
-                                  (dissoc to-traverse (key item))
-                                  (apply dissoc found (keys traversed)))]
-      (if (empty? to-traverse)
-        traversed
+    (if (empty? to-traverse)
+      traversed
+      (let [item (first to-traverse)
+            found (traverse-fn (key item))
+            traversed (conj traversed item)
+            ;; `merge-with into` allows us to not lose dependency info if an entity was required from a few different
+            ;; locations
+            to-traverse (merge-with into
+                                    (dissoc to-traverse (key item))
+                                    (apply dissoc found (keys traversed)))]
         (recur to-traverse traversed)))))
 
 (defn reverse-compare
@@ -1181,7 +1197,6 @@
                                                            (long (+
                                                                   cumulative-byte-count
                                                                   (string-byte-count (string-character-at s i)))))))
-
      :cljs
      (let [buf (js/Uint8Array. max-length-bytes)
            result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}

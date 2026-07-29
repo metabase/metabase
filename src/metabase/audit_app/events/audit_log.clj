@@ -182,6 +182,9 @@
 (derive :event/user-reactivated ::user-event)
 (derive :event/password-reset-initiated ::user-event)
 (derive :event/password-reset-successful ::user-event)
+(derive :event/mfa-verification-failed ::user-event)
+(derive :event/mfa-enrolled ::user-event)
+(derive :event/mfa-disabled ::user-event)
 
 (methodical/defmethod events/publish-event! ::user-event
   [topic event]
@@ -328,6 +331,8 @@
 (derive :event/update-transform ::transform-event)
 (derive :event/transform-delete ::transform-event)
 (derive :event/transform-run-start ::transform-event)
+(derive :event/transform-run-canceled ::transform-event)
+(derive :event/transform-run-timeout ::transform-event)
 (derive :event/transform-inspect-discover ::transform-event)
 (derive :event/transform-inspect-lens ::transform-event)
 

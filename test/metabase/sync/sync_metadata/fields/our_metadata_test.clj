@@ -107,7 +107,6 @@
                                                           :json-unfolding    false
                                                           :database-is-auto-increment false
                                                           :preview-display   true}}}}}}
-
            (let [transactions-table-id   (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
                  remove-ids-and-nil-vals (partial walk/postwalk #(if-not (map? %)
                                                                    %

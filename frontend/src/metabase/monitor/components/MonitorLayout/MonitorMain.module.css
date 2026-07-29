@@ -1,0 +1,7 @@
+.main {
+  overflow: hidden;
+
+  /* extra spacing so that focus outlines at the container edge are not clipped */
+  padding: 4px;
+  margin: -4px;
+}

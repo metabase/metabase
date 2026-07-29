@@ -1,9 +1,6 @@
 import { useHotkeys } from "@mantine/hooks";
-import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConnectedProps } from "react-redux";
-import type { Route, WithRouterProps } from "react-router";
-import { push } from "react-router-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -48,10 +45,12 @@ import {
   onOpenQuestionInfo,
   onOpenQuestionSettings,
   onOpenTimelines,
+  setIsNativeEditorOpen,
   setParameterValue,
   setUIControls,
 } from "metabase/redux/query-builder";
 import type { QueryBuilderUIControls, State } from "metabase/redux/store";
+import { type Location, push, useRoute, useRouter } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -94,7 +93,6 @@ import {
   setDatasetEditorTab,
   setDatasetQuery,
   setDidFirstNonTableChartRender,
-  setIsNativeEditorOpen,
   setIsShowingSnippetSidebar,
   setLimit,
   setMetadataDiff,
@@ -271,6 +269,7 @@ const mapDispatchToProps = {
   onOpenQuestionInfo,
   onOpenQuestionSettings,
   onOpenTimelines,
+  setIsNativeEditorOpen,
   setParameterValue,
   setUIControls,
 
@@ -306,7 +305,6 @@ const mapDispatchToProps = {
   setDatasetEditorTab,
   setDatasetQuery,
   setDidFirstNonTableChartRender,
-  setIsNativeEditorOpen,
   setIsShowingSnippetSidebar,
   setLimit,
   setMetadataDiff,
@@ -339,14 +337,16 @@ const mapDispatchToProps = {
 const connector = connect(mapStateToProps, mapDispatchToProps);
 type ReduxProps = ConnectedProps<typeof connector>;
 
-type QueryBuilderInnerProps = ReduxProps &
-  WithRouterProps & {
-    route: Route;
-  };
+type QueryBuilderInnerProps = ReduxProps;
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
+  const { location, params } = useRouter();
+  const route = useRoute();
   useFavicon({ favicon: props.pageFavicon ?? null });
-  useListTimelinesQuery({ include: "events" });
+  const { data: fetchedTimelines, isSuccess: areTimelinesLoaded } =
+    useListTimelinesQuery({
+      include: "events",
+    });
   const { data: bookmarks = [], isSuccess: areBookmarksLoaded } =
     useListBookmarksQuery();
   const [createBookmarkMutation] = useCreateBookmarkMutation();
@@ -355,8 +355,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const {
     question,
     originalQuestion,
-    location,
-    params,
     uiControls,
     isNativeEditorOpen,
     isAnySidebarOpen,
@@ -371,7 +369,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     isAdmin,
     isLoadingComplete,
     closeQB,
-    route,
     queryBuilderMode,
     didFirstNonTableChartGenerated,
     setDidFirstNonTableChartRender,
@@ -510,14 +507,22 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   ]);
 
   useEffect(() => {
-    if (areBookmarksLoaded && hasQuestion) {
+    // Gate on the timelines actually being loaded (not just bookmarks), and
+    // re-run when they arrive: showTimelinesForCollection reads the fetched
+    // timelines from the store at dispatch time, so running it before the
+    // `/api/timeline` request resolves dispatches an empty set and the chart
+    // never receives its events. This restores the pre-#73674 `allLoaded`
+    // guarantee that was lost when the Timelines.loadList HOC was removed.
+    if (areBookmarksLoaded && areTimelinesLoaded && hasQuestion) {
       showTimelinesForCollection(collectionId);
     }
   }, [
     areBookmarksLoaded,
+    areTimelinesLoaded,
     hasQuestion,
     collectionId,
     showTimelinesForCollection,
+    fetchedTimelines,
   ]);
 
   useEffect(() => {
@@ -627,7 +632,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       <LeaveRouteConfirmModal
         isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
         isLocationAllowed={isLocationAllowed}
-        route={route}
+        route={route ?? undefined}
       />
     </>
   );

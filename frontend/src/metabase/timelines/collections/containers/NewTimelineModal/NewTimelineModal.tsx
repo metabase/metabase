@@ -1,11 +1,10 @@
-import { push } from "react-router-redux";
-
 import {
   skipToken,
   useCreateTimelineMutation,
   useGetCollectionQuery,
 } from "metabase/api";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import NewTimelineModal from "metabase/timelines/common/components/NewTimelineModal";
 import * as Urls from "metabase/urls";
 import type { CreateTimelineRequest, Timeline } from "metabase-types/api";
@@ -32,6 +31,7 @@ function NewTimelineModalContainer(props: NewTimelineModalContainerProps) {
 
   const onSubmit = async (values: Partial<Timeline>) => {
     const timeline = await createTimeline(
+      // Unjustified type cast. FIXME
       values as CreateTimelineRequest,
     ).unwrap();
     dispatch(push(Urls.timelineInCollection(timeline)));

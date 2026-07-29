@@ -17,7 +17,7 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v6
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
         with:
           role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -38,7 +38,7 @@ jobs:
           jar xf target/uberjar/metabase.jar
           mv target/uberjar/metabase.jar bin/docker/metabase.jar
       - name: Build container
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
           context: bin/docker/
           platforms: linux/amd64
@@ -46,7 +46,7 @@ jobs:
           tags: ${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/metabase-enterprise:pr${{ github.event.number }}
           push: true
   launch_perf_test:
-    needs: [ build ]
+    needs: [build]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: Launch Perf Test
     permissions:
@@ -56,7 +56,7 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v6
       - name: Tailscale
-        uses: tailscale/github-action@4e4c49acaa9818630ce0bd7a564372c17e33fb4d # v2
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
         with:
           oauth-client-id: ${{ secrets.PR_ENV_TAILSCALE_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.PR_ENV_TAILSCALE_OAUTH_SECRET }}
@@ -74,7 +74,7 @@ jobs:
         env:
           PR_ENV_K8S_AUDIENCE: ${{ secrets.PR_ENV_K8S_AUDIENCE }}
       - name: Setup Kube Context
-        uses: azure/k8s-set-context@0b53301dcc7ddd3f6d35f97fb67228ac4e5ab2fd # v2
+        uses: azure/k8s-set-context@89b837d75b40a7bd2ddafde837473c212db8b313 # v5.0.0
         with:
           method: kubeconfig
           kubeconfig: |
@@ -97,7 +97,7 @@ jobs:
                 namespace: default
                 user: oidc-token
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
         with:
           role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -110,7 +110,7 @@ jobs:
         id: split
         run: echo "fragment=${SHA:5}" >> $GITHUB_OUTPUT
       - name: Render Deployment YAML
-        uses: nowactions/envsubst@c4b8e3977354d294659a7ec164279ce8fba5c2e1 # v1
+        uses: nowactions/envsubst@c4b8e3977354d294659a7ec164279ce8fba5c2e1 # v1.0.1
         with:
           input: ./perf-test-pr.yml.tmpl
           output: ./perf-test-pr.yml

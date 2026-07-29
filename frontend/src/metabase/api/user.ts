@@ -1,4 +1,3 @@
-import { userUpdated } from "metabase/redux/user";
 import type {
   CreateUserRequest,
   ListUsersRequest,
@@ -17,7 +16,6 @@ import {
   provideUserListTags,
   provideUserTags,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const userApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -42,6 +40,13 @@ export const userApi = Api.injectEndpoints({
       query: (id) => ({
         method: "GET",
         url: `/api/user/${id}`,
+      }),
+      providesTags: (user) => (user ? provideUserTags(user) : []),
+    }),
+    getCurrentUser: builder.query<User, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/user/current",
       }),
       providesTags: (user) => (user ? provideUserTags(user) : []),
     }),
@@ -99,11 +104,6 @@ export const userApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
-      onQueryStarted: (_request, { dispatch, queryFulfilled }) =>
-        handleQueryFulfilled(queryFulfilled, (user) => {
-          // used to keep current user state in sync
-          dispatch(userUpdated(user));
-        }),
     }),
     getPasswordResetUrl: builder.mutation<
       { password_reset_url: string },
@@ -118,6 +118,14 @@ export const userApi = Api.injectEndpoints({
       query: () => "/api/mt/user/attributes",
       providesTags: (response) => (response ? [listTag("user")] : []),
     }),
+    updateUserModalQbnewb: builder.mutation<void, UserId>({
+      query: (id) => ({
+        method: "PUT",
+        url: `/api/user/${id}/modal/qbnewb`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("user", id)]),
+    }),
   }),
 });
 
@@ -125,6 +133,7 @@ export const {
   useListUsersQuery,
   useListUserRecipientsQuery,
   useGetUserQuery,
+  useGetCurrentUserQuery,
   useCreateUserMutation,
   useUpdatePasswordMutation,
   useDeactivateUserMutation,
@@ -132,4 +141,5 @@ export const {
   useUpdateUserMutation,
   useGetPasswordResetUrlMutation,
   useListUserAttributesQuery,
+  useUpdateUserModalQbnewbMutation,
 } = userApi;

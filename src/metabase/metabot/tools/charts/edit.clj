@@ -5,7 +5,7 @@
 
 (def ^:private valid-chart-types
   "Valid chart types supported by Metabase."
-  #{:table :bar :line :pie :sunburst :area :combo :row :pivot
+  #{:table :bar :line :pie :sunburst :treemap :area :combo :row :pivot
     :scatter :waterfall :sankey :scalar :smartscalar :gauge
     :progress :funnel :object :map})
 
@@ -62,11 +62,9 @@
       (throw (ex-info "Sorry, I have issues accessing the chart data. Is there anything else I can help you with?"
                       {:agent-error? true
                        :chart-id chart-id})))
-
     (let [new-chart-data (-> chart-data
                              (assoc :chart_id (str (random-uuid)))
                              (assoc :visualization_settings {:chart_type new-chart-type}))]
-
       {:new-chart-data new-chart-data
        :result {:chart-id (:chart_id new-chart-data)
                 :chart-content (format-chart-for-llm new-chart-data)

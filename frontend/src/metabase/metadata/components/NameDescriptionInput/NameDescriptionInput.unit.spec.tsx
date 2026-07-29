@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen } from "__support__/ui";
+import { act, render, screen } from "__support__/ui";
 
 import { NameDescriptionInput } from "./NameDescriptionInput";
 
@@ -43,7 +43,9 @@ describe("NameDescriptionInput", () => {
 
     const nameInput = screen.getByPlaceholderText("Enter name");
     await userEvent.type(nameInput, "{backspace}".repeat(3));
-    nameInput.blur();
+    act(() => {
+      nameInput.blur();
+    });
 
     expect(onNameChange).toHaveBeenCalledTimes(0);
   });
@@ -53,7 +55,9 @@ describe("NameDescriptionInput", () => {
 
     const descriptionInput = screen.getByPlaceholderText("Enter description");
     await userEvent.type(descriptionInput, "{backspace}".repeat(3));
-    descriptionInput.blur();
+    act(() => {
+      descriptionInput.blur();
+    });
 
     expect(onDescriptionChange.mock.calls).toEqual([[""]]);
     expect(descriptionInput).toHaveValue("");
@@ -64,7 +68,9 @@ describe("NameDescriptionInput", () => {
 
     const nameInput = screen.getByPlaceholderText("Enter name");
     await userEvent.type(nameInput, "{backspace}z ");
-    nameInput.blur();
+    act(() => {
+      nameInput.blur();
+    });
 
     expect(onNameChange).toHaveBeenCalledTimes(0);
   });
@@ -74,7 +80,9 @@ describe("NameDescriptionInput", () => {
 
     const nameInput = screen.getByPlaceholderText("Enter description");
     await userEvent.type(nameInput, "{backspace}z ");
-    nameInput.blur();
+    act(() => {
+      nameInput.blur();
+    });
 
     expect(onNameChange).toHaveBeenCalledTimes(0);
   });

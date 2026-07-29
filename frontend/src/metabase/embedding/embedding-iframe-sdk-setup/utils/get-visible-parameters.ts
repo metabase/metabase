@@ -21,6 +21,7 @@ export const getVisibleParameters = <
     return getNormalizedParameters(parameters);
   }
 
+  // Unjustified type cast. FIXME
   const filteredParameters = Object.fromEntries(
     Object.entries(parameters).filter(
       ([key]) => !lockedParameters.includes(key),

@@ -3,17 +3,17 @@ import type { Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
-import CS from "metabase/css/core/index.css";
-import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { Icon, UnstyledButton } from "metabase/ui";
 
-interface RunButtonProps {
+import S from "./RunButton.module.css";
+
+export interface RunButtonProps {
   className?: string;
   isRunning: boolean;
   isDirty: boolean;
   circular?: boolean;
-  medium?: boolean;
   hidden?: boolean;
+  disabled?: boolean;
   onlyIcon?: boolean;
   iconSize?: number;
   onRun?: () => void;
@@ -29,6 +29,8 @@ export const RunButton = forwardRef(function RunButton(
     className,
     circular,
     hidden,
+    onlyIcon,
+    iconSize = 16,
     ...props
   }: RunButtonProps,
   ref: Ref<HTMLButtonElement>,
@@ -37,24 +39,22 @@ export const RunButton = forwardRef(function RunButton(
   const ariaLabel = getButtonLabel(isRunning, isDirty);
 
   return (
-    <Button
+    <UnstyledButton
       {...props}
       ref={ref}
-      className={cx(className, QueryBuilderS.RunButton, {
-        [QueryBuilderS.RunButtonHidden]: hidden,
-        [QueryBuilderS.RunButtonCircular]: circular,
-        [CS.circular]: circular,
+      className={cx(S.root, className, {
+        [S.primary]: isDirty,
+        [S.white]: !isDirty,
+        [S.onlyIcon]: onlyIcon,
+        [S.circular]: circular,
+        [S.hidden]: hidden,
       })}
-      classNames={{
-        icon: QueryBuilderS.RunButtonIcon,
-      }}
-      icon={icon}
-      primary={isDirty}
-      white={!isDirty}
       data-testid="run-button"
       aria-label={ariaLabel}
       onClick={isRunning ? onCancel : onRun}
-    />
+    >
+      <Icon className={S.icon} name={icon} size={iconSize} />
+    </UnstyledButton>
   );
 });
 

@@ -1,5 +1,4 @@
 import type { QueryModalType } from "metabase/querying/constants";
-import type { Deferred } from "metabase/utils/promise";
 import type { Widget } from "metabase/visualizations/types";
 import type {
   Card,
@@ -47,6 +46,7 @@ export interface QueryBuilderUIControls {
   isShowingQuestionInfoSidebar: boolean;
   isShowingSnippetSidebar: boolean;
   isShowingTimelineSidebar: boolean;
+  focusedTimelineEventIds: number[] | null;
   isNativeEditorOpen: boolean;
   isShowingAIQuestionAnalysisSidebar: boolean;
   initialChartSetting: InitialChartSettingState;
@@ -93,7 +93,7 @@ export interface QueryBuilderState {
   queryStatus: QueryBuilderQueryStatus;
   queryResults: Dataset[] | null;
   queryStartTime: number | null;
-  cancelQueryDeferred: Deferred<void> | null;
+  cancelQueryController: AbortController | null;
 
   card: Card | null;
   originalCard: Card | null;

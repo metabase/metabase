@@ -1,22 +1,16 @@
 import type { NodeViewProps } from "@tiptap/core";
-import { CodeBlock } from "@tiptap/extension-code-block";
+import { CodeBlock, type CodeBlockOptions } from "@tiptap/extension-code-block";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
-import {
-  NodeViewContent,
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-} from "@tiptap/react";
-import cx from "classnames";
-
-import { CommentsMenu } from "metabase/documents/components/Editor/CommentsMenu";
-import { useBlockMenus } from "metabase/documents/hooks/use-block-menus";
+import { NodeViewContent, ReactNodeViewRenderer } from "@tiptap/react";
 
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
-import S from "../extensions.module.css";
+import { type BlockNodeOptions, DefaultBlockShell } from "../shared/BlockShell";
 
 const languageClassPrefix = "language-";
 
-export const CustomCodeBlock = CodeBlock.extend({
+export const CustomCodeBlock = CodeBlock.extend<
+  CodeBlockOptions & BlockNodeOptions
+>({
   addAttributes() {
     return {
       language: {
@@ -110,55 +104,31 @@ export const CustomCodeBlock = CodeBlock.extend({
   },
 });
 
-export const CodeBlockNodeView = ({ node, editor, getPos }: NodeViewProps) => {
-  const {
-    _id,
-    isOpen,
-    isHovered,
-    hovered,
-    setHovered,
-    unresolvedCommentsCount,
-    document,
-    shouldShowMenus,
-    setReferenceElement,
-    commentsRefs,
-    commentsFloatingStyles,
-  } = useBlockMenus({ node, editor, getPos });
+export const CodeBlockNodeView = ({
+  node,
+  editor,
+  getPos,
+  extension,
+}: NodeViewProps) => {
+  const BlockShell = extension.options.blockShell ?? DefaultBlockShell;
 
   return (
-    <>
-      <NodeViewWrapper
-        aria-expanded={isOpen}
-        className={cx(S.root, {
-          [S.open]: isOpen || isHovered,
-        })}
-        data-node-id={_id}
-        ref={setReferenceElement}
-        onMouseOver={() => setHovered(true)}
-        onMouseOut={() => setHovered(false)}
-      >
-        <pre>
-          <NodeViewContent<"code">
-            as="code"
-            className={
-              node.attrs.language
-                ? languageClassPrefix + node.attrs.language
-                : undefined
-            }
-          />
-        </pre>
-      </NodeViewWrapper>
-
-      {shouldShowMenus && document && (
-        <CommentsMenu
-          active={isOpen}
-          href={`/document/${document.id}/comments/${_id}`}
-          ref={commentsRefs.setFloating}
-          show={isOpen || hovered}
-          style={commentsFloatingStyles}
-          unresolvedCommentsCount={unresolvedCommentsCount}
+    <BlockShell
+      node={node}
+      editor={editor}
+      getPos={getPos}
+      hideMenus={extension.options.editorContext === "comments"}
+    >
+      <pre>
+        <NodeViewContent<"code">
+          as="code"
+          className={
+            node.attrs.language
+              ? languageClassPrefix + node.attrs.language
+              : undefined
+          }
         />
-      )}
-    </>
+      </pre>
+    </BlockShell>
   );
 };

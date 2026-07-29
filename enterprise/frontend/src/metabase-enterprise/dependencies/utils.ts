@@ -544,25 +544,28 @@ export function getDependencyGroupTypeInfo(
     case "question":
       return { label: t`Question`, color: "text-secondary" };
     case "model":
-      return { label: t`Model`, color: "brand" };
+      return { label: t`Model`, color: "core-brand" };
     case "metric":
-      return { label: t`Metric`, color: "summarize" };
+      return { label: t`Metric`, color: "core-summarize" };
     case "table":
-      return { label: t`Table`, color: "brand" };
+      return { label: t`Table`, color: "core-brand" };
     case "transform":
-      return { label: t`Transform`, color: "warning" };
+      return { label: t`Transform`, color: "feedback-warning" };
     case "snippet":
       return { label: t`Snippet`, color: "text-secondary" };
     case "dashboard":
-      return { label: t`Dashboard`, color: "filter" };
+      return { label: t`Dashboard`, color: "core-filter" };
     case "document":
       return { label: t`Document`, color: "text-secondary" };
     case "sandbox":
-      return { label: t`Row and column security rule`, color: "error" };
+      return {
+        label: t`Row and column security rule`,
+        color: "feedback-negative",
+      };
     case "segment":
       return { label: t`Segment`, color: "accent2" };
     case "measure":
-      return { label: t`Measure`, color: "summarize" };
+      return { label: t`Measure`, color: "core-summarize" };
   }
 }
 
@@ -730,6 +733,10 @@ export function getErrorTypeLabel(
   count = 0,
 ): string {
   switch (type) {
+    case "missing-table":
+      return count === 1 ? t`Missing table` : t`Missing tables`;
+    case "missing-card":
+      return count === 1 ? t`Missing question` : t`Missing questions`;
     case "missing-column":
       return count === 1 ? t`Missing column` : t`Missing columns`;
     case "missing-table-alias":
@@ -748,6 +755,18 @@ export function getErrorTypeLabelWithCount(
   count = 0,
 ): string {
   switch (type) {
+    case "missing-table":
+      return ngettext(
+        msgid`${count} missing table`,
+        `${count} missing tables`,
+        count,
+      );
+    case "missing-card":
+      return ngettext(
+        msgid`${count} missing question`,
+        `${count} missing questions`,
+        count,
+      );
     case "missing-column":
       return ngettext(
         msgid`${count} missing column`,

@@ -20,7 +20,7 @@
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://{metabase_host}/api/mcp",
+      "url": "https://{metabase_host}/api/metabase-mcp",
       "variables": {
         "metabase_host": {
           "description": "Your Metabase hostname, e.g. 'metabase.example.com'.",

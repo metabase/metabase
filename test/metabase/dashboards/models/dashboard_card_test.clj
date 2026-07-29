@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.models.serialization :as serdes]
    [metabase.queries.models.card-test :as card-test]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -284,22 +283,6 @@
            (is (= expected
                   (t2/select-one-fn :visualization_settings :model/DashboardCard :id (u/the-id dashcard))))))))))
 
-(deftest ^:parallel identity-hash-test
-  (testing "Dashboard card hashes are composed of the card hash, dashboard hash, and visualization settings"
-    (let [now #t "2022-09-01T12:34:56Z"]
-      (mt/with-temp [:model/Collection    c1       {:name "top level" :location "/" :created_at now}
-                     :model/Dashboard     dash     {:name "my dashboard"  :collection_id (:id c1) :created_at now}
-                     :model/Card          card     {:name "some question" :collection_id (:id c1) :created_at now}
-                     :model/DashboardCard dashcard {:card_id                (:id card)
-                                                    :dashboard_id           (:id dash)
-                                                    :visualization_settings {}
-                                                    :row                    6
-                                                    :col                    3
-                                                    :created_at             now}]
-        (is (= "1311d6dc"
-               (serdes/raw-hash [(serdes/identity-hash card) (serdes/identity-hash dash) {} 6 3 (:created_at dashcard)])
-               (serdes/identity-hash dashcard)))))))
-
 (deftest ^:parallel from-decoded-json-test
   (testing "Dashboard Cards should remain the same if they are serialized to JSON,
     deserialized, and finally transformed with `from-parsed-json`."
@@ -324,3 +307,48 @@
             transformed  (dashboard-card/from-parsed-json deserialized)]
         (is (= dashcard
                transformed))))))
+
+(deftest ^:parallel visualizer-settings-no-extra-keys-test
+  (testing "visualization_settings.visualization.settings persists exactly as written (VIZ-905)"
+    (mt/with-temp [:model/Dashboard     dash {}
+                   :model/Card          card {}
+                   :model/DashboardCard dashcard {:dashboard_id (:id dash)
+                                                  :card_id      (:id card)
+                                                  :visualization_settings
+                                                  {:visualization {:display              "line"
+                                                                   :columnValuesMapping  {}
+                                                                   :settings             {"graph.dimensions" ["A"]
+                                                                                          "graph.metrics"    ["B"]}}}}]
+      (is (= {:graph.dimensions ["A"] :graph.metrics ["B"]}
+             (-> (t2/select-one :model/DashboardCard :id (:id dashcard))
+                 :visualization_settings :visualization :settings))))))
+
+(deftest ^:parallel after-select-tolerates-dangling-visualizer-ref-test
+  (testing "A DashboardCard whose visualizer settings reference a deleted Card is returned unmodified on read,
+           rather than throwing and making the dashcard unloadable."
+    (mt/with-temp [:model/Dashboard     dash {}
+                   :model/Card          card {}
+                   :model/DashboardCard dc   {:dashboard_id (:id dash), :card_id (:id card)}]
+      (let [dangling {:visualization {:columnValuesMapping {:COLUMN_1 [{:sourceId "card:gEnfWx10SmfjiccZpcGrj"}]}}}]
+        ;; Inject the dangling ref via raw SQL so model hooks don't rewrite it on write.
+        (t2/query-one {:update (t2/table-name :model/DashboardCard)
+                       :set    {:visualization_settings (json/encode dangling)}
+                       :where  [:= :id (:id dc)]})
+        (testing "the read does not throw and the unresolved ref is left untouched"
+          (let [loaded (t2/select-one :model/DashboardCard :id (:id dc))]
+            (is (= [{:sourceId "card:gEnfWx10SmfjiccZpcGrj"}]
+                   (get-in loaded [:visualization_settings :visualization :columnValuesMapping :COLUMN_1])))))))))
+
+(deftest ^:parallel after-select-resolves-valid-visualizer-ref-test
+  (testing "A valid visualizer entity-id reference is resolved to a numeric card id on read."
+    (mt/with-temp [:model/Dashboard     dash {}
+                   :model/Card          card {}
+                   :model/Card          src  {}
+                   :model/DashboardCard dc   {:dashboard_id (:id dash), :card_id (:id card)}]
+      (let [viz {:visualization {:columnValuesMapping {:COLUMN_1 [{:sourceId (str "card:" (:entity_id src))}]}}}]
+        (t2/query-one {:update (t2/table-name :model/DashboardCard)
+                       :set    {:visualization_settings (json/encode viz)}
+                       :where  [:= :id (:id dc)]})
+        (let [loaded (t2/select-one :model/DashboardCard :id (:id dc))]
+          (is (= [{:sourceId (str "card:" (:id src))}]
+                 (get-in loaded [:visualization_settings :visualization :columnValuesMapping :COLUMN_1]))))))))

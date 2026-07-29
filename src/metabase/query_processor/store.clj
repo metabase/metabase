@@ -161,7 +161,6 @@
                           {:existing-id existing-database-id
                            :new-id      new-database-id
                            :type        qp.error-type/invalid-query}))))
-
       ;; Metadata Providerable
       (let [new-provider (-> database-id-or-metadata-providerable
                              lib.metadata/->metadata-provider

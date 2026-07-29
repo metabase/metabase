@@ -1,6 +1,6 @@
 import { createReducer } from "@reduxjs/toolkit";
 
-import type { SetupState } from "metabase/redux/store";
+import type { SetupState, SetupStep } from "metabase/redux/store";
 
 import {
   loadLocaleDefaults,
@@ -15,7 +15,6 @@ import {
   updateLocale,
   updateTracking,
 } from "./actions";
-import type { SetupStep } from "./types";
 
 const getUserFromQueryParams = () => {
   const params = new URLSearchParams(window.location.search);

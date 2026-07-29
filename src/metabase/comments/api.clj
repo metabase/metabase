@@ -206,7 +206,6 @@
         entity  (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
                     (u/prog1 (api/check-400 (not (entity-archived? <>))
                                             "Cannot edit comments on archived entities")))]
-
     (when content
       ;; Cannot edit content of deleted comments
       (api/check-400 (not (:deleted_at comment))
@@ -214,16 +213,13 @@
       ;; Only creator or admin can edit comment content
       (api/check-403 (or (= (:creator_id comment) api/*current-user-id*)
                          (:is_superuser @api/*current-user*))))
-
     (when (some? is_resolved)
       ;; Anyone with write permission to target entity can resolve/unresolve
       (api/write-check entity))
-
     (when-let [updates (-> {:content content :is_resolved is_resolved}
                            u/remove-nils
                            not-empty)]
       (t2/update! :model/Comment comment-id updates))
-
     (let [updated-comment (-> (t2/select-one :model/Comment :id comment-id)
                               (t2/hydrate :creator :reactions))]
       (events/publish-event! :event/comment-update
@@ -240,23 +236,18 @@
   [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
    _query-params]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))]
-
     (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
         (u/prog1 (api/check-400 (not (entity-archived? <>))
                                 "Cannot delete comments on archived entities")))
-
     ;; Only creator or admin can delete comments
     (api/check-403 (or (= (:creator_id comment) api/*current-user-id*)
                        (:is_superuser @api/*current-user*)))
     (api/check-400 (not (:deleted_at comment)) "Comment is already deleted")
-
     ;; Soft delete the comment
     (t2/update! :model/Comment comment-id {:deleted_at [:now]})
-
     (events/publish-event! :event/comment-delete
                            {:object comment
                             :user-id api/*current-user-id*})
-
     ;; Return 204 No Content
     api/generic-204-no-content))
 
@@ -272,11 +263,9 @@
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))]
     (api/check-400 (not (:deleted_at comment))
                    "Cannot react to deleted comments")
-
     (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
         (u/prog1 (api/check-400 (not (entity-archived? <>))
                                 "Cannot react to comments on archived entities")))
-
     (comment-reaction/toggle-reaction comment-id api/*current-user-id* emoji)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -288,7 +277,6 @@
   [_route _query _body req]
   ;; no access in embedding context
   (api/check-404 (not (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))))
-
   (let [clauses (user/filter-clauses {:limit  (request/limit)
                                       :offset (request/offset)})]
     ;; returns nothing while we're trying to figure out how do we deal with sandboxes and tenants etc

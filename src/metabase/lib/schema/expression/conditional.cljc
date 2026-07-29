@@ -88,7 +88,6 @@
                                         #_pred [:ref ::expression/boolean]
                                         #_expr [:ref ::expression/expression]]]]
                                      [:default [:? [:schema [:ref ::expression/expression]]]])])
-
   (defmethod expression/type-of-method tag
     [[_tag _opts pred-expr-pairs default]]
     (let [exprs (concat

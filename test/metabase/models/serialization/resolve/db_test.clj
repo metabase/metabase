@@ -75,6 +75,36 @@
           (is (=? {:name "middle" :active false :parent_id (:id outer)}                            middle))
           (is (=? {:name "outer"  :active false :parent_id nil          :table_id table-id}        outer)))))))
 
+(deftest export-database-fk-test
+  (testing "returns the database name for an existing id"
+    (mt/with-temp [:model/Database {db-id :id} {:name "test-db"}]
+      (is (= "test-db" (serdes/*export-database-fk* db-id)))))
+  (testing "nil id returns nil"
+    (is (nil? (serdes/*export-database-fk* nil))))
+  (testing "unknown id returns nil"
+    (is (nil? (serdes/*export-database-fk* Integer/MAX_VALUE)))))
+
+(deftest export-table-fk-test
+  (testing "returns [db-name schema table-name]"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "test-db"}
+                   :model/Table    {table-id :id} {:db_id db-id :name "users" :schema "public"}]
+      (is (= ["test-db" "public" "users"] (serdes/*export-table-fk* table-id)))))
+  (testing "nil schema is preserved"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "test-db"}
+                   :model/Table    {table-id :id} {:db_id db-id :name "schemaless" :schema nil}]
+      (is (= ["test-db" nil "schemaless"] (serdes/*export-table-fk* table-id)))))
+  (testing "nil id returns nil"
+    (is (nil? (serdes/*export-table-fk* nil)))))
+
+(deftest cached-export-database-fk-test
+  (mt/with-temp [:model/Database {db-id :id} {:name "test-db"}]
+    (serdes/with-cache
+      (t2/with-call-count [call-count]
+        (is (= "test-db" (serdes/*export-database-fk* db-id)))
+        (is (= "test-db" (serdes/*export-database-fk* db-id)))
+        (testing "repeat lookups inside with-cache are served from the memoized resolver"
+          (is (= 1 (call-count))))))))
+
 (deftest import-field-fk-reuses-existing-parent-test
   (testing "uses an existing parent field rather than creating a duplicate"
     (mt/with-model-cleanup [:model/Field]

@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [iapetos.registry :as registry]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u])
@@ -173,7 +173,6 @@
     (mt/with-prometheus-system! [_ system]
       (prometheus/inc! :metabase-email/messages)
       (is (approx= 1 (mt/metric-value system :metabase-email/messages)))))
-
   (testing "inc with labels is correctly recorded"
     (mt/with-prometheus-system! [_ system]
       (prometheus/inc! :metabase-notification/send-ok {:payload-type :notification/card} 1)
@@ -185,16 +184,32 @@
       (is (thrown-with-msg? RuntimeException
                             #"error when updating metric"
                             (prometheus/dec! :metabase-email/unknown-metric)))))
-
   (testing "dec is recorded for known metrics"
     (mt/with-prometheus-system! [_ system]
       (prometheus/dec! :metabase-search/queue-size)
       (is (approx= -1 (mt/metric-value system :metabase-search/queue-size)))))
-
   (testing "dec with labels is correctly recorded"
     (mt/with-prometheus-system! [_ system]
       (prometheus/dec! :metabase-search/engine-active {:engine :default} 1)
       (is (approx= -1 (mt/metric-value system :metabase-search/engine-active {:engine :default}))))))
+
+(deftest pull-collector-test
+  (testing "a pull collector implementation runs at scrape time and can update one or more declared metrics"
+    (mt/with-prometheus-system! [_ system]
+      (let [refresher (registry/get (:registry system)
+                                    {:name "metabase_application_pull" :namespace "metabase"} nil)]
+        (try
+          ;; the function makes whatever metric updates it wants -- here it sets the (declared)
+          ;; :metabase-search/appdb-index-size gauge
+          (defmethod prometheus/pull-collector ::test [_]
+            {:min-interval-s 0
+             :f (fn []
+                  (prometheus/set! :metabase-search/appdb-index-size 7))})
+          (.collect ^Collector refresher)   ; runs the registered functions
+          (is (approx= 7 (mt/metric-value system :metabase-search/appdb-index-size)))
+          (finally
+            (remove-method prometheus/pull-collector ::test)
+            (swap! @#'prometheus/pull-collector-last-runs dissoc ::test)))))))
 
 (deftest search-engine-metrics-test
   (let [metrics       (#'prometheus/initial-labelled-metric-values)
@@ -204,16 +219,17 @@
         sum           (fn [metric] (reduce + 0 (vals (engine->value metric))))]
     (testing "A consistent set of engines is enumerated"
       (is (= (engines :metabase-search/engine-active)
-             (engines :metabase-search/engine-active))))
+             (engines :metabase-search/engine-default))))
     (testing "The values are boolean"
       (is (set/superset? #{0 1} (set (vals (engine->value :metabase-search/engine-active)))))
       (is (set/superset? #{0 1} (set (vals (engine->value :metabase-search/engine-default))))))
-    (testing "Legacy search is always active"
+    (testing "The default engine is active"
+      (is (= 1 (value :metabase-search/engine-active (search.engine/default-engine)))))
+    (testing "In-place can always serve, so it is always active"
       (is (= 1 (value :metabase-search/engine-active :in-place))))
-    (testing "There is at least one other active engine iff we support an index."
-      (if (search/supports-index?)
-        (is (< 1 (sum :metabase-search/engine-active)))
-        (is (= 1 (sum :metabase-search/engine-active)))))
+    (testing "Beyond in-place, engines are active iff their index is maintained"
+      (is (= (inc (count (remove #{:search.engine/in-place} (search.engine/active-engines))))
+             (sum :metabase-search/engine-active))))
     (testing "There is only one default"
       (is (= 1 (sum :metabase-search/engine-default))))))
 
@@ -229,29 +245,23 @@
       (prometheus/inc! :metabase-embedding-iframe-static/response {:status "200"} 0)
       (prometheus/inc! :metabase-embedding-public/response {:status "200"} 0)
       (prometheus/inc! :metabase-embedding-simple/response {:status "200"} 0)
-
       ;; Track SDK responses
       (prometheus/inc! :metabase-sdk/response {:status "200"})
       (prometheus/inc! :metabase-sdk/response {:status "404"})
-
       ;; Track iframe responses
       (prometheus/inc! :metabase-embedding-iframe/response {:status "200"})
       (prometheus/inc! :metabase-embedding-iframe/response {:status "404"})
-
       ;; Track new embedding responses
       (prometheus/inc! :metabase-embedding-iframe-full-app/response {:status "200"})
       (prometheus/inc! :metabase-embedding-iframe-static/response {:status "200"})
       (prometheus/inc! :metabase-embedding-public/response {:status "200"})
       (prometheus/inc! :metabase-embedding-simple/response {:status "200"})
-
       (testing "SDK response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-sdk/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-sdk/response {:status "404"}))))
-
       (testing "iframe response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:status "404"}))))
-
       (testing "new embedding response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe-full-app/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe-static/response {:status "200"})))

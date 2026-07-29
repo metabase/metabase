@@ -5,6 +5,8 @@
   padding: 0.6rem 0.75rem;
   white-space: unset;
   max-width: 320px;
+  /* Break long unbreakable strings so the tooltip can't overflow its max-width (metabase#74433). */
+  overflow-wrap: anywhere;
 }
 
 .arrow {

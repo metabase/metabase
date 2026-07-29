@@ -9,11 +9,11 @@ export const tryToCreateApiKeyViaModal = ({
   group: string | RegExp;
 }) => {
   cy.findByTestId("api-keys-settings-header")
-    .button(/create api key/i)
+    .button(/create an api key/i)
     .click();
   H.modal().within(() => {
     cy.findByLabelText(/Key name/).type(name);
-    cy.findByLabelText(/group/).click();
+    cy.findByLabelText(/group/i).click();
   });
 
   H.selectDropdown()

@@ -47,7 +47,7 @@ describe("issue 12578", () => {
 
     // Without tick the dashboard header will not load
     cy.tick();
-    cy.findByLabelText("Auto Refresh").click();
+    H.openDashboardMenu("Auto-refresh");
     H.popover().findByText("1 minute").click();
 
     // Mock slow card request
@@ -205,13 +205,16 @@ describe("issue 12926", () => {
         cy.visit(`/dashboard/${dashboard_id}`);
       });
 
+      // The query is deliberately slowed, so it is still in-flight here.
+      // The API client uses fetch, so cancelling the query aborts its
+      // AbortController rather than calling XMLHttpRequest.abort().
       cy.window().then((win) => {
-        cy.spy(win.XMLHttpRequest.prototype, "abort").as("xhrAbort");
+        cy.spy(win.AbortController.prototype, "abort").as("queryAbort");
       });
 
       removeCard();
 
-      cy.get("@xhrAbort").should("have.been.calledOnce");
+      cy.get("@queryAbort").should("have.been.called");
     });
 
     it("should re-fetch the query when doing undo on the removal", () => {
@@ -360,7 +363,6 @@ describe("issue 16559", () => {
       H.visitDashboard(response.body.id);
     });
 
-    cy.intercept("GET", "/api/collection/tree?*").as("getCollections");
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/dashboard/*?dashboard_load_id=*").as(
@@ -387,7 +389,7 @@ describe("issue 16559", () => {
     H.sidebar().findByText("Orders, Count").click();
     cy.wait("@cardQuery");
     cy.button("Save").click();
-    cy.wait(["@saveDashboard", "@loadDashboard"]);
+    cy.wait("@saveDashboard");
 
     H.openDashboardInfoSidebar().within(() => {
       cy.contains("button", "History").click();
@@ -457,7 +459,7 @@ describe("issue 16559", () => {
     H.entityPickerModal().within(() => {
       cy.findByText("First collection").click();
       cy.button("Move").click();
-      cy.wait(["@saveDashboard", "@getCollections"]);
+      cy.wait(["@saveDashboard"]);
     });
 
     H.openDashboardInfoSidebar().within(() => {
@@ -839,7 +841,6 @@ describe("issue 31697", () => {
   const segmentDetails = {
     name: "Orders segment",
     description: "All orders with a total under $100.",
-    table_id: ORDERS_ID,
     definition: {
       "source-table": ORDERS_ID,
       aggregation: [["count"]],

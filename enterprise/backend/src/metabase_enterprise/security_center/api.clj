@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as routes.common :refer [+auth]]
+   [metabase.notification.models :as models.notification]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -26,7 +27,8 @@
   [advisory]
   (-> (select-keys advisory [:advisory_id :title :severity :description :advisory_url :remediation
                              :published_at :match_status :last_evaluated_at
-                             :acknowledged_by_user :acknowledged_at :affected_versions])
+                             :acknowledged_by_user :acknowledged_at :affected_versions :download_jar_urls])
+      (update :download_jar_urls sequence)
       (set/rename-keys {:acknowledged_by_user :acknowledged_by})))
 
 (def ^:private AcknowledgedByUser
@@ -50,7 +52,8 @@
    [:last_evaluated_at [:maybe ms/TemporalInstant]]
    [:acknowledged_by   [:maybe AcknowledgedByUser]]
    [:acknowledged_at   [:maybe ms/TemporalInstant]]
-   [:affected_versions ::security-center.schema/affected-versions]])
+   [:affected_versions ::security-center.schema/affected-versions]
+   [:download_jar_urls ::security-center.schema/download-jar-urls]])
 
 (def ^:private AcknowledgeResponse
   "Schema for the acknowledge endpoint response."
@@ -112,10 +115,25 @@
     {:status (if submitted? "started" "already-in-progress")}))
 
 (api.macros/defendpoint :post "/test-notification" :- [:map [:success :boolean]]
-  "Send a test notification through the configured Security Center channels."
-  []
+  "Send a test notification through the given Security Center channels.
+
+   The request body lets callers pass the unsaved notification config from the
+   dialog so the test reflects current form state, not the persisted settings.
+   Both fields are optional; when omitted, the saved setting is used."
+  [_route-params
+   _query-params
+   body
+   :- [:map
+       [:email_recipients {:optional true} [:maybe [:sequential ::models.notification/NotificationRecipient]]]
+       [:slack_channel    {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  (notification/send-test-notification!)
+  (notification/send-test-notification!
+   {:email-recipients (if (contains? body :email_recipients)
+                        (:email_recipients body)
+                        (settings/security-center-email-recipients))
+    :slack-channel    (if (contains? body :slack_channel)
+                        (:slack_channel body)
+                        (settings/security-center-slack-channel))})
   {:success true})
 
 (def +check-security-center-enabled

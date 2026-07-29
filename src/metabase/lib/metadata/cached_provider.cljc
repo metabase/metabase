@@ -104,10 +104,37 @@
                 (lib.metadata.protocols/default-spec-filter-xform metadata-spec))
           key-set)))
 
+;; cache keys used by this function have the shape [::spec <spec-with-a-single-table-id>], so fetching metadata for
+;; several Tables at once (e.g. to pre-warm the cache) and fetching it for a single Table can share cache entries
+(defn- metadatas-for-table-ids
+  [cache uncached-provider {metadata-type :lib/type, table-ids :table-ids, :as metadata-spec}]
+  (let [cache-key   (fn [table-id]
+                      [::spec (assoc metadata-spec :table-ids #{table-id})])
+        cached-ids  (let [cache* @cache]
+                      ;; [[get-in]] instead of [[get-in-cache]] because we don't want to filter out `::nil` tombstones
+                      (into #{} (filter #(get-in cache* (cache-key %))) table-ids))
+        missing-ids (set/difference table-ids cached-ids)]
+    (when (seq missing-ids)
+      (let [newly-fetched (lib.metadata.protocols/metadatas uncached-provider (assoc metadata-spec :table-ids missing-ids))
+            by-table-id   (group-by :table-id newly-fetched)]
+        (doseq [table-id missing-ids
+                :let     [metadatas (vec (get by-table-id table-id))]]
+          (store-in-cache! cache (cache-key table-id) metadatas)
+          (doseq [metadata metadatas
+                  k        [:id :name]]
+            (store-in-cache! cache [metadata-type k (k metadata)] metadata)))))
+    (into [] (mapcat #(get-in-cache cache (cache-key %))) (sort table-ids))))
+
 (mu/defn- metadatas
-  [cache uncached-provider {metadata-type :lib/type, id-set :id, name-set :name, :as metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
-  (if (or id-set name-set)
+  [cache uncached-provider {metadata-type :lib/type, id-set :id, name-set :name, table-ids :table-ids, :as metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
+  (cond
+    (or id-set name-set)
     (metadatas-by-id-or-name cache uncached-provider metadata-spec)
+
+    table-ids
+    (metadatas-for-table-ids cache uncached-provider metadata-spec)
+
+    :else
     (get-in-cache-or-fetch cache
                            [::spec metadata-spec]
                            (fn []

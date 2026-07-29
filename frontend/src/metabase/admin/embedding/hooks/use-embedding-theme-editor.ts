@@ -87,7 +87,7 @@ const seedDraftFromHarmony = (
   const harmony = suggestHarmonyColors(brand);
   const existingCharts = settings.colors?.charts ?? [];
   const charts: ChartColor[] = harmony.charts.map((harmonyChart, i) => {
-    const accentKey = `accent${i}` as keyof ColorSettings;
+    const accentKey = `accent${i}`;
     if (whitelabelColors[accentKey] !== undefined) {
       return existingCharts[i] ?? harmonyChart;
     }
@@ -239,6 +239,7 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
     const colors = currentTheme.settings.colors ?? {};
     const defaultColors = defaultThemeSettings.colors ?? {};
     return PRIMARY_COLORS_KEYS.some(
+      // Unjustified type cast. FIXME
       (key) => (colors[key] ?? "") !== ((defaultColors[key] as string) ?? ""),
     );
   }, [currentTheme, defaultThemeSettings]);
@@ -298,7 +299,7 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
     const defaultColors = defaultThemeSettings.colors ?? {};
     const updatedColors = { ...currentTheme.settings.colors };
     for (const key of PRIMARY_COLORS_KEYS) {
-      updatedColors[key] = (defaultColors[key] as string) ?? "";
+      updatedColors[key] = defaultColors[key] ?? "";
     }
     setCurrentTheme({
       ...currentTheme,
@@ -327,7 +328,7 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
         return created;
       }
       const updated = await updateTheme({
-        id: themeId as number,
+        id: themeId,
         name: currentTheme.name,
         settings: currentTheme.settings,
       }).unwrap();

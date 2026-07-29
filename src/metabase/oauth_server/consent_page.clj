@@ -7,6 +7,8 @@
    [metabase.appearance.core :as appearance]
    [metabase.system.core :as system]))
 
+(set! *warn-on-reflection* true)
+
 (defn- absolute-url
   "Resolve a potentially relative path to an absolute URL using site-url."
   [path]
@@ -30,16 +32,17 @@
   [font-name]
   (let [dir-name      (str/replace font-name " " "_")
         file-stem     (str/replace font-name " " "")
-        css-font-name (css-escape-font-name font-name)]
+        css-font-name (css-escape-font-name font-name)
+        fonts-url     (absolute-url "/app/fonts")]
     (if (= font-name "Lato")
       (str "@font-face { font-family: 'Lato'; font-weight: 400; font-style: normal; font-display: swap;"
-           " src: url('/app/fonts/Lato/lato-v16-latin-regular.woff2') format('woff2'); }\n"
+           " src: url('" fonts-url "/Lato/lato-v16-latin-regular.woff2') format('woff2'); }\n"
            "@font-face { font-family: 'Lato'; font-weight: 700; font-style: normal; font-display: swap;"
-           " src: url('/app/fonts/Lato/lato-v16-latin-700.woff2') format('woff2'); }\n")
+           " src: url('" fonts-url "/Lato/lato-v16-latin-700.woff2') format('woff2'); }\n")
       (str "@font-face { font-family: '" css-font-name "'; font-weight: 400; font-style: normal; font-display: swap;"
-           " src: url('/app/fonts/" dir-name "/" file-stem "-Regular.woff2') format('woff2'); }\n"
+           " src: url('" fonts-url "/" dir-name "/" file-stem "-Regular.woff2') format('woff2'); }\n"
            "@font-face { font-family: '" css-font-name "'; font-weight: 700; font-style: normal; font-display: swap;"
-           " src: url('/app/fonts/" dir-name "/" file-stem "-Bold.woff2') format('woff2'); }\n"))))
+           " src: url('" fonts-url "/" dir-name "/" file-stem "-Bold.woff2') format('woff2'); }\n"))))
 
 (def ^:private default-logo-url "app/assets/img/logo.svg")
 
@@ -74,9 +77,30 @@
      :default-logo?  (= logo-url default-logo-url)
      :brand-color    (sanitize-css-color (get colors "brand"))}))
 
+(defn- render-scope-list
+  "Render the requested OAuth scopes as a hiccup list so the user sees exactly what they're granting.
+   `scopes` is a vector of `{:scope <string> :description <localized-string-or-raw-scope>}` maps.
+
+   Shows the human description and the raw scope string: the description is readable, the raw string
+   is the precise, unambiguous grant the token will carry — both matter when approving a broad scope.
+   When a scope has no registered description (it falls back to the raw string) the raw span is
+   omitted to avoid showing the same value twice."
+  [scopes]
+  (when (seq scopes)
+    [:ul.scopes
+     (for [{:keys [scope description full-access?]} scopes]
+       [:li (when full-access? {:class "full"})
+        [:span {:class (if full-access? "dot full" "dot")}]
+        (if full-access? [:strong description] [:span description])
+        (when (not= description scope)
+          [:span.raw scope])])]))
+
 (defn render-consent-page
-  "Render a server-side HTML consent page for the OAuth authorization flow."
-  [{:keys [client-name client-id oauth-params nonce csrf-token params-sig]}]
+  "Render a server-side HTML consent page for the OAuth authorization flow.
+
+   `scopes` is a vector of `{:scope :description}` maps describing what the client is requesting; it is
+   shown to the user so a broad grant (e.g. full account access) is never approved blindly."
+  [{:keys [client-name oauth-params nonce csrf-token params-sig scopes]}]
   (let [{:keys [font-family logo-url default-logo? brand-color]} (appearance-settings)
         css-font-family (css-escape-font-name font-family)]
     (str
@@ -100,10 +124,25 @@
                               padding: 2.5rem; max-width: 440px; width: 100%; margin: 1rem; }
                    .logo { display: flex; justify-content: center; margin-bottom: 1.5rem; }
                    .logo img { max-height: 32px; max-width: 100%; min-height: 100%; height: auto; }
-                   h1 { font-size: 1.25rem; font-weight: 700; color: #2e353b; text-align: center; margin-bottom: 0.25rem; }
-                   .client-id { text-align: center; font-size: 0.75rem; color: #949aab; margin-bottom: 1rem;
-                                font-family: monospace; word-break: break-all; }
+                   h1 { font-size: 1.25rem; font-weight: 700; color: #2e353b; text-align: center; margin-bottom: 0.5rem; }
                    .subtitle { text-align: center; font-size: 0.875rem; line-height: 1.5; color: #696e7b; margin-bottom: 1.5rem; }
+                   .scopes { list-style: none; margin: 0 0 1.5rem; padding: 0;
+                             border: 1px solid #f0f0f0; border-radius: 8px; }
+                   .scopes li { display: flex; align-items: baseline; gap: 0.5rem;
+                                padding: 0.75rem 1rem; font-size: 0.875rem; color: #4c5773; }
+                   .scopes li + li { border-top: 1px solid #f0f0f0; }
+                   .scopes .dot { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%;
+                                  background: " brand-color "; transform: translateY(-1px); }
+                   .scopes .raw { font-family: monospace; font-size: 0.75rem; color: #949aab; }
+                   .scopes li.full strong { color: #2e353b; }
+                   .scopes .dot.full { background: #e35a4c; width: 8px; height: 8px; }
+                   .warning { display: flex; gap: 0.5rem; align-items: flex-start;
+                              background: #fdf3f2; border: 1px solid #f7d3cf; border-radius: 8px;
+                              padding: 0.75rem 1rem; margin-bottom: 1.5rem;
+                              font-size: 0.8125rem; line-height: 1.45; color: #883b34; }
+                   .warning .mark { flex: 0 0 auto; font-weight: 700; }
+                   .destination { text-align: center; font-size: 0.8125rem; color: #696e7b; margin-bottom: 1.5rem; }
+                   .destination strong { font-family: monospace; color: #4c5773; }
                    .actions { display: flex; gap: 0.75rem; }
                    button { flex: 1; padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 700;
                             font-family: inherit; cursor: pointer;
@@ -119,10 +158,20 @@
             (h/raw svg)
             [:img {:src logo-url :alt "Logo" :height "32"}])]
          [:h1 "Authorize " (or client-name "Unknown Application") "?"]
-         (when client-id [:p.client-id client-id])
-         [:p.subtitle "This MCP client is requesting to be authorized. If you approve, it will be able to access resources from "
-          [:strong (appearance/application-name)] " on your behalf."]
-         [:form {:method "POST" :action "/oauth/authorize/decision"}
+         [:p.subtitle (or client-name "This application") " is requesting access to "
+          [:strong (appearance/application-name)] " on your behalf:"]
+         (when (some :full-access? scopes)
+           [:div.warning
+            [:span.mark "!"]
+            [:span "This grants " [:strong "complete access to your account"] " — anything you can do, "
+             (or client-name "this application") " can do, including reading and changing all data you "
+             "can reach. Only approve it for a tool you trust and control."]])
+         (render-scope-list scopes)
+         (when-let [redirect-host (some-> (:redirect_uri oauth-params) not-empty (java.net.URI.) (.getHost))]
+           [:p.destination "Redirects to " [:strong redirect-host]])
+         ;; Absolute action: a root-relative path would drop the subpath when Metabase is hosted
+         ;; under one (site-url like https://example.com/metabase).
+         [:form {:method "POST" :action (absolute-url "/oauth/authorize/decision")}
           [:input {:type "hidden" :name "csrf_token" :value csrf-token}]
           [:input {:type "hidden" :name "params_sig" :value params-sig}]
           (for [[k v] oauth-params

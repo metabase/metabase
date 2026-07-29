@@ -29,6 +29,7 @@ describe("parameters/utils/dashboard-options", () => {
     it("should have a string section", () => {
       expect(
         _.findWhere(getDashboardParameterSections(), {
+          // Unjustified type cast. FIXME
           id: "bad-section-id" as ParameterSectionId,
         }),
       ).not.toBeDefined();

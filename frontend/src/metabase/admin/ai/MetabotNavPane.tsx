@@ -25,8 +25,19 @@ export function MetabotNavPane() {
           disabled={!areAiFeaturesEnabled}
           icon="mcp"
           label={t`MCP`}
-          path="/admin/metabot/mcp"
-        />
+          folderPattern="/admin/metabot/mcp"
+        >
+          <AdminNavItem
+            disabled={!areAiFeaturesEnabled}
+            label={t`Settings`}
+            path="/admin/metabot/mcp"
+          />
+          <AdminNavItem
+            disabled={!areAiFeaturesEnabled}
+            label={t`Authorizations`}
+            path="/admin/metabot/mcp/authorizations"
+          />
+        </AdminNavItem>
         {AiControlsNavItems}
         {AiAnalyticsNavItems}
       </AdminNavWrapper>

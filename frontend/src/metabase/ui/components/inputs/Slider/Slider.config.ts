@@ -9,8 +9,8 @@ export const sliderOverrides = {
         mark: S.Mark,
       },
       __vars: {
-        "--track-bg": "var(--mb-color-border)",
-        "--slider-track-bg": "var(--mb-color-border)",
+        "--track-bg": "var(--mb-color-border-neutral)",
+        "--slider-track-bg": "var(--mb-color-border-neutral)",
       },
     },
   }),

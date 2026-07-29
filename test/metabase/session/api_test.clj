@@ -33,9 +33,7 @@
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
 (defn- reset-throttlers []
-  (doseq [throttler (vals @#'api.session/login-throttlers)]
-    (reset! (:attempts throttler) nil))
-  (reset! (:attempts (var-get #'api.session/reset-password-throttler)) nil))
+  (api.session/reset-throttlers-for-testing!))
 
 (use-fixtures :each (fn [f] (reset-throttlers) (f)))
 
@@ -103,12 +101,12 @@
       (mt/with-log-messages-for-level [messages :error]
         (is (=? {:specific-errors {:username ["missing required key, received: nil"]}}
                 (mt/client :post 400 "session" {:email (:email user), :password "wooo"})))
-        (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
+        (is (=? {:level :error, :e nil, :message #"^Authentication endpoint error: .+"}
                 (or (->> (messages)
                          ;; geojson can throw errors and we want the authentication error
                          ;;
                          ;; TODO -- huh? geojson???? -- Cam
-                         (m/find-first #(= (:message %) "Authentication endpoint error")))
+                         (m/find-first #(re-find #"^Authentication endpoint error" (:message %))))
                     ["no matching message:" (messages)])))))))
 
 (deftest login-validation-username-required-test
@@ -132,6 +130,14 @@
             (mt/client :post 401 "session" (-> (mt/user->credentials :rasta)
                                                (assoc :password "something else")))))))
 
+(deftest login-unknown-email-does-not-leak-account-existence-test
+  (testing "POST /api/session - an unknown email returns the same 401 error as a wrong password (anti-enumeration)"
+    (let [unknown-email-resp  (mt/client :post 401 "session" {:username "definitely-not-a-user@metabase.test"
+                                                              :password "whatever-UP12!!"})
+          wrong-password-resp (mt/client :post 401 "session" (-> (mt/user->credentials :rasta)
+                                                                 (assoc :password "whatever-UP12!!")))]
+      (is (= wrong-password-resp unknown-email-resp)))))
+
 (deftest login-throttling-test
   (testing (str "Test that people get blocked from attempting to login if they try too many times (Check that"
                 " throttling works at the API level -- more tests in the throttle library itself:"
@@ -148,7 +154,9 @@
       (testing "Error should be logged (#14317)"
         (mt/with-log-messages-for-level [messages :error]
           (login)
-          (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
+          (is (=? {:level   :error
+                   :e       nil
+                   :message #"^Authentication endpoint error: Too many attempts! You must wait \d+ seconds before trying again\.$"}
                   (first (messages))))))
       (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                (login))
@@ -472,17 +480,14 @@
               (mt/client :post 400 "session/reset_password" {})))
       (is (=? {:errors {:password "password is too common."}}
               (mt/client :post 400 "session/reset_password" {:token "anything"}))))
-
     (testing "Test that malformed token returns 400"
       (is (=? {:errors {:password "Invalid reset token"}}
               (mt/client :post 400 "session/reset_password" {:token    "not-found"
                                                              :password "whateverUP12!!"}))))
-
     (testing "Test that invalid token returns 400"
       (is (=? {:errors {:password "Invalid reset token"}}
               (mt/client :post 400 "session/reset_password" {:token    "1_not-found"
                                                              :password "whateverUP12!!"}))))
-
     (testing "Test that an expired token doesn't work"
       (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
         (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
@@ -497,11 +502,9 @@
         (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered (dec (System/currentTimeMillis))})
         (is (= {:valid true}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))
-
     (testing "Check than an made-up token returns false"
       (is (= {:valid false}
              (mt/client :get 200 "session/password_reset_token_valid", :token "ABCDEFG"))))
-
     (testing "Check that an expired but valid token returns false"
       (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
         (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
@@ -513,19 +516,15 @@
     (testing "reset-token-ttl-hours-test is reset to default when not set"
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours nil]
         (is (= 48 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
-
     (testing "reset-token-ttl-hours-test is set to positive value"
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours 36]
         (is (= 36 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
-
     (testing "reset-token-ttl-hours-test is set to large positive value"
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours (inc Integer/MAX_VALUE)]
         (is (= (inc Integer/MAX_VALUE) (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
-
     (testing "reset-token-ttl-hours-test is set to zero"
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours 0]
         (is (= 0 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
-
     (testing "reset-token-ttl-hours-test is set to negative value"
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours -1]
         (is (= -1 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))))
@@ -535,23 +534,19 @@
     (testing "Unauthenticated"
       (is (= (set (keys (setting/user-readable-values-map #{:public})))
              (set (keys (mt/client :get 200 "session/properties"))))))
-
     (testing "Authenticated normal user"
       (mt/with-test-user :lucky
         (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :admin-write-authed-read})))
                (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
-
     (testing "Authenticated settings manager"
       (mt/with-test-user :lucky
         (mt/with-dynamic-fn-redefs [metabase.settings.models.setting/has-advanced-setting-access? (constantly true)]
           (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin-write-authed-read})))
                  (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
-
     (testing "Authenticated super user"
       (mt/with-test-user :crowberto
         (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin-write-authed-read :admin})))
                (set (keys (mt/user-http-request :crowberto :get 200 "session/properties")))))))
-
     (testing "Includes user-local settings"
       (defsetting test-session-api-setting
         "test setting"
@@ -559,7 +554,6 @@
         :user-local :only
         :type       :string
         :default    "FOO")
-
       (mt/with-test-user :lucky
         (is (= "FOO"
                (-> (mt/user-http-request :crowberto :get 200 "session/properties")
@@ -600,7 +594,6 @@
         (t2/insert! :model/User (merge  (mt/with-temp-defaults :model/User) {:email "test@metabase.com" :is_active true}))
         (testing "Google auth works with remember me and rasta"
           ;; client-real-response hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
-          #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
           (with-redefs [http/post (constantly
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","

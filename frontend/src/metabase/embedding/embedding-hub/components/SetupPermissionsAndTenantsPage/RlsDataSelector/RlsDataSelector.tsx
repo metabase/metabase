@@ -62,7 +62,7 @@ export const RlsDataSelector = ({
     } catch (error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: getErrorMessage(
           error,
           t`Failed to configure row-level security`,

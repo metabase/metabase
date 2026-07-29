@@ -98,7 +98,7 @@ export function DateRangePickerBody({
           aria-label={t`Start date`}
           onChange={(val) => val && handleStartDateChange(dayjs(val).toDate())}
         />
-        <Text c="text-tertiary">{t`and`}</Text>
+        <Text c="text-disabled">{t`and`}</Text>
         <DateInput
           className={S.FlexDateInput}
           value={endDate}
@@ -118,7 +118,7 @@ export function DateRangePickerBody({
             aria-label={t`Start time`}
             onChange={handleStartTimeChange}
           />
-          <Text c="text-tertiary">{t`and`}</Text>
+          <Text c="text-disabled">{t`and`}</Text>
           <TimeInput
             className={S.FlexTimeInput}
             value={endDate}

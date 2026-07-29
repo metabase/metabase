@@ -1,13 +1,13 @@
-import type { Query } from "history";
 import { VisualState, useKBar, useMatches } from "kbar";
 import { useEffect, useMemo } from "react";
-import { Link } from "react-router";
 import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
-import { trackSearchClick } from "metabase/search/analytics";
+import { trackSearchClick } from "metabase/common/search/analytics";
+import type { Query } from "metabase/router";
+import { Link, queryToSearch } from "metabase/router";
 import {
   Flex,
   Group,
@@ -51,16 +51,16 @@ const FullSearchCTA = ({
 
   return (
     <Text
-      c="brand"
+      c="core-brand"
       component={Link}
       fw={700}
       id="search-results-metadata"
       to={{
         pathname: "search",
-        query: {
+        search: queryToSearch({
           ...locationQuery,
           q: debouncedSearchTerm,
-        },
+        }),
       }}
       className={S.viewAndFilterResults}
       onClick={onClick}
@@ -101,6 +101,7 @@ export const PaletteResults = ({
   const processedResults = useMemo(
     () =>
       processResults(
+        // Unjustified type cast. FIXME
         results as (PaletteActionImpl | string)[],
         liveSearchTerm.length !== 0,
       ),
@@ -207,7 +208,7 @@ function PaletteEmptyState() {
       <Text c="text-secondary" fw={700} mt="xl">
         {t`No recent items`}
       </Text>
-      <Text c="text-tertiary" size="sm" mt="xs" ta="center">
+      <Text c="text-disabled" size="sm" mt="xs" ta="center">
         {t`Items you've recently viewed will appear here.`}
       </Text>
     </Stack>

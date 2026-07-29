@@ -132,10 +132,10 @@
             {:base_type           new-base-type
              :effective_type      new-base-type
              :coercion_strategy   nil
-                ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
+             ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
              :fingerprint_version 0
              :fingerprint         nil
-                ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
+             ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
              :semantic_type       nil}
              ;; we must override user-set values
              (->> (schema.field-user-settings/upsert-user-settings metabase-field))))

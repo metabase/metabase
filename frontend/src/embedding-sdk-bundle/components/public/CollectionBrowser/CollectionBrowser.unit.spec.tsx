@@ -13,7 +13,7 @@ import {
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import type { Collection, CollectionItem, User } from "metabase-types/api";
 import {
@@ -26,6 +26,7 @@ jest.mock("metabase/common/hooks/use-locale", () => ({
   useLocale: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const useLocaleMock = useLocale as jest.Mock;
 
 const BOBBY_TEST_COLLECTION = createMockCollection({
@@ -154,6 +155,18 @@ describe("CollectionBrowser", () => {
     expect(columnTexts).toContain("Description");
   });
 
+  it("should hide dashboard questions by default", async () => {
+    await setup();
+
+    expect(getLastItemsRequestParam("show_dashboard_questions")).toBe("false");
+  });
+
+  it("should show dashboard questions when showDashboardQuestions is true", async () => {
+    await setup({ props: { showDashboardQuestions: true } });
+
+    expect(getLastItemsRequestParam("show_dashboard_questions")).toBe("true");
+  });
+
   it("should resolve collectionId=tenant to user's tenant collection", async () => {
     const tenantCollection = createMockCollection({
       id: 999,
@@ -184,6 +197,12 @@ describe("CollectionBrowser", () => {
     expect(await screen.findByText(dashboardItem.name)).toBeInTheDocument();
   });
 });
+
+function getLastItemsRequestParam(param: string): string | null {
+  const calls = fetchMock.callHistory.calls("path:/api/collection/root/items");
+  const lastCall = calls[calls.length - 1];
+  return new URL(lastCall.url).searchParams.get(param);
+}
 
 async function setup({
   props,

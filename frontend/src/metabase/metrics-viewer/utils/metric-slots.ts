@@ -24,6 +24,7 @@ export type MetricSlot = {
    * `undefined` for standalone metric slots.
    */
   tokenPosition?: number;
+  occurrenceCount?: number;
 };
 
 /**
@@ -53,6 +54,7 @@ export function computeMetricSlots(
             entityIndex: i,
             sourceId: token.sourceId,
             tokenPosition: j,
+            occurrenceCount: token.occurrenceCount,
           });
         }
       }

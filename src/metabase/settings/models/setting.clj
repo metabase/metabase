@@ -84,10 +84,6 @@
 
 (methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
 
-(defmethod serdes/hash-fields :model/Setting
-  [_setting]
-  [:key])
-
 (declare export?)
 
 (defmethod serdes/extract-all "Setting" [_model _opts]
@@ -195,79 +191,59 @@
    [:name        :keyword]
    [:munged-name :string]
    [:namespace   :symbol]
-
    ;; description is validated via the macro, not schema
    [:description :any]
-
    ;; Use `:doc` to include a map with additional documentation, for use when generating the environment variable docs
    ;; from source. To exclude a setting from documentation, set to `false`. See metabase.cmd.env-var-dox.
    [:doc     :any]
    [:default :any]
-
    ;; all values are stored in DB as Strings,
    [:type Type]
-
    ;; different getters/setters take care of parsing/unparsing
    [:getter ifn?]
    [:setter ifn?]
-
    ;; an init function can be used to seed initial values
    [:init [:maybe ifn?]]
-
    ;; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
    [:tag :symbol]
-
    ;; is this sensitive (never show in plaintext), like a password? (default: false)
    [:sensitive? :boolean]
-
    ;; where this setting should be visible (default: :admin)
    [:visibility Visibility]
-
    ;; should this setting be encrypted. Available options are `:no` or `:when-encryption-key-set` (the setting will be
    ;; encrypted when `MB_ENCRYPTION_SECRET_KEY` is set, otherwise we can't encrypt). This is required for `:timestamp`,
    ;; `:json`, and `:csv`-typed settings. Defaults to `:no` for all other types.
    [:encryption [:enum :no :when-encryption-key-set]]
-
    ;; should this setting be serialized?
    [:export? :boolean]
-
    ;; should the getter always fetch this value "fresh" from the DB? (default: false)
    [:cache? :boolean]
-
    ;; if non-nil, contains the Metabase version in which this setting was deprecated
    [:deprecated [:maybe :string]]
-
    ;; whether this Setting can be Database-local or User-local. See [[metabase.settings.models.setting]] docstring for more info.
    [:database-local LocalOption]
    [:user-local     LocalOption]
-
    ;; should this setting be read from env vars?
    [:can-read-from-env? :boolean]
-
    ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
    ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
    ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
    [:on-change [:maybe ifn?]]
-
    ;; If non-nil, determines the Enterprise feature flag required to use this setting. If the feature is not enabled,
    ;; the setting will behave the same as if `enabled?` returns `false` (see below).
    [:feature [:maybe :keyword]]
-
    ;; Function which returns true if the setting should be enabled. If it returns false, the setting will throw an
    ;; exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled.
    [:enabled? [:maybe ifn?]]
-
    ;; Keyword that determines what kind of audit log entry should be created when this setting is written. Options are
    ;; `:never`, `:no-value`, `:raw-value`, and `:getter`. User- and database-local settings are never audited. `:getter`
    ;; should be used for most non-sensitive settings, and will log the value returned by its getter, which may be a
    ;; the default getter or a custom one.
    ;; (default: `:no-value`)
    [:audit [:maybe [:enum :never :no-value :raw-value :getter]]]
-
    ;; If non-nil, determines the database driver feature required for this setting. This is only valid for database-local
    ;; settings. If the database driver doesn't support the required feature, setting this will throw an exception.
    [:driver-feature [:maybe :keyword]]
-
    ;; Function that takes a database and returns true if this setting should be enabled for that specific database.
    ;; If the function returns false, attempting to set this will fail.
    ;;
@@ -277,7 +253,6 @@
    ;;
    ;; This is only valid for database-local settings.
    [:enabled-for-db? [:maybe ifn?]]
-
    ;; A previous name for this setting whose env var (e.g. MB_OLD_NAME) and database
    ;; key are checked as a fallback when the primary source is not set. Logs a warning
    ;; when the env var fallback is in use.
@@ -751,7 +726,7 @@
 (defn- throw-or-log
   "Given an error that should never happen, throw it for us, log it for customers."
   [e]
-  (if config/is-prod? (log/warn e) (throw e)))
+  (if config/is-prod? (log/warn (ex-message e)) (throw e)))
 
 (defn get
   "Fetch the value of `setting-definition-or-name`. What this means depends on the Setting's `:getter`; by default, this
@@ -764,7 +739,6 @@
   (let [setting-def                       (resolve-setting setting-definition-or-name)
         {:keys [getter enabled? feature]} setting-def
         disable-cache?                    (or config/*disable-setting-cache* (not (:cache? setting-def)))]
-
     ;; Reading database-local settings is failure prone, so catch easy mistakes.
     (when (= :only (:database-local setting-def))
       (cond
@@ -778,7 +752,6 @@
         (and (:enabled-for-db? setting-def) (not *database*))
         (log/warnf "Skipping enabled-for-db? check for %s as we don't have the underlying toucan2 db instance."
                    (:name setting-def))))
-
     (if (or (and feature (not (has-feature? feature)))
             (and enabled? (not (enabled?)))
             (and *database* (disabled-for-db-reasons? setting-def *database*)))
@@ -810,9 +783,8 @@
        ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
        ;; existing value and log a warning
        (catch Throwable e
-         (log/warn "Error inserting a new Setting:\n"
-                   (ex-message e) "\n"
-                   "Assuming Setting already exists in DB and updating existing value.")
+         (log/warnf "Error inserting a new Setting: %s. Assuming Setting already exists in DB and updating existing value."
+                    (ex-message e))
          (update-setting! setting-name new-value))))
 
 (defn- obfuscated-value? [v]
@@ -1016,11 +988,19 @@
    (let [{:keys [setter enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
          s-name (setting-name setting)]
      (when (and feature (not (has-feature? feature)))
-       (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" s-name feature) setting)))
+       (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" s-name feature)
+                       {:status-code 402
+                        :status      "error-premium-feature-not-available"
+                        :setting     s-name
+                        :feature     feature})))
      (when (and enabled? (not (enabled?)))
-       (throw (ex-info (tru "Setting {0} is not enabled" s-name) setting)))
+       (throw (ex-info (tru "Setting {0} is not enabled" s-name)
+                       {:status-code 400
+                        :setting     s-name})))
      (when-not (current-user-can-access-setting? setting)
-       (throw (ex-info (tru "You do not have access to the setting {0}" s-name) setting)))
+       (throw (ex-info (tru "You do not have access to the setting {0}" s-name)
+                       {:status-code 400
+                        :setting     s-name})))
      (when-not bypass-read-only?
        (when (= setter :none)
          (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
@@ -1094,7 +1074,6 @@
    ;; if the setting isn't a type likely to contain secrets, default to plaintext
    (when (contains? #{:boolean :integer :positive-integer :double :keyword :timestamp} (:type setting))
      :no)
-
    (throw (ex-info (trs "`:encryption` is a required option for setting {0}" (:name setting))
                    {:setting setting}))))
 
@@ -1548,7 +1527,7 @@
      :value          (try
                        (m/mapply user-facing-value setting options)
                        (catch Throwable e
-                         (log/error e "Error fetching value of Setting")))
+                         (log/errorf "Error fetching value of Setting: %s" (ex-message e))))
      :is_env_setting from-env?
      :env_name       (env-var-name setting)
      :description    (str (description))
@@ -1691,7 +1670,7 @@
   (cond
     (instance? JsonEOFException ex) false
     (instance? JsonParseException ex) true
-    :else (do (log/warn ex "Unexpected exception while parsing JSON")
+    :else (do (log/warnf "Unexpected exception while parsing JSON: %s" (ex-message ex))
               ;; err on the side of caution
               true)))
 
@@ -1728,8 +1707,9 @@
                            (name (:name invalid-setting)))
                       (dissoc invalid-setting :parse-error)
                       (:parse-error invalid-setting)))
-      (log/warn (:parse-error invalid-setting)
-                (format "Unable to parse setting %s" (:name invalid-setting))))))
+      (log/warnf "Unable to parse setting %s: %s"
+                 (name (:name invalid-setting))
+                 (ex-message (:parse-error invalid-setting))))))
 
 (defn migrate-encrypted-settings!
   "We have some settings that may currently be encrypted in the database that we'd like to disable encryption for.

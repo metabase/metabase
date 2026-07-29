@@ -1,12 +1,10 @@
 ;; Cljfmt config. See https://github.com/weavejester/cljfmt#formatting-options
-{:sort-ns-references?
- true
-
- :function-arguments-indentation
- :community
-
- :parallel?
- true
+{:function-arguments-indentation  :community
+ :indent-line-comments?           true
+ :normalize-newlines-at-file-end? true
+ :parallel?                       true
+ :remove-blank-lines-in-forms?    true
+ :sort-ns-references?             true
 
  :paths
  ["src"
@@ -15,10 +13,62 @@
   "bin/build"
   "bin/lint-migrations-file"
   "bin/release-list"
+  #_"mage/src"
+  #_"mage/test"
   "modules/drivers"
   ".clj-kondo/src"
   ".clj-kondo/test"
   #_"dev"]
+
+ ;; a map of symbols that tell cljfmt which forms are allowed to have blank lines inside of them. The value may be
+ ;; either `:all`, which means blank lines are allowed between all elements in the form, e.g. `{cond :all}` to allow
+ ;; blank lines between any of the elements inside cond; or it may be a set of element indexes that are allowed to
+ ;; have blank lines, e.g. `{let #{0}}`, to allow blank lines in the binding of a `let` form.
+ :extra-blank-line-forms
+ {are                                                                    :all
+  case                                                                   :all
+  cond->                                                                 :all
+  cond->>                                                                :all
+  condp                                                                  :all
+  clojure.spec.alpha/or                                                  :all
+  clojure.test/are                                                       :all
+  metabase.driver-api.core/match-many                                    :all
+  metabase.driver-api.core/match-one                                     :all
+  metabase.driver-api.core/replace                                       :all
+  metabase.driver-api.core/replace-in                                    :all
+  metabase.lib.drill-thru.test-util/test-drill-variants-with-merged-args :all
+  metabase.lib.drill-thru.test-util/test-returns-drill                   :all
+  metabase.test/with-temp                                                #{0}
+  metabase.util.match/match-many                                         :all
+  metabase.util.match/match-one                                          :all
+  metabase.util.match/replace                                            :all
+  metabase.util.match/replace-in                                         :all
+  ;; TODO (Cam 2026-05-21) I'm not really sure about `defprotocol`, `deftype`, `defrecord`, `proxy`, `reify`, etc., I
+  ;; think idiomatically these should probably not have blank lines but we can worry about that later
+  defprotocol                                                            :all
+  defrecord                                                              :all
+  deftype                                                                :all
+  extend                                                                 :all
+  extend-protocol                                                        :all
+  potemkin.types/def-map-type                                            :all
+  potemkin.types/defprotocol+                                            :all
+  potemkin.types/defrecord+                                              :all
+  potemkin.types/deftype+                                                :all
+  potemkin/def-map-type                                                  :all
+  potemkin/defprotocol+                                                  :all
+  potemkin/defrecord+                                                    :all
+  potemkin/deftype+                                                      :all
+  proxy                                                                  :all
+  reify                                                                  :all
+  ;; TODO (Cam 2026-05-21) -- save these for a follow-on PR
+  defmacro                                                               :all
+  defmethod                                                              :all
+  defn                                                                   :all
+  defn-                                                                  :all
+  fn                                                                     :all
+  metabase.util.malli/defmethod                                          :all
+  metabase.util.malli/defn                                               :all
+  metabase.util.malli/defn-                                              :all}
 
  ;; See https://github.com/weavejester/cljfmt/blob/master/cljfmt/resources/cljfmt/indents/clojure.clj for the default
  ;; definitions
@@ -37,7 +87,7 @@
  ;; `:inner` indentation is like `:defn` indentation. `[[:inner 0]]` (default for `defn`) means all arguments at depth
  ;; zero get indented 2 spaces if not on the first line regardless of number of elements on the first line.
  :extra-indents
- {;; clojure.core stuff
+ { ;; clojure.core stuff
   fn*                                                                                         [[:inner 0]]
   let*                                                                                        [[:block 1]]
   with-meta                                                                                   [[:default]]

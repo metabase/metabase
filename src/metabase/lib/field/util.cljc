@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [metabase.lib.join.util :as lib.join.util]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -10,6 +11,22 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util.malli :as mu]))
+
+(mu/defn parent-qualified-name :- :string
+  "Returns the `parent.child.leaf` `:name` for a column, walking up `:parent-id` via `metadata-providerable`.
+  For top-level fields, returns the column's own name unchanged.
+
+  This is the canonical column-name shape that drivers must produce in query results for nested fields (Mongo
+  flattens nested keys this way; sql-jdbc nested-JSON unfolding produces the same shape). Both sides — the lib
+  metadata layer (see [[metabase.lib.field.resolution/add-parent-column-metadata]]) and the drivers — must
+  agree on this name so the QP can match columns across stages. If you ever change the join convention, update
+  both sites."
+  [metadata-providerable           :- ::lib.schema.metadata/metadata-providerable
+   {:keys [parent-id], :as column} :- ::lib.schema.metadata/column]
+  (let [own-name ((some-fn :lib/original-name :name) column)]
+    (if-some [parent (when parent-id (lib.metadata/field metadata-providerable parent-id))]
+      (str (parent-qualified-name metadata-providerable parent) \. own-name)
+      own-name)))
 
 (mu/defn inherited-column? :- :boolean
   "Is the `column` coming directly from a card, a native query, or a previous query stage?"
@@ -124,7 +141,6 @@
              ;; desired-column-alias is previous stage => source column alias in next stage
              :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)
              :lib/source :source/previous-stage)
-
       ;; Native sandboxes need special handling for any type coercions set on the sandboxed table's fields.
       ;; The columns first appear in the native stage, but we need to propagate the coercion metadata to the next stage
       ;; so it gets applied in MBQL. After that first propagation, it should always be removed to prevent
@@ -135,7 +151,6 @@
       (cond-> #_col
        (not (:qp/native-sandbox-column.propagate-coercion? col))
         (dissoc :qp/native-sandbox-column.force-coercion-strategy))
-
       ;;
       ;; Remove `:lib/desired-column-alias`, which needs to be recalculated in the context
       ;; of what is returned by the current stage, to prevent any confusion; its value is likely wrong now and we

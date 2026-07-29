@@ -70,16 +70,13 @@
   {:arglists            '([topic event])
    :defmethod-arities   #{2}
    :dispatch-value-spec ::publish-event-dispatch-value}
-
   :combo
   (methodical/do-method-combination)
-
   ;; work around https://github.com/camsaul/methodical/issues/97
   :dispatcher
   (u.methodical.unsorted-dispatcher/unsorted-dispatcher
    (fn dispatch-fn [topic _event]
      (keyword topic)))
-
   ;; work around https://github.com/camsaul/methodical/issues/98
   :cache
   (u.methodical.null-cache/null-cache))
@@ -92,12 +89,12 @@
   [topic event]
   (assert (not *compile-files*) "Calls to publish-event! are not allowed in the top level.")
   (let [{:keys [object]} event]
-    (log/debugf "Publishing %s event (name and id):\n\n%s"
+    (log/debugf "Publishing %s event (model and id): %s"
                 (u/colorize :yellow (pr-str topic))
-                (u/pprint-to-str (let [model (mi/model object)]
-                                   (cond-> (select-keys object [:name :id])
-                                     model
-                                     (assoc :model model))))))
+                (pr-str (let [model (mi/model object)]
+                          (cond-> (select-keys object [:id])
+                            model
+                            (assoc :model model))))))
   (assert (and (qualified-keyword? topic)
                (isa? topic :metabase/event))
           (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))

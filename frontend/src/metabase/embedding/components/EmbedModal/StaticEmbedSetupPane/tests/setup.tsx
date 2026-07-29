@@ -24,13 +24,13 @@ import {
 import type { StaticEmbedSetupPaneProps } from "../StaticEmbedSetupPane";
 import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";
 
-const TextEditorMock = ({
+function TextEditorMock({
   highlightRanges,
   value,
 }: {
   highlightRanges?: { start: number; end: number }[];
   value: string;
-}) => {
+}) {
   const highlightedTexts = highlightRanges?.map((range) =>
     value.slice(range.start, range.end),
   );
@@ -42,7 +42,7 @@ const TextEditorMock = ({
       </div>
     </>
   );
-};
+}
 
 jest.mock("metabase/common/components/CodeEditor", () => ({
   CodeEditor: TextEditorMock,

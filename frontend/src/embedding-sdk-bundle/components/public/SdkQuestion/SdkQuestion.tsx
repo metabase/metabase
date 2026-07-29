@@ -60,6 +60,7 @@ export type BaseSdkQuestionProps = SdkQuestionIdProps & {
     | "withDownloads"
     | "withAlerts"
     | "targetCollection"
+    | "initialCollection"
     | "onRun"
   >;
 
@@ -82,7 +83,13 @@ export type DrillThroughQuestionProps = Omit<
  * @category InteractiveQuestion
  */
 export type SdkQuestionProps = SdkQuestionDefaultViewProps &
-  Omit<SdkQuestionProviderProps, "componentPlugins"> & {
+  // TEMP: initialVisualization is disabled at the public boundary. The internal
+  // plumbing (provider, use-load-question, run-question-query) is kept; re-enable
+  // by removing it from this Omit and restoring the prop forwarding below.
+  Omit<
+    SdkQuestionProviderProps,
+    "componentPlugins" | "initialVisualization"
+  > & {
     plugins?: SdkQuestionProviderProps["componentPlugins"];
   };
 
@@ -135,6 +142,7 @@ export const _SdkQuestion = ({
   entityTypes,
   dataPicker,
   targetCollection,
+  initialCollection,
   initialSqlParameters,
   sqlParameters,
   onSqlParametersChange,
@@ -166,6 +174,7 @@ export const _SdkQuestion = ({
     withEditorButton,
     isSaveEnabled,
     targetCollection,
+    initialCollection,
     entityTypes,
     onBeforeSave,
     onSave,
@@ -196,6 +205,7 @@ export const _SdkQuestion = ({
         entityTypes={entityTypes}
         dataPicker={dataPicker}
         targetCollection={targetCollection}
+        initialCollection={initialCollection}
         initialSqlParameters={initialSqlParameters}
         sqlParameters={sqlParameters}
         onSqlParametersChange={onSqlParametersChange}

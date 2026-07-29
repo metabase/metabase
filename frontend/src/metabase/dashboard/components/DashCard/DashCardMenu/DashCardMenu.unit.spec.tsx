@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCardQueryDownloadEndpoint,
@@ -13,6 +12,7 @@ import {
   createMockState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset } from "metabase-types/api";
@@ -148,7 +148,7 @@ const setup = ({
     <>
       <Route
         path="dashboard/:slug"
-        component={() => (
+        element={
           <MockDashboardContext
             dashboardId={mockDashboard.id}
             dashboard={mockDashboard}
@@ -162,10 +162,10 @@ const setup = ({
               onEditVisualization={onEditVisualization}
             />
           </MockDashboardContext>
-        )}
+        }
       />
-      <Route path="question/:slug" component={() => <div />} />
-      <Route path="question/:slug/notebook" component={() => <div />} />
+      <Route path="question/:slug" element={<div />} />
+      <Route path="question/:slug/notebook" element={<div />} />
     </>,
     {
       storeInitialState,
@@ -248,6 +248,7 @@ describe("DashCardMenu", () => {
   });
 
   it("should not display query export options when query is running", async () => {
+    // Unjustified type cast. FIXME
     setup({ result: {} as any });
 
     await userEvent.click(getIcon("ellipsis"));

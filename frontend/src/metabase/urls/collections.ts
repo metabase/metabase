@@ -3,7 +3,7 @@ import slugg from "slugg";
 import {
   isRootPersonalCollection,
   isRootTrashCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import type {
   Collection as BaseCollection,
   CollectionId,

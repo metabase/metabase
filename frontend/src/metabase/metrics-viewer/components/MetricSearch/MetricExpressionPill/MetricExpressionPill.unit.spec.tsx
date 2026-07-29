@@ -2,8 +2,8 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders } from "__support__/ui";
+import type { ExpressionDefinitionEntry } from "metabase/metrics-viewer/types";
 
-import type { ExpressionDefinitionEntry } from "../../../types/viewer-state";
 import type { MetricNameMap } from "../utils";
 
 import { MetricExpressionPill } from "./MetricExpressionPill";
@@ -16,9 +16,9 @@ function buildEntry(
     type: "expression",
     name: "A + B",
     tokens: [
-      { type: "metric", sourceId: "metric:1", count: 1 },
+      { type: "metric", sourceId: "metric:1", occurrenceCount: 1 },
       { type: "operator", op: "+" },
-      { type: "metric", sourceId: "metric:2", count: 1 },
+      { type: "metric", sourceId: "metric:2", occurrenceCount: 1 },
     ],
     ...overrides,
   };
@@ -61,17 +61,17 @@ describe("MetricExpressionPill expression rendering", () => {
       type: "expression",
       name: "",
       tokens: [
-        { type: "metric", sourceId: "metric:1", count: 1 },
+        { type: "metric", sourceId: "metric:1", occurrenceCount: 1 },
         { type: "operator", op: "+" },
-        { type: "metric", sourceId: "metric:1", count: 2 },
+        { type: "metric", sourceId: "metric:1", occurrenceCount: 2 },
         { type: "operator", op: "+" },
-        { type: "metric", sourceId: "metric:1", count: 3 },
+        { type: "metric", sourceId: "metric:1", occurrenceCount: 3 },
       ],
     };
 
     setup({ expressionEntry });
 
-    const pill = screen.getByTestId("metrics-viewer-search-pill");
+    const pill = screen.getByTestId("metrics-viewer-expression-pill");
     // The raw expression text is shown — custom-name fallback is not used.
     expect(pill).toHaveTextContent(/A\s*\+\s*A/);
     // The first "A" is unique so far (no badge), but the second and third
@@ -90,11 +90,11 @@ describe("MetricExpressionPill expression rendering", () => {
       type: "expression",
       name: "A + A + A",
       tokens: [
-        { type: "metric", sourceId: "metric:1", count: 1 },
+        { type: "metric", sourceId: "metric:1", occurrenceCount: 1 },
         { type: "operator", op: "+" },
-        { type: "metric", sourceId: "metric:1", count: 2 },
+        { type: "metric", sourceId: "metric:1", occurrenceCount: 2 },
         { type: "operator", op: "+" },
-        { type: "metric", sourceId: "metric:1", count: 3 },
+        { type: "metric", sourceId: "metric:1", occurrenceCount: 3 },
       ],
     };
 
@@ -117,7 +117,7 @@ describe("MetricExpressionPill action menu", () => {
   it("should open a menu with a Rename item when the pill is clicked", async () => {
     setup();
 
-    await userEvent.click(screen.getByTestId("metrics-viewer-search-pill"));
+    await userEvent.click(screen.getByTestId("metrics-viewer-expression-pill"));
 
     expect(await screen.findByText("Edit")).toBeInTheDocument();
     expect(await screen.findByText("Rename")).toBeInTheDocument();
@@ -126,7 +126,7 @@ describe("MetricExpressionPill action menu", () => {
   it("should start the inline rename flow when Rename is clicked", async () => {
     setup();
 
-    await userEvent.click(screen.getByTestId("metrics-viewer-search-pill"));
+    await userEvent.click(screen.getByTestId("metrics-viewer-expression-pill"));
     await userEvent.click(await screen.findByText("Rename"));
 
     expect(
@@ -139,7 +139,7 @@ describe("MetricExpressionPill action menu", () => {
   it('should call onEdit if "Edit" menu item is clicked', async () => {
     const { onEdit } = setup();
 
-    await userEvent.click(screen.getByTestId("metrics-viewer-search-pill"));
+    await userEvent.click(screen.getByTestId("metrics-viewer-expression-pill"));
     await userEvent.click(await screen.findByText("Edit"));
 
     expect(onEdit).toHaveBeenCalledTimes(1);

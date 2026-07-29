@@ -1,6 +1,14 @@
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
+import {
+  ItemIcon,
+  LoadingSection,
+  ResultNameSection,
+  ResultTitle,
+  SearchResultContainer,
+} from "metabase/common/components/SearchResult";
+import { SearchResultLink } from "metabase/common/components/SearchResultLink";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import {
@@ -8,14 +16,6 @@ import {
   SearchLoadingSpinner,
 } from "metabase/nav/components/search/SearchResults";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import {
-  ItemIcon,
-  LoadingSection,
-  ResultNameSection,
-  ResultTitle,
-  SearchResultContainer,
-} from "metabase/search/components/SearchResult";
-import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import { Group, Loader, Stack, Title } from "metabase/ui";
 import { getName } from "metabase/utils/name";
 import { isSyncCompleted } from "metabase/utils/syncing";
@@ -36,7 +36,7 @@ export const RecentsListContent = ({
 }: RecentsListContentProps) => {
   const { getRef, cursorIndex } = useListKeyboardNavigation<
     RecentItem,
-    HTMLButtonElement
+    HTMLDivElement
   >({
     list: results,
     onEnter: (item: RecentItem) => onClick?.(item),
@@ -75,11 +75,9 @@ export const RecentsListContent = ({
               data-testid="recently-viewed-item"
               ref={getRef(item)}
               key={getItemKey(item)}
-              component="button"
               onClick={() => onClick?.(item)}
               isActive={isActive}
               isSelected={cursorIndex === index}
-              p="sm"
             >
               <ItemIcon active={isActive} item={item} type={item.model} />
               <ResultNameSection justify="center" gap="xs">

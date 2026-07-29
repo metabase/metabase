@@ -96,6 +96,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [environ.core :as env]
+   [medley.core :as m]
    [metabase-enterprise.advanced-config.file.api-keys]
    [metabase-enterprise.advanced-config.file.databases]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
@@ -157,19 +158,22 @@
 (defn- path
   "Path for the YAML config file Metabase should use for initialization and Settings values."
   ^java.nio.file.Path []
-  (let [path* (or (some-> (get *env* :mb-config-file-path) u.files/get-path)
-                  (u.files/get-path (System/getProperty "user.dir") "config.yml"))]
-    (if (u.files/exists? path*)
-      (log/info (u/format-color :magenta
-                                "Found config file at path %s; Metabase will be initialized with values from this file"
-                                (pr-str (str path*)))
-                (u/emoji "🗄️"))
-      (log/info (u/format-color :yellow "No config file found at path %s" (pr-str (str path*)))))
-    path*))
-
-(def ^:private ^:dynamic *config*
-  "Override the config contents as returned by [[config]], for test mocking purposes."
-  nil)
+  (let [configured-path     (get *env* :mb-config-file-path)
+        default-config-yml  (u.files/get-path (System/getProperty "user.dir") "config.yml")
+        default-config-yaml (u.files/get-path (System/getProperty "user.dir") "config.yaml")
+        paths-to-try       (if-not (str/blank? configured-path)
+                             [(u.files/get-path configured-path)]
+                             [default-config-yml
+                              default-config-yaml])]
+    (if-let [path* (m/find-first u.files/exists? paths-to-try)]
+      (u/prog1 path*
+        (log/info (u/format-color :magenta
+                                  "Found config file at path %s; Metabase will be initialized with values from this file"
+                                  (pr-str (str path*)))
+                  (u/emoji "🗄️")))
+      (log/info (u/format-color :yellow "No config file found at path %s" (str/join " or "
+                                                                                    (map #(pr-str (str %))
+                                                                                         paths-to-try)))))))
 
 (defmulti ^:private expand-parsed-template-form
   {:arglists '([form])}
@@ -231,13 +235,23 @@
        (string? form) expand-templates-in-str))
    m))
 
-(defn- config
-  "Contents of the config file if it exists, otherwise `nil`. If config exists, it will be returned as a map."
+(defn- config-from-disk
+  "Read the config file from disk."
   []
-  (when-let [m (or *config*
-                   (yaml/from-file (str (path))))]
-    (s/assert* ::config m)
-    (expand-templates m)))
+  (when-let [yaml-path (path)]
+    (yaml/from-file (str yaml-path))))
+
+(defn- config
+  "Spec-validate `parsed-config` and (optionally) expand `{{env VAR}}` templates.
+   `:expand-templates?` defaults to `false` — env-var expansion against the
+   running process's environment is dangerous, so callers must opt in. The
+   boot-time loader passes `true`; the runtime upload endpoint leaves it off."
+  ([parsed-config] (config parsed-config {}))
+  ([parsed-config {:keys [expand-templates?]
+                   :or   {expand-templates? false}}]
+   (when parsed-config
+     (s/assert* ::config parsed-config)
+     (cond-> parsed-config expand-templates? expand-templates))))
 
 (defn- sort-by-initialization-order
   "Sort the various config sections. The `:settings` section should always be applied first (important, since it can
@@ -249,20 +263,34 @@
     (concat settings-sections other-sections)))
 
 (defn ^{:added "0.45.0"} initialize!
-  "Initialize Metabase according to the directives in the config file, if it exists."
+  "Initialize Metabase according to the directives in `parsed-config` — a parsed
+   YAML map matching the [[::config]] spec. Opts:
+
+   - `:expand-templates?` (default `false`) — when true, walk the map and expand
+     `{{env VAR}}` templates against the running process's environment. Off by
+     default because reading server-side env vars from an uploaded YAML is
+     dangerous. The boot-time loader (see [[boot-initialize!]]) passes `true`
+     explicitly."
+  ([parsed-config]
+   (initialize! parsed-config {}))
+  ([parsed-config opts]
+   ;; TODO -- this should only do anything if we have an appropriate token (we should get a token for testing this before
+   ;; enabling that check tho)
+   (when-let [m (config parsed-config opts)]
+     (doseq [[section-name section-config] (sort-by-initialization-order (:config m))]
+       ;; You can only use the config-from-file stuff with an EE/Pro token with the `:config-text-file` feature.
+       ;; The `:settings` section is the lone carve-out — you may need it to *install* the token.
+       (when-not (= section-name :settings)
+         (when-not (premium-features/enable-config-text-file?)
+           (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
+                           {}))))
+       (log/info (u/format-color :magenta "Initializing %s from config file..." section-name) (u/emoji "🗄️"))
+       (advanced-config.file.i/initialize-section! section-name section-config))
+     (log/info (u/colorize :magenta "Done initializing from file.") (u/emoji "🗄️")))
+   :ok))
+
+(defn boot-initialize!
+  "Boot-time entry point: read the config file from disk and run [[initialize!]]
+   with `{{env VAR}}` template expansion enabled. No-op when no file is present."
   []
-  ;; TODO -- this should only do anything if we have an appropriate token (we should get a token for testing this before
-  ;; enabling that check tho)
-  (when-let [m (config)]
-    (doseq [[section-name section-config] (sort-by-initialization-order (:config m))]
-      ;; you can only use the config-from-file stuff with an EE/Pro token with the `:config-text-file` feature. Since you
-      ;; might have to use the `:settings` section to set the token, skip the check for Settings. But check it for the
-      ;; other sections.
-      (when-not (= section-name :settings)
-        (when-not (premium-features/enable-config-text-file?)
-          (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
-                          {}))))
-      (log/info (u/format-color :magenta "Initializing %s from config file..." section-name) (u/emoji "🗄️"))
-      (advanced-config.file.i/initialize-section! section-name section-config))
-    (log/info (u/colorize :magenta "Done initializing from file.") (u/emoji "🗄️")))
-  :ok)
+  (initialize! (config-from-disk) {:expand-templates? true}))

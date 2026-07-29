@@ -12,11 +12,18 @@ import type {
   Database,
   Dataset,
   DatasetColumn,
+  IconName,
   RowValues,
   Table,
   TableColumnOrderSetting,
   WritebackAction,
 } from "metabase-types/api";
+
+type ActionItem = {
+  title: string;
+  icon: IconName;
+  action: () => void;
+};
 
 export const getActionItems = ({
   actions,
@@ -28,8 +35,8 @@ export const getActionItems = ({
   databases: Database[];
   onDelete: (action: WritebackAction) => void;
   onUpdate: (action: WritebackAction) => void;
-}) => {
-  const actionItems = [];
+}): ActionItem[] => {
+  const actionItems: ActionItem[] = [];
   const privateActions = actions.filter((action) => !action.public_uuid);
   const deleteAction = privateActions.find(isValidImplicitDeleteAction);
   const updateAction = privateActions.find(isValidImplicitUpdateAction);

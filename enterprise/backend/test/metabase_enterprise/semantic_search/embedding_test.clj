@@ -14,7 +14,10 @@
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.llm.settings :as llm.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
@@ -22,6 +25,10 @@
    [java.util Base64]))
 
 (set! *warn-on-reflection* true)
+
+;; the token-tracking test hits the app db before any auto-initializing mt helper when it is the first
+;; db touch in a fresh JVM
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest test-get-provider
   (testing "get-active-model returns based on setting"
@@ -32,7 +39,6 @@
               :model-name "Snowflake/snowflake-arctic-embed-l-v2.0"
               :vector-dimensions 1024}
              (embedding/get-configured-model))))
-
     (mt/with-temporary-setting-values [ee-embedding-provider "ollama"
                                        ee-embedding-model "mxbai-embed-large"
                                        ee-embedding-model-dimensions 1024]
@@ -40,7 +46,6 @@
               :model-name "mxbai-embed-large"
               :vector-dimensions 1024}
              (embedding/get-configured-model))))
-
     (mt/with-temporary-setting-values [ee-embedding-provider "openai"
                                        ee-embedding-model "text-embedding-3-small"
                                        ee-embedding-model-dimensions 1536]
@@ -53,10 +58,22 @@
   (testing "model-dimensions uses setting defaults when override is nil"
     (mt/with-temporary-setting-values [ee-embedding-model-dimensions nil]
       (is (= 1024 (:vector-dimensions (embedding/get-configured-model))))))
-
   (testing "model-dimensions uses override when specified"
     (mt/with-temporary-setting-values [ee-embedding-model-dimensions 768]
       (is (= 768 (:vector-dimensions (embedding/get-configured-model)))))))
+
+(deftest prefix-search-query-test
+  (let [arctic {:provider "ai-service" :model-name "Snowflake/snowflake-arctic-embed-l-v2.0" :vector-dimensions 1024}
+        openai {:provider "openai" :model-name "text-embedding-3-small" :vector-dimensions 1536}]
+    (mt/with-temporary-setting-values [ee-embedding-query-prefix nil]
+      (testing "arctic-family models get the `query: ` prefix by default"
+        (is (= "query: hello" (embedding/prefix-search-query arctic "hello"))))
+      (testing "models without a known family default are left unprefixed"
+        (is (= "hello" (embedding/prefix-search-query openai "hello")))))
+    (testing "the setting overrides the model-family default, verbatim"
+      (mt/with-temporary-setting-values [ee-embedding-query-prefix "search_query: "]
+        (is (= "search_query: hello" (embedding/prefix-search-query arctic "hello")))
+        (is (= "search_query: hello" (embedding/prefix-search-query openai "hello")))))))
 
 (deftest test-openai-provider-validation
   (testing "OpenAIProvider throws when API key not configured"
@@ -84,20 +101,17 @@
   (testing "create-batches handles empty input"
     (is (empty? (#'embedding/create-batches 10 count [])))
     (is (empty? (#'embedding/create-batches 10 count nil))))
-
   (testing "create-batches with single short text"
     (let [texts ["Short text"]
           batches (#'embedding/create-batches 10 count texts)]
       (is (= 1 (count batches)))
       (is (= texts (first batches)))))
-
   (testing "create-batches splits texts appropriately with smaller token limit"
     ;; Use a smaller token limit to make testing more predictable
     (let [texts ["This is document 1" "This is document 2" "This is document 3"]
           batches (#'embedding/create-batches 10 #'embedding/count-tokens texts)]
       (is (= [["This is document 1" "This is document 2"] ["This is document 3"]]
              batches))))
-
   (testing "create-batches skips texts that exceed token limit"
     (let [texts ["Short" "This is a much longer text that exceeds the limit" "Also short"]
           batches (#'embedding/create-batches 5 #'embedding/count-tokens texts)]
@@ -131,7 +145,6 @@
             base64-str     (encode-floats-to-base64 test-embedding)]
         (is (=? [#(float-vectors-approx= test-embedding %)]
                 (decode [{:embedding base64-str}])))))
-
     (testing "extracts multiple embeddings correctly"
       (let [embedding1  [1.0 2.0 3.0]
             embedding2  [-1.0 -2.0 -3.0]
@@ -145,28 +158,22 @@
                 (decode [{:embedding base64-str1}
                          {:embedding base64-str2}
                          {:embedding base64-str3}])))))
-
     (testing "edge cases that return empty results"
       (testing "handles empty data array"
         (is (= [] (decode [])))
         (is (= [] (decode nil))))
-
       (testing "handles zero-length embedding"
         (is (= [[]] (decode [{:embedding (encode-floats-to-base64 [])}])))))
-
     (testing "handles large embedding vectors"
       (let [large-embedding (vec (map float (range 1536)))
             base64-str      (encode-floats-to-base64 large-embedding)]
         (is (=? [#(float-vectors-approx= large-embedding %)]
                 (decode [{:embedding base64-str}])))))
-
     (testing "error cases"
       (testing "invalid base64 string throws exception"
         (is (thrown? Exception (decode [{:embedding "not-valid-base64!@#$"}]))))
-
       (testing "non-string embedding value throws exception"
         (is (thrown? Exception (decode [{:embedding 123}]))))
-
       (testing "base64 string with invalid byte count (not multiple of 4) returns nil"
         ;; Create a base64 string that decodes to 3 bytes
         (let [encoder        (Base64/getEncoder)
@@ -195,9 +202,7 @@
                {:provider       "ollama"
                 :mock-response  {:embedding mock-embedding}
                 :counts-tokens? false}]]
-
         (t2/delete! :model/SemanticSearchTokenTracking)
-
         (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
                                                      (swap! analytics-calls conj [metric args]))
                                     http/post (fn post-mock [_url & _options]
@@ -227,26 +232,74 @@
                 (is (= 2 (t2/count :model/SemanticSearchTokenTracking)))))))))))
 
 (deftest test-embedding-service-validation
-  (testing "ai-service throws when base URL not configured"
-    (mt/with-temporary-setting-values [ee-embedding-service-base-url nil
-                                       ee-embedding-service-api-key  "some-key"]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Embedding service base URL not configured"
-           (embedding/get-embedding {:provider "ai-service"
-                                     :model-name "test-model"
-                                     :vector-dimensions 4}
-                                    "test text")))))
-  (testing "ai-service throws when API key not configured"
-    (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://localhost:1234"
-                                       ee-embedding-service-api-key  nil]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Embedding service API key not configured"
-           (embedding/get-embedding {:provider "ai-service"
-                                     :model-name "test-model"
-                                     :vector-dimensions 4}
-                                    "test text"))))))
+  (let [mock-embedding [1.0 2.0 3.0 4.0]
+        mock-response  {:data  [{:object    "embedding"
+                                 :embedding (encode-floats-to-base64 mock-embedding)
+                                 :index     0}]
+                        :model "test-model"
+                        :usage {:prompt_tokens 1
+                                :total_tokens  1}}]
+    (testing "ai-service throws when both base URLs are not configured"
+      (mt/with-dynamic-fn-redefs [llm.settings/ai-service-base-url                    (constantly nil)
+                                  semantic.settings/ee-embedding-service-base-url (constantly nil)
+                                  semantic.settings/ee-embedding-service-api-key  (constantly "key")]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Embedding service and ai service base URLs are not configured"
+             (embedding/get-embedding {:provider "ai-service"
+                                       :model-name "test-model"
+                                       :vector-dimensions 4}
+                                      "test text")))))
+    (testing "ai-service falls back to ai-service-base-url when ee-embedding-service-base-url is not set"
+      (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
+                                  llm.settings/ai-service-base-url                    (constantly "http://mock-ai-service")
+                                  premium-features/premium-embedding-token         (constantly "mock-token")]
+        (let [captured (atom nil)]
+          (mt/with-dynamic-fn-redefs [http/post (fn [url opts]
+                                                  (reset! captured {:url url :headers (:headers opts)})
+                                                  {:status  200
+                                                   :headers {"Content-Type" "application/json"}
+                                                   :body    (json/encode mock-response)})]
+            (testing "get-embedding uses ai-service URL with instance-token auth"
+              (is (= mock-embedding
+                     (vec (embedding/get-embedding {:provider          "ai-service"
+                                                    :model-name        "test-model"
+                                                    :vector-dimensions 4}
+                                                   "test text"
+                                                   {:record-tokens? false}))))
+              (is (= "http://mock-ai-service/v1/embeddings" (:url @captured)))
+              (is (= "mock-token" (get-in @captured [:headers "x-metabase-instance-token"])))
+              (is (nil? (get-in @captured [:headers "Authorization"]))))
+            (reset! captured nil)
+            (testing "get-embeddings-batch uses ai-service URL with instance-token auth"
+              (is (= [mock-embedding]
+                     (mapv vec (embedding/get-embeddings-batch {:provider          "ai-service"
+                                                                :model-name        "test-model"
+                                                                :vector-dimensions 4}
+                                                               ["test text"]
+                                                               {:record-tokens? false}))))
+              (is (= "http://mock-ai-service/v1/embeddings" (:url @captured)))
+              (is (= "mock-token" (get-in @captured [:headers "x-metabase-instance-token"])))
+              (is (nil? (get-in @captured [:headers "Authorization"]))))))))
+    (testing "ee-embedding-service-base-url wins when both are configured"
+      (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
+                                         ee-embedding-service-api-key  "embedding-api-key"]
+        (mt/with-dynamic-fn-redefs [llm.settings/ai-service-base-url (constantly "http://mock-ai-service")]
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [http/post (fn [url opts]
+                                                    (reset! captured {:url url :headers (:headers opts)})
+                                                    {:status  200
+                                                     :headers {"Content-Type" "application/json"}
+                                                     :body    (json/encode mock-response)})]
+              (is (= mock-embedding
+                     (vec (embedding/get-embedding {:provider          "ai-service"
+                                                    :model-name        "test-model"
+                                                    :vector-dimensions 4}
+                                                   "test text"
+                                                   {:record-tokens? false}))))
+              (is (= "http://mock-embedding-service/v1/embeddings" (:url @captured)))
+              (is (= "Bearer embedding-api-key" (get-in @captured [:headers "Authorization"])))
+              (is (nil? (get-in @captured [:headers "x-metabase-instance-token"]))))))))))
 
 (deftest test-embedding-service-snowplow-tracking
   (testing "ai-service fires a Snowplow token_usage event on each batch call"
@@ -278,28 +331,32 @@
                              "tag"           "embedding_generation"}}]
                     events))))))))
 
-(deftest token-tracking-write-test
+(deftest ^:sequential token-tracking-write-test
   (mt/with-premium-features #{:semantic-search}
     (when (string? (not-empty (:mb-pgvector-db-url env/env)))
       (doseq [provider ["openai" "ai-service"]]
         (semantic.tu/with-test-db! {:mode :blank}
-          (let [mock-embedding (repeat 1024 1.0)
-                mock-response {:data [{:object "embedding"
-                                       :embedding (encode-floats-to-base64 mock-embedding)
-                                       :index 0}]
-                               :model "some-model"
-                               :usage {:prompt_tokens 1
-                                       :total_tokens 13}}]
+          (let [encoded-embedding (encode-floats-to-base64 (repeat 1024 1.0))]
             (with-redefs [semantic.settings/ee-embedding-provider           (constantly provider)
                           semantic.settings/ee-embedding-model              (constantly "mock-model")
                           semantic.settings/openai-api-key                  (constantly "xyz")
                           semantic.settings/openai-api-base-url             (constantly "xyz")
                           semantic.settings/ee-embedding-service-base-url   (constantly "http://mock-embedding-service")
                           semantic.settings/ee-embedding-service-api-key    (constantly "mock-key")
-                          http/post (fn post-mock [_url & _options]
-                                      {:status 200
-                                       :headers {"Content-Type" "application/json"}
-                                       :body (json/encode mock-response)})]
+                          http/post (fn post-mock [_url {:keys [body]}]
+                                      (let [inputs (:input (json/decode body true))]
+                                        {:status 200
+                                         :headers {"Content-Type" "application/json"}
+                                         :body (json/encode
+                                                {:data (map-indexed
+                                                        (fn [index _]
+                                                          {:object    "embedding"
+                                                           :embedding encoded-embedding
+                                                           :index     index})
+                                                        inputs)
+                                                 :model "some-model"
+                                                 :usage {:prompt_tokens 1
+                                                         :total_tokens 13}})}))]
               (let [pgvector (semantic.env/get-pgvector-datasource!)
                     index-metadata (semantic.env/get-index-metadata)
                     embedding-model (semantic.env/get-configured-embedding-model)
@@ -308,10 +365,8 @@
                     indexing-state (semantic.indexer/init-indexing-state metadata-row)
                     gate-docs (mapv #(semantic.gate/search-doc->gate-doc % (java.sql.Timestamp. 1000))
                                     (semantic.tu/mock-documents))]
-
                 (semantic.gate/gate-documents! pgvector index-metadata gate-docs)
                 (t2/delete! :model/SemanticSearchTokenTracking)
-
                 (testing "Indexing tokens are tracked"
                   (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
                   (is (= 1 (t2/count :model/SemanticSearchTokenTracking)))
@@ -319,7 +374,6 @@
                         (t2/select-one :model/SemanticSearchTokenTracking)]
                     (is (= :index request_type))
                     (is (= 13 total_tokens))))
-
                 (testing "Querying tokens are tracked"
                   (t2/delete! :model/SemanticSearchTokenTracking)
                   (semantic.index/query-index pgvector index {:search-string "elephant"})
@@ -328,3 +382,23 @@
                         (t2/select-one :model/SemanticSearchTokenTracking)]
                     (is (= :query request_type))
                     (is (= 13 total_tokens))))))))))))
+
+(deftest embedding-supported?-test
+  (testing "ai-service: supported iff an embedding-service base URL or the ai-service base URL is set"
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://embed"]
+      (is (true? (embedding/embedding-supported? {:provider "ai-service"}))))
+    ;; ai-service-base-url is :enabled? only under the AI-managed / metabot-v3 features, so license one to
+    ;; exercise that branch (and to make the setting settable/restorable here).
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [ee-embedding-service-base-url nil ai-service-base-url "http://ai"]
+        (is (true? (embedding/embedding-supported? {:provider "ai-service"})))))
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url nil]
+      (is (false? (embedding/embedding-supported? {:provider "ai-service"})))))
+  (testing "openai: supported iff the API key is set"
+    (mt/with-temporary-setting-values [llm-openai-api-key "sk-test"]
+      (is (true? (embedding/embedding-supported? {:provider "openai"}))))
+    (mt/with-temporary-setting-values [llm-openai-api-key nil]
+      (is (false? (embedding/embedding-supported? {:provider "openai"})))))
+  (testing "ollama is always supported; an unrecognized provider is not (:default)"
+    (is (true?  (embedding/embedding-supported? {:provider "ollama"})))
+    (is (false? (embedding/embedding-supported? {:provider "no-embedder"})))))

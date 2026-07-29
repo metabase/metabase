@@ -1,19 +1,16 @@
 import type { NodeViewProps } from "@tiptap/core";
-import { OrderedList } from "@tiptap/extension-ordered-list";
 import {
-  NodeViewContent,
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-} from "@tiptap/react";
-import cx from "classnames";
-
-import { CommentsMenu } from "metabase/documents/components/Editor/CommentsMenu";
-import { useBlockMenus } from "metabase/documents/hooks/use-block-menus";
+  OrderedList,
+  type OrderedListOptions,
+} from "@tiptap/extension-ordered-list";
+import { NodeViewContent, ReactNodeViewRenderer } from "@tiptap/react";
 
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
-import S from "../extensions.module.css";
+import { type BlockNodeOptions, DefaultBlockShell } from "../shared/BlockShell";
 
-export const CustomOrderedList = OrderedList.extend({
+export const CustomOrderedList = OrderedList.extend<
+  OrderedListOptions & BlockNodeOptions
+>({
   addAttributes() {
     return {
       start: {
@@ -45,47 +42,18 @@ export const OrderedListNodeView = ({
   node,
   editor,
   getPos,
+  extension,
 }: NodeViewProps) => {
-  const {
-    _id,
-    isOpen,
-    isHovered,
-    hovered,
-    setHovered,
-    unresolvedCommentsCount,
-    document,
-    shouldShowMenus,
-    setReferenceElement,
-    commentsRefs,
-    commentsFloatingStyles,
-  } = useBlockMenus({ node, editor, getPos });
+  const BlockShell = extension.options.blockShell ?? DefaultBlockShell;
 
   return (
-    <>
-      <NodeViewWrapper
-        aria-expanded={isOpen}
-        className={cx(S.root, {
-          [S.open]: isOpen || isHovered,
-        })}
-        data-node-id={_id}
-        ref={setReferenceElement}
-        // onMouseEnter/onMouseLeave do not work on list elements living in contentEditable
-        onMouseOver={() => setHovered(true)}
-        onMouseOut={() => setHovered(false)}
-      >
-        <NodeViewContent<"ol"> as="ol" />
-      </NodeViewWrapper>
-
-      {shouldShowMenus && document && (
-        <CommentsMenu
-          active={isOpen}
-          href={`/document/${document.id}/comments/${_id}`}
-          ref={commentsRefs.setFloating}
-          show={isOpen || hovered}
-          style={commentsFloatingStyles}
-          unresolvedCommentsCount={unresolvedCommentsCount}
-        />
-      )}
-    </>
+    <BlockShell
+      node={node}
+      editor={editor}
+      getPos={getPos}
+      hideMenus={extension.options.editorContext === "comments"}
+    >
+      <NodeViewContent<"ol"> as="ol" />
+    </BlockShell>
   );
 };

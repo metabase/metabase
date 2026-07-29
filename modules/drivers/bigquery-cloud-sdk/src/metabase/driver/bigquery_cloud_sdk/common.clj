@@ -46,6 +46,12 @@
   (-> (database-details->service-account-credential details)
       .getProjectId))
 
+(defn get-project-id
+  "Project-id for `details`. Prefers the user-supplied `:project-id`, falls back to the
+  one embedded in the service-account credentials."
+  [{:keys [project-id] :as details}]
+  (or project-id (database-details->credential-project-id details)))
+
 (mu/defn populate-project-id-from-credentials!
   "Update the given `database` details blob to include the credentials' project-id as a separate entry (under a
   `project-id-from-credentials` key). This is basically an inferred/calculated key (not something the user will ever

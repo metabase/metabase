@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Radio } from "metabase/common/components/Radio";
+import { Tabs } from "metabase/ui";
 
 import S from "./EntityViewSwitch.module.css";
 
@@ -16,21 +16,15 @@ export const EntityViewSwitch = ({
   onChange,
 }: EntityViewSwitchProps) => (
   <div className={S.EntityViewSwitchRoot}>
-    <Radio<string>
-      variant="bubble"
-      colorScheme="accent7"
-      options={[
-        {
-          name: t`Groups`,
-          value: "group",
-        },
-        {
-          name: t`Databases`,
-          value: "database",
-        },
-      ]}
+    <Tabs
+      variant="pills"
       value={value}
-      onChange={onChange}
-    />
+      onChange={(value) => value && onChange(value)}
+    >
+      <Tabs.List>
+        <Tabs.Tab value="group">{t`Groups`}</Tabs.Tab>
+        <Tabs.Tab value="database">{t`Databases`}</Tabs.Tab>
+      </Tabs.List>
+    </Tabs>
   </div>
 );

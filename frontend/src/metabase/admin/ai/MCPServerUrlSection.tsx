@@ -5,7 +5,7 @@ import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { Box } from "metabase/ui";
 
 import S from "./MCPServerUrlSection.module.css";
-import { useMCPServerURL } from "./utils";
+import { useMCPServerURL } from "./useMCPServerURL";
 
 export function McpServerUrlSection() {
   const mcpServerUrl = useMCPServerURL();

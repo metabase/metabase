@@ -2,6 +2,7 @@ import { render } from "@testing-library/react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
+import { seedApiQueryCache } from "__support__/rtk-query-cache";
 import { ComponentProviderInternal } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { sdkReducers } from "embedding-sdk-bundle/store";
 import type { SdkStore, SdkStoreState } from "embedding-sdk-bundle/store/types";
@@ -11,12 +12,15 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
+import {
+  type StoreSeedState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 
 export interface RenderWithSDKProvidersOptions {
-  storeInitialState?: Partial<State>;
+  storeInitialState?: Partial<StoreSeedState>;
   componentProviderProps?: Partial<MetabaseProviderProps> | null;
   theme?: MantineThemeOverride;
   // Needed for Components/Hooks that retrieve Component/Hooks from the window.METABASE_EMBEDDING_SDK_BUNDLE
@@ -35,24 +39,44 @@ export function renderWithSDKProviders(
     ...options
   }: RenderWithSDKProvidersOptions = {},
 ) {
-  let { routing, ...initialState }: Partial<State> =
+  // `settings` is served from the `getSessionProperties` RTK Query cache.
+  // Capture any seeded settings here and seed the cache through `preloadedState` below.
+  let { settings: seededSettings, ...initialState }: Partial<StoreSeedState> =
     createMockState(storeInitialState);
 
   const sdkReducerNames = Object.keys(sdkReducers);
   initialState = _.pick(
     { sdk: createMockSdkState(), ...initialState },
     ...sdkReducerNames,
-  ) as SdkStoreState;
+  );
 
   // Enable the embedding_sdk premium feature and settings by default in SDK tests, unless explicitly disabled.
   // Without this, SDK components will not render due to missing token features and settings.
-  if (!storeInitialState.settings && initialState.settings) {
-    initialState.settings.values["token-features"].embedding_sdk = true;
-    initialState.settings.values["enable-embedding-sdk"] = true;
+  if (!storeInitialState.settings && seededSettings) {
+    seededSettings.values["token-features"].embedding_sdk = true;
+    seededSettings.values["enable-embedding-sdk"] = true;
+  }
+
+  if (seededSettings?.values) {
+    // Unjustified type cast. FIXME
+    initialState = {
+      ...initialState,
+      [Api.reducerPath]: seedApiQueryCache(
+        // Unjustified type cast. FIXME
+        (initialState as Partial<State>)[Api.reducerPath],
+        [
+          {
+            endpointName: "getSessionProperties",
+            value: seededSettings.values,
+          },
+        ],
+      ),
+    } as SdkStoreState;
   }
 
   const storeMiddleware = _.compact([Api.middleware]);
 
+  // Unjustified type cast. FIXME
   const store = getStore(
     sdkReducers,
     initialState,
@@ -66,6 +90,7 @@ export function renderWithSDKProviders(
 
   if (metabaseEmbeddingSdkBundleExports) {
     window.METABASE_EMBEDDING_SDK_BUNDLE =
+      // Unjustified type cast. FIXME
       metabaseEmbeddingSdkBundleExports as typeof window.METABASE_EMBEDDING_SDK_BUNDLE;
 
     ensureMetabaseProviderPropsStore().updateInternalProps({

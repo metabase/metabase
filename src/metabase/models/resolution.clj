@@ -13,6 +13,7 @@
 
   Tests will check to make sure new models get included in this map."
   '{:model/Action                            metabase.actions.models
+    :model/AgentApiCallLog                   metabase.agent-api.models.agent-api-call-log
     :model/AnalysisFinding                   metabase-enterprise.dependencies.models.analysis-finding
     :model/AnalysisFindingError              metabase-enterprise.dependencies.models.analysis-finding-error
     :model/ApiKey                            metabase.api-keys.models.api-key
@@ -34,6 +35,7 @@
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.models
     :model/ContentTranslation                metabase.content-translation.models
     :model/CustomVizPlugin                   metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
+    :model/DataApp                           metabase-enterprise.data-apps.models.data-app
     :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.dashboards.models.dashboard-card
@@ -56,13 +58,18 @@
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
+    :model/McpFeedback                       metabase.mcp.models.mcp-feedback
     :model/McpQueryHandle                    metabase.mcp.models.mcp-query-handle
+    :model/McpSessionLog                     metabase.mcp.models.mcp-session-log
+    :model/McpToolCallLog                    metabase.mcp.models.mcp-tool-call-log
     :model/Measure                           metabase.measures.models.measure
+    :model/TableIndex                        metabase.indexes.models.table-index
     :model/Metabot                           metabase.metabot.models.metabot
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation
     :model/MetabotFeedback                   metabase.metabot.models.metabot-feedback
     :model/MetabotMessage                    metabase.metabot.models.metabot-message
     :model/MetabotSourceFeedback             metabase.metabot.models.metabot-source-feedback
+    :model/MetabotUsedTable                  metabase.metabot.models.metabot-used-table
     :model/AiUsageLog                        metabase.metabot.models.ai-usage-log
     :model/DataComplexityScore               metabase-enterprise.data-complexity-score.models.data-complexity-score
     :model/MetabotGroupLimit                 metabase-enterprise.metabot.models.metabot-group-limit
@@ -77,7 +84,9 @@
     :model/OAuthAccessToken                  metabase.oauth-server.models.oauth-access-token
     :model/OAuthAuthorizationCode            metabase.oauth-server.models.oauth-authorization-code
     :model/OAuthClient                       metabase.oauth-server.models.oauth-client
+    :model/OAuthClientEvent                  metabase.oauth-server.models.oauth-client-event
     :model/OAuthRefreshToken                 metabase.oauth-server.models.oauth-refresh-token
+    :model/OsiAiContext                      metabase.osi.models.osi-ai-context
     :model/NotificationCard                  metabase.notification.models
     :model/NotificationHandler               metabase.notification.models
     :model/NotificationRecipient             metabase.notification.models
@@ -112,6 +121,7 @@
     :model/SemanticSearchTokenTracking       metabase-enterprise.semantic-search.models.token-tracking
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
+    :model/SsoRelayState                     metabase-enterprise.sso.models.relay-state
     :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
     :model/TaskHistory                       metabase.task-history.models.task-history
@@ -120,6 +130,7 @@
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
     :model/Transform                         metabase.transforms.models.transform
+    :model/TransformDagRun                   metabase.transforms.models.dag-run
     :model/TransformJob                      metabase.transforms.models.transform-job
     :model/TransformJobRun                   metabase.transforms.models.job-run
     :model/TransformJobTransformTag          metabase.transforms.models.transform-job-transform-tag
@@ -128,6 +139,11 @@
     :model/TransformTag                      metabase.transforms.models.transform-tag
     :model/TransformTransformTag             metabase.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
+    :model/SourceDimensionDaily              metabase.usage-metadata.models.source-dimension-daily
+    :model/SourceDimensionProfileDaily       metabase.usage-metadata.models.source-dimension-profile-daily
+    :model/SourceMetricDaily                 metabase.usage-metadata.models.source-metric-daily
+    :model/SourceSegmentCompositeDaily       metabase.usage-metadata.models.source-segment-composite-daily
+    :model/SourceSegmentDaily                metabase.usage-metadata.models.source-segment-daily
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.users.models.user-parameter-value
@@ -144,13 +160,12 @@
   "Ensure the namespace for given model is loaded. This is a safety mechanism as we are moving to toucan2 and we don't
   need to require the model namespaces in order to use it."
   [x]
-  (when (and (keyword? x)
-             (= (namespace x) "model")
-             ;; Don't try to require if it's already registered as a :metabase/model, since that means it has already
-             ;; been required
-             (not (isa? x :metabase/model)))
-    ;; [[classloader/require]] for thread safety
-    (classloader/require (model->namespace x)))
+  (when (keyword? x)
+    ;; Always require the model's namespace when we know it. It is fast, and there can be race conditions between
+    ;; before side effects like `deftransforms` and `define-before-insert` have run
+    (when-let [nspace (get model->namespace x)]
+      ;; [[classloader/require]] for thread safety
+      (classloader/require nspace)))
   x)
 
 (methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol

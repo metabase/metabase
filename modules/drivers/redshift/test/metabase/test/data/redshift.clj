@@ -20,7 +20,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
-   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -188,76 +187,75 @@
                               :unknown-error)))]
         (group-by classify schemas)))))
 
-(defn- classify-isolation-schemas
-  "Classifies workspace isolation schemas by age using a single query. Returns a map:
-   {:expired  schemas older than threshold (safe to delete)
-    :recent   schemas created within threshold (might be from parallel test)}"
-  [^java.sql.Connection conn schemas]
-  (if (empty? schemas)
-    {}
-    (let [threshold    (t/minus (t/instant) (t/hours hours-before-expired-threshold))
-          schema-list  (str/join "," (map #(str "'" % "'") schemas))
-          ;; Use pg_class_info joined with pg_namespace to get oldest object creation time per schema
-          sql          (str "SELECT TRIM(n.nspname) as schema_name, MIN(c.relcreationtime) as oldest "
-                            "FROM pg_class_info c "
-                            "JOIN pg_namespace n ON c.relnamespace = n.oid "
-                            "WHERE TRIM(n.nspname) IN (" schema-list ") "
-                            "GROUP BY n.nspname")
-          schema->time (with-open [stmt (.createStatement conn)
-                                   rset (.executeQuery stmt sql)]
-                         (loop [result {}]
-                           (if (.next rset)
-                             (recur (assoc result
-                                           (.getString rset "schema_name")
-                                           (.getTimestamp rset "oldest")))
-                             result)))]
-      (group-by (fn [schema-name]
-                  (if-let [oldest (get schema->time schema-name)]
-                    (if (t/before? (t/instant oldest) threshold)
-                      :expired
-                      :recent)
-                    ;; Schema not in pg_class_info means no objects - treat as expired
-                    :expired))
-                schemas))))
+;;; --------------------------------- Enumeration ----------------------------------
+;;;
+;;; Pure (read-only) classifiers. Call from REPL to preview what cleanup WOULD do:
+;;;
+;;;     (with-open [c (.. (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)
+;;;                       jdbc/get-connection)]
+;;;       (rs-tx/orphan-schemas c))
+;;;     ;; => {:old [...] :expired-cache [...]}
 
-(defn- delete-old-schemas!
-  "Remove unneeded schemas from redshift. Local databases are thrown away after a test run. Shared cloud instances do
-  not have this luxury. Test runs can create schemas where models are persisted and nothing cleans these up, leading
-  to redshift clusters hitting the max number of tables allowed.
+(defn- orphan-schemas
+  "Classify every schema in the connected Redshift DB into orphan buckets.
+   Returns a map with possibly-empty vectors under each key:
+     :old                 -- pre-current-convention test data schemas
+     :expired-cache       -- model-persistence cache schemas past TTL
+     :lacking-created-at  -- cache schemas with no `cache_info.created-at`
+     :old-style-cache     -- cache schemas without a `cache_info` table at all
 
-  Also cleans up workspace isolation schemas (mb__isolation_*) and their associated users that may have been
-  left behind by workspace tests. Only deletes isolation schemas older than [[hours-before-expired-threshold]]
-  to avoid interfering with parallel test runs."
+   Pure: makes 1-2 catalog queries but does NOT drop anything. Use the
+   `drop-orphan-*!` fns to act on the result."
   [^java.sql.Connection conn]
   (let [{old-convention   :old
-         caches-with-info :cache
-         isolation        :isolation} (reduce (fn [acc s]
-                                                (cond (sql.tu.unique-prefix/old-dataset-name? s)
-                                                      (update acc :old conj s)
-                                                      (str/starts-with? s "metabase_cache_")
-                                                      (update acc :cache conj s)
-                                                      (driver.u/workspace-isolated-schema? s)
-                                                      (update acc :isolation conj s)
-                                                      :else acc))
-                                              {:old [] :cache [] :isolation []}
-                                              (fetch-schemas conn))
-        {:keys [expired
-                old-style-cache
-                lacking-created-at]}  (classify-cache-schemas conn caches-with-info)
-        {expired-isolation :expired}  (classify-isolation-schemas conn isolation)
-        drop-sql                      (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema-name))]
+         caches-with-info :cache} (reduce (fn [acc s]
+                                            (cond (sql.tu.unique-prefix/old-dataset-name? s)
+                                                  (update acc :old conj s)
+                                                  (str/starts-with? s "metabase_cache_")
+                                                  (update acc :cache conj s)
+                                                  :else acc))
+                                          {:old [] :cache []}
+                                          (fetch-schemas conn))
+        {expired-cache      :expired
+         old-style-cache    :old-style-cache
+         lacking-created-at :lacking-created-at} (classify-cache-schemas conn caches-with-info)]
+    {:old                (vec old-convention)
+     :expired-cache      (vec expired-cache)
+     :old-style-cache    (vec old-style-cache)
+     :lacking-created-at (vec lacking-created-at)}))
+
+;;; --------------------------------- Destruction ----------------------------------
+
+(defn- drop-orphan-schemas!
+  "Drop every schema classified by [[orphan-schemas]] as expired/old. Per-entry
+  try/catch: never let one orphan block the rest.
+
+  Takes the orphan-map directly so callers can preview-then-drop without
+  re-querying. Caller owns the Statement."
+  [^java.sql.Statement stmt orphans]
+  (let [drop-sql (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema-name))]
+    (doseq [[k fmt-str] [[:old                "Dropping old data schema: %s"]
+                         [:expired-cache      "Dropping expired cache schema: %s"]
+                         [:lacking-created-at "Dropping cache without created-at info: %s"]
+                         [:old-style-cache    "Dropping old cache schema without `cache_info` table: %s"]]
+            schema (get orphans k)]
+      (log/infof fmt-str schema)
+      (try
+        (.execute stmt (drop-sql schema))
+        (catch Throwable e
+          (log/infof "Failed to drop %s, skipping: %s" schema (ex-message e)))))))
+
+(defn- delete-old-schemas!
+  "Remove unneeded schemas from redshift. Local databases are thrown away after
+  a test run; shared cloud instances are not. Test runs can leak schemas
+  (e.g. persisted models), leading to clusters hitting the max-tables limits.
+
+  Glue: thin wrapper that calls the enumerator + dropper in order. To preview
+  from a REPL, call [[orphan-schemas]] directly."
+  [^java.sql.Connection conn]
+  (let [orphans (orphan-schemas conn)]
     (with-open [stmt (.createStatement conn)]
-      (doseq [[collection fmt-str] [[old-convention "Dropping old data schema: %s"]
-                                    [expired "Dropping expired cache schema: %s"]
-                                    [lacking-created-at "Dropping cache without created-at info: %s"]
-                                    [old-style-cache "Dropping old cache schema without `cache_info` table: %s"]
-                                    [expired-isolation "Dropping expired workspace isolation schema: %s"]]
-              schema               collection]
-        (log/infof fmt-str schema)
-        (try
-          (.execute stmt (drop-sql schema))
-          (catch Throwable e
-            (log/infof "Failed to drop %s, skipping: %s" schema (ex-message e))))))))
+      (drop-orphan-schemas! stmt orphans))))
 
 (defn- create-session-schema! [^java.sql.Connection conn]
   (with-open [stmt (.createStatement conn)]

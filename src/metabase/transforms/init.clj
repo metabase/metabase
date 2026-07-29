@@ -1,7 +1,9 @@
 (ns metabase.transforms.init
   (:require
    [metabase.transforms.canceling]
+   [metabase.transforms.dag]
    [metabase.transforms.jobs]
+   [metabase.transforms.models.dag-run]
    [metabase.transforms.models.job-run]
    [metabase.transforms.models.transform]
    [metabase.transforms.models.transform-job]
@@ -10,6 +12,7 @@
    [metabase.transforms.models.transform-run-cancelation]
    [metabase.transforms.models.transform-tag]
    [metabase.transforms.models.transform-transform-tag]
+   [metabase.transforms.notification]
    [metabase.transforms.query-impl]
    [metabase.transforms.schedule]
    [metabase.transforms.settings]

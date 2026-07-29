@@ -222,9 +222,9 @@
      ([type docstring schema]
       `(metabase.util.malli.registry/def ~type
          ~(macros/case
-           :clj `(-with-doc ~schema ~docstring)
-           ;; Ignore docstring for CLJS.
-           :cljs schema)))))
+            :clj `(-with-doc ~schema ~docstring)
+            ;; Ignore docstring for CLJS.
+            :cljs schema)))))
 
 (defn- deref-all-preserving-properties
   "Like [[mc/deref-all]] but preserves properties attached to a `:ref` by wrapping the result in `:schema`."

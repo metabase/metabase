@@ -8,6 +8,6 @@ export const CollapsibleSectionContent = styled.div`
   margin-bottom: 1rem;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;

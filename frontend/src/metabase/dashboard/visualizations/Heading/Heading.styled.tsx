@@ -30,11 +30,11 @@ export const InputContainer = styled.div<InputContainerProps>`
 
   .${DashboardS.DashCard}:hover &,
   .${DashboardS.DashCard}:focus-within & {
-    border: 1px solid var(--mb-color-brand);
+    border: 1px solid var(--mb-color-core-brand);
   }
 
   .${DashboardS.DashCard}.resizing & {
-    border-color: var(--mb-color-brand);
+    border-color: var(--mb-color-core-brand);
   }
 
   ${({ isPreviewing, isEmpty }) =>
@@ -45,8 +45,8 @@ export const InputContainer = styled.div<InputContainerProps>`
   ${({ isEmpty }) =>
     isEmpty &&
     css`
-      border: 1px solid var(--mb-color-brand);
-      color: var(--mb-color-text-tertiary);
+      border: 1px solid var(--mb-color-core-brand);
+      color: var(--mb-color-text-disabled);
     `}
 `;
 

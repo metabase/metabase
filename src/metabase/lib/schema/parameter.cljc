@@ -79,10 +79,8 @@
                                             :location/city :location/state :location/zip_code :location/country}}
    :date    {:type :date,    :allowed-for #{:date :date/single :date/all-options :id :category}}
    :boolean {:type :boolean, :allowed-for #{:boolean :id :category :boolean/=}}
-
    ;; as far as I can tell this is basically just an alias for `:date`... I'm not sure what the difference is TBH
    :date/single {:type :date, :allowed-for #{:date :date/single :date/all-options :id :category}}
-
    ;; everything else can't be used with raw value template tags -- they can only be used with Dashboard parameters
    ;; for MBQL queries or Field filters in native queries
 
@@ -97,7 +95,6 @@
    ;; See QUE2-326 for history.
    :id       {:allowed-for #{:id}}
    :category {:allowed-for #{:category :number :text :date :boolean}}
-
    ;; Like `:id` and `:category`, the `:location/*` types are primarily widget types. They don't really have a meaning
    ;; as a parameter type, so in an ideal world they wouldn't be allowed; however it seems like the FE still passed
    ;; these in as parameter type on occasion anyway. In this case the backend is just supposed to infer the actual
@@ -110,23 +107,19 @@
    :location/state    {:allowed-for #{:location/state}}
    :location/zip_code {:allowed-for #{:location/zip_code}} ; TODO (Cam 8/12/25) -- should use `kebab-case` like literally every other type
    :location/country  {:allowed-for #{:location/country}}
-
    ;; date range types -- these match a range of dates
    :date/range        {:type :date, :allowed-for #{:date/range :date/all-options}}
    :date/month-year   {:type :date, :allowed-for #{:date/month-year :date/all-options}}
    :date/quarter-year {:type :date, :allowed-for #{:date/quarter-year :date/all-options}}
    :date/relative     {:type :date, :allowed-for #{:date/relative :date/all-options}}
-
    ;; Like `:id` and `:category` above, `:date/all-options` is primarily a widget type. It means that we should allow
    ;; any date option above.
    :date/all-options {:type :date, :allowed-for #{:date/all-options}}
-
    ;; `:temporal-unit` is a specialized type of parameter, and specialized widget. In MBQL queries, it maps only to
    ;; breakout columns which have temporal bucketing set, and overrides the unit from the query.
    ;; The value for this type of parameter is one of the temporal units from [[metabase.lib.schema.temporal-bucketing]].
    ;; TODO: Document how this works for native queries.
    :temporal-unit    {:allowed-for #{:temporal-unit}}
-
    ;; "operator" parameter types.
    :number/!=               {:type :numeric, :operator :variadic, :allowed-for #{:number/!=}}
    :number/<=               {:type :numeric, :operator :unary, :allowed-for #{:number/<= :number/between}}

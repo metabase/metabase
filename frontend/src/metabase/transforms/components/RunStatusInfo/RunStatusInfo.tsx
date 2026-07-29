@@ -24,7 +24,9 @@ export function RunStatusInfo({
 
   return (
     <Group gap="xs" className={S.runStatusInfo} wrap="nowrap">
-      <Box c={isError ? "error" : undefined}>{formatStatus(status)}</Box>
+      <Box c={isError ? "feedback-negative" : undefined}>
+        {formatStatus(status)}
+      </Box>
       {isError && message != null && (
         <RunInfo status={status} message={message} endTime={endTime} />
       )}

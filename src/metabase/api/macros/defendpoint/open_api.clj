@@ -52,7 +52,7 @@
 
 (mu/defn- merge-required :- :metabase.api.open-api/parameter.schema.object
   [schema]
-  (let [optional? (set (keep (fn [[k v]] (when (:optional v) k))
+  (let [optional? (set (keep (fn [[k v]] (when (or (:optional v) (contains? v :default)) k))
                              (:properties schema)))]
     (-> schema
         (m/update-existing :required #(into []
@@ -149,8 +149,9 @@
           :let             [k (get renames k k)]
           :when            (in-fn k)
           :let             [schema    (fix-json-schema param-schema)
-                            ;; if schema does not indicate it's optional, it's not :)
-                            optional? (:optional schema)]]
+                            ;; optional if flagged so, or if it carries a `:default` (a defaulted param is
+                            ;; safe to omit, so it shouldn't be advertised as required)
+                            optional? (or (:optional schema) (contains? schema :default))]]
       (cond-> {:in          (in-fn k)
                :name        (u/qualified-name k)
                :required    (and (contains? required k) (not optional?))

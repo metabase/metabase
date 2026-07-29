@@ -13,9 +13,7 @@ import {
 } from "metabase/utils/formatting";
 import { hasHour } from "metabase/utils/formatting/datetime-utils";
 import MetabaseSettings from "metabase/utils/settings";
-import { getVisualizationRaw } from "metabase/visualizations";
-import { ChartNestedSettingColumns } from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
-import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
+import { getVisualization, getVisualizationRaw } from "metabase/visualizations";
 import {
   getDateFormatFromStyle,
   getDateStyleOptionsForUnit,
@@ -31,6 +29,7 @@ import {
 } from "metabase/visualizations/shared/settings/column";
 import type {
   ComputedVisualizationSettings,
+  FormattableColumn,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import {
@@ -84,7 +83,7 @@ export function columnSettings({
     getObjectKey: getColumnKey,
     getObjectSettings: getObjectColumnSettings,
     getSettingDefinitionsForObject: getSettingDefinitionsForColumn,
-    component: ChartNestedSettingColumns,
+    widget: "nestedColumns",
     getInheritedSettingsForObject: getInheritedSettingsForColumn,
     useRawSeries: true,
     ...def,
@@ -142,6 +141,9 @@ function getTimeEnabledOptionsForUnit(
   return options;
 }
 
+const hasCoarseDateGranularity = (settings: ColumnSettings) =>
+  settings.date_granularity != null && settings.date_granularity !== "default";
+
 export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
   date_style: {
     get title() {
@@ -171,8 +173,10 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
           : undefined,
       ),
     }),
-    getHidden: ({ unit }) =>
+    getHidden: ({ unit }, settings) =>
+      hasCoarseDateGranularity(settings) ||
       getDateStyleOptionsForUnit(unit ?? "default").length < 2,
+    readDependencies: ["date_granularity"],
   },
   date_separator: {
     get title() {
@@ -193,7 +197,9 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       };
     },
     getHidden: (_column, settings) =>
+      hasCoarseDateGranularity(settings) ||
       !/\//.test(String(settings.date_style ?? "")),
+    readDependencies: ["date_style", "date_granularity"],
   },
   date_abbreviate: {
     get title() {
@@ -203,13 +209,16 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: () => false,
     inline: true,
     getHidden: ({ unit }, settings) => {
+      if (hasCoarseDateGranularity(settings)) {
+        return true;
+      }
       const format = getDateFormatFromStyle(
         settings.date_style ?? undefined,
         unit ?? "default",
       );
       return !format || !format.match(/MMMM|dddd/);
     },
-    readDependencies: ["date_style"],
+    readDependencies: ["date_style", "date_granularity"],
   },
   time_enabled: {
     get title() {
@@ -224,8 +233,12 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       const options = getTimeEnabledOptionsForUnit(unit);
       return { options };
     },
-    getHidden: (column) => !hasHour(column.unit) || isDateWithoutTime(column),
+    getHidden: (column, settings) =>
+      hasCoarseDateGranularity(settings) ||
+      !hasHour(column.unit) ||
+      isDateWithoutTime(column),
     getDefault: ({ unit }) => (hasHour(unit) ? "minutes" : null),
+    readDependencies: ["date_granularity"],
   },
   time_style: {
     get title() {
@@ -237,8 +250,10 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       options: getTimeStyleOptions(column.unit ?? "default"),
     }),
     getHidden: (column, settings) =>
-      !settings.time_enabled || isDateWithoutTime(column),
-    readDependencies: ["time_enabled"],
+      hasCoarseDateGranularity(settings) ||
+      !settings.time_enabled ||
+      isDateWithoutTime(column),
+    readDependencies: ["time_enabled", "date_granularity"],
   },
 };
 
@@ -334,7 +349,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       }
       return (
         settings.number_style !== "currency" ||
-        series[0].card.display !== "table"
+        series[0]?.card.display !== "table"
       );
     },
     readDependencies: ["number_style"],
@@ -458,9 +473,12 @@ const COMMON_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
 
 export function getSettingDefinitionsForColumn(
   series: Series,
-  column: DatasetColumn,
+  column: FormattableColumn,
 ) {
-  const visualization = getVisualizationRaw(series);
+  // ColumnSettings passes an empty fake series when formatting outside a viz;
+  // fall back to the default visualization's column settings in that case
+  const visualization =
+    series.length > 0 ? getVisualizationRaw(series) : getVisualization(null);
   const extraColumnSettings =
     typeof visualization?.columnSettings === "function"
       ? visualization.columnSettings(column)
@@ -538,7 +556,7 @@ export function tableColumnSettings({
     "table.columns": {
       getSection: () => t`Columns`,
       // title: t`Columns`,
-      widget: ChartSettingTableColumns,
+      widget: "tableColumns",
       getHidden: (_series, vizSettings) => vizSettings["table.pivot"],
       getValue: ([{ data }], vizSettings) => {
         const { cols } = data;

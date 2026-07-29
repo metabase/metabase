@@ -3,8 +3,8 @@ import type { MouseEvent } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
 import {
+  formatCreatorMessage,
   formatNotificationSchedule,
   getNotificationHandlersGroupedByTypes,
 } from "metabase/notifications/utils";
@@ -78,7 +78,7 @@ export const AlertListItem = ({
       onClick={handleEdit}
     >
       <Text className={S.itemTitle} size="md" lineClamp={1} fw="bold">
-        {formatTitle(alert.payload.send_condition)}
+        {formatTitle(alert.payload?.send_condition)}
       </Text>
       <Group gap="xs" align="center" c="text-secondary">
         {subscription && (
@@ -88,7 +88,7 @@ export const AlertListItem = ({
         )}
         {user && (
           <>
-            <Text size="sm" c="text-tertiary">
+            <Text size="sm" c="text-disabled">
               •
             </Text>
             <Text size="sm" c="inherit">
@@ -143,7 +143,7 @@ export const AlertListItem = ({
   );
 };
 
-const formatTitle = (sendCondition: NotificationCardSendCondition): string => {
+const formatTitle = (sendCondition?: NotificationCardSendCondition): string => {
   switch (sendCondition) {
     case "has_result":
       return t`Alert when this has results`;
@@ -151,6 +151,8 @@ const formatTitle = (sendCondition: NotificationCardSendCondition): string => {
       return t`Alert when this reaches a goal`;
     case "goal_below":
       return t`Alert when this goes below a goal`;
+    default:
+      return t`Unknown alert`;
   }
 };
 

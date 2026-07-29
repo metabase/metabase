@@ -22,19 +22,16 @@
       (try
         (spit (io/file dir "one") (mt/random-hash))
         (spit (io/file dir "two") (mt/random-hash))
-
         (testing "it is indeed a gzip archive"
           (u.compress/tgz dir archive)
           (let [bytes (Files/readAllBytes (.toPath archive))]
             ;; https://www.ietf.org/rfc/rfc1952.txt, section 2.3.1
             (is (= [(unchecked-byte 0x1f) (unchecked-byte 0x8b)]
                    (take 2 bytes)))))
-
         (testing "uncompressing generates identical folder"
           (u.compress/untgz archive out)
           (is (= (mapv slurp (filter #(.isFile ^File %) (file-seq dir)))
                  (mapv slurp (filter #(.isFile ^File %) (file-seq out))))))
-
         (finally
           (run! io/delete-file (reverse (file-seq dir)))
           (when (.exists archive)

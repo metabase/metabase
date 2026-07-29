@@ -6,6 +6,22 @@ import type Question from "metabase-lib/v1/Question";
 
 import { DRILLS } from "./constants";
 
+export function isGroupedDimensionClick(clicked: Lib.ClickObject) {
+  return (
+    clicked.dimensions?.some((dimension) => Array.isArray(dimension.value)) ??
+    false
+  );
+}
+
+export function shouldHideDrill(
+  drillInfo: DrillThruDisplayInfo,
+  clicked: Lib.ClickObject,
+) {
+  return isGroupedDimensionClick(clicked)
+    ? drillInfo.type !== "drill-thru/underlying-records"
+    : false;
+}
+
 export function queryDrill(
   question: Question,
   clicked: Lib.ClickObject,
@@ -39,7 +55,11 @@ export function queryDrill(
       const drillInfo = Lib.displayInfo(query, stageIndex, drill);
       const drillHandler = DRILLS[drillInfo.type];
 
-      if (!isDrillEnabled(drillInfo) || !drillHandler) {
+      if (
+        !isDrillEnabled(drillInfo) ||
+        !drillHandler ||
+        shouldHideDrill(drillInfo, clicked)
+      ) {
         return null;
       }
 

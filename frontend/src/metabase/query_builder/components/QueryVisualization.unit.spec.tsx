@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import { VisualizationRunningState } from "metabase/querying/components/QueryVisualization";
 
@@ -23,7 +23,9 @@ describe("VisualizationRunningState", () => {
     setup();
     expect(await screen.findByText("Doing science...")).toBeInTheDocument();
 
-    jest.advanceTimersByTime(5000);
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
     expect(
       await screen.findByText("Waiting for results..."),
     ).toBeInTheDocument();
@@ -36,7 +38,9 @@ describe("VisualizationRunningState", () => {
     setup({ customMessage });
     expect(await screen.findByText("Custom message...")).toBeInTheDocument();
 
-    jest.advanceTimersByTime(5000);
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
     expect(
       await screen.findByText("Custom message (slow)..."),
     ).toBeInTheDocument();

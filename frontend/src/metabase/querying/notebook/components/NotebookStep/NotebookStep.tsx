@@ -63,7 +63,9 @@ export function NotebookStep({
                 [CS.mr1]: !isLastStep || (isLastStep && !hasLargeActionButtons),
               })}
               large={hasLargeActionButtons}
-              {...stepUi}
+              icon={stepUi.icon}
+              color={stepUi.color}
+              secondary={stepUi.secondary}
               title={title}
               aria-label={title}
               onClick={() => action.action({ openStep })}
@@ -130,7 +132,7 @@ export function NotebookStep({
                 component={NotebookActionButton}
                 icon="play"
                 title={t`Preview`}
-                color={"text-tertiary"}
+                color={"text-disabled"}
                 onClick={openPreview}
                 data-testid="step-preview-button"
               />

@@ -14,6 +14,8 @@ Row and column security lets you give granular permissions for different groups 
 
 You can use row and column security to set up [self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics), so that each of your customers can only view the rows that match their customer ID. For example, if you have an Accounts table with information about your customers, you can add permissions to the table so that each customer only sees the data relevant to them.
 
+![Row and column security](./images/row-and-column-level-security.png)
+
 > Row and column security was formerly called data sandboxing. It's the same feature, it just now has a more descriptive name.
 
 ## Row and column security examples
@@ -299,7 +301,7 @@ Since Metabase can't parse SQL queries, the results of SQL questions will always
 
 ### Non-SQL databases have limited row and column security
 
-MongoDB only supports [row-level security](#row-level-security-filter-by-a-column-in-the-table). Row and column security permissions are unavailable for Apache Druid.
+MongoDB and Druid only support [row-level security](#row-level-security-filter-by-a-column-in-the-table). Neither supports column-level security.
 
 ### Advanced data types require a workaround
 

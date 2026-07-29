@@ -18,22 +18,40 @@ const defaultProps: UpsellCardContentProps = {
 
 interface SetupOpts {
   isHosted: boolean;
+  isAdmin?: boolean;
+  isStoreUser?: boolean;
 }
 
-function setup({ isHosted }: SetupOpts) {
+function setup({ isHosted, isAdmin = true, isStoreUser = false }: SetupOpts) {
   setupTrialAvailableEndpoint({
     available: true,
     plan_alias: "pro-cloud",
   });
 
-  renderWithProviders(<UpsellCardContent {...defaultProps} />, {
-    storeInitialState: createMockState({
-      currentUser: createMockUser({ is_superuser: true }),
-      settings: mockSettings({
-        "is-hosted?": isHosted,
-      }),
-    }),
+  const currentUser = createMockUser({
+    email: "user@example.com",
+    is_superuser: isAdmin,
   });
+
+  renderWithProviders(
+    <UpsellCardContent {...defaultProps} upgradeOnClick={jest.fn()} />,
+    {
+      storeInitialState: createMockState({
+        currentUser,
+        settings: mockSettings({
+          "is-hosted?": isHosted,
+          "token-status": {
+            valid: true,
+            status: "",
+            features: [],
+            "store-users": [
+              { email: isStoreUser ? currentUser.email : "store@example.com" },
+            ],
+          },
+        }),
+      }),
+    },
+  );
 }
 
 describe("UpsellCardContent", () => {
@@ -60,6 +78,34 @@ describe("UpsellCardContent", () => {
           "path:/api/ee/cloud-proxy/mb-plan-trial-up-available",
         ),
       ).toBe(false);
+    });
+  });
+
+  describe("upgrade action", () => {
+    it("shows the trial CTA when hosted user is an admin", async () => {
+      setup({ isHosted: true, isAdmin: true, isStoreUser: false });
+
+      expect(
+        await screen.findByRole("button", { name: "Try for free" }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the trial CTA when hosted user is a store user", async () => {
+      setup({ isHosted: true, isAdmin: false, isStoreUser: true });
+
+      expect(
+        await screen.findByRole("button", { name: "Try for free" }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the contact admin message when hosted user is not an admin or store user", async () => {
+      setup({ isHosted: true, isAdmin: false, isStoreUser: false });
+
+      expect(
+        await screen.findByText(
+          "Please ask a Metabase Store Admin (store@example.com) to upgrade your plan.",
+        ),
+      ).toBeInTheDocument();
     });
   });
 });

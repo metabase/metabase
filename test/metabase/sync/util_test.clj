@@ -71,7 +71,6 @@
     (mt/with-dynamic-fn-redefs [sync-util/log-sync-summary        (fn [operation database operation-metadata]
                                                                     (swap! step-info-atom conj operation-metadata)
                                                                     (orig-log-fn operation database operation-metadata))
-
                                 task-history/update-task-history! (fn [th-id startime-ms info]
                                                                     (swap! created-task-history-ids conj th-id)
                                                                     (origin-update-th! th-id startime-ms info))]
@@ -272,7 +271,6 @@
                                    (sync-util/create-sync-step "should-continue"
                                                                (fn [_]
                                                                  {}))]))]
-
         ;; make sure we've ran two steps. the first one will have thrown an exception,
         ;; but it wasn't an exception that can cause an abort.
         (is (= 2 (count (:steps actual))))
@@ -291,13 +289,11 @@
             db (t2/select-one :model/Database :id (mt/id))]
         (sync/sync-database! db)
         (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db))))))
-
     (testing "If `initial-sync-status` on a DB is `complete`, it remains `complete` when sync is run again"
       (let [_  (t2/update! :model/Database (mt/id) {:initial_sync_status "complete"})
             db (t2/select-one :model/Database :id (mt/id))]
         (sync/sync-database! db)
         (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db))))))
-
     (testing "If `initial-sync-status` on a table is `incomplete`, it is marked as `complete` after the sync-fks step
                        has finished"
       (let [table-id (t2/select-one-fn :id :model/Table :db_id (mt/id) :active true)
@@ -305,7 +301,6 @@
             _table   (t2/select-one :model/Table :id table-id)]
         (sync/sync-database! (mt/db))
         (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Table :id table-id)))))
-
     (testing "Database and table syncs are marked as complete even if the initial scan is :schema only"
       (let [_        (t2/update! :model/Database (mt/id) {:initial_sync_status "incomplete"})
             db       (t2/select-one :model/Database :id (mt/id))
@@ -315,7 +310,6 @@
         (sync/sync-database! db {:scan :schema})
         (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db))))
         (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Table :id table-id)))))
-
     (testing "If a non-recoverable error occurs during sync, `initial-sync-status` on the database is set to `aborted`"
       (let [_  (t2/update! :model/Database (mt/id) {:initial_sync_status "incomplete"})
             db (t2/select-one :model/Database :id (mt/id))]
@@ -325,7 +319,6 @@
                                                                       (fn [_] (throw (java.net.ConnectException.))))])]
           (sync/sync-database! db)
           (is (= "aborted" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db)))))))
-
     (testing "If `initial-sync-status` is `aborted` for a database, it is set to `complete` the next time sync finishes
                        without error"
       (let [_  (t2/update! :model/Database (mt/id) {:initial_sync_status "complete"})

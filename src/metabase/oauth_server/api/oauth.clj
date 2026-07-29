@@ -5,9 +5,11 @@
    [buddy.core.mac :as mac]
    [buddy.core.nonce :as nonce]
    [clojure.string :as str]
+   [metabase.api-scope.core :as api-scope]
    [metabase.api.macros :as api.macros]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
@@ -21,7 +23,7 @@
    [throttle.core :as throttle])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.net URLEncoder)))
+   (java.net URI URLEncoder)))
 
 (set! *warn-on-reflection* true)
 
@@ -32,12 +34,22 @@
   []
   (codecs/bytes->hex (nonce/random-bytes 16)))
 
+(defn- site-path-prefix
+  "Path component of site-url with no trailing slash (e.g. `/metabase` when Metabase is hosted
+   under a subpath), or an empty string when site-url has no path or is unset."
+  []
+  (or (some-> (system/site-url) (URI.) (.getPath) (str/replace #"/$" "") not-empty)
+      ""))
+
 (defn- csrf-cookie-opts
-  "Cookie options for the CSRF cookie. Sets `:secure` when site-url is HTTPS."
+  "Cookie options for the CSRF cookie. Sets `:secure` when site-url is HTTPS.
+   The cookie `:path` is the path the *browser* sees, so it must include the subpath prefix
+   when Metabase is hosted under one — otherwise the cookie is never sent back with the
+   consent form POST and CSRF validation fails."
   [max-age]
   (cond-> {:http-only true
            :same-site :strict
-           :path      "/oauth/authorize"
+           :path      (str (site-path-prefix) "/oauth/authorize")
            :max-age   max-age}
     (some-> (system/site-url) (str/starts-with? "https"))
     (assoc :secure true)))
@@ -86,12 +98,31 @@
     (str (subs s 0 (- max-len 3)) "...")
     s))
 
+(defn- requested-scope-descriptions
+  "Turn the space-separated OAuth `scope` value into a vector of `{:scope :description}` maps for the
+   consent page, so the user sees exactly what the client is asking for. Falls back to the raw scope
+   string when a scope has no registered human-readable description. Returns nil when no scope was
+   requested."
+  [scope-param]
+  (when-let [scope-str (some-> scope-param str not-empty)]
+    (->> (str/split scope-str #"\s+")
+         (remove str/blank?)
+         distinct
+         (mapv (fn [s]
+                 {:scope        s
+                  :description  (or (some-> (api-scope/scope-description s) str) s)
+                  ;; Flag the broad first-party grant so the consent page can warn about it without
+                  ;; hardcoding the scope string in the view.
+                  :full-access? (= s oauth-server/full-access-scope)})))))
+
 (defn- redirect-authorization-decision
   "Issue a 302 redirect for an approved or denied authorization decision, clearing the CSRF cookie."
   [provider parsed approved request]
   (let [url (if approved
               (oidc/authorize provider parsed (str (:metabase-user-id request)))
               (oidc/deny-authorization provider parsed "access_denied" "User denied the request"))]
+    ;; Record an audit event for the user's decision on this client's registration.
+    (client-event/record-decision! (:client_id parsed) (:metabase-user-id request) approved)
     (-> {:status  302
          :headers {"Location" url}
          :body    ""}
@@ -191,6 +222,8 @@
                       client-id  (:client_id response)]
                   ;; Mark as dynamically registered (the library doesn't know about registration_type)
                   (proto/update-client (:client-store provider) client-id {:registration-type "dynamic"})
+                  ;; Open the audit trail for this DCR client with a pending decision.
+                  (client-event/record-registration! client-id)
                   {:status  201
                    :headers {"Content-Type" "application/json"}
                    :body    response})
@@ -238,14 +271,14 @@
                    :headers {"Content-Type" "text/html; charset=utf-8"}
                    :body    (consent-page/render-consent-page
                              {:client-name  (some-> (:client-name client) (truncate 64))
-                              :client-id    (:client_id parsed)
                               :nonce        (:nonce request)
                               :csrf-token   csrf-token
                               :params-sig   params-sig
+                              :scopes       (requested-scope-descriptions (:scope oauth-params))
                               :oauth-params oauth-params})}
                   (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600))))
             (catch ExceptionInfo e
-              (log/warn e "OAuth authorize request failed")
+              (log/warnf "OAuth authorize request failed: %s" (ex-message e))
               {:status  400
                :headers {"Content-Type" "application/json"}
                :body    {:error             "invalid_request"
@@ -288,7 +321,7 @@
                          :body    {:error "params_tampered"}}
                         (redirect-authorization-decision provider parsed approved request)))
                     (catch ExceptionInfo e
-                      (log/warn e "OAuth authorization decision failed")
+                      (log/warnf "OAuth authorization decision failed: %s" (ex-message e))
                       {:status  400
                        :headers {"Content-Type" "application/json"}
                        :body    {:error             "invalid_request"
@@ -316,7 +349,7 @@
                              "Pragma"        "no-cache"}
                    :body    response})
                 (catch ExceptionInfo e
-                  (log/warn e "OAuth token request failed")
+                  (log/warnf "OAuth token request failed: %s" (ex-message e))
                   (let [data  (ex-data e)
                         error (or (:error data) "invalid_request")]
                     {:status  (if (= error "invalid_client") 401 400)

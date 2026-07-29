@@ -21,3 +21,10 @@ eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyMTIzIn0.invalid-signature
 
 # Used in storybook SdkError.stories.tsx
 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjF9LCJwYXJhbXMiOnt9LCJleHAiOjE3NzQ2MDkyMDksImlhdCI6MTc3NDYwOTE5OX0.-S3eLFi_XZeb9ltaorP7_k52fXW_jhtb1oG-BuOVSWw
+
+# Fake AWS access keys used in Bedrock provider tests. AKIAIOSFODNN7EXAMPLE is
+# AWS's own documentation placeholder; the others are obviously synthetic fixtures.
+AKIAIOSFODNN7EXAMPLE
+AKIAOVERRIDEOVERRID1
+AKIANEWNEWNEWNEWNEW1
+AKIAOLDOLDOLDOLDOLD1

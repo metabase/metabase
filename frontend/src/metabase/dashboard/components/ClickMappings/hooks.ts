@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
+import { skipToken, useListUserAttributesQuery } from "metabase/api";
 import { getDashcardData, getParameters } from "metabase/dashboard/selectors";
 import {
   getTargetsForDashboard,
@@ -8,7 +9,6 @@ import {
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { GTAPApi } from "metabase/services";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import MetabaseSettings from "metabase/utils/settings";
 import Question from "metabase-lib/v1/Question";
@@ -108,26 +108,9 @@ export function useLoadQuestionMetadata(question: Question | null | undefined) {
 }
 
 export function useUserAttributes(): string[] {
-  const [userAttributes, setUserAttributes] = useState<string[]>([]);
+  const { data: userAttributes } = useListUserAttributesQuery(
+    MetabaseSettings.sandboxingEnabled() ? undefined : skipToken,
+  );
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadUserAttributes = async () => {
-      if (MetabaseSettings.sandboxingEnabled()) {
-        const attributes = await GTAPApi.attributes();
-        if (isMounted) {
-          setUserAttributes(attributes);
-        }
-      }
-    };
-
-    loadUserAttributes();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  return userAttributes;
+  return userAttributes ?? [];
 }

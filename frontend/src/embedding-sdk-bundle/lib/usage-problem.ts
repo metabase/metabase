@@ -126,6 +126,7 @@ export function getSdkUsageProblem(
         {
           hasTokenFeature: true,
           isEnabled: false,
+          isLocalhost: false,
         },
         () => toError("EMBEDDING_SDK_NOT_ENABLED"),
       )

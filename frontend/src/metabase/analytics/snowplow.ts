@@ -41,7 +41,7 @@ const createSnowplowPlugin = (getUserId: GetUserId) => {
           data: {
             id,
             version: {
-              tag: (version as { tag?: string }).tag,
+              tag: version.tag,
             },
             created_at: createdAt,
             token_features: tokenFeatures,

@@ -59,6 +59,10 @@ describe("HelpText (OSS)", () => {
       },
     });
 
+    // Wait for the async-formatted example so HighlightExpressionParts
+    // settles before the test ends.
+    await screen.findByText('concat([Last Name], ", ", [First Name])');
+
     const argumentsBlock = screen.getByTestId(
       "expression-helper-popover-arguments",
     );
@@ -109,6 +113,10 @@ describe("HelpText (OSS)", () => {
         showMetabaseLinks: true,
       });
 
+      // Wait for the async-formatted example so HighlightExpressionParts
+      // settles before the test ends.
+      await screen.findByText('concat([Last Name], ", ", [First Name])');
+
       expect(
         screen.getByRole("img", { name: "reference icon" }),
       ).toBeInTheDocument();
@@ -122,6 +130,10 @@ describe("HelpText (OSS)", () => {
         },
         showMetabaseLinks: false,
       });
+
+      // Wait for the async-formatted example so HighlightExpressionParts
+      // settles before the test ends.
+      await screen.findByText('concat([Last Name], ", ", [First Name])');
 
       expect(
         screen.getByRole("img", { name: "reference icon" }),

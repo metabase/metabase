@@ -1,11 +1,10 @@
 import { jt, t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Box, Stack } from "metabase/ui";
+import { Box, Button, Stack } from "metabase/ui";
 import Settings from "metabase/utils/settings";
 
 type HelpModalProps = {

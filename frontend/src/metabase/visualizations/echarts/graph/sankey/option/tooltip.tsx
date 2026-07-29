@@ -44,7 +44,11 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
     const targetNode = chartModel.data.nodes.find(
       (node) => node.rawName === data.target,
     );
-    header = `${formatters.source(node.displayName)} → ${formatters.target(targetNode?.displayName ?? data.target)}`;
+    const headerSource = formatters.source(node?.displayName ?? data.source);
+    const headerTarget = formatters.target(
+      targetNode?.displayName ?? data.target,
+    );
+    header = `${headerSource} → ${headerTarget}`;
   }
 
   if (!node) {

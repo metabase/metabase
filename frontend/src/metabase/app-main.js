@@ -2,16 +2,20 @@
 // MUST be imported BEFORE `react` and `react-dom`
 import "metabase-dev";
 
-import { push } from "react-router-redux";
 import _ from "underscore";
 
-import api from "metabase/api/legacy-client";
+import { PLUGIN_API, api } from "metabase/api/client";
 import { init } from "metabase/app";
+import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
 import { clearCurrentUser } from "metabase/redux/user";
+import { push } from "metabase/router";
 import { getRoutes } from "metabase/routes";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
+
+// Let embedded children detect that their parent is a Metabase instance.
+window.METABASE = true;
 
 // If any of these receives a 403, we should display the "not authorized" page.
 const NOT_AUTHORIZED_TRIGGERS = [
@@ -27,12 +31,13 @@ const NOT_AUTHORIZED_TRIGGERS = [
  * might want to use a flag too instead of just checking for being in an iframe.
  */
 if (isWithinIframe() && !IFRAMED_IN_SELF) {
-  api.requestClient = "embedding-iframe-full-app";
+  PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
+    setRequestClientHeaders({ name: "embedding-iframe-full-app" });
 }
 
 init(mainReducers, getRoutes, (store) => {
   // received a 401 response
-  api.on("401", (url) => {
+  api.on(401, (url) => {
     if (url.indexOf("/api/user/current") >= 0) {
       return;
     }
@@ -50,7 +55,7 @@ init(mainReducers, getRoutes, (store) => {
   });
 
   // received a 403 response
-  api.on("403", (url) => {
+  api.on(403, (url) => {
     if (NOT_AUTHORIZED_TRIGGERS.some((regex) => regex.test(url))) {
       return store.dispatch(setErrorPage({ status: 403 }));
     }

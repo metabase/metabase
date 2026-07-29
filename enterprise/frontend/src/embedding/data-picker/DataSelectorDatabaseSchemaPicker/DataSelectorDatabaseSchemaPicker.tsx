@@ -5,8 +5,8 @@ import {
   AccordionList,
   type Section as BaseSection,
 } from "metabase/common/components/AccordionList";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { Icon } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import type Database from "metabase-lib/v1/metadata/Database";

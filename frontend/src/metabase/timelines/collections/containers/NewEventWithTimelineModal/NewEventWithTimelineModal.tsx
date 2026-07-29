@@ -1,5 +1,3 @@
-import { push } from "react-router-redux";
-
 import {
   skipToken,
   useCreateTimelineEventMutation,
@@ -8,6 +6,7 @@ import {
 } from "metabase/api";
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import * as Urls from "metabase/urls";
 import type {
@@ -48,8 +47,10 @@ function NewEventWithTimelineModalContainer(
       return;
     }
     const timeline = await createTimeline(
+      // Unjustified type cast. FIXME
       getDefaultTimeline(collection) as CreateTimelineRequest,
     ).unwrap();
+    // Unjustified type cast. FIXME
     await createTimelineEvent({
       ...values,
       timeline_id: timeline.id,

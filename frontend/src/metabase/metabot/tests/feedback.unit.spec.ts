@@ -15,9 +15,9 @@ import {
 } from "./utils";
 
 const setupWithNegativeFeedback = async () => {
-  setup({ isHosted: true });
+  setup();
   const feedbackEndpoint = mockFeedbackEndpoint();
-  mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+  mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
   await enterChatMessage("Who is your favorite?");
   const lastMessage = (await lastChatMessage())!;
@@ -51,25 +51,10 @@ const submitFeedback = async (modal: HTMLElement) => {
 };
 
 describe("metabot > feedback", () => {
-  it("should not show feedback buttons for non-hosted instances", async () => {
-    setup({ isHosted: false });
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
-
-    await enterChatMessage("Who is your favorite?");
-    const lastMessage = (await lastChatMessage())!;
-
-    expect(
-      within(lastMessage).queryByTestId("metabot-chat-message-thumbs-up"),
-    ).not.toBeInTheDocument();
-    expect(
-      within(lastMessage).queryByTestId("metabot-chat-message-thumbs-down"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should present the user an option to provide feedback for hosted instances", async () => {
-    setup({ isHosted: true });
+  it("should present the user an option to provide feedback", async () => {
+    setup();
     const feedbackEndpoint = mockFeedbackEndpoint();
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
     await enterChatMessage("Who is your favorite?");
     const lastMessage = (await lastChatMessage())!;
@@ -136,9 +121,9 @@ describe("metabot > feedback", () => {
   });
 
   it("should submit positive feedback", async () => {
-    setup({ isHosted: true });
+    setup();
     const feedbackEndpoint = mockFeedbackEndpoint();
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
     await enterChatMessage("Who is your favorite?");
     const lastMessage = (await lastChatMessage())!;

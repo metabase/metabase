@@ -34,5 +34,4 @@
      (not= :blocked (perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
      (= #{:unrestricted} (set table-permissions))
      (throw-block-permissions-exception))
-
     true))

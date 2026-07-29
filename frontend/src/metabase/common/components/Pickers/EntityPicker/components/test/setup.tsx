@@ -15,7 +15,7 @@ import {
   renderWithProviders,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { createMockState } from "metabase/redux/store/mocks";
 import type {
   Collection,

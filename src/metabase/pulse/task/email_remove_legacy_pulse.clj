@@ -15,7 +15,7 @@
 (defn- has-legacy-pulse? []
   (pos? (t2/count :model/Pulse :dashboard_id nil :alert_condition nil :archived false)))
 
-(def ^:private template-path "metabase/channel/email/warn_deprecate_pulse.hbs")
+(def ^:private template-name "warn_deprecate_pulse")
 
 (defn- email-remove-legacy-pulse []
   (when (and (channel.settings/email-configured?)
@@ -28,7 +28,7 @@
          {:recipients   [(:email admin)]
           :message-type :html
           :subject      "[Metabase] Removal of legacy pulses in upcoming Metabase release"
-          :message      (channel.template/render template-path {:userName    (:common_name admin)
+          :message      (channel.template/render template-name {:userName    (:common_name admin)
                                                                 :pulses      legacy-pulse
                                                                 :instanceURL (urls/site-url)})})))))
 

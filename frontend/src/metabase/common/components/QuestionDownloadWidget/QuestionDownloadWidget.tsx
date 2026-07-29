@@ -122,8 +122,7 @@ export const QuestionDownloadWidget = ({
         last_table_download_format:
           newFormat !== "png"
             ? newFormat
-            : (formatPreference.last_table_download_format as TableExportFormat) ||
-              "csv",
+            : formatPreference.last_table_download_format || "csv",
       });
     }
   };
@@ -174,7 +173,7 @@ export const QuestionDownloadWidget = ({
         {showPivotXlsxExportHint && (
           <Flex
             p="md"
-            bg="background-secondary"
+            bg="background_page-secondary"
             align="center"
             justify="space-between"
             className={CS.rounded}
@@ -184,7 +183,7 @@ export const QuestionDownloadWidget = ({
               <Link
                 target="_new"
                 to={pivotExcelExportsDocsLink}
-                style={{ color: "var(--mb-color-brand)" }}
+                style={{ color: "var(--mb-color-core-brand)" }}
               >
                 {t`Read the docs`}
               </Link>

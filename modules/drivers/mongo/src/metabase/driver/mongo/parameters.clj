@@ -4,16 +4,16 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.parameters.operators :as params.ops]
-   [metabase.util :as u]
+   [metabase.query-processor.parameters.values :as params.values]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [get-in]])
   (:import
@@ -225,12 +225,12 @@
 (defn- parse-and-substitute [param->value x]
   (if-not (string? x)
     x
-    (u/prog1 (substitute param->value (lib/parse-parameters x false))
-      (when-not (= x <>)
-        (log/debugf "Substituted %s -> %s" (pr-str x) (pr-str <>))))))
+    (substitute param->value (lib/parse-parameters x false))))
 
-(defn substitute-native-parameters
+(mu/defn substitute-native-parameters :- ::lib.schema/stage.native
   "Implementation of [[metabase.driver/substitute-native-parameters]] for MongoDB."
-  [_driver inner-query]
-  (let [param->value (params.values/query->params-map inner-query)]
-    (update inner-query :query (partial perf/postwalk (partial parse-and-substitute param->value)))))
+  [_driver               :- :keyword
+   metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   stage                 :- ::lib.schema/stage.native]
+  (let [param->value (params.values/stage->params-map metadata-providerable stage)]
+    (update stage :native (partial perf/postwalk (partial parse-and-substitute param->value)))))

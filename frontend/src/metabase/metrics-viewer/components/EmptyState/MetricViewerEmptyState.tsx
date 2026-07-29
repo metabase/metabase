@@ -43,7 +43,7 @@ export function MetricsViewerEmptyState(): JSX.Element {
   );
 }
 
-export function MetricsViewerNoTabsEmptyState(): JSX.Element {
+export function MetricsViewerNoDimensionBreakoutEmptyState(): JSX.Element {
   return (
     <MetricsViewerEmptyStateLayout
       title={t`Select a dimension to explore`}

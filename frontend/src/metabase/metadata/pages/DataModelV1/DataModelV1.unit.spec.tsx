@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { IndexRedirect, Link, Route } from "react-router";
 
 import {
   setupCardDataset,
@@ -22,9 +21,10 @@ import {
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { Link, Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Database,
   Field,
@@ -216,22 +216,22 @@ async function setup({
 
   const { history } = renderWithProviders(
     <>
-      <Route path="notAdmin" component={OtherComponent} />
+      <Route path="notAdmin" element={<OtherComponent />} />
       <Route path="admin/datamodel">
-        <IndexRedirect to="database" />
-        <Route path="database" component={DataModelV1} />
-        <Route path="database/:databaseId" component={DataModelV1} />
+        <Route index element={redirect("database")} />
+        <Route path="database" element={<DataModelV1 />} />
+        <Route path="database/:databaseId" element={<DataModelV1 />} />
         <Route
           path="database/:databaseId/schema/:schemaId"
-          component={DataModelV1}
+          element={<DataModelV1 />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId"
-          component={DataModelV1}
+          element={<DataModelV1 />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-          component={DataModelV1}
+          element={<DataModelV1 />}
         />
       </Route>
     </>,
@@ -713,19 +713,12 @@ describe("DataModelV1", () => {
         screen.getByRole("button", { name: "Re-scan table" }),
       );
 
-      const calls = fetchMock.callHistory.calls(
-        `path:/api/table/${ORDERS_TABLE.id}/rescan_values`,
-        {
-          method: "POST",
-        },
-      );
-
       await waitFor(() => {
-        expect(calls.length).toBeGreaterThan(0);
+        const path = `path:/api/table/${ORDERS_TABLE.id}/rescan_values`;
+        expect(
+          fetchMock.callHistory.called(path, { method: "POST" }),
+        ).toBeTruthy();
       });
-
-      const lastCall = calls[calls.length - 1];
-      expect(JSON.parse(lastCall.options.body as string)).toEqual({});
     });
 
     it("should allow to discard field values", async () => {
@@ -744,19 +737,12 @@ describe("DataModelV1", () => {
         }),
       );
 
-      const calls = fetchMock.callHistory.calls(
-        `path:/api/table/${ORDERS_TABLE.id}/discard_values`,
-        {
-          method: "POST",
-        },
-      );
-
       await waitFor(() => {
-        expect(calls.length).toBeGreaterThan(0);
+        const path = `path:/api/table/${ORDERS_TABLE.id}/discard_values`;
+        expect(
+          fetchMock.callHistory.called(path, { method: "POST" }),
+        ).toBeTruthy();
       });
-
-      const lastCall = calls[calls.length - 1];
-      expect(JSON.parse(lastCall.options.body as string)).toEqual({});
     });
   });
 

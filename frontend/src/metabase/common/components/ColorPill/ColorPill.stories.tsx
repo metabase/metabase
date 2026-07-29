@@ -17,7 +17,7 @@ export const Default = {
   render: Template,
 
   args: {
-    color: color("brand"),
+    color: color("core-brand"),
   },
 };
 
@@ -25,7 +25,7 @@ export const Auto = {
   render: Template,
 
   args: {
-    color: color("brand"),
+    color: color("core-brand"),
     isAuto: true,
   },
 };

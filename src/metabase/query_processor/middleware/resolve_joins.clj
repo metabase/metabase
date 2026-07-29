@@ -38,7 +38,6 @@
                                                               (not (contains? duplicate-ids field-id)))
                                    force-field-name-ref? (and (pos-int? id-or-name)
                                                               (contains? duplicate-ids field-id))]]
-
       (cond
         force-id-ref?
         [:field opts field-id]

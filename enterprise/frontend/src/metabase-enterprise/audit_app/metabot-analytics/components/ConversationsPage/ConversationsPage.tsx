@@ -1,14 +1,13 @@
 import { useMemo } from "react";
-import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
 import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { Card, Flex, Title } from "metabase/ui";
+import type { WithRouterProps } from "metabase/router";
+import { Flex, Title } from "metabase/ui";
 
-import { useListMetabotConversationsQuery } from "../../api";
+import { useListMetabotAnalyticsConversationsQuery } from "../../api";
 import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
 
 import { ConversationsTable } from "./ConversationsTable";
@@ -35,7 +34,7 @@ export function ConversationsPage({ location }: WithRouterProps) {
     data: conversationsData,
     isLoading,
     error,
-  } = useListMetabotConversationsQuery(
+  } = useListMetabotAnalyticsConversationsQuery(
     {
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
@@ -80,28 +79,19 @@ export function ConversationsPage({ location }: WithRouterProps) {
           />
         </Flex>
 
-        <Card withBorder shadow="none" p={0}>
-          <ConversationsTable
-            conversations={conversations}
-            isLoading={isLoading}
-            error={error}
-            sortingOptions={{ sort_column, sort_direction }}
-            onSortingOptionsChange={(newSortingOptions) =>
-              patchUrlState({ ...newSortingOptions, page: 0 })
-            }
-          />
-        </Card>
-
-        <Flex justify="flex-end">
-          <PaginationControls
-            onPreviousPage={() => patchUrlState({ page: page - 1 })}
-            onNextPage={() => patchUrlState({ page: page + 1 })}
-            page={page}
-            pageSize={PAGE_SIZE}
-            itemsLength={conversations.length}
-            total={total}
-          />
-        </Flex>
+        <ConversationsTable
+          conversations={conversations}
+          isLoading={isLoading}
+          error={error}
+          sortingOptions={{ sort_column, sort_direction }}
+          onSortingOptionsChange={(newSortingOptions) =>
+            patchUrlState({ ...newSortingOptions, page: 0 })
+          }
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          onPageChange={(newPage) => patchUrlState({ page: newPage })}
+        />
       </SettingsPageWrapper>
     </MetabotAdminLayout>
   );

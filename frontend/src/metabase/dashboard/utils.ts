@@ -1,20 +1,20 @@
-import type { Location } from "history";
 import { getIn } from "icepick";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import type { SelectedTabId } from "metabase/redux/store";
+import type { Location } from "metabase/router";
 import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
-import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type { StaticEmbeddingEntityError } from "metabase/utils/errors/types";
 import {
+  getDatasetPermissionError,
   getGenericErrorMessage,
-  getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
+import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -58,6 +58,7 @@ export function syncParametersAndEmbeddingParams(before: any, after: any) {
         }
       }
       return memo;
+      // Unjustified type cast. FIXME
     }, {} as any);
   } else {
     return before.embedding_params;
@@ -76,6 +77,7 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
       ...dashcard,
       id: _.uniqueId("dashcard"),
       card: expandInlineCard(dashcard?.card),
+      // Unjustified type cast. FIXME
       series: ((dashcard as any).series || []).map((card: Card) =>
         expandInlineCard(card),
       ),
@@ -141,6 +143,7 @@ export function findDashCardForInlineParameter(
   parameterId: ParameterId,
   dashcards: BaseDashboardCard[],
 ): DashboardCardWithInlineFilters | undefined {
+  // Unjustified type cast. FIXME
   return dashcards.find((dashcard) => {
     if (hasInlineParameters(dashcard)) {
       return dashcard.inline_parameters.some((id) => id === parameterId);
@@ -197,6 +200,7 @@ export function showVirtualDashCardInfoText(
 export function getAllDashboardCards(dashboard: Dashboard) {
   const results = [];
   for (const dashcard of dashboard.dashcards) {
+    // Unjustified type cast. FIXME
     const cards = [dashcard.card].concat((dashcard as any).series || []);
     results.push(...cards.map((card) => ({ card, dashcard })));
   }
@@ -262,24 +266,21 @@ export function isDashcardLoading(
 export function isDashcardAccessRestricted(
   datasets: ReadonlyArray<Pick<Dataset, "error" | "error_type">>,
 ) {
-  return datasets.some(
-    (s) =>
-      s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
-      (typeof s.error === "object" && s.error?.status === 403),
-  );
+  return datasets.some((dataset) => getDatasetPermissionError(dataset) != null);
 }
 
 export function getDashcardResultsError(
   datasets: Dataset[],
   isGuestEmbed: boolean,
 ) {
-  if (isDashcardAccessRestricted(datasets)) {
-    return {
-      message: getPermissionErrorMessage(),
-      icon: "key" as const,
-    };
+  const permissionError = datasets
+    .map(getDatasetPermissionError)
+    .find((error) => error != null);
+  if (permissionError) {
+    return permissionError;
   }
 
+  // Unjustified type cast. FIXME
   const staticEntityLoadingError = datasets.find((dataset) =>
     isStaticEmbeddingEntityLoadingError(dataset.error, {
       isGuestEmbed,
@@ -324,8 +325,7 @@ const hasRows = (dashcardData: Record<CardId, Dataset | EmbedDataset>) => {
   return (
     queryResults.length > 0 &&
     queryResults.every(
-      (queryResult) =>
-        "data" in queryResult && queryResult.data.rows.length > 0,
+      (queryResult) => "data" in queryResult && !hasNoResults(queryResult.data),
     )
   );
 };
@@ -528,6 +528,7 @@ export function getClickBehaviorDescription(dashcard: DashboardCard) {
     return noBehaviorMessage;
   }
 
+  // Unjustified type cast. FIXME
   const clickBehavior = dashcard.visualization_settings
     .click_behavior as ClickBehavior;
 

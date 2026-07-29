@@ -10,8 +10,6 @@ import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding
 import { determineDashboardId } from "metabase/embedding/embedding-iframe-sdk-setup/utils/determine-dashboard-id";
 import { getDefaultSdkIframeEmbedSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-default-sdk-iframe-embed-setting";
 
-export const DEFAULT_EXPERIENCE = "dashboard";
-
 export const useHandleExperienceChange = () => {
   const {
     isSimpleEmbedFeatureAvailable,

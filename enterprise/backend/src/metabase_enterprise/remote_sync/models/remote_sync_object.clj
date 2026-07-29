@@ -31,28 +31,33 @@
                   :status [:not= "synced"]
                   :model_type [:not-in excluded]))))
 
+(defn dirty-rows
+  "Returns the raw RemoteSyncObject rows that are not yet synced (status != 'synced'),
+  excluding disabled model types (e.g. transforms when transform sync is off)."
+  []
+  (let [excluded (spec/excluded-model-types)]
+    (if (empty? excluded)
+      (t2/select :model/RemoteSyncObject :status [:not= "synced"])
+      (t2/select :model/RemoteSyncObject
+                 :status [:not= "synced"]
+                 :model_type [:not-in excluded]))))
+
 (defn dirty-objects
   "Gets all models in any collection that are dirty with their sync status.
    Returns a sequence of model maps that have changed since the last remote sync,
    including details about their current state and sync status.
    Excludes transform model types when transform sync is disabled."
   []
-  (let [excluded (spec/excluded-model-types)
-        query (if (empty? excluded)
-                (t2/select :model/RemoteSyncObject :status [:not= "synced"])
-                (t2/select :model/RemoteSyncObject
-                           :status [:not= "synced"]
-                           :model_type [:not-in excluded]))]
-    (->> query
-         (map #(-> %
-                   (dissoc :id :status_changed_at)
-                   (set/rename-keys {:model_id :id
-                                     :model_name :name
-                                     :model_type :model
-                                     :model_collection_id :collection_id
-                                     :model_display :display
-                                     :model_table_id :table_id
-                                     :model_table_name :table_name
-                                     :status :sync_status})
-                   (update :model u/lower-case-en)))
-         (into []))))
+  (->> (dirty-rows)
+       (map #(-> %
+                 (dissoc :id :status_changed_at)
+                 (set/rename-keys {:model_id :id
+                                   :model_name :name
+                                   :model_type :model
+                                   :model_collection_id :collection_id
+                                   :model_display :display
+                                   :model_table_id :table_id
+                                   :model_table_name :table_name
+                                   :status :sync_status})
+                 (update :model u/lower-case-en)))
+       (into [])))

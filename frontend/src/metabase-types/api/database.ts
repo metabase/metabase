@@ -1,5 +1,5 @@
 import type { ScheduleSettings } from "./settings";
-import type { Table } from "./table";
+import type { SchemaName, Table } from "./table";
 
 import type { ISO8601Time, LongTaskStatus } from ".";
 
@@ -85,6 +85,9 @@ export interface Database extends DatabaseData {
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
   tables?: Table[];
+  // Populated when GET /api/database is called with include=schemas; lists
+  // schema names that contain at least one readable table.
+  schemas?: SchemaName[];
 }
 
 export interface DatabaseData {
@@ -96,6 +99,7 @@ export interface DatabaseData {
   // [[metabase.models.interface/to-json]] for `:model/Database`:
   details?: Record<string, unknown>;
   write_data_details?: Record<string, unknown> | null;
+  admin_details?: Record<string, unknown> | null;
   schedules: DatabaseSchedules;
   auto_run_queries: boolean | null;
   refingerprint: boolean | null;
@@ -116,6 +120,7 @@ export interface DatabaseUsageInfo {
   dataset: number;
   metric: number;
   segment: number;
+  transform: number;
 }
 
 export interface GetDatabaseRequest {
@@ -138,7 +143,7 @@ export type DatabaseLocalSettingAvailability =
   | { enabled: true }
   | { enabled: false; reasons: DatabaseLocalSettingDisableReason[] };
 
-export type DatabaseConnectionType = "default" | "write-data";
+export type DatabaseConnectionType = "default" | "write-data" | "admin";
 
 export type GetDatabaseHealthRequest = {
   id: DatabaseId;
@@ -149,8 +154,8 @@ export type GetDatabaseHealthResponse =
   | { status: "ok" }
   | { status: "error"; message: string; errors: unknown };
 
-export interface ListDatabasesRequest {
-  include?: "tables";
+export type ListDatabasesRequest = {
+  include?: "tables" | "schemas";
   saved?: boolean;
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
@@ -159,7 +164,7 @@ export interface ListDatabasesRequest {
   router_database_id?: DatabaseId;
   "can-query"?: boolean;
   "can-write-metadata"?: boolean;
-}
+};
 
 export interface ListDatabasesResponse {
   data: Database[];
@@ -221,6 +226,7 @@ export interface UpdateDatabaseRequest {
   refingerprint?: boolean | null;
   details?: Record<string, unknown>;
   write_data_details?: Record<string, unknown> | null;
+  admin_details?: Record<string, unknown> | null;
   schedules?: DatabaseSchedules;
   description?: string;
   caveats?: string;

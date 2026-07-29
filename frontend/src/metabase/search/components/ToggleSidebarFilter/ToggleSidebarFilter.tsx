@@ -1,4 +1,4 @@
-import type { SearchFilterToggle } from "metabase/search/types";
+import type { SearchFilterToggle } from "metabase/common/search/types";
 import { Switch, Text } from "metabase/ui";
 
 export type ToggleSidebarFilterProps = {

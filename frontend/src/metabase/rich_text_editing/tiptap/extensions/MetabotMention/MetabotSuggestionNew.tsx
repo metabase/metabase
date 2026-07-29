@@ -129,6 +129,14 @@ const MetabotMentionSuggestionComponent = forwardRef<
     [editor.view.dom, menuDropdownDom],
   );
 
+  const searchParams = useMemo(
+    () =>
+      onlyDatabaseId !== undefined
+        ? { table_db_id: onlyDatabaseId }
+        : undefined,
+    [onlyDatabaseId],
+  );
+
   return (
     <>
       <MiniPicker
@@ -140,6 +148,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
         onChange={onSelectEntity}
         onClose={onClose}
         shouldHide={shouldHide}
+        searchParams={searchParams}
         onBrowseAll={() => {
           setIsBrowsing(true);
         }}
@@ -182,13 +191,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
             setIsBrowsing(false);
           }}
           isDisabledItem={shouldDisableItemNotInDb(onlyDatabaseId)}
-          searchParams={
-            onlyDatabaseId !== undefined
-              ? {
-                  table_db_id: onlyDatabaseId,
-                }
-              : undefined
-          }
+          searchParams={searchParams}
           searchQuery={query}
         />
       )}

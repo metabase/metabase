@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { useListCommentsQuery } from "metabase/api";
@@ -8,8 +7,11 @@ import {
   getFormattedTime,
 } from "metabase/common/components/DateTime";
 import { useSetting } from "metabase/common/hooks";
+import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import CS from "metabase/css/core/index.css";
+import { usePrintContext } from "metabase/documents/contexts/PrintContext";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   ActionIcon,
@@ -17,6 +19,7 @@ import {
   Button,
   Flex,
   Icon,
+  Loader,
   Menu,
   Text,
   TextInput,
@@ -85,23 +88,37 @@ export const DocumentHeader = ({
 
   const hasPublicLink = !!document?.public_uuid;
 
-  const handlePrint = useCallback(() => {
+  const { prepareForPrint } = usePrintContext();
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isPreparingForPrint, setIsPreparingForPrint] = useState(false);
+
+  const handlePrint = useCallback(async () => {
+    setIsPreparingForPrint(true);
+    try {
+      await prepareForPrint();
+    } finally {
+      setIsPreparingForPrint(false);
+    }
+    setIsMenuOpen(false);
+    await waitUntilNextFramePainted();
     window.print();
     trackDocumentPrint(document);
-  }, [document]);
+  }, [document, prepareForPrint]);
+
+  const handleMenuChange = useCallback(
+    (opened: boolean) => {
+      if (!opened && isPreparingForPrint) {
+        return;
+      }
+
+      setIsMenuOpen(opened);
+    },
+    [isPreparingForPrint],
+  );
 
   return (
-    <Flex
-      justify="space-between"
-      align="flex-start"
-      gap="1rem"
-      mt="xl"
-      pt="xl"
-      pb="1rem"
-      maw={900}
-      mx="auto"
-      w="100%"
-    >
+    <Flex className={S.documentHeader}>
       <Flex direction="column" className={S.titleContainer}>
         <TextInput
           aria-label={t`Document Title`}
@@ -184,7 +201,11 @@ export const DocumentHeader = ({
           </Tooltip>
         )}
         {!document?.archived && (
-          <Menu position="bottom-end">
+          <Menu
+            position="bottom-end"
+            opened={isMenuOpen}
+            onChange={handleMenuChange}
+          >
             <Menu.Target>
               <ActionIcon
                 variant="subtle"
@@ -197,7 +218,15 @@ export const DocumentHeader = ({
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item
-                leftSection={<Icon name="document" />}
+                leftSection={
+                  isPreparingForPrint ? (
+                    <Loader size="xs" />
+                  ) : (
+                    <Icon name="document" />
+                  )
+                }
+                closeMenuOnClick={false}
+                disabled={isPreparingForPrint}
                 onClick={handlePrint}
               >
                 {t`Print Document`}

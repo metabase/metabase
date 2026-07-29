@@ -52,7 +52,7 @@ const StackedDataTooltip = ({
   const trimmedBodyRows = groupExcessiveTooltipRows(
     sortedBodyRows,
     MAX_BODY_ROWS,
-    hasColorIndicators ? color("text-tertiary") : undefined,
+    hasColorIndicators ? color("text-disabled") : undefined,
   );
 
   return (

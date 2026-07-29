@@ -1,12 +1,12 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupCardDataset } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Table } from "metabase-types/api";
 import { createMockForeignKey } from "metabase-types/api/mocks";
 import {
@@ -63,7 +63,7 @@ function setup({ dataset = DATASET }: SetupOpts = {}) {
 
   setupCardDataset({ dataset });
 
-  renderWithProviders(<Route path="/" component={TestComponent} />, {
+  renderWithProviders(<Route path="/" element={<TestComponent />} />, {
     withRouter: true,
     storeInitialState: createMockState({
       entities: createMockEntitiesState({

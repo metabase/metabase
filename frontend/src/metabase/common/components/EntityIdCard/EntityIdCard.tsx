@@ -56,7 +56,7 @@ export const EntityInfoIcon = () => {
                 <Link
                   target="_new"
                   to={docsLink}
-                  style={{ color: "var(--mb-color-brand)" }}
+                  style={{ color: "var(--mb-color-core-brand)" }}
                 >
                   {t`Learn more`}
                 </Link>

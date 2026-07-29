@@ -5,6 +5,7 @@ import {
   toBreakoutRawSeries,
 } from "./breakout-raw-series";
 
+// Unjustified type cast. FIXME
 const jsQuery = { database: 1, type: "query", query: {} } as DatasetQuery;
 
 const response = (rows: unknown[][]) => ({

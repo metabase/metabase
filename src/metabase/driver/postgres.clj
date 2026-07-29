@@ -28,11 +28,10 @@
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
@@ -41,7 +40,7 @@
    [taoensso.nippy :as nippy])
   (:import
    (java.io DataInput DataOutput StringReader)
-   (java.sql Connection ResultSet ResultSetMetaData Statement Types)
+   (java.sql Array Connection ResultSet ResultSetMetaData Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.apache.commons.codec.binary Hex)
    (org.postgresql.copy CopyManager)
@@ -60,40 +59,41 @@
 ;; default `LIKE` escape character is already `\`, so an explicit `ESCAPE '\'` clause is
 ;; redundant *and* the literal `'\'` is unparseable by the PG JDBC driver when the server has
 ;; `standard_conforming_strings = off` (#73721).
-(driver/register! :postgres, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+(driver/register! :postgres, :parent #{:sql-mbql5 :sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 ;; Features that are supported by Postgres and all of its child drivers like Redshift
-(doseq [[feature supported?] {:connection-impersonation true
-                              :describe-fields          true
-                              :describe-fks             true
-                              :describe-indexes         true
-                              :describe-default-expr    true
-                              :describe-is-generated    true
-                              :describe-is-nullable     true
-                              :convert-timezone         true
-                              :datetime-diff            true
-                              :now                      true
-                              :rename                   true
-                              :atomic-renames           true
-                              :persist-models           true
-                              :schemas                  true
-                              :identifiers-with-spaces  true
-                              :uuid-type                true
-                              :split-part               true
-                              :uploads                  true
-                              :expression-literals      true
-                              :expressions/text         true
-                              :expressions/integer      true
-                              :expressions/float        true
-                              :expressions/date         true
-                              :database-routing         true
-                              :transforms/table         true
-                              :transforms/python        true
-                              :transforms/index-ddl     true
+(doseq [[feature supported?] {:atomic-renames                 true
+                              :connection-impersonation       true
+                              :convert-timezone               true
+                              :database-routing               true
+                              :datetime-diff                  true
+                              :describe-default-expr          true
+                              :describe-fields                true
+                              :describe-indexes               true
+                              :describe-is-generated          true
+                              :describe-is-nullable           true
+                              :expression-literals            true
+                              :expressions/date               true
+                              :expressions/float              true
+                              :expressions/integer            true
+                              :expressions/text               true
+                              :identifiers-with-spaces        true
+                              :index/fetch                    true
+                              :index/standalone-create        true
                               :metadata/table-existence-check true
-                              :workspace                true}]
+                              :native-pivot-tables            true
+                              :now                            true
+                              :persist-models                 true
+                              :rename                         true
+                              :schemas                        true
+                              :split-part                     true
+                              :transforms/index-ddl           true
+                              :transforms/python              true
+                              :transforms/table               true
+                              :uploads                        true
+                              :uuid-type                      true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -121,6 +121,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- quote-schema [s] (sql.u/quote-name :postgres :schema s))
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
@@ -224,7 +226,6 @@
               driver.common/ssh-tunnel-preferences]}
     driver.common/advanced-options-start
     driver.common/json-unfolding
-
     (assoc driver.common/additional-options
            :placeholder "prepareThreshold=0")
     driver.common/default-advanced-options]
@@ -314,9 +315,7 @@
 
 (defmethod driver/describe-database* :postgres
   [_driver database]
-  ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
-  ;; memory in a set like this
-  {:tables (into #{} (describe-syncable-tables database))})
+  {:tables (describe-syncable-tables database)})
 
 (defn- nullable-in
   "Build a HoneySQL clause that handles nil values in `xs` correctly.
@@ -353,7 +352,7 @@
                [[:and
                  [:or [:= :column_default nil] [:= [:lower :column_default] [:inline "null"]]]
                  [:= :is_nullable [:inline "NO"]]
-                  ;;_ IS_AUTOINCREMENT from: https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L1852-L1856
+                 ;;_ IS_AUTOINCREMENT from: https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L1852-L1856
                  [:not [:or
                         [:and [:!= :column_default nil] [:like :column_default [:inline "%nextval(%"]]]
                         [:!= :is_identity [:inline "NO"]]]]]
@@ -532,20 +531,23 @@
 (mu/defn- date-trunc
   [unit :- driver-api/schema.temporal-bucketing.unit.date-time.truncate
    expr]
-  (condp = (h2x/database-type expr)
-    ;; apparently there is no convenient way to truncate a TIME column in Postgres, you can try to use `date_trunc`
-    ;; but it returns an interval (??) and other insane things. This seems to be slightly less insane.
-    "time"
-    (time-trunc unit expr)
-
-    "timetz"
+  ;; Branches are ordered most-specific-first because `database-or-effective-type-isa?` checks `isa?` on the effective
+  ;; type fallback: `:type/TimeWithTZ` is a descendant of `:type/Time`, so the timetz branch must run first to avoid a
+  ;; nested-source-query `timetz` column being routed to the plain-time path (#75193, #68065).
+  (cond
+    (h2x/database-or-effective-type-isa? expr "timetz" :type/TimeWithTZ)
     (h2x/cast "timetz" (time-trunc unit expr))
 
+    ;; apparently there is no convenient way to truncate a TIME column in Postgres, you can try to use `date_trunc`
+    ;; but it returns an interval (??) and other insane things. This seems to be slightly less insane.
+    (h2x/database-or-effective-type-isa? expr "time" :type/Time)
+    (time-trunc unit expr)
+
     ;; postgres returns timestamp or timestamptz from `date_trunc`, so cast back if we've got a date column
-    "date"
+    (h2x/database-or-effective-type-isa? expr "date" :type/Date)
     (h2x/cast "date" [:date_trunc (h2x/literal unit) expr])
 
-    #_else
+    :else
     (let [expr' (h2x/->pg-timestamp expr)]
       (-> [:date_trunc (h2x/literal unit) expr']
           (h2x/with-database-type-info (h2x/database-type expr'))))))
@@ -596,7 +598,7 @@
   (h2x/maybe-cast (h2x/database-type expr) (h2x/->date expr)))
 
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
+  [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
         timestamptz? (or (sql.qp.u/field-with-tz? arg)
@@ -609,21 +611,20 @@
     (h2x/with-database-type-info expr "timestamp")))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
-  [driver value]
-  (let [[_ raw-value {base-type :base_type, database-type :database_type}] value]
-    (when (some? raw-value)
-      (condp #(isa? %2 %1) base-type
-        :type/PostgresBitString (h2x/cast :varbit raw-value)
-        :type/IPAddress    (h2x/cast :inet raw-value)
-        :type/PostgresEnum (if (quoted? database-type)
-                             (h2x/cast database-type raw-value)
-                             (h2x/quoted-cast database-type raw-value))
-        ((get-method sql.qp/->honeysql [:sql-jdbc :value])
-         driver value)))))
+  [driver [_ {:keys [base-type database-type]} raw-value]]
+  (when (some? raw-value)
+    (condp #(isa? %2 %1) base-type
+      :type/PostgresBitString (h2x/cast :varbit raw-value)
+      :type/IPAddress    (h2x/cast :inet raw-value)
+      :type/PostgresEnum (if (quoted? database-type)
+                           (h2x/cast database-type raw-value)
+                           (h2x/quoted-cast database-type raw-value))
+      ((get-method sql.qp/->honeysql [:sql-mbql5 :value])
+       driver (sql.qp/mbql-clause-with-opts driver :value {:base_type base-type :database_type database-type} raw-value)))))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
-  [driver [_ arg]]
-  (sql.qp/->honeysql driver [:percentile arg 0.5]))
+  [driver [_ _opts arg]]
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :percentile arg 0.5)))
 
 (defmethod sql.qp/datetime-diff [:postgres :year]
   [_driver _unit x y]
@@ -677,22 +678,21 @@
 (sql/register-fn! ::regex-match-first #'format-regex-match-first)
 
 (defmethod sql.qp/->honeysql [:postgres :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   (let [identifier (sql.qp/->honeysql driver arg)]
     [::regex-match-first identifier pattern]))
 
 (defmethod sql.qp/->honeysql [:postgres :split-part]
-  [driver [_ text divider position]]
+  [driver [_ _opts text divider position]]
   (let [position (sql.qp/->honeysql driver position)]
     [:case
      [:< position 1]
      ""
-
      :else
      [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
 
 (defmethod sql.qp/->honeysql [:postgres :text]
-  [driver [_ value]]
+  [driver [_ _opts value]]
   (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
@@ -766,10 +766,10 @@
     [::json-query parent-identifier field-type (rest nfc-path)]))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
-  [driver [_ id-or-name opts :as clause]]
+  [driver [_ opts id-or-name :as clause]]
   (let [stored-field  (when (integer? id-or-name)
                         (driver-api/field (driver-api/metadata-provider) id-or-name))
-        parent-method (get-method sql.qp/->honeysql [:sql :field])
+        parent-method (get-method sql.qp/->honeysql [:sql-mbql5 :field])
         identifier    (parent-method driver clause)]
     (cond
       (= (:database-type stored-field) "money")
@@ -806,11 +806,11 @@
 (defmethod sql.qp/apply-top-level-clause
   [:postgres :breakout]
   [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
-  (let [stored-field-ids (map second breakout-fields)
+  (let [stored-field-ids (map last breakout-fields)
         stored-fields    (map #(when (integer? %)
                                  (driver-api/field (driver-api/metadata-provider) %))
                               stored-field-ids)
-        parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
+        parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql-mbql5 :breakout])
                                   driver clause honeysql-form)
         qualified        (parent-method query)
         unqualified      (parent-method (update query
@@ -822,9 +822,9 @@
       qualified)))
 
 (defn- order-by-is-json-field?
-  [clause]
-  (let [is-aggregation? (= (-> clause (second) (first)) :aggregation)
-        stored-field-id (-> clause (second) (second))
+  [clause n]
+  (let [is-aggregation? (= (-> clause (nth n) (first)) :aggregation)
+        stored-field-id (-> clause (nth n) (nth n))
         stored-field    (when (and (not is-aggregation?) (integer? stored-field-id))
                           (driver-api/field (driver-api/metadata-provider) stored-field-id))]
     (and
@@ -833,17 +833,19 @@
 
 (defmethod sql.qp/->honeysql [:postgres :desc]
   [driver clause]
-  (let [new-clause (if (order-by-is-json-field? clause)
+  (let [new-clause (if (order-by-is-json-field? clause 2)
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
-                     clause)]
-    ((get-method sql.qp/->honeysql [:sql :desc]) driver new-clause)))
+                     clause)
+        [_ opts ordered-clause] new-clause]
+    ((get-method sql.qp/->honeysql [:sql-mbql5 :desc]) driver (sql.qp/mbql-clause-with-opts driver :desc opts ordered-clause))))
 
 (defmethod sql.qp/->honeysql [:postgres :asc]
   [driver clause]
-  (let [new-clause (if (order-by-is-json-field? clause)
+  (let [new-clause (if (order-by-is-json-field? clause 2)
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
-                     clause)]
-    ((get-method sql.qp/->honeysql [:sql :asc]) driver new-clause)))
+                     clause)
+        [_ opts ordered-clause] new-clause]
+    ((get-method sql.qp/->honeysql [:sql-mbql5 :asc]) driver (sql.qp/mbql-clause-with-opts driver :asc opts ordered-clause))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
@@ -960,7 +962,6 @@
       (m/assoc-some :sslcert (driver-api/secret-value-as-file! :postgres db-details "ssl-client-cert"))
       ;; Pass an empty string as password if none is provided; otherwise the driver will prompt for one
       (assoc :sslpassword (or (driver-api/secret-value-as-string :postgres db-details "ssl-key-password") ""))
-
       (as-> params ;; from outer cond->
             (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
                     :ssl-use-client-auth)
@@ -1030,7 +1031,7 @@
         (parent-thunk)
         (catch Throwable e
           (let [s (.getString rs i)]
-            (log/tracef e "Error in Postgres JDBC driver reading TIME value, fetching as string '%s'" s)
+            (log/tracef "Error in Postgres JDBC driver reading TIME value, fetching as string: %s" (ex-message e))
             (u.date/parse s)))))))
 
 ;; The postgres JDBC driver cannot properly read MONEY columns — see https://github.com/pgjdbc/pgjdbc/issues/425. Work
@@ -1329,8 +1330,116 @@
   ;; Without the blank check, `format` stringifies nil to "null" and creates a schema
   ;; literally named "null" on the target DB.
   (when-not (str/blank? schema)
-    (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
+    (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS %s;" (quote-schema schema))]]]
       (driver/execute-raw-queries! driver conn-spec sql))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/supported-index-methods :postgres
+  [_driver _database]
+  ;; btree is the only method that supports UNIQUE; gin/gist/brin are containment/range methods. The niche methods
+  ;; (hash, spgist) and partial/expression indexes are intentionally left out.
+  (let [name+cols [driver.common/index-name-field driver.common/index-columns-field]]
+    ;; btree is the only method where column order direction matters, so it opts into the asc/desc picker.
+    {:btree {:lifecycle    :standalone
+             :display-name (deferred-tru "B-Tree")
+             :description  (deferred-tru "Default. Best for equality and range queries on sortable data; use it for most columns you filter, sort, or join by.")
+             :fields       [driver.common/index-name-field
+                            driver.common/index-unique-field
+                            (assoc driver.common/index-columns-field :directions true)]}
+     :gin   {:lifecycle    :standalone
+             :display-name (deferred-tru "GIN")
+             :description  (deferred-tru "For values with multiple components. Best for full-text search, JSONB, and arrays—when you''re searching inside a value.")
+             :fields       name+cols}
+     :gist  {:lifecycle    :standalone
+             :display-name (deferred-tru "GiST")
+             :description  (deferred-tru "For geometric, spatial, and range data. Best for \"nearest neighbor\" and overlap queries, like geographic data (PostGIS) or range types.")
+             :fields       name+cols}
+     :brin  {:lifecycle    :standalone
+             :display-name (deferred-tru "BRIN")
+             :description  (deferred-tru "Tiny and low-overhead. Best for large tables where values correlate with physical row order, like timestamps in an append-only log.")
+             :fields       name+cols}}))
+
+(defn- pg-index-column-sql
+  "Quote one indexed column; append its `ASC`/`DESC` direction only for btree, the one method where ordering matters."
+  [driver btree? {col-name :name :keys [direction]}]
+  (cond-> (sql.u/quote-name driver :field col-name)
+    (and btree? direction) (str " " (u/upper-case-en (name direction)))))
+
+(defmethod driver/compile-create-index :postgres
+  [driver schema table {index-name :name, :keys [kind columns unique if-not-exists]}]
+  (let [btree? (= kind :btree)
+        target (apply sql.u/quote-name driver :table (if (not-empty schema) [schema table] [table]))
+        cols   (str/join ", " (map #(pg-index-column-sql driver btree? %) columns))]
+    ;; btree is the default access method, so we omit `USING btree` and emit `USING <method>` only for the others.
+    ;; UNIQUE is btree-only.
+    [[(format "CREATE %sINDEX %s%s ON %s %s(%s)"
+              (if (and btree? unique) "UNIQUE " "")
+              (if if-not-exists "IF NOT EXISTS " "")
+              (sql.u/quote-name driver :field index-name)
+              target
+              (if btree? "" (format "USING %s " (name kind)))
+              cols)]]))
+
+(defmethod driver/refresh-table-stats! :postgres
+  [driver database schema table _transform-type]
+  (let [qtable (apply sql.u/quote-name driver :table (if (not-empty schema) [schema table] [table]))]
+    (driver/execute-raw-queries! driver
+                                 (driver/connection-spec driver database)
+                                 [[(format "ANALYZE %s" qtable)]])))
+
+(defn- index-array->vec
+  [^Array a]
+  (when a (vec (.getArray a))))
+
+(defn- pg-index-row->index
+  [{:keys [index_name access_method is_unique is_primary is_valid
+           key_columns include_columns partial_predicate definition]}]
+  {:name              index_name
+   ;; On Postgres the access method is the kind: a btree index is kind :btree.
+   :kind              (keyword access_method)
+   :access-method     access_method
+   :is-unique         is_unique
+   :is-primary        is_primary
+   :is-valid          is_valid
+   :key-columns       (index-array->vec key_columns)
+   :include-columns   (index-array->vec include_columns)
+   :partial-predicate partial_predicate
+   :definition        definition})
+
+;; `indkey` is a 0-based `int2vector`; `indnkeyatts` (PG 11+) splits the key columns from the trailing INCLUDE
+;; columns. A blank schema falls back to the connection's `current_schema()`. The arrays are read into Clojure vectors
+;; via `:row-fn` while the result set is still open, so we never touch a `PgArray` after the connection closes.
+(defmethod driver/fetch-table-indexes :postgres
+  [_driver database schema table]
+  (jdbc/query
+   (sql-jdbc.conn/db->pooled-connection-spec database)
+   ["SELECT i.relname                              AS index_name,
+                 am.amname                              AS access_method,
+                 ix.indisunique                         AS is_unique,
+                 ix.indisprimary                        AS is_primary,
+                 ix.indisvalid                          AS is_valid,
+                 pg_get_expr(ix.indpred, ix.indrelid)   AS partial_predicate,
+                 pg_get_indexdef(ix.indexrelid)         AS definition,
+                 ARRAY(SELECT COALESCE(a.attname, pg_get_indexdef(ix.indexrelid, k.ord::int, true))
+                       FROM unnest(ix.indkey[0:ix.indnkeyatts - 1]) WITH ORDINALITY AS k(attnum, ord)
+                       LEFT JOIN pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = k.attnum
+                       ORDER BY k.ord)                  AS key_columns,
+                 ARRAY(SELECT a.attname
+                       FROM unnest(ix.indkey[ix.indnkeyatts : ix.indnatts - 1]) WITH ORDINALITY AS k(attnum, ord)
+                       LEFT JOIN pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = k.attnum
+                       ORDER BY k.ord)                  AS include_columns
+          FROM pg_index ix
+          JOIN pg_class     c  ON c.oid  = ix.indrelid
+          JOIN pg_class     i  ON i.oid  = ix.indexrelid
+          JOIN pg_namespace n  ON n.oid  = c.relnamespace
+          JOIN pg_am        am ON am.oid = i.relam
+          WHERE n.nspname = COALESCE(?, current_schema()) AND c.relname = ?
+          ORDER BY i.relname"
+    (not-empty schema) table]
+   {:row-fn pg-index-row->index}))
 
 (defmethod driver/extra-info :postgres
   [_driver]
@@ -1362,82 +1471,6 @@
   (let [type  (nippy/thaw-from-in! data-input)
         value (nippy/thaw-from-in! data-input)]
     (doto (PGobject.) (.setType type) (.setValue value))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Workspace Isolation                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- user-exists?
-  "Check if a PostgreSQL user exists. Uses pg_user which also works in Redshift."
-  [conn username]
-  (seq (jdbc/query conn ["SELECT 1 FROM pg_user WHERE usename = ?" username])))
-
-(defmethod driver/init-workspace-isolation! :postgres
-  [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        read-user   {:user     (driver.u/workspace-isolation-user-name workspace)
-                     :password (driver.u/random-workspace-password)}]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      ;; Create user if not exists, otherwise update password
-      ;; PostgreSQL doesn't support CREATE USER IF NOT EXISTS, so we need to check first
-      (let [user-sql (if (user-exists? t-conn (:user read-user))
-                       (format "ALTER USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user))
-                       (format "CREATE USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user)))]
-        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-          (doseq [sql [;; PostgreSQL supports IF NOT EXISTS for schemas
-                       (format "CREATE SCHEMA IF NOT EXISTS \"%s\"" schema-name)
-                       user-sql
-                       ;; grant schema access (CREATE to create tables, USAGE to access them)
-                       ;; GRANT is idempotent in PostgreSQL
-                       (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\" TO \"%s\"" schema-name (:user read-user))
-                       ;; grant all privileges on future tables created in this schema (by admin)
-                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT ALL ON TABLES TO \"%s\"" schema-name (:user read-user))
-                       ;; grant role membership to admin so DROP OWNED BY works during cleanup
-                       (format "GRANT \"%s\" TO CURRENT_USER" (:user read-user))]]
-            (.addBatch ^Statement stmt ^String sql))
-          (.executeBatch ^Statement stmt))))
-    {:schema           schema-name
-     :database_details read-user}))
-
-(defmethod driver/destroy-workspace-isolation! :postgres
-  [_driver database workspace]
-  (let [schema-name (:schema workspace)
-        username    (-> workspace :database_details :user)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql (cond-> [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)]
-                      (user-exists? t-conn username)
-                      (into [(format "DROP OWNED BY \"%s\"" username)
-                             (format "DROP USER IF EXISTS \"%s\"" username)]))]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
-
-(defmethod driver/grant-workspace-read-access! :postgres
-  [_driver database workspace tables]
-  (let [username       (-> workspace :database_details :user)
-        qu             (sql.u/quote-name :postgres :field username)
-        ;; Collect all unique source schemas that contain the tables we need to grant access to
-        source-schemas (into #{} (keep :schema) tables)
-        ;; Grant USAGE on source schemas, then SELECT on each table
-        ;; Note: workspace schema already has ALL PRIVILEGES from init, so no need to grant USAGE there
-        sqls           (concat
-                        ;; USAGE on each source schema containing tables we're granting access to
-                        (for [s source-schemas]
-                          (format "GRANT USAGE ON SCHEMA %s TO %s"
-                                  (sql.u/quote-name :postgres :schema s) qu))
-                        ;; SELECT on each table
-                        (for [{s :schema, t :name} tables]
-                          (if (str/blank? s)
-                            (format "GRANT SELECT ON TABLE %s TO %s"
-                                    (sql.u/quote-name :postgres :table t) qu)
-                            (format "GRANT SELECT ON TABLE %s.%s TO %s"
-                                    (sql.u/quote-name :postgres :schema s)
-                                    (sql.u/quote-name :postgres :table t) qu))))]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql sqls]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
 
 (defmethod driver/llm-sql-dialect-resource :postgres [_]
   "metabot/prompts/dialects/postgresql.md")

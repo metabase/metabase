@@ -67,6 +67,7 @@ export const SdkIframeEmbedSetupProvider = ({
   const { data: searchData } = useSearchQuery({
     limit: 0,
     models: ["dataset"],
+    context: "embedding-setup",
   });
 
   const modelCount = searchData?.total ?? 0;

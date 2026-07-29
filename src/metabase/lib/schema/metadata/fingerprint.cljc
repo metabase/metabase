@@ -44,8 +44,6 @@
    [:percent-state  {:optional true} [:maybe [:ref ::percent]]]
    [:percent-blank  {:optional true} [:maybe [:ref ::percent]]]
    [:average-length {:optional true} [:maybe number?]]
-   [:min-length     {:optional true} [:maybe number?]]
-   [:max-length     {:optional true} [:maybe number?]]
    [:mode-fraction  {:optional true} [:maybe [:ref ::percent]]]
    [:top-3-fraction {:optional true} [:maybe [:ref ::percent]]]])
 
@@ -55,11 +53,8 @@
    {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:earliest             {:optional true} [:maybe :string]]
    [:latest               {:optional true} [:maybe :string]]
-   [:skewness             {:optional true} [:maybe number?]]
    [:mode-fraction        {:optional true} [:maybe [:ref ::percent]]]
-   [:top-3-fraction       {:optional true} [:maybe [:ref ::percent]]]
-   [:weekday-distribution {:optional true} [:maybe [:sequential [:ref ::percent]]]]
-   [:hour-distribution    {:optional true} [:maybe [:sequential [:ref ::percent]]]]])
+   [:top-3-fraction       {:optional true} [:maybe [:ref ::percent]]]])
 
 (mr/def ::fingerprint.type-specific
   "Schema for type-specific fingerprint information."

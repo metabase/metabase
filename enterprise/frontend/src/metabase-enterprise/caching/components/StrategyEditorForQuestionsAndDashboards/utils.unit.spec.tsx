@@ -1,7 +1,6 @@
-import { strategies } from "metabase/admin/performance/constants/complex";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
-import { getCollectionPathAsString } from "metabase/collections/utils";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { getCollectionPathAsString } from "metabase/common/collections/utils";
+import { PLUGIN_CACHING, strategies } from "metabase/plugins";
 import { enterpriseOnlyCachingStrategies } from "metabase-enterprise/caching/constants";
 import {
   type AdaptiveStrategy,
@@ -150,7 +149,9 @@ describe("StrategyEditorForQuestionsAndDashboards utilities", () => {
 
     it("sorts by policy correctly", () => {
       const sorted = unsortedRows.sort((rowA, rowB) => {
+        // Unjustified type cast. FIXME
         const a = formatValueForSorting(rowA, "policy") as string;
+        // Unjustified type cast. FIXME
         const b = formatValueForSorting(rowB, "policy") as string;
         return a.localeCompare(b);
       });
@@ -171,7 +172,9 @@ describe("StrategyEditorForQuestionsAndDashboards utilities", () => {
 
     it("sorts by collection correctly", () => {
       const sorted = unsortedRows.sort((rowA, rowB) => {
+        // Unjustified type cast. FIXME
         const a = formatValueForSorting(rowA, "collection") as string;
+        // Unjustified type cast. FIXME
         const b = formatValueForSorting(rowB, "collection") as string;
         return a.localeCompare(b);
       });

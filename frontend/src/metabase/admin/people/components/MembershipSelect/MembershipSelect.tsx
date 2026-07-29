@@ -7,7 +7,7 @@ import {
   isAdminGroup,
   isDataAnalystGroup,
   isDefaultGroup,
-} from "metabase/admin/utils/groups";
+} from "metabase/common/utils/groups";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { Box, Divider, Flex, Icon, Popover } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
@@ -153,7 +153,7 @@ export const MembershipSelect = ({
             groups={groups}
             selectedGroupIds={selectedGroupIds}
           />
-          <Icon c="text-tertiary" name="chevrondown" size={10} />
+          <Icon c="text-disabled" name="chevrondown" size={10} />
         </Flex>
       </Popover.Target>
       <Popover.Dropdown w="300px" mah="600px" py="sm">

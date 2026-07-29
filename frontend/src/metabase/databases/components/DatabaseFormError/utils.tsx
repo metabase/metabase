@@ -1,11 +1,11 @@
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useFormErrorMessage } from "metabase/forms";
+import { Link } from "metabase/router";
 import { Box } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 

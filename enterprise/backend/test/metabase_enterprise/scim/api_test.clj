@@ -22,7 +22,6 @@
     (t2/delete! :model/ApiKey :scope :scim)
     (let [key1 (#'scim/refresh-scim-api-key! (mt/user->id :crowberto))]
       (is (=? (scim-api-key-shape :crowberto) key1))
-
       (testing "The same function will refresh an existing SCIM API key"
         (let [key2 (#'scim/refresh-scim-api-key! (mt/user->id :crowberto))]
           (is (=? (scim-api-key-shape :crowberto) key2))
@@ -37,10 +36,8 @@
               fetched-key (mt/user-http-request :crowberto :get 200 "ee/scim/api_key")]
           (is (nil? (:unmasked_key fetched-key)))
           (is (= (:key actual-key) (:key fetched-key)))))
-
       (testing "A non-admin cannot fetch the SCIM API key"
         (mt/user-http-request :rasta :get 403 "ee/scim/api_key"))
-
       (testing "A 404 is returned if the key has not yet been created"
         (t2/delete! :model/ApiKey :scope :scim)
         (mt/user-http-request :crowberto :get 404 "ee/scim/api_key")))))

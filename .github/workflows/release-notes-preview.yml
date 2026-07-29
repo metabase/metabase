@@ -34,8 +34,10 @@ jobs:
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Version
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       env:
+        # required by getMilestoneIssues to configure GraphQL client
+        GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         DOCKERHUB_OWNER: test_owner
         DOCKERHUB_REPO: test_repo
         AWS_S3_DOWNLOADS_BUCKET: test_bucket
@@ -60,7 +62,7 @@ jobs:
 
           fs.writeFileSync(`release-notes-preview-${version}.md`, notes);
     - name: Upload Release Notes
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: release-notes-preview-${{inputs.version}}.md
         path: |
@@ -68,7 +70,7 @@ jobs:
 
     - name: Post release notes preview to Slack
       if: ${{ inputs.slackChannel != '' }}
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       env:
         SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
       with:

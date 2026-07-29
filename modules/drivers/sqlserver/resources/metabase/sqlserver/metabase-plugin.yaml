@@ -29,6 +29,9 @@ driver:
       helper-text: User used to run system queries, required if the connection's user cannot be impersonated, such as the 'sa' user.
       placeholder: user
     - cloud-ip-address-info
+    - name: schema-filters
+      type: schema-filters
+      display-name: Schemas
     - group:
         container-style: ["component", "backdrop"]
         fields:

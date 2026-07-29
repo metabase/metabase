@@ -39,7 +39,10 @@ export function setupCardDataset(
 
   fetchMock.post(
     "path:/api/dataset",
-    new Response(JSON.stringify(createMockDataset(dataset)), { status }),
+    new Response(JSON.stringify(createMockDataset(dataset)), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    }),
     {
       name: "dataset-post",
     },

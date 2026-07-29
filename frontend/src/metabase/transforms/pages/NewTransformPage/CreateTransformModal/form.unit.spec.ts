@@ -9,7 +9,7 @@ const baseValues = {
   incremental: false,
   sourceStrategy: "checkpoint" as const,
   checkpointFilterFieldId: null,
-  targetStrategy: "append" as const,
+  uniqueKey: "",
 };
 
 describe("CreateTransformModal VALIDATION_SCHEMA (GDGT-2144)", () => {

@@ -1,8 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { getStore } from "__support__/entities-store";
-import { Api } from "metabase/api";
-import { mainReducers } from "metabase/reducers-main";
+import { getMainStore } from "__support__/entities-store";
 import { createMockState } from "metabase/redux/store/mocks";
 
 import {
@@ -22,7 +20,10 @@ const mockUploadCSV = (valid = true) => {
   fetchMock.post(
     "path:/api/upload/csv",
     valid
-      ? "3"
+      ? new Response(JSON.stringify(3), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
       : {
           throws: { data: { message: "It's dead Jim" } },
         },
@@ -33,18 +34,42 @@ const mockAppendCSV = (valid = true) => {
   fetchMock.post(
     "glob:*/api/table/*/append-csv",
     valid
-      ? "3"
+      ? new Response(JSON.stringify(3), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
       : {
           throws: { data: { message: "It's dead Jim" } },
         },
   );
 };
 
+// Asserts the matching request was sent as multipart form data — locks down
+// that table.ts hands the FormData through unwrapped (a JSON-stringified
+// `{ formData }` would set Content-Type: application/json instead).
+const expectMultipartBody = (urlSuffix) => {
+  const call = fetchMock.callHistory
+    .calls()
+    .find((c) => c.url.endsWith(urlSuffix));
+  expect(call).toBeDefined();
+  const headers = call.options?.headers ?? {};
+  const contentType =
+    headers instanceof Headers
+      ? headers.get("content-type")
+      : (headers["content-type"] ?? headers["Content-Type"]);
+  // Either absent (browser sets it with the multipart boundary) or multipart;
+  // application/json would mean FormData got JSON-stringified.
+  expect(contentType ?? "").not.toMatch(/application\/json/);
+};
+
 const mockReplaceCSV = (valid = true) => {
   fetchMock.post(
     "glob:*/api/table/*/replace-csv",
     valid
-      ? "3"
+      ? new Response(JSON.stringify(3), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
       : {
           throws: { data: { message: "It's dead Jim" } },
         },
@@ -53,11 +78,7 @@ const mockReplaceCSV = (valid = true) => {
 
 describe("csv uploads", () => {
   describe("actions", () => {
-    const store = getStore(
-      { ...mainReducers, [Api.reducerPath]: Api.reducer },
-      createMockState(),
-      [Api.middleware],
-    );
+    const store = getMainStore(createMockState());
     const dispatch = jest.spyOn(store, "dispatch");
 
     const file = new File(
@@ -116,6 +137,8 @@ describe("csv uploads", () => {
       await uploadFile({ file, tableId: 123, uploadMode: "append" })(dispatch);
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
+      expectMultipartBody("append-csv");
+
       expect(dispatch).toHaveBeenCalledWith({
         type: UPLOAD_FILE_START,
         payload: {
@@ -147,6 +170,8 @@ describe("csv uploads", () => {
 
       await uploadFile({ file, tableId: 123, uploadMode: "replace" })(dispatch);
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
+
+      expectMultipartBody("replace-csv");
 
       expect(dispatch).toHaveBeenCalledWith({
         type: UPLOAD_FILE_START,

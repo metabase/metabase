@@ -159,9 +159,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
           `parameter-form-section-${actionParameter1.id}`,
         );
 
-        await userEvent.click(within(formSection).getByTestId("select-button"));
+        await userEvent.click(
+          within(formSection).getByTestId("parameter-mapping-select"),
+        );
 
-        const popover = await screen.findByRole("tree");
+        const popover = await screen.findByRole("listbox");
 
         expect(
           within(popover).getByText(dashboardParameter.name),
@@ -209,9 +211,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
           `parameter-form-section-${actionParameter1.id}`,
         );
 
-        await userEvent.click(within(formSection).getByTestId("select-button"));
+        await userEvent.click(
+          within(formSection).getByTestId("parameter-mapping-select"),
+        );
 
-        const popover = await screen.findByRole("tree");
+        const popover = await screen.findByRole("listbox");
 
         expect(
           within(popover).queryByText("Ask the user"),
@@ -268,9 +272,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
         `parameter-form-section-${actionParameter1.id}`,
       );
 
-      await userEvent.click(within(formSection).getByTestId("select-button"));
+      await userEvent.click(
+        within(formSection).getByTestId("parameter-mapping-select"),
+      );
 
-      const popover = await screen.findByRole("tree");
+      const popover = await screen.findByRole("listbox");
 
       expect(within(popover).getByText("Select a value")).toBeInTheDocument();
       expect(within(popover).getByText(DEFAULT_VALUE)).toBeInTheDocument();
@@ -309,9 +315,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
           `parameter-form-section-${actionParameter1.id}`,
         );
 
-        await userEvent.click(within(formSection).getByTestId("select-button"));
+        await userEvent.click(
+          within(formSection).getByTestId("parameter-mapping-select"),
+        );
 
-        const popover = await screen.findByRole("tree");
+        const popover = await screen.findByRole("listbox");
 
         expect(
           within(popover).queryByText("Ask the user"),
@@ -345,9 +353,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
           `parameter-form-section-${actionParameter1.id}`,
         );
 
-        await userEvent.click(within(formSection).getByTestId("select-button"));
+        await userEvent.click(
+          within(formSection).getByTestId("parameter-mapping-select"),
+        );
 
-        const popover = await screen.findByRole("tree");
+        const popover = await screen.findByRole("listbox");
 
         expect(within(popover).getByText("Select a value")).toBeInTheDocument();
         expect(
@@ -407,9 +417,9 @@ describe("ActionViz > ActionDashcardSettings", () => {
         `parameter-form-section-${actionParameterRequired.id}`,
       );
 
-      expect(within(formSection).getByRole("button")).toHaveTextContent(
-        "Select a value",
-      );
+      expect(
+        within(formSection).getByTestId("parameter-mapping-select"),
+      ).toHaveValue("Select a value");
     });
   });
 

@@ -195,17 +195,14 @@
           num-breakouts 3]
       (is (= [0 1 2]
              (#'pivot/get-active-breakout-indexes pivot-group num-breakouts))))
-
     (let [pivot-group   1  ;; One inactive breakout (001 in binary)
           num-breakouts 3]
       (is (= [1 2]
              (#'pivot/get-active-breakout-indexes pivot-group num-breakouts))))
-
     (let [pivot-group   6  ;; Two inactive breakouts (110 in binary)
           num-breakouts 3]
       (is (= [0]
              (#'pivot/get-active-breakout-indexes pivot-group num-breakouts))))
-
     (let [pivot-group   7  ;; No active breakouts (111 in binary)
           num-breakouts 3]
       (is (= []
@@ -223,6 +220,27 @@
       (is (= [{:value "$100" :isSubtotal true :custom "attr"}
               {:value "200%" :isSubtotal true :custom "attr"}]
              result)))))
+
+(deftest create-subtotal-node-test
+  (testing "labels a plain formatted value (CSV / FE path)"
+    (is (= "Totals for BA"
+           (:value (#'pivot/create-subtotal-node {:value "BA" :rawValue "BA"})))))
+  (testing "labels an XLSX formatter-map value using its formatted text"
+    (is (= "Totals for engineer"
+           (:value (#'pivot/create-subtotal-node
+                    {:value {:col {:name "bio"}
+                             :value "engineer"
+                             :xlsx-formatted-value "engineer"
+                             :styles nil}
+                     :rawValue "engineer"})))))
+  (testing "renders nil breakout values as (empty) instead of dumping the formatter map (#71220)"
+    (is (= "Totals for (empty)"
+           (:value (#'pivot/create-subtotal-node
+                    {:value {:col {:name "bio"}
+                             :value nil
+                             :xlsx-formatted-value nil
+                             :styles nil}
+                     :rawValue nil}))))))
 
 (deftest build-pivot-trees-test
   (testing "build-pivot-trees correctly builds basic row and column tree structures"
@@ -246,11 +264,9 @@
                 :isCollapsed false
                 :value 2}]
               (lists-to-vecs-recursively (:row-tree result))))
-
       (is (=? [{:children [] :isCollapsed false :value "Y"}
                {:children [] :isCollapsed false :value "Z"}]
               (lists-to-vecs-recursively (:col-tree result))))
-
       (is (= [[["Y" 1 "A"] [10]]
               [["Z" 2 "B"] [20]]]
              (map
@@ -288,7 +304,6 @@
                   :value 2}]
                 (lists-to-vecs-recursively (:row-tree result)))
                "Row tree should have correct collapsed state for the root level"))
-
          ;; Set up collapsed subtotals for level 2 (children of the root)
          (let [settings {:pivot_table.collapsed_rows {:value ["1"]}}
                result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
@@ -334,7 +349,6 @@
                   :value 2}]
                 (lists-to-vecs-recursively (:row-tree result)))
                "Row tree should have correct collapsed state for the root level"))
-
          ;; Set up collapsed subtotals for level 2 (children of the root)
          (let [settings {:pivot_table.collapsed_rows {:value ["1"]}}
                result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
@@ -369,7 +383,6 @@
          ;; Test collapsing a specific node at the root level
          (let [settings {:pivot_table.collapsed_rows {:value ["[1]"]}}
                result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-
            (is (=?
                 [{:children [{:children [] :isCollapsed false :value "A"}
                              {:children [] :isCollapsed false :value "B"}]
@@ -381,11 +394,9 @@
                   :value 2}]
                 (lists-to-vecs-recursively (:row-tree result)))
                "Row tree should have correct collapsed state for node with value 1 only"))
-
          ;; Test collapsing a specific nested path
          (let [settings {:pivot_table.collapsed_rows {:value ["[1,\"A\"]"]}}
                result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-
            (is (=?
                 [{:children [{:children [] :isCollapsed true :value "A"} ;; Only [1,"A"] should be collapsed
                              {:children [] :isCollapsed false :value "B"}]
@@ -397,11 +408,9 @@
                   :value 2}]
                 (lists-to-vecs-recursively (:row-tree result)))
                "Row tree should have correct collapsed state for nested path [1,\"A\"]"))
-
          ;; Test collapsing multiple specific paths
          (let [settings {:pivot_table.collapsed_rows {:value ["[1,\"A\"]", "[2,\"B\"]"]}}
                result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-
            (is (=?
                 [{:children [{:children [] :isCollapsed true :value "A"} ;; [1,"A"] should be collapsed
                              {:children [] :isCollapsed false :value "B"}]
@@ -535,7 +544,6 @@
                  {:value 2
                   :children [{:value "A"} {:value "B"}]}]
                 (lists-to-vecs-recursively (:row-tree result))))))
-
     (testing "descending sort order for first column"
       (let [result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes {}
                                             [{:pivot_table.column_sort_order "descending"} {} {} {} {}])]
@@ -544,7 +552,6 @@
                  {:value 1
                   :children [{:value "A"} {:value "B"}]}]
                 (lists-to-vecs-recursively (:row-tree result))))))
-
     (testing "descending sort order for first two columns"
       (let [result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes {}
                                             [{:pivot_table.column_sort_order "descending"}
@@ -711,27 +718,22 @@
          (is (= 5 (#'pivot/ensure-is-int 5)))
          (is (= 0 (#'pivot/ensure-is-int 0)))
          (is (= 7 (#'pivot/ensure-is-int 7))))
-
        (testing "Should handle long values"
          (is (= 5 (#'pivot/ensure-is-int 5N)))
          (is (= 0 (#'pivot/ensure-is-int 0N)))
          (is (= 7 (#'pivot/ensure-is-int 7N))))
-
        (testing "Should convert BigDecimal values that are losslessly convertible to int"
          (is (= 5 (#'pivot/ensure-is-int (BigDecimal. "5"))))
          (is (= 0 (#'pivot/ensure-is-int (BigDecimal. "0"))))
          (is (= 7 (#'pivot/ensure-is-int (BigDecimal. "7"))))
          (is (= 123 (#'pivot/ensure-is-int (BigDecimal. "123"))))
-
          ;; Test with explicitly integer-valued BigDecimals
          (is (= 5 (#'pivot/ensure-is-int (BigDecimal. "5.0"))))
          (is (= 42 (#'pivot/ensure-is-int (BigDecimal. "42.00")))))
-
        (testing "Should handle edge cases"
          ;; Test with maximum int value as BigDecimal
          (is (= Integer/MAX_VALUE
                 (#'pivot/ensure-is-int (BigDecimal. (str Integer/MAX_VALUE)))))
-
          ;; Test with zero as BigDecimal
          (is (= 0 (#'pivot/ensure-is-int BigDecimal/ZERO))))
        (testing "Should throw if it has decimal places"
@@ -748,46 +750,37 @@
          (let [pivot-group-bigdecimal (BigDecimal. "5") ; binary: 101
                pivot-group-int 5 ; same value as int
                num-breakouts 3]
-
            (doseq [bit-index (range num-breakouts)]
              (let [bit-mask (bit-shift-left 1 bit-index)
                    bigdecimal-result (bit-and bit-mask (#'pivot/ensure-is-int pivot-group-bigdecimal))
                    int-result (bit-and bit-mask pivot-group-int)]
                (is (= int-result bigdecimal-result)
                    (str "Bitwise AND with bit-mask " bit-mask " should be same for BigDecimal and int"))))
-
            ;; Test the full active breakout logic
            (is (= (#'pivot/get-active-breakout-indexes pivot-group-int num-breakouts)
                   (#'pivot/get-active-breakout-indexes pivot-group-bigdecimal num-breakouts))
                "get-active-breakout-indexes should return same result for BigDecimal and int")))
-
        (testing "Works with decimal representations that are integers"
          (let [pivot-group-decimal (BigDecimal. "3.0") ; Should convert to 3
                pivot-group-int 3
                num-breakouts 3]
-
            (is (= (#'pivot/get-active-breakout-indexes pivot-group-int num-breakouts)
                   (#'pivot/get-active-breakout-indexes pivot-group-decimal num-breakouts))
                "BigDecimal with .0 should work same as integer")))
-
        (testing "Handles edge case BigDecimal values"
          (is (= [0 1 2]
                 (#'pivot/get-active-breakout-indexes BigDecimal/ZERO 3))
              "BigDecimal/ZERO should work like integer 0")
-
          (is (= [1 2]
                 (#'pivot/get-active-breakout-indexes BigDecimal/ONE 3))
              "BigDecimal/ONE should work like integer 1")))
-
      (testing "Memoization works correctly with BigDecimal values"
        (let [pivot-group (BigDecimal. "6")
              num-breakouts 3
              first-call (#'pivot/get-active-breakout-indexes pivot-group num-breakouts)
              second-call (#'pivot/get-active-breakout-indexes pivot-group num-breakouts)]
-
          (is (= first-call second-call))
          (is (= [0] first-call) "pivot-group 6 with 3 breakouts should return [0]")
-
          (let [equivalent-pivot-group (BigDecimal. "6.0")
                third-call (#'pivot/get-active-breakout-indexes equivalent-pivot-group num-breakouts)]
            (is (= first-call third-call) "Equivalent BigDecimal values should return same result"))))))

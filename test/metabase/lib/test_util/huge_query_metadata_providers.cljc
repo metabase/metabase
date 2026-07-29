@@ -743,7 +743,7 @@
          :table-id                   table-id
          :fk-target-field-id         fk-target-field-id
          :has-field-values           has-field-values
-                 ;; And now the fixed parts
+         ;; And now the fixed parts
          :lib/type                   :metadata/column
          :description                nil
          :database-partitioned       nil

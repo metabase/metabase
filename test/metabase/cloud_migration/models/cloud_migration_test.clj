@@ -24,7 +24,7 @@
   [migration]
   {(:upload_url migration)
    (fn [{:keys [body request-method]}]
-             ;; slurp it to progress the upload
+     ;; slurp it to progress the upload
      (slurp body)
      (is (= :put
             request-method))

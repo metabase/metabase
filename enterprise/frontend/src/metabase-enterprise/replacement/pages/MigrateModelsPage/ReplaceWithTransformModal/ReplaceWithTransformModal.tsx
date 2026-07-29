@@ -7,7 +7,7 @@ import {
   useGetDatabaseQuery,
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { hasFeature } from "metabase/common/utils/database";
 import {

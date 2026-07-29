@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupAuditInfoEndpoint,
@@ -18,6 +16,7 @@ import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Settings, User } from "metabase-types/api";
 import {
@@ -72,10 +71,13 @@ export const setup = async ({
     <QuestionInfoSidebar question={question} onSave={onSave} />
   );
 
-  renderWithProviders(<Route path="*" component={TestQuestionInfoSidebar} />, {
-    withRouter: true,
-    storeInitialState: state,
-  });
+  renderWithProviders(
+    <Route path="*" element={<TestQuestionInfoSidebar />} />,
+    {
+      withRouter: true,
+      storeInitialState: state,
+    },
+  );
 
   await waitForLoaderToBeRemoved();
 };

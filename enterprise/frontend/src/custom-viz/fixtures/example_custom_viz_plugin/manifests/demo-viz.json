@@ -1,0 +1,7 @@
+{
+  "name": "demo-viz",
+  "icon": "icon.svg",
+  "metabase": {
+    "version": ">=0.57.0"
+  }
+}

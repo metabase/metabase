@@ -3,11 +3,11 @@
     margin-left: 32px;
 
     & svg {
-      color: var(--mb-color-focus);
+      color: var(--mb-color-input-focus);
     }
 
     & svg[data-role="chevron"] {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
   }
 
@@ -18,7 +18,7 @@
   }
 
   & svg {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 
   & svg[data-role="chevron"] {

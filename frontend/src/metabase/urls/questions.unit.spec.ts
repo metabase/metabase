@@ -8,7 +8,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { newQuestion, question } from "./questions";
+import { newQuestion, question, table } from "./questions";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -55,6 +55,23 @@ describe("urls > questions", () => {
       );
 
       expect(question(q)).toBe(adhocUrl);
+    });
+  });
+
+  describe("table", () => {
+    it("builds a slugged URL from id and name", () => {
+      expect(table({ id: 2, name: "Orders" })).toBe("/table/2-orders");
+    });
+
+    it("slugifies multi-word and special-character names", () => {
+      expect(table({ id: 10, name: "People & Places!" })).toBe(
+        "/table/10-people-places",
+      );
+    });
+
+    it("omits the slug when no name is given", () => {
+      expect(table({ id: 2 })).toBe("/table/2");
+      expect(table({ id: 2, name: null })).toBe("/table/2");
     });
   });
 

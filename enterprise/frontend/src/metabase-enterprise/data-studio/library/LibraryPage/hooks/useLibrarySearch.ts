@@ -29,6 +29,7 @@ export function useLibrarySearch(
           q: debouncedQuery,
           collection: libraryCollectionId,
           models: ["table", "metric"],
+          context: "library",
         }
       : skipToken,
   );

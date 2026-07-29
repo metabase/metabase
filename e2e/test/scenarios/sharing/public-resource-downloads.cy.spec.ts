@@ -32,6 +32,7 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
         .should("contain.value", "/public/")
         .invoke("val")
         .then((url) => {
+          // Unjustified type cast. FIXME
           publicLink = url as string;
         });
 
@@ -172,6 +173,7 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
         .should("contain.value", "/public/")
         .invoke("val")
         .then((url) => {
+          // Unjustified type cast. FIXME
           publicLink = url as string;
         });
 

@@ -74,7 +74,7 @@
 
 (defn- query-parameter ^QueryParameterValue [value]
   (let [param (->QueryParameterValue value)]
-    (log/tracef "Set parameter ^%s %s -> %s" (some-> value class .getCanonicalName) (pr-str value) (pr-str param))
+    (log/tracef "Set parameter of class %s" (some-> value class .getCanonicalName))
     param))
 
 (defn set-parameters!

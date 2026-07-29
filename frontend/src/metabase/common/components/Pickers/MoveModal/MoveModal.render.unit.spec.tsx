@@ -14,7 +14,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -67,6 +67,7 @@ function setupEndpoints() {
   fetchMock.get("path:/api/user/recipients", { data: [] });
 }
 
+// Unjustified type cast. FIXME
 const movingCard = {
   id: 1,
   name: "Test Question",
@@ -74,6 +75,7 @@ const movingCard = {
   collection: { id: 11, name: "First Collection", authority_level: null },
 } as OmniPickerCollectionItem;
 
+// Unjustified type cast. FIXME
 const movingDashboard = {
   id: 2,
   name: "Test Dashboard",

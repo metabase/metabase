@@ -81,13 +81,11 @@
            (#'common/CTEs->subselects
             {:with [[:most_popular {:from [[:view_log :vl]]}]]
              :from [[:most_popular :mp]]}))))
-
   (testing "JOIN substitution"
     (is (= {:left-join [[{:from [[:query_execution :qe]]} :qe_count] [:= :qe_count.executor_id :u.id]]}
            (#'common/CTEs->subselects
             {:with      [[:qe_count {:from [[:query_execution :qe]]}]]
              :left-join [:qe_count [:= :qe_count.executor_id :u.id]]}))))
-
   (testing "IN subselect substitution"
     (is (= {:from [[{:from  [[:report_dashboardcard :dc]]
                      :where [:in :d.id {:from [[{:from [[:view_log :vl]]} :most_popular]]}]} :dash_avg_running_time]]}
@@ -96,7 +94,6 @@
                     [:dash_avg_running_time {:from  [[:report_dashboardcard :dc]]
                                              :where [:in :d.id {:from [:most_popular]}]}]]
              :from [:dash_avg_running_time]}))))
-
   (testing "putting it all together"
     (is (= {:select    [:mp.dashboard_id]
             :from      [[{:select    [[:d.id :dashboard_id]]
@@ -107,7 +104,6 @@
                           :left-join [[{:select [:qe.card_id]
                                         :from   [[:query_execution :qe]]} :rt]
                                       [:= :dc.card_id :rt.card_id]
-
                                       [:report_dashboard :d]
                                       [:= :dc.dashboard_id :d.id]]
                           :where [:in :d.id {:select [:dashboard_id]

@@ -5,11 +5,12 @@ import { jt, t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DottedBackground } from "metabase/common/components/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/common/components/upsells/components/LineDecorator";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks/useMetadataToasts";
 import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { EnableTransformsCard } from "metabase/transforms/pages/EnableTransformsPage/EnableTransformsCard";
 import { Button, Center, Flex, Text, Title } from "metabase/ui";
 import { reload } from "metabase/utils/dom";
@@ -28,6 +29,8 @@ export function TransformsUpsellPage() {
   const { error, hadTransforms, isLoading, basicTransformsAddOn } =
     useTransformsBilling();
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
+  const isAdmin = useSelector(getUserIsAdmin);
+  const canPurchaseTransforms = isStoreUser || isAdmin;
 
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
   const { sendErrorToast } = useMetadataToasts();
@@ -65,7 +68,7 @@ export function TransformsUpsellPage() {
             <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
           }
         />
-        <Center h="100%" bg="background-secondary">
+        <Center h="100%" bg="background_page-secondary">
           <LoadingAndErrorWrapper
             loading={isLoading}
             error={
@@ -100,7 +103,7 @@ export function TransformsUpsellPage() {
           <EnableTransformsCard
             onEnableClick={onEnableClick}
             permissionsErrorMessage={
-              !isStoreUser && (
+              !canPurchaseTransforms && (
                 <Text fz="1rem" fw="bold">
                   {t`To enable Transforms, please contact a store administrator`}
                   {anyStoreUserEmailAddress && ` (${anyStoreUserEmailAddress})`}

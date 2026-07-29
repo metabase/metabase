@@ -110,7 +110,6 @@
              (into [:enum {:decode/normalize normalize-datetime-mode}]
                    datetime-string-modes)]]]
      [:schema [:ref ::expression/string]]]
-
     ;; number modes
     [:cat
      [:merge
@@ -118,7 +117,6 @@
       [:map [:mode (into [:enum {:decode/normalize normalize-datetime-mode}]
                          datetime-number-modes)]]]
      [:schema [:ref ::expression/number]]]
-
     ;; binary modes
     [:cat
      [:merge

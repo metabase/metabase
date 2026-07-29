@@ -53,7 +53,7 @@
   (driver.tu/wrap-notify-all-databases-updated!
    (if (= (mdb/db-type) :h2)
      (test.tz/do-with-system-timezone-id! tz thunk)
-      ;; otherwise if db-type is postgres or mysql
+     ;; otherwise if db-type is postgres or mysql
      (let [initial-tz (val (first (t2/query-one (case (mdb/db-type)
                                                   :postgres "SELECT current_setting('TIMEZONE')"
                                                   :mysql "SELECT @@global.time_zone"))))
@@ -80,10 +80,10 @@
                   :mariadb
                   db-type)]
     (->> (:databaseChangeLog content)
-      ;; if the changelog has filter by dbms, remove the ones that doens't apply for the current lb-type
+         ;; if the changelog has filter by dbms, remove the ones that doens't apply for the current lb-type
          (remove (fn [{{:keys [dbms]} :changeSet}] (and (not (str/blank? dbms))
                                                         (not (str/includes? dbms (name lb-type))))))
-      ;; remove ignored changeSets
+         ;; remove ignored changeSets
          (remove #(get-in % [:changeSet :ignore]))
          (map #(str (get-in % [:changeSet :id])))
          (remove str/blank?))))

@@ -7,6 +7,7 @@ import {
   setup,
   setupHarness,
 } from "metabase/common/components/Schedule/test-utils";
+import { setLocalization } from "metabase/utils/i18n";
 
 const getInputValues = () => {
   const inputs = screen.getAllByRole("textbox");
@@ -143,6 +144,18 @@ describe("Schedule", () => {
       [
         "monthly first weekday",
         "0 0 8 ? * 2#1 *",
+        [
+          "Frequency",
+          "First, 15th, or last of the month",
+          "Day of the month",
+          "Time",
+          "AM/PM",
+          "Your Metabase timezone",
+        ],
+      ],
+      [
+        "monthly last weekday",
+        "0 0 8 ? * 2L *",
         [
           "Frequency",
           "First, 15th, or last of the month",
@@ -357,12 +370,57 @@ describe("Schedule", () => {
         },
         "0 0 15 1 * ? *",
       ],
+      // Default-filling when only the frequency changes
+      [
+        "switch daily to weekly defaults to Monday",
+        "0 0 8 * * ? *",
+        { frequency: "weekly" },
+        "0 0 8 ? * 2 *",
+      ],
+      [
+        "switch daily to monthly defaults to first of month",
+        "0 0 8 * * ? *",
+        { frequency: "monthly" },
+        "0 0 8 1 * ? *",
+      ],
+      [
+        "switch monthly to daily clears frame and weekday",
+        "0 0 8 ? * 2#1 *",
+        { frequency: "daily" },
+        "0 0 8 * * ? *",
+      ],
+      // Default-filling when only the monthly frame changes
+      [
+        "switch 15th to first keeps calendar day",
+        "0 0 8 15 * ? *",
+        { frame: "first" },
+        "0 0 8 1 * ? *",
+      ],
+      [
+        "switch 15th to last keeps calendar day",
+        "0 0 8 15 * ? *",
+        { frame: "last" },
+        "0 0 8 L * ? *",
+      ],
+      [
+        "switch first to 15th clears the weekday",
+        "0 0 8 ? * 2#1 *",
+        { frame: "15th" },
+        "0 0 8 15 * ? *",
+      ],
+      [
+        "switch first to last keeps the weekday",
+        "0 0 8 ? * 2#1 *",
+        { frame: "last" },
+        "0 0 8 ? * 2L *",
+      ],
     ];
 
     it.each(cases)(
       "%s",
       async (_label, initialCronString, clicks, expectedCron) => {
         const { onScheduleChange } = setupHarness({ initialCronString });
+        // Unjustified type cast. FIXME
         for (const entry of Object.entries(clicks) as [
           ScheduleComponentType,
           string,
@@ -373,5 +431,51 @@ describe("Schedule", () => {
         expect(onScheduleChange.mock.calls.at(-1)?.[0]).toBe(expectedCron);
       },
     );
+  });
+});
+
+describe("Schedule i18n (metabase#77265)", () => {
+  // Mirrors the real hu.po: "Minute" is only a {0}-carrying plural entry, plus a
+  // clean standalone "Minutes". A bare ngettext plural here would render "{0} perc".
+  const HU_LOCALE = {
+    headers: {
+      language: "hu",
+      "plural-forms": "nplurals=2; plural=(n != 1);",
+    },
+    translations: {
+      "": {
+        Minute: {
+          msgid_plural: "{0} Minutes",
+          msgstr: ["Perc", "{0} perc"],
+        },
+        Minutes: {
+          msgstr: ["Percek"],
+        },
+      },
+    },
+  };
+
+  afterEach(() => {
+    setLocalization({
+      headers: {
+        language: "en",
+        "plural-forms": "nplurals=2; plural=(n != 1);",
+      },
+      translations: { "": {} },
+    });
+  });
+
+  it("renders the plural unit without leaking a {0} placeholder", () => {
+    setLocalization(HU_LOCALE);
+    const { container } = setup({ cronString: "0 0/5 * * * ? *" });
+    expect(container).not.toHaveTextContent(/\{\s*0\s*\}/);
+    expect(screen.getByText("percek")).toBeInTheDocument();
+  });
+
+  it("renders the singular unit without leaking a {0} placeholder", () => {
+    setLocalization(HU_LOCALE);
+    const { container } = setup({ cronString: "0 0/1 * * * ? *" });
+    expect(container).not.toHaveTextContent(/\{\s*0\s*\}/);
+    expect(screen.getByText("perc")).toBeInTheDocument();
   });
 });

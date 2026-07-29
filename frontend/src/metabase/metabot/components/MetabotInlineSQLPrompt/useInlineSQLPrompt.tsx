@@ -88,14 +88,6 @@ export function useInlineSQLPrompt(
     return portalTarget?.view?.state.doc.toString() ?? "";
   }, [portalTarget?.view]);
 
-  const prevDatabaseIdRef = useRef(databaseId);
-  useEffect(() => {
-    if (prevDatabaseIdRef.current !== databaseId) {
-      setPromptValue("");
-      prevDatabaseIdRef.current = databaseId;
-    }
-  }, [databaseId]);
-
   const generatedSqlRef = useRef(generatedSource);
   generatedSqlRef.current = generatedSource;
 
@@ -123,14 +115,22 @@ export function useInlineSQLPrompt(
     [generatedSource, hideInput],
   );
 
+  const prevDatabaseIdRef = useRef(databaseId);
+  useEffect(() => {
+    if (prevDatabaseIdRef.current !== databaseId) {
+      resetSuggestionState();
+      prevDatabaseIdRef.current = databaseId;
+    }
+  }, [databaseId, resetSuggestionState]);
+
   useEffect(
-    function resetOnDbChangeAndUnmount() {
+    function resetOnUnmount() {
       return () => {
         hideInputRef.current();
         resetSuggestionState();
       };
     },
-    [resetSuggestionState, databaseId],
+    [resetSuggestionState],
   );
 
   const resetInput = useCallback(() => {

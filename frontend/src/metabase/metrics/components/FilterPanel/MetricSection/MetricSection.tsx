@@ -25,7 +25,7 @@ export function MetricSection({ definition, onRemove }: MetricSectionProps) {
   return (
     <Stack gap="md">
       <Group>
-        <FixedSizeIcon c="brand" name={icon} />
+        <FixedSizeIcon c="core-brand" name={icon} />
         {label}
       </Group>
       <Stack gap="sm">

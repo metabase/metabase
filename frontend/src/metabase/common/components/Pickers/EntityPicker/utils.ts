@@ -52,7 +52,7 @@ export const useGetEntityPickerIcon = () => {
         icon.name = "clock";
       }
 
-      return { ...icon, color: undefined, c: icon.color ?? "brand" };
+      return { ...icon, color: undefined, c: icon.color ?? "core-brand" };
     },
     [getIcon],
   );
@@ -227,6 +227,7 @@ export const allCollectionModels = Array.from(validCollectionModels);
 const isValidModel = (
   model: OmniPickerItem["model"],
 ): model is CollectionItemModel =>
+  // Unjustified type cast. FIXME
   validCollectionModels.has(model as CollectionItemModel);
 
 export const getValidCollectionItemModels = (

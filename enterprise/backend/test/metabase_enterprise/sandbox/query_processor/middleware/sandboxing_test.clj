@@ -4,6 +4,7 @@
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test]}}}}}}
   (:require
    [clojure.core.async :as a]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -11,8 +12,10 @@
    [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -24,6 +27,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
@@ -122,8 +126,8 @@
               (format-honeysql
                {:select [[(identifier :checkins :id)]
                          [(identifier :checkins :user_id)]
-                          ;; these columns are ILLEGAL, you're NOT allowed to add columns not in the original table.
-                          ;; We should complain loudly and then ignore them.
+                         ;; these columns are ILLEGAL, you're NOT allowed to add columns not in the original table.
+                         ;; We should complain loudly and then ignore them.
                          [(identifier :venues :name)]
                          [(identifier :venues :category_id)]]
                 :from [[(identifier :checkins)]]
@@ -194,7 +198,7 @@
                                           :filter [:and
                                                    ;; This still gets :default bucketing! auto-bucket-datetimes
                                                    ;; puts :day bucketing on both parts of this filter, since it's
-                                                   ;; matching a YYYY-mm-dd string. Then optimize-temporal-filters
+                                                   ;; matching a YYYY-mm-dd string. Then optimize-temporal-clauses
                                                    ;; sees that the
                                                    ;; :type/Date column already has :day
                                                    ;; granularity, and switches both to :default
@@ -292,6 +296,25 @@
         (is (= [[10]]
                (run-venues-count-query)))
         (fails-without-token (run-venues-count-query))))))
+
+(deftest metric-on-natively-sandboxed-table-test
+  (testing "A :metric reference on a natively-sandboxed table should succeed (#76044)"
+    (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
+      (let [mp           (mt/metadata-provider)
+            metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                             (lib/aggregate (lib/count)))]
+        ;; the sandboxing path needs a real Card in the app DB; a mock MP wouldn't trigger the sandboxing middleware
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (mt/with-temp [:model/Card {metric-id :id} {:name          "Sandboxed Venues Count"
+                                                    :type          :metric
+                                                    :database_id   (mt/id)
+                                                    :table_id      (mt/id :venues)
+                                                    :dataset_query metric-query}]
+          (let [mp         (mt/metadata-provider)
+                user-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                               (lib/aggregate (lib.metadata/metric mp metric-id)))]
+            (is (= [[10]]
+                   (mt/format-rows-by [int] (mt/rows (qp/process-query user-query)))))))))))
 
 (deftest e2e-test-2
   (mt/test-drivers (e2e-test-drivers)
@@ -876,7 +899,6 @@
           (let [[_ chan] (a/alts!! [save-chan (a/timeout 5000)])]
             (is (= save-chan
                    chan))))
-
         (testing "Run it again, should be cached"
           (let [result (run-query)]
             (is (true?
@@ -1010,7 +1032,6 @@
                                        (get-in (-> drill-thru-query
                                                    qp.preprocess/preprocess
                                                    ;; legacy usage -- don't do things like this going forward
-                                                   #_{:clj-kondo/ignore [:discouraged-var]}
                                                    lib/->legacy-MBQL)
                                                [:query :filter])))))]
                         (testing "As an admin"
@@ -1197,6 +1218,30 @@
                                  $product_id->products.category]
                       :limit 5}))))))))))
 
+(deftest pivot-query-without-limit-test
+  (testing "Pivot table queries under sandboxing return identical results from the multi-query and native paths"
+    (mt/test-drivers (sandboxing-fk-drivers)
+      (met/with-gtaps! {:gtaps      (mt/$ids
+                                      {:orders   {:remappings {:user_id  [:dimension $orders.user_id]}}
+                                       :products {:remappings {:user_cat [:dimension $products.category]}}})
+                        :attributes {:user_id 1, :user_cat "Widget"}}
+        (data-perms/set-table-permission! &group (mt/id :people) :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
+        (let [mp     (mt/metadata-provider)
+              orders (lib.metadata/table mp (mt/id :orders))
+              ;; Some drivers (e.g. Oracle, Vertica) prefix table names with "Test Data " — match the joined
+              ;; "People" table/group with an optional prefix to stay portable. The "Product" group is an
+              ;; implicit join and isn't prefixed.
+              query  (-> (lib/query mp orders)
+                         (lib.tu.notebook/add-join {:display-name #"(Test Data )?People"} "User ID" "ID")
+                         (lib/aggregate (lib/count))
+                         (lib.tu.notebook/add-breakout {:display-name #"(Test Data )?People"} "Source")
+                         (lib.tu.notebook/add-breakout "Product" "Category")
+                         (merge {:pivot-rows [0] :pivot-cols [1]}))]
+          (qp.pivot.test-util/with-pivot-parity-check
+            (is (=? {:status :completed}
+                    (qp.pivot/run-pivot-query query)))))))))
+
 (deftest caching-test
   (testing "Make sure Sandboxing works in combination with caching (#18579)"
     (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
@@ -1240,8 +1285,8 @@
           (mt/with-temp [:model/Card model {:type :model
                                             :dataset_query (mt/mbql-query
                                                              products
-                                                              ;; note does not include the field we have to filter on. No way
-                                                              ;; to use the sandbox filter on the cached table
+                                                             ;; note does not include the field we have to filter on. No way
+                                                             ;; to use the sandbox filter on the cached table
                                                              {:fields [$id $price]})}]
             ;; persist model (as admin, so sandboxing is not applied to the persisted query)
             (mt/with-test-user :crowberto
@@ -1252,9 +1297,8 @@
               (is (= "persisted" (:state persisted-info))
                   "Model failed to persist")
               (is (string? (:table_name persisted-info)))
-
               (let [query (mt/mbql-query nil
-                                    ;; just generate a select count(*) from card__<id>
+                            ;; just generate a select count(*) from card__<id>
                             {:aggregation [:count]
                              :source-table (str "card__" (:id model))})
                     regular-result (mt/with-test-user :crowberto
@@ -1351,7 +1395,7 @@
     (met/with-gtaps! (mt/$ids orders
                        {:attributes {"user_id" 1}
                         :gtaps {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}
-                                            ;; Since noone's zipcode == 1, this sandboxed table will return nothing
+                                ;; Since noone's zipcode == 1, this sandboxed table will return nothing
                                 :people {:remappings {"user_id" [:dimension $people.zip]}}}})
       (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :unrestricted)
       (is (= 0 (count (mt/rows (qp/process-query (mt/mbql-query orders)))))))))
@@ -1412,14 +1456,12 @@
             (mt/with-test-user :rasta
               (is (= [[10]]
                      (run-venues-count-query))))))
-
         (testing "with jwt_attributes"
           (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"cat" 50}
                                                                      :login_attributes {}}
             (mt/with-test-user :rasta
               (is (= [[10]]
                      (run-venues-count-query))))))
-
         (testing "login_attributes override jwt_attributes when both present"
           (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"cat" 40}
                                                                      :login_attributes {"cat" 50}}
@@ -1438,7 +1480,6 @@
             (mt/with-test-user :rasta
               (is (= #{[nil 45] [1 10]}
                      (set (run-checkins-count-broken-out-by-price-query)))))))
-
         (testing "login_attributes take precedence for conflicting keys"
           (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"user" 3, "price" 2}
                                                                      :login_attributes {"user" 5, "price" 1}}
@@ -1456,7 +1497,6 @@
             (mt/with-test-user :rasta
               (is (= [[10]]
                      (run-venues-count-query))))))
-
         (testing "Numeric string coercion works with jwt_attributes"
           (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"cat" "50"}
                                                                      :login_attributes {}}
@@ -1476,7 +1516,6 @@
                    clojure.lang.ExceptionInfo
                    #"Query requires user attribute `cat`"
                    (mt/run-mbql-query venues {:aggregation [[:count]]}))))))
-
         (testing "Nil attribute in jwt_attributes throws error"
           (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"cat" nil}
                                                                      :login_attributes {}}
@@ -1504,11 +1543,9 @@
                          (:cached (:cache/details result))))
                   (is (= [[10]]
                          (mt/rows result)))))))
-
           (testing "Cache entry saved"
             (let [[_ chan] (a/alts!! [save-chan (a/timeout 5000)])]
               (is (= save-chan chan))))
-
           (testing "Different jwt_attributes don't use cached result"
             (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"cat" 40}
                                                                        :login_attributes {}}
@@ -1600,7 +1637,6 @@
             (mt/with-test-user :rasta
               (is (= [[10]]
                      (run-venues-count-query))))))
-
         (testing "Numeric string coercion with attributes-only GTAP"
           (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"cat" "50"}
                                                                      :login_attributes {}}
@@ -1720,6 +1756,93 @@
           (testing "Preprocessing fails when we don't have a valid token"
             (mt/with-premium-features #{}
               (is (thrown-with-msg? clojure.lang.ExceptionInfo sandboxing-disabled-error (qp.preprocess/preprocess query))))))))))
+
+(deftest sandboxed-implicit-join-omits-hidden-columns-test
+  (testing "Implicit joins to a native-GTAP-sandboxed table must not project columns the GTAP omits (#73339)"
+    ;; Native GTAP that drops ADDRESS from People. With an FK remapping Orders.user_id → People.name,
+    ;; the add-remaps middleware causes an implicit join into the sandboxed People table even though
+    ;; the user's Orders query references no People columns. The projection for that join must not
+    ;; reference ADDRESS, or the DB errors with: Column "__mb_source.ADDRESS" not found.
+    (met/with-gtaps! {:gtaps {:people {:query (lib/native-query (mt/metadata-provider)
+                                                                "SELECT ID, EMAIL, NAME, CITY, STATE FROM PEOPLE")}
+                              ;; Empty GTAP just to grant the sandbox group create-queries on Orders.
+                              :orders {}}
+                      :attributes {}}
+      (let [mp           (lib.tu/remap-metadata-provider (mt/metadata-provider)
+                                                         (mt/id :orders :user_id)
+                                                         (mt/id :people :name))
+            base         (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            fieldable    (lib/fieldable-columns base)
+            orders-id    (lib.tu.notebook/find-col-with-spec base fieldable
+                                                             {:display-name "Orders"} {:display-name "ID"})
+            orders-total (lib.tu.notebook/find-col-with-spec base fieldable
+                                                             {:display-name "Orders"} {:display-name "Total"})
+            ;; Plain Orders query — no People columns referenced. The implicit join into People
+            ;; comes from the FK remapping above, mirroring what the FE sends when "visiting" a table.
+            query        (-> base
+                             (lib/with-fields [orders-id orders-total])
+                             (lib/order-by orders-id :asc)
+                             (lib/limit 3))]
+        (testing "Preprocessed query does not project the dropped ADDRESS column"
+          (let [preprocessed (qp.preprocess/preprocess query)
+                address-id   (mt/id :people :address)
+                field-refs   (filter #(and (vector? %)
+                                           (= :field (first %))
+                                           (= address-id (nth % 2 nil)))
+                                     (tree-seq coll? seq preprocessed))]
+            (is (empty? field-refs)
+                "preprocessed query should not contain any field ref to people.address")))
+        (testing "Query executes successfully"
+          (let [result (qp/process-query query)]
+            (is (= :completed (:status result)))
+            (is (= 3 (count (mt/rows result))))))))))
+
+(deftest ^:parallel project-only-columns-from-original-table-preserves-nested-fields-test
+  (testing "Sandbox column projection must keep nested fields whose `:name` is path-joined after preprocessing (#75305)"
+    ;; For nested fields (e.g. Mongo object children), `lib/returned-columns` on a preprocessed sandbox query produces
+    ;; `:name` like `"parent.child.leaf"` while `lib.metadata/fields` returns the raw leaf `:name`. Matching only by
+    ;; `:name` would drop nested columns and wrap the sandbox in an extra stage that omits them — making the columns
+    ;; vanish for sandboxed users.
+    ;;
+    ;; To guard against a fix that simply disables the filter, the sandbox query below also joins in a column from
+    ;; another table (`orders.total`) — that one *must* still be filtered out.
+    (let [mp            (lib.tu/mock-metadata-provider
+                         {:database {:id 1 :name "db" :dialect :h2 :engine :h2}
+                          :tables   [{:id 100 :name "customers" :db-id 1}
+                                     {:id 200 :name "orders" :db-id 1}]
+                          :fields   [{:id 1001 :name "id" :base-type :type/Integer :table-id 100
+                                      :semantic-type :type/PK}
+                                     {:id 1002 :name "name" :base-type :type/Text :table-id 100}
+                                     {:id 1100 :name "tier_and_details" :base-type :type/Dictionary :table-id 100}
+                                     {:id 1200 :name "u1" :base-type :type/Dictionary :table-id 100
+                                      :nfc-path ["tier_and_details"] :parent-id 1100}
+                                     {:id 1201 :name "id" :base-type :type/Text :table-id 100
+                                      :nfc-path ["tier_and_details" "u1"] :parent-id 1200}
+                                     {:id 1202 :name "active" :base-type :type/Boolean :table-id 100
+                                      :nfc-path ["tier_and_details" "u1"] :parent-id 1200}
+                                     {:id 2002 :name "customer_id" :base-type :type/Integer :table-id 200
+                                      :fk-target-field-id 1001 :semantic-type :type/FK}
+                                     {:id 2003 :name "total" :base-type :type/Float :table-id 200}]})
+          base          (lib/query mp (lib.metadata/table mp 100))
+          join          (-> (lib/join-clause (lib.metadata/table mp 200)
+                                             [(lib/= (lib.metadata/field mp 1001)
+                                                     (lib.metadata/field mp 2002))])
+                            (lib/with-join-fields [(lib.metadata/field mp 2003)]))
+          ;; This append-stage / preprocess / drop-stage dance matches what `sandboxing/preprocess-query` does
+          ;; internally: an extra trailing stage carries `:lib/stage-metadata` through preprocessing (legacy MBQL
+          ;; round-tripping otherwise loses it), and we discard that stage afterward to get back the original shape
+          ;; with metadata preserved.
+          sandbox-query (-> (lib/join base join)
+                            lib/append-stage
+                            qp.preprocess/preprocess
+                            lib/drop-stage)]
+      (testing "preprocessing produces path-joined `:name`s for nested fields (sanity check)"
+        (is (contains? (set (map :name (lib/returned-columns sandbox-query)))
+                       "tier_and_details.u1.id")))
+      (testing "nested customers fields are preserved; the joined orders.total column is still filtered out"
+        (let [result (#'sandboxing/project-only-columns-from-original-table mp sandbox-query 100)]
+          (is (= #{1001 1002 1100 1200 1201 1202}
+                 (set (map :id (lib/returned-columns result))))))))))
 
 (deftest sandboxing-throws-on-ee-without-token
   (mt/test-drivers (e2e-test-drivers)
@@ -1905,3 +2028,149 @@
                   "Price column should be coerced to a timestamp string")
               (is (str/starts-with? (last row) "1970-01-01")
                   "Price should be coerced exactly once, producing a date near the Unix epoch"))))))))
+
+(deftest regex-expression-over-sandboxed-table-test
+  (testing "a regex-match-first custom column over a sandboxed table compiles over the sandbox subquery and returns only the user's row (#14873)"
+    (mt/dataset test-data
+      ;; `with-gtaps!` runs both the remapping form and the body against a temp copy of the DB, so the metadata
+      ;; provider and field ids must be resolved *inside* that copy context (not captured beforehand).
+      (met/with-gtaps! {:gtaps      {:people {:remappings {:id [:dimension (lib.convert/->legacy-MBQL
+                                                                            (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :people :id))))]}}}
+                        :attributes {"id" "1"}}
+        (let [mp (mt/metadata-provider)
+              q  (as-> (lib/query mp (lib.metadata/table mp (mt/id :people))) q
+                   (lib/expression q "first" (lib/regex-match-first (lib.metadata/field mp (mt/id :people :name)) "^[A-Za-z]+"))
+                   (lib/with-fields q [(lib/expression-ref q "first")]))]
+          (is (= [["Hudson"]] (mt/rows (qp/process-query q)))))))))
+
+(deftest case-expression-else-branch-table-substitution-test
+  (testing "a :case custom column whose :default references the sandboxed table has that table-ref rewritten to the sandbox subquery (#14859)"
+    (mt/dataset test-data
+      ;; Full, unsandboxed row count of orders, computed as admin *outside* the sandbox below. The sandboxed
+      ;; queries must return strictly fewer rows than this, otherwise a global sandbox bypass would go undetected.
+      (let [full-count (let [omp (mt/metadata-provider)]
+                         (-> (lib/query omp (lib.metadata/table omp (mt/id :orders)))
+                             (lib/aggregate (lib/count))
+                             qp/process-query mt/rows ffirst))]
+        ;; `with-gtaps!` runs both the remapping form and the body against a temp copy of the DB, so the metadata
+        ;; provider and field ids must be resolved *inside* that copy context (not captured beforehand).
+        (met/with-gtaps! {:gtaps      {:orders {:remappings {"uid" [:dimension (lib.convert/->legacy-MBQL
+                                                                                (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :user_id))))]}}}
+                          :attributes {"uid" "1"}}
+          (let [mp              (mt/metadata-provider)
+                total           (lib.metadata/field mp (mt/id :orders :total))
+                discount        (lib.metadata/field mp (mt/id :orders :discount))
+                baseline        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                    (lib/with-fields [(lib/ref total)]))
+                with-case       (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) with-case
+                                  (lib/expression with-case "cc" (lib/case [[(lib/> discount 0) discount]] total))
+                                  (lib/with-fields with-case [(lib/expression-ref with-case "cc")]))
+                baseline-count  (count (mt/rows (qp/process-query baseline)))
+                with-case-count (count (mt/rows (qp/process-query with-case)))]
+            ;; `with-case` adds only a :case column whose :default references the sandboxed orders table.
+            ;; A missing table-ref rewrite (#14859) would make it throw or return a different row set than
+            ;; `baseline`. Equal counts prove the rewrite, not the sandbox filter (a global bypass would
+            ;; inflate both equally).
+            (is (= baseline-count with-case-count))
+            ;; Leak discriminator: the sandbox filters orders down to user 1's rows, so both queries must
+            ;; return strictly fewer rows than the full table. A global sandbox bypass would inflate them to
+            ;; `full-count` and fail here even though the equal-counts check above would still pass.
+            (is (< with-case-count full-count))))))))
+
+(deftest sandbox-fails-closed-when-filter-column-dropped-test
+  (testing "a column-based sandbox fails closed (errors, returns no unfiltered rows) when its filter column is dropped from the DB"
+    ;; Run against a throwaway physical copy of the warehouse (products table only). The DROP COLUMN
+    ;; below is destructive DDL; `met/with-gtaps!` copies only app-DB metadata (reusing the same
+    ;; physical `:details`), so without an isolated copy this would permanently drop products.category
+    ;; from the shared test-data DB and break every later test in the JVM. `with-actions-test-data`
+    ;; loads a freshly created copy and destroys it afterwards, so the DDL can't leak.
+    (mt/with-actions-test-data-tables #{"products"}
+      (mt/with-actions-test-data
+        ;; `with-gtaps!` runs the remapping form and body against a temp copy of the DB, so the metadata provider
+        ;; and field ids must be resolved *inside* that copy context (not captured beforehand).
+        (met/with-gtaps! {:gtaps      {:products {:remappings {"category" [:dimension (lib.convert/->legacy-MBQL
+                                                                                       (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :products :category))))]}}}
+                          :attributes {"category" "Gizmo"}}
+          (testing "sanity check: the sandbox filters rows to the user's category"
+            (let [mp   (mt/metadata-provider)
+                  q    (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                           (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :products :category)))])
+                           (lib/limit 20))
+                  rows (mt/rows (qp/process-query q))]
+              (is (seq rows))
+              (is (every? #(= "Gizmo" (first %)) rows))))
+          (testing "after the sandbox filter column is dropped, the query fails closed rather than returning unfiltered rows"
+            (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+              (jdbc/execute! db-spec ["ALTER TABLE \"PUBLIC\".\"PRODUCTS\" DROP COLUMN \"CATEGORY\";"]))
+            ;; The consumer query selects only ID (a column that still exists). This is what makes the
+            ;; assertion distinguish fail-CLOSED from fail-OPEN: if the sandbox were silently dropped
+            ;; (fail-open), `SELECT ID FROM products` would SUCCEED and leak unfiltered rows, so the
+            ;; `thrown?` below would NOT hold and the test would fail. Because the sandbox is still
+            ;; enforced (fail-closed), its subquery references the now-missing CATEGORY column in its
+            ;; WHERE clause and the query throws. (If ID were replaced with an implicit `SELECT *`, the
+            ;; dropped CATEGORY would be selected either way and the throw would no longer prove
+            ;; enforcement.)
+            (is (thrown?
+                 Throwable
+                 (mt/rows (qp/process-query
+                           (let [mp (mt/metadata-provider)]
+                             (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                 (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :products :id)))])
+                                 (lib/limit 20)))))))))))))
+
+(deftest fk-remapping-with-sandboxing-and-specific-field-test
+  (testing "FK remapping should work for questions against sandboxed tables that select specific fields (#78187)"
+    (met/with-gtaps! {:gtaps {:people {:query (mt/native-query
+                                               {:query "SELECT * FROM PEOPLE WHERE STATE = {{state}}"
+                                                :template-tags {"state" {:display-name "State"
+                                                                         :id           "1"
+                                                                         :name         "state"
+                                                                         :type         :text}}})
+                                       :remappings {"state" [:variable [:template-tag "state"]]}}
+                              :orders {:query (mt/native-query
+                                               {:query (str "SELECT ORDERS.* FROM ORDERS "
+                                                            "LEFT JOIN PEOPLE ON PEOPLE.ID = ORDERS.USER_ID "
+                                                            "WHERE PEOPLE.STATE = {{state}}")
+                                                :template-tags {"state" {:display-name "State"
+                                                                         :id           "2"
+                                                                         :name         "state"
+                                                                         :type         :text}}})
+                                       :remappings {"state" [:variable [:template-tag "state"]]}}}
+                      :attributes {"state" "CA"}}
+      (data-perms/set-table-permission! &group (mt/id :products) :perms/create-queries :query-builder)
+      (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
+      (let [mp (lib.tu/remap-metadata-provider
+                (mt/metadata-provider)
+                (mt/id :orders :user_id)    (mt/id :people :name)
+                (mt/id :orders :product_id) (mt/id :products :title))
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/with-fields [(lib.metadata/field mp (mt/id :orders :user_id))
+                                        (lib.metadata/field mp (mt/id :orders :product_id))])
+                      (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :people))
+                                                     [(lib/= (lib.metadata/field mp (mt/id :orders :user_id))
+                                                             (lib.metadata/field mp (mt/id :people :id)))])
+                                    (lib/with-join-fields [(lib.metadata/field mp (mt/id :people :state))])))
+                      (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                                     [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                             (lib.metadata/field mp (mt/id :products :id)))])
+                                    (lib/with-join-fields [(lib.metadata/field mp (mt/id :products :category))])))
+                      (lib/order-by (lib.metadata/field mp (mt/id :people :name)) :asc)
+                      (lib/order-by (lib.metadata/field mp (mt/id :products :title)) :asc)
+                      (lib/limit 3))
+            result (qp/process-query query)
+            cols (mt/cols result)
+            col-by-name (m/index-by :name cols)]
+        (is (= [[624 144 "CA" "Widget" "Abbie Parisian" "Aerodynamic Bronze Hat"]
+                [624 94 "CA" "Widget" "Abbie Parisian" "Awesome Bronze Plate"]
+                [624 101 "CA" "Gadget" "Abbie Parisian" "Durable Cotton Bench"]]
+               (mt/rows result)))
+        (is (= "NAME" (:remapped_to (col-by-name "USER_ID"))))
+        (is (= "USER_ID" (:remapped_from (col-by-name "NAME"))))
+        (is (= "TITLE" (:remapped_to (col-by-name "PRODUCT_ID"))))
+        (is (= "PRODUCT_ID" (:remapped_from (col-by-name "TITLE"))))
+        (testing "every column with :remapped_from must point at a column with a matching :remapped_to (the FE errors otherwise)"
+          (doseq [col cols
+                  :when (:remapped_from col)
+                  :let [source-col (col-by-name (:remapped_from col))]]
+            (is (= (:name col)
+                   (:remapped_to source-col)))))))))

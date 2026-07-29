@@ -36,12 +36,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           title: t`Get embed snippet`,
           description: t`Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance.`,
           onClick: () => {
-            openEmbedModal({
-              initialState: {
-                isGuest: true,
-                useExistingUserSession: true,
-              },
-            });
+            openEmbedModal({ initialState: {} });
           },
           variant: "outline",
         },

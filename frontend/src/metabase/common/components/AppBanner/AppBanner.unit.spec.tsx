@@ -1,9 +1,8 @@
-import { Route } from "react-router";
-
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { TokenStatus } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -44,7 +43,7 @@ function setup({
     }),
   });
 
-  renderWithProviders(<Route path="*" component={AppBanner} />, {
+  renderWithProviders(<Route path="*" element={<AppBanner />} />, {
     initialRoute: "/",
     storeInitialState: state,
     withRouter: true,
@@ -238,7 +237,24 @@ describe("AppBanner", () => {
       expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
     });
 
-    it("should render if it is a valid instance in a trial period", () => {
+    it("should render if it is a valid instance in a trial period with 7 or fewer days remaining", () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date("2024-12-25"));
+
+      setup({
+        isAdmin: true,
+        isHosted: true,
+        tokenStatus: {
+          ...token,
+          "valid-thru": "2024-12-31T23:00:00.000Z",
+        },
+      });
+
+      expect(screen.getByTestId("app-banner")).toBeInTheDocument();
+      jest.useRealTimers();
+    });
+
+    it("should not render if there are more than 7 days remaining in the trial", () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date("2024-12-15"));
 
@@ -251,7 +267,7 @@ describe("AppBanner", () => {
         },
       });
 
-      expect(screen.getByTestId("app-banner")).toBeInTheDocument();
+      expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
       jest.useRealTimers();
     });
   });

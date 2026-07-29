@@ -28,7 +28,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :athena, :parent #{:sql-jdbc})
+(driver/register! :athena, :parent #{:sql-mbql5 :sql-jdbc})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |
@@ -151,8 +151,8 @@
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/OTHER]) driver rs rsmeta i)))
 
 (defmethod sql.qp/->honeysql [:athena ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "varchar")))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP_WITH_TIMEZONE]
   [_driver ^ResultSet rs _rs-meta ^Long i]
@@ -165,8 +165,7 @@
         (try
           (u.date/with-time-zone-same-instant t results-timezone)
           (catch Throwable _
-            (log/warnf "Failed to construct ZonedDateTime from `%s` using `%s` timezone."
-                       (pr-str t)
+            (log/warnf "Failed to construct ZonedDateTime using `%s` timezone."
                        (pr-str results-timezone))
             t))))))
 
@@ -332,7 +331,7 @@
   [:date_parse expr (h2x/literal "%Y%m%d%H%i%S")])
 
 (defmethod sql.qp/->honeysql [:athena :datetime-diff]
-  [driver [_ x y unit]]
+  [driver [_ _opts x y unit]]
   (let [x (sql.qp/->honeysql driver x)
         y (sql.qp/->honeysql driver y)]
     (case unit
@@ -343,26 +342,26 @@
 
 ;; Support for median/percentile functions
 (defmethod sql.qp/->honeysql [:athena :median]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:approx_percentile (sql.qp/->honeysql driver arg) 0.5])
 
 (defmethod sql.qp/->honeysql [:athena :percentile]
-  [driver [_ arg p]]
+  [driver [_ _opts arg p]]
   [:approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
 (defmethod sql.qp/->honeysql [:athena :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) pattern])
 
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
    Such as prepare statement"
   [database query]
-  (log/infof "Running Athena query : '%s'..." query)
+  (log/info "Running Athena query...")
   (try
     (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database) (str/replace query ";" " ") {:raw? true})
     (catch Exception e
-      (log/error (u/format-color 'red "Failed to execute query: %s %s" query (.getMessage e))))))
+      (log/error (u/format-color 'red "Failed to execute query: %s" (.getMessage e))))))
 
 (defn- describe-database->clj
   "Workaround for wrong getColumnCount response by the driver (huh?)"
@@ -370,14 +369,32 @@
   {:name (str/trim (:col_name column-metadata))
    :type (str/trim (:data_type column-metadata))})
 
+;; the partition section markers and row shapes come from Hive's DESCRIBE formatter, which this
+;; output format derives from:
+;; https://github.com/apache/hive/blob/1cb455bbb6753e548e1435f4345b4e0d4644bf9f/ql/src/java/org/apache/hadoop/hive/ql/ddl/table/info/desc/formatter/TextDescTableFormatter.java#L121-L185
+(defn- partition-section-start?
+  "Whether this row of `DESCRIBE` output starts the partition section: `# Partition Information`
+  for natively-partitioned tables, or `# Partition Transform Information` for Iceberg tables."
+  [{:keys [col_name]}]
+  (str/starts-with? (str col_name) "# Partition"))
+
 (defn- remove-invalid-columns
-  "Returns a transducer."
+  "Returns a transducer that converts rows of `DESCRIBE` output into column metadata, dropping the
+  partition section and other non-column rows."
   []
-  (comp (remove #(= (:col_name %) ""))
+  ;; everything from the partition section marker on describes the partition spec rather than
+  ;; additional columns. Hive tables repeat the partition columns there with their real types;
+  ;; Iceberg tables repeat them with the partition transform (e.g. `identity`) as the type, which
+  ;; would otherwise sync as duplicate columns with no base type (#75579)
+  (comp (take-while (complement partition-section-start?))
+        (remove #(= (:col_name %) ""))
         (remove #(= (:col_name %) nil))
         (remove #(= (:data_type %) nil))
         (remove #(str/starts-with? (:col_name %) "#")) ; remove comment
-        (distinct)                                     ; driver can return twice the partitioning fields
+        ;; the partition section only repeats columns that are already in the main column list, so
+        ;; if the marker text above ever changes, keeping the first occurrence of each name still
+        ;; keeps the partition rows out
+        (m/distinct-by :col_name)
         (map describe-database->clj)))
 
 (defn- normalize-field-info
@@ -454,7 +471,7 @@
           (describe-table-fields-with-nested-fields database schema table-name)
           (describe-table-fields-without-nested-fields driver schema table-name columns)))
       (catch Throwable e
-        (log/errorf e "Error retrieving fields for DB %s.%s" schema table-name)
+        (log/errorf "Error retrieving fields for DB %s.%s: %s" schema table-name (ex-message e))
         (throw e)))))
 
 ;; Because describe-table-fields might fail, we catch the error here and return an empty set of columns

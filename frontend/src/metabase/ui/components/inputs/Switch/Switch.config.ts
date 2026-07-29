@@ -49,7 +49,7 @@ const TRACK_PADDING_TOP: Record<string, string> = {
 export const switchOverrides = {
   Switch: Switch.extend({
     defaultProps: {
-      color: "brand",
+      color: "core-brand",
       size: "md",
     },
     classNames: {

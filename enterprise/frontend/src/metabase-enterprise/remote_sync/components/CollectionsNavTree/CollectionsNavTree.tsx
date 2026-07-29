@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 
 import { useListCollectionsQuery } from "metabase/api";
-import type { CollectionTreeItem } from "metabase/collections/utils";
+import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";

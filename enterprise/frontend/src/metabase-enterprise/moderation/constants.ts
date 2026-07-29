@@ -12,15 +12,15 @@ export const MODERATION_STATUS_ICONS: Map<
 
 MODERATION_STATUS_ICONS.set("verified", {
   name: "verified",
-  color: "brand",
+  color: "core-brand",
 });
 
 MODERATION_STATUS_ICONS.set("verified_filled", {
   name: "verified_filled",
-  color: "brand",
+  color: "core-brand",
 });
 
 MODERATION_STATUS_ICONS.set(null, {
   name: "close",
-  color: "text-tertiary",
+  color: "text-disabled",
 });

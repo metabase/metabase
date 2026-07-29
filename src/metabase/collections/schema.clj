@@ -42,19 +42,15 @@
    [:authority_level {:optional true} [:maybe :string]]
    [:type {:optional true} ::CollectionType]
    [:is_remote_synced {:optional true} :boolean]
-
    [:parent_id {:optional true} [:maybe [:or :string ms/PositiveInt]]]
    [:personal_owner_id {:optional true} ms/PositiveInt]
    [:is_personal {:optional true} :boolean]
    [:is_sample {:optional true} :boolean]
-
    [:location [:maybe :string]]
    [:effective_location {:optional true} :string]
    [:effective_ancestors {:optional true} :map]
-
    [:here {:optional true} [:set ::CollectionItemModel]]
    [:below {:optional true} [:sequential ::CollectionItemModel]]
-
    [:git_sync_enabled {:optional true} :boolean]])
 
 (mr/def ::LastEditInfo

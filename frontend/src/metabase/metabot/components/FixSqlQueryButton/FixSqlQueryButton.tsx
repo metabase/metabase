@@ -9,8 +9,8 @@ import {
   useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
-import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import { useDispatch } from "metabase/redux";
+import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import { Button } from "metabase/ui";
 
 import { trackQueryFixClicked } from "../../analytics";
@@ -55,7 +55,7 @@ export function FixSqlQueryButton() {
 
     sendToast({
       icon: "warning",
-      toastColor: "error",
+      toastColor: "feedback-negative",
       message: action.payload.error?.message ?? METABOT_ERR_MSG.default,
     });
   };

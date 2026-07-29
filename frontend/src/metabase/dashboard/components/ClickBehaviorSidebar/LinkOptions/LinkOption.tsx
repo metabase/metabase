@@ -12,7 +12,7 @@ export const LinkOption = ({
   onClick: () => void;
 }) => (
   <SidebarItem onClick={onClick}>
-    <SidebarItem.Icon name={icon} c="brand" />
+    <SidebarItem.Icon name={icon} c="core-brand" />
     <div>
       <SidebarItem.Name>{option}</SidebarItem.Name>
     </div>

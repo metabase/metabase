@@ -5,9 +5,9 @@ import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
-import { Tables } from "metabase/entities/tables";
 import { TableBreadcrumbs } from "metabase/metadata/components";
 import { useDispatch, useStore } from "metabase/redux";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Icon, Text } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
@@ -41,9 +41,7 @@ export function DataStep({
   const dispatch = useDispatch();
 
   const handleChange = async (tableId: TableId) => {
-    await dispatch(
-      Tables.actions.fetchMetadataAndForeignTables({ id: tableId }),
-    );
+    await dispatch(fetchTableMetadataAndForeignKeys({ id: tableId }));
     const metadata = getMetadata(store.getState());
     const databaseId = checkNotNull(metadata.table(tableId)).db_id;
     const metadataProvider = Lib.metadataProvider(databaseId, metadata);

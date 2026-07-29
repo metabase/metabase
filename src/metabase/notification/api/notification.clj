@@ -107,7 +107,6 @@
                                   (sql.helpers/where [:or
                                                       [:= :notification_recipient.user_id legacy-user-id]
                                                       [:= :notification.creator_id legacy-user-id]]))))
-
        (into [] (comp
                  (map t2.realize/realize)
                  (filter mi/can-read?)))
@@ -225,13 +224,30 @@
           (when (seq added-recipients)
             (messages/send-you-were-added-card-notification-email! notification added-recipients @api/*current-user*)))))))
 
+(defn publish-notification-update!
+  "Post-update side effects for a notification: recipient emails on `:active` transitions (or
+  recipient diffs) + an `:event/notification-update` audit event. Shared between the self-service
+  PUT endpoint and the admin bulk endpoint so the contract can't drift. Both args should be
+  hydrated notifications (see [[models.notification/hydrate-notification]])."
+  [updated-notification existing-notification]
+  (when (card-notification? existing-notification)
+    (notify-notification-updates! updated-notification existing-notification))
+  (events/publish-event! :event/notification-update
+                         {:object          updated-notification
+                          :previous-object existing-notification
+                          :user-id         api/*current-user-id*}))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a notification, can also update its subscriptions, handlers.
-  Return the updated notification."
+  Return the updated notification.
+
+  `creator_id` (owner) can be reassigned here only by superusers (e.g. the admin 'Edit alert'
+  modal's owner picker). `mi/can-update?` rejects a non-superuser reassignment attempt with 403;
+  the model's `before-update` hook is the backstop. Echoing back the unchanged value is fine."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
    body :- ::NotificationApiInput]
@@ -239,12 +255,8 @@
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
     (models.notification/update-notification! existing-notification body)
-    (when (card-notification? existing-notification)
-      (notify-notification-updates! body existing-notification))
     (u/prog1 (get-notification id)
-      (events/publish-event! :event/notification-update {:object          <>
-                                                         :previous-object existing-notification
-                                                         :user-id         api/*current-user-id*}))))
+      (publish-notification-update! <> existing-notification))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

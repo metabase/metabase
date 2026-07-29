@@ -29,12 +29,10 @@
                           (queue/blocking-put! queue timeout-ms {:thread "back", :payload e})))
         run!          (fn [f]
                         (future (f)))]
-
     (run! background-fn)
     (future
       (dotimes [_ realtime-threads]
         (run! realtime-fn)))
-
     (let [processed (volatile! [])]
       (try
         (while true
@@ -64,24 +62,19 @@
         (simulate-queue! queue
                          :backfill-events backfill-events
                          :realtime-events realtime-events)]
-
     (testing "We processed all the events that were enqueued"
       (is (= (+ (count backfill-events) sent)
              (count processed))))
-
     (testing "No items are skipped"
       (is (zero? skipped)))
-
     (testing "Some items are dropped"
       (is (pos? dropped)))
-
     (let [expected-events  (set (concat backfill-events realtime-events))
           processed-events (set processed)]
       (testing "All expected events are processed"
         (is (zero? (count (set/difference expected-events processed-events)))))
       (testing "There are no unexpected events processed"
         (is (zero? (count (set/difference processed-events expected-events))))))
-
     (testing "The realtime events are processed in order"
       (mt/ordered-subset? realtime-events processed))))
 
@@ -149,13 +142,11 @@
           thread-name "queue-test-listener-0"]
       (is (not (thread-name-running? thread-name)))
       (is (not (queue/listener-exists? listener-name)))
-
       (queue/listen! listener-name queue
                      (fn [batch] (swap! items-handled + (count batch)) (reset! last-batch batch))
                      {:max-next-ms 5})
       (is (thread-name-running? thread-name))
       (is (queue/listener-exists? listener-name))
-
       (is (nil? (queue/listen! listener-name queue
                                (fn [batch] (throw (ex-info "Second listener with the same name cannot be created" {:batch batch})))
                                {:max-next-ms 5})))
@@ -164,20 +155,16 @@
         (await-test-while (zero? @items-handled)
           (is (= 1 @items-handled))
           (is (= ["a"] @last-batch)))
-
         (queue/put-with-delay! queue 0 "b")
         (queue/put-with-delay! queue 0 "c")
         (queue/put-with-delay! queue 0 "d")
         (await-test-while (< @items-handled 4)
           (is (= 4 @items-handled))
           (is (some #{"d"} @last-batch)))
-
         (finally
           (queue/stop-listening! listener-name)))
-
       (await-test-while (thread-name-running? thread-name))
       (is (not (queue/listener-exists? listener-name)))
-
       ; additional calls to stop are no-ops
       (is (nil? (queue/stop-listening! listener-name))))))
 
@@ -204,13 +191,11 @@
         (await-test-while (zero? @result-count)
           (is (= 0 @error-count))
           (is (= 1 @result-count)))
-
         (queue/put-with-delay! queue 0 "err")
         (await-test-while (zero? @error-count)
           (is (= 1 @error-count))
           (is (= 1 @result-count))
           (is (= "Test Error" (.getMessage ^Exception @last-error))))
-
         (finally
           (queue/stop-listening! listener-name))))))
 
@@ -226,7 +211,6 @@
       (is (not (thread-name-running? thread-name-0)))
       (is (not (thread-name-running? thread-name-1)))
       (is (not (thread-name-running? thread-name-2)))
-
       (queue/listen! listener-name
                      queue
                      (fn [batch] (is (<= (count batch) 10)) (count batch))
@@ -238,14 +222,11 @@
         (is (thread-name-running? thread-name-0))
         (is (thread-name-running? thread-name-1))
         (is (thread-name-running? thread-name-2))
-
         (dotimes [i 100]
           (queue/put-with-delay! queue 0 i))
-
         (await-test-while (< @batches-handled 100)
           (is (= 100 @batches-handled))
           (is (contains? @handlers-used listener-name)))
-
         (finally
           (queue/stop-listening! listener-name)))
       (await-test-while (or (thread-name-running? thread-name-0)
@@ -270,16 +251,13 @@
         (queue/put-with-delay! queue 0 "boom")
         (await-test-while (zero? @call-count)
           (is (= 1 @call-count)))
-
         ;; Thread should still be alive
         (is (thread-name-running? thread-name)
             "Listener thread should survive an AssertionError")
-
         ;; Second message should still be processed
         (queue/put-with-delay! queue 0 "ok")
         (await-test-while (< @call-count 2)
           (is (= 2 @call-count)))
-
         (finally
           (queue/stop-listening! listener-name))))))
 
@@ -307,18 +285,14 @@
         (queue/put-with-delay! queue 0 "fail")
         (await-test-while (not @err-handler-ran)
           (is @err-handler-ran))
-
         ;; Wait for restart backoff (initial-restart-backoff-ms = 500ms) plus margin
         (Thread/sleep 1000)
-
         ;; Thread should be alive again after restart
         (is (thread-name-running? thread-name)
             "Listener thread should restart after err-handler throws an Error")
-
         ;; Verify second message is processed normally
         (queue/put-with-delay! queue 0 "ok")
         (await-test-while (< @call-count 2)
           (is (= 2 @call-count)))
-
         (finally
           (queue/stop-listening! listener-name))))))

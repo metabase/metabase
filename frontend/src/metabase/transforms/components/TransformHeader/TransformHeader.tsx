@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link/Link";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { StackProps } from "metabase/ui";

@@ -3,18 +3,15 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
-import { Icon, Text } from "metabase/ui";
+import { Box, Card, Flex, Icon, Text } from "metabase/ui";
 import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
 
 import { StillNeedHelp } from "../StillNeedHelp";
 
-import {
-  BillingExternalLink,
-  BillingInfoCard,
-  BillingInfoRowContainer,
-  BillingInternalLink,
-} from "./BillingInfo.styled";
+import S from "./BillingInfo.module.css";
 import {
   formatBillingValue,
   getBillingInfoId,
@@ -33,7 +30,7 @@ const BillingInfoValue = ({
 
   if (lineItem.display === "value") {
     return (
-      <Text fw="bold" color="currentColor" {...props}>
+      <Text fw="bold" color="currentColor" ta="right" {...props}>
         {formattedValue}
       </Text>
     );
@@ -41,7 +38,8 @@ const BillingInfoValue = ({
 
   if (lineItem.display === "internal-link") {
     return (
-      <BillingInternalLink
+      <Link
+        className={S.link}
         to={internalLinkMap[lineItem.link]}
         href={internalLinkMap[lineItem.link]}
         data-testid="test-link"
@@ -50,18 +48,18 @@ const BillingInfoValue = ({
         <Text fw="bold" color="currentColor">
           {formattedValue}
         </Text>
-      </BillingInternalLink>
+      </Link>
     );
   }
 
   if (lineItem.display === "external-link") {
     return (
-      <BillingExternalLink href={lineItem.link} {...props}>
+      <ExternalLink className={S.link} href={lineItem.link} {...props}>
         <Text fw="bold" color="currentColor">
           {formattedValue}
         </Text>
         <Icon ml="sm" size="16" name="external" />
-      </BillingExternalLink>
+      </ExternalLink>
     );
   }
 
@@ -71,11 +69,9 @@ const BillingInfoValue = ({
 
 function BillingInfoRow({
   lineItem,
-  extraPadding,
   ...props
 }: {
   lineItem: BillingInfoLineItem;
-  extraPadding: boolean;
 }) {
   // avoid rendering the entire row if we can't format/display the value
   if (!isSupportedLineItem(lineItem)) {
@@ -95,10 +91,18 @@ function BillingInfoRow({
   // changes in a way the current application doesn't expect
   return (
     <ErrorBoundary errorComponent={EmptyErrorComponent}>
-      <BillingInfoRowContainer extraPadding={extraPadding} {...props}>
+      <Flex
+        className={S.row}
+        align="center"
+        justify="space-between"
+        gap="lg"
+        px="lg"
+        py="md"
+        {...props}
+      >
         <Text
+          className={S.label}
           c="text-secondary"
-          maw="15rem"
           data-testid={`billing-info-key-${id}`}
         >
           {lineItem.name}
@@ -107,7 +111,7 @@ function BillingInfoRow({
           lineItem={lineItem}
           data-testid={`billing-info-value-${id}`}
         />
-      </BillingInfoRowContainer>
+      </Flex>
     </ErrorBoundary>
   );
 }
@@ -119,19 +123,15 @@ export const BillingInfoTable = ({
 }) => {
   const airgap_enabled = useSetting("airgap-enabled");
   return (
-    <>
+    <Box>
       <SettingHeader id="billing" title={t`Billing`} />
-      <BillingInfoCard flat>
-        {billingInfo.content?.map((lineItem, index, arr) => (
-          <BillingInfoRow
-            key={lineItem.name}
-            lineItem={lineItem}
-            extraPadding={arr.length === index + 1}
-          />
+      <Card mt="md" p={0} radius="md" shadow="none" withBorder>
+        {billingInfo.content?.map((lineItem) => (
+          <BillingInfoRow key={lineItem.name} lineItem={lineItem} />
         ))}
-      </BillingInfoCard>
+      </Card>
       {airgap_enabled && <StillNeedHelp />}
-    </>
+    </Box>
   );
 };
 

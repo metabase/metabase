@@ -1,6 +1,5 @@
 (ns metabase.warehouse-schema.models.field
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql :as sql]
    [medley.core :as m]
@@ -15,7 +14,6 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -271,10 +269,6 @@
      :id
      {:default false})))
 
-(defmethod serdes/hash-fields :model/Field
-  [_field]
-  [:name (serdes/hydrated-hash :table :table_id) (serdes/hydrated-hash :parent :parent_id)])
-
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
 (defn values
@@ -467,22 +461,9 @@
         field-q             (serdes/recursively-find-field-q (:id table) (map :id (reverse fields)))]
     (t2/select-one :model/Field field-q)))
 
-(defmethod serdes/dependencies "Field" [field]
-  ;; Fields depend on their parent Table, plus any foreign Fields referenced by their Dimensions.
-  ;; Take the path, but drop the Field section to get the parent Table's path instead.
-  (let [this  (serdes/path field)
-        table (remove #(= "Field" (:model %)) this)
-        fks   (some->> field :fk_target_field_id serdes/field->path)
-        human (->> (:dimensions field)
-                   (keep :human_readable_field_id)
-                   (map serdes/field->path)
-                   set)]
-    (-> (set/union
-         #{table}
-         human
-         (when fks #{fks})
-         (when (:parent_id field) #{(butlast this)}))
-        (disj this))))
+(defmethod serdes/deserialization-dependencies "Field" [field]
+  (let [db-path (first (serdes/path field))]
+    #{[db-path]}))
 
 (defmethod serdes/make-spec "Field" [_model-name opts]
   {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :database_default :database_indexed
@@ -510,42 +491,3 @@
     (conj (serdes/storage-path-prefixes path)
           {:label "fields"}
           {:label field-name :key field-name})))
-
-(defmethod serdes/metadata-query :model/Field
-  [model opts]
-  (t2/reducible-query
-   {:select [[:f.id :id]
-             [:f.table_id :table_id]
-             [:f.name :name]
-             [:f.parent_id :parent_id]
-             [:f.fk_target_field_id :fk_target_field_id]
-             [:f.description :description]
-             [:f.base_type :base_type]
-             [:f.database_type :database_type]
-             [:f.effective_type :effective_type]
-             [:f.semantic_type :semantic_type]
-             [:f.coercion_strategy :coercion_strategy]
-             [:f.nfc_path :nfc_path]]
-    :from   [[(t2/table-name model) :f]]
-    :join   [[(t2/table-name :model/Table) :t]    [:= :f.table_id :t.id]
-             [(t2/table-name :model/Database) :db] [:= :t.db_id :db.id]]
-    :where  [:and
-             (serdes/metadata-query-filter :model/Database :db opts)
-             (serdes/metadata-query-filter :model/Table :t opts)
-             (serdes/metadata-query-filter model :f opts)]}))
-
-(defmethod serdes/metadata-query-filter :model/Field
-  [_model alias {:keys [field-ids]}]
-  (cond-> [:and
-           [:= (u/qualified-key alias :active) true]
-           [:<> (u/qualified-key alias :visibility_type) "sensitive"]]
-    (seq field-ids) (conj [:in (u/qualified-key alias :id) field-ids])))
-
-(defmethod serdes/metadata-query-format :model/Field
-  [_model {:keys [base_type effective_type nfc_path] :as row}]
-  (-> row
-      (assoc :effective_type (when (not= base_type effective_type) effective_type))
-      (assoc :nfc_path (cond-> nfc_path
-                         (string? nfc_path) json/decode
-                         nfc_path           seq))
-      u/remove-nils))

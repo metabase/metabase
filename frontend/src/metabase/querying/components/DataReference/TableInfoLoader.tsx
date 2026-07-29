@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
 
-import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/redux";
+import type { Dispatch } from "metabase/redux/store";
+import {
+  fetchTableForeignKeys,
+  fetchTableMetadata,
+} from "metabase/redux/tables";
 import type Table from "metabase-lib/v1/metadata/Table";
 
 type OwnProps = {
@@ -10,15 +14,14 @@ type OwnProps = {
   children: JSX.Element[];
 };
 
-const mapDispatchToProps: {
-  fetchForeignKeys: (args: { id: Table["id"] }) => Promise<any>;
-  fetchMetadata: (args: { id: Table["id"] }) => Promise<any>;
-} = {
-  fetchForeignKeys: Tables.actions.fetchForeignKeys,
-  fetchMetadata: Tables.actions.fetchMetadata,
-};
+const mapDispatchToProps = (dispatch: Dispatch) => ({
+  fetchForeignKeys: (args: { id: Table["id"] }) =>
+    dispatch(fetchTableForeignKeys(args)),
+  fetchMetadata: (args: { id: Table["id"] }) =>
+    dispatch(fetchTableMetadata(args)),
+});
 
-type AllProps = OwnProps & typeof mapDispatchToProps;
+type AllProps = OwnProps & ReturnType<typeof mapDispatchToProps>;
 
 function useDependentTableMetadata({
   table,

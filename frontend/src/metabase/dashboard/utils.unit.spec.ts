@@ -1,5 +1,3 @@
-import type { Location } from "history";
-
 import {
   canResetFilter,
   createTabSlug,
@@ -16,12 +14,14 @@ import {
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
 import { createMockLocation } from "metabase/redux/store/mocks";
+import type { Location } from "metabase/router";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
+  createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
   createMockDatabase,
@@ -56,6 +56,7 @@ describe("Dashboard utils", () => {
 
       const successfulFetch = Promise.resolve(data);
 
+      // Unjustified type cast. FIXME
       const result = (await fetchDataOrError(successfulFetch)) as any;
 
       expect(result.error).toBeUndefined();
@@ -76,6 +77,7 @@ describe("Dashboard utils", () => {
 
       const result = await fetchDataOrError(failedFetch);
       expect(result).toBeTruthy();
+      // Unjustified type cast. FIXME
       expect((result as { error: unknown }).error).toEqual(error);
     });
 
@@ -426,6 +428,32 @@ describe("Dashboard utils", () => {
           hidingWhenEmptyCardId,
           visualizerCardId,
         ]),
+      );
+    });
+
+    // A pivot query with no matching data still returns a single grand-total
+    // row, so "hide when empty" pivot cards must be hidden based on detail rows
+    // (pivot-grouping === 0), not raw row count. (metabase#74387)
+    it("hides a hide-when-empty pivot card whose only row is the grand total", () => {
+      const pivotTotalsOnlyData = createMockDatasetData({
+        cols: [
+          createMockColumn({ name: "CATEGORY", source: "breakout" }),
+          createMockColumn({ name: "VENDOR", source: "breakout" }),
+          createMockColumn({ name: "pivot-grouping", source: "breakout" }),
+          createMockColumn({ name: "max", source: "aggregation" }),
+        ],
+        rows: [[null, null, 3, null]],
+      });
+      const loadedWithPivotTotalsOnly = {
+        ...loadedWithData,
+        [hidingWhenEmptyCardId]: {
+          200: createMockDataset({ data: pivotTotalsOnlyData }),
+        },
+      };
+
+      const visibleIds = getVisibleCardIds(cards, loadedWithPivotTotalsOnly);
+      expect(visibleIds).toStrictEqual(
+        new Set([virtualCardId, normalCardId, visualizerCardId]),
       );
     });
   });

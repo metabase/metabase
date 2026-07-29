@@ -2,14 +2,13 @@ import { checkNotNull } from "metabase/utils/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { ConcreteTableId } from "metabase-types/api";
-
 import type {
+  ConcreteTableId,
   DatabaseEntityId,
-  EntityId,
+  PermissionEntityId,
   SchemaEntityId,
   TableEntityId,
-} from "../types";
+} from "metabase-types/api";
 
 export const getDatabaseEntityId = (databaseEntity: Database) => ({
   databaseId: databaseEntity.id,
@@ -23,15 +22,16 @@ export const getSchemaEntityId = (schemaEntity: Schema) => ({
 export const getTableEntityId = (tableEntity: Table) => ({
   databaseId: tableEntity.db_id,
   schemaName: tableEntity.schema_name,
+  // Unjustified type cast. FIXME
   tableId: tableEntity.id as ConcreteTableId,
 });
 
 export const isTableEntityId = (
-  entityId: Partial<EntityId>,
+  entityId: Partial<PermissionEntityId>,
 ): entityId is TableEntityId => entityId.tableId != null;
 
 export const isSchemaEntityId = (
-  entityId: Partial<EntityId>,
+  entityId: Partial<PermissionEntityId>,
 ): entityId is SchemaEntityId & { schemaName: string } =>
   // not sure why schemaName can be undefined on SchemaEntityId
   entityId.schemaName != null &&
@@ -39,7 +39,7 @@ export const isSchemaEntityId = (
   !isTableEntityId(entityId);
 
 export const isDatabaseEntityId = (
-  entityId: Partial<EntityId>,
+  entityId: Partial<PermissionEntityId>,
 ): entityId is DatabaseEntityId =>
   entityId.databaseId != null &&
   !isSchemaEntityId(entityId) &&

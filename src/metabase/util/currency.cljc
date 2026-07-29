@@ -157,6 +157,7 @@
      [:VND (make-currency "₫" "Vietnamese Dong" "₫" 0 0 "VND" "Vietnamese dong")]
      [:XAF (make-currency "FCFA" "CFA Franc BEAC" "FCFA" 0 0 "XAF" "CFA francs BEAC")]
      [:XOF (make-currency "CFA" "CFA Franc BCEAO" "CFA" 0 0 "XOF" "CFA francs BCEAO")]
+     [:XPF (make-currency "CFPF" "CFP Franc" "F" 0 0 "XPF" "CFP francs")]
      [:YER (make-currency "YR" "Yemeni Rial" "ر.ي.‏" 0 0 "YER" "Yemeni rials")]
      [:ZAR (make-currency "R" "South African Rand" "R" 2 0 "ZAR" "South African rand")]
      [:ZMK (make-currency "ZK" "Zambian Kwacha" "ZK" 0 0 "ZMW" "Zambian kwachas")]])))

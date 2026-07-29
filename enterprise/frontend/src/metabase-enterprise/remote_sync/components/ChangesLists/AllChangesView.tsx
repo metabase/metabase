@@ -141,7 +141,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                     p="sm"
                     gap="sm"
                     mb={hasItems ? "0.75rem" : 0}
-                    bg="background-secondary"
+                    bg="background_page-secondary"
                     bdrs="md"
                   >
                     <Icon
@@ -169,7 +169,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                       ml="md"
                       pl="xs"
                       style={{
-                        borderLeft: "2px solid var(--mb-color-border)",
+                        borderLeft: "2px solid var(--mb-color-border-neutral)",
                       }}
                     >
                       {/* Render table groups (both dirty tables and orphan children) */}
@@ -193,7 +193,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                               mt="0.75rem"
                               style={{
                                 borderLeft:
-                                  "2px solid var(--mb-color-border-subtle)",
+                                  "2px solid var(--mb-color-border-neutral-subtle)",
                               }}
                             >
                               {tableGroup.children.map((child) => (
@@ -224,7 +224,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
       </Paper>
       {hasRemovals && (
         <Text
-          c="error"
+          c="feedback-negative"
           fz="sm"
           lh="sm"
           mt="sm"

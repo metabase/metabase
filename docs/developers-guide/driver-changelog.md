@@ -4,6 +4,78 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.64.0
+
+- `metabase.driver/workspace-isolation-details` `[driver database workspace]` -- new workspace-isolation
+  multimethod. Computes the isolation identifiers (`:schema`, and driver-specific `:database_details` such as
+  user/password) for a workspace *before* any warehouse work happens; `init-workspace-isolation!`,
+  `grant-workspace-read-access!`, and `destroy-workspace-isolation!` now receive those identifiers on the
+  `workspace` map instead of computing them internally. `:sql-jdbc` drivers inherit a default implementation
+  (deterministic schema/user names plus a random password); non-JDBC drivers that support workspaces must
+  implement it themselves.
+
+- `metabase.driver/check-isolation-permissions`, added in 0.59.0, has been removed. Permission problems now
+  surface as failures from `init-workspace-isolation!`/`grant-workspace-read-access!` themselves.
+
+- Added a `:native-pivot-tables` driver feature flag for drivers that can compile a pivot query as a single
+  `GROUP BY GROUPING SETS (...)` statement instead of the legacy multi-query path. Drivers that opt in must also
+  derive from `:sql-mbql5` (which provides the `:pivot` clause compiler). Defaults to `false`.
+
+- Index Manager: drivers can now read and create table indexes, in the broad sense (secondary indexes, sort keys,
+  distribution keys, clustering, etc.). New driver feature flags:
+
+  - `:index/fetch` -- the driver can read the indexes that physically exist on a table. Implemented by Postgres,
+    ClickHouse, and Redshift.
+
+  - `:index/standalone-create` -- the driver can create an index on a transform's target table as a standalone
+    statement after the table is created. Implemented by Postgres.
+
+  - `:index/inline-create` -- the driver inlines an index into the table-creation statement itself (e.g. Redshift
+    `SORTKEY`) rather than creating it afterwards. Such drivers render the index from the `:indexes` key of the
+    transform details when they build the creation statement: in `metabase.driver/compile-transform` (the CTAS for a
+    SQL transform) and/or `metabase.driver/create-table!` (the CREATE TABLE for a Python transform). Implemented by
+    Redshift.
+
+  New driver methods:
+
+  - `metabase.driver/fetch-table-indexes` `[driver database schema table]` -- reads a table's physical indexes,
+    returning them as a vector of normalized index maps. Drivers declaring `:index/fetch` implement it; the default
+    implementation throws.
+
+  - `metabase.driver/supported-index-methods` `[driver database]` -- returns the index methods the driver supports as
+    a map of `index-kind` to a metadata map carrying at least `:lifecycle` (`:standalone` or `:inline`). Defaults to
+    `{}`.
+
+  - `metabase.driver/compile-create-index` `[driver schema table structured]` -- compiles a `:standalone` index into
+    the DDL statement(s) that create it.
+
+## Metabase 0.63.0
+
+- `metabase.driver/refresh-table-stats!` `[driver database schema table transform-type]` -- refreshes table
+  statistics (e.g. `ANALYZE`) after a transform run. Defaults to a no-op.
+
+- `metabase.driver/describe-table-fks`, deprecated in 0.49.0, has been removed. Please implement
+  `metabase.driver/describe-fks` instead. This method is now required for drivers that support
+  `:metadata/key-constraints`.
+
+  - JDBC-based drivers can implement `metabase.driver.sql-jdbc.sync.describe-table/describe-fks-sql` to take advantage
+    of a more performant shared `:sql-jdbc` implementation of `describe-fks`; if they do not implement this method
+    they will fall back to a default implementation of `describe-fks` that uses JDBC metadata for each matching table,
+    similar to the old default implementation of `describe-table-fks`.
+
+  - The `metabase.driver.sql-jdbc.sync/describe-table-fks` helper function has been removed, but helper functions
+    `metabase.driver.sql-jdbc.sync/reducible-fks-for-tables-matching-options` and
+    `metabase.driver.sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata` have been added for use if you want to
+    write an implementation that works on a per-table basis similar to how the old `describe-table-fks` method worked.
+
+  - `metabase.driver-api.core/reducible-sync-tables` has been exposed in the driver API to fetch a set of matching
+    tables that match the `{:schema-names ... :table-names ...}` options passed to `describe-fks`, useful if you want
+    to implement a version that fetches FK metadata on a per-table basis.
+
+  - The `:describe-fks` driver feature flag has been removed as a feature since it is no longer needed to differentiate
+    between the aforementioned FK description methods; you should remove any `metabase.driver/database-supports?`
+    implementations for it.
+
 ## Metabase 0.62.0
 
 - `sql.params.substitution/field->clause`, `to-clause`, `desugar-filter-clause`, `wrap-value-literals-in-mbql`, and
@@ -28,6 +100,41 @@ title: Driver interface changelog
 - `metabase.driver-api.core/desugar-filter-clause`, `metabase.driver-api.core/negate-filter-clause`, and
   `metabase.driver-api.core/simplify-compound-filter`, deprecated in 0.57.0, have been removed; use the
   `metabase.lib.core` versions instead. The new versions operate on MBQL 5 instead of MBQL 4.
+
+- Added `metabase.driver.sql/table-qualification-style` multimethod. Returns one of
+  `:table-qualification-style/{table,schema-table,db-table,db-schema-table}` describing the per-driver
+  SQL identifier shape. Used by workspace table remapping
+  (`metabase-enterprise.workspaces.core/engine-namespace-positions`) to decide tuple shape when
+  storing `:model/TableRemapping` rows and matching AST positions during query rewriting. Defaults
+  to `:table-qualification-style/schema-table` -- the common case, so Postgres/Redshift/H2/ClickHouse
+  need no override. Drivers that emit `db.table` (MySQL) override to
+  `:table-qualification-style/db-table`; drivers that emit `db.schema.table` (SQL Server, BigQuery)
+  override to `:table-qualification-style/db-schema-table`. Drivers that emit a bare `table` use
+  `:table-qualification-style/table`.
+
+- Added `metabase.driver.sql/db-slot-value` multimethod. Returns the `:db` AST slot string (catalog,
+  project id, etc.) for a `Database` row. Required for `:table-qualification-style/db-table` and
+  `:table-qualification-style/db-schema-table` drivers; the default returns `nil`. Overridden by
+  MySQL and SQL Server (`(:db (:details db))`) and BigQuery (`(:project-id (:details db))`).
+
+- Added `metabase.driver/qualified-name-components` multimethod. Returns the ordered subset of
+  `#{:db :schema}` identifier positions a driver populates when referencing a table in compiled
+  SQL. Defaults to `[:schema]`. Drivers that emit bare table names (Mongo) override to `[]`;
+  MySQL overrides to `[:db]` (its "database" rides on the connection but participates as the
+  `:db` AST slot for cross-DB consumers); drivers that emit a 3-part `catalog.schema.table`
+  identifier (SQL Server, BigQuery) override to `[:db :schema]`.
+
+- The `metabase.driver.common.parameters.values` namespace, deprecated in 0.57.0, has been removed. Use the equivalent
+  QP namespace, `metabase.query-processor.parameters.values`, instead. Note that this namespace operates on MBQL 5
+  rather than MBQL 4.
+
+- `metabase.driver/substitute-native-parameters` has been deprecated; `substitute-native-parameters-in-stage-method`
+  replaces it. The new method operates on MBQL 5 rather than MBQL 4. `substitute-native-parameters` is no longer
+  called in Metabase 0.62.0+; on the off chance that you implemented it, please implement
+  `substitute-native-parameters-in-stage-method` instead as soon as possible.
+
+- `metabase.driver-api.core/wrap-value-literals-in-mbql` has been removed; use
+  `metabase.driver-api.core/wrap-value-literals-in-mbql5` instead.
 
 ## Metabase 0.61.0
 
@@ -464,7 +571,7 @@ title: Driver interface changelog
   `metabase.test.data.sql.ddl/insert-rows-dml-statements`, since `INSERT` is DML, not DDL. Please update your method
   implementations accordingly.
 
-- The `:foreign-keys` driver feature has been removed. `:metadata/keys-constraints` should be used for drivers that
+- The `:foreign-keys` driver feature has been removed. `:metadata/key-constraints` should be used for drivers that
   support foreign key relationships reporting during sync. Implicit joins now depend on the `:left-join` feature
   instead. The default value is true for `:sql` based drivers. All join features are now enabled for `:sql` based
   drivers by default. Previously, those depended on the `:foreign-keys` feature. If your driver supports `:left-join`,

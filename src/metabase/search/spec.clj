@@ -27,7 +27,7 @@
    "transform"
    ;; The following come last as they can be slow to index due to:
    ;; - cardinality (table, indexed-entity),
-   ;; - cost (e.g. computing has_temporal_dim for cards)
+   ;; - cost (e.g. large text payloads and native-query parsing for cards)
    "table"
    "metric"
    "card"
@@ -60,19 +60,12 @@
   [:union :boolean :keyword vector? :map
    [:map
     [:fn fn?]
-    [:fields {:optional true} [:vector :keyword]]
-    [:provides {:optional true} [:vector :keyword]]]])
+    [:fields {:optional true} [:vector :keyword]]]])
 
 (defn function-attr?
   "Attributes populate by clojure functions"
   [attr-def]
   (and (map? attr-def) (:fn attr-def)))
-
-(defn function-attr-provides
-  "Returns the attr keys that a function attr provides when it returns a map.
-  Used to determine which filters a function attr satisfies."
-  [attr-def]
-  (:provides attr-def []))
 
 (defn collect-fn-attr-req-fields
   "Return set of required appdb fields declared in a spec's function attrs"
@@ -92,7 +85,10 @@
   ;; - `metabase.search.impl/add-dataset-collection-hierarchy` reads `:collection_location` to hydrate
   ;;   `:collection_effective_ancestors`, and the collection-result hydration path reads `:location` from
   ;;   the toucan instance (which the render-term keeps populated).
-  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :data_layer})
+  ;; `:document` is the document model's prose-mirror body: it's indexed as searchable text (via
+  ;; ast->text) but the raw JSON should never be echoed back in the search response or bloat the index row.
+  ;; `:data_layer` also stays IN: Metabot surfaces it on table results so the LLM sees a table's data layer.
+  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document})
 
 (def attr-types
   "The abstract types of each attribute."
@@ -114,16 +110,17 @@
    :updated-at              :timestamp
    :verified                :boolean
    :view-count              :int
-   :non-temporal-dim-ids    :text
-   :has-temporal-dim        :boolean
-   :temporal-info           nil
    :display-type            :text
    :is-published            :boolean
    :source-type             :text
    :collection-type         :text
    :collection-location     :text
    :root-collection-type    :text
-   :data-layer              :text})
+   :data-layer              :text
+   :data-authority          :text
+   ;; Precomputed at ingestion (see metabase.search.ingestion) from the curation signals above, so the
+   ;; "verified or curated content" filter is a single indexed boolean rather than a composite OR.
+   :curated                 :boolean})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -145,13 +142,13 @@
          :verified                                          ;;  in addition to being a filter, this is also a ranker
          :view-count
          :updated-at
-         :temporal-info
          :is-published
          :source-type
          :collection-type                                   ;;  surfaced for downstream consumers (metabase.search.impl/serialize)
          :collection-location                               ;;  surfaced for downstream consumers (add-dataset-collection-hierarchy)
          :root-collection-type                              ;;  indexed for :library scorer — type of the top-level ancestor collection
-         :data-layer])                                      ;;  indexed for the :data-layer scorer (table.data_layer; per-tier weights under :data-layer/*)
+         :data-layer                                        ;;  indexed for the :data-layer scorer (table.data_layer; per-tier weights under :data-layer/*)
+         :data-authority])                                  ;;  input to the precomputed :curated flag (authoritative tables)
        distinct
        vec))
 
@@ -196,6 +193,7 @@
    [:search-terms [:or
                    [:sequential {:min 1} :keyword]
                    [:map-of :keyword [:or fn? true?]]]]
+   [:embedding-exclude {:optional true} [:set :keyword]]
    [:render-terms [:map-of NonAttrKey AttrValue]]
    [:where {:optional true} vector?]
    [:bookmark {:optional true} vector?]
@@ -244,49 +242,60 @@
     (keyword (str (name table) "." (name kw)))
     kw))
 
-(defn- find-fields-kw [kw]
+(defn- find-fields-kw [acc kw]
   ;; Filter out SQL functions
-  (when-not (or (str/starts-with? (name kw) "%")
-                (#{:else :integer :float} kw))
-    (let [table (get-table kw)]
-      [[(or table :this) (remove-table table kw)]])))
+  (if (or (str/starts-with? (name kw) "%")
+          (#{:else :integer :float} kw))
+    acc
+    (conj! acc
+           (if-let [table (get-table kw)]
+             [table (remove-table table kw)]
+             [:this kw]))))
 
-(defn- find-fields-expr [expr]
-  (cond
-    (keyword? expr)
-    (find-fields-kw expr)
+(defn- find-fields-expr
+  ([expr] (persistent! (find-fields-expr (transient []) expr)))
+  ([acc expr]
+   (cond
+     (keyword? expr)
+     (find-fields-kw acc expr)
 
-    (and (vector? expr) (> (count expr) 1))
-    (into [] (mapcat find-fields-expr) (subvec expr 1))
+     (and (vector? expr) (> (count expr) 1))
+     (reduce find-fields-expr acc (subvec expr 1))
 
-    (and (map? expr) (:fields expr))
-    (into [] (mapcat find-fields-expr) (:fields expr))))
+     (and (map? expr) (:fields expr))
+     (reduce-kv #(find-fields-expr %1 %3) acc (:fields expr))
 
-(defn- find-fields-attr [[k v]]
-  (when v
+     :else acc)))
+
+(defn- find-fields-attr [acc k v]
+  (if v
     (if (true? v)
-      [[:this (keyword (u/->snake_case_en (name k)))]]
-      (find-fields-expr v))))
+      (conj! acc [:this (keyword (u/->snake_case_en (name k)))])
+      (find-fields-expr acc v))
+    acc))
 
-(defn- find-fields-search [item]
+(defn- find-fields-search [acc item]
   (let [x (if (map-entry? item) (key item) item)]
     (cond
       (keyword? x)
-      (find-fields-kw x)
+      (find-fields-kw acc x)
 
       (vector? x)
-      (find-fields-expr (first x)))))
+      (find-fields-expr acc (first x))
+
+      :else acc)))
 
 (defn- find-fields
   "Search within a definition for all the fields referenced on the given table alias."
   [spec]
   (u/group-by #(nth % 0) #(nth % 1) conj #{}
-              (-> []
-                  ;; select fields that will influence content
-                  (into (mapcat find-fields-attr (:attrs spec)))
-                  (into (mapcat find-fields-search (:search-terms spec)))
-                  (into (mapcat find-fields-attr (:render-terms spec)))
-                  (into (find-fields-expr (:where spec))))))
+              (as-> (transient []) acc
+                ;; select fields that will influence content
+                (reduce-kv find-fields-attr acc (:attrs spec))
+                (reduce find-fields-search acc (:search-terms spec))
+                (reduce-kv find-fields-attr acc (:render-terms spec))
+                (find-fields-expr acc (:where spec))
+                (persistent! acc))))
 
 (defn- replace-qualification [expr from to]
   (cond
@@ -329,7 +338,6 @@
                 (assoc res model #{{:search-model s
                                     :fields       table-fields
                                     :where        (replace-qualification join-condition table-alias :updated)}})))
-
             {(:model spec) #{{:search-model s
                               :fields       (:this (find-fields spec))
                               :where        (construct-source-where (-> spec :attrs :id))}}}
@@ -387,7 +395,12 @@
    Spec keys:
    - `:model` - Toucan model keyword (required)
    - `:attrs` - Map of search index attributes (required)
-   - `:search-terms` - Vector of searchable text fields (required)
+   - `:search-terms` - Searchable text fields: a vector of column keywords, or a map of
+     column keyword to either `true` (use the raw value) or a transform fn applied for
+     full-text search (required)
+   - `:embedding-exclude` - Set of `:search-terms` keys to omit from the semantic-search
+     embedding text (they remain in full-text search). Use for fields whose raw value is
+     not suitable for semantic search.
    - `:render-terms` - Additional attributes needed for display (required)
    - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated users only)
    - `:where` - HoneySQL where clause to filter indexed records
@@ -397,7 +410,8 @@
    Attribute value formats:
    - `true` - Use column with same name (snake_case)
    - `:column_name` - Use specified database column
-   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure function at index time with the given fields"
+   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure function at index time; its scalar
+     return value is written to the column named after the attr key (snake_case)."
   [search-model spec]
   `(do
      ;; Capture raw form before evaluation (symbols stay as symbols, not function objects)

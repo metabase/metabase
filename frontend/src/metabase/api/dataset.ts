@@ -6,24 +6,17 @@ import type {
   DatasetQuery,
   FieldValue,
   GetRemappedParameterValueRequest,
+  InternalDatasetQuery,
   NativeDatasetResponse,
 } from "metabase-types/api";
 
-import { Api } from "./api";
+import { Api, type RtkCacheKeyed } from "./api";
 import {
   provideAdhocDatasetTags,
   provideAdhocQueryMetadataTags,
   provideParameterValuesTags,
 } from "./tags";
 import { handleQueryFulfilled } from "./utils/lifecycle";
-
-interface RefetchDeps {
-  /**
-   * This attribute won't be a part of the API request and can be used to invalidate
-   * the cache of a given RTK query using its built-in caching mechanism.
-   */
-  _refetchDeps?: unknown;
-}
 
 interface IgnorableError {
   ignore_error?: boolean;
@@ -50,34 +43,26 @@ export const datasetApi = Api.injectEndpoints({
           return {
             method: "POST",
             url,
-            body: { formData },
-            formData: true,
-            fetch: true,
-            transformResponse: ({ response }: { response: Response }) =>
-              response,
+            body: formData,
+            rawResponse: true,
           };
         }
         return {
           method: "GET",
           url,
-          fetch: true,
-          transformResponse: ({ response }: { response: Response }) => response,
+          rawResponse: true,
         };
       },
     }),
     getAdhocQuery: builder.query<
       Dataset,
-      DatasetQuery & RefetchDeps & IgnorableError
+      (DatasetQuery | InternalDatasetQuery) & RtkCacheKeyed & IgnorableError
     >({
-      query: ({ _refetchDeps, ignore_error, ...body }) => ({
+      query: ({ ignore_error, ...body }) => ({
         method: "POST",
         url: "/api/dataset",
         body,
         noEvent: ignore_error,
-        // Use fetch so RTK Query's AbortSignal actually cancels the
-        // request. The XHR path only honors a `cancelled` promise, which
-        // we can't thread through `endpoint.initiate(...).abort()`.
-        fetch: true,
       }),
       providesTags: () => provideAdhocDatasetTags(),
       // Dataset results can be large and the cache key is the full
@@ -93,15 +78,14 @@ export const datasetApi = Api.injectEndpoints({
         pivot_cols?: number[];
         show_row_totals?: boolean;
         show_column_totals?: boolean;
-      } & RefetchDeps &
+      } & RtkCacheKeyed &
         IgnorableError
     >({
-      query: ({ _refetchDeps, ignore_error, ...body }) => ({
+      query: ({ ignore_error, ...body }) => ({
         method: "POST",
         url: "/api/dataset/pivot",
         body,
         noEvent: ignore_error,
-        fetch: true,
       }),
       providesTags: () => provideAdhocDatasetTags(),
       keepUnusedDataFor: 0,

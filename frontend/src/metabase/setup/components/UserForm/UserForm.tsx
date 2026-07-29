@@ -3,12 +3,15 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import { FormInput } from "metabase/common/components/FormInput";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { useValidatePassword } from "metabase/common/hooks";
-import { Form, FormProvider, useFormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
 import type { UserInfo } from "metabase/redux/store";
-import { Flex } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
 import { UserFieldGroup } from "./UserForm.styled";
@@ -55,65 +58,57 @@ export const UserForm = ({ user, isHosted, onSubmit }: UserFormProps) => {
       validationContext={validationContext}
       onSubmit={onSubmit}
     >
-      <Form mt="md">
+      <Form as={Stack} gap="md" mt="md">
         <UserFieldGroup>
-          <FormInput
+          <FormTextInput
             name="first_name"
-            title={t`First name`}
+            label={t`First name`}
             placeholder={t`Johnny`}
             nullable
             autoFocus={!isHosted}
           />
-          <FormInput
+          <FormTextInput
             name="last_name"
-            title={t`Last name`}
+            label={t`Last name`}
             placeholder={t`Appleseed`}
             nullable
           />
         </UserFieldGroup>
-        <FormInput
+        <FormTextInput
           name="email"
           type="email"
-          title={t`Email`}
+          label={t`Email`}
           placeholder="nicetoseeyou@email.com"
         />
-        <FormInput
+        <FormTextInput
           name="site_name"
-          title={t`Company or team name`}
+          label={t`Company or team name`}
           placeholder={t`Department of Awesome`}
         />
-        <FormInput
+        <FormTextInput
           name="password"
           type="password"
-          title={t`Create a password`}
+          label={t`Create a password`}
           placeholder={t`Shhh...`}
           // Hosted instances always pass user information in the URLSearchParams
           // during the initial setup. Password is the first empty field
           // so it makes sense to focus on it.
           autoFocus={isHosted && initialValues.site_name !== ""}
         />
-        <FormInput
+        <FormTextInput
           name="password_confirm"
           type="password"
-          title={t`Confirm your password`}
+          label={t`Confirm your password`}
           placeholder={t`Shhh... but one more time so we get it right`}
         />
-        <UserFormSubmitButton />
+        <Flex align="center">
+          <FormSubmitButton
+            label={t`Next`}
+            activeLabel={t`Saving`}
+            variant="filled"
+          />
+        </Flex>
       </Form>
     </FormProvider>
-  );
-};
-
-const UserFormSubmitButton = () => {
-  const { status } = useFormSubmitButton({ isDisabled: false });
-
-  return (
-    <Flex align="center">
-      <FormSubmitButton
-        title={t`Next`}
-        activeTitle={t`Saving`}
-        primary={status === "idle"}
-      />
-    </Flex>
   );
 };

@@ -173,7 +173,6 @@
         :expected-native {:stages [{:filters [[:= {} [:field {} "PRODUCT_ID"]
                                                (get-in lib.drill-thru.tu/test-queries
                                                        ["ORDERS" :aggregated :row "PRODUCT_ID"])]]}]}})))
-
   (testing "adds an is-null filter for NULL FK values"
     (let [row (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row])]
       (lib.drill-thru.tu/test-drill-application

@@ -66,6 +66,27 @@
               :table #{checkins-id venues-id users-id}}
              (calculation/calculate-deps :card card))))))
 
+(deftest ^:parallel upstream-deps-metric-dimension-mappings-test
+  (testing "a metric v2's dimension mappings contribute their columns' tables as dependencies, even
+            when the base query doesn't reference them"
+    (let [mp            (mt/metadata-provider)
+          venues-id     (mt/id :venues)
+          categories-id (mt/id :categories)
+          base-query    (-> (lib/query mp (lib.metadata/table mp venues-id))
+                            (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Card metric {:type               :metric
+                                         :dataset_query      base-query
+                                         :dimension_mappings [{:type         :table
+                                                               :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+                                                               :table-id     categories-id
+                                                               :target       [:field {} (mt/id :categories :name)]}]}]
+        (is (= {:card    #{}
+                :measure #{}
+                :segment #{}
+                :table   #{venues-id categories-id}}
+               (calculation/calculate-deps :card metric))
+            "the mapped column's table (categories) is a dependency alongside the query's own table (venues)")))))
+
 (deftest ^:parallel upstream-deps-card-implicit-join-filter-test
   (let [mp (mt/metadata-provider)
         checkins-id (mt/id :checkins)
@@ -448,7 +469,6 @@
                                              :definition {:filter [:> [:field price-field-id nil] 50]}}]
         (is (= {:segment #{} :table #{products-id}}
                (calculation/calculate-deps :segment segment)))))
-
     (testing "segment depending on another segment"
       (mt/with-temp [:model/Segment {segment-a-id :id :as segment-a} {:table_id products-id
                                                                       :definition {:filter [:> [:field price-field-id nil] 50]}}
@@ -528,7 +548,6 @@
                                                              (lib/aggregate (lib/sum quantity)))}]
         (is (= {:measure #{} :segment #{} :table #{orders-id}}
                (calculation/calculate-deps :measure measure)))))
-
     (testing "measure depending on another measure"
       (mt/with-temp [:model/Measure {measure-a-id :id :as measure-a} {:name "Measure A"
                                                                       :table_id orders-id

@@ -3,6 +3,29 @@
    [clojure.test :refer :all]
    [metabase.channel.render.util :as render-util]))
 
+(deftest ^:parallel dashcard-title-test
+  (testing "dashcard-title resolves a dashboard-level title override over the card name (UXW-4705)"
+    (let [card {:name "Card Name"}]
+      (testing "a regular dashcard title override wins over the card name"
+        (is (= "Dashboard Title"
+               (render-util/dashcard-title card {:visualization_settings {:card.title "Dashboard Title"}}))))
+      (testing "a visualizer dashcard's nested title override is respected"
+        (is (= "Visualizer Title"
+               (render-util/dashcard-title card {:visualization_settings {:visualization {:settings {:card.title "Visualizer Title"}}}}))))
+      (testing "the visualizer override takes precedence over a top-level one"
+        (is (= "Visualizer Title"
+               (render-util/dashcard-title card {:visualization_settings {:card.title    "Dashboard Title"
+                                                                          :visualization {:settings {:card.title "Visualizer Title"}}}}))))
+      (testing "a blank override is ignored (falls through)"
+        (is (= "Dashboard Title"
+               (render-util/dashcard-title card {:visualization_settings {:card.title    "Dashboard Title"
+                                                                          :visualization {:settings {:card.title ""}}}})))
+        (is (= "Card Name"
+               (render-util/dashcard-title card {:visualization_settings {:card.title ""}}))))
+      (testing "with no override, falls back to the card's own name"
+        (is (= "Card Name" (render-util/dashcard-title card {:visualization_settings {}})))
+        (is (= "Card Name" (render-util/dashcard-title card {})))))))
+
 ;; Test data and expected results for scalar funnel visualization
 (def scalar-funnel-definition
   {:display "funnel"

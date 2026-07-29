@@ -11,7 +11,7 @@ import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 import { trackAddDataModalOpened } from "../analytics";
 import type { SelectedItem } from "../types";
 
-import { useAddDataPermissions } from "./AddDataModal/use-add-data-permission";
+import { useCanAddData } from "./use-can-add-data";
 
 export const BrowseNavSection = ({
   nonEntityItem,
@@ -32,11 +32,11 @@ export const BrowseNavSection = ({
     "expand-browse-in-nav",
   );
 
-  const { canPerformMeaningfulActions } = useAddDataPermissions();
+  const canAddData = useCanAddData();
   const entityTypes = useSelector(getEntityTypes);
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
 
-  const showAddDataButton = canPerformMeaningfulActions && !isEmbeddingIframe;
+  const showAddDataButton = canAddData && !isEmbeddingIframe;
 
   return (
     <CollapseSection

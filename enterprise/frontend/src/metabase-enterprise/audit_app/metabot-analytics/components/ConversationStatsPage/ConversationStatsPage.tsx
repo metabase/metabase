@@ -1,7 +1,5 @@
 import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
-import type { WithRouterProps } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
@@ -11,10 +9,15 @@ import { useToast } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { useDispatch } from "metabase/redux";
-import { Button, Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
+import type { WithRouterProps } from "metabase/router";
+import { push, queryToSearch } from "metabase/router";
+import { Button, Flex, SimpleGrid, Tabs, Text, Title } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { useRefreshDataComplexityScoresMutation } from "../../api";
+import {
+  useGetDataComplexityScoresQuery,
+  useRefreshDataComplexityScoresMutation,
+} from "../../api";
 import {
   VIEW_CONVERSATIONS,
   VIEW_GROUP_MEMBERS,
@@ -191,16 +194,18 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
       dispatch(
         push({
           pathname: "/admin/metabot/usage-auditing/conversations",
-          query: conversationsUrlStateConfig.serialize({
-            page: 0,
-            sort_column: "created_at",
-            sort_direction: "desc",
-            date,
-            user,
-            group,
-            tenant,
-            ...filterOverrides,
-          }),
+          search: queryToSearch(
+            conversationsUrlStateConfig.serialize({
+              page: 0,
+              sort_column: "created_at",
+              sort_direction: "desc",
+              date,
+              user,
+              group,
+              tenant,
+              ...filterOverrides,
+            }),
+          ),
         }),
       );
     },
@@ -260,7 +265,6 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
         mt="sm"
         title={hasDataComplexityFeature ? t`Usage stats` : undefined}
       >
-        <DataComplexitySection />
         <Flex align="center" justify="space-between">
           {hasDataComplexityFeature ? (
             <Title order={3} display="flex" style={{ alignItems: "center" }}>
@@ -292,6 +296,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
         <Tabs
           variant="pills"
           value={metric}
+          // Unjustified type cast. FIXME
           onChange={(val) => patchUrlState({ metric: val as UsageStatsMetric })}
         >
           <Tabs.List className={S.metricTabs}>
@@ -369,6 +374,8 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
             h={500}
           />
         </SimpleGrid>
+
+        <DataComplexitySection />
       </SettingsPageWrapper>
     </MetabotAdminLayout>
   );
@@ -390,11 +397,14 @@ export function DataComplexitySection() {
 }
 
 export function DataComplexityHeader() {
+  const { data } = useGetDataComplexityScoresQuery();
   const [
     refreshDataComplexityScores,
     { isLoading: refreshDataComplexityScoresLoading },
   ] = useRefreshDataComplexityScoresMutation();
   const [sendToast] = useToast();
+  const calculatedAt = data?.meta?.calculated_at;
+  const lastCalculated = calculatedAt ? dayjs(calculatedAt).fromNow() : null;
 
   const handleRecompute = useCallback(async () => {
     try {
@@ -402,7 +412,7 @@ export function DataComplexityHeader() {
     } catch (error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: getErrorMessage(
           error,
           t`Could not recompute data complexity.`,
@@ -413,9 +423,16 @@ export function DataComplexityHeader() {
 
   return (
     <Flex align="center" justify="space-between">
-      <Title order={3} display="flex" style={{ alignItems: "center" }}>
-        {t`Data complexity`}
-      </Title>
+      <Flex direction="column" gap={4}>
+        <Title order={3} display="flex" style={{ alignItems: "center" }}>
+          {t`Data complexity`}
+        </Title>
+        {lastCalculated && (
+          <Text c="text-secondary" size="sm">
+            {t`Last calculated ${lastCalculated}`}
+          </Text>
+        )}
+      </Flex>
 
       <Flex gap="sm" wrap="wrap" align="center">
         <Button

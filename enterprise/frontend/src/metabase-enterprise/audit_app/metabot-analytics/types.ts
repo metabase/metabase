@@ -1,5 +1,5 @@
 import type { MetabotProfileId } from "metabase/metabot/constants";
-import type { FetchedChatMessage } from "metabase/metabot/utils/normalize-fetched-chat-messages";
+import type { ParentedChatMessage } from "metabase/metabot/utils/message-tree";
 import type {
   DatasetQuery,
   MetabotFeedback,
@@ -18,11 +18,12 @@ export type ConversationSummary = {
   conversation_id: string;
   created_at: string;
   user_id: number;
-  summary: string | null;
+  title: string | null;
   message_count: number;
   user_message_count: number;
   assistant_message_count: number;
   total_tokens: number;
+  cache_read_tokens: number;
   last_message_at: string | null;
   profile_id: MetabotProfileId | null;
   search_count: number;
@@ -32,6 +33,7 @@ export type ConversationSummary = {
   embedding_path: string | null;
   user_agent: string | null;
   sanitized_user_agent: string | null;
+  forked_from_conversation_id: string | null;
   user: MetabotUserInfo | null;
 };
 
@@ -39,6 +41,7 @@ export const CONVERSATION_SORT_COLUMNS = [
   "created_at",
   "message_count",
   "total_tokens",
+  "cache_read_tokens",
   "user",
   "profile_id",
   "ip_address",
@@ -87,13 +90,13 @@ export type ConversationFeedback = MetabotFeedback & {
 export type ConversationDetail = {
   conversation_id: string;
   created_at: string;
-  summary: string | null;
+  title: string | null;
   user: MetabotUserInfo | null;
   message_count: number;
   total_tokens: number;
   profile_id: MetabotProfileId | null;
   slack_permalink: string | null;
-  chat_messages: FetchedChatMessage[];
+  messages: ParentedChatMessage[];
   queries: GeneratedQuery[];
   search_count: number;
   query_count: number;
@@ -102,11 +105,23 @@ export type ConversationDetail = {
   embedding_path: string | null;
   user_agent: string | null;
   sanitized_user_agent: string | null;
+  forked_from_conversation_id: string | null;
+  fork_boundary_message_id: string | null;
   feedback: ConversationFeedback[];
 };
 
-export type DataComplexityCatalogId = "library" | "universe" | "metabot";
-export type DataComplexityGroupId = "size" | "ambiguity";
+export const DATA_COMPLEXITY_CATALOG_IDS = [
+  "library",
+  "universe",
+  "metabot",
+] as const;
+
+export const DATA_COMPLEXITY_GROUP_IDS = ["size", "ambiguity"] as const;
+
+export type DataComplexityRating = "low" | "medium" | "high";
+export type DataComplexityCatalogId =
+  (typeof DATA_COMPLEXITY_CATALOG_IDS)[number];
+export type DataComplexityGroupId = (typeof DATA_COMPLEXITY_GROUP_IDS)[number];
 
 export type DataComplexitySizeComponentId = "entity_count" | "field_count";
 export type DataComplexityAmbiguityComponentId =
@@ -116,33 +131,36 @@ export type DataComplexityAmbiguityComponentId =
 export type DataComplexityComponentId =
   | DataComplexitySizeComponentId
   | DataComplexityAmbiguityComponentId;
-
-export type DataComplexitySubScore =
-  | { error: string }
-  | { measurement: number; score: number };
-
-export type DataComplexitySizeGroup = {
-  score: number | null;
-  components: Record<DataComplexitySizeComponentId, DataComplexitySubScore>;
+type DataComplexityGroupComponents = {
+  size: DataComplexitySizeComponentId;
+  ambiguity: DataComplexityAmbiguityComponentId;
 };
 
-export type DataComplexityAmbiguityGroup = {
-  score: number | null;
-  components: Record<
-    DataComplexityAmbiguityComponentId,
-    DataComplexitySubScore
-  >;
+export type DataComplexityFailure = { error: string };
+export type ScoreAndRating = {
+  score: number;
+  rating: DataComplexityRating | null;
+  rating_label: string | null;
 };
 
-export type DataComplexityGroup =
-  | DataComplexitySizeGroup
-  | DataComplexityAmbiguityGroup;
+export type ScoreAndRatingError = {
+  [K in keyof ScoreAndRating]: null;
+};
 
-export type DataComplexityCatalog = {
-  score: number | null;
+export type DataComplexityLeaf = {
+  measurement: number;
+} & ScoreAndRating;
+
+export type DataComplexitySubScore = DataComplexityFailure | DataComplexityLeaf;
+
+export type DataComplexityCatalog = (ScoreAndRating | ScoreAndRatingError) & {
   components: {
-    size: DataComplexitySizeGroup;
-    ambiguity: DataComplexityAmbiguityGroup;
+    [G in DataComplexityGroupId]: (ScoreAndRating | ScoreAndRatingError) & {
+      components: Record<
+        DataComplexityGroupComponents[G],
+        DataComplexitySubScore
+      >;
+    };
   };
 };
 

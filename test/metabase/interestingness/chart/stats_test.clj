@@ -46,7 +46,6 @@
           sampled (get-in stats [:series "series_0" :data-points])]
       (is (=? {:limits {:downsampled-series {"series_0" {:original-count n}}}}
               stats))
-
       (is (approx=max-data-points-per-series? sampled)
           (str "sampled " sampled " should be roughly <= " @#'stats.core/max-data-points-per-series)))))
 

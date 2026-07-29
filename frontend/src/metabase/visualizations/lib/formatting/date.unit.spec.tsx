@@ -219,6 +219,17 @@ describe("formatDateTimeForParameter", () => {
       ).toEqual("July 7, 2019 – July 13, 2019");
     });
 
+    it("should not format week ranges for native queries (#73005)", () => {
+      expect(
+        formatDateTimeWithUnit("2019-07-07T00:00:00.000Z", "week", {
+          type: "tooltip",
+          column: {
+            source: "native",
+          },
+        }),
+      ).toEqual("July 7, 2019");
+    });
+
     it("should always format week ranges according to returned data", () => {
       dayjs.locale("es");
       dayjs.updateLocale(dayjs.locale(), { weekStart: 0 });

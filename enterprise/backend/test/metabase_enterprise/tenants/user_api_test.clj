@@ -1,11 +1,15 @@
 (ns metabase-enterprise.tenants.user-api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.users.models.user-test :as user-test]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :notifications))
 
 (defn- group-or-ids->user-group-memberships
   [group-or-ids]
@@ -29,12 +33,10 @@
                     (testing "response includes user_group_memberships"
                       (is (= #{{:id (:id (perms/all-external-users-group))}}
                              (set (:user_group_memberships resp)))))
-
                     (testing "user is actually assigned to all expected groups in database"
                       (let [created-user (t2/select-one :model/User :email email)]
                         (is (= #{"All tenant users"}
                                (user-test/user-group-names created-user)))))
-
                     (testing "tenant_id is set correctly"
                       (let [created-user (t2/select-one :model/User :email email)]
                         (is (= tenant-id (:tenant_id created-user)))))))))))))))
@@ -79,7 +81,6 @@
                                              :tenant_id tenant-id
                                              :user_group_memberships [{:id (u/the-id (perms/all-external-users-group))}
                                                                       {:id normal-group-id}]}))))
-
             (testing "internal users cannot be added to tenant groups via POST"
               (is (=? {:message "Cannot add non-tenant user to tenant-group or vice versa"}
                       (mt/user-http-request :crowberto :post 400 "user"
@@ -98,14 +99,12 @@
                                                                       :is_tenant_group true}
                        :model/PermissionsGroup {normal-group-id :id} {:name "Normal Group"
                                                                       :is_tenant_group false}]
-
           (testing "tenant users cannot be added to non-tenant groups via PUT"
             (mt/with-temp [:model/User {external-user-id :id} {:tenant_id tenant-id}]
               (is (=? {:message "Cannot add non-tenant user to tenant-group or vice versa"}
                       (mt/user-http-request :crowberto :put 400 (str "user/" external-user-id)
                                             {:user_group_memberships [{:id (u/the-id (perms/all-external-users-group))}
                                                                       {:id normal-group-id}]})))))
-
           (testing "internal users cannot be added to tenant groups via PUT"
             (mt/with-temp [:model/User {internal-user-id :id} {}]
               (is (=? {:message "Cannot add non-tenant user to tenant-group or vice versa"}
@@ -120,7 +119,6 @@
         (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Test Tenant" :slug "test"}
                        :model/PermissionsGroup {tenant-group-id :id} {:name "Tenant Group"
                                                                       :is_tenant_group true}]
-
           (testing "cannot create tenant user as group manager via POST"
             (mt/with-model-cleanup [:model/User]
               (is (=? {:message "Tenant users cannot be made group managers"}
@@ -132,7 +130,6 @@
                                              :user_group_memberships [{:id (u/the-id (perms/all-external-users-group))}
                                                                       {:id tenant-group-id
                                                                        :is_group_manager true}]})))))
-
           (testing "cannot make external user group manager via PUT"
             (mt/with-temp [:model/User {external-user-id :id} {:tenant_id tenant-id}]
               ;; This test is expected to fail until group manager restrictions are implemented
@@ -209,3 +206,29 @@
           (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:tenant_id tenant-id})
           (is (= #{(u/the-id (perms/all-external-users-group))}
                  (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))))))))
+
+(deftest tenant-user-creation-sends-no-invite-email-test
+  (testing "POST /api/user creating a tenant user does not send an invite email even when SMTP is configured"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tid :id} {:name "T" :slug "t"}]
+          (notification.tu/with-send-notification-sync
+            (mt/with-fake-inbox
+              (mt/with-model-cleanup [:model/User]
+                (mt/user-http-request :crowberto :post 200 "user"
+                                      {:first_name "A" :last_name "B" :email (mt/random-email) :tenant_id tid})
+                (is (empty? @mt/inbox))))))))))
+
+(deftest tenant-user-can-join-custom-tenant-group-test
+  (testing "POST /api/user with a custom tenant group persists exactly two memberships (All tenant users + the custom group)"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tid :id} {:name "T" :slug "t"}
+                       :model/PermissionsGroup {gid :id} {:name "Fav" :is_tenant_group true}]
+          (mt/with-model-cleanup [:model/User]
+            (let [resp (mt/user-http-request :crowberto :post 200 "user"
+                                             {:first_name "M" :last_name "C" :email (mt/random-email) :tenant_id tid
+                                              :user_group_memberships [{:id (u/the-id (perms/all-external-users-group))}
+                                                                       {:id gid}]})]
+              (is (= #{(u/the-id (perms/all-external-users-group)) gid}
+                     (set (map :id (:user_group_memberships resp))))))))))))

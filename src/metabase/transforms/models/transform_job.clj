@@ -141,20 +141,17 @@
             to-insert            (set/difference new-set current-set)
             ;; Build position map for new ordering
             new-positions        (zipmap new-tag-ids (range))]
-
         ;; Delete removed associations
         (when (seq to-delete)
           (t2/delete! :model/TransformJobTransformTag
                       :job_id job-id
                       :tag_id [:in to-delete]))
-
         ;; Update positions for existing tags that moved
         (doseq [tag-id (filter current-set new-tag-ids)]
           (let [new-pos (get new-positions tag-id)]
             (t2/update! :model/TransformJobTransformTag
                         {:job_id job-id :tag_id tag-id}
                         {:position new-pos})))
-
         ;; Insert new associations with correct positions
         (when (seq to-insert)
           (t2/insert! :model/TransformJobTransformTag
@@ -211,10 +208,6 @@
       (for [job jobs]
         (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
 
-(defmethod serdes/hash-fields :model/TransformJob
-  [_job]
-  [:name :built_in_type])
-
 (defmethod serdes/make-spec "TransformJob"
   [_model-name opts]
   {:copy [:entity_id :built_in_type :schedule :ui_display_type :active]
@@ -225,7 +218,7 @@
                :created_at (serdes/date)
                :job_tags (serdes/nested :model/TransformJobTransformTag :job_id (merge {:sort-by (juxt :position :created_at)} opts))}})
 
-(defmethod serdes/dependencies "TransformJob"
+(defmethod serdes/deserialization-dependencies "TransformJob"
   [{:keys [job_tags]}]
   (set
    (for [{tag-id :tag_id} job_tags]

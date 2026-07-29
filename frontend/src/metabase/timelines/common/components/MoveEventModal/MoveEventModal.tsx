@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button/Button";
 import { getSortedTimelines } from "metabase/common/utils/timelines";
+import { Button } from "metabase/ui";
 import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 
 import ModalFooter from "../ModalFooter";
@@ -57,7 +57,7 @@ const MoveEventModal = ({
       </ModalBody>
       <ModalFooter>
         <Button onClick={onClose}>{t`Cancel`}</Button>
-        <Button primary disabled={!isEnabled} onClick={handleSubmit}>
+        <Button variant="filled" disabled={!isEnabled} onClick={handleSubmit}>
           {t`Move`}
         </Button>
       </ModalFooter>

@@ -1,14 +1,13 @@
 import { dissoc } from "icepick";
 import { useState } from "react";
-import { type WithRouterProps, withRouter } from "react-router";
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCopyDashboardMutation } from "metabase/api";
-import { useInitialCollectionId } from "metabase/collections/hooks";
-import type { CopyDashboardFormProperties } from "metabase/dashboard/containers/CopyDashboardForm";
-import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
+import { useInitialCollectionId } from "metabase/common/collections/hooks";
+import type { CopyDashboardFormProperties } from "metabase/common/components/CopyDashboardForm";
+import { CopyModal } from "metabase/common/components/CopyModal";
 import { useDispatch, useSelector } from "metabase/redux";
+import { replace, useRouter } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
@@ -16,7 +15,7 @@ import { getDashboardComplete } from "../selectors";
 
 type DashboardCopyModalProps = {
   onClose: () => void;
-} & WithRouterProps;
+};
 
 const getTitle = (
   dashboard: Dashboard | null,
@@ -31,11 +30,8 @@ const getTitle = (
     : t`Duplicate "${dashboard.name}" and its questions`;
 };
 
-const DashboardCopyModal = ({
-  onClose,
-  params,
-  location,
-}: DashboardCopyModalProps) => {
+const DashboardCopyModal = ({ onClose }: DashboardCopyModalProps) => {
+  const { location, params } = useRouter();
   const dispatch = useDispatch();
   const [copyDashboard] = useCopyDashboardMutation();
   const dashboard = useSelector(getDashboardComplete);
@@ -59,7 +55,7 @@ const DashboardCopyModal = ({
   };
 
   return (
-    <EntityCopyModal
+    <CopyModal
       entityType="dashboards"
       entityObject={{
         ...dashboard,
@@ -84,4 +80,4 @@ const DashboardCopyModal = ({
   );
 };
 
-export const DashboardCopyModalConnected = withRouter(DashboardCopyModal);
+export const DashboardCopyModalConnected = DashboardCopyModal;

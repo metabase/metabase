@@ -5,15 +5,15 @@
   width: 100%;
 
   &:not(:last-child) {
-    border-bottom: 1px solid var(--mb-color-border);
+    border-bottom: 1px solid var(--mb-color-border-neutral);
   }
 }
 
 .pinned {
   position: relative;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 
-  --border-style: 1px solid var(--mb-color-border);
+  --border-style: 1px solid var(--mb-color-border-neutral);
 
   &[data-position="top"]:not(:last-child),
   &[data-position="top"].hasCenterRows {
@@ -32,24 +32,24 @@
   cursor: pointer;
 
   &:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &:focus:not(.disabled) {
     outline: none;
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &:focus-visible {
-    box-shadow: inset 0 0 0 2px var(--mb-color-focus);
+    box-shadow: inset 0 0 0 2px var(--mb-color-input-focus);
   }
 }
 
 .content.active {
-  background-color: var(--mb-color-background-selected);
+  background-color: var(--mb-color-background_surface-selected);
 
   &:hover {
-    background-color: var(--mb-color-background-selected);
+    background-color: var(--mb-color-background_surface-selected);
   }
 }
 

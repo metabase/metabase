@@ -26,7 +26,6 @@
       ;; reset the cache again so nothing that happened during the test is persisted.
       (setting.cache/restore-cache!))))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-secret-key
   "Run `body` with the encryption secret key temporarily bound to `secret-key`. Useful for testing how functions behave
   with and without encryption disabled. A nil secret key disables encryption."
@@ -47,8 +46,8 @@
            (vec (encryption/secret-key->hash "Toucans"))))))
 
 (deftest ^:parallel unique-hashes-test
-  (testing (is (not= (vec secret)
-                     (vec secret-2)))))
+  (is (not= (vec secret)
+            (vec secret-2))))
 
 (deftest ^:parallel hash-pattern-test
   (is (re= #"^[0-9A-Za-z/+]+=*$"

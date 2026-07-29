@@ -42,7 +42,7 @@ export function setLocalization(
   const language = translationsObject.headers.language;
   setLanguage(translationsObject);
   updateDayjsLocale(language);
-  updateStartOfWeek(MetabaseSettings.get("start-of-week") as DayOfWeekId);
+  updateStartOfWeek(MetabaseSettings.get("start-of-week"));
 
   if (ARABIC_LOCALES.includes(language)) {
     preserveLatinNumbersInDayjsLocale(language);
@@ -109,16 +109,21 @@ function getStartOfWeekDay(
   return startOfWeekDayNumber;
 }
 
-// we delete msgid property since it's redundant, but have to add it back in to
-// make ttag happy
+// The artifact drops each entry's `msgid` field as redundant (it's already the key), but ttag
+// wants it back. Every context has to be walked, not just the default one: a string extracted
+// with a `msgctxt` (`c("…").t`) lives under that context, and leaving it without a `msgid` breaks
+// the locale for every string, not just that one.
+type TtagMessage = { msgid?: string };
+
+const isTtagMessage = (value: unknown): value is TtagMessage =>
+  typeof value === "object" && value !== null;
+
 function addMsgIds(translationsObject: LocaleDataWithLanguage): void {
-  const msgs = translationsObject.translations[""] as Record<
-    string,
-    { msgid?: string; msgstr: string[] }
-  >;
-  for (const msgid in msgs) {
-    if (msgs[msgid].msgid === undefined) {
-      msgs[msgid].msgid = msgid;
+  for (const context of Object.values(translationsObject.translations)) {
+    for (const [msgid, message] of Object.entries(context)) {
+      if (isTtagMessage(message) && message.msgid === undefined) {
+        message.msgid = msgid;
+      }
     }
   }
 }

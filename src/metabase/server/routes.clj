@@ -10,6 +10,7 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.oauth-server.api :as oauth-server.api]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.request.core :as request]
    [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
    [metabase.server.routes.index :as index]
@@ -41,6 +42,11 @@
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private ^{:arglists '([request respond raise])} embed-routes
   (GET "/sdk/v1" [] index/embed-sdk)
+  ;; Same `data-app.html` for the bare path and any deeper sub-route — the
+  ;; iframe's React Router owns the sub-path; reloads at an inner URL still
+  ;; have to serve the SPA shell.
+  (GET [(str "/" request/data-app-url-segment "/:name"), :name #"[^/]+"] [] index/data-app)
+  (GET [(str "/" request/data-app-url-segment "/:name/*"), :name #"[^/]+"] [] index/data-app)
   (GET ["/question/:token.:export-format", :export-format qp.schema/export-formats-regex]
     [token export-format]
     (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (system/site-url) token export-format)))
@@ -55,7 +61,7 @@
          {:status 200, :body {:status "ok"}}
          {:status 503 :body {:status "Unable to get app-db connection"}})
        (catch Exception e
-         (log/warn e "Error in api/health database check")
+         (log/warnf "Error in api/health database check: %s" (ex-message e))
          {:status 503 :body {:status "Error getting app-db connection"}}))
      {:status 503, :body {:status "initializing", :progress (init-status/progress)}}))
 
@@ -77,7 +83,6 @@
   ;; hashes, so we serve them with far-future immutable cache headers.
   (GET ["/embedding-sdk/chunks/:filename" :filename #"[^/]+\.js"] [filename :as request]
     ((mw.embedding-sdk-bundle/serve-chunk-handler filename) request))
-
   ;; fall back to serving _all_ other files under /app, preferring
   ;; pre-compressed (.br, .gz) variants when the browser supports them
   (static/precompressed-resources "/" {:root "frontend_client/app"})
@@ -111,11 +116,9 @@
    (GET "/readyz" [] health-handler)
    ;; ^/livez -> Liveness probe (no DB access)
    (GET "/livez" [] livez-handler)
-
    ;; Handle CORS preflight requests for auth routes
    (OPTIONS "/auth/*" [] {:status 200 :body ""})
    (OPTIONS "/api/*" [] {:status 200 :body ""})
-
    ;; ^/api/ -> All other API routes
    (context "/api" [] (api-handler api-routes))
    ;; ^/app/ -> static files under frontend_client/app

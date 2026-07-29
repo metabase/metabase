@@ -25,6 +25,7 @@ export function SimpleDataPicker({
   const { data, isLoading, error } = useSearchQuery({
     table_db_id: filterByDatabaseId ? filterByDatabaseId : undefined,
     models: translateEntityTypesToSearchModels(entityTypes),
+    context: "data-picker",
   });
 
   const options = useMemo(() => {

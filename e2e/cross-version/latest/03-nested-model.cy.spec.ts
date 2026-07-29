@@ -60,7 +60,7 @@ describe("Cross-version questions - nested model", () => {
     () => {
       cy.signIn("admin", { skipCache: true });
 
-      cy.visit("/collection/root");
+      X.visitRootCollectionAndWait();
 
       H.getPinnedSection()
         .findByRole("link")

@@ -45,6 +45,7 @@ export async function setup({
   });
 
   const state = createMockState({
+    currentUser: createMockUser(user),
     settings: mockSettings({
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
@@ -61,7 +62,6 @@ export async function setup({
       openSnippetModalWithSelectedText={() => null}
       insertSnippet={() => null}
       snippetCollectionId={null}
-      user={createMockUser(user)}
     />,
     {
       storeInitialState: state,

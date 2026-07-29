@@ -23,7 +23,7 @@ readonly JAR_PATH="target/uberjar/$JAR_FILENAME"
 backend-source-hash() {
   # hash all the files that might change a backend-only uberjar build
   (
-    find src deps.edn resources/sample-database.db.mv.db -type f -print0 | xargs -0 shasum ;
+    find src deps.edn resources/sample-database.sqlite resources/sample-database.db.mv.db -type f -print0 | xargs -0 shasum ;
     find resources -type f \( -iname \*.clj -o -iname \*.edn -o -iname \*.yaml -o -iname \*.properties -o -iname \*.html \) -not -name "version.properties" -print0 | xargs -0 shasum ;
   ) | shasum | awk '{ print $1 }'
 }

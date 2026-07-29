@@ -54,7 +54,7 @@ export const RelatedSettingCard = ({
       className={S.relatedSettingCard}
     >
       <Group gap="sm" align="center" h="100%">
-        <Icon name={icon} c="brand" />
+        <Icon name={icon} c="core-brand" />
 
         <Text fw={500} ta="center">
           {name}

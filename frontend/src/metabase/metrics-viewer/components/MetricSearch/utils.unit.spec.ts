@@ -63,7 +63,7 @@ describe("cleanupParens", () => {
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
-    count: 1,
+    occurrenceCount: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -177,7 +177,7 @@ describe("buildExpressionText", () => {
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
-    count: 1,
+    occurrenceCount: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -232,7 +232,7 @@ describe("parseFullText — numeric literal parsing", () => {
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
-    count: 1,
+    occurrenceCount: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -399,7 +399,7 @@ describe("parseFullText — negative numbers", () => {
   const metric = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
-    count: 1,
+    occurrenceCount: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -580,7 +580,7 @@ describe("parseFullText — metric names with commas", () => {
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
-    count: 1,
+    occurrenceCount: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -1295,6 +1295,7 @@ describe("applyTrackedDefinitions", () => {
       metricNames,
     );
     expect(entities).toHaveLength(1);
+    // Unjustified type cast. FIXME
     expect((entities[0] as MetricDefinitionEntry).definition).toBe(
       revenueBreakoutDef,
     );
@@ -1310,6 +1311,7 @@ describe("applyTrackedDefinitions", () => {
       text,
       metricNames,
     );
+    // Unjustified type cast. FIXME
     expect((entities[0] as MetricDefinitionEntry).definition).toBeNull();
   });
 
@@ -1333,9 +1335,11 @@ describe("applyTrackedDefinitions", () => {
       text,
       metricNames,
     );
+    // Unjustified type cast. FIXME
     expect((entities[0] as MetricDefinitionEntry).definition).toBe(
       revenueBreakoutDef,
     );
+    // Unjustified type cast. FIXME
     expect((entities[1] as MetricDefinitionEntry).definition).toBe(
       geoBreakoutDef,
     );
@@ -1387,7 +1391,9 @@ describe("applyTrackedDefinitions", () => {
       text,
       metricNames,
     );
+    // Unjustified type cast. FIXME
     const resultExpr = entities[0] as ExpressionDefinitionEntry;
+    // Unjustified type cast. FIXME
     const parsedExpr = parsed[0] as ExpressionDefinitionEntry;
     expect(resultExpr.tokens[1]).toBe(parsedExpr.tokens[1]);
     expect(resultExpr.tokens[2]).toBe(parsedExpr.tokens[2]);
@@ -1404,6 +1410,7 @@ describe("applyTrackedDefinitions", () => {
       text,
       metricNames,
     );
+    // Unjustified type cast. FIXME
     expect((entities[0] as MetricDefinitionEntry).definition).toBe(
       revenueBreakoutDef,
     );
@@ -1423,6 +1430,7 @@ describe("applyTrackedDefinitions", () => {
       text,
       metricNames,
     );
+    // Unjustified type cast. FIXME
     expect((entities[0] as MetricDefinitionEntry).definition).not.toBe(
       revenueDef,
     );
@@ -1477,9 +1485,11 @@ describe("applyTrackedDefinitions", () => {
       text,
       metricNames,
     );
+    // Unjustified type cast. FIXME
     expect((entities[0] as MetricDefinitionEntry).definition).toBe(
       revenueBreakoutDef,
     );
+    // Unjustified type cast. FIXME
     expect((entities[1] as MetricDefinitionEntry).definition).toBe(revenueDef);
   });
 
@@ -1507,6 +1517,7 @@ describe("applyTrackedDefinitions", () => {
       text,
       metricNames,
     );
+    // Unjustified type cast. FIXME
     const expr = entities[0] as ExpressionDefinitionEntry;
     expect(isExpressionEntry(expr)).toBe(true);
     expect(expr.name).toBe("My sum");
@@ -1524,6 +1535,7 @@ describe("applyTrackedDefinitions", () => {
       text,
       metricNames,
     );
+    // Unjustified type cast. FIXME
     expect((entities[0] as ExpressionDefinitionEntry).name).toBe("My sum");
   });
 
@@ -1532,6 +1544,7 @@ describe("applyTrackedDefinitions", () => {
     const text = "Revenue+Geo Revenue";
     const parsed = parseFullText(text, metricNames, []);
     const { entities } = applyTrackedDefinitions(parsed, [], text, metricNames);
+    // Unjustified type cast. FIXME
     const expr = entities[0] as ExpressionDefinitionEntry;
     // Default name is the auto-derived expression text.
     expect(expr.name).toBe(buildExpressionText(expr.tokens, metricNames));
@@ -1579,6 +1592,7 @@ describe("applyTrackedDefinitions", () => {
       metricNames,
     );
     expect(entities).toHaveLength(3);
+    // Unjustified type cast. FIXME
     const [first, middle, last] = entities as ExpressionDefinitionEntry[];
     expect(isExpressionEntry(first)).toBe(true);
     expect(isExpressionEntry(middle)).toBe(true);
@@ -1602,8 +1616,11 @@ describe("buildFullTextWithIdentities", () => {
     "metric:3": "123",
   };
 
+  // Unjustified type cast. FIXME
   const revenueDef = { "display-name": "Revenue" } as any;
+  // Unjustified type cast. FIXME
   const costsDef = { "display-name": "Costs" } as any;
+  // Unjustified type cast. FIXME
   const numericDef = { "display-name": "123" } as any;
 
   it("produces text and identity ranges for standalone metrics", () => {
@@ -1639,9 +1656,9 @@ describe("buildFullTextWithIdentities", () => {
         type: "expression",
         name: "Revenue + Costs",
         tokens: [
-          { type: "metric", sourceId: "metric:1" as const, count: 1 },
+          { type: "metric", sourceId: "metric:1" as const, occurrenceCount: 1 },
           { type: "operator", op: "+" as const },
-          { type: "metric", sourceId: "metric:2" as const, count: 1 },
+          { type: "metric", sourceId: "metric:2" as const, occurrenceCount: 1 },
         ],
       },
     ];
@@ -1691,7 +1708,7 @@ describe("buildFullTextWithIdentities", () => {
         type: "expression",
         name: "123 + 456",
         tokens: [
-          { type: "metric", sourceId: "metric:3" as const, count: 1 },
+          { type: "metric", sourceId: "metric:3" as const, occurrenceCount: 1 },
           { type: "operator", op: "+" as const },
           { type: "constant", value: 456 },
         ],
@@ -1746,7 +1763,7 @@ describe("parseFullText with identities", () => {
         type: "expression",
         name: "123 + 456",
         tokens: [
-          { type: "metric", sourceId: "metric:3", count: 1 },
+          { type: "metric", sourceId: "metric:3", occurrenceCount: 1 },
           { type: "operator", op: "+" },
           { type: "constant", value: 456 },
         ],

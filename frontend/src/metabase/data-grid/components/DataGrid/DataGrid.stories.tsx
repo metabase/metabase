@@ -1,14 +1,13 @@
 import type { Meta, StoryFn } from "@storybook/react";
 import { useCallback, useMemo, useState } from "react";
 
-import { getStore } from "__support__/entities-store";
+import { getPublicStore } from "__support__/entities-store";
 import { BaseCell } from "metabase/data-grid";
 import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
 import type {
   ColumnOptions,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
-import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
 import {
   createMockSettingsState,
@@ -19,6 +18,7 @@ import { Checkbox, Flex } from "metabase/ui";
 import { DataGrid } from "./DataGrid";
 import classes from "./DataGrid.module.css";
 
+// Unjustified type cast. FIXME
 export default {
   title: "DataGrid/DataGrid",
   component: DataGrid,
@@ -46,7 +46,7 @@ type Story = StoryFn<typeof DataGrid>;
 const initialState = createMockState({
   settings: createMockSettingsState(),
 });
-const store = getStore(publicReducers, initialState, []);
+const store = getPublicStore(initialState, []);
 
 const sampleData = Array.from({ length: 2000 }, (_, rowIndex) => {
   return {

@@ -32,6 +32,17 @@
       (build-field-statistics fvs fp limit))
     (build-field-statistics nil fingerprint limit)))
 
+(defn- field-metadata-output
+  "Build the `:field-metadata` tool result for `col` of `query`. Surfaces the column's portable
+  FK + join label (via `->result-column`) so a drilled-into field/dimension detail tells the LLM
+  exactly how to reference the column."
+  [query col field-id limit]
+  {:structured-output (merge {:result-type    :field-metadata
+                              :field_id       field-id
+                              :value_metadata (field-statistics col limit)}
+                             (select-keys (metabot.tools.u/->result-column query col)
+                                          [:portable_fk :table_reference]))})
+
 (defn- table-field-stats
   [table-id field-id limit]
   (try
@@ -40,9 +51,7 @@
                                            {:agent-error? true :status-code 404})))
           visible-cols (lib/visible-columns query)
           col          (metabot.tools.u/find-column-by-field-id field-id visible-cols)]
-      {:structured-output {:result-type    :field-metadata
-                           :field_id       field-id
-                           :value_metadata (field-statistics col limit)}})
+      (field-metadata-output query col field-id limit))
     (catch Exception ex
       (metabot.tools.u/handle-agent-error ex))))
 
@@ -54,9 +63,7 @@
                                            {:agent-error? true :status-code 404})))
           visible-cols (lib/visible-columns query)
           col          (metabot.tools.u/find-column-by-field-id field-id visible-cols)]
-      {:structured-output {:result-type    :field-metadata
-                           :field_id       field-id
-                           :value_metadata (field-statistics col limit)}})
+      (field-metadata-output query col field-id limit))
     (catch Exception ex
       (metabot.tools.u/handle-agent-error ex))))
 
@@ -68,9 +75,7 @@
                                               {:agent-error? true :status-code 404})))
           filterable-cols (lib/filterable-columns query)
           col             (metabot.tools.u/find-column-by-field-id field-id filterable-cols)]
-      {:structured-output {:result-type    :field-metadata
-                           :field_id       field-id
-                           :value_metadata (field-statistics col limit)}})
+      (field-metadata-output query col field-id limit))
     (catch Exception ex
       (metabot.tools.u/handle-agent-error ex))))
 

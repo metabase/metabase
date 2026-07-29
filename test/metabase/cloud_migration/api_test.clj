@@ -19,7 +19,6 @@
     (mt/user-http-request :rasta :post 403 "cloud-migration")
     (mt/user-http-request :rasta :get 403 "cloud-migration")
     (mt/user-http-request :rasta :put 403 "cloud-migration/cancel")
-
     (cloud-migration-test/mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))
     (mt/user-http-request :crowberto :get 200 "cloud-migration")
     (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")))
@@ -45,7 +44,6 @@
          {:external_id 4 :upload_url "" :state :setup}])
   (try
     (cloud-migration.settings/read-only-mode! true)
-
     (is (= "setup" (:state (mt/user-http-request :crowberto :get 200 "cloud-migration"))))
     (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")
     (mt/user-http-request :crowberto :get 200 "cloud-migration")

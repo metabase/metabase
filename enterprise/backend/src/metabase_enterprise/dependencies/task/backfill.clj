@@ -12,6 +12,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
@@ -32,7 +33,7 @@
 
   This is not the same as deps.dependency-types/dependency-types, because tables shouldn't be backfilled.  Instead, links
   involving tables are found via analysis of the other side of the relation."
-  [:card :transform :snippet :dashboard :document :sandbox :segment :measure])
+  (vec deps.dependency-types/backfillable-dependency-types))
 
 (def ^:private max-retries 5)
 
@@ -110,15 +111,15 @@
                                                                             :entity_type entity-type
                                                                             :entity_id id)]
                            (if terminal
-                             (log/errorf e "Entity %s %s failed %d times, marking as terminally broken."
-                                         type-name id fail_count)
-                             (log/warnf e "Entity %s %s failed, failure count: %d."
-                                        type-name id fail_count)))
+                             (log/errorf "Entity %s %s failed %d times, marking as terminally broken: %s"
+                                         type-name id fail_count (ex-message e))
+                             (log/warnf "Entity %s %s failed, failure count: %d. %s"
+                                        type-name id fail_count (ex-message e))))
                          (catch Exception record-ex
-                           (log/errorf e "Entity %s %s failed during dependency calculation."
-                                       type-name id)
-                           (log/errorf record-ex "Additionally, failed to record the failure for %s %s."
-                                       type-name id))))
+                           (log/errorf "Entity %s %s failed during dependency calculation: %s"
+                                       type-name id (ex-message e))
+                           (log/errorf "Additionally, failed to record the failure for %s %s: %s"
+                                       type-name id (ex-message record-ex)))))
                      0))))
             0
             instances)))

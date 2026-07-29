@@ -174,7 +174,6 @@
                   :hm/response {:status 400
                                 :body   {:error-detail "Error detail"
                                          :status-reason "Status Reason"}}}
-
                  result)))
           (let [saved (gsheets)]
             (is (= {} saved))))))))
@@ -305,7 +304,6 @@
                                :hm/response {:status 400
                                              :body {:error-detail "Error Detail"
                                                     :type "gdrive"}}}
-
                               response))
                 (is (pos-int? (:db_id response)))))))
         (testing "when 200 error response"

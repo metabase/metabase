@@ -20,7 +20,7 @@ export const HomeModelCard = ({
     <HomeCard url={url}>
       <EntityIcon
         {...icon}
-        color="brand"
+        color="core-brand"
         style={{ display: "block", flex: "0 0 auto" }}
       />
       <CardTitle>{title}</CardTitle>

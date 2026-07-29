@@ -44,7 +44,6 @@
       (is (= "internal@metabase.com" (get-in result [:nested :creator_id])))
       (is (nil? (:metabase_version result)) "metabase_version should be removed")
       (is (nil? (:is_writable result)) "is_writable should be removed")))
-
   (testing "yaml->canonical for database YAML sets is_audit true and strips fields"
     (let [yaml-data {:name "Internal Metabase Database"
                      :creator_id "user@example.com"
@@ -81,7 +80,6 @@
           (is (= ee-audit/default-db-name (:name db)))
           (is (= :postgres (:engine db)))
           (is (= user-id (:creator_id db)))))
-
       (testing "create-analytics-dev-database! returns existing database if already created"
         (let [user-id (mt/user->id :crowberto)
               db1 (analytics-dev/create-analytics-dev-database! user-id)
@@ -98,7 +96,6 @@
           (is (some? found))
           (is (false? (:is_audit found)))
           (is (= ee-audit/default-db-name (:name found))))))
-
     (testing "find-analytics-dev-database does not find audit databases"
       (mt/with-temp [:model/Database _ {:name ee-audit/default-db-name
                                         :engine "postgres"
@@ -215,20 +212,17 @@
 
                     synced-fields (when table (get-synced-field-names (:id table)))
                     actual-fields (when table (get-actual-field-names analytics-db table))]
-
                 (when table
                   (testing "Expected vs Actual"
                     (let [missing-from-actual (set/difference expected-fields actual-fields)
                           extra-in-actual (set/difference actual-fields expected-fields)]
                       (is (empty? missing-from-actual))
                       (is (empty? extra-in-actual))))
-
                   (testing "Synced vs Actual"
                     (let [missing-from-sync (set/difference actual-fields synced-fields)
                           extra-in-sync (set/difference synced-fields actual-fields)]
                       (is (empty? missing-from-sync))
                       (is (empty? extra-in-sync))))
-
                   (testing "Expected vs Synced"
                     (let [missing-from-sync (set/difference expected-fields synced-fields)
                           extra-in-sync (set/difference synced-fields expected-fields)]

@@ -44,12 +44,16 @@ export const PinDropTargetIndicator = styled.div<PinDropTargetRenderArgs>`
   border-left: ${(props) =>
     props.isFrontTarget &&
     `4px solid ${
-      props.hovered ? color("brand") : "var(--mb-color-background-tertiary)"
+      props.hovered
+        ? color("core-brand")
+        : "var(--mb-color-background_page-tertiary)"
     }`};
   border-right: ${(props) =>
     props.isBackTarget &&
     `4px solid ${
-      props.hovered ? color("brand") : "var(--mb-color-background-tertiary)"
+      props.hovered
+        ? color("core-brand")
+        : "var(--mb-color-background_page-tertiary)"
     }`};
   display: ${(props) => !(props.hovered || props.highlighted) && "none"};
 `;

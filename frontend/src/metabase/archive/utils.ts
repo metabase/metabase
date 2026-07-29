@@ -39,6 +39,7 @@ function isDashboardQuestion(entity: unknown): entity is {
   if (typeof entity !== "object" || entity === null) {
     return false;
   }
+  // Unjustified type cast. FIXME
   const { type, dashboard_id } = entity as {
     type?: unknown;
     dashboard_id?: unknown;

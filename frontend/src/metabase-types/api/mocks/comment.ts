@@ -7,8 +7,6 @@ import { createMockUser } from "./user";
 
 export function createMockComment(comment?: Partial<Comment>): Comment {
   return {
-    ...comment,
-
     id: getNextId(),
     parent_comment_id: null,
 
@@ -28,5 +26,7 @@ export function createMockComment(comment?: Partial<Comment>): Comment {
     reactions: [],
 
     version: 1,
+
+    ...comment,
   };
 }

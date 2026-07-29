@@ -22,8 +22,8 @@ export const SelfHostedSMTPConnectionCard = () => {
             {isEmailConfigured && (
               <Paper
                 fw="bold"
-                c={"brand"}
-                bg="background-brand"
+                c={"core-brand"}
+                bg="background_surface-brand-subtle"
                 p={"0.25rem 0.375rem"}
                 radius="xs"
               >{t`Active`}</Paper>

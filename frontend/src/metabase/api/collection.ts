@@ -5,6 +5,7 @@ import {
 } from "metabase/schema";
 import type {
   Collection,
+  CollectionPermissionsGraph,
   CreateCollectionRequest,
   DeleteCollectionRequest,
   GetCollectionDashboardQuestionCandidatesRequest,
@@ -15,6 +16,7 @@ import type {
   ListCollectionsTreeRequest,
   MoveCollectionDashboardCandidatesRequest,
   MoveCollectionDashboardCandidatesResult,
+  UpdateCollectionPermissionsGraphRequest,
   UpdateCollectionRequest,
   getCollectionRequest,
 } from "metabase-types/api";
@@ -28,7 +30,7 @@ import {
   provideCollectionListTags,
   provideCollectionTags,
 } from "./tags";
-import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
+import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 const flattenCollectionTree = (tree: Collection[]): Collection[] =>
   tree.flatMap((collection) => [
@@ -62,7 +64,7 @@ export const collectionApi = Api.injectEndpoints({
         providesTags: (collections = []) =>
           provideCollectionListTags(collections),
         onQueryStarted: (request, lifecycle) =>
-          hydrateLegacyEntities([collectionSchemaForRequest(request)])(
+          hydrateMetadataStore([collectionSchemaForRequest(request)])(
             request,
             lifecycle,
           ),
@@ -82,7 +84,7 @@ export const collectionApi = Api.injectEndpoints({
         "collection-tree",
       ],
       onQueryStarted: (request, lifecycle) =>
-        hydrateLegacyEntities<Collection[]>(
+        hydrateMetadataStore<Collection[]>(
           [collectionSchemaForRequest(request)],
           flattenCollectionTree,
         )(request, lifecycle),
@@ -100,7 +102,7 @@ export const collectionApi = Api.injectEndpoints({
         ...provideCollectionItemListTags(response?.data ?? [], models),
         { type: "collection", id: `${id}-items` },
       ],
-      onQueryStarted: hydrateLegacyEntities<ListCollectionItemsResponse>(
+      onQueryStarted: hydrateMetadataStore<ListCollectionItemsResponse>(
         [ObjectUnionSchema],
         (response) => response.data,
       ),
@@ -117,10 +119,30 @@ export const collectionApi = Api.injectEndpoints({
       providesTags: (collection) =>
         collection ? provideCollectionTags(collection) : [],
       onQueryStarted: (request, lifecycle) =>
-        hydrateLegacyEntities(collectionSchemaForRequest(request))(
+        hydrateMetadataStore(collectionSchemaForRequest(request))(
           request,
           lifecycle,
         ),
+    }),
+    getCollectionPermissionsGraph: builder.query<
+      CollectionPermissionsGraph,
+      { namespace?: string } | void
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/collection/graph",
+        params: params ?? undefined,
+      }),
+    }),
+    updateCollectionPermissionsGraph: builder.mutation<
+      CollectionPermissionsGraph,
+      UpdateCollectionPermissionsGraphRequest
+    >({
+      query: (body) => ({
+        method: "PUT",
+        url: "/api/collection/graph?skip-graph=true",
+        body,
+      }),
     }),
     createCollection: builder.mutation<Collection, CreateCollectionRequest>({
       query: (body) => ({
@@ -220,6 +242,8 @@ export const {
   useListCollectionsTreeQuery,
   useListCollectionItemsQuery,
   useGetCollectionQuery,
+  useGetCollectionPermissionsGraphQuery,
+  useUpdateCollectionPermissionsGraphMutation,
   useCreateCollectionMutation,
   useUpdateCollectionMutation,
   useDeleteCollectionMutation,

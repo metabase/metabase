@@ -148,7 +148,7 @@ function getFlatFilters(
         metricName: shouldDisplayMetricName
           ? getDefinitionSourceName(source)
           : undefined,
-        metricCount: source.token?.count,
+        metricCount: source.token?.occurrenceCount,
         isSegment,
         segmentName,
       };

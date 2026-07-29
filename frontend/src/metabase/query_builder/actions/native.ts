@@ -1,9 +1,8 @@
 import { createAction } from "redux-actions";
 
-import { Questions } from "metabase/entities/questions";
+import { cardApi, settingsApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
-import { setUIControls } from "metabase/redux/query-builder";
-import { updateUserSetting } from "metabase/redux/settings";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
@@ -54,17 +53,19 @@ export const OPEN_DATA_REFERENCE_AT_QUESTION =
 export const openDataReferenceAtQuestion = createThunkAction(
   OPEN_DATA_REFERENCE_AT_QUESTION,
   (id: CardId) => async (dispatch: Dispatch) => {
-    const action = await dispatch(
-      Questions.actions.fetch(
-        { id },
-        { noEvent: true, useCachedForbiddenError: true },
-      ),
+    // forceRefetch: false so a permanently-forbidden card (403) is served from
+    // RTK Query's cache instead of re-hitting /api/card/:id on every open, matching
+    // the former `useCachedForbiddenError` behavior.
+    const card = await runRtkEndpoint(
+      { id, ignore_error: true },
+      dispatch,
+      cardApi.endpoints.getCard,
+      { forceRefetch: false },
     );
-    const question = Questions.HACK_getObjectFromAction(action);
-    if (question) {
+    if (card) {
       return [
-        { type: "database", id: question.database_id },
-        { type: "question", id: question.id },
+        { type: "database", id: card.database_id },
+        { type: "question", id: card.id },
       ];
     }
   },
@@ -87,25 +88,6 @@ export const setIsShowingSnippetSidebar = (
   type: SET_IS_SHOWING_SNIPPET_SIDEBAR,
   isShowingSnippetSidebar,
 });
-
-export const SET_IS_NATIVE_EDITOR_OPEN =
-  "metabase/qb/SET_IS_NATIVE_EDITOR_OPEN";
-export const setIsNativeEditorOpen = createThunkAction(
-  SET_IS_NATIVE_EDITOR_OPEN,
-  (isNativeEditorOpen: boolean, toggleDataReference?: boolean) =>
-    (dispatch) => {
-      if (toggleDataReference) {
-        dispatch(
-          setUIControls({
-            isNativeEditorOpen,
-            isShowingDataReference: isNativeEditorOpen,
-          }),
-        );
-      } else {
-        dispatch(setUIControls({ isNativeEditorOpen }));
-      }
-    },
-);
 
 export const SET_NATIVE_EDITOR_SELECTED_RANGE =
   "metabase/qb/SET_NATIVE_EDITOR_SELECTED_RANGE";
@@ -139,6 +121,7 @@ export const insertSnippet =
     if (!question) {
       return;
     }
+    // Unjustified type cast. FIXME
     const query = question.legacyNativeQuery() as NativeQuery;
     const queryText = query.queryText();
     const nativeEditorCursorOffset =
@@ -164,6 +147,7 @@ export const setTemplateTag = createThunkAction(
       if (!question) {
         return;
       }
+      // Unjustified type cast. FIXME
       const query = question.legacyNativeQuery() as NativeQuery;
       const newQuestion = query.setTemplateTag(tag.name, tag).question();
       dispatch(updateQuestion(newQuestion));
@@ -180,6 +164,7 @@ export const setTemplateTagConfig = createThunkAction(
       if (!question) {
         return;
       }
+      // Unjustified type cast. FIXME
       const query = question.legacyNativeQuery() as NativeQuery;
       const newQuestion = query
         .setTemplateTagConfig(tag, parameterConfig)
@@ -190,7 +175,7 @@ export const setTemplateTagConfig = createThunkAction(
 );
 
 export const rememberLastUsedDatabase = (id: DatabaseId) =>
-  updateUserSetting({
+  settingsApi.endpoints.updateSetting.initiate({
     key: "last-used-native-database-id",
     value: id,
   });

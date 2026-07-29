@@ -23,6 +23,7 @@ import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import { SdkQuestion } from "./SdkQuestion";
 import { nativeQuestionWithParametersData } from "./data/data";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || questionIds.numberId;
 
 type SdkQuestionComponentProps = ComponentProps<typeof SdkQuestion>;
@@ -83,7 +84,7 @@ export default {
 
 const Template: StoryFn<SdkQuestionComponentProps> = (args) => {
   return (
-    <Box bg="background-primary" mih="100vh">
+    <Box bg="background_page-primary" mih="100vh">
       <SdkQuestion {...args} />
     </Box>
   );
@@ -103,7 +104,7 @@ export const Default = {
 export const WithEditableSqlParametersCustomLayout = {
   render(args: SdkQuestionComponentProps) {
     return (
-      <Box bg="background-primary" mih="100vh">
+      <Box bg="background_page-primary" mih="100vh">
         <SdkQuestion {...args}>
           <SdkQuestion.Title />
           <SdkQuestion.SqlParametersList />
@@ -185,7 +186,7 @@ export const WithEditableSqlParametersCustomLayout = {
 export const EditorOnly = {
   render(args: SdkQuestionComponentProps) {
     return (
-      <Box bg="background-primary" mih="100vh">
+      <Box bg="background_page-primary" mih="100vh">
         <SdkQuestion {...args}>
           <SdkQuestion.Editor />
         </SdkQuestion>
@@ -203,7 +204,7 @@ export const EditorOnly = {
 export const CreateQuestion = {
   render(args: SdkQuestionComponentProps) {
     return (
-      <Box bg="background-primary" mih="100vh">
+      <Box bg="background_page-primary" mih="100vh">
         <SdkQuestion {...args} />
       </Box>
     );
@@ -234,7 +235,7 @@ const ControlledSqlParametersPlayground = (args: SdkQuestionComponentProps) => {
         </>
       }
       dashboard={
-        <Box bg="background-primary" mih="100vh" p="md">
+        <Box bg="background_page-primary" mih="100vh" p="md">
           <SdkQuestion
             {...args}
             sqlParameters={playground.parameters}
@@ -348,6 +349,7 @@ export const ControlledSqlParameters = {
         // Smart query handler: filters rows by the pushed state / city /
         // source params so the visualization reacts visibly to every push.
         http.post(`*/api/card/${QUESTION_ID}/query`, async ({ request }) => {
+          // Unjustified type cast. FIXME
           const body = (await request.json()) as {
             parameters?: Array<{ id: string; value: unknown }>;
           };

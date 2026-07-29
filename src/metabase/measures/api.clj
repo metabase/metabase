@@ -9,6 +9,7 @@
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -37,52 +38,66 @@
   Accepts MBQL4 definitions for Cypress e2e test support:
   - MBQL5 full queries (passed through)
   - MBQL4 full queries (converted to MBQL5)
-  - MBQL4 fragments (wrapped in full query, then converted to MBQL5)"
-  [definition table-id database-id]
+  - MBQL4 fragments (wrapped in full query, then converted to MBQL5); the fragment must
+    include `:source-table` so the table can be derived"
+  [definition]
   (if (seq definition)
     (-> (case (lib/normalized-mbql-version definition)
           (:mbql-version/mbql5 :mbql-version/legacy)
           definition
           ;; default: MBQL4 fragment - wrap it in a full query
-          {:database database-id
-           :type :query
-           :query (merge {:source-table table-id} definition)})
+          (let [table-id    (:source-table definition)
+                _           (api/check-400 (pos-int? table-id)
+                                           (tru "Measure definition must specify a source table."))
+                database-id (t2/select-one-fn :db_id :model/Table :id table-id)]
+            {:database database-id
+             :type :query
+             :query definition}))
         lib-be/normalize-query)
     {}))
 
+(defn- definition-table-id
+  "Derive the source table ID from a normalized measure definition, or throw a 400 if it has none."
+  [normalized-definition]
+  (api/check-400 (when (seq normalized-definition)
+                   (lib/primary-source-table-id normalized-definition))
+                 (tru "Measure definition must specify a source table.")))
+
 (api.macros/defendpoint :post "/" :- ::measure
-  "Create a new `Measure`."
+  "Create a new `Measure`. The Measure's table is derived from its `definition`."
   [_route-params
    _query-params
-   {:keys [name description table_id definition], :as body} :- [:map
-                                                                [:name        ms/NonBlankString]
-                                                                [:table_id    ms/PositiveInt]
-                                                                [:definition  ms/Map]
-                                                                [:description {:optional true} [:maybe :string]]]]
-  (api/create-check :model/Measure body)
-  (let [database-id (t2/select-one-fn :db_id :model/Table :id table_id)
-        normalized-definition (normalize-input-definition definition table_id database-id)
-        measure (api/check-500
-                 (first (t2/insert-returning-instances! :model/Measure
-                                                        :table_id    table_id
-                                                        :creator_id  api/*current-user-id*
-                                                        :name        name
-                                                        :description description
-                                                        :definition  normalized-definition)))]
-    (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
-    (t2/hydrate measure :creator)))
+   {:keys [name description definition], :as body} :- [:map
+                                                       [:name        ms/NonBlankString]
+                                                       [:definition  ms/Map]
+                                                       [:description {:optional true} [:maybe :string]]]]
+  (let [normalized-definition (normalize-input-definition definition)
+        table-id (definition-table-id normalized-definition)]
+    (api/create-check :model/Measure (assoc body :table_id table-id))
+    (let [measure (api/check-500
+                   (first (t2/insert-returning-instances! :model/Measure
+                                                          :creator_id  api/*current-user-id*
+                                                          :name        name
+                                                          :description description
+                                                          :definition  normalized-definition)))]
+      (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
+      (t2/hydrate measure :creator))))
 
-(mu/defn- hydrated-measure [id :- ms/PositiveInt]
+(mu/defn- hydrated-measure [id :- ms/PositiveInt
+                            include-orphaned? :- :boolean]
   (api/read-check (t2/select-one :model/Measure :id id))
   (metrics/sync-dimensions! :metadata/measure id)
-  (-> (t2/hydrate (t2/select-one :model/Measure :id id) :creator)
-      metrics/filter-dimensions-for-user))
+  (cond-> (-> (t2/hydrate (t2/select-one :model/Measure :id id) :creator)
+              metrics/filter-dimensions-for-user)
+    (not include-orphaned?) metrics/without-orphaned-dimensions))
 
 (api.macros/defendpoint :get "/:id" :- ::measure
   "Fetch `Measure` with ID."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (let [measure (hydrated-measure id)]
+                    [:id ms/PositiveInt]]
+   {:keys [include-orphaned]} :- [:map
+                                  [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
+  (let [measure (hydrated-measure id (boolean include-orphaned))]
     (assoc measure :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure)))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
@@ -101,17 +116,22 @@
                                        :present #{:description}
                                        :non-nil #{:archived :definition :name})
         new-def    (when-let [def (:definition clean-body)]
-                     (let [table-id (:table_id existing)
-                           database-id (t2/select-one-fn :db_id :model/Table :id table-id)]
-                       (normalize-input-definition def table-id database-id)))
+                     (normalize-input-definition def))
         new-body   (merge
                     (dissoc clean-body :revision_message)
                     (when new-def {:definition new-def}))
         changes    (when-not (= new-body existing)
                      new-body)]
+    ;; An updated definition must still specify a source table; if it implicitly moves the Measure to a different
+    ;; table, the write-check above checked the old table, so also make sure the user could create a Measure on the
+    ;; new one.
+    (when new-def
+      (let [new-table-id (definition-table-id new-def)]
+        (when (not= new-table-id (:table_id existing))
+          (api/create-check :model/Measure {:table_id new-table-id}))))
     (when changes
       (t2/update! :model/Measure id changes))
-    (u/prog1 (hydrated-measure id)
+    (u/prog1 (hydrated-measure id false)
       (events/publish-event! :event/measure-update
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
 
@@ -150,7 +170,7 @@
   [{:keys [id dimension-key]} :- [:map
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]]
-  (let [measure (hydrated-measure id)]
+  (let [measure (hydrated-measure id false)]
     (metrics/dimension-values
      (:dimensions measure)
      (:dimension_mappings measure)
@@ -165,7 +185,7 @@
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
    {:keys [query]}            :- [:map [:query ms/NonBlankString]]]
-  (let [measure (hydrated-measure id)]
+  (let [measure (hydrated-measure id false)]
     (metrics/dimension-search-values
      (:dimensions measure)
      (:dimension_mappings measure)
@@ -181,7 +201,7 @@
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
    {:keys [value]}             :- [:map [:value :string]]]
-  (let [measure (hydrated-measure id)]
+  (let [measure (hydrated-measure id false)]
     (metrics/dimension-remapped-value
      (:dimensions measure)
      (:dimension_mappings measure)

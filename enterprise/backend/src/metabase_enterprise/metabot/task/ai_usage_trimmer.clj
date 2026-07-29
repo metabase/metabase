@@ -5,7 +5,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [metabase-enterprise.metabot.settings :as metabot.settings]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -42,6 +42,6 @@
                  (triggers/with-identity trimmer-trigger-key)
                  (triggers/start-now)
                  (triggers/with-schedule
-                   ;; daily at 23:14:37
+                  ;; daily at 23:14:37
                   (cron/cron-schedule "37 14 23 * * ?")))]
     (task/schedule-task! job trigger)))

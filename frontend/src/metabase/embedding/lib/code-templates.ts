@@ -52,6 +52,7 @@ function removeDefaultValueParameters(
   return Object.fromEntries(
     Object.entries(options).filter(
       ([key, value]) =>
+        // Unjustified type cast. FIXME
         value !== defaultValues[key as keyof EmbeddingDisplayOptions],
     ),
   );

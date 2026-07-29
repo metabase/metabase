@@ -5,24 +5,28 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import type { CollectionTreeItem } from "metabase/collections/utils";
+import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   isExamplesCollection,
   isLibraryCollection,
   isRootTrashCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
-import { NavbarLibrarySection } from "metabase/data-studio/nav/components/NavbarLibrarySection";
+import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
+import {
+  PLUGIN_DATA_APPS,
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_TENANTS,
+} from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
-} from "metabase/home/selectors";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
+} from "metabase/selectors/onboarding";
 import {
   getIsTenantUser,
   getUser,
@@ -302,6 +306,10 @@ export function MainNavbarView({
               </CollapseSection>
             </ErrorBoundary>
           </SidebarSection>
+
+          {PLUGIN_DATA_APPS.isEnabled && (
+            <PLUGIN_DATA_APPS.MainNavbarSection onItemSelect={onItemSelect} />
+          )}
 
           <SidebarSection>
             <ErrorBoundary>

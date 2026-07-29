@@ -93,9 +93,7 @@
                        :max-size (notification.settings/notification-temp-file-size-max-bytes)
                        :max-size-human-readable (human-readable-size
                                                  (notification.settings/notification-temp-file-size-max-bytes))})))
-
     (log/infof "📂 Loading streamed results from disk: %s" size-human)
-
     (let [start-time (System/nanoTime)
           result (with-open [is (-> (io/input-stream file)
                                     java.io.BufferedInputStream.
@@ -104,7 +102,6 @@
                    (let [{:keys [preamble]} (nippy/thaw-from-in! is)]
                      (when (seq preamble)
                        (log/debugf "File context: %s" (pr-str preamble))))
-
                    ;; Read row count/marker
                    (let [count-or-marker (nippy/thaw-from-in! is)]
                      (if (= count-or-marker ::streaming)
@@ -117,7 +114,6 @@
                            (if (= row-read ::eof)
                              (persistent! rows)
                              (recur (conj! rows row-read)))))
-
                        ;; Counted format - read exact number of rows
                        (loop [rows (transient [])
                               i 0]
@@ -144,7 +140,7 @@
   Object
   (cleanup! [_] nil))
 
-(deftype StreamingTempFileStorage [^File file context]
+(deftype StreamingTempFileStorage [^File file file-context]
   Cleanable
   (cleanup! [_]
     (when (.exists file)
@@ -163,13 +159,13 @@
   Object
   (toString [_]
     (if (.exists file)
-      (format "#StreamingTempFileStorage{:file %s, :size %s, :context %s}"
+      (format "#StreamingTempFileStorage{:file %s, :size %s, :file-context %s}"
               (.getName file)
               (human-readable-size (.length file))
-              (pr-str context))
-      (format "#StreamingTempFileStorage{:file %s (deleted), :context %s}"
+              (pr-str file-context))
+      (format "#StreamingTempFileStorage{:file %s (deleted), :file-context %s}"
               (.getName file)
-              (pr-str context))))
+              (pr-str file-context))))
 
   (equals [_this other]
     (and (instance? StreamingTempFileStorage other)
@@ -182,128 +178,219 @@
   [^StreamingTempFileStorage storage ^java.io.Writer w]
   (.write w (.toString storage)))
 
+(def ^:private ResidentBudget
+  "Shared mutable budget threaded across all of a notification's cards (created once per notification by
+  [[make-resident-budget]]). `:resident` is an atom tracking the cells currently held in memory across cards;
+  the rest are the cell limits used to decide when a query spills to disk. See [[should-spill?]]."
+  [:map
+   [:resident       [:fn #(instance? clojure.lang.IAtom %)]]
+   [:per-card     pos-int?]    ; spill a single query once it alone holds this many cells in memory
+   [:resident-cap pos-int?]    ; once resident cells exceed this across cards, squeeze remaining queries down to `:floor`
+   [:floor        pos-int?]])  ; ...but never spill a query holding fewer than this (no point writing tiny results)
+
+(def ^:private NotificationRffOptions
+  "Options controlling how [[notification-rff]] decides when to spill to disk."
+  [:map
+   ;; shared across a notification's cards so they can't collectively exhaust memory. A standalone query just passes its
+   ;; own freshly-made budget.
+   [:budget ResidentBudget]])
+
+(defn make-resident-budget
+  "Create a shared [[ResidentBudget]] for one notification. `limits` is a map of `:per-card`/`:resident-cap`/`:floor`
+  cell counts. Created once (e.g. per dashboard) and passed to every card's [[notification-rff]] via `:budget` so that
+  many small cards can't collectively exhaust memory."
+  [limits]
+  (assoc limits :resident (atom 0)))
+
+(defn- should-spill?
+  "Given the shared `budget` and the cells `this-query` currently holds in memory, decide whether to spill it to disk.
+  Spill when this query alone is large, or when this query plus what sibling cards already hold resident would push total
+  in-memory cells past the cap and this query isn't trivially tiny. We add `this-query` to `@resident` because the
+  current card hasn't folded itself into the resident total yet (that happens at completion), so `@resident` alone
+  understates live memory while this card is accumulating."
+  [{:keys [resident per-card resident-cap floor]} this-query]
+  (or (>= this-query per-card)
+      (and (>= (+ @resident this-query) resident-cap)
+           (>= this-query floor))))
+
+;; ----------------------------------------------------------------------------------------------------------------- ;;
+;; Disk-backed row storage
+;;
+;; Side storage for a single notification query's rows, used alongside the query processor's own reducing accumulator
+;; (the `result` map - see [[metabase.query-processor.reducible/default-rff]]). Rows accumulate in an in-memory transient
+;; vector until the cell threshold is crossed, at which point everything accumulated is spilled to a temp file and
+;; subsequent rows are streamed straight to disk.
+;;
+;; State lives in two places, by design:
+;;   :state - an `(atom state-map)` of plain immutable fields, updated with pure `swap!` fns:
+;;     :row-count     total rows seen
+;;     :cell-count    cells (values) currently held in memory (0 once spilled)
+;;     :streaming?    whether we've spilled and are now writing straight to disk
+;;     :file          the spill File, once streaming
+;;     :output-stream the spill DataOutputStream, once streaming
+;;     :truncated?    whether the file grew past the size cap and rows are being dropped
+;;   :rows - a `(volatile! transient-vector)` of the in-memory rows. This is kept OUT of the atom: a transient is a
+;;     mutable, single-thread value and `conj!` mutates in place, which would be unsafe inside a `swap!` fn (atoms may
+;;     retry their update fn). The rff is single-threaded, so a volatile is the right container - no CAS, no retry.
+;; I/O (opening/writing/closing the file) likewise happens as explicit statements in the fns below, never inside `swap!`.
+;; ----------------------------------------------------------------------------------------------------------------- ;;
+
+(defn- new-row-storage
+  "Create the row storage for one query. `budget` is the shared [[ResidentBudget]] (this query reads it to decide spills
+  and, if it stays in memory, folds its cells into it at completion); `file-context` is captured in the spill file's
+  preamble and on the resulting StreamingTempFileStorage."
+  [budget file-context]
+  {:state        (atom {:row-count 0
+                        :cell-count 0
+                        :streaming? false
+                        :file nil
+                        :output-stream nil
+                        :truncated? false})
+   :rows         (volatile! (transient []))
+   :budget       budget
+   :file-context file-context})
+
+(defn- spill-to-disk!
+  "Transition from in-memory accumulation to disk streaming: open a temp file, write the preamble + streaming sentinel,
+  flush the rows accumulated so far, then flip the state into streaming mode and release the in-memory rows."
+  [{:keys [state rows file-context]}]
+  (let [opened   (open-streaming-file!)
+        new-file (:file opened)
+        ^DataOutputStream new-os (:output-stream opened)]
+    (try
+      (nippy/freeze-to-out! new-os {:preamble file-context})
+      (.flush new-os)
+      (nippy/freeze-to-out! new-os ::streaming)
+      (.flush new-os)
+      (doseq [row (persistent! @rows)]
+        (write-row-to-stream! new-os row))
+      (vreset! rows (transient [])) ; release memory
+      (swap! state assoc
+             :streaming? true
+             :file new-file
+             :output-stream new-os)
+      (catch Exception e
+        (u/ignore-exceptions (.close new-os))
+        (u/ignore-exceptions (io/delete-file new-file))
+        (throw e)))))
+
+(defn- add-row!
+  "Store one `row` (in memory, or appended to the spill file if already streaming). Returns true to keep reducing, or
+  false once truncation has kicked in and the caller should stop."
+  [{:keys [state rows budget file-context] :as row-storage} row]
+  (let [{:keys [streaming? ^DataOutputStream output-stream ^File file]}
+        (swap! state update :row-count inc)]
+    (if streaming?
+      ;; already spilled: write straight to disk, truncating (stop reducing) if the file grew past 1.3x the size cap
+      (let [max-bytes (notification.settings/notification-temp-file-size-max-bytes)]
+        (write-row-to-stream! output-stream row)
+        (if (and (pos? max-bytes)
+                 (> (.length file) (* 1.3 max-bytes)))
+          (do
+            (swap! state assoc :truncated? true)
+            (log/warnf "Results have exceeded 1.3 times of `notification-temp-file-size-max-bytes` of %s (max: %s). Truncating query results. %s"
+                       (human-readable-size (.length file))
+                       (human-readable-size max-bytes)
+                       (when file-context (format "(%s)" (pr-str file-context))))
+            false)
+          true))
+      ;; still in memory: accumulate the row (in the sibling volatile) and its cells, then let the policy decide whether
+      ;; to spill given the cells this query holds and the cells resident across the notification. We never truncate
+      ;; while in memory, so always keep reducing.
+      (let [_          (vswap! rows conj! row)
+            cell-count (:cell-count (swap! state update :cell-count + (count row)))]
+        (when (should-spill? budget cell-count)
+          (log/infof "Spilling to disk (%d cells, %d rows in memory)" cell-count (:row-count @state))
+          (spill-to-disk! row-storage))
+        true))))
+
+(defn- finish!
+  "Fold the stored rows (or a file reference), `:row_count`, and stats into the query processor's `result` map. A query
+  that stays in memory folds its cells into the shared [[ResidentBudget]] so sibling cards see the added memory pressure;
+  a query that spilled adds nothing (its rows are on disk, not resident)."
+  [{:keys [state rows budget file-context]} result]
+  (let [{:keys [row-count cell-count streaming? truncated?
+                ^DataOutputStream output-stream ^File file]} @state]
+    (if streaming?
+      ;; close the file and hand back a file reference; nothing is resident in memory
+      (try
+        (.close output-stream)
+        (let [file-size (.length file)
+              max-bytes (notification.settings/notification-temp-file-size-max-bytes)
+              storage   (cond truncated?              :truncated
+                              (zero? max-bytes)        :not-limited
+                              (< max-bytes file-size)  :above-threshold
+                              :else                    :disk)]
+          (analytics/inc! :metabase-notification/temp-storage {:storage storage})
+          (log/infof "💾 Stored %d rows to disk: %s (never loaded into memory)%s"
+                     row-count
+                     (human-readable-size file-size)
+                     (if truncated? " (note query results were truncated)" ""))
+          (-> result
+              (assoc :row_count row-count
+                     :status :completed
+                     :data.rows-file-size file-size
+                     :notification/storage (if truncated? :truncated :disk)
+                     :notification/resident-cells 0)
+              (cond-> truncated? (assoc :notification/truncated? true))
+              (assoc-in [:data :rows] (StreamingTempFileStorage. file file-context))))
+        (catch Exception e
+          (u/ignore-exceptions (.close output-stream))
+          (throw e)))
+      ;; stayed under threshold: fold this query's cells into the shared resident total, then hand back the in-memory
+      ;; rows (reporting the cells held resident).
+      (do
+        (swap! (:resident budget) + cell-count)
+        (analytics/inc! :metabase-notification/temp-storage {:storage :memory})
+        (log/infof "✓ Completed with %d rows in memory (under threshold)" row-count)
+        (-> result
+            (assoc :row_count row-count
+                   :status :completed
+                   :notification/storage :memory
+                   :notification/resident-cells cell-count)
+            (assoc-in [:data :rows] (persistent! @rows)))))))
+
 (mu/defn notification-rff :- ::qp.schema/rff
-  "Reducing function factory for notifications that streams to disk when threshold exceeded.
+  "Reducing function factory for notifications that streams to disk when a threshold is exceeded.
 
   Returns an rff (function that takes metadata and returns an rf) that:
   - Accumulates rows in memory initially
-  - Once max-cell-count is reached, switches to streaming mode
-  - In streaming mode, writes all accumulated rows to disk then streams subsequent rows
-  - Final result contains either in-memory rows or a StreamingTempFileStorage reference
+  - Once the spill threshold is reached, spills accumulated rows to disk and streams the rest
+  - Final result contains either in-memory rows or a StreamingTempFileStorage reference, plus stats:
+    `:notification/storage` (:memory | :disk | :truncated) and `:notification/resident-cells` (cells held in memory,
+    0 once spilled).
 
   Parameters:
 
-  - max-cell-count: Maximum number of \"cells\" or values to keep in memory before streaming to disk.
-  - context: Optional context map to include in temp file preamble (for debugging)"
-  ([max-cell-count]
-   (notification-rff max-cell-count {}))
-  ([max-cell-count context]
+  - options: a map describing when to switch to disk. Keys:
+    - :budget (required) - a shared [[ResidentBudget]] (from [[make-resident-budget]]) tracking memory across a whole
+      notification's cards, so many small cards can't collectively exhaust memory. A standalone query passes its own
+      freshly-made budget.
+  - file-context: Optional map describing the data being stored (e.g. the originating card/dashcard). It is captured
+    in the temp file preamble and on the resulting StreamingTempFileStorage (for debugging)."
+  ([options :- NotificationRffOptions]
+   (notification-rff options {}))
+  ([options :- NotificationRffOptions file-context]
    (fn rff [metadata]
-     (let [row-count (volatile! 0)
-           cell-count (volatile! 0)
-           rows (volatile! (transient []))
-           streaming? (volatile! false)
-           streaming-state (volatile! nil)] ; {:file File :output-stream DataOutputStream}
+     ;; `row-storage` is OUR side storage for rows (it spills to disk); the query processor's reducing accumulator is
+     ;; the `result` map, which we thread through untouched until completion - exactly like
+     ;; [[metabase.query-processor.reducible/default-rff]]'s `row-count`/`rows` volatiles.
+     (let [row-storage (new-row-storage (:budget options) file-context)]
        (fn notification-rf
          ;; Init arity
          ([]
           {:data metadata})
 
-         ;; Completion arity
+         ;; Completion arity - fold the stored rows (or a file reference) and stats into `result`.
          ([result]
           {:pre [(map? (unreduced result))]}
-          (let [result (unreduced result)]
-            (if @streaming?
-              ;; Close the streaming file and return TempFileStorage
-              (let [{:keys [^DataOutputStream output-stream ^File file]} @streaming-state]
-                (try
-                  (.close output-stream)
-                  (let [file-size (.length file)
-                        max-bytes (notification.settings/notification-temp-file-size-max-bytes)]
-                    (analytics/inc! :metabase-notification/temp-storage
-                                    {:storage (cond (:notification/truncated? @streaming-state) :truncated
-                                                    (zero? max-bytes) :not-limited
-                                                    (< max-bytes file-size) :above-threshold
-                                                    :else :disk)})
-                    (log/infof "💾 Stored %d rows to disk: %s (never loaded into memory)%s"
-                               @row-count
-                               (human-readable-size file-size)
-                               (if (:notification/truncated? @streaming-state)
-                                 " (note query results were truncated)"
-                                 ""))
-                    (-> result
-                        (assoc :row_count @row-count
-                               :status :completed
-                               :data.rows-file-size file-size)
-                        (cond-> (:notification/truncated? @streaming-state)
-                          (assoc :notification/truncated? true))
-                        (assoc-in [:data :rows] (StreamingTempFileStorage. file context))))
-                  (catch Exception e
-                    (u/ignore-exceptions (.close output-stream))
-                    (throw e))))
+          (finish! row-storage (unreduced result)))
 
-              ;; Return in-memory rows
-              (do
-                (analytics/inc! :metabase-notification/temp-storage
-                                {:storage :memory})
-                (log/infof "✓ Completed with %d rows in memory (under threshold)" @row-count)
-                (-> result
-                    (assoc :row_count @row-count
-                           :status :completed)
-                    (assoc-in [:data :rows] (persistent! @rows)))))))
-
-         ;; Step arity - accumulate rows
+         ;; Step arity - store the row beside `result`, then thread `result` onward (stopping if truncated).
          ([result row]
-          ;; unconditionally increment row count and add rows to internal volatile transient collector. If we are
-          ;; streaming to disk, we periodically flush this to disk; if we are collecting in memory the collection is
-          ;; used the same as in the default-rff
-          (vswap! row-count inc)
-          (if @streaming?
-            ;; Already streaming - write row directly to file
-            (let [{:keys [^DataOutputStream output-stream ^File file]} @streaming-state]
-              (write-row-to-stream! output-stream row)
-              (if (and (pos? (notification.settings/notification-temp-file-size-max-bytes))
-                       (> (.length file) (* 1.3 (notification.settings/notification-temp-file-size-max-bytes))))
-                (do (vswap! streaming-state assoc :notification/truncated? true)
-                    (log/warnf "Results have exceeded 1.3 times of `notification-temp-file-size-max-bytes` of %s (max: %s). Truncating query results. %s"
-                               (human-readable-size (.length file))
-                               (human-readable-size (notification.settings/notification-temp-file-size-max-bytes))
-                               (when context (format "(%s)" (pr-str context))))
-                    (reduced result))
-                result))
-
-            (do
-              (vswap! rows conj! row)
-              (vswap! cell-count #(+ % (count row)))
-              ;; Check if we've hit the threshold to switch to disk based streaming
-              (when (>= @cell-count max-cell-count)
-                (log/infof "Cell count reached threshold (%d, %d rows), switching to streaming mode"
-                           max-cell-count @row-count)
-                ;; Open streaming file
-                (let [{:keys [file ^DataOutputStream output-stream]} (open-streaming-file!)]
-                  (try
-                    ;; Write preamble
-                    (nippy/freeze-to-out! output-stream {:preamble context})
-                    (.flush output-stream)
-
-                    ;; Write sentinel indicating streaming format
-                    (nippy/freeze-to-out! output-stream ::streaming)
-                    (.flush output-stream)
-
-                    ;; Write all accumulated rows
-                    (doseq [row (persistent! @rows)]
-                      (write-row-to-stream! output-stream row))
-
-                    ;; Switch to streaming mode
-                    (vreset! streaming? true)
-                    (vreset! rows (transient [])) ; Clear memory
-                    (vreset! streaming-state {:file file :output-stream output-stream})
-
-                    (catch Exception e
-                      (u/ignore-exceptions (.close output-stream))
-                      (u/ignore-exceptions (io/delete-file file))
-                      (throw e)))))
-              result))))))))
+          (if (add-row! row-storage row)
+            result
+            (reduced result))))))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                           Public APIs                                           ;;

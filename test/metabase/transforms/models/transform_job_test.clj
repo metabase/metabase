@@ -64,7 +64,6 @@
                (str (:description (t2/select-one :model/TransformJob (:id job))))))
         (is (= (str (:name translations))
                (str (:name (t2/select-one :model/TransformJob (:id job)))))))))
-
   (testing "Setting schedule translates description and name"
     (doseq [[type translations] values]
       (mt/with-temp [:model/TransformJob job

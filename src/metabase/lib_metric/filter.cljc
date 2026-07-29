@@ -594,7 +594,7 @@
      (case operator
        (:is-null :not-null) [operator {} (dimension-ref dimension)]
        :between             [:between {} (dimension-ref dimension) (first values) (second values)]
-     ;; Standard operators: >, <
+       ;; Standard operators: >, <
        [operator {} (dimension-ref dimension) (first values)]))))
 
 (defn time-filter-parts

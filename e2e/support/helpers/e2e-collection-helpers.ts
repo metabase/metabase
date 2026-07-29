@@ -63,12 +63,16 @@ export const getUnpinnedSection = () => {
 export const openPinnedItemMenu = (name: string) => {
   cy.log(`open pinned item menu: ${name}`);
 
-  getPinnedSection().within(() => {
-    cy.findByText(name)
-      .closest("a")
-      .realHover()
-      .within(() => cy.findByLabelText("Actions").click());
-  });
+  // Hovering a pinned item can trigger an async re-render (e.g. a pinned
+  // metric runs its query), which detaches a chained `.within()` subject. Hover
+  // first, then re-query the actions button so the click acts on a settled
+  // element and Cypress can retry on detach.
+  getPinnedSection().findByText(name).closest("a").realHover();
+  getPinnedSection()
+    .findByText(name)
+    .closest("a")
+    .findByLabelText("Actions")
+    .click();
 };
 
 export const openUnpinnedItemMenu = (name: string) => {

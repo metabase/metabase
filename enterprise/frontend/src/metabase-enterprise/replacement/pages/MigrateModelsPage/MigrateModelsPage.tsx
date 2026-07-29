@@ -17,6 +17,7 @@ import { PageHeader } from "./PageHeader";
 export function MigrateModelsPage() {
   const { data, isLoading, error } = useSearchQuery({
     models: ["dataset"],
+    context: "model-migration",
   });
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [isResizing, { open: startResizing, close: stopResizing }] =

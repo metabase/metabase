@@ -4,8 +4,6 @@ title: Druid
 
 # Druid
 
-> Prefer the Druid JDBC connection.
-
 To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
 ## Edit connection details
@@ -34,15 +32,11 @@ See our [guide to SSH tunneling](../ssh-tunnel.md).
 
 ### Allow unfolding of JSON columns
 
-> Only available for the Druid JDBC connection.
-
 This enables unfolding of JSON columns into their component fields.
 
 See [JSON unfolding](../../data-modeling/json-unfolding.md).
 
 ### Authentication
-
-> Only available for the Druid JDBC connection.
 
 Toggle on to enable basic authentication with a username and password.
 
@@ -50,7 +44,7 @@ Toggle on to enable basic authentication with a username and password.
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when syncs and scans happen
 

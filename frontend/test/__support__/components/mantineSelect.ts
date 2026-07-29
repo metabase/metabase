@@ -29,6 +29,7 @@ export const viewMantineSelectOptions = async ({
   return {
     optionElements,
     optionTextContents,
+    // Unjustified type cast. FIXME
     displayedOption: root as HTMLInputElement,
   };
 };

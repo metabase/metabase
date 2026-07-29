@@ -62,6 +62,9 @@
   ;; we can't use `java.io.OutputStream/nullOutputStream` here because it's not available on Java 8
   (.setOutputStream (java.io.PrintStream. (org.apache.commons.io.output.NullOutputStream.))))
 
+;; Disable phoning home to Liquibase analytics (since 4.28)
+(System/setProperty "liquibase.analytics.enabled" "false")
+
 (def ^{:private true
        :doc     "Liquibase setting used for upgrading instances running version < 45."}
   ^String changelog-legacy-file "liquibase_legacy.yaml")
@@ -224,7 +227,7 @@
       (when (= (mdb.connection/db-type) :h2)
         (force-release-locks! liquibase))
       (catch Exception e
-        (log/error e "Unable to release the Liquibase lock")))))
+        (log/errorf "Unable to release the Liquibase lock: %s" (ex-message e))))))
 
 (defn- lock-service ^LockService [^Liquibase liquibase]
   (.getLockService (LockServiceFactory/getInstance) (.getDatabase liquibase)))
@@ -368,8 +371,8 @@
     (do
       (log/info "Database has unrun migrations. Checking if migration lock is taken...")
       (with-scope-locked liquibase
-      ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
-      ;; sure something still needs to be done...
+        ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
+        ;; sure something still needs to be done...
         (let [to-run-migrations      (unrun-migrations data-source)
               unrun-migrations-count (count to-run-migrations)]
           (if (pos? unrun-migrations-count)
@@ -579,7 +582,6 @@
                          latest-applied latest-available latest-applied)
                  {:latest-available latest-available
                   :latest-applied   latest-applied})))
-
        (log/infof "Rolling back app database schema to version %d" target-version)
        (if (empty? ids-to-drop)
          (log/info "No changesets to roll back")
@@ -587,7 +589,7 @@
            (let [change-listener (proxy [liquibase.changelog.visitor.AbstractChangeExecListener] []
                                    (rollbackFailed [^ChangeSet change-set _dbchangelog _db ^Exception e]
                                      (swap! error-ids conj (.getId change-set))
-                                     (log/errorf e "Error rolling back migration %s" (.getId change-set))))]
+                                     (log/errorf "Error rolling back migration %s: %s" (.getId change-set) (ex-message e))))]
              (AbstractRollbackCommandStep/doRollback lb-db
                                                      changelog-file
                                                      nil

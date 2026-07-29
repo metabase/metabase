@@ -36,6 +36,7 @@ export const useListKeyboardNavigation = <
 
   const handleKeyDown: EventListener = useCallback(
     (event) => {
+      // Unjustified type cast. FIXME
       const { key } = event as KeyboardEvent;
       if (list.length === 0) {
         return;
@@ -69,6 +70,12 @@ export const useListKeyboardNavigation = <
     reset,
     cursorIndex,
     selectedItem,
-    getRef: (item: T) => (item === selectedItem ? selectedRef : undefined),
+    // a ref callback (not the ref object) so it can attach to elements narrower than R
+    getRef: (item: T) =>
+      item === selectedItem
+        ? (element: R | null) => {
+            selectedRef.current = element;
+          }
+        : undefined,
   };
 };

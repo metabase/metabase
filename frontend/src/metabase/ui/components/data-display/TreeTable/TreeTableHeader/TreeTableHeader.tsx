@@ -3,8 +3,13 @@ import cx from "classnames";
 
 import { Flex } from "metabase/ui";
 
+import { SelectionCheckbox } from "../SelectionCheckbox";
 import { CHECKBOX_COLUMN_WIDTH } from "../constants";
-import type { TreeNodeData, TreeTableHeaderProps } from "../types";
+import type {
+  SelectionState,
+  TreeNodeData,
+  TreeTableHeaderProps,
+} from "../types";
 import { getColumnStyle } from "../utils";
 
 import { HeaderCell } from "./HeaderCell";
@@ -18,8 +23,35 @@ export function TreeTableHeader<TData extends TreeNodeData>({
   styles,
   isMeasured = true,
   headerVariant = "pill",
+  getSelectionState,
+  onHeaderCheckboxClick,
+  headerCheckboxAriaLabel,
 }: TreeTableHeaderProps<TData>) {
   const headerGroups = table.getHeaderGroups();
+  const rows = table.getRowModel().rows;
+
+  const headerSelectionState: SelectionState = (() => {
+    if (rows.length === 0) {
+      return "none";
+    }
+    if (getSelectionState) {
+      const states = rows.map(getSelectionState);
+      if (states.every((s) => s === "all")) {
+        return "all";
+      }
+      if (states.some((s) => s !== "none")) {
+        return "some";
+      }
+      return "none";
+    }
+    if (table.getIsAllRowsSelected()) {
+      return "all";
+    }
+    if (table.getIsSomeRowsSelected()) {
+      return "some";
+    }
+    return "none";
+  })();
 
   return (
     <Flex
@@ -39,9 +71,23 @@ export function TreeTableHeader<TData extends TreeNodeData>({
             <Flex
               className={cx(S.cell, classNames?.headerCell)}
               align="center"
-              p="0.75rem"
-              style={{ width: CHECKBOX_COLUMN_WIDTH, ...styles?.headerCell }}
-            />
+              pl="0.75rem"
+              style={{
+                width: CHECKBOX_COLUMN_WIDTH,
+                flexShrink: 0,
+                ...styles?.headerCell,
+              }}
+            >
+              {onHeaderCheckboxClick && (
+                <SelectionCheckbox
+                  isSelected={headerSelectionState === "all"}
+                  isSomeSelected={headerSelectionState === "some"}
+                  onClick={onHeaderCheckboxClick}
+                  ariaLabel={headerCheckboxAriaLabel}
+                  className={classNames?.checkbox}
+                />
+              )}
+            </Flex>
           )}
           {headerGroup.headers.map((header, index) => {
             const column = header.column;

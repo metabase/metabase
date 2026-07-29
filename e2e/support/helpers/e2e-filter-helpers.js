@@ -1,4 +1,8 @@
-import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+import {
+  modal,
+  popover,
+  selectDropdown,
+} from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 import { pickEntity } from "./e2e-collection-helpers";
 
@@ -10,7 +14,7 @@ export function setSearchBoxFilterType() {
   cy.findByText("Search box").click();
 }
 
-export function setFilterQuestionSource({ question, field }) {
+export function setFilterQuestionSource({ question, field, labelField }) {
   cy.findByText("Edit").click();
 
   modal().within(() => {
@@ -20,13 +24,21 @@ export function setFilterQuestionSource({ question, field }) {
 
   pickEntity({ path: [/Our analytics/, question], select: true });
 
-  modal().within(() => {
-    cy.findByText("Pick a column…").click();
-  });
+  modal().findByPlaceholderText("Pick a column…").click();
 
-  popover().within(() => {
-    cy.findByText(field).click();
-  });
+  selectDropdown().findByRole("option", { name: field, hidden: true }).click();
+
+  if (labelField) {
+    cy.log("the label selector defaults to None until a column is chosen");
+    modal().within(() => {
+      cy.findByText("Column to supply the labels").should("be.visible");
+      cy.findByDisplayValue("None").click();
+    });
+
+    selectDropdown()
+      .findByRole("option", { name: labelField, hidden: true })
+      .click();
+  }
 
   modal().within(() => {
     cy.button("Done").click();

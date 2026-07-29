@@ -48,7 +48,7 @@
     (api/check-403 (can-access-table-for-query-metadata? table)))
   (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
                                 [:segments :definition_description] [:measures :definition_description] :metrics :collection]
-                         (premium-features/has-feature? :transforms-basic) (conj :transform))]
+                         (premium-features/any-transforms-enabled?) (conj :transform))]
     (-> table
         (update :collection nil-if-unreadable)
         (#(apply t2/hydrate % hydration-keys))
@@ -99,6 +99,20 @@
   metabase-enterprise.sandbox.api.table
   [ids opts]
   (batch-fetch-query-metadatas* ids opts))
+
+(defenterprise filter-sandboxed-fields
+  "Filter `fields` to those visible to the current user under their column-restricting sandbox on `table-id`.
+  OSS no-op; the real implementation lives in `metabase-enterprise.sandbox.api.column-filter`."
+  metabase-enterprise.sandbox.api.column-filter
+  [_table-id fields]
+  fields)
+
+(defenterprise batch-filter-sandboxed-fields
+  "Filter the `{table-id => fields}` map per the current user's sandbox configuration.
+  OSS no-op; the real implementation lives in `metabase-enterprise.sandbox.api.column-filter`."
+  metabase-enterprise.sandbox.api.column-filter
+  [fields-by-table]
+  fields-by-table)
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'

@@ -50,6 +50,22 @@ async function getDropdownLabels() {
 }
 
 describe("ConversationFilters date dropdown", () => {
+  // Retention shortcuts are computed relative to the current date, so freeze the
+  // clock to a fixed mid-month date to keep the assertions deterministic. (Without
+  // this, e.g. on the 1st of a month following a 30-day month, the "Previous month"
+  // shortcut's start lands exactly on the retention cutoff and stays visible.)
+  beforeEach(() => {
+    jest.useFakeTimers({
+      advanceTimers: true,
+      now: new Date(2026, 5, 15),
+      doNotFake: ["setTimeout"],
+    });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("hides shortcuts that go past the configured retention window", async () => {
     setup({ retentionDays: 180 });
     const labels = await getDropdownLabels();
@@ -109,9 +125,9 @@ describe("ConversationFilters date dropdown", () => {
       retentionDays: 180,
       date: "2026-01-02~2026-03-15",
     });
-    const input = screen.getByTestId(
+    const input = screen.getByTestId<HTMLInputElement>(
       "conversation-filters-date-select",
-    ) as HTMLInputElement;
+    );
     expect(input.value).toMatch(/January 2, 2026.*March 15, 2026/);
     expect(input.title).toMatch(/January 2, 2026.*March 15, 2026/);
   });

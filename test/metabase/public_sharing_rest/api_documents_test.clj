@@ -75,19 +75,16 @@
         (let [result (mt/client :get 200 (str "public/document/" (:public_uuid document)))]
           (testing "response includes cards field"
             (is (contains? result :cards)))
-
           (testing "cards are returned as a map keyed by card ID"
             (is (map? (:cards result)))
             (is (= 2 (count (:cards result))))
             (is (contains? (:cards result) card1-id))
             (is (contains? (:cards result) card2-id)))
-
           (testing "cards contain expected metadata"
             (is (= "Card 1" (get-in result [:cards card1-id :name])))
             (is (= "Card 2" (get-in result [:cards card2-id :name])))
             (is (= card1-id (get-in result [:cards card1-id :id])))
             (is (= card2-id (get-in result [:cards card2-id :id]))))
-
           (testing "cards do not include sensitive fields"
             (is (not (contains? (get-in result [:cards card1-id]) :collection_id)))
             (is (not (contains? (get-in result [:cards card1-id]) :creator_id)))))))))
@@ -99,7 +96,6 @@
         (mt/with-temp [:model/Document document (document-with-public-link {})]
           (is (= "An error occurred."
                  (mt/client :get 400 (str "public/document/" (:public_uuid document)))))))))
-
   (testing "Returns 404 if the Document doesn't exist"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (is (= "Not found."
@@ -117,6 +113,14 @@
             (t2/update! :model/Document (:id document) {:archived true})
             (is (= "Not found."
                    (mt/client :get 404 (str "public/document/" uuid))))))))))
+
+(deftest public-document-endpoint-is-read-only-test
+  (testing "PUT /api/public/document/:uuid does not exist -- public document sharing is read-only"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document document (document-with-public-link {})]
+        (is (= 404
+               (:status (mt/client-full-response :put (str "public/document/" (:public_uuid document))
+                                                 {:name "hacked"}))))))))
 
 ;;; ------------------------------ GET /api/public/document/:uuid/card/:card-id ---------------------------------------
 
@@ -157,7 +161,6 @@
                                                   {})]
             (is (= 200 (:status response)))
             (is (= "text/csv" (get-in response [:headers "Content-Type"])))))
-
         (testing "Can export card results as JSON"
           (let [response (mt/client-full-response :post (format "public/document/%s/card/%d/json"
                                                                 (:public_uuid document)

@@ -211,6 +211,8 @@ export type DependencyNode =
 export type AnalysisFindingErrorId = number;
 
 export const ANALYSIS_FINDING_ERROR_TYPES = [
+  "missing-table",
+  "missing-card",
   "missing-column",
   "missing-table-alias",
   "duplicate-column",
@@ -258,21 +260,6 @@ export type ListNodeDependentsRequest = {
   "sort-column"?: DependencySortColumn;
   "sort-direction"?: SortDirection;
 };
-
-export type CheckDependenciesResponse = {
-  success: boolean;
-  bad_cards?: Card[];
-  bad_transforms?: Transform[];
-};
-
-export type CheckCardDependenciesRequest = Pick<Card, "id"> &
-  Partial<Pick<Card, "type" | "dataset_query" | "result_metadata">>;
-
-export type CheckSnippetDependenciesRequest = Pick<NativeQuerySnippet, "id"> &
-  Partial<Pick<NativeQuerySnippet, "name" | "content">>;
-
-export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
-  Partial<Pick<Transform, "source">>;
 
 export const DEPENDENCY_SORT_COLUMNS = [
   "name",

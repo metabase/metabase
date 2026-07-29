@@ -35,9 +35,20 @@
 ;;; Cljs. They both work like [[clojure.core/format]], but since that doesn't exist in Cljs, you can use this instead.
 #?(:clj
    (p/import-vars [clojure.core format])
-
    :cljs
    (def format "Exactly like [[clojure.core/format]] but ClojureScript-friendly." gstring/format))
+
+;; AssertionError is recoverable too, not just Exception: callers run assert/:pre they don't own, and a
+;; bad-data assert should degrade through `handler` like any other exception. Fatal Errors still propagate.
+(defn recover
+  "Run `thunk`, returning its value; if it throws a recoverable throwable, return `(handler throwable)` instead.
+  Recoverable is any `Exception`, plus `AssertionError` on the JVM.
+  Fatal `Error`s -- stack overflow, OOM, linkage, thread death -- are never caught and propagate."
+  [thunk handler]
+  (try
+    (thunk)
+    (catch #?(:clj Exception :cljs :default) e (handler e))
+    #?(:clj (catch AssertionError e (handler e)))))
 
 ;;; TODO (Cam 9/8/25) -- overlapping functionality with [[metabase.lib.schema.common/is-clause?]]
 (defn clause?

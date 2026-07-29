@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
-import { DelayedLoadingSpinner } from "metabase/common/components/Pickers/EntityPicker/components/LoadingSpinner";
+import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading";
 import { getEngineNativeType } from "metabase/databases/utils/engine";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -37,6 +37,7 @@ type NotebookNativePreviewProps = {
   onConvertClick: (newQuestion: Question) => void;
   readOnly?: boolean;
   disableDefaultLimit?: boolean;
+  disableConvert?: boolean;
 };
 
 export const NotebookNativePreview = ({
@@ -46,6 +47,7 @@ export const NotebookNativePreview = ({
   onConvertClick,
   readOnly,
   disableDefaultLimit,
+  disableConvert,
 }: NotebookNativePreviewProps) => {
   const database = question.database();
   const engine = database?.engine;
@@ -70,7 +72,7 @@ export const NotebookNativePreview = ({
   const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
 
-  const borderStyle = "1px solid var(--mb-color-border)";
+  const borderStyle = "1px solid var(--mb-color-border-neutral)";
 
   const handleConvertClick = useCallback(() => {
     if (newQuestion) {
@@ -84,7 +86,7 @@ export const NotebookNativePreview = ({
       data-testid="native-query-preview-sidebar"
       w="100%"
       h="100%"
-      bg="background-primary"
+      bg="background_page-primary"
       display="flex"
       style={{ flexDirection: "column" }}
     >
@@ -112,7 +114,7 @@ export const NotebookNativePreview = ({
         {showEmptySidebar}
         {showError && (
           <Flex align="center" justify="center" h="100%" direction="column">
-            <Icon name="warning" size="2rem" c="error" />
+            <Icon name="warning" size="2rem" c="feedback-negative" />
             {t`Error generating the query.`}
             <Box mt="sm">{getErrorMessage(error)}</Box>
           </Flex>
@@ -125,7 +127,7 @@ export const NotebookNativePreview = ({
             variant="subtle"
             p={0}
             onClick={handleConvertClick}
-            disabled={!showQuery}
+            disabled={!showQuery || disableConvert}
           >
             {buttonTitle ?? BUTTON_TITLE[engineType]}
           </Button>

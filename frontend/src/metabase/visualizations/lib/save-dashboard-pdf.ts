@@ -11,8 +11,18 @@ import {
   getBrandingConfig,
   getBrandingSize,
 } from "./exports-branding-utils";
-import { fixParameterLegendOffsetForExport } from "./image-exports";
+import {
+  fixParameterLegendOffsetForExport,
+  resolveSvgVarPaint,
+  restoreNestedSvgOverflow,
+} from "./image-exports";
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
+
+// DOM ids on exportable nodes so the PDF exporter and downloads thunk can find them
+export const DASHBOARD_PDF_EXPORT_ROOT_ID =
+  "Dashboard-Parameters-And-Cards-Container";
+export const DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID =
+  "Dashboard-Parameters-Content";
 
 const TARGET_ASPECT_RATIO = 21 / 17;
 
@@ -142,7 +152,7 @@ const createHeaderElement = (dashboardName: string, marginBottom: number) => {
     font-size: 24px;
     font-weight: 700;
     color: var(--mb-color-text-primary);
-    border-bottom: 1px solid var(--mb-color-border);
+    border-bottom: 1px solid var(--mb-color-border-neutral);
     padding: 24px 16px 16px 16px;
     margin-bottom: ${marginBottom}px;
   `;
@@ -256,7 +266,7 @@ export const saveDashboardPdf = async ({
           card.style.boxShadow = "none";
 
           // Set a clean border if needed
-          card.style.border = "1px solid var(--mb-color-border)";
+          card.style.border = "1px solid var(--mb-color-border-neutral)";
         }
       });
 
@@ -270,6 +280,9 @@ export const saveDashboardPdf = async ({
         const branding = createBrandingElement(size);
         node.insertBefore(branding, node.firstChild);
       }
+
+      resolveSvgVarPaint(node);
+      restoreNestedSvgOverflow(node);
     },
   });
 

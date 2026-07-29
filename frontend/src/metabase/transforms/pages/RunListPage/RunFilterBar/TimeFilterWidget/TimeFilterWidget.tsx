@@ -4,8 +4,8 @@ import type {
   DatePickerShortcut,
   RelativeIntervalDirection,
 } from "metabase/querying/common/types";
-import { SearchFilterDateDisplay } from "metabase/search/components/SearchFilterDateDisplay";
-import { SearchFilterDatePicker } from "metabase/search/components/SearchFilterDatePicker";
+import { SearchFilterDateDisplay } from "metabase/querying/filters/components/SearchFilterDateDisplay";
+import { SearchFilterDatePicker } from "metabase/querying/filters/components/SearchFilterDatePicker";
 import { Popover } from "metabase/ui";
 
 import { FilterFieldSet } from "../FilterFieldSet";

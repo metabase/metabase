@@ -16,7 +16,6 @@
       "Maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this
   applies to all queries"}
      nat-int?]
-
     [:max-results-bare-rows
      {:optional true
       :description

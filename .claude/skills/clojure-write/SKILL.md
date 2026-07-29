@@ -102,3 +102,7 @@ breakage keeps happening, *that* is the signal a comment was warranted.
 - End all files with a newline
 - When editing tabular code, where the columns line up, try to keep them aligned
 - Spaces on a line with nothing after it is not allowed
+- After changing module boundaries (adding/removing/renaming a `src` namespace, a cross-module `require`
+  or `:model/X` reference, or a new module), run `./bin/mage fix-modules-config` to regenerate
+  `.clj-kondo/config/modules/config.edn` and keep `metabase.core.modules-test` green. No-op when nothing
+  drifted; see "Module Boundaries" in the project `CLAUDE.md`.

@@ -53,3 +53,13 @@ export interface PieRow {
   hidden: boolean;
   isOther: boolean;
 }
+
+export interface TreemapRow {
+  key: string;
+  name: string;
+  originalName: string;
+  color: string;
+  defaultColor: boolean;
+  enabled: boolean;
+  hidden: boolean;
+}

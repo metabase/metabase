@@ -11,11 +11,12 @@ import type { DimensionClickHandler } from "./types";
 // needed for visualizationIsClickable to return true when a custom handler is
 // attached; handleVisualizationClick short-circuits before this action runs
 const CLICKABLE_MODE: ClickActionsMode = {
+  // Unjustified type cast. FIXME
   actionsForClick: () => [{ name: "custom-click" } as any],
 };
 
 type Props = {
-  title: string;
+  title?: string;
   rawSeries: any[] | null;
   isFetching: boolean;
   display: VisualizationDisplay;
@@ -49,9 +50,11 @@ export function BreakoutChartCard({
       pb={display === "row" ? "md" : "0"}
       h={h}
     >
-      <Text fw="bold" mb="md">
-        {title}
-      </Text>
+      {title && (
+        <Text fw="bold" mb="md">
+          {title}
+        </Text>
+      )}
       <Visualization
         rawSeries={rawSeries}
         isDashboard

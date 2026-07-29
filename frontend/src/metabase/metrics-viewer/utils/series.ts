@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
+import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
 import type {
   DimensionPillBarItem,
   ExpressionDimensionItem,
@@ -54,10 +55,10 @@ import {
   getEffectiveDefinitionEntry,
   getEntryBreakout,
 } from "./definition-entries";
+import { DISPLAY_TYPE_REGISTRY } from "./dimension-breakout-config";
+import { getDimensionIcon } from "./dimension-breakouts";
 import { type MetricSlot, slotsForEntity } from "./metric-slots";
 import { nextSyntheticCardId, parseSourceId } from "./source-ids";
-import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
-import { getDimensionIcon } from "./tabs";
 
 export function shouldShowStackSeries(
   display: MetricsViewerDisplayType,
@@ -352,7 +353,7 @@ export const DIMENSION_COLUMN_INDEX = 0;
 export const BREAKOUT_COLUMN_INDEX = 1;
 export const METRIC_COLUMN_INDEX = 2;
 
-// When the breakout dimension is the same as the tab's dimension,
+// When the breakout dimension is the same as the dimension breakout's dimension,
 // the query avoids adding it twice, so we get [breakout, metric] instead of [dimension, breakout, metric].
 function getBreakoutColumnDescriptor(cols: DatasetColumn[]): {
   index: number;
@@ -439,6 +440,7 @@ export function splitByBreakout({
         };
       }
     }
+    // Unjustified type cast. FIXME
     groupedRows.push([
       row[DIMENSION_COLUMN_INDEX],
       row[metricColumnIndex],
@@ -494,6 +496,7 @@ function createSeriesCard(
   display: string,
   vizSettings: VisualizationSettings,
 ): Card {
+  // Unjustified type cast. FIXME
   return {
     id,
     name,
@@ -614,7 +617,7 @@ export function buildDimensionItemsFromDefinitions(
 
       items.push({
         type: "expression",
-        id: slot.entityIndex,
+        entityIndex: slot.entityIndex,
         colors: expressionColors,
         label,
         icon,
@@ -680,15 +683,17 @@ function buildStandaloneDimensionItem(
       return null;
     }
 
-    const dimensionInfo = LibMetric.displayInfo(
-      modifiedDefinition,
-      projectionDimension,
+    const dimension = getDimensionDescriptors(defEntry.definition).get(
+      dimensionId,
     );
 
     return {
-      id: slot.slotIndex,
       type: "metric",
-      label: dimensionInfo.longDisplayName,
+      slotIndex: slot.slotIndex,
+      label:
+        dimension?.displayName ??
+        LibMetric.displayInfo(modifiedDefinition, projectionDimension)
+          .displayName,
       icon: getDimensionIcon(projectionDimension),
       colors: entryColors,
       availableOptions: computeAvailableOptions(
@@ -700,8 +705,8 @@ function buildStandaloneDimensionItem(
   }
 
   return {
-    id: slot.slotIndex,
     type: "metric",
+    slotIndex: slot.slotIndex,
     label: undefined,
     icon: undefined,
     colors: entryColors,
@@ -758,10 +763,11 @@ function buildExpressionMetricSources(
           LibMetric.projectionDimension(modifiedDefinition, projections[0]) ??
           undefined;
         if (currentDimension) {
-          currentDimensionLabel = LibMetric.displayInfo(
-            modifiedDefinition,
-            currentDimension,
-          ).longDisplayName;
+          currentDimensionLabel =
+            getDimensionDescriptors(defEntry.definition).get(dimensionId)
+              ?.displayName ??
+            LibMetric.displayInfo(modifiedDefinition, currentDimension)
+              .displayName;
           currentDimensionIcon = getDimensionIcon(currentDimension);
         }
       }
@@ -777,7 +783,7 @@ function buildExpressionMetricSources(
             return undefined;
           }
           const token = entity.tokens[slot.tokenPosition];
-          return token?.type === "metric" ? token.count : undefined;
+          return token?.type === "metric" ? token.occurrenceCount : undefined;
         })(),
         colors: entryColors,
         currentDimension,

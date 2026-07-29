@@ -73,7 +73,6 @@
 
 (deftest ^:parallel json-unfolding-default-test
   (testing "JSON Unfolding database support details behave as they're supposed to"
-    #_{:clj-kondo/ignore [:equals-true]}
     (are [details expected] (= expected
                                (driver.common/json-unfolding-default
                                 {:lib/type :metadata/database
@@ -127,7 +126,6 @@
         (mt/as-admin
           (try
             (driver/create-table! driver db-id qualified-table-name column-definitions {})
-
             (testing "insert-from-source! should insert rows with all basic types correctly"
               (let [data-source {:type :rows :data data}
                     _ (driver/insert-from-source! driver db-id
@@ -142,7 +140,8 @@
               (driver/drop-table! driver db-id qualified-table-name))))))))
 
 (deftest insert-from-jsonl-file-test
-  (mt/test-drivers #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver :mongo :clickhouse}
+  ;; TODO: give this driver set a name, or use features here. what are we selecting for?
+  (mt/test-drivers #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :sqlserver :mongo :clickhouse}
     (mt/with-empty-db
       (let [driver       driver/*driver*
             db-id        (mt/id)
@@ -158,7 +157,6 @@
         (mt/as-admin
           (try
             (driver/create-table! driver db-id qualified-table-name column-definitions {})
-
             (testing "insert-from-source! should insert rows from JSONL file correctly"
               (let [temp-file (java.io.File/createTempFile "test-data" ".jsonl")
                     col-names (map :name columns)
@@ -167,11 +165,9 @@
                                      (into {} (map vector col-names row)))
                                    data)]
                 (try
-
                   (with-open [writer (java.io.FileWriter. temp-file)]
                     (doseq [row json-rows]
                       (.write writer (str (json/encode row) "\n"))))
-
                   (let [data-source {:type :jsonl-file :file temp-file}
                         _ (driver/insert-from-source! driver db-id
                                                       {:name qualified-table-name

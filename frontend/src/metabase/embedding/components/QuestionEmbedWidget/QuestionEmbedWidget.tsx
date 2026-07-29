@@ -24,6 +24,7 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
 
   return (
     <EmbedModal
+      opened={true}
       resource={card}
       resourceType="question"
       resourceParameters={getCardUiParameters(card, metadata)}

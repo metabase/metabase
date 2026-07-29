@@ -1,13 +1,14 @@
 import type { CardId } from "./card";
+import type { DashCardId, DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
 import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
 import type { NativeDatasetQuery } from "./query";
 import type { UserId, UserInfo } from "./user";
 
-export interface ListActionsRequest {
+export type ListActionsRequest = {
   "model-id"?: CardId;
-}
+};
 
 export interface CreateActionRequest {
   database_id?: DatabaseId;
@@ -210,6 +211,37 @@ export interface WritebackActionListQuery {
 export interface GetActionRequest {
   id: number;
 }
+
+export interface ExecuteActionRequest {
+  id: WritebackActionId | BaseEntityId;
+  parameters: ParametersForActionExecution;
+}
+
+export interface PrefetchActionValuesRequest {
+  id: WritebackActionId;
+  parameters: ParametersForActionExecution;
+}
+
+export interface ExecuteDashcardActionRequest {
+  dashboardId: DashboardId;
+  dashcardId: DashCardId;
+  modelId?: CardId | null;
+  parameters: ParametersForActionExecution;
+}
+
+export interface PrefetchDashcardValuesRequest {
+  dashboardId: DashboardId;
+  dashcardId: DashCardId;
+  parameters: ParametersForActionExecution;
+}
+
+export interface PrefetchPublicDashcardValuesRequest {
+  dashboardId: DashboardId;
+  dashcardId: DashCardId;
+  parameters: ParametersForActionExecution;
+}
+
+export type ActionExecutionResult = Record<string, unknown>;
 export type GetPublicAction = Pick<
   WritebackActionBase,
   "id" | "name" | "public_uuid" | "model_id"

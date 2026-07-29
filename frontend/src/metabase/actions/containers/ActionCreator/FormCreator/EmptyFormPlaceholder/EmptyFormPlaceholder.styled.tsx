@@ -39,10 +39,10 @@ export const ExplainerList = styled.ul`
 export const ExplainerLink = styled(ExternalLink)`
   font-weight: 700;
   margin-top: var(--mantine-spacing-md);
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 
   &:hover {
-    color: ${() => lighten("brand", 0.1)};
+    color: ${() => lighten("core-brand", 0.1)};
   }
 `;
 
@@ -50,7 +50,7 @@ export const IconContainer = styled.div`
   display: inline-block;
   padding: 1.25rem;
   position: relative;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   align-self: center;
 `;
 

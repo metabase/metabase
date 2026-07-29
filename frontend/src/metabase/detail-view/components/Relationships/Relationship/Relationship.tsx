@@ -1,12 +1,12 @@
 import cx from "classnames";
 import { inflect } from "inflection";
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Loader, Stack, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -73,11 +73,11 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
         ? { component: Link, to: fkQuestionUrl, onClick }
         : undefined)}
     >
-      {isFetching && <Loader data-testid="loading-indicator" size="md" />}
+      {isFetching && <Loader size="md" />}
 
       {!isFetching && (
         <Text
-          c={count === 0 ? "text-tertiary" : "text-secondary"}
+          c={count === 0 ? "text-disabled" : "text-secondary"}
           className={S.text}
           fw="bold"
           fz={rem(24)}
@@ -88,7 +88,7 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
       )}
 
       <Text
-        c={count === 0 ? "text-tertiary" : "text-secondary"}
+        c={count === 0 ? "text-disabled" : "text-secondary"}
         className={S.text}
         fw="bold"
         lh={1}

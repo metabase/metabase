@@ -9,7 +9,7 @@
 }
 
 .searchSection {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 .listSection {
@@ -18,12 +18,12 @@
 
 .dimensionList {
   max-width: 100%;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .accordionItem {
   &:not(:last-child) {
-    border-bottom: 1px solid var(--mb-color-border);
+    border-bottom: 1px solid var(--mb-color-border-neutral);
   }
 }
 

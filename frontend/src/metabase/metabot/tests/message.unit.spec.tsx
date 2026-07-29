@@ -2,12 +2,11 @@ import { screen } from "__support__/ui";
 
 import {
   assertConversation,
-  createMockReadableStream,
+  createMockSSEStream,
   createPauses,
   enterChatMessage,
   input,
   mockAgentEndpoint,
-  responseLoader,
   sendMessageButton,
   setup,
   whoIsYourFavoriteResponse,
@@ -18,7 +17,7 @@ describe("metabot > message", () => {
     setup();
 
     const { sendResponse } = mockAgentEndpoint({
-      textChunks: whoIsYourFavoriteResponse,
+      events: whoIsYourFavoriteResponse,
       waitForResponse: true,
     });
 
@@ -26,7 +25,9 @@ describe("metabot > message", () => {
     expect(await input()).toHaveTextContent("Who is your favorite?");
 
     await enterChatMessage("Who is your favorite?");
-    expect(await responseLoader()).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("metabot-chain-of-thought"),
+    ).toBeInTheDocument();
 
     sendResponse();
 
@@ -39,7 +40,7 @@ describe("metabot > message", () => {
 
   it("should be able to send a message via send button", async () => {
     setup();
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
     await enterChatMessage("Who is your favorite?", false);
     expect(await input()).toHaveTextContent("Who is your favorite?");
@@ -50,17 +51,39 @@ describe("metabot > message", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps the reply's actions when reasoning trails the final text", async () => {
+    setup();
+    mockAgentEndpoint({
+      stream: createMockSSEStream(
+        (async function* () {
+          yield { type: "text-delta", id: "t1", delta: "Here you go." };
+          yield { type: "reasoning-start", id: "r1" };
+          yield { type: "reasoning-delta", id: "r1", delta: "double-checking" };
+          yield { type: "reasoning-end", id: "r1" };
+          yield { type: "finish", finishReason: "stop" };
+        })(),
+      ),
+    });
+
+    await enterChatMessage("Question");
+
+    expect(await screen.findByText("Here you go.")).toBeInTheDocument();
+    expect(
+      await screen.findAllByTestId("metabot-chat-message-copy"),
+    ).toHaveLength(2);
+  });
+
   it("should properly handle partial messages", async () => {
     setup();
 
     const [pause1] = createPauses(1);
     mockAgentEndpoint({
-      stream: createMockReadableStream(
+      stream: createMockSSEStream(
         (async function* () {
-          yield `0:"You, but "\n`;
+          yield { type: "text-delta", id: "t1", delta: "You, but " };
           await pause1.promise;
-          yield `0:"don't tell anyone."\n`;
-          yield `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`;
+          yield { type: "text-delta", id: "t1", delta: "don't tell anyone." };
+          yield { type: "finish", finishReason: "stop" };
         })(),
       ),
     });

@@ -44,6 +44,12 @@ function normalizeSource(
   if (source.type !== "query") {
     return source;
   }
+  // Orphan: the source database has been deleted (e.g. a serdes-imported
+  // transform whose source database is missing). The body is preserved as a
+  // breadcrumb but cannot be normalized through MLv2 without a database.
+  if (source.query?.database == null) {
+    return source;
+  }
 
   const question = Question.create({ dataset_query: source.query, metadata });
   const query = question.query();

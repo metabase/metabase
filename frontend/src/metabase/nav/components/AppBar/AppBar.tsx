@@ -1,16 +1,17 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import type { DetailViewState } from "metabase/redux/store";
-import type { CollectionId, User } from "metabase-types/api";
+import type { CollectionId, SearchResult, User } from "metabase-types/api";
 
 import S from "./AppBar.module.css";
-import AppBarLarge from "./AppBarLarge";
-import AppBarSmall from "./AppBarSmall";
+import { AppBarLarge } from "./AppBarLarge";
+import { AppBarSmall } from "./AppBarSmall";
 
 export interface AppBarProps {
-  currentUser: User;
+  currentUser: User | null;
   collectionId?: CollectionId;
   detailView: DetailViewState | null;
   isNavBarOpen?: boolean;
@@ -26,11 +27,14 @@ export interface AppBarProps {
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   isMetricsViewer?: boolean;
+  collectionBreadcrumbs?: ReactNode;
+  questionLineage?: ReactNode;
+  onSearchItemSelect?: (result: SearchResult) => void;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
 }
 
-const AppBar = (props: AppBarProps): JSX.Element => {
+export const AppBar = (props: AppBarProps): JSX.Element => {
   const isSmallScreen = useIsSmallScreen();
 
   return (
@@ -51,6 +55,3 @@ const AppBar = (props: AppBarProps): JSX.Element => {
     </header>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AppBar;

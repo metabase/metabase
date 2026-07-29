@@ -80,6 +80,10 @@ export function invalidateTags(
   return !error ? tags : [];
 }
 
+export function provideMfaStatusTags(): TagDescription<EnterpriseTagType>[] {
+  return [tag("mfa-status")];
+}
+
 export function providePythonLibraryTags(
   library: PythonLibrary,
 ): TagDescription<EnterpriseTagType>[] {

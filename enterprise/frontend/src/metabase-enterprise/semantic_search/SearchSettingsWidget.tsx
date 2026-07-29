@@ -92,7 +92,7 @@ export function SearchSettingsWidget({
           </Box>
 
           {response.error && (
-            <Text c="error">
+            <Text c="feedback-negative">
               {getErrorMessage(
                 response,
                 t`Unable to fetch health status of search index.`,
@@ -108,7 +108,7 @@ export function SearchSettingsWidget({
                 maw="25rem"
                 animated={progress < 100}
               />
-              <Text c="text-tertiary" size="md">
+              <Text c="text-disabled" size="md">
                 {progress === 100
                   ? t`Initialized search index`
                   : t`Initializing search index...`}

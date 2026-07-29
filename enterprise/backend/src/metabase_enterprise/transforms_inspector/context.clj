@@ -41,7 +41,7 @@
           table-ids (lib/all-source-table-ids query)]
       (table-ids->source-info table-ids))
     (catch Exception e
-      (log/warn e "Failed to extract sources from MBQL transform")
+      (log/warnf "Failed to extract sources from MBQL transform: %s" (ex-message e))
       nil)))
 
 (defmethod extract-sources :native
@@ -56,7 +56,7 @@
           table-ids (keep :table deps)]
       (table-ids->source-info table-ids))
     (catch Exception e
-      (log/warn e "Failed to extract sources from native transform")
+      (log/warnf "Failed to extract sources from native transform: %s" (ex-message e))
       nil)))
 
 (defmethod extract-sources :python
@@ -67,7 +67,7 @@
           table-ids (keep :table_id normalized)]
       (table-ids->source-info table-ids))
     (catch Exception e
-      (log/warn e "Failed to extract sources from Python transform")
+      (log/warnf "Failed to extract sources from Python transform: %s" (ex-message e))
       nil)))
 
 (defmethod extract-sources :default

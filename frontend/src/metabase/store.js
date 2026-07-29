@@ -1,8 +1,8 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
-import { routerMiddleware, routerReducer as routing } from "react-router-redux";
 
 import { Api } from "metabase/api";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
+import { routerMiddleware } from "metabase/router";
 
 export function getStore(
   reducers,
@@ -12,7 +12,6 @@ export function getStore(
 ) {
   const reducer = combineReducers({
     ...reducers,
-    routing,
     [Api.reducerPath]: Api.reducer,
   });
 

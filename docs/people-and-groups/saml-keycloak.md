@@ -25,7 +25,7 @@ For more information, check out our guide for [authenticating with SAML](./authe
    - **Client ID**: Enter `metabase` in lowercase.
    - **Client type**: Select `SAML` from the dropdown.
    - Click **Next**.
-   - **Valid Redirect URIs**: The URL where you are hosting your Metabase instance followed by a slash (/) and an asterisk (_). For example, if you are hosting Metabase locally at `http://localhost:3000`, the URL would be `http://localhost:3000/_`.
+   - **Valid Redirect URIs**: The URL where you are hosting your Metabase instance followed by a slash (/) and an asterisk (*). For example, if you are hosting Metabase locally at `http://localhost:3000`, the URL would be `http://localhost:3000/*`. If you've set a custom `MB_SITE_URL`, use that base URL instead — it may be `127.0.0.1` rather than `localhost`.
    - **Home URL**: In your Metabase, go to **Admin** > **Settings** > **Authentication** > **SAML**. You'll find your Home URL in the field **URL the IdP should redirect back to**.
    - Click **Save**.
 
@@ -41,7 +41,7 @@ For more information, check out our guide for [authenticating with SAML](./authe
    - [Map attributes from users in Keycloak to Metabase](#mapping-attributes-from-users-in-keycloak-to-metabase).
 7. Configure the service provider (Metabase) from **Configure** > **Realm Settings**.
    - From **Endpoints**, select “SAML 2.0 Identity Provider Metadata”.
-   - An XML file will open in a new tab.
+   - An XML file will open in a new tab. If your browser renders a formatted view, use **View Page Source** to see the raw XML with all the tags.
    - Keep this for reference, we will use it in the next section to configure Metabase.
 
 ## Mapping fields from Keycloak to Metabase
@@ -53,7 +53,6 @@ For more information, check out our guide for [authenticating with SAML](./authe
    - **SAML Identity Provider Certificate**: Input the long string that appears after the `<X509Certificate>` tag. Take care when inserting this string: if any letters or special characters are added or off, the setup won't work.
    - **SAML Application Name**: `metabase`
 3. Click **Save Changes**.
-4. Check that **SAML Authentication** is toggled **ON** at the top of the page.
 
 ## Mapping attributes from users in Keycloak to Metabase
 

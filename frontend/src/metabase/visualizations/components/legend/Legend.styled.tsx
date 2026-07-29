@@ -12,11 +12,11 @@ export const LegendRoot = styled.div<{ isVertical: boolean }>`
 
 export const LegendLink = styled.div`
   cursor: pointer;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   font-weight: bold;
 
   &:hover {
-    color: ${() => darken("brand")};
+    color: ${() => darken("core-brand")};
   }
 `;
 

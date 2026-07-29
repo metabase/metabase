@@ -8,7 +8,7 @@ import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { isEmptyStateData } from "metabase/data-studio/common/utils";
 import { useSelector } from "metabase/redux";
-import { useRouter } from "metabase/router";
+import { Link, useRouter } from "metabase/router";
 import {
   EntityNameCell,
   Flex,
@@ -23,6 +23,7 @@ import type { Collection } from "metabase-types/api";
 
 import { ActionCell } from "../components/ActionCell";
 import { EmptyStateAction } from "../components/EmptyStateAction";
+import { getTreeRowHref } from "../utils";
 
 import { useErrorHandling } from "./useErrorHandling";
 import { useLibraryCollectionTree } from "./useLibraryCollectionTree";
@@ -31,12 +32,14 @@ import { useLibrarySearch } from "./useLibrarySearch";
 
 type Params = {
   collections: Collection[];
+  isLoadingCollections: boolean;
   searchQuery: string;
   onPublishTableClick: VoidFunction;
 };
 
 export function useLibraryTreeTableInstance({
   collections,
+  isLoadingCollections,
   searchQuery,
   onPublishTableClick,
 }: Params) {
@@ -50,6 +53,7 @@ export function useLibraryTreeTableInstance({
     }
 
     const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
+    // Unjustified type cast. FIXME
     return _.object(
       ids.map((id) => [`collection:${id}`, true]),
     ) as ExpandedState;
@@ -99,7 +103,11 @@ export function useLibraryTreeTableInstance({
   );
 
   const isLoading =
-    loadingTables || loadingMetrics || loadingSnippets || isSearchLoading;
+    isLoadingCollections ||
+    loadingTables ||
+    loadingMetrics ||
+    loadingSnippets ||
+    isSearchLoading;
   useErrorHandling(tablesError || metricsError || snippetsError);
 
   const libraryHasContent = useMemo(
@@ -127,7 +135,7 @@ export function useLibraryTreeTableInstance({
           if (isEmptyStateData(data)) {
             return (
               <Flex align="center" gap="0.25rem" data-testid="empty-state-row">
-                <Text c="text-tertiary" fz="inherit">
+                <Text c="text-disabled" fz="inherit">
                   {data.description}
                 </Text>
                 {!isRemoteSyncReadOnly && (
@@ -140,7 +148,7 @@ export function useLibraryTreeTableInstance({
             );
           }
 
-          return (
+          const nameCell = (
             <EntityNameCell
               data-testid={`${row.original.model}-name`}
               icon={row.original.icon}
@@ -149,8 +157,8 @@ export function useLibraryTreeTableInstance({
                   <Group gap="sm" miw={0} align="center">
                     <Text truncate>{row.original.name}</Text>
                     <Group gap="xs">
-                      <Icon name="collection" size={12} c="text-tertiary" />
-                      <Text fz="xs" c="text-tertiary" truncate>
+                      <Icon name="collection" size={12} c="text-disabled" />
+                      <Text fz="xs" c="text-disabled" truncate>
                         {row.original.parentCollectionName}
                       </Text>
                     </Group>
@@ -160,6 +168,25 @@ export function useLibraryTreeTableInstance({
                 )
               }
             />
+          );
+
+          const href = getTreeRowHref(row);
+          if (href === null) {
+            return nameCell;
+          }
+          return (
+            <Link
+              to={href}
+              style={{
+                display: "flex",
+                flex: 1,
+                minWidth: 0,
+                textDecoration: "none",
+                color: "inherit",
+              }}
+            >
+              {nameCell}
+            </Link>
           );
         },
       },
@@ -175,6 +202,7 @@ export function useLibraryTreeTableInstance({
           if (row.original.model === "empty-state") {
             return null;
           }
+          // Unjustified type cast. FIXME
           const dateValue = getValue() as string | undefined;
           return dateValue ? <DateTime value={dateValue} /> : null;
         },
@@ -226,8 +254,8 @@ export function useLibraryTreeTableInstance({
     null,
   );
 
-  // Initialize browseExpanded from defaultExpanded once collections are loaded,
-  // so we stop falling through to a recalculated defaultExpanded on every render.
+  // Lock browseExpanded once loading settles. isLoading now includes the collections fetch, so it
+  // no longer fires early (section item queries are skipped until collections resolve).
   useEffect(() => {
     if (
       browseExpanded === null &&
@@ -270,6 +298,7 @@ export function useLibraryTreeTableInstance({
       }
       // Not loaded yet — check here/below from the API to know if expandable
       if (!isEmptyStateData(data) && "here" in data) {
+        // Unjustified type cast. FIXME
         const item = data as { here?: string[]; below?: string[] };
         return (
           (item.here != null && item.here.length > 0) ||
@@ -303,10 +332,15 @@ export function useLibraryTreeTableInstance({
     emptyMessage = t`No results for "${searchQuery}"`;
   }
 
+  const allRows = treeTableInstance.table.getCoreRowModel().flatRows;
+
   return {
     treeTableInstance,
+    allRows,
     isChildrenLoading,
     isLoading,
     emptyMessage,
+    refreshTableCollections,
+    refreshMetricCollections,
   };
 }

@@ -242,11 +242,13 @@ describe("Dashboard > Dashboard Questions", () => {
       H.entityPickerModal().button("Move").click();
 
       // we shouldn't be making 20 requests here
-      cy.wait(new Array(20).fill("@updateCard"));
+      // their staggered tail can land past cy.wait's default 5s under CPU load, so allow more time
+      cy.wait(new Array(20).fill("@updateCard"), { timeout: 30000 });
 
       H.undoToast().findByText("Moved 20 questions");
 
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      // 20+ dashcard queries stagger behind the concurrency limit; allow their tail past the 5s default
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID, { dashcardTimeout: 30000 });
 
       new Array(20).fill("slowbro").forEach((_, i) => {
         H.dashboardCards().findByText(`Question ${i + 1}`);
@@ -269,7 +271,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       cy.wait(["@updateCard", "@updateCard"]);
       cy.findByTestId("error-boundary").should("not.exist");
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID, { dashcardTimeout: 30000 });
       H.dashboardCards().findByText("Orders");
       H.dashboardCards().findByText("Orders, Count");
     });
@@ -815,6 +817,17 @@ describe("Dashboard > Dashboard Questions", () => {
         cy.button("Save").click();
       });
 
+      // The modal-save dispatches a dashcard update; the dashboard's
+      // "dirty" flag only flips once that commits. Wait for the modal to
+      // unmount before H.saveDashboard so the edit-bar Save sees the new
+      // dashcard state — otherwise its early-return-if-unchanged path
+      // skips the PUT (no @saveDashboardCards request ever fires).
+      H.modal().should("not.exist");
+      H.getDashboardCard()
+        .findAllByTestId("legend-item")
+        .filter(':contains("Blue Question")')
+        .should("exist");
+
       H.saveDashboard();
       H.getDashboardCard().within(() => {
         H.echartsContainer().should("be.visible").and("not.be.empty");
@@ -1317,5 +1330,6 @@ function selectCollectionItem(name) {
     .parent()
     .parent()
     .findByRole("checkbox")
+    .closest("button")
     .click();
 }

@@ -2,7 +2,7 @@
   display: flex;
   padding: 1rem 1rem 1rem 1.5rem;
   align-items: center;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 }
 
 .NoticeContent {
@@ -18,10 +18,10 @@
 }
 
 .NoticeCloseIcon {
-  color: var(--mb-color-background-tertiary);
+  color: var(--mb-color-background_page-tertiary);
   cursor: pointer;
 }
 
 .NoticeCloseIcon:hover {
-  color: var(--mb-color-admin-navbar);
+  color: var(--mb-color-navbar-admin);
 }

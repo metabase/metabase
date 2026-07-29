@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ReactNode } from "react";
-import { Route } from "react-router";
 
 import {
   setupDeleteTransformJobEndpoint,
@@ -11,6 +10,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks/state";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
 import {
@@ -86,7 +86,7 @@ async function setup({
 
   const path = Urls.transformJobList();
   const { history } = renderWithProviders(
-    <Route path={path} component={JobListPage} />,
+    <Route path={path} element={<JobListPage />} />,
     {
       withRouter: true,
       initialRoute: path,

@@ -2,8 +2,8 @@ import { Component } from "react";
 import { DragLayer, type XYCoord } from "react-dnd";
 import _ from "underscore";
 
-import type { CollectionContentTableColumnsMap } from "metabase/collections/components/CollectionContent/constants";
-import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
+import type { CollectionContentTableColumnsMap } from "metabase/common/collections/columns";
+import PinnedItemCard from "metabase/common/collections/components/PinnedItemCard";
 import { BaseItemsTable } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { Box, Portal } from "metabase/ui";

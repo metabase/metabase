@@ -7,6 +7,22 @@ import { UndoListing } from "metabase/common/components/UndoListing";
 import { DataComplexityHeader } from "./ConversationStatsPage";
 
 describe("DataComplexityHeader", () => {
+  it("shows when data complexity scores were last calculated", async () => {
+    const calculatedAt = new Date(
+      Date.now() - 2 * 60 * 60 * 1000,
+    ).toISOString();
+
+    fetchMock.get("path:/api/ee/data-complexity-score/complexity", {
+      meta: { calculated_at: calculatedAt },
+    });
+
+    renderWithProviders(<DataComplexityHeader />);
+
+    expect(
+      await screen.findByText("Last calculated 2 hours ago"),
+    ).toBeInTheDocument();
+  });
+
   it("recomputes data complexity scores when the recompute button is clicked", async () => {
     fetchMock.get("path:/api/ee/data-complexity-score/complexity", {});
 

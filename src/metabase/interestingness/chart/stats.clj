@@ -107,7 +107,6 @@
   [{:keys [display_type series]}]
   (or
    (get explicit-display-types display_type)
-
    (when-let [[_ first-series] (first series)]
      (let [x-type (get-in first-series [:x :type])
            x-values (:x_values first-series)
@@ -134,7 +133,6 @@
          :scatter
 
          :else :categorical)))
-
    :categorical))
 
 (mu/defn compute-chart-stats :- ::stats.types/chart-stats

@@ -59,6 +59,7 @@ export const DataModel = {
     getSortDoneButton: getTableSortDoneButton,
     getSortOrderInput: getTableSortOrderInput,
     getSyncOptionsButton: getTableSyncOptionsButton,
+    getActionsMenuButton: getTableActionsMenuButton,
     getField: getTableSectionField,
     getFieldNameInput: getTableSectionFieldNameInput,
     getFieldDescriptionInput: getTableSectionFieldDescriptionInput,
@@ -381,6 +382,10 @@ function getTableSyncOptionsButton() {
   return getTableSection().findByRole("button", { name: /Sync/ });
 }
 
+function getTableActionsMenuButton() {
+  return getTableSection().findByRole("button", { name: "More actions" });
+}
+
 function getTableSectionField(name: string) {
   return getTableSection().findByRole("listitem", { name });
 }
@@ -408,8 +413,15 @@ function getTableSectionFieldDescriptionInput(name: string) {
 }
 
 function clickTableSectionField(name: string) {
-  // clicks the icon specifically to avoid issues with clicking the name or description inputs
-  return getTableSectionField(name).findByRole("img").scrollIntoView().click();
+  // Switching tables triggers an async query_metadata fetch; until it resolves
+  // the list still shows the previous table's fields. Wait for this field to
+  // render (cross-database loads can exceed the default 4s timeout) before
+  // clicking. The icon is clicked specifically to avoid the name/description inputs.
+  return getTableSection()
+    .findByRole("listitem", { name, timeout: 15000 })
+    .findByRole("img")
+    .scrollIntoView()
+    .click();
 }
 
 function getTableSectionCloseButton() {
@@ -888,5 +900,5 @@ function getSourceReplacementDependentsTab(count: number) {
 }
 
 function getSourceReplacementFindAndReplaceButton() {
-  return cy.findByRole("button", { name: "Find and replace" });
+  return cy.findByRole("menuitem", { name: /Find and replace/ });
 }

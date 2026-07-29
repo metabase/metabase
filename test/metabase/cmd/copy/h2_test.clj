@@ -8,11 +8,9 @@
   (testing "works without file: schema"
     (is (= (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:file:/path/to/metabase.db")
            (copy.h2/h2-data-source "/path/to/metabase.db"))))
-
   (testing "works with file: schema"
     (is (= (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:file:/path/to/metabase.db")
            (copy.h2/h2-data-source "file:/path/to/metabase.db"))))
-
   (testing "works with .mv.db suffix"
     (is (= (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:file:/path/to/metabase.db")
            (copy.h2/h2-data-source "file:/path/to/metabase.db.mv.db")))))

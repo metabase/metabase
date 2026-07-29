@@ -137,7 +137,6 @@
   (testing "validate-native-query should detect invalid columns in subqueries"
     (let [mp (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
-
       (testing "Valid query - selecting existing columns from subquery"
         (validates? mp driver 10 empty?))
       (testing "Invalid query - selecting non-existent column from subquery"

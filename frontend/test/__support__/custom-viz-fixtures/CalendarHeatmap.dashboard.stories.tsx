@@ -9,9 +9,6 @@ import { getStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { Api } from "metabase/api";
-// Side-effect import: provides the `#popover-event-target { position: fixed }`
-// rule that ChartTooltip relies on to anchor near the hovered cell.
-import "metabase/common/components/Popover/Popover.module.css";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { PublicOrEmbeddedDashboardView } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
 import { publicReducers } from "metabase/reducers-public";

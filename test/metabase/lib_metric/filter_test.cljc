@@ -823,12 +823,15 @@
   (let [wanted (or id #{1 2})]
     (filterv #(contains? wanted (:id %)) [seg-source-metric-1 seg-source-metric-2])))
 
-(defn- seg-segment-fetcher [{:keys [table-id]}]
-  (case table-id
-    10 [seg-source-segment]
-    20 [seg-joined-segment]
-    30 [seg-second-source-segment]
-    []))
+(defn- seg-segment-fetcher [{table-ids :table-ids}]
+  (into []
+        (mapcat (fn [table-id]
+                  (case table-id
+                    10 [seg-source-segment]
+                    20 [seg-joined-segment]
+                    30 [seg-second-source-segment]
+                    [])))
+        table-ids))
 
 (def ^:private seg-mock-provider
   (lib-metric.metadata.provider/metric-context-metadata-provider

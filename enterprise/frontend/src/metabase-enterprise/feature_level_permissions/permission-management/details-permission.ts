@@ -8,16 +8,16 @@ import {
 } from "metabase/admin/permissions/selectors/confirmations";
 import {
   DataPermissionType,
-  type EntityId,
   type PermissionOption,
   type PermissionSectionConfig,
-  type PermissionSubject,
 } from "metabase/admin/permissions/types";
 import {
   DataPermission,
   DataPermissionValue,
   type Group,
   type GroupsPermissions,
+  type PermissionEntityId,
+  type PermissionSubject,
 } from "metabase-types/api";
 
 export const DETAILS_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
@@ -26,14 +26,14 @@ export const DETAILS_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
     label: t`No`,
     value: DataPermissionValue.NO,
     icon: "close",
-    iconColor: "danger",
+    iconColor: "feedback-negative",
   },
   yes: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`Yes`,
     value: DataPermissionValue.YES,
     icon: "check",
-    iconColor: "success",
+    iconColor: "feedback-positive",
   },
 };
 
@@ -51,7 +51,7 @@ const getDetailsPermission = (
   DETAILS_PERMISSION_OPTIONS.no.value;
 
 export const buildDetailsPermission = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: number,
   isAdmin: boolean,
   isExternal: boolean,

@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect } from "react";
 
-import { MenuItemComponent } from "metabase/documents/components/Editor/shared/MenuComponents";
+import { MenuItemComponent } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 
 import { CreateNativeQuestionModal } from "./CreateNativeQuestionModal";
 import { CreateStructuredQuestionModal } from "./CreateStructuredQuestionModal";

@@ -28,7 +28,6 @@
 (deftest ^:parallel provider-hierarchy-test
   (testing "Slack Connect provider derives from OIDC provider"
     (is (isa? :provider/slack-connect :provider/oidc)))
-
   (testing "Slack Connect provider derives from create-user-if-not-exists"
     (is (isa? :provider/slack-connect ::provider/create-user-if-not-exists))))
 
@@ -46,7 +45,6 @@
         (is (= "https://slack.com" (:issuer-uri config)))
         (is (= ["openid" "profile" "email"] (:scopes config)))
         (is (= "https://metabase.example.com/auth/sso/slack-connect/callback" (:redirect-uri config))))))
-
   (testing "Returns nil when client ID is missing"
     (mt/with-temporary-setting-values
       [slack-connect-client-id nil
@@ -54,7 +52,6 @@
       (let [request {:redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"}
             config (#'metabase.sso.providers.slack-connect/build-slack-oidc-config request)]
         (is (nil? config)))))
-
   (testing "Returns nil when client secret is missing"
     (mt/with-temporary-setting-values
       [slack-connect-client-id "test-client-id"
@@ -80,7 +77,6 @@
         (is (= "https://example.com/team.png" (get slack-attrs "slack-team-image")))
         (is (= "true" (get slack-attrs "slack-email-verified")))
         (is (= "en-US" (get slack-attrs "slack-locale"))))))
-
   (testing "Handles missing optional claims gracefully"
     (mt/with-temporary-setting-values
       [slack-connect-attribute-team-id "https://slack.com/team_id"]
@@ -398,13 +394,11 @@
       [slack-connect-client-id "test-client-id"
        slack-connect-client-secret "test-secret"]
       (is (true? (sso-settings/slack-connect-configured)))))
-
   (testing "Returns false when client ID is missing"
     (mt/with-temporary-setting-values
       [slack-connect-client-id nil
        slack-connect-client-secret "test-secret"]
       (is (false? (sso-settings/slack-connect-configured)))))
-
   (testing "Returns false when client secret is missing"
     (mt/with-temporary-setting-values
       [slack-connect-client-id "test-client-id"
@@ -418,14 +412,12 @@
        slack-connect-client-secret "test-secret"
        slack-connect-enabled true]
       (is (true? (sso-settings/slack-connect-enabled)))))
-
   (testing "Returns false when configured but not enabled"
     (mt/with-temporary-setting-values
       [slack-connect-client-id "test-client-id"
        slack-connect-client-secret "test-secret"
        slack-connect-enabled false]
       (is (false? (sso-settings/slack-connect-enabled)))))
-
   (testing "Returns false when not configured even if enabled is true"
     (mt/with-temporary-setting-values
       [slack-connect-client-id nil
@@ -441,7 +433,6 @@
       (is (= "sso" (sso-settings/slack-connect-authentication-mode)))
       (sso-settings/slack-connect-authentication-mode! "link-only")
       (is (= "link-only" (sso-settings/slack-connect-authentication-mode)))))
-
   (testing "Rejects invalid authentication modes"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo

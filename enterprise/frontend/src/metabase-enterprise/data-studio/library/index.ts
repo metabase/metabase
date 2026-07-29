@@ -2,6 +2,7 @@ import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
+import { DataReferenceLibraryPane } from "./DataReferenceLibraryPane";
 import { CollectionPermissionsModal } from "./components/CollectionPermissionsModal";
 import { CreateLibraryModal } from "./components/CreateLibraryModal";
 import { PublishTablesModal } from "./components/PublishTablesModal";
@@ -12,6 +13,7 @@ import {
   getEntityPickerSyntheticLibraryItem,
   getLibraryCollectionEmptyStateMessages,
   isLibraryCollectionType,
+  isLibraryDataCollectionType,
   isLibrarySubCollectionType,
   useGetLibraryChildCollectionByType,
   useGetLibraryCollection,
@@ -30,6 +32,7 @@ export function initializePlugin() {
     PLUGIN_LIBRARY.getCollectionPickerItems = getCollectionPickerItems;
     PLUGIN_LIBRARY.getEntityPickerSyntheticLibraryItem =
       getEntityPickerSyntheticLibraryItem;
+    PLUGIN_LIBRARY.DataReferenceLibraryPane = DataReferenceLibraryPane;
     PLUGIN_LIBRARY.CreateLibraryModal = CreateLibraryModal;
     PLUGIN_LIBRARY.CollectionPermissionsModal = CollectionPermissionsModal;
     PLUGIN_LIBRARY.PublishTablesModal = PublishTablesModal;
@@ -39,5 +42,6 @@ export function initializePlugin() {
       getLibraryCollectionEmptyStateMessages;
     PLUGIN_LIBRARY.isLibraryCollectionType = isLibraryCollectionType;
     PLUGIN_LIBRARY.isLibrarySubCollectionType = isLibrarySubCollectionType;
+    PLUGIN_LIBRARY.isLibraryDataCollectionType = isLibraryDataCollectionType;
   }
 }

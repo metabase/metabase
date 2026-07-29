@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -22,6 +21,7 @@ import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import { buildDefaultMetabots } from "metabase/metabot/tests/utils";
 import { reinitialize } from "metabase/plugins";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import {
   createMockCollection,
   createMockSettingDefinition,
@@ -40,9 +40,9 @@ type Page = "ai-features" | "mcp";
 function getPageRoute(page: Page) {
   switch (page) {
     case "mcp":
-      return <Route path="/admin/metabot/mcp" component={McpSettingsPage} />;
+      return <Route path="/admin/metabot/mcp" element={<McpSettingsPage />} />;
     case "ai-features":
-      return <Route path="/admin/metabot*" component={AISettingsPage} />;
+      return <Route path="/admin/metabot*" element={<AISettingsPage />} />;
   }
 }
 
@@ -118,6 +118,7 @@ const setup = async ({
   setupCollectionByIdEndpoint({ collections });
   setupRootCollectionItemsEndpoint({ rootCollectionItems: [] });
   setupCollectionsEndpoints({ collections: [] });
+  // Unjustified type cast. FIXME
   setupRecentViewsAndSelectionsEndpoints(defaultSeedCollections as any);
   setupMetabotsEndpoints(metabots);
 
@@ -141,10 +142,24 @@ const setup = async ({
     },
   });
 
+  // Wait for the settings queries to settle before returning.
+  // When AI features are off the MCP toggles stay disabled by design, so there we just await render.
   if (page === "mcp") {
-    await screen.findByRole("switch", { name: "MCP server" });
+    if (aiFeaturesEnabled) {
+      await waitFor(() =>
+        expect(
+          screen.getByRole("switch", { name: "MCP server" }),
+        ).toBeEnabled(),
+      );
+    } else {
+      await screen.findByRole("switch", { name: "MCP server" });
+    }
   } else {
-    await screen.findByText("Disable all AI features");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("switch", { name: "Disable all AI features" }),
+      ).toBeEnabled(),
+    );
   }
 
   return view;
@@ -237,7 +252,7 @@ describe("AISettingsPage", () => {
 
     expect(
       await screen.findByRole("switch", {
-        name: "Only use Verified content",
+        name: "Only use verified or curated content",
       }),
     ).toBeChecked();
   });

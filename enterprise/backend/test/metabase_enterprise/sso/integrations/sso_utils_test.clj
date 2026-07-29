@@ -13,7 +13,6 @@
         "localhost"
         "http://localhost:3000"
         "http://localhost:3000/dashboard/1-test-dashboard?currency=British%20Pound"))
-
     (testing "check-sso-redirect- throws an error for invalid redirect URIs"
       (are [uri] (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid redirect URL" (sso-utils/check-sso-redirect uri))
         "http://example.com"

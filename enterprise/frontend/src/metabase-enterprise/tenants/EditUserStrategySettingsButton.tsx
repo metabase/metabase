@@ -1,6 +1,6 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
+import { Link } from "metabase/router";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase-enterprise/urls";
 
@@ -15,7 +15,7 @@ export const EditUserStrategySettingsButton = ({
         size="lg"
         variant="outline"
         c="text-primary"
-        bd="1px solid var(--mb-color-border)"
+        bd="1px solid var(--mb-color-border-neutral)"
       >
         <Icon name="gear" />
       </ActionIcon>

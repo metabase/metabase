@@ -162,7 +162,9 @@ Delivered to `onParametersChange` (SDK) and as `event.detail` for the `parameter
 
 `source` indicates why the callback fired:
 
-{% include_file "{{ dirname }}/sdk/api/snippets/ParameterChangeSource.md" %}
+- `initial-state` - first applied snapshot, fired once per dashboard load.
+- `manual-change` - user edited parameters in UI.
+- `auto-change` - in the case of auto-updates, e.g. to pass normalized values back to parent.
 
 ## SQL question parameter change payload
 
@@ -172,4 +174,6 @@ Delivered to `onSqlParametersChange` (SDK) and as `event.detail` for the `sql-pa
 
 `source` indicates why the callback fired:
 
-{% include_file "{{ dirname }}/sdk/api/snippets/SqlParameterChangeSource.md" %}
+- `initial-state` - first applied state, fired once per question load.
+- `manual-change` - user edited parameters in UI.
+- `auto-change` - in the case of auto-updates, e.g. to pass normalized values back to parent.

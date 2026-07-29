@@ -1,10 +1,10 @@
-import type { OptionsType } from "metabase/utils/formatting/types";
+import type { ColumnSettings } from "metabase-types/api";
 
 import { getUrlProtocol } from "./url";
 
 export function formatImage(
   value: string,
-  { jsx, rich, view_as = "auto" }: OptionsType = {},
+  { jsx, rich, view_as = "auto" }: ColumnSettings = {},
 ) {
   const url = String(value);
   const protocol = getUrlProtocol(url);

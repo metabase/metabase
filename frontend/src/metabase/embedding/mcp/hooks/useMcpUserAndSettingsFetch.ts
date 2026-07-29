@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import { refreshSiteSettings } from "metabase/redux/settings";
+import { refetchSiteSettings, userApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { userUpdated } from "metabase/redux/user";
-import { UserApi } from "metabase/services";
 
 import {
   type McpAppsUserAndSettingsFetchErrorType,
@@ -56,8 +56,12 @@ export function useMcpUserAndSettingsFetch({
         }
 
         const [currentUser] = await Promise.all([
-          UserApi.current(),
-          store.dispatch(refreshSiteSettings()),
+          runRtkEndpoint(
+            undefined,
+            store.dispatch,
+            userApi.endpoints.getCurrentUser,
+          ),
+          store.dispatch(refetchSiteSettings()),
         ]);
 
         if (!isMounted) {

@@ -94,6 +94,9 @@ describe(suiteTitle, () => {
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("PUT", "/api/setting/sdk-iframe-embed-setup-settings").as(
+      "persistSettings",
+    );
 
     mockEmbedJsToDevServer();
   });
@@ -137,7 +140,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,authType=sso,drills=false,withDownloads=false,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=default",
+        "settings=custom,experience=dashboard,authType=sso,drills=false,withDownloads=false,withSubscriptions=false,withTitle=true,theme=default",
     });
 
     codeBlock().should("contain", 'drills="false"');
@@ -174,7 +177,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,authType=sso,drills=true,withDownloads=true,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=default",
+        "settings=custom,experience=dashboard,authType=sso,drills=true,withDownloads=true,withSubscriptions=false,withTitle=true,theme=default",
     });
 
     codeBlock().should("contain", 'with-subscriptions="false"');
@@ -184,6 +187,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectGuest: true,
     });
 
     getEmbedSidebar()
@@ -221,7 +225,6 @@ describe(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       cy.button("Back").click();
       cy.button("Back").click();
-      cy.button("Back").click();
 
       cy.findByLabelText("Metabase account (SSO)").click();
     });
@@ -229,7 +232,6 @@ describe(suiteTitle, () => {
     embedModalEnableEmbedding();
 
     getEmbedSidebar().within(() => {
-      cy.button("Next").click();
       cy.button("Next").click();
 
       // Trigger mouseover (not mouseenter) because this HoverCard is outside a
@@ -371,7 +373,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,authType=sso,drills=true,withDownloads=false,withSubscriptions=true,withTitle=true,isSaveEnabled=false,theme=default",
+        "settings=custom,experience=dashboard,authType=sso,drills=true,withDownloads=false,withSubscriptions=true,withTitle=true,theme=default",
     });
 
     codeBlock().should("contain", 'with-subscriptions="true"');
@@ -381,6 +383,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectGuest: true,
     });
 
     H.publishChanges("dashboard");
@@ -458,6 +461,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
+      preselectGuest: true,
     });
 
     H.publishChanges("card");
@@ -559,6 +563,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
+      preselectGuest: true,
     });
 
     getEmbedSidebar()
@@ -593,7 +598,6 @@ describe(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       cy.button("Back").click();
       cy.button("Back").click();
-      cy.button("Back").click();
 
       cy.findByLabelText("Metabase account (SSO)").click();
     });
@@ -601,7 +605,6 @@ describe(suiteTitle, () => {
     embedModalEnableEmbedding();
 
     getEmbedSidebar().within(() => {
-      cy.button("Next").click();
       cy.button("Next").click();
 
       cy.findByLabelText("Allow alerts")
@@ -703,7 +706,6 @@ describe(suiteTitle, () => {
         .and("include", "embedding/components.html#question");
 
       cy.findByText("Back").click();
-      cy.findByText("Back").click();
 
       cy.findByText("Metabot").click();
       cy.findByText("Next").click();
@@ -775,6 +777,31 @@ describe(suiteTitle, () => {
     });
   });
 
+  it("toggles save button for metabot", () => {
+    navigateToEmbedOptionsStep({ experience: "metabot" });
+
+    getEmbedSidebar()
+      .findByLabelText("Allow people to save new questions")
+      .should("not.be.checked");
+
+    cy.log("turn on save option");
+    getEmbedSidebar()
+      .findByLabelText("Allow people to save new questions")
+      .click()
+      .should("be.checked");
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,experience=metabot,authType=sso,isSaveEnabled=true,theme=default",
+    });
+
+    codeBlock().should("contain", 'is-save-enabled="true"');
+  });
+
   it("can toggle read-only setting for browser", () => {
     navigateToEmbedOptionsStep({
       experience: "browser",
@@ -815,6 +842,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectGuest: true,
     });
 
     H.publishChanges("dashboard");
@@ -940,7 +968,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,authType=sso,drills=true,withDownloads=false,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=custom",
+        "settings=custom,experience=dashboard,authType=sso,drills=true,withDownloads=false,withSubscriptions=false,withTitle=true,theme=custom",
     });
 
     // derived-colors-for-embed-flow.unit.spec.ts contains the tests for other derived colors.
@@ -951,6 +979,13 @@ describe(suiteTitle, () => {
     // Should no longer derive background-hover as it is color-mix'd
     // in the colors configuration
     codeBlock().should("not.contain", '"background-hover"');
+
+    // Wait for the debounced theme persist to land before the test ends —
+    // otherwise the orphaned `_.debounce` callback in `useUserSetting` fires
+    // after `H.restore()` of the next test and writes the custom theme back
+    // into the freshly-restored DB, polluting downstream snowplow assertions.
+    // Proper fix (flush-on-unmount in `useUserSetting`) tracked in EMB-1795.
+    cy.wait("@persistSettings");
   });
 
   it("can toggle the Metabot layout from auto to stacked to sidebar", () => {
@@ -969,7 +1004,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=metabot,authType=sso,layout=stacked,theme=default",
+        "settings=custom,experience=metabot,authType=sso,isSaveEnabled=false,layout=stacked,theme=default",
     });
 
     getEmbedSidebar().findByText("Back").click();
@@ -985,7 +1020,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=metabot,authType=sso,layout=sidebar,theme=default",
+        "settings=custom,experience=metabot,authType=sso,isSaveEnabled=false,layout=sidebar,theme=default",
     });
   });
 });

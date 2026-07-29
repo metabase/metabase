@@ -10,9 +10,8 @@ import {
 import { usePrevious } from "react-use";
 
 import { Sortable } from "metabase/common/components/Sortable";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import type { DashboardFullscreenControls } from "metabase/dashboard/types";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, Flex } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
@@ -29,29 +28,27 @@ import S from "./ParameterWidget.module.css";
 export type ParameterWidgetProps = PropsWithChildren<
   {
     parameter: UiParameter;
-  } & Partial<
-    {
-      setValue: (value: any) => void;
-      cardId?: CardId;
-      dashboardId?: DashboardId;
+  } & Partial<{
+    setValue: (value: any) => void;
+    cardId?: CardId;
+    dashboardId?: DashboardId;
 
-      editingParameter: Parameter | null;
-      commitImmediately: boolean;
-      parameters: UiParameter[];
-      setParameterValueToDefault: (parameterId: ParameterId) => void;
-      enableParameterRequiredBehavior: boolean;
-      isSortable: boolean;
-      isEditing: boolean;
-      className: string;
-      isFullscreen: boolean;
-      setEditingParameter: (parameterId: ParameterId | null) => void;
-      dragHandle: ReactNode;
-      withinPortal?: boolean;
-      fullWidth?: boolean;
-      hasTestId?: boolean;
-      popoverPosition: "bottom-start" | "bottom-end";
-    } & Pick<DashboardFullscreenControls, "isFullscreen">
-  >
+    editingParameter: Parameter | null;
+    commitImmediately: boolean;
+    parameters: UiParameter[];
+    setParameterValueToDefault: (parameterId: ParameterId) => void;
+    enableParameterRequiredBehavior: boolean;
+    isSortable: boolean;
+    isEditing: boolean;
+    className: string;
+    isFullscreen: boolean;
+    setEditingParameter: (parameterId: ParameterId | null) => void;
+    dragHandle: ReactNode;
+    withinPortal?: boolean;
+    fullWidth?: boolean;
+    hasTestId?: boolean;
+    popoverPosition: "bottom-start" | "bottom-end";
+  }>
 >;
 
 export const ParameterWidget = ({

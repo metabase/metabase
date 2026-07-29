@@ -1,7 +1,7 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/api";
-import { Button, Center, Stack, Text } from "metabase/ui";
+import { Anchor, Button, Center, Stack, Text } from "metabase/ui";
 
 interface EnableEmbeddingPromptProps {
   isEnabled: boolean;
@@ -21,9 +21,24 @@ export function EnableEmbeddingPrompt({
     });
   };
 
+  const usageConditionsLink = (
+    <Anchor
+      key="usage-conditions"
+      href="https://metabase.com/license/embedding"
+      target="_blank"
+    >
+      {t`usage conditions`}
+    </Anchor>
+  );
+
   const message = !isEnabled
-    ? t`Enable modular embedding to see a live preview of your theme.`
-    : t`Accept the usage conditions to see a live preview of your theme.`;
+    ? c(
+        "Prompt to enable modular embedding to see a live preview of an embedding theme.",
+      ).t`Enable modular embedding to see a live preview of your theme.`
+    : c(
+        "{0} is a link to the embedding conditions, for users to accept them and see a live preview of their theme.",
+      )
+        .jt`Accept the ${usageConditionsLink} to see a live preview of your theme.`;
 
   const buttonLabel = !isEnabled
     ? t`Enable modular embedding`

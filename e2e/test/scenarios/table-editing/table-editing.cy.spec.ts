@@ -385,9 +385,9 @@ describe("scenarios > table-editing", () => {
             });
           });
 
-        const day = Math.floor(Math.random() * 10) + 10; // 10-20
-        const hour = Math.floor(Math.random() * 12);
-        const minute = Math.floor(Math.random() * 60);
+        const day = 15;
+        const hour = 11;
+        const minute = 35;
 
         H.popover().within(() => {
           cy.findByRole("button", { name: `${day} February 2020` }).click();
@@ -401,9 +401,7 @@ describe("scenarios > table-editing", () => {
         });
 
         cy.wait("@updateTableData").then(({ response, request }) => {
-          const targetDate = dayjs(
-            new Date(2020, 1, day, hour, minute, 0),
-          ).format("YYYY-MM-DDTHH:mm:ss");
+          const targetDate = "2020-02-15T11:35:00";
 
           const requestDate = request.body.params.datetime;
           const responseDate = response?.body.outputs[0].row.datetime;
@@ -627,6 +625,67 @@ describe("scenarios > table-editing", () => {
       H.popover()
         .findByRole("option", { name: `Add option: ${NON_EXISTING_ID}` })
         .should("be.visible");
+    });
+
+    it("should allow creating a record in a table with a required date column (metabase#70647)", () => {
+      const TABLE_NAME = "date_create_test";
+
+      H.queryWritableDB(`DROP TABLE IF EXISTS ${TABLE_NAME}`, "postgres");
+      H.queryWritableDB(
+        `CREATE TABLE ${TABLE_NAME} (
+          id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+          sale_date DATE NOT NULL
+        )`,
+        "postgres",
+      );
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+      cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
+      cy.intercept("POST", "api/ee/action-v2/execute-bulk").as("executeBulk");
+
+      H.getTableId({ databaseId: WRITABLE_DB_ID, name: TABLE_NAME }).then(
+        (tableId) => {
+          cy.visit(
+            `/browse/databases/${WRITABLE_DB_ID}/tables/${tableId}/edit`,
+          );
+        },
+      );
+      cy.wait("@getTableMetadata");
+
+      cy.findByTestId("new-record-button").click();
+      H.modal().findByText("Create a new record").should("be.visible");
+
+      // The DATE column is NOT NULL, so the form stays invalid until a date is
+      // picked. Before the fix, picking a date never reached the form state, so
+      // the submit button stayed disabled and the row could not be created.
+      cy.findByTestId("Sale Date-field-input").should("be.visible");
+      cy.findByTestId("create-row-form-submit-button").should("be.disabled");
+
+      const targetDay = dayjs().date(15);
+      cy.findByTestId("Sale Date-field-input").click();
+      H.popover()
+        .findByRole("button", { name: targetDay.format("D MMMM YYYY") })
+        .click();
+
+      cy.findByTestId("create-row-form-submit-button")
+        .should("be.enabled")
+        .click();
+
+      cy.wait("@executeBulk").then(({ request, response }) => {
+        expect(request.body.action).to.equal("data-grid.row/create");
+        expect(response?.body.outputs[0].op).to.equal("created");
+
+        const responseDate = dayjs(
+          response?.body.outputs[0].row.sale_date,
+        ).format("YYYY-MM-DD");
+        expect(responseDate).to.equal(targetDay.format("YYYY-MM-DD"));
+      });
+
+      H.undoToast()
+        .findByText("Record successfully created")
+        .should("be.visible");
+
+      H.queryWritableDB(`DROP TABLE IF EXISTS ${TABLE_NAME}`, "postgres");
     });
   });
 });

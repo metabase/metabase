@@ -80,7 +80,7 @@
                                                                           :shared-storage @shared-storage-ref})
             events (python-runner/read-events @shared-storage-ref)
             output-manifest (python-runner/read-output-manifest @shared-storage-ref)]
-      ;; not sure about munging this all together but its what tests expect for now
+        ;; not sure about munging this all together but its what tests expect for now
         (merge (:body response)
                {:output          (when-some [in (python-runner/open-output @shared-storage-ref)] (with-open [in in] (slurp in)))
                 :output-manifest output-manifest
@@ -187,7 +187,6 @@
                                   "    return students")
               result         (execute! {:code   transform-code
                                         :tables {"students" (mt/id :students)}})]
-
           (is (=? {:output          (jsonl-output [{:id 1 :name "Alice" :score 85}
                                                    {:id 2 :name "Bob" :score 92}
                                                    {:id 3 :name "Charlie" :score 88}
@@ -260,7 +259,6 @@
                                   "    return result")
               result         (execute! {:code  transform-code
                                         :tables {"students" (mt/id :students)}})]
-
           (is (=? {:output          "{\"student_count\":0,\"average_score\":null}\n"
                    :output-manifest {:schema_version 1
                                      :data_format    "jsonl"
@@ -293,7 +291,6 @@
                                   "    return result")
               result         (execute! {:code  transform-code
                                         :tables {"students" (mt/id :students)}})]
-
           (is (=? {:output          "{\"student_count\":4,\"average_score\":88.75}\n"
                    :output-manifest {:schema_version 1
                                      :data_format    "jsonl"
@@ -347,18 +344,14 @@
             [row1 row2 row3] rows
             get-col (fn [row col-name] (get row (keyword col-name)))
             metadata (:output-manifest result)]
-
         (is (= (set ["id" "name" "description" "count" "price" "is_active" "created_date" "updated_at" "scheduled_for"])
                (set headers)))
-
         (is (= 1 (get-col row1 "id")))
         (is (= "Product A" (get-col row1 "name")))
         (is (datetime-equal? "2024-01-16T14:00:00Z" (get-col row1 "scheduled_for")))
-
         (is (= 2 (get-col row2 "id")))
         (is (= "Product B" (get-col row2 "name")))
         (is (datetime-equal? "2024-02-02T21:30:00Z" (get-col row2 "scheduled_for")))
-
         (is (= 3 (get-col row3 "id")))
         (is (= "Product C" (get-col row3 "name")))
         (is (datetime-equal? "2024-03-11T06:00:00Z" (get-col row3 "scheduled_for")))
@@ -369,7 +362,7 @@
                   "count"         :type/BigInteger
                   "price"         :type/Float
                   "is_active"     :type/Boolean
-                 ;; Our hack works
+                  ;; Our hack works
                   "created_date"  :type/Date
                   "updated_at"    :type/DateTime
                   "scheduled_for" :type/DateTimeWithLocalTZ}
@@ -482,11 +475,9 @@
                               :tables {table-name (mt/id qualified-table-name)}})
 
             metadata (:output-manifest result)]
-
         (testing "All expected columns are present"
           (is (= #{"id" "price" "active" "created_tz" "created_at" "created_date" "description"}
                  (set (map :name (:fields metadata))))))
-
         (testing "types are preserved correctly"
           (is (= {"id"           (if (= :snowflake driver) :type/BigInteger :type/Integer)
                   "price"        :type/Float
@@ -500,8 +491,7 @@
                   "description"  :type/Text}
                  (u/for-map [{:keys [name base_type]} (:fields metadata)]
                    [name (python-runner/restricted-insert-type base_type)]))))
-
-       ;; cleanup
+        ;; cleanup
         (driver/drop-table! driver db-id qualified-table-name)))))
 
 (deftest python-runner-timeout-test

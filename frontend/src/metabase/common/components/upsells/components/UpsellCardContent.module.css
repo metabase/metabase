@@ -1,7 +1,7 @@
 .ImageCard {
   --mb-color-upsell-pattern-light: color-mix(
     in srgb,
-    var(--mb-color-brand),
+    var(--mb-color-core-brand),
     transparent 95%
   );
 
@@ -22,7 +22,7 @@
   border: none;
   border-radius: 4px;
   padding: 10px 20px;
-  background: var(--mb-color-brand);
+  background: var(--mb-color-core-brand);
   color: var(--mb-color-text-primary-inverse);
   transition:
     background 150ms,
@@ -37,6 +37,10 @@
 .UpsellCta:hover,
 .UpsellCta:focus {
   color: var(--mb-color-text-primary-inverse);
-  border-color: color-mix(in srgb, var(--mb-color-brand), transparent 12%);
-  background-color: color-mix(in srgb, var(--mb-color-brand), transparent 12%);
+  border-color: color-mix(in srgb, var(--mb-color-core-brand), transparent 12%);
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-core-brand),
+    transparent 12%
+  );
 }

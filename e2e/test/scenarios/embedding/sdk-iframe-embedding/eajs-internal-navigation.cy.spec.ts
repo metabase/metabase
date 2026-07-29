@@ -266,6 +266,7 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
 
       cy.get("@startingDashboardId").then(async (dashboardId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: dashboardId as unknown as number,
           resourceType: "dashboard",
         });

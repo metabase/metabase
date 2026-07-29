@@ -29,4 +29,3 @@
                               :value {:note {:title "string" :description "string" :values []}
                                       :channels {:terminal "string" :app "string" :web "string"}}}]}
            (hive-schema->map "struct<extendedfields:map<string,struct<note:struct<title:string,description:string,values:array<string>>,channels:struct<terminal:string,app:string,web:string>>>>")))))
-

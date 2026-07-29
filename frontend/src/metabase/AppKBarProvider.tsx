@@ -1,11 +1,11 @@
 import { KBarProvider, useKBar, useRegisterActions } from "kbar";
 import { type PropsWithChildren, useMemo } from "react";
 
-import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/complex";
 import type { PaletteAction } from "metabase/palette/types";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { getAdminPaths } from "metabase/selectors/admin";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 export const AppKBarProvider = ({ children }: PropsWithChildren) => (

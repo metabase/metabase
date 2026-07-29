@@ -36,6 +36,23 @@
   [_model _instance]
   (api/is-data-analyst?))
 
+(defn schedules-for-transforms
+  "Map each id in `transform-ids` to the cron schedules of the active jobs that run it via shared tags.
+  Ids with no such job are absent."
+  [transform-ids]
+  (when (seq transform-ids)
+    (reduce (fn [m {:keys [transform_id schedule]}]
+              (update m transform_id (fnil conj #{}) schedule))
+            {}
+            (t2/select :model/TransformTransformTag
+                       {:select [:ttt.transform_id [:job.schedule :schedule]]
+                        :from   [[:transform_transform_tag :ttt]]
+                        :join   [[:transform_job_transform_tag :jtt] [:= :ttt.tag_id :jtt.tag_id]
+                                 [:transform_job :job] [:= :jtt.job_id :job.id]]
+                        :where  [:and
+                                 [:in :ttt.transform_id transform-ids]
+                                 [:= :job.active true]]}))))
+
 (defn tag-name-exists?
   "Check if a tag with the given name already exists"
   [tag-name]
@@ -93,10 +110,6 @@
                                        [tag-id (every? #(get transform-id->can-write % false) tform-ids)]))
                                 tag-id->transform-ids)]
       (mapv #(assoc % :can_run (get tag-id->can-run (:id %) true)) tags))))
-
-(defmethod serdes/hash-fields :model/TransformTag
-  [_tt]
-  [:name :built_in_type])
 
 (defmethod serdes/make-spec "TransformTag"
   [_model-name _opts]

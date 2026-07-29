@@ -1,20 +1,18 @@
 import type { ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
-import { Link } from "react-router";
+import { useCallback, useState } from "react";
 import { c, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { Anchor, Button, Text } from "metabase/ui";
-import { isNotNull } from "metabase/utils/types";
+import { Link } from "metabase/router";
+import { ActionIcon, Anchor, Button, Icon, Menu, Text } from "metabase/ui";
 import type { SettingDefinition } from "metabase-types/api";
 
 import {
   CardBadge,
   CardDescription,
   CardHeader,
-  CardMenu,
   CardRoot,
   CardTitle,
 } from "./AuthCard.styled";
@@ -160,22 +158,29 @@ const AuthCardMenu = ({
   onChange,
   onDeactivate,
 }: AuthCardMenuProps): JSX.Element => {
-  const menuItems = useMemo(
-    () =>
-      [
-        {
-          title: isEnabled ? t`Pause` : t`Resume`,
-          icon: isEnabled ? "pause" : "play",
-          action: () => onChange(!isEnabled),
-        },
-        onDeactivate && {
-          title: `Deactivate`,
-          icon: "close",
-          action: onDeactivate,
-        },
-      ].filter(isNotNull),
-    [isEnabled, onChange, onDeactivate],
+  return (
+    <Menu position="bottom-end">
+      <Menu.Target>
+        <ActionIcon aria-label={t`Actions`} variant="subtle" ml="auto">
+          <Icon name="ellipsis" />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Item
+          leftSection={<Icon name={isEnabled ? "pause" : "play"} aria-hidden />}
+          onClick={() => onChange(!isEnabled)}
+        >
+          {isEnabled ? t`Pause` : t`Resume`}
+        </Menu.Item>
+        {onDeactivate && (
+          <Menu.Item
+            leftSection={<Icon name="close" aria-hidden />}
+            onClick={onDeactivate}
+          >
+            {t`Deactivate`}
+          </Menu.Item>
+        )}
+      </Menu.Dropdown>
+    </Menu>
   );
-
-  return <CardMenu triggerIcon="ellipsis" items={menuItems} />;
 };

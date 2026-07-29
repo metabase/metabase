@@ -43,6 +43,7 @@ export type ChartSettingSeriesOrderProps = {
   hasEditSettings: boolean;
   onChangeSeriesColor: (seriesKey: string, color: string) => void;
   onSortEnd: (newItems: SortableItem[]) => void;
+  isSortable?: boolean;
   accentColorOptions?: AccentColorOptions;
   getItemColor?: (item: SortableChartSettingOrderedItem) => string | undefined;
   addButtonLabel?: string;
@@ -63,6 +64,7 @@ export const ChartSettingSeriesOrder = ({
   hasEditSettings = true,
   onChangeSeriesColor,
   onSortEnd,
+  isSortable = true,
   getItemColor,
   accentColorOptions,
   otherColor,
@@ -184,7 +186,7 @@ export const ChartSettingSeriesOrder = ({
           <Flex justify="space-between" px={4}>
             <Group p={4} gap="sm">
               <ColorSelector
-                value={otherColor ?? color("text-tertiary")}
+                value={otherColor ?? color("text-disabled")}
                 colors={getAccentColors()}
                 onChange={onOtherColorChange}
                 pillSize="small"
@@ -220,6 +222,7 @@ export const ChartSettingSeriesOrder = ({
             onRemove={visibleItems.length > 1 ? toggleDisplay : undefined}
             onEnable={toggleDisplay}
             onSortEnd={handleSortEnd}
+            isSortable={isSortable}
             onEdit={hasEditSettings ? handleOnEdit : undefined}
             onColorChange={handleColorChange}
             getId={getId}

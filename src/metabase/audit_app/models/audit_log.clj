@@ -45,7 +45,7 @@
 (defmethod model-details :model/Card
   [{card-type :type, :as card} _event-type]
   (merge (select-keys card [:name :description :database_id :table_id])
-          ;; Use `model` instead of `dataset` to mirror product terminology
+         ;; Use `model` instead of `dataset` to mirror product terminology
          {:model? (= (keyword card-type) :model)}))
 
 (defmethod model-details :model/Channel

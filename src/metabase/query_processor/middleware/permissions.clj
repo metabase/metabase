@@ -92,7 +92,9 @@
      (dissoc stage-or-join :query-permissions/sandboxed-table))))
 
 (defn remove-persisted-info-native-keys
-  "Strips `:persisted-info/native` from query stages."
+  "Pre-processing middleware. Removes any `:persisted-info/native` keys from the query. This key is populated later by
+  the fetch-source-query middleware to point at a persisted/cached native query, so any value already present at this
+  stage is stale and is cleared (like the functions above)."
   [query]
   (lib.walk/walk
    query
@@ -136,14 +138,11 @@
               ;; Recursively check permissions for any source Cards
               (doseq [card-id source-card-ids]
                 (query-perms/check-card-read-perms database-id card-id))
-
               ;; Check that we have the data permissions to run this card
               (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
-
               ;; Check that all columns from source cards result_metadata are accessible
               (doseq [card-id source-card-ids]
                 (query-perms/check-card-result-metadata-data-perms database-id card-id))
-
               ;; Recursively check permissions for any Cards referenced by this query via template tags
               (doseq [{query :dataset-query} (lib/template-tags-referenced-cards
                                               (lib/query (qp.store/metadata-provider) outer-query))]

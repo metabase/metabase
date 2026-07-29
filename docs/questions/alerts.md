@@ -32,13 +32,13 @@ To create an alert:
 2. Click on the **three dots** in the top-right of the screen.
 3. Select **Create an alert**.
 4. Select what you want to be alerted about (options depend on the question type):
-    - [When a question returns a result](#results-alerts) - for any question.
-    - [When a time series crosses a goal line](#goal-line-alerts) - for a line, bar, or area chart displaying a time series.
-    - [When a progress bar reaches or goes below its goal](#progress-bar-alerts) - for progress bars.
-6. Select when you want Metabase to check the results: by the minute, hourly, daily, weekly, monthly, or on a custom schedule that you set using the Quartz [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
-7. Select the alert's destination: [email](../configuring-metabase/email.md), [Slack](../configuring-metabase/slack.md), or to a [webhook](../configuring-metabase/webhooks.md) (only admins and people with [settings access](../permissions/application.md#settings-access) can create and send to webhooks).
-8. Configure any other options (like [only sending the alert once](#send-a-one-time-alert)).
-9. Click **Done**.
+   - [When a question returns a result](#results-alerts) - for any question.
+   - [When a time series crosses a goal line](#goal-line-alerts) - for a line, bar, or area chart displaying a time series.
+   - [When a progress bar reaches or goes below its goal](#progress-bar-alerts) - for progress bars.
+5. Select when you want Metabase to check the results: by the minute, hourly, daily, weekly, monthly, or on a custom schedule that you set using the Quartz [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
+6. Select the alert's destination: [email](../configuring-metabase/email.md), [Slack](../configuring-metabase/slack.md), or to a [webhook](../configuring-metabase/webhooks.md) (only admins and people with [settings access](../permissions/application.md#settings-access) can create and send to webhooks).
+7. Configure any other options (like [only sending the alert once](#send-a-one-time-alert)).
+8. Click **Done**.
 
 ## Send a one-time alert
 
@@ -75,11 +75,11 @@ To create an alert when a time series crosses a goal line:
 5. Save the question.
 6. Click the **three dots** icon in top and select "Create alert"
 
-    You can choose:
+   You can choose:
 
-    - Whether you want Metabase to alert you when the time series goes above the goal line or when it goes below the goal line.
-    - Whether you want Metabase to alert you every time the time series crosses a goal line, or only the first time it crosses the goal line.
-    - How often you want Metabase to check to see if the goal line has been crossed.
+   - Whether you want Metabase to alert you when the time series goes above the goal line or when it goes below the goal line.
+   - Whether you want Metabase to alert you every time the time series crosses a goal line, or only the first time it crosses the goal line.
+   - How often you want Metabase to check to see if the goal line has been crossed.
 
 7. Select the schedule and recipients for the alert, and click "Done"
 
@@ -115,6 +115,8 @@ Admins:
 - Admins can edit and delete any alert. This can't be undone, so be careful!
 - Admins can add or remove recipients on any alert, even ones that they didn't create themselves.
 - Admins can bulk manage alerts per person from the [People menu in Admin settings](../people-and-groups/managing.md#unsubscribe-from-all-subscriptions-and-alerts).
+
+- Admins can bulk manage all alerts in the instance in [Admin > Tools > Alert management](../installation-and-operation/alert-management.md).
 
 Metabase will email you when:
 

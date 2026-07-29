@@ -66,7 +66,6 @@
            (resolve-and-return-cached-metadata
             (lib.tu.macros/mbql-query nil
               {:source-query {:source-table $$venues}}))))
-
     (is (= {:tables #{"VENUES"}}
            (resolve-and-return-cached-metadata
             (lib.tu.macros/mbql-query nil

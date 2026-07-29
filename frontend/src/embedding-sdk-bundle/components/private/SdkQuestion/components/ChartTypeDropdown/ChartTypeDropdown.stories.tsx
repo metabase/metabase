@@ -4,6 +4,7 @@ import { Box, Flex } from "metabase/ui";
 
 import { ChartTypeDropdown } from "./ChartTypeDropdown";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {

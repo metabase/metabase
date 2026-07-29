@@ -477,6 +477,21 @@
     stage-number :- [:maybe :int]]
    (perf/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
 
+(defn- flatten-and-clause
+  [a-filter]
+  (if (lib.util/clause-of-type? a-filter :and)
+    (into [] (mapcat flatten-and-clause) (drop 2 a-filter))
+    [a-filter]))
+
+(mu/defn atomic-filters :- [:maybe [:ref ::lib.schema/filters]]
+  "Like [[filters]], but with any top-level `:and` clauses recursively flattened so the result is a
+  list of atomic (non-`:and`) boolean filter clauses. The conjunction of the returned list is
+  logically equivalent to the conjunction of [[filters]]."
+  ([query :- ::lib.schema/query] (atomic-filters query nil))
+  ([query        :- ::lib.schema/query
+    stage-number :- [:maybe :int]]
+   (perf/not-empty (into [] (mapcat flatten-and-clause) (filters query stage-number)))))
+
 (defn- leading-ref
   "Returns the first argument of `a-filter` if it is a reference clause, nil otherwise."
   [a-filter]

@@ -1,4 +1,4 @@
-(ns metabase.driver.postgres-test
+(ns ^:mb/driver-tests metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.driver.postgres-test]}
                                                             metabase.test.data/query          {:namespaces [metabase.driver.postgres-test]}
@@ -31,8 +31,12 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
@@ -40,7 +44,10 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
+   [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.reducible :as qp.reducible]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
@@ -78,6 +85,14 @@
   (is (= ["extract(month from NOW())"]
          (sql.qp/format-honeysql :postgres (#'postgres/extract :month :%now)))))
 
+(deftest ^:parallel hour-bucketing-time-without-database-type-test
+  (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
+                "fields referenced by name from a source query, #75193) should use the time-aware path "
+                "and not cast to `timestamp`")
+    (let [expr (h2x/with-type-info :test_col {:effective-type :type/Time})]
+      (is (= ["MAKE_TIME(extract(hour from \"test_col\")::integer, 0, 0.0)"]
+             (sql.qp/format-honeysql :postgres (sql.qp/date :postgres :hour expr)))))))
+
 (deftest ^:parallel datetime-diff-test
   (is (= [["CAST("
            "  extract("
@@ -91,7 +106,7 @@
            ")"]
           "2021-10-03T09:00:00"
           "2021-10-03T09:00:00"]
-         (as-> [:datetime-diff "2021-10-03T09:00:00" "2021-10-03T09:00:00" :year] <>
+         (as-> [:datetime-diff {} "2021-10-03T09:00:00" "2021-10-03T09:00:00" :year] <>
            (sql.qp/->honeysql :postgres <>)
            (sql.qp/format-honeysql :postgres <>)
            (update (vec <>) 0 #(str/split-lines (driver/prettify-native-form :postgres %)))))))
@@ -120,7 +135,9 @@
                                                     :host   "localhost"
                                                     :port   5432
                                                     :dbname "bird_sightings"
-                                                    :user   "camsaul"}))))
+                                                    :user   "camsaul"})))))
+
+(deftest ^:parallel connection-details->spec-test-2
   (testing "ssl - check that expected params get added"
     (is (= {:classname                     "org.postgresql.Driver"
             :subprotocol                   "postgresql"
@@ -136,7 +153,9 @@
                                                     :host   "localhost"
                                                     :port   5432
                                                     :dbname "bird_sightings"
-                                                    :user   "camsaul"}))))
+                                                    :user   "camsaul"})))))
+
+(deftest ^:parallel connection-details->spec-test-3
   (testing "make sure connection details w/ extra params work as expected"
     (is (= {:classname                     "org.postgresql.Driver"
             :subprotocol                   "postgresql"
@@ -148,7 +167,9 @@
                                                    {:host               "localhost"
                                                     :port               "5432"
                                                     :dbname             "cool"
-                                                    :additional-options "prepareThreshold=0"}))))
+                                                    :additional-options "prepareThreshold=0"})))))
+
+(deftest ^:parallel connection-details->spec-test-4
   (testing "user-specified SSL options should always take precendence over defaults"
     (is (= {:classname                     "org.postgresql.Driver"
             :subprotocol                   "postgresql"
@@ -254,6 +275,7 @@
   [& args]
   (->> (apply driver/describe-database args)
        :tables
+       (into [])
        (sort-by :name)))
 
 (deftest materialized-views-test
@@ -433,7 +455,7 @@
   (mt/test-driver :postgres
     (testing "Deal with complicated identifier (#22967)"
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                        {:database (assoc meta/database :engine :postgres, :id 1)
+                                        {:database (assoc meta/database :engine driver/*driver*, :id 1)
                                          :tables   [(merge (meta/table-metadata :venues)
                                                            {:id     1
                                                             :db-id  1
@@ -444,19 +466,27 @@
                                                             :table-id      1
                                                             :nfc-path      ["jsons" "values" "qty"]
                                                             :database-type "integer"})]})
-        (let [field-clause [:field 1 {:binning
-                                      {:strategy  :num-bins
-                                       :num-bins  100
-                                       :min-value 0.75
-                                       :max-value 54.0
-                                       :bin-width 0.75}}]]
+        (let [field-clause (sql.qp/mbql-clause-with-opts driver/*driver*
+                                                         :field
+                                                         {:binning
+                                                          {:strategy  :num-bins
+                                                           :num-bins  100
+                                                           :min-value 0.75
+                                                           :max-value 54.0
+                                                           :bin-width 0.75}}
+                                                         1)]
           (is (= ["((FLOOR((((complicated_identifiers.jsons#>> (array[?, ?]::text[]))::integer - 0.75) / 0.75)) * 0.75) + 0.75)"
                   "values" "qty"]
-                 (sql/format-expr (sql.qp/->honeysql :postgres field-clause) {:nested true}))))))))
+                 (sql/format-expr (sql.qp/->honeysql driver/*driver* field-clause) {:nested true}))))))))
 
-(def ^:private json-alias-mock-metadata-provider
+(defn- ^:private maybe-convert-and-compile [driver query]
+  (cond-> query
+    (= driver :postgres) (lib.convert/->mbql5)
+    :always qp.compile/compile))
+
+(defn- ^:private json-alias-mock-metadata-provider [driver]
   (lib.tu/mock-metadata-provider
-   {:database (assoc meta/database :engine :postgres, :id 1)
+   {:database (assoc meta/database :engine driver, :id 1)
     :tables   [(merge (meta/table-metadata :venues)
                       {:id     1
                        :db-id  1
@@ -474,21 +504,25 @@
 (deftest ^:parallel json-alias-test
   (mt/test-driver :postgres
     (testing "json breakouts and order bys have alias coercion"
-      (qp.store/with-metadata-provider json-alias-mock-metadata-provider
-        (let [field-bucketed [:field 1
-                              {:temporal-unit                                              :month
-                               :metabase.query-processor.util.add-alias-info/source-table  1
-                               :metabase.query-processor.util.add-alias-info/source-alias  "dontwannaseethis"
-                               :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis"
-                               :metabase.query-processor.util.add-alias-info/position      1}]
-              compile-res    (qp.compile/compile
-                              (mt/query nil
-                                {:database 1
-                                 :type     :query
-                                 :query    {:source-table 1
-                                            :aggregation  [[:count]]
-                                            :breakout     [field-bucketed]
-                                            :order-by     [[:asc field-bucketed]]}}))]
+      (qp.store/with-metadata-provider (json-alias-mock-metadata-provider driver/*driver*)
+        ;; need to make this a function to avoid a duplicate `:lib/uuid` error when we use it in `compile-res`
+        (let [field-bucketed-fn (fn []
+                                  (sql.qp/mbql-clause-with-opts
+                                   driver/*driver* :field
+                                   {:temporal-unit                                              :month
+                                    :metabase.query-processor.util.add-alias-info/source-table  1
+                                    :metabase.query-processor.util.add-alias-info/source-alias  "dontwannaseethis"
+                                    :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis"
+                                    :metabase.query-processor.util.add-alias-info/position      1} 1))
+              compile-res (maybe-convert-and-compile
+                           driver/*driver*
+                           (mt/query nil
+                             {:database 1
+                              :type     :query
+                              :query    {:source-table 1
+                                         :aggregation  [[:count]]
+                                         :breakout     [(field-bucketed-fn)]
+                                         :order-by     [[:asc (field-bucketed-fn)]]}}))]
           (is (= ["SELECT"
                   "  DATE_TRUNC("
                   "    'month',"
@@ -503,7 +537,7 @@
                   "  \"json_alias_test\""
                   "ORDER BY"
                   "  \"json_alias_test\" ASC"]
-                 (str/split-lines (driver/prettify-native-form :postgres (:query compile-res)))))
+                 (str/split-lines (driver/prettify-native-form driver/*driver* (:query compile-res)))))
           (is (= ["injection' OR 1=1--' AND released = 1"
                   "injection' OR 1=1--' AND released = 1"]
                  (:params compile-res))))))))
@@ -511,13 +545,14 @@
 (deftest ^:parallel json-alias-test-2
   (mt/test-driver :postgres
     (testing "json breakouts and order bys have alias coercion"
-      (qp.store/with-metadata-provider json-alias-mock-metadata-provider
-        (let [field-ordinary [:field 1 nil]
-              only-order     (qp.compile/compile
-                              {:database 1
-                               :type     :query
-                               :query    {:source-table 1
-                                          :order-by     [[:asc field-ordinary]]}})]
+      (qp.store/with-metadata-provider (json-alias-mock-metadata-provider driver/*driver*)
+        (let [field-ordinary (sql.qp/mbql-clause-with-opts driver/*driver* :field nil 1)
+              only-order (maybe-convert-and-compile
+                          driver/*driver*
+                          {:database 1
+                           :type     :query
+                           :query    {:source-table 1
+                                      :order-by     [[:asc field-ordinary]]}})]
           (is (= ["SELECT"
                   "  (\"json_alias_test\".\"bob\" #>> (array [ ?, ? ] :: text [ ])) :: VARCHAR AS \"json_alias_test\""
                   "FROM"
@@ -526,11 +561,11 @@
                   "  \"json_alias_test\" ASC"
                   "LIMIT"
                   "  1048575"]
-                 (str/split-lines (driver/prettify-native-form :postgres (:query only-order))))))))))
+                 (str/split-lines (driver/prettify-native-form driver/*driver* (:query only-order))))))))))
 
-(def ^:private json-alias-in-model-mock-metadata-provider
+(defn- ^:private json-alias-in-model-mock-metadata-provider [driver]
   (providers.mock/mock-metadata-provider
-   json-alias-mock-metadata-provider
+   (json-alias-mock-metadata-provider driver)
    {:cards [{:name          "Model with JSON"
              :id            123
              :database-id   1
@@ -544,8 +579,9 @@
 (deftest ^:parallel json-breakout-in-model-test
   (mt/test-driver :postgres
     (testing "JSON columns in inner queries are referenced properly in outer queries #34930"
-      (qp.store/with-metadata-provider json-alias-in-model-mock-metadata-provider
-        (let [nested (qp.compile/compile
+      (qp.store/with-metadata-provider (json-alias-in-model-mock-metadata-provider driver/*driver*)
+        (let [nested (maybe-convert-and-compile
+                      driver/*driver*
                       {:database (meta/id)
                        :type     :query
                        :query    {:source-table "card__123"}})]
@@ -563,10 +599,120 @@
                   "      \"json_alias_test\""
                   "    ORDER BY"
                   "      \"json_alias_test\" ASC"
-                  "  ) AS \"__mb_source\""
-                  "LIMIT"
-                  "  1048575"]
+                  "  ) AS \"__mb_source\""]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
+
+(deftest ^:parallel nested-field-pivot-compile-test
+  (mt/test-driver :postgres
+    (testing "Pivot with a nested-field (JSON-unfolded) breakout compiles to a derived table that pre-computes the JSON path expression and references plain identifiers in GROUPING SETS / GROUPING"
+      (let [mp       (lib.tu/mock-metadata-provider
+                      {:database (assoc meta/database :engine :postgres :id 1)
+                       :tables   [(merge (meta/table-metadata :venues)
+                                         {:id 1 :db-id 1 :name "json_table" :schema nil})]
+                       :fields   [(merge (meta/field-metadata :venues :id)
+                                         {:id            1
+                                          :table-id      1
+                                          :name          "category"
+                                          :nfc-path      ["payload" "category"]
+                                          :base-type     :type/Text
+                                          :effective-type :type/Text
+                                          :database-type "text"})
+                                  (merge (meta/field-metadata :venues :name)
+                                         {:id 2 :table-id 1 :name "region"})]})
+            json-col (lib.metadata/field mp 1)
+            reg-col  (lib.metadata/field mp 2)
+            base     (-> (lib/query mp (lib.metadata/table mp 1))
+                         (lib/breakout json-col)
+                         (lib/breakout reg-col)
+                         (lib/aggregate (lib/count)))
+            bks      (lib/breakouts base)
+            pivot-q  (lib.pivot/with-pivot base
+                       {:rows               [(lib.options/uuid (first bks))]
+                        :columns            [(lib.options/uuid (second bks))]
+                        :show-row-totals    true
+                        :show-column-totals true})]
+        (qp.store/with-metadata-provider mp
+          (let [sql (:query (qp.compile/compile (nest-for-pivot/wrap-nested-field-breakouts pivot-q)))]
+            (is (= ["SELECT"
+                    "  \"__mb_source\".\"__mb_pivot_nfc\" AS \"__mb_pivot_nfc\","
+                    "  \"__mb_source\".\"region\" AS \"region\","
+                    "  GROUPING("
+                    "    \"__mb_source\".\"region\","
+                    "    \"__mb_source\".\"__mb_pivot_nfc\""
+                    "  ) AS \"pivot-grouping\","
+                    "  COUNT(*) AS \"count\""
+                    "FROM"
+                    "  ("
+                    "    SELECT"
+                    "      (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"category\","
+                    "      \"json_table\".\"region\" AS \"region\","
+                    "      (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"__mb_pivot_nfc\""
+                    "    FROM"
+                    "      \"json_table\""
+                    "  ) AS \"__mb_source\""
+                    "GROUP BY"
+                    "  GROUPING SETS ("
+                    "    ("
+                    "      \"__mb_source\".\"__mb_pivot_nfc\","
+                    "      \"__mb_source\".\"region\""
+                    "    ),"
+                    "    (\"__mb_source\".\"region\"),"
+                    "    (\"__mb_source\".\"__mb_pivot_nfc\"),"
+                    "    ()"
+                    "  )"
+                    "ORDER BY"
+                    "  GROUPING("
+                    "    \"__mb_source\".\"region\","
+                    "    \"__mb_source\".\"__mb_pivot_nfc\""
+                    "  ) ASC,"
+                    "  \"__mb_source\".\"__mb_pivot_nfc\" ASC,"
+                    "  \"__mb_source\".\"region\" ASC"]
+                   (str/split-lines (driver/prettify-native-form :postgres sql))))))))))
+
+(deftest nested-field-pivot-e2e-test
+  (mt/test-driver :postgres
+    (mt/dataset json
+      (testing "pivot with a nested-field (JSON-unfolded) breakout executes end-to-end and the native path agrees with the multi-query path"
+        (let [mp        (mt/metadata-provider)
+              json-tbl  (lib.metadata/table mp (mt/id :json))
+              q-base    (lib/query mp json-tbl)
+              cols      (lib/breakoutable-columns q-base)
+              doop-col  (m/find-first #(= (:name %) "json_bit → doop") cols)
+              bloop-col (m/find-first #(= (:name %) "bloop") cols)]
+          (assert (and doop-col bloop-col)
+                  "expected json_bit → doop and bloop columns from json dataset")
+          (let [pivot-q (-> q-base
+                            (lib/breakout doop-col)
+                            (lib/breakout bloop-col)
+                            (lib/aggregate (lib/count))
+                            ;; Use the legacy positional pivot keys — same shape as what dashboards and the
+                            ;; REST API send. `apply-legacy-pivot-keys` in the native path will convert these
+                            ;; to a `:pivot` clause; the multi-query path reads them directly.
+                            (assoc :pivot-rows [0] :pivot-cols [1]))]
+            (qp.pivot.test-util/with-pivot-parity-check
+              (let [results (qp.pivot/run-pivot-query pivot-q)
+                    rows    (mt/rows results)
+                    pgs     (mapv #(nth % 2) rows)]
+                (is (= #{;; pivot-grouping = 0  base detail rows
+                         ["boop" "doopdoopy" 0 1]
+                         ["boop" "moopywoop" 0 1]
+                         ["boop" "woopywoop" 0 1]
+                         ["boop" "zoopyzoop" 0 1]
+                         [nil    "doopyboop" 0 1]
+                         ;; pivot-grouping = 1  per-bloop subtotals (doop dropped)
+                         [nil    "doopdoopy" 1 1]
+                         [nil    "doopyboop" 1 1]
+                         [nil    "moopywoop" 1 1]
+                         [nil    "woopywoop" 1 1]
+                         [nil    "zoopyzoop" 1 1]
+                         ;; pivot-grouping = 2  per-doop subtotals (bloop dropped)
+                         ["boop" nil 2 4]
+                         [nil    nil 2 1]
+                         ;; pivot-grouping = 3  grand total
+                         [nil    nil 3 5]}
+                       (set rows)))
+                (is (= (sort pgs) pgs)
+                    "rows should appear in non-decreasing pivot-grouping order")))))))))
 
 ;;; Postgres `:contains`/`:starts-with`/`:ends-with` must produce SQL that the PostgreSQL JDBC
 ;;; driver can prepare regardless of the server's `standard_conforming_strings` setting. With
@@ -898,7 +1044,7 @@
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
       (is (= (h2x/with-database-type-info [:cast "toucan" (h2x/identifier :type-name "bird type")]
                                           "bird type")
-             (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))))))
+             (sql.qp/->honeysql driver/*driver* (sql.qp/mbql-clause-with-opts driver/*driver* :value {:database_type "bird type", :base_type :type/PostgresEnum} "toucan")))))))
 
 (deftest enums-test-2
   (mt/test-driver :postgres
@@ -979,6 +1125,37 @@
                                    :limit        10}})
                       :data
                       (select-keys [:rows :native_form]))))))))))
+
+(deftest enum-field-filter-test
+  (mt/test-driver :postgres
+    (do-with-enums-db!
+     (fn [db]
+       (let [mp            (lib.metadata.jvm/application-database-metadata-provider (u/the-id db))
+             table-id      (t2/select-one-pk :model/Table :db_id (u/the-id db) :name "birds")
+             type-field-id (t2/select-one-pk :model/Field :table_id table-id :name "type")
+             type-field    (lib.metadata/field mp type-field-id)]
+         (testing "an MBQL string/= param on a postgres enum column filters correctly (#40396)"
+           (is (= [["Rasta" "good bird" "sad bird" "toucan"]]
+                  (mt/rows
+                   (qp/process-query
+                    (assoc (lib/query mp (lib.metadata/table mp table-id))
+                           :parameters [{:type   :string/=
+                                         :target [:dimension (lib.convert/->legacy-MBQL (lib/ref type-field))]
+                                         :value  ["toucan"]}]))))))
+         (testing "a native field filter over a postgres enum column filters correctly (#63537)"
+           (is (= [["Rasta" "good bird" "sad bird" "toucan"]]
+                  (mt/rows
+                   (qp/process-query
+                    (assoc (-> (lib/native-query mp "SELECT * FROM birds WHERE {{type}}")
+                               (lib/with-template-tags
+                                 {"type" {:name         "type"
+                                          :display-name "Type"
+                                          :type         :dimension
+                                          :dimension    (lib/ref type-field)
+                                          :widget-type  :string/=}}))
+                           :parameters [{:type   :string/=
+                                         :target [:dimension [:template-tag "type"]]
+                                         :value  ["toucan"]}])))))))))))
 
 (deftest enums-test-3
   (mt/test-driver :postgres
@@ -1371,10 +1548,7 @@
                                                 :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database)))
                 ;; Strip extended interestingness stats — this test covers the core TIME fingerprint
                 ;; shape (#5911), not the interestingness metrics.
-                extended-keys [:hour-distribution :weekday-distribution :skewness
-                               :mode-fraction :top-3-fraction
-                               :mode-fraction-by-weekday :mode-fraction-by-hour
-                               :min-length :max-length :percent-blank]
+                extended-keys [:skewness :mode-fraction :top-3-fraction :percent-blank]
                 trim-type     (fn [fp]
                                 (update fp :type
                                         (fn [types]
@@ -1818,7 +1992,6 @@
                                              ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))
                                   (into #{} (map #(dissoc % :estimated_row_count))
                                         (#'postgres/get-tables (mt/db) schemas tables)))))]
-
              (doseq [stmt ["CREATE TABLE public.table (id INTEGER, type TEXT);"
                            "CREATE UNIQUE INDEX idx_table_type ON public.table(type);"
                            "CREATE TABLE public.partition_table (id INTEGER) PARTITION BY RANGE (id);"
@@ -1920,21 +2093,16 @@
         (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (try
             (jdbc/execute! conn "CREATE SCHEMA IF NOT EXISTS sync_test_schema")
-
             (doseq [stmt ["CREATE TABLE sync_test_schema.readonly_table (id INTEGER);"
                           "CREATE TABLE sync_test_schema.readwrite_table (id INTEGER);"
                           "CREATE TABLE sync_test_schema.fullaccess_table (id INTEGER);"]]
               (jdbc/execute! conn stmt))
-
             (jdbc/execute! conn "DROP USER IF EXISTS sync_writable_test_user")
             (jdbc/execute! conn "CREATE USER sync_writable_test_user WITH PASSWORD 'password'")
-
             (jdbc/execute! conn "GRANT USAGE ON SCHEMA sync_test_schema TO sync_writable_test_user")
-
             (jdbc/execute! conn "GRANT SELECT ON sync_test_schema.readonly_table TO sync_writable_test_user")
             (jdbc/execute! conn "GRANT SELECT, INSERT ON sync_test_schema.readwrite_table TO sync_writable_test_user")
             (jdbc/execute! conn "GRANT SELECT, INSERT, UPDATE, DELETE ON sync_test_schema.fullaccess_table TO sync_writable_test_user")
-
             (let [user-connection-details (assoc details
                                                  :user "sync_writable_test_user"
                                                  :password "password")]
@@ -2076,7 +2244,9 @@
                FROM generate_series(1, 5000) AS i;"
             results (qp/process-query (mt/native-query {:query sql})
                                       (temp-storage/notification-rff
-                                       5000 {:context 'complex-types-in-notification-payload}))]
+                                       {:budget (temp-storage/make-resident-budget
+                                                 {:per-card 5000 :resident-cap Long/MAX_VALUE :floor Long/MAX_VALUE})}
+                                       {:context 'complex-types-in-notification-payload}))]
         (is (integer? (:data.rows-file-size results)))
         (is (temp-storage/streaming-temp-file? (-> results :data :rows)))
         (is (=? [1
@@ -2144,7 +2314,8 @@
 (deftest canceled-query-no-stacktrace-test
   (mt/test-driver :postgres
     (letfn [(catch-exceptions [run]
-              (let [query    (merge {:type :query, :database 1} {})
+              (let [query    (cond-> {:type :query, :database 1}
+                               (= driver/*driver* :postgres) (lib.convert/->mbql5))
                     metadata {}
                     rows     []
                     qp       (fn [query rff]
@@ -2153,7 +2324,7 @@
                                                                  (respond metadata rows))]
                                  (qp.pipeline/*run* query rff)))
                     qp       (catch-exceptions/catch-exceptions qp)
-                    result   (driver/with-driver :h2
+                    result   (driver/with-driver driver/*driver*
                                (qp (qp/userland-query query) qp.reducible/default-rff))]
                 (cond-> result
                   (map? result) (update :data dissoc :rows))))
@@ -2174,7 +2345,7 @@
             ;; Wrap it in an ExceptionInfo with the :query-canceled? flag, as our code does
             (catch-exceptions
              (fn [] (throw (ex-info "Error executing query: canceling statement due to user request"
-                                    {:driver :postgres
+                                    {:driver driver/*driver*
                                      :sql    ["SELECT pg_sleep(1000)"]
                                      :params []
                                      :type   qp.error-type/invalid-query
@@ -2182,17 +2353,19 @@
                                     pg-cancel-ex)))))
           (is (= 0 (count (into [] (cancel-messages) (log-messages))))
               "Query cancellation exceptions should not be logged")))
-
-      (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
-        (future
-          (Thread/sleep 400)
-          (a/put! qp.pipeline/*canceled-chan* :cancel))
-        (mt/with-log-messages-for-level [messages :error]
-          (let [response (qp/process-query (assoc-in (mt/native-query {:query "select pg_sleep(8), false"})
-                                                     [:middleware :userland-query?] true))]
-            (is (= "ERROR: canceling statement due to user request" (:error response)))
-            (let [bad-messages (into [] (cancel-messages) (messages))]
-              (is (empty? bad-messages)))))))))
+      (let [mp (mt/metadata-provider)]
+        ;; Refresh the permission set in case the metadata provider created this test DB.
+        (mt/with-test-user :rasta
+          (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
+            (future
+              (Thread/sleep 400)
+              (a/put! qp.pipeline/*canceled-chan* :cancel))
+            (mt/with-log-messages-for-level [messages :error]
+              (let [response (qp/process-query (assoc-in (lib/native-query mp "select pg_sleep(8), false")
+                                                         [:middleware :userland-query?] true))]
+                (is (= "ERROR: canceling statement due to user request" (:error response)))
+                (let [bad-messages (into [] (cancel-messages) (messages))]
+                  (is (empty? bad-messages)))))))))))
 
 (deftest bit-strings-can-be-filtered
   (mt/test-driver :postgres
@@ -2310,3 +2483,15 @@
             (is (=? {:type :missing-column
                      :name "xix"}
                     (first (driver/validate-native-query-fields :postgres broken-query))))))))))
+
+(deftest ^:synchronized reducible-query-streams-large-result-set-test
+  (testing "reducible-query streams large result sets via a server-side cursor (autoCommit=false)"
+    (mt/test-driver :postgres
+      ;; A 2.1-billion-row generate_series in the SELECT list streams row-by-row (no server-side materialization).
+      ;; Pulling just the first few is fast ONLY if reducible-query streams (a cursor) and stops early; without
+      ;; streaming the JDBC driver buffers the whole ResultSet (~2.1B rows) and OOMs at any heap size.
+      (let [n      Integer/MAX_VALUE
+            result (sql-jdbc.execute/reducible-query
+                    (mt/db) [(format "SELECT generate_series(1, %d) AS i" n)])]
+        (testing "only the first rows are pulled, not all ~2 billion"
+          (is (= [1 2 3] (into [] (comp (take 3) (map :i)) result))))))))

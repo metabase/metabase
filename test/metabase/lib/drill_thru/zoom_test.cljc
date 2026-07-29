@@ -16,14 +16,14 @@
      (fn [test-case {:keys [value]} {:keys [click column-type]}]
        (and (= click :cell)
             (not (:native? test-case))
-             ;; With an FK column and a non-NULL value, this will be an fk-filter drill instead.
-             ;; So we don't expect a zoom drill in that case.
+            ;; With an FK column and a non-NULL value, this will be an fk-filter drill instead.
+            ;; So we don't expect a zoom drill in that case.
             (not (and (= column-type :fk)
                       (some? value)
                       (not= value :null)))
-             ;; PK must be in the result set; if not, no zoom drill. This happens for eg. aggregations.
+            ;; PK must be in the result set; if not, no zoom drill. This happens for eg. aggregations.
             ((set (keys (:row test-case))) "ID")
-             ;; Special case: clicking a NULL PK does not return the zoom drill.
+            ;; Special case: clicking a NULL PK does not return the zoom drill.
             (not (and (= value :null)
                       (= column-type :pk))))))))
 

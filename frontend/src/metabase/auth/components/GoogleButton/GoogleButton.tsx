@@ -7,11 +7,11 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Link } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/redux";
+import { loginGoogle } from "metabase/redux/auth";
 import { Box, Checkbox, useColorScheme } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getCspNonce } from "metabase/utils/csp";
 
-import { loginGoogle } from "../../actions";
 import { getGoogleClientId, getSiteLocale } from "../../selectors";
 
 import S from "./GoogleButton.module.css";
@@ -95,7 +95,7 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
       {errors.length > 0 && (
         <Box mt="1rem">
           {errors.map((error, index) => (
-            <Box c="error" ta="center" key={index}>
+            <Box c="feedback-negative" ta="center" key={index}>
               {error}
             </Box>
           ))}

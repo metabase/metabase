@@ -12,7 +12,6 @@
   (let [m (meta #'agent-subscriptions/create-dashboard-subscription-tool)]
     (testing "tool has correct :tool-name"
       (is (= "create_dashboard_subscription" (:tool-name m))))
-
     (testing "tool var has expected metadata"
       (is (some? (:schema m)))
       (is (string? (:doc m))))))

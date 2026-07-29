@@ -1,14 +1,18 @@
+import slugg from "slugg";
+
 import MetabaseSettings from "metabase/utils/settings";
 import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
 import Question from "metabase-lib/v1/Question";
 import type {
   CardId,
+  ConcreteTableId,
   Card as SavedCard,
   UnsavedCard,
 } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
 import { card as urlForCard } from "./cards";
+import { appendSlug } from "./utils";
 
 type QuestionUrlBuilderOpts = {
   originalQuestion?: Question;
@@ -110,6 +114,27 @@ export function tableRowsQuery(
 
   // QB parses this querystring-in-hash to build an ad-hoc question — confusing, but load-bearing.
   return `/question#${query}`;
+}
+
+/**
+ * Canonical, human-readable URL for viewing a table as an ad-hoc question,
+ * e.g. `/table/2-orders`. This is the entry URL only: the QB falls back to the
+ * `/question#<hash>` form (see {@link question}) as soon as the question is
+ * edited away from the table's pristine default.
+ *
+ * Only concrete (numeric) table ids are supported — the `/table/:slug` route
+ * parses ids via {@link extractEntityId}. Callers holding a possibly-virtual id
+ * (e.g. `card__17` from the Saved Questions virtual database) must fall back to
+ * {@link tableRowsQuery} or the ad-hoc {@link question} URL.
+ */
+export function table({
+  id,
+  name,
+}: {
+  id: ConcreteTableId;
+  name?: string | null;
+}) {
+  return appendSlug(`/table/${id}`, name ? slugg(name) : undefined);
 }
 
 export function xrayModel(id: CardId) {

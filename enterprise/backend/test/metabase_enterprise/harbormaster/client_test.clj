@@ -51,7 +51,7 @@
   (testing "bearer-auth interceptor adds Authorization header with the api-key"
     (let [api-key "test-api-key-123"
           client  (mock-client api-key)]
-      (with-redefs [hm.client/client (constantly client)]
+      (mt/with-dynamic-fn-redefs [hm.client/client (constantly client)]
         (mt/with-current-user (mt/user->id :rasta)
           (let [req (hm.client/request :test-op)]
             (is (= (str "Bearer " api-key)
@@ -63,7 +63,7 @@
     ;; Both requests use the same client, so any difference in the email header
     ;; proves it's read at request time.
     (let [client (mock-client "test-key")]
-      (with-redefs [hm.client/client (constantly client)]
+      (mt/with-dynamic-fn-redefs [hm.client/client (constantly client)]
         (mt/with-current-user (mt/user->id :rasta)
           (let [req (hm.client/request :test-op)]
             (is (= "rasta@metabase.com"

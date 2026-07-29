@@ -1,0 +1,33 @@
+databaseChangeLog:
+  - changeSet:
+      id: v61.cacxmq
+      author: appleby
+      comment: "Drop fk_metabot_message_conversation_id in preparation for ON DELETE CASCADE"
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabot_message
+            constraintName: fk_metabot_message_conversation_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_message
+            baseColumnNames: conversation_id
+            referencedTableName: metabot_conversation
+            referencedColumnNames: id
+            constraintName: fk_metabot_message_conversation_id
+
+  - changeSet:
+      id: v61.npxmgz
+      author: appleby
+      comment: "Re-add fk_metabot_message_conversation_id with ON DELETE CASCADE so trimming metabot_conversation rows removes their metabot_message children"
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_message
+            baseColumnNames: conversation_id
+            referencedTableName: metabot_conversation
+            referencedColumnNames: id
+            constraintName: fk_metabot_message_conversation_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: metabot_message
+            constraintName: fk_metabot_message_conversation_id

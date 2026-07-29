@@ -3,7 +3,11 @@ import { msgid, ngettext } from "ttag";
 import _ from "underscore";
 
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
-import { isTrashedCollection } from "metabase/collections/utils";
+import {
+  type Destination,
+  QuestionMoveConfirmModal,
+} from "metabase/common/collections/components/QuestionMoveConfirmModal";
+import { isTrashedCollection } from "metabase/common/collections/utils";
 import { BulkActionBar } from "metabase/common/components/BulkActionBar";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { BulkMoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
@@ -15,10 +19,6 @@ import {
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
-import {
-  type Destination,
-  QuestionMoveConfirmModal,
-} from "./QuestionMoveConfirmModal";
 import { UnarchivedBulkActions } from "./UnarchivedBulkActions";
 
 type CollectionBulkActionsProps = {
@@ -81,6 +81,7 @@ export const CollectionBulkActions = memo(
           Promise.all(
             selectedItems
               .filter(isMovable)
+              // Unjustified type cast. FIXME
               .map((item) => setCollection(item as MovableItem, destination)),
           ),
         );

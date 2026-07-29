@@ -98,3 +98,18 @@
      :from     [[index-table :search_index]]
      :group-by [:search_index.model]
      :having   [:is-not expr nil]}))
+
+(defmethod specialization/analyze-table! :postgres
+  [table-name]
+  (t2/query (str "ANALYZE " (name table-name))))
+
+(defmethod specialization/index-size-estimate :postgres
+  [table-name]
+  ;; Use the planner's row estimate (pg_class.reltuples) instead of a full count(*). reltuples/relpages are
+  ;; only populated by ANALYZE/VACUUM, so right after a rebuild the estimate may be stale — return nil in
+  ;; that window and let the caller skip the metric rather than doing a full table scan.
+  (let [{:keys [reltuples relpages]} (t2/query-one {:select [:reltuples :relpages]
+                                                    :from   [:pg_class]
+                                                    :where  [:= :oid [:to_regclass (name table-name)]]})]
+    (when (and relpages (pos? relpages) reltuples (nat-int? (long reltuples)))
+      (long reltuples))))

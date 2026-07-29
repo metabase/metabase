@@ -77,7 +77,7 @@
             :let [bad-refs (try
                              (deps.analysis/check-entity provider entity-type id)
                              (catch Exception e
-                               (log/warnf e "Error checking %s %s" entity-type id)
+                               (log/warnf "Error checking %s %s: %s" entity-type id (ex-message e))
                                #{(lib/validation-exception-error (ex-message e))}))]]
       (when (seq bad-refs)
         (vswap! errors assoc-in [entity-type id] bad-refs)))
@@ -102,7 +102,6 @@
     (when (seq (:snippet deps))
       ;; Copy any snippet deps to each database, since they span them all.
       (vswap! by-db update-vals #(assoc % :snippet (:snippet deps))))
-
     @by-db))
 
 (mu/defn errors-from-proposed-edits :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error]]]]

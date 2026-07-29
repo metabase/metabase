@@ -7,7 +7,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { screen, within } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import { addPremiumAutoRefreshTests } from "../shared-tests/auto-refresh.spec";

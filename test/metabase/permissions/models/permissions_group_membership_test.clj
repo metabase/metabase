@@ -22,12 +22,10 @@
       (perms/remove-user-from-group! user (perms-group/admin))
       (is (= false
              (t2/select-one-fn :is_superuser :model/User :id (u/the-id user))))))
-
   (testing "it should not let you remove the last admin"
     (mt/with-single-admin-user! [{id :id}]
       (is (thrown? Exception
                    (perms/remove-user-from-group! id (perms-group/admin))))))
-
   (testing "it should not let you remove the last non-archived admin"
     (mt/with-single-admin-user! [{id :id}]
       (mt/with-temp [:model/User _ {:is_active    false
@@ -49,7 +47,6 @@
               (is (= "PermissionsGroupMembership" (:model audit-entry)))
               (is (= user-id (get-in audit-entry [:details :user_id])))
               (is (= group-id (get-in audit-entry [:details :group_id])))))
-
           (testing "removing user from group is audited"
             (let [before-remove-count (t2/count :model/AuditLog)]
               (perms/remove-user-from-group! user-id group-id)

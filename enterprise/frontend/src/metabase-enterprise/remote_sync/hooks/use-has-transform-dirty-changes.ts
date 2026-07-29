@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
-import { buildCollectionTree } from "metabase/collections/utils";
+import { buildCollectionTree } from "metabase/common/collections/utils";
 import { getAllDescendantIds } from "metabase/common/components/tree/utils";
 import { useSetting } from "metabase/common/hooks";
 import { TRANSFORMS_ROOT_ID } from "metabase-enterprise/remote_sync/utils";

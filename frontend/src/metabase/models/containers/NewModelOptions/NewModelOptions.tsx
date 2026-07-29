@@ -1,29 +1,27 @@
 import cx from "classnames";
-import type { Location } from "history";
 import { t } from "ttag";
 
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { NoDatabasesEmptyState } from "metabase/common/components/NoDatabasesEmptyState";
 import CS from "metabase/css/core/index.css";
-import NewModelOption from "metabase/models/components/NewModelOption";
+import { NewModelOption } from "metabase/models/components/NewModelOption";
 import { useSelector } from "metabase/redux";
-import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
+import { useRouter } from "metabase/router";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Group } from "metabase/ui";
+import { Flex, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-import { EducationalButton, OptionsRoot } from "./NewModelOptions.styled";
+import S from "./NewModelOptions.module.css";
 
 const EDUCATIONAL_LINK = getLearnUrl("metabase-basics/getting-started/models");
 
-interface NewModelOptionsProps {
-  location: Location;
-}
-
-const NewModelOptions = ({ location }: NewModelOptionsProps) => {
+const NewModelOptions = () => {
+  const { location } = useRouter();
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
 
@@ -32,6 +30,7 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   );
 
   const collectionId = Urls.extractEntityId(
+    // Unjustified type cast. FIXME
     location.query.collectionId as string,
   );
 
@@ -48,7 +47,15 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   }
 
   return (
-    <OptionsRoot data-testid="new-model-options">
+    <Flex
+      direction="column"
+      justify="center"
+      align="center"
+      h="100%"
+      my="auto"
+      className={S.optionsRoot}
+      data-testid="new-model-options"
+    >
       <Group justify="center">
         {hasDataAccess && (
           <div>
@@ -87,15 +94,15 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
       </Group>
 
       {showMetabaseLinks && (
-        <EducationalButton
+        <ExternalLink
           target="_blank"
           href={EDUCATIONAL_LINK}
-          className={CS.mt4}
+          className={cx(CS.mt4, S.educationalButton)}
         >
           {t`What's a model?`}
-        </EducationalButton>
+        </ExternalLink>
       )}
-    </OptionsRoot>
+    </Flex>
   );
 };
 // eslint-disable-next-line import/no-default-export -- deprecated usage

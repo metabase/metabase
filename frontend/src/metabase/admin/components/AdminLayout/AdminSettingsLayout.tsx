@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { useRouter } from "metabase/router/useRouter";
+import { useRouter } from "metabase/router";
 import { Box } from "metabase/ui";
 
 import S from "./AdminSettingsLayout.module.css";

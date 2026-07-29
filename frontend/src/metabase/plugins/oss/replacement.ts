@@ -5,9 +5,12 @@ import type { SourceReplacementEntry } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
 
+export type SourceReplacementTriggeredFrom = "table_list" | "dependency_graph";
+
 export type SourceReplacementModalProps = {
   initialSource?: SourceReplacementEntry;
   initialTarget?: SourceReplacementEntry;
+  triggeredFrom: SourceReplacementTriggeredFrom;
   opened: boolean;
   onClose: () => void;
 };

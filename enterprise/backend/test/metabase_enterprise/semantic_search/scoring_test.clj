@@ -1,6 +1,7 @@
 (ns metabase-enterprise.semantic-search.scoring-test
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.scoring :as semantic.scoring]
@@ -93,6 +94,27 @@
                   ["card" 3 "classified"]]
                  (search-results :rrf "order"))))))))
 
+(deftest semantic-distance-test
+  (mt/with-premium-features #{:semantic-search}
+    ;; Bind embeddings around indexing *and* querying: cosine distance scores the stored doc embedding against the
+    ;; query embedding, so the docs must be indexed with these vectors, not the default fallback.
+    ;; Cosine distance ignores magnitude, so these order purely by direction relative to the query: "near" shares the
+    ;; query's direction (distance 0 -> score 1), "mid" diverges a little, "far" the most. All stay under the 0.7
+    ;; cutoff so every doc survives semantic retrieval.
+    (semantic.tu/with-mock-embeddings {"animal"      [1.0 0.0 0.0 0.0]
+                                       "animal near" [1.0 0.0 0.0 0.0]
+                                       "animal mid"  [1.0 0.5 0.0 0.0]
+                                       "animal far"  [1.0 1.0 0.0 0.0]}
+      (with-index-contents!
+        [{:model "card" :id 1 :name "animal near"}
+         {:model "card" :id 2 :name "animal mid"}
+         {:model "card" :id 3 :name "animal far"}]
+        (testing "Closer cosine distance ranks higher"
+          (is (= [["card" 1 "animal near"]
+                  ["card" 2 "animal mid"]
+                  ["card" 3 "animal far"]]
+                 (search-results :semantic-distance "animal"))))))))
+
 (deftest exact-test
   (mt/with-premium-features #{:semantic-search}
     (with-index-contents!
@@ -103,6 +125,16 @@
                 ["card" 2 "stop words"]]
                (search-results :exact "the any most of stop words very")))))))
 
+(deftest exact-normalization-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-index-contents!
+      [{:model "card" :id 1 :name "Sales,  Revenue"}
+       {:model "card" :id 2 :name "Sales Revenue Report"}]
+      (testing "Exact matching ignores commas and collapses whitespace runs"
+        (is (= [["card" 1 "Sales,  Revenue"]
+                ["card" 2 "Sales Revenue Report"]]
+               (search-results :exact "sales revenue")))))))
+
 (deftest prefix-test
   (mt/with-premium-features #{:semantic-search}
     (with-index-contents!
@@ -112,6 +144,16 @@
         (is (= [["card" 1 "this is a prefix of something longer"]
                 ["card" 2 "a prefix this is not, unfortunately"]]
                (search-results :prefix "this is a prefix")))))))
+
+(deftest prefix-normalization-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-index-contents!
+      [{:model "card" :id 1 :name "Sales, Revenue Quarterly"}
+       {:model "card" :id 2 :name "Revenue and Sales"}]
+      (testing "Prefix matching ignores commas and collapses whitespace runs"
+        (is (= [["card" 1 "Sales, Revenue Quarterly"]
+                ["card" 2 "Revenue and Sales"]]
+               (search-results :prefix "sales revenue")))))))
 
 (deftest pinned-test
   (mt/with-premium-features #{:semantic-search}
@@ -235,6 +277,56 @@
                 ["collection" 2 "collection official"]]
                (search-results* "collection")))))))
 
+(deftest library-test
+  (mt/with-premium-features #{:semantic-search}
+    (testing "Items whose root ancestor collection is a library type rank above non-library items"
+      (with-index-contents!
+        [{:model "card" :id 1 :name "plain card"}
+         {:model "card" :id 2 :name "lib-tree card library"         :root_collection_type "library"}
+         {:model "card" :id 3 :name "lib-tree card library-data"    :root_collection_type "library-data"}
+         {:model "card" :id 4 :name "lib-tree card library-metrics" :root_collection_type "library-metrics"}
+         {:model "card" :id 5 :name "trashed card"                  :root_collection_type "trash"}]
+        (let [in-library? (fn [[_ _ nm]] (str/includes? nm "lib-tree"))]
+          (testing "with positive :library weight, library items come first"
+            (is (= [true true true false false]
+                   (map in-library? (semantic.tu/with-weights {:library 1} (search-results* "card"))))))
+          (testing "with negative :library weight, library items come last"
+            (is (= [false false true true true]
+                   (map in-library? (semantic.tu/with-weights {:library -1} (search-results* "card")))))))))))
+
+(deftest data-layer-test
+  (mt/with-premium-features #{:semantic-search}
+    (testing ":data-layer scorer reads the active per-tier weight via :data-layer/* params"
+      (with-index-contents!
+        [{:model "table" :id 1 :name "table no layer"}
+         {:model "table" :id 2 :name "table final"    :data_layer "final"}
+         {:model "table" :id 3 :name "table internal" :data_layer "internal"}
+         {:model "table" :id 4 :name "table hidden"   :data_layer "hidden"}]
+        (testing "final tables lead when only :data-layer/final is positive"
+          (is (= 2 (-> (semantic.tu/with-weights {:data-layer 1 :data-layer/final 1}
+                         (search-results* "table"))
+                       first second))))
+        (testing "internal tables lead when only :data-layer/internal is positive"
+          (is (= 3 (-> (semantic.tu/with-weights {:data-layer 1 :data-layer/internal 1}
+                         (search-results* "table"))
+                       first second))))
+        (testing "hidden tables lead when only :data-layer/hidden is positive"
+          (is (= 4 (-> (semantic.tu/with-weights {:data-layer 1 :data-layer/hidden 1}
+                         (search-results* "table"))
+                       first second))))))
+    (testing "tier ordering: final > internal > hidden under :metabot magnitudes"
+      (with-index-contents!
+        [{:model "table" :id 1 :name "foo table final"    :data_layer "final"}
+         {:model "table" :id 2 :name "foo table internal" :data_layer "internal"}
+         {:model "table" :id 3 :name "foo table hidden"   :data_layer "hidden"}]
+        (is (= [1 2 3]
+               (->> (semantic.tu/with-weights {:data-layer          33
+                                               :data-layer/final    1
+                                               :data-layer/internal 0.3
+                                               :data-layer/hidden   0.03}
+                      (search-results* "foo table"))
+                    (map second))))))))
+
 (deftest verified-test
   (with-index-contents!
     [{:model "card" :id 1 :name "card normal" :verified false}
@@ -269,7 +361,6 @@
               (is (= [["card" c2 "card crowberto loved"]
                       ["card" c1 "card normal"]]
                      (search-results :bookmarked "card" {:current-user-id crowberto})))))))
-
       (mt/with-temp [:model/Dashboard {d1 :id} {}
                      :model/Dashboard {d2 :id} {}]
         (testing "bookmarked dashboard"
@@ -281,7 +372,6 @@
               (is (= [["dashboard" d2 "dashboard crowberto loved"]
                       ["dashboard" d1 "dashboard normal"]]
                      (search-results :bookmarked "dashboard" {:current-user-id crowberto})))))))
-
       (mt/with-temp [:model/Collection {c1 :id} {}
                      :model/Collection {c2 :id} {}]
         (testing "bookmarked collection"

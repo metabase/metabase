@@ -67,7 +67,8 @@ export function getDataSourceParts({
 
   const table = !isNative
     ? metadata.table(Lib.sourceTableOrCardId(query))
-    : (question.legacyNativeQuery() as NativeQuery).table();
+    : // Unjustified type cast. FIXME
+      (question.legacyNativeQuery() as NativeQuery).table();
   if (table && table.hasSchema()) {
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
     if (database != null && !isBasedOnSavedQuestion) {
@@ -147,13 +148,13 @@ function QuestionTableBadges({
   isLast,
 }: QuestionTableBadgesProps) {
   const badgeInactiveColor =
-    isLast && !subHead ? "text-primary" : "text-tertiary";
+    isLast && !subHead ? "text-primary" : "text-disabled";
 
   const parts = tables.map((table) => (
-    <HeadBreadcrumbs.Badge
+    <HeadBreadcrumbs.Breadcrumb
       key={table.id}
       to={hasLink ? getTableURL(table) : ""}
-      inactiveColor={badgeInactiveColor}
+      color={badgeInactiveColor}
     >
       <span>
         {table.displayName()}
@@ -169,7 +170,7 @@ function QuestionTableBadges({
           </span>
         )}
       </span>
-    </HeadBreadcrumbs.Badge>
+    </HeadBreadcrumbs.Breadcrumb>
   ));
 
   return (

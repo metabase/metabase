@@ -118,7 +118,7 @@ describe("scenarios > setup", () => {
           // turn collection off, which hides data collection description
           cy.findByLabelText(
             "Allow Metabase to anonymously collect usage events",
-          ).click();
+          ).click({ force: true });
 
           cy.findByText("All collection is completely anonymous.").should(
             "not.exist",
@@ -173,7 +173,7 @@ describe("scenarios > setup", () => {
       // Turns off anonymous data collection
       cy.findByLabelText(
         "Allow Metabase to anonymously collect usage events",
-      ).click();
+      ).click({ force: true });
 
       cy.findByText("All collection is completely anonymous.").should(
         "not.exist",
@@ -484,7 +484,7 @@ describe("scenarios > setup", () => {
       // Turns off anonymous data collection
       cy.findByLabelText(
         "Allow Metabase to anonymously collect usage events",
-      ).click();
+      ).click({ force: true });
 
       cy.findByText("All collection is completely anonymous.").should(
         "not.exist",

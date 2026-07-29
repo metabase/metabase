@@ -19,27 +19,21 @@
                                    (tu/slack-request-options request-body) request-body)]
       (testing "succeeds when all settings are configured"
         (is (= "ok" (post-events 200))))
-
       (testing "returns 503 when client-id missing"
         (mt/with-temporary-setting-values [sso-settings/slack-connect-client-id nil]
           (is (= "Slack integration is not fully configured." (post-events 503)))))
-
       (testing "returns 503 when client-secret missing"
         (mt/with-temporary-setting-values [sso-settings/slack-connect-client-secret nil]
           (is (= "Slack integration is not fully configured." (post-events 503)))))
-
       (testing "returns 503 when bot-token missing"
         (mt/with-temporary-setting-values [channel.settings/slack-app-token nil]
           (is (= "Slack integration is not fully configured." (post-events 503)))))
-
       (testing "returns 503 when encryption disabled"
         (with-redefs [encryption/default-secret-key nil]
           (is (= "Slack integration is not fully configured." (post-events 503)))))
-
       (testing "returns 503 when site-url missing"
         (mt/with-temporary-setting-values [site-url nil]
           (is (= "Slack integration is not fully configured." (post-events 503)))))
-
       (testing "returns 503 when signing-secret missing (can't sign request)"
         (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret nil]
           (is (= "Slack integration is not fully configured."

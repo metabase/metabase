@@ -1,0 +1,7 @@
+.SwitchBody {
+  justify-content: space-between;
+}
+
+.SwitchInput {
+  z-index: -1; /* This allows icons with tooltips in the label */
+}

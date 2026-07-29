@@ -37,7 +37,6 @@
                                         :retry-if (fn [val _] (odd? val))
                                         :initial-interval-millis 1)
                  (f))))))
-
   (testing "recovery impossible"
     (let [f (constantly 1)]
       (is (= 1 (retry/with-retry (assoc (retry/retry-configuration)

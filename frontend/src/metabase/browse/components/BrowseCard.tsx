@@ -33,7 +33,7 @@ const sizeOptions = {
 export const BrowseCard = ({
   icon,
   to,
-  iconColor = "brand",
+  iconColor = "core-brand",
   title,
   size = "md",
   children,
@@ -60,7 +60,7 @@ export const BrowseCard = ({
         root: cx(
           CS.bgBrandHover,
           CS.hoverParent,
-          CS.hoverDisplay,
+          CS.hoverVisibility,
           CS.textBrandHover,
         ),
       }}

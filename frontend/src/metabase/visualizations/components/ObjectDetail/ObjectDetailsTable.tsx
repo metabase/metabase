@@ -25,7 +25,7 @@ import type {
 } from "metabase-types/api";
 
 import { ExpandableString } from "./ExpandableString";
-import { FitImage } from "./ObjectDetailsTable.styled";
+import S from "./ObjectDetailsTable.module.css";
 import type { OnVisualizationClickType } from "./types";
 
 export interface DetailsTableCellProps {
@@ -122,7 +122,16 @@ export function DetailsTableCell({
       </span>
       {isImage && (
         <div>
-          <FitImage src={value} alt={value} />
+          <Box
+            component="img"
+            className={S.fitImage}
+            src={value}
+            alt={value}
+            maw="100%"
+            mah="18rem"
+            my="md"
+            mx="auto"
+          />
         </div>
       )}
     </div>

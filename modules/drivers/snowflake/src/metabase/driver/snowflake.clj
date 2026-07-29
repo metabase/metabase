@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys empty? not-empty mapv])
+  (:refer-clojure :exclude [select-keys not-empty mapv])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -28,15 +28,16 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
-   [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv empty? not-empty select-keys]]
+   [metabase.util.performance :refer [mapv not-empty select-keys]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -47,7 +48,8 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :snowflake, :parent #{:sql-jdbc :sql-mbql5
+                                        ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
 (doseq [[feature supported?] {:connection-impersonation               true
                               :connection-impersonation-requires-role true
@@ -65,16 +67,22 @@
                               :expressions/float                      true
                               :expressions/date                       true
                               :identifiers-with-spaces                true
+                              :index/fetch                            true
+                              :index/standalone-create                true
                               :split-part                             true
                               :collate                                true
                               :now                                    true
                               :database-routing                       true
+                              :transforms/index-ddl                   true
+                              :uploads                                true
                               :metadata/table-existence-check         true
                               :regex/lookaheads-and-lookbehinds       false
+                              :transforms/accurate-rows-affected      false
                               :transforms/python                      true
-                              :transforms/table                       true
-                              :workspace                              true}]
+                              :transforms/table                       true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
+
+(mu/defn- quote-schema ^String [s :- :string] (sql.u/quote-name :snowflake :schema s))
 
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ messages]
@@ -159,7 +167,7 @@
              (keep (fn [param]
                      (let [key-val (str/split param #"=")]
                        (if-not (= 2 (count key-val))
-                         (log/warnf "Invalid Snowflake connection URI parameter: '%s'" param)
+                         (log/warn "Invalid Snowflake connection URI parameter")
                          (let [[k v] key-val]
                            [(u/upper-case-en (URLDecoder/decode ^String k "UTF-8"))
                             (URLDecoder/decode ^String v "UTF-8")])))))
@@ -223,12 +231,11 @@
         (and (not use-password) password-details)
         (conj password-details)))))
 
-(defn- set-put-get [additional-options]
-  (cond (empty? additional-options) "enablePutGet=false"
-        (re-find #"(?i)enablePutGet=" additional-options) (str/replace additional-options
-                                                                       #"enablePutGet=[^&]+"
-                                                                       "enablePutGet=false")
-        :else (str additional-options "&enablePutGet=false")))
+(defn- normalize-additional-options [additional-options]
+  (when-not (str/blank? additional-options)
+    (not-empty
+     (str/join "&" (remove #(re-matches #"(?i)enablePutGet(=.*)?" %)
+                           (str/split additional-options #"&"))))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options host use-hostname password use-password], :as details}]
@@ -282,10 +289,11 @@
                    resolve-private-key
                    (dissoc :host :port :timezone)))
         (sql-jdbc.common/handle-additional-options (update details
-                                                           :additional-options set-put-get))
+                                                           :additional-options normalize-additional-options))
         ;; Role is not respected when used as connection property if connection string is present with private key
         ;; file. Hence it is moved to connection url. https://github.com/metabase/metabase/issues/43600
-        (maybe-add-role-to-spec-url details))))
+        (maybe-add-role-to-spec-url details)
+        (assoc :enablePutGet "false"))))
 
 (mu/defn- database-type->base-type
   [database-type :- string?
@@ -375,6 +383,63 @@
 (defmethod driver/type->database-type :snowflake
   [_driver base-type]
   (type->database-type base-type))
+
+(defmethod driver/upload-type->database-type :snowflake
+  [_driver upload-type]
+  (case upload-type
+    :metabase.upload/varchar-255              [[:varchar 255]]
+    :metabase.upload/text                     [:text]
+    :metabase.upload/int                      [:bigint]
+    ;; `_mb_row_id` must follow insertion order, but the default `NOORDER` allocates ids from per-cluster
+    ;; ranges, leaving gaps or even out-of-order values between inserts. `ORDER` fixes that by serializing
+    ;; id generation -- an acceptable cost, since uploads insert from a single connection.
+    :metabase.upload/auto-incrementing-int-pk [:number [:identity 1 1] :order]
+    :metabase.upload/float                    [:double]
+    :metabase.upload/boolean                  [:boolean]
+    :metabase.upload/date                     [:date]
+    :metabase.upload/datetime                 [:timestamp_ntz]
+    :metabase.upload/offset-datetime          [:timestamp_tz]))
+
+;; Snowflake's JDBC driver cannot bind `java.time` values: `setObject` handles temporal binds only via the
+;; legacy `java.sql.Date`/`Time`/`Timestamp` classes, and throws on anything else.
+;;
+;; Converting through those legacy classes is no better: `setTimestamp` binds nanos-since-epoch as
+;; `TIMESTAMP_LTZ` computed in the JVM default zone, while the session runs with `TIMEZONE=UTC`
+;; (see [[connection-details->spec]]), so wall-clock times would shift whenever the JVM zone isn't UTC.
+;;
+;; String binds sidestep both problems: Snowflake parses them server-side into the column's type, independent
+;; of any timezone. Nine fractional digits keep full nanosecond precision -- the CSV parser accepts arbitrary
+;; sub-second precision and Snowflake timestamps store up to 9 digits.
+(defn- temporal-bind->string
+  "Convert a temporal upload value to a string bind that Snowflake will coerce to the column type.
+  Non-temporal values pass through unchanged."
+  [v]
+  (condp instance? v
+    LocalDate      (u.date/format v)
+    LocalDateTime  (u.date/format "yyyy-MM-dd HH:mm:ss.SSSSSSSSS" v)
+    OffsetDateTime (u.date/format "yyyy-MM-dd HH:mm:ss.SSSSSSSSS xx" v)
+    v))
+
+(defmethod driver/insert-into! :snowflake
+  [driver db-id table-name column-names values]
+  ;; Snowflake's fast bulk path (`PUT` + `COPY INTO` from a stage) is unavailable because Metabase's
+  ;; Snowflake connections set `enablePutGet=false`, so use the generic multi-row `INSERT`.
+  ((get-method driver/insert-into! :sql-jdbc)
+   driver db-id table-name column-names
+   (map #(mapv temporal-bind->string %) values)))
+
+(defmethod driver/add-columns! :snowflake
+  [driver db-id table-name column-definitions & args]
+  ;; Snowflake doesn't support adding multiple columns in one statement, so add them one at a time
+  (let [add-column! (get-method driver/add-columns! :sql-jdbc)]
+    (doseq [[column definition] column-definitions]
+      (apply add-column! driver db-id table-name {column definition} args))))
+
+(defmethod driver/allowed-promotions :snowflake
+  [_driver]
+  ;; Snowflake's `ALTER COLUMN` can widen a type (e.g. VARCHAR length, NUMBER precision) but never convert
+  ;; to a different one, so no promotions are possible
+  {})
 
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp_tz expr])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])
@@ -521,12 +586,10 @@
            [:< x y]
            [:> (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           -1
-
           [:and
            [:> x y]
            [:< (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           1
-
           :else
           0]))
 
@@ -547,29 +610,28 @@
   (h2x/with-database-type-info [:to_timestamp expr (h2x/literal "YYYYMMDDHH24MISS")] "timestamp"))
 
 (defmethod sql.qp/->honeysql [:snowflake :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod sql.qp/->honeysql [:snowflake :median]
-  [driver [_ arg]]
-  (sql.qp/->honeysql driver [:percentile arg 0.5]))
+  [driver [_ opts arg]]
+  (sql.qp/->honeysql driver [:percentile opts arg 0.5]))
 
 (defmethod sql.qp/->honeysql [:snowflake :split-part]
-  [driver [_ text divider position]]
+  [driver [_ _opts text divider position]]
   (let [position (sql.qp/->honeysql driver position)]
     [:case
      [:< position 1]
      ""
-
      :else
      [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
 
 (defmethod sql.qp/->honeysql [:snowflake :text]
-  [driver [_ value]]
+  [driver [_ _opts value]]
   [:to_char (sql.qp/->honeysql driver value)])
 
 (defmethod sql.qp/->honeysql [:snowflake :collate]
-  [driver [_ arg collation]]
+  [driver [_ _opts arg collation]]
   [:collate (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver collation)])
 
 (defn- db-name
@@ -613,9 +675,9 @@
 ;;; TODO -- I don't think these actually ever get qualified since the parent method returns things wrapped
 ;;; in [[h2x/with-database-type-info]] thus nothing will ever be an identifier.
 (defmethod sql.qp/->honeysql [:snowflake :field]
-  [driver [_ _ opts :as field-clause]]
+  [driver [_ opts _ :as field-clause]]
   (let [source-table (get opts driver-api/qp.add.source-table)
-        parent-method (get-method sql.qp/->honeysql [:sql :field])
+        parent-method (get-method sql.qp/->honeysql [:sql-mbql5 :field])
         qualify?      (and
                        ;; `query-db-name` is not currently set, e.g. because we're generating DDL statements for tests
                        (seq (query-db-name))
@@ -628,11 +690,11 @@
       qualify-identifier)))
 
 (defmethod sql.qp/->honeysql [:snowflake :time]
-  [driver [_ value _unit]]
+  [driver [_ _opts value _unit]]
   (h2x/->time (sql.qp/->honeysql driver value)))
 
 (defmethod sql.qp/->honeysql [:snowflake :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
+  [driver [_ _opts arg target-timezone source-timezone]]
   (let [hsql-form    (sql.qp/->honeysql driver arg)
         timestamptz? (or (sql.qp.u/field-with-tz? arg)
                          (h2x/is-of-type? hsql-form "timestamptz"))]
@@ -645,7 +707,7 @@
         (h2x/with-database-type-info "timestampntz"))))
 
 (defmethod sql.qp/->honeysql [:snowflake :relative-datetime]
-  [driver [_ amount unit]]
+  [driver [_ _opts amount unit]]
   (driver-api/maybe-cacheable-relative-datetime-honeysql
    driver unit amount
    sql.qp/*parent-honeysql-col-type-info*))
@@ -755,7 +817,7 @@
         ;; The Snowflake JDBC driver may throw for unsupported column types (e.g. UUID) during
         ;; DatabaseMetaData.getColumns() iteration. Fall back to SELECT * metadata which doesn't
         ;; hit the same code path. See #71595.
-        (log/warnf e "Error reading JDBC metadata for table %s, falling back to SELECT * metadata" (:name table))
+        (log/warnf "Error reading JDBC metadata for table %s, falling back to SELECT * metadata: %s" (:name table) (ex-message e))
         (mapv fix-base-type
               (fallback-fields-metadata driver conn table database))))))
 
@@ -779,24 +841,27 @@
   [_ entity-name]
   (escape-name-for-metadata entity-name))
 
-(defn- dynamic-table?
+(mu/defn- dynamic-table?
   "Check if the table is a dynamic table.
 
   You can't rely on :table_type from INFORMATION_SCHEMA.TABLES or :type from getTables because in
   both cases it returns `Table` for dynamic tables."
-  [^Connection conn ^String db-name ^String schema-name ^String table-name]
+  [^Connection conn    :- (lib.schema.common/instance-of-class Connection)
+   ^String db-name     :- :string
+   ^String schema-name :- :string
+   ^String table-name  :- :string]
   (try
     ;; there is another way of checking this by using SHOW TABLES command and check `is_dynamic` column.
     ;; But this column is not documented on https://docs.snowflake.com/en/sql-reference/sql/show-tables (2024/05/07),
     ;; So we avoid using it here.
     (-> (jdbc/query
          {:connection conn}
-         [(format "SHOW DYNAMIC TABLES LIKE '%s' IN SCHEMA \"%s\".\"%s\";"
-                  table-name db-name schema-name)])
+         [(format "SHOW DYNAMIC TABLES LIKE '%s' IN SCHEMA %s.%s;"
+                  table-name (quote-schema db-name) (quote-schema schema-name))])
         first
         some?)
     (catch SnowflakeSQLException e
-      (log/warn e "Failed to check if table is dynamic")
+      (log/warnf "Failed to check if table is dynamic: %s" (ex-message e))
       ;; query will fail if schema doesn't exist
       false)))
 
@@ -807,12 +872,10 @@
         driver-api/database
         db-name)))
 
-;; The Snowflake JDBC driver is buggy: schema and table name are interpreted as patterns
-;; in getPrimaryKeys and getImportedKeys calls. When this bug gets fixed, the
-;; [[sql-jdbc.describe-table/get-table-pks]] method and the [[describe-table-fks*]] and
-;; [[describe-table-fks]] functions can be dropped and the call to [[describe-table-fks]]
-;; can be replaced with a call to [[sql-jdbc.sync/describe-table-fks]]. See #26054 for
-;; more context.
+;; The Snowflake JDBC driver is buggy: schema and table name are interpreted as patterns in getPrimaryKeys and
+;; getImportedKeys calls. When this bug gets fixed, the [[sql-jdbc.describe-table/get-table-pks]] method can be
+;; dropped and the the [[reducible-table-fks-from-jdbc-metadata]] function can be simplified. See #26054 for more
+;; context.
 (defmethod sql-jdbc.describe-table/get-table-pks :snowflake
   [_driver ^Connection conn db-name-or-nil table]
   (let [^DatabaseMetaData metadata (.getMetaData conn)
@@ -830,45 +893,30 @@
           []
           (throw e))))))
 
-(defn- describe-table-fks*
-  "Stolen from [[sql-jdbc.describe-table]].
-  The only change is that it escapes `schema` and `table-name`."
-  [_driver ^Connection conn {^String schema :schema, ^String table-name :name} db-name]
+(mu/defn- reducible-table-fks-from-jdbc-metadata :- ::driver/describe-fks.result
+  "Wrapper around [[metabase.driver.sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata]].
+  The only changes are that it escapes `schema` and `table-name`, and catches errors when trying to get FKs for
+  dynamic tables."
+  [^Connection       conn       :- (lib.schema.common/instance-of-class Connection)
+   ^DatabaseMetaData metadata   :- (lib.schema.common/instance-of-class DatabaseMetaData)
+   ^String           db-name    :- [:maybe :string]
+   ^String           schema     :- [:maybe :string]
+   ^String           table-name :- :string]
   ;; Snowflake bug: schema and table name are interpreted as patterns
-  (let [metadata    (.getMetaData conn)
-        schema-name (escape-name-for-metadata schema)
-        table-name  (escape-name-for-metadata table-name)]
-    (try
-      (into
-       #{}
-       (sql-jdbc.sync.common/reducible-results #(.getImportedKeys metadata db-name schema-name table-name)
-                                               (fn [^ResultSet rs]
-                                                 (fn []
-                                                   {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
-                                                    :dest-table       {:name   (.getString rs "PKTABLE_NAME")
-                                                                       :schema (.getString rs "PKTABLE_SCHEM")}
-                                                    :dest-column-name (.getString rs "PKCOLUMN_NAME")}))))
-      (catch SnowflakeSQLException e
-        ;; dynamic tables doesn't support fks so it's fine to suppress the exception
-        (if (dynamic-table? conn db-name schema table-name)
-          #{}
-          (throw e))))))
+  (let [schema     (escape-name-for-metadata schema)
+        table-name (escape-name-for-metadata table-name)]
+    (when-not (dynamic-table? conn db-name schema table-name)
+      (sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata metadata db-name schema table-name))))
 
-(defn- describe-table-fks
-  "Stolen from [[sql-jdbc.describe-table]].
-  The only change is that it calls the stolen function [[describe-table-fks*]]."
-  [driver db-or-id-or-spec table db-name]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   db-or-id-or-spec
-   nil
-   (fn [conn]
-     (describe-table-fks* driver conn table db-name))))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/describe-table-fks :snowflake
-  [driver database table]
-  (describe-table-fks driver database table (db-name database)))
+(mu/defmethod driver/describe-fks :snowflake :- ::driver/describe-fks.result
+  [driver          :- :keyword
+   database        :- ::lib.schema.metadata/database
+   & {:as options} :- ::driver/describe-fks.options]
+  (let [db-name (db-name database)
+        f       (fn f [^Connection conn table]
+                  (let [metadata (.getMetaData conn)]
+                    (reducible-table-fks-from-jdbc-metadata conn metadata db-name (:schema table) (:name table))))]
+    (sql-jdbc.sync/reducible-fks-for-tables-matching-options driver database options f)))
 
 (defmethod sql.qp/current-datetime-honeysql-form :snowflake [_] :%current_timestamp)
 
@@ -905,7 +953,7 @@
     (and ((get-method driver/can-connect? :sql-jdbc) driver details)
          (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
            ;; jdbc/query is used to see if we throw, we want to ignore the results
-           (jdbc/query spec (format "SHOW SCHEMAS IN DATABASE \"%s\";" db))
+           (jdbc/query spec (format "SHOW SCHEMAS IN DATABASE %s;" (quote-schema db)))
            true))))
 
 (defn- normalize-details
@@ -927,7 +975,8 @@
   [_ database]
   (-> database
       (m/update-existing :details normalize-details)
-      (m/update-existing :write_data_details normalize-details)))
+      (m/update-existing :write_data_details normalize-details)
+      (m/update-existing :admin_details normalize-details)))
 
 ;;; If you try to read a Snowflake `timestamptz` as a String with `.getString` it always comes back in
 ;;; `America/Los_Angeles` for some reason I cannot figure out. Let's just read them out as UTC, which is what they're
@@ -1008,7 +1057,7 @@
 
 (defmethod driver/create-schema-if-needed! :snowflake
   [driver conn-spec schema]
-  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
+  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS %s;" (quote-schema schema))]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
 (defmethod driver/rename-table! :snowflake
@@ -1020,6 +1069,60 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Snowflake's only physical "index" is the table's single clustering key (`CLUSTER BY`); there are no secondary
+;; indexes, so it's a standalone `:clustering` kind. The `:name` is Metabase-side only: the warehouse keeps clustering
+;; keys unnamed, so fetch reports `:name nil` and reconcile matches by kind + columns.
+
+(defmethod driver/supported-index-methods :snowflake
+  [_driver _database]
+  {:clustering {:lifecycle    :standalone
+                :display-name (deferred-tru "Clustering key")
+                :fields       [driver.common/index-name-field driver.common/index-columns-field]}})
+
+(defmethod driver/compile-create-index :snowflake
+  [driver schema table {:keys [columns]}]
+  ;; Re-issuing the same CLUSTER BY is a no-op, so no IF NOT EXISTS needed.
+  (let [target (apply sql.u/quote-name driver :table (if (not-empty schema) [schema table] [table]))
+        cols   (str/join ", " (map #(sql.u/quote-name driver :field (:name %)) columns))]
+    [[(format "ALTER TABLE %s CLUSTER BY (%s)" target cols)]]))
+
+(defn- parse-clustering-key
+  "Parse a Snowflake `CLUSTERING_KEY` string like `LINEAR(category, price)` into its top-level column names/expressions
+  in order. Returns nil for a table with no clustering key."
+  [clustering-key]
+  (when-let [s (not-empty (some-> clustering-key str/trim))]
+    (let [inner (or (second (re-matches #"(?is)\s*LINEAR\s*\((.*)\)\s*" s)) s)]
+      (->> (driver.common/split-top-level-commas inner)
+           (map #(driver.common/unquote-ident (str/trim %) \"))
+           (remove str/blank?)
+           vec))))
+
+;; `CLUSTERING_KEY` lives in the current database's INFORMATION_SCHEMA; a blank schema falls back to `current_schema()`.
+(defmethod driver/fetch-table-indexes :snowflake
+  [_driver database schema table]
+  (let [clustering-key (-> (jdbc/query
+                            (sql-jdbc.conn/db->pooled-connection-spec database)
+                            [(str "SELECT clustering_key FROM information_schema.tables "
+                                  "WHERE table_schema = COALESCE(?, current_schema()) AND table_name = ?")
+                             (not-empty schema) table])
+                           first :clustering_key)]
+    (if-let [columns (not-empty (parse-clustering-key clustering-key))]
+      [{:name              nil
+        :kind              :clustering
+        :access-method     nil
+        :is-unique         false
+        :is-primary        false
+        :is-valid          true
+        :key-columns       columns
+        :include-columns   []
+        :partial-predicate nil
+        :definition        (format "CLUSTER BY (%s)" (str/join ", " columns))}]
+      [])))
+
 (defmethod driver/table-name-length-limit :snowflake
   [_driver]
   ;; https://docs.snowflake.com/en/sql-reference/identifiers
@@ -1028,12 +1131,12 @@
 (defn get-string-filter-arg
   "Generate the argument to match in the string filters. It's based on sql.qp/generate-pattern."
   [driver
-   [type val :as arg]
+   [type opts val :as arg]
    {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   (if case-sensitive
     (sql.qp/->honeysql driver arg)
     (if (= :value type)
-      (sql.qp/->honeysql driver [type (u/lower-case-en val)])
+      (sql.qp/->honeysql driver [type opts (u/lower-case-en val)])
       [:lower (sql.qp/->honeysql driver arg)])))
 
 (defn- string-filter
@@ -1044,98 +1147,16 @@
      (get-string-filter-arg driver arg options)]))
 
 (defmethod sql.qp/->honeysql [:snowflake :contains]
-  [driver [_ field arg options]]
-  (string-filter driver :contains field arg options))
+  [driver [_ opts field arg]]
+  (string-filter driver :contains field arg opts))
 
 (defmethod sql.qp/->honeysql [:snowflake :starts-with]
-  [driver [_ field arg options]]
-  (string-filter driver :startswith field arg options))
+  [driver [_ opts field arg]]
+  (string-filter driver :startswith field arg opts))
 
 (defmethod sql.qp/->honeysql [:snowflake :ends-with]
-  [driver [_ field arg options]]
-  (string-filter driver :endswith field arg options))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Workspace Isolation                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- isolation-role-name
-  "Generate role name for workspace isolation."
-  [workspace]
-  (format "MB_ISOLATION_ROLE_%s" (:id workspace)))
-
-(defmethod driver/init-workspace-isolation! :snowflake
-  [_driver database workspace]
-  (let [details     (driver.conn/effective-details database)
-        schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        db-name     (:db details)
-        warehouse   (:warehouse details)
-        role-name   (isolation-role-name workspace)
-        read-user   {:user     (driver.u/workspace-isolation-user-name workspace)
-                     :password (driver.u/random-workspace-password)}
-        conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    (when-not db-name
-      (throw (ex-info (tru "Snowflake database configuration is missing required ''db'' (database name) setting")
-                      {:database-id (:id database) :step :init})))
-    (when-not warehouse
-      (throw (ex-info (tru "Snowflake database configuration is missing required ''warehouse'' setting")
-                      {:database-id (:id database) :step :init})))
-    ;; Snowflake RBAC: create schema -> create role -> grant privileges to role -> create user -> grant role to user
-    (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\".\"%s\"" db-name schema-name)
-                 (format "CREATE ROLE IF NOT EXISTS \"%s\"" role-name)
-                 (format "GRANT USAGE ON DATABASE \"%s\" TO ROLE \"%s\"" db-name role-name)
-                 (format "GRANT USAGE ON WAREHOUSE \"%s\" TO ROLE \"%s\"" warehouse role-name)
-                 (format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
-                 (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
-                 (format "GRANT ALL ON FUTURE TABLES IN SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
-                 (format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = \"%s\""
-                         (:user read-user) (:password read-user) role-name)
-                 (format "GRANT ROLE \"%s\" TO USER \"%s\"" role-name (:user read-user))]]
-      (jdbc/execute! conn-spec [sql]))
-    {:schema           schema-name
-     :database_details (assoc read-user :role role-name :use-password true)}))
-
-(defmethod driver/destroy-workspace-isolation! :snowflake
-  [_driver database workspace]
-  (let [details     (driver.conn/effective-details database)
-        schema-name (or (:schema workspace) (driver.u/workspace-isolation-namespace-name workspace))
-        db-name     (:db details)
-        role-name   (isolation-role-name workspace)
-        username    (driver.u/workspace-isolation-user-name workspace)
-        conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    (when-not db-name
-      (throw (ex-info (tru "Snowflake database configuration is missing required ''db'' (database name) setting")
-                      {:database-id (:id database) :step :destroy})))
-    ;; Drop in reverse order of creation: schema (CASCADE handles tables) -> user -> role
-    (doseq [sql [(format "DROP SCHEMA IF EXISTS \"%s\".\"%s\" CASCADE" db-name schema-name)
-                 (format "DROP USER IF EXISTS \"%s\"" username)
-                 (format "DROP ROLE IF EXISTS \"%s\"" role-name)]]
-      (jdbc/execute! conn-spec [sql]))))
-
-(defmethod driver/grant-workspace-read-access! :snowflake
-  [_driver database workspace tables]
-  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
-        db-name   (:db (driver.conn/effective-details database))
-        role-name (-> workspace :database_details :role)]
-    (when-not db-name
-      (throw (ex-info (tru "Snowflake database configuration is missing required ''db'' (database name) setting")
-                      {:database-id (:id database) :step :grant})))
-    (when-not role-name
-      (throw (ex-info (tru "Workspace isolation is not properly initialized - missing role name")
-                      {:workspace-id (:id workspace) :step :grant})))
-    (let [qdb (sql.u/quote-name :snowflake :schema db-name)
-          qr  (sql.u/quote-name :snowflake :field role-name)]
-      ;; Grant USAGE on each unique schema first (required to access tables within)
-      (doseq [schema (distinct (map :schema tables))]
-        (jdbc/execute! conn-spec [(format "GRANT USAGE ON SCHEMA %s.%s TO ROLE %s"
-                                          qdb (sql.u/quote-name :snowflake :schema schema) qr)]))
-      ;; Grant SELECT on each specific table
-      (doseq [table tables]
-        (jdbc/execute! conn-spec [(format "GRANT SELECT ON TABLE %s.%s.%s TO ROLE %s"
-                                          qdb
-                                          (sql.u/quote-name :snowflake :schema (:schema table))
-                                          (sql.u/quote-name :snowflake :table (:name table))
-                                          qr)])))))
+  [driver [_ opts field arg]]
+  (string-filter driver :endswith field arg opts))
 
 (defmethod driver/llm-sql-dialect-resource :snowflake [_]
   "metabot/prompts/dialects/snowflake.md")

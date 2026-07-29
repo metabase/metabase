@@ -94,6 +94,9 @@
                                                      :password password
                                                      :device-info (request/device-info request)})]
                   (setup-set-settings! {:email email :site-name site-name :site-locale site-locale})
+                  ;; the setup token can never be used again now that the first User exists -- clear it out so we don't
+                  ;; keep an unusable token-like value around in (public) Settings responses.
+                  (setup/clear-token!)
                   user-info))
               (catch Throwable e
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this

@@ -30,7 +30,6 @@
                              :new_string "id = 2"}]})]
               (is (= query-id (:query-id result)))
               (is (= "SELECT * FROM users WHERE id = 2" (:query-content result)))))
-
           (testing "edit with JSON-parsed MBQL 5 query (string enum values)"
             (let [original-sql "SELECT * FROM users WHERE id = 1"
                   query-id "q-mbql5"
@@ -47,7 +46,6 @@
                              :new_string "id = 2"}]})]
               (is (= query-id (:query-id result)))
               (is (= "SELECT * FROM users WHERE id = 2" (:query-content result)))))
-
           (testing "replace-all edit"
             (let [mp (mt/metadata-provider)
                   original-sql "SELECT id, id FROM users WHERE id = 1"
@@ -64,7 +62,6 @@
                              :replace_all true}]})]
               (is (= "SELECT user_id, user_id FROM users WHERE user_id = 1"
                      (:query-content result)))))
-
           (testing "rejects ambiguous edits"
             (let [mp (mt/metadata-provider)
                   original-sql "SELECT id, id FROM users"
@@ -100,7 +97,6 @@
                     :sql new-sql})]
               (is (= new-sql (:query-content result)))
               (is (= db-id (:database result)))))
-
           (testing "replace with JSON-parsed MBQL 5 query (string enum values)"
             (let [original-sql "SELECT * FROM users"
                   new-sql "SELECT id, name FROM customers"
@@ -116,7 +112,6 @@
                     :sql new-sql})]
               (is (= new-sql (:query-content result)))
               (is (= db-id (:database result)))))
-
           (testing "replaces SQL and updates name/description"
             (let [mp (mt/metadata-provider)
                   query-id "q6"

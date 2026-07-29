@@ -2,7 +2,6 @@
 import styled from "@emotion/styled";
 import type { ComponentPropsWithRef } from "react";
 
-import { inputPadding } from "metabase/common/style/input";
 import { Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 interface SelectButtonRootProps {
@@ -15,33 +14,35 @@ const getColor = ({ hasValue, highlighted }: SelectButtonRootProps) => {
   if (hasValue) {
     return highlighted ? color("text-primary-inverse") : color("text-primary");
   } else {
-    return color("text-tertiary");
+    return color("text-disabled");
   }
 };
 
 export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
-  ${inputPadding()}
+  padding: 0.625rem 0.75rem;
   cursor: pointer;
   display: flex;
   width: ${(props) => (props.fullWidth ? "100%" : "unset")};
   align-items: center;
   border: 1px solid
     ${({ hasValue, highlighted }) =>
-      hasValue && highlighted ? color("brand") : color("border")};
+      hasValue && highlighted ? color("core-brand") : color("border-neutral")};
   background-color: ${({ hasValue, highlighted }) =>
-    hasValue && highlighted ? color("brand") : color("background-primary")};
+    hasValue && highlighted
+      ? color("core-brand")
+      : color("background_page-primary")};
   border-radius: var(--mantine-spacing-sm);
   font-weight: 700;
   min-width: 104px;
   color: ${getColor};
 
   &:hover {
-    border-color: var(--mb-color-brand);
+    border-color: var(--mb-color-core-brand);
   }
 
   &:focus {
-    border-color: var(--mb-color-brand);
-    outline: 2px solid var(--mb-color-focus);
+    border-color: var(--mb-color-core-brand);
+    outline: 2px solid var(--mb-color-input-focus);
   }
 
   &:not(:focus-visible) {
@@ -49,7 +50,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   }
 
   &:disabled {
-    background-color: var(--mb-color-background-secondary);
+    background-color: var(--mb-color-background_page-secondary);
     color: var(--mb-color-text-secondary);
     pointer-events: none;
   }

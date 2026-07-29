@@ -319,7 +319,7 @@ const getNamespace = (
   }
 
   if ("namespace" in item) {
-    return item.namespace as CollectionNamespace;
+    return item.namespace;
   }
   if (
     "collection" in item &&
@@ -327,10 +327,11 @@ const getNamespace = (
     !!item.collection &&
     "namespace" in item.collection
   ) {
-    return item.collection?.namespace as CollectionNamespace;
+    return item.collection?.namespace;
   }
 
   if ("collection_namespace" in item) {
+    // Unjustified type cast. FIXME
     return item.collection_namespace as CollectionNamespace;
   }
   return undefined;

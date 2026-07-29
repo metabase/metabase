@@ -80,13 +80,11 @@
                               (lib/normalize [:field {old-key value, :lib/uuid id} 123]))
         :metabase.lib.field/original-effective-type        :type/Text
         :metabase.lib.query/transformation-added-base-type :type/Integer)
-
       (testing "new key already present takes precedence"
         (is (= [:field (assoc base-opts :lib/original-effective-type :type/Integer) 123]
                (lib/normalize [:field {:lib/uuid                                   id
                                        :metabase.lib.field/original-effective-type :type/Text
                                        :lib/original-effective-type                :type/Integer} 123]))))
-
       (testing "old keys are disallowed by the schema"
         (are [old-key value] (not (mr/validate :mbql.clause/field
                                                [:field (assoc base-opts old-key value) 123]))

@@ -62,6 +62,10 @@ Cache query results for faster loading times.
 
 Upload custom maps to your Metabase.
 
+## [Custom visualizations](../questions/visualizations/custom.md)
+
+Add your own chart types by uploading visualization plugins.
+
 ## [Customizing the Metabase Jetty webserver](./customizing-jetty-webserver.md)
 
 Set SSL and port settings for the Jetty webserver.

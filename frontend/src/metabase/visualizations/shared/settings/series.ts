@@ -14,6 +14,7 @@ export const getSeriesColors = (
 ) => {
   const assignments: Record<string, string> = {};
 
+  // Unjustified type cast. FIXME
   const seriesSettings = getIn(settings, [SERIES_SETTING_KEY]) as
     | Record<string, { color?: string; title?: string }>
     | undefined;

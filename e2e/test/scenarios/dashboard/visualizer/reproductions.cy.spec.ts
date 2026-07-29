@@ -131,10 +131,12 @@ describe("issue 61521", () => {
       },
     };
 
+    // Unjustified type cast. FIXME
     H.createQuestion(questionBDetails as unknown as StructuredQuestionDetails);
 
     H.createDashboard().then(({ body: { id: dashboardId } }) => {
       H.createQuestionAndAddToDashboard(
+        // Unjustified type cast. FIXME
         questionADetails as unknown as StructuredQuestionDetails,
         dashboardId,
       );

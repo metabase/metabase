@@ -1,6 +1,6 @@
 (ns metabase-enterprise.security-center.models.security-advisory
   (:require
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -15,6 +15,7 @@
   {:severity          mi/transform-keyword
    :match_status      mi/transform-keyword
    :affected_versions mi/transform-json
+   :download_jar_urls mi/transform-json
    ;; EDN because HoneySQL treats keywords as identifiers and strings as values.
    :matching_query    mi/transform-edn})
 
@@ -49,9 +50,9 @@
     (events/publish-event! :event/security-advisory-acknowledge
                            {:object  advisory
                             :user-id user-id})
-    (snowplow/track-event! :snowplow/simple_event
-                           {:event        "security_advisory_acknowledged"
-                            :event_detail (name (:severity advisory))})
+    (analytics/track-event! :snowplow/simple_event
+                            {:event        "security_advisory_acknowledged"
+                             :event_detail (name (:severity advisory))})
     (-> (t2/select-one :model/SecurityAdvisory :id (:id advisory))
         (t2/hydrate :acknowledged_by_user))))
 

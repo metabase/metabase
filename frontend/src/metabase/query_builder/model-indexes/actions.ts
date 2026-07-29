@@ -38,6 +38,7 @@ export const updateModelIndexes =
       return;
     }
 
+    // Unjustified type cast. FIXME
     const { data: existingIndexes = [], error } = await (dispatch(
       listModelIndexes.initiate({ model_id: model.id() }),
     ) as Promise<{ data: ModelIndex[]; error: unknown }>);

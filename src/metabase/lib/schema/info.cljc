@@ -19,6 +19,7 @@
    :cache-refresh
    :collection
    :map-tiles
+   :metric
    :pulse
    :dashboard-subscription
    :dashboard

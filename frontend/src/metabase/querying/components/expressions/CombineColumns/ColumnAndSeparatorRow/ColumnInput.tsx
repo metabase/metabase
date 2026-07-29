@@ -48,7 +48,7 @@ export function ColumnInput({
     if (!event.currentTarget || !event.relatedTarget) {
       return;
     }
-    if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+    if (!event.currentTarget.contains(event.relatedTarget)) {
       setTimeout(() => setOpen(false), 100);
     }
   }

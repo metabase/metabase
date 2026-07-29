@@ -1,6 +1,6 @@
 (ns metabase.login-history.record
   (:require
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.channel.email.messages :as messages]
    [metabase.login-history.models.login-history :as login-history]
    [metabase.login-history.settings :as login-history.settings]
@@ -27,7 +27,7 @@
           (let [[info] (login-history/human-friendly-infos [history-record])]
             (messages/send-login-from-new-device-email! info))
           (catch Throwable e
-            (log/error e "Error sending 'login from new device' notification email")))))))
+            (log/errorf "Error sending 'login from new device' notification email: %s" (ex-message e))))))))
 
 (mu/defn record-login-history!
   "Record login history for a user, and send them an email if this is their first time logging in from this device."
@@ -41,4 +41,4 @@
     (when-not (or (:embedded device-info) (:token_exchange device-info))
       (maybe-send-login-from-new-device-email history-entry))
     (when-not (:last_login user)
-      (snowplow/track-event! :snowplow/account {:event :new-user-created} (u/the-id user)))))
+      (analytics/track-event! :snowplow/account {:event :new-user-created} (u/the-id user)))))

@@ -179,7 +179,7 @@ describe("admin > database > database routing", () => {
         cy.findByTestId("database-name-confirmation-input").type(
           "Destination DB 1 Updated",
         );
-        cy.button("Delete").click();
+        cy.button("Delete this DB connection").click();
         cy.wait("@deleteDatabase");
       });
       dbRoutingSection()

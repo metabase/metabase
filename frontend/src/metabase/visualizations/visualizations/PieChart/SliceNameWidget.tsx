@@ -3,9 +3,13 @@ import type { PieRow } from "metabase-types/api";
 
 import { SliceNameInput } from "./SliceNameWidget.styled";
 
+// The widget only reads these fields, so any row shape that carries them works
+// (PieRow for pie, TreemapRow for treemap).
+type NameableRow = Pick<PieRow, "key" | "name" | "originalName">;
+
 export type SliceNameWidgetProps = {
   initialKey: string | number;
-  pieRows: PieRow[];
+  pieRows: NameableRow[];
   updateRowName: (newName: string, key: string | number) => void;
 };
 

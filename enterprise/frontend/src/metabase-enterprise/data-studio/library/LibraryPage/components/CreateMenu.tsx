@@ -1,12 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
+import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModalWithProps } from "metabase/redux/ui";
+import { push } from "metabase/router";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,

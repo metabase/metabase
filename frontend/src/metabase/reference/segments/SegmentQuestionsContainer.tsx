@@ -1,23 +1,32 @@
 import cx from "classnames";
-import type { Location } from "history";
 import { Component } from "react";
 
-import { SidebarLayout } from "metabase/common/components/SidebarLayout";
+import { cardApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import CS from "metabase/css/core/index.css";
-import { Questions } from "metabase/entities/questions";
 import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
+import type { Dispatch } from "metabase/redux/store";
+import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import * as actions from "metabase/reference/reference";
 import { SegmentQuestions } from "metabase/reference/segments/SegmentQuestions";
+import {
+  type InjectedRouteProps,
+  type Location,
+  withRouteProps,
+} from "metabase/router";
 import type { User } from "metabase-types/api";
 
 import type { ClearStateProps, FetchProps } from "../reference";
-import type {
-  ReferenceRouteParams,
-  ReferenceRouteProps,
-  StateWithReference,
+import {
+  type ReferenceRouteParams,
+  type ReferenceRouteProps,
+  type StateWithReference,
+  getIsEditing,
+  getSegment,
+  getSegmentId,
+  getUser,
 } from "../selectors";
-import { getIsEditing, getSegment, getSegmentId, getUser } from "../selectors";
 import type { StubbedSegment } from "../types";
 
 import SegmentSidebar from "./SegmentSidebar";
@@ -33,7 +42,8 @@ const mapStateToProps = (
 });
 
 const mapDispatchToProps = {
-  fetchQuestions: Questions.actions.fetchList,
+  fetchQuestions: () => (dispatch: Dispatch) =>
+    runRtkEndpoint({}, dispatch, cardApi.endpoints.listCards),
   ...metadataActions,
   ...actions,
 };
@@ -92,7 +102,12 @@ class SegmentQuestionsContainer extends Component<SegmentQuestionsContainerProps
 
 // connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(SegmentQuestionsContainer as unknown as React.ComponentType);
+export default withRouteProps(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+  )(
+    // Unjustified type cast. FIXME
+    SegmentQuestionsContainer as unknown as React.ComponentType<InjectedRouteProps>,
+  ),
+);

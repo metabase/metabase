@@ -204,4 +204,55 @@ describe("DataStudioLayout", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  describe("transforms tab visibility", () => {
+    const transformsReadySettings = {
+      transformsSetupComplete: true,
+      transformsEnabled: true,
+    };
+
+    it("should show Transforms tab for admins", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        ...transformsReadySettings,
+        isAdmin: true,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.getByLabelText("Transforms")).toBeInTheDocument();
+    });
+
+    it("should show Transforms tab for a non-admin with transforms permission", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        ...transformsReadySettings,
+        isAdmin: false,
+        canAccessTransforms: true,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.getByLabelText("Transforms")).toBeInTheDocument();
+    });
+
+    it("should hide Transforms tab for a non-admin without transforms permission", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        ...transformsReadySettings,
+        isAdmin: false,
+        canAccessTransforms: false,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByLabelText("Transforms")).not.toBeInTheDocument();
+    });
+  });
 });

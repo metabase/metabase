@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import { useGetTableSelectionInfoQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { trackDataStudioTableUnpublished } from "metabase/data-studio/analytics";
+import { trackDataStudioTableUnpublished } from "metabase/common/data-studio/analytics";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { UnpublishTablesModalProps } from "metabase/plugins";
 import {
@@ -140,7 +140,11 @@ function ModalBody({
       </Stack>
       <Group mt="xl" gap="sm" wrap="nowrap" justify="flex-end">
         <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
-        <Button onClick={handleSubmit} variant="filled" color="error">
+        <Button
+          onClick={handleSubmit}
+          variant="filled"
+          color="feedback-negative"
+        >
           {getSubmitButtonLabel(selected_table, published_downstream_tables)}
         </Button>
       </Group>

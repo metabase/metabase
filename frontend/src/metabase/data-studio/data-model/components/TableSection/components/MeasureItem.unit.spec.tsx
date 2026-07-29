@@ -1,6 +1,5 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import { createMockMeasure } from "metabase-types/api/mocks";
 
 import { MeasureItem } from "./MeasureItem";
@@ -18,7 +17,7 @@ describe("MeasureItem", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => <MeasureItem measure={measure} href={measureUrl} />}
+        element={<MeasureItem measure={measure} href={measureUrl} />}
       />,
       { withRouter: true },
     );
@@ -41,7 +40,7 @@ describe("MeasureItem", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => <MeasureItem measure={measure} href="/test" />}
+        element={<MeasureItem measure={measure} href="/test" />}
       />,
       { withRouter: true },
     );

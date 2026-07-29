@@ -9,10 +9,10 @@ import {
 import {
   HoverParent,
   QueryColumnInfoIcon,
-} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+} from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
 import { useLocale } from "metabase/common/hooks";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
   clausesForMode,
@@ -91,7 +91,7 @@ export function QueryColumnPicker({
   hasTemporalBucketing = false,
   withDefaultBucketing = true,
   withInfoIcons = false,
-  color: colorProp = "brand",
+  color: colorProp = "core-brand",
   checkIsColumnSelected,
   onSelect,
   onSelectSection,

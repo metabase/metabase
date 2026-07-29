@@ -1,4 +1,4 @@
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useUpdateMetabotMutation } from "metabase/api";
@@ -32,11 +32,11 @@ export function MetabotVerifiedContentConfigurationPane({
     <Stack gap="sm">
       <SettingHeader
         id="verified-content"
-        title={t`Verified content`}
-        description={jt`When enabled, Metabot will only use models and metrics marked as Verified.`}
+        title={t`Verified or curated content`}
+        description={t`When enabled, Metabot will only use content that's verified, in an official collection, or published to the library.`}
       />
       <Switch
-        label={t`Only use Verified content`}
+        label={t`Only use verified or curated content`}
         checked={!!metabot.use_verified_content}
         onChange={(e) => handleVerifiedContentToggle(e.target.checked)}
         disabled={isUpdating}

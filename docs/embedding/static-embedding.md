@@ -10,7 +10,7 @@ redirect_from:
 
 In general, embedding works by displaying a Metabase URL inside an iframe in your website. A **static embed** (or signed embed) is an iframe that's loading a Metabase URL secured with a signed JSON Web Token (JWT). Metabase will only load the URL if the request supplies a JWT signed with the secret shared between your app and your Metabase. The JWT also includes a reference to the resource to load, e.g., the dashboard ID, and any values for locked parameters.
 
-You can't use static embeds with [row and column security](../permissions/row-and-column-security.md), [drill-through](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through), and user-specific data isn't captured in [usage analytics](../usage-and-performance-tools/usage-analytics.md) because signed JWTs don't create user sessions (server-side sessions). For those features, check out [Modular embedding](./modular-embedding.md).
+You can't use static embeds with [row and column security](../permissions/row-and-column-security.md), [drill-through](../questions/visualizations/drill-through.md), and user-specific data isn't captured in [usage analytics](../usage-and-performance-tools/usage-analytics.md) because signed JWTs don't create user sessions (server-side sessions). For those features, check out [Modular embedding](./modular-embedding.md).
 
 You can, however, restrict data in static embeds for specific people or groups by [locking parameters](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters).
 
@@ -32,7 +32,7 @@ your_metabase_embedding_url/your_signed_jwt?filter=true
 
 The signed JWT is generated using your [Metabase secret key](#regenerating-the-static-embedding-secret-key). The secret key tells Metabase that the request for filtered data can be trusted, so it's safe to display the results at the new embedding URL. Note that this secret key is shared for all static embeds, so whoever has access to that key will have access to all embedded artifacts.
 
-If you want to embed charts with additional interactive features, like [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) and [self-service querying](../questions/query-builder/editor.md), see [Modular embedding](./modular-embedding.md).
+If you want to embed charts with additional interactive features, like [drill-down](../questions/visualizations/drill-through.md) and [self-service querying](../questions/query-builder/editor.md), see [Modular embedding](./modular-embedding.md).
 
 ## Turning on the embedding feature in Metabase
 
@@ -41,12 +41,12 @@ If you want to embed charts with additional interactive features, like [drill-do
 
 ## Making a question or dashboard embeddable
 
-![Sharing button to embed dashboard](./images/sharing-embed.png)
+![Share button to embed dashboard](./images/sharing-embed.png)
 
 To create a static embed:
 
 1. Go to the question or dashboard that you want to embed in your website.
-2. Click on the **sharing icon**.
+2. Click the **Share** icon.
 3. Select **Embed**.
 4. Select **Static embedding**.
 5. Optional: [customize the appearance of the embed](./static-embedding-parameters.md#customizing-the-appearance-of-a-static-embed)
@@ -63,7 +63,7 @@ metabase_site_url/embed/question/your_jwt_token?parameter_name=value
 
 Once you've made a question or dashboard [embeddable](#making-a-question-or-dashboard-embeddable), you'll need to put the embedding URL for that question or dashboard on your website:
 
-1. Go to the question or dashboard > **sharing icon** > **Embed**.
+1. Go to the question or dashboard > **Share** icon > **Embed**.
 2. Make any changes and copy the code.
 3. [Preview the code](#previewing-the-code-for-an-embed)
 4. Add the code to the server code that builds your website.
@@ -73,7 +73,7 @@ For more examples, see our [reference apps repo](https://github.com/metabase/emb
 
 ## Previewing the code for an embed
 
-1. Go to the question or dashboard > **sharing icon** > **Embed this item in an application**.
+1. Go to the question or dashboard > **Share** icon > **Embed**.
 2. Click **Code**.
 3. In the top code block, you'll find the sample code for your web server. You'll also find the iframe snippet to plug into your HTML template or single page app.
 
@@ -124,7 +124,7 @@ If you change the [parameters](./static-embedding-parameters.md) of your embedde
 You can find a list of all static embeds of questions and dashboards from **Admin settings** > **Embedding** > **Static**.
 
 1. Visit the embeddable question or dashboard.
-2. Click on the **sharing icon** (square with an arrow pointing to the top right).
+2. Click the **Share** icon (square with an arrow pointing to the top right).
 3. Select **Embed**.
 4. Select **Static embedding**
 5. Click **Unpublish**.

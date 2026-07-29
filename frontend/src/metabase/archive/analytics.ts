@@ -24,7 +24,7 @@ export const archiveAndTrack = async ({
 }: {
   archive: () => Promise<void>;
   model: MoveToTrashEventDetail | "card";
-  modelId: number;
+  modelId: number | null;
   triggeredFrom: MoveToTrashTriggeredFrom;
 }): Promise<void> => {
   const start = new Date().getTime();

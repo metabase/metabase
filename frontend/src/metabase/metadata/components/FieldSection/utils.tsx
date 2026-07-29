@@ -1,9 +1,9 @@
 import { Fragment, type ReactNode } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { Link } from "metabase/router";
 import { isEntityName } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 

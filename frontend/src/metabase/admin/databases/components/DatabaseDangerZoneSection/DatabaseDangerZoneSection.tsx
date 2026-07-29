@@ -54,7 +54,7 @@ export const DatabaseDangerZoneSection = ({
           <>
             <Button
               variant="filled"
-              color="danger"
+              color="feedback-negative"
               onClick={saveFieldsModal.open}
             >{t`Discard saved field values`}</Button>
             <ConfirmModal
@@ -71,13 +71,13 @@ export const DatabaseDangerZoneSection = ({
           <>
             <Button
               variant="filled"
-              color="danger"
+              color="feedback-negative"
               onClick={deleteDbModal.open}
             >{t`Remove this database`}</Button>
             <DeleteDatabaseModal
               opened={isDeleteDbModalOpen}
               title={t`Delete the ${database.name} database?`}
-              defaultDatabaseRemovalMessage={t`This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone!`}
+              defaultDatabaseRemovalMessage={t`This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone. Transforms that use this database won’t be deleted, but they will stop working.`}
               database={database}
               onClose={deleteDbModal.close}
               onDelete={handleDeleteDatabase}

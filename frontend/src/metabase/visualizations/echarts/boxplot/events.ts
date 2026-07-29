@@ -44,6 +44,7 @@ const extractPointData = (
   if (!isDatasetRowObject(dataValue)) {
     return null;
   }
+  // Unjustified type cast. FIXME
   const xValue = dataValue[X_AXIS_DATA_KEY] as RowValue;
   const yValue = dataValue[dataKey];
   const rawIndex = dataValue[INDEX_KEY];

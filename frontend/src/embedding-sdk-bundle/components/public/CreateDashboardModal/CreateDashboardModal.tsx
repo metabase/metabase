@@ -1,3 +1,4 @@
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import {
   getCollectionIdSlugFromReference,
@@ -71,6 +72,8 @@ const CreateDashboardModalInner = ({
   const { isLoading: isCollectionQueryLoading } = useGetCollectionQuery({
     id: collectionIdSlug,
   });
+
+  useTrackSdkComponentMount("CreateDashboardModal", null, {});
 
   if (isLocaleLoading || isCollectionQueryLoading) {
     return null;

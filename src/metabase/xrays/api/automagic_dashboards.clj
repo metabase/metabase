@@ -349,7 +349,7 @@
                 model-index-value (t2/select-one :model/ModelIndexValue
                                                  :model_index_id model-index-id
                                                  :model_pk pk-id)]
-               ;; `->entity` does a read check on the model but this is here as well to be extra sure.
+    ;; `->entity` does a read check on the model but this is here as well to be extra sure.
     (api/read-check :model/Card (:model_id model-index))
     (let [linked (linked-entities {:model             model
                                    :model-index       model-index

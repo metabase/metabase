@@ -9,7 +9,7 @@ import { getVisualizationColumns } from "./get-visualization-columns";
 
 export function getInitialStateForVisualizerCard(
   dashcard: VisualizerDashboardCard,
-  datasets: Record<number, Dataset | null | undefined>,
+  preloadedDatasets: Record<number, Dataset | null | undefined>,
 ) {
   const visualizationEntity = dashcard.visualization_settings?.visualization;
 
@@ -26,7 +26,7 @@ export function getInitialStateForVisualizerCard(
     VisualizerDataSourceId,
     Dataset | null | undefined
   > = Object.fromEntries(
-    Object.entries(datasets ?? {}).map(([cardId, dataset]) => [
+    Object.entries(preloadedDatasets ?? {}).map(([cardId, dataset]) => [
       `card:${cardId}`,
       dataset,
     ]),
@@ -38,5 +38,5 @@ export function getInitialStateForVisualizerCard(
     dataSources,
   );
 
-  return { ...visualizationEntity, columns, datasetFallbacks: datasets };
+  return { ...visualizationEntity, columns, preloadedDatasets };
 }

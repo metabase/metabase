@@ -34,6 +34,7 @@ interface ChartSettingOrderedItemsProps<
   onSortEnd: ({ id, newIndex }: DragEndEvent) => void;
   items: T[];
   getId: (item: T) => string | number;
+  isSortable?: boolean;
   removeIcon?: IconProps["name"];
   accentColorOptions?: AccentColorOptions;
   getItemColor?: (item: SortableItem) => string | undefined;
@@ -51,12 +52,13 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
   items,
   onColorChange,
   getId,
+  isSortable = true,
   removeIcon,
   accentColorOptions,
   getItemColor = (item) => item.color,
   dividers = [],
 }: ChartSettingOrderedItemsProps<T>) {
-  const isDragDisabled = items.length < 1;
+  const isDragDisabled = !isSortable || items.length < 2;
   const sensors = useDndSensors({ distance: 15 });
 
   const renderItem = useCallback(

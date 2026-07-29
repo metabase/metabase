@@ -1,0 +1,9 @@
+name: Data App Template
+path: ./dist/index.js
+
+# Origins this app may call with fetch/XHR. Everything else is blocked — both in
+# `npm run dev` (via the dev server's CSP) and inside Metabase (the sandbox).
+# The Metabase instance itself is reached through the SDK, not listed here.
+# allowed_hosts:
+#   - https://api.example.com
+#   - https://*.internal.acme.com

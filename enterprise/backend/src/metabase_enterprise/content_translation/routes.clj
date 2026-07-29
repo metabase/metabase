@@ -76,7 +76,6 @@
                                                    [:map
                                                     [:filename :string]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
-
   (api/check-superuser)
   (let [file (get-in multipart-params ["file" :tempfile])]
     (when (> (get-in multipart-params ["file" :size]) max-content-translation-dictionary-size-bytes)

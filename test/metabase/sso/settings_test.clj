@@ -17,7 +17,6 @@
         (mt/with-dynamic-fn-redefs [ldap/test-current-ldap-details (constantly {:status :SUCCESS})]
           (sso.settings/ldap-enabled! true)
           (is (sso.settings/ldap-enabled))
-
           (sso.settings/ldap-enabled! false)
           (is (not (sso.settings/ldap-enabled))))))))
 

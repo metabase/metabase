@@ -4,6 +4,8 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :refer [with-collection-hierarchy!]]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.stale-test :as stale.test]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -160,12 +162,10 @@
                      {:location (collection/children-location top-coll)}]
         (stale.test/with-stale-items [:model/Card card-in-root {:name "A Card in root"}
                                       :model/Dashboard dashboard-in-root {:name "B Dashboard in root"}
-
                                       :model/Card card-in-top-level-coll {:name "C Card in coll"
                                                                           :collection_id top-coll-id}
                                       :model/Dashboard dashboard-in-top-level-coll {:name "D Dashboard in coll"
                                                                                     :collection_id top-coll-id}
-
                                       :model/Card card-in-child-coll {:name "E Card in coll"
                                                                       :collection_id child-coll-id}
                                       :model/Dashboard dashboard-in-child-coll {:name "F Dashboard in coll"
@@ -173,11 +173,9 @@
           (is (= [;; the first two items are in the root collection
                   {:id nil :name nil :type nil :authority_level nil :effective_ancestors []}
                   {:id nil :name nil :type nil :authority_level nil :effective_ancestors []}
-
                   ;; next we have two items in our top-level collection
                   {:id top-coll-id :name top-coll-name :type nil :authority_level nil :effective_ancestors []}
                   {:id top-coll-id :name top-coll-name :type nil :authority_level nil :effective_ancestors []}
-
                   ;; finally we have 2 items in our child collection
                   {:id child-coll-id
                    :name child-coll-name
@@ -189,7 +187,6 @@
                    :type nil
                    :authority_level nil
                    :effective_ancestors [{:id top-coll-id :name (:name top-coll) :type nil :authority_level nil}]}]
-
                  (->> (mt/user-http-request :crowberto :get 200 "ee/stale/root"
                                             :is_recursive true :sort_column "name")
                       :data
@@ -239,3 +236,23 @@
                        "cutoff_date" "1988-01-21T00:00:00Z"}
                 :user-id (str (mt/user->id :crowberto))}
                (last (snowplow-test/pop-event-data-and-user-id!))))))))
+
+(deftest stale-candidates-respects-permissions-test
+  (mt/with-premium-features #{:collection-cleanup}
+    (testing "GET /api/ee/stale/:id read-checks the target collection"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection collection {}]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (stale-url collection)))))))
+    (testing "is_recursive traversal excludes descendants the user cannot write to"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection parent {}
+                       :model/Collection child {:location (collection/children-location parent)}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) parent)
+          (perms/grant-collection-read-permissions! (perms-group/all-users) child)
+          (stale.test/with-stale-items [:model/Card parent-card {:collection_id (:id parent)}
+                                        :model/Card child-card {:collection_id (:id child)}]
+            (let [result (mt/user-http-request :rasta :get 200 (stale-url parent) :is_recursive true)
+                  ids    (->> result :data (map (juxt :model :id)) set)]
+              (is (contains? ids ["card" (u/the-id parent-card)]))
+              (is (not (contains? ids ["card" (u/the-id child-card)]))))))))))

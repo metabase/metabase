@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { Messages } from "metabase/admin/permissions/constants/messages";
@@ -8,13 +7,8 @@ import {
 } from "metabase/admin/permissions/selectors/confirmations";
 import {
   DataPermissionType,
-  type EntityId,
   type PermissionOption,
   type PermissionSectionConfig,
-  type PermissionSubject,
-  type SchemaEntityId,
-  type SpecialGroupType,
-  type TableEntityId,
 } from "metabase/admin/permissions/types";
 import {
   getFieldsPermission,
@@ -22,11 +16,17 @@ import {
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
+import { push } from "metabase/router";
 import {
   DataPermission,
   DataPermissionValue,
   type Group,
   type GroupsPermissions,
+  type PermissionEntityId,
+  type PermissionSubject,
+  type SchemaEntityId,
+  type SpecialGroupType,
+  type TableEntityId,
 } from "metabase-types/api";
 
 export const DATA_MODEL_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
@@ -35,21 +35,21 @@ export const DATA_MODEL_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
     label: t`No`,
     value: DataPermissionValue.NONE,
     icon: "close",
-    iconColor: "danger",
+    iconColor: "feedback-negative",
   },
   edit: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`Yes`,
     value: DataPermissionValue.ALL,
     icon: "check",
-    iconColor: "success",
+    iconColor: "feedback-positive",
   },
   controlled: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`Granular`,
     value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
-    iconColor: "warning",
+    iconColor: "feedback-warning",
   },
 };
 
@@ -62,7 +62,7 @@ const DATA_MODEL_PERMISSIONS_DESC = [
 const getPermissionValue = (
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   permissionSubject: PermissionSubject,
 ): DataPermissionValue => {
   switch (permissionSubject) {
@@ -70,6 +70,7 @@ const getPermissionValue = (
       return getFieldsPermission(
         permissions,
         groupId,
+        // Unjustified type cast. FIXME
         entityId as TableEntityId,
         DataPermission.DATA_MODEL,
       );
@@ -77,6 +78,7 @@ const getPermissionValue = (
       return getTablesPermission(
         permissions,
         groupId,
+        // Unjustified type cast. FIXME
         entityId as SchemaEntityId,
         DataPermission.DATA_MODEL,
       );
@@ -104,7 +106,7 @@ const getDisabledTooltip = (groupType: SpecialGroupType) => {
 };
 
 export const buildDataModelPermission = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: number,
   groupType: SpecialGroupType,
   permissions: GroupsPermissions,

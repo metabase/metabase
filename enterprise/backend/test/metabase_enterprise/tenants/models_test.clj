@@ -188,7 +188,6 @@
           (let [coll (t2/select-one :model/Collection :id tenant-collection-id)
                 localized-coll (collection/maybe-localize-tenant-collection-name coll)]
             (is (= "Tenant collection: My Tenant" (:name localized-coll))))
-
           (mt/with-current-user tenant-user
             (let [coll (t2/select-one :model/Collection :id tenant-collection-id)
                   localized-coll (collection/maybe-localize-tenant-collection-name coll)]

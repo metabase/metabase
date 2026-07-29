@@ -1,0 +1,13 @@
+{% if skill_catalog %}
+# Available skills
+
+These skills hold detailed, task-specific instructions. Before doing the related
+work, load the skill(s) you need with the `load_skill` tool (you may load several
+at once). Load only what's relevant.
+{% for s in skill_catalog %}
+- **{{ s.id }}** — {{ s.description }}
+{% endfor %}
+{% endif %}
+{% for body in skill_always_on %}
+{{ body|safe }}
+{% endfor %}

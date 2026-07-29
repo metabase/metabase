@@ -8,7 +8,7 @@
     border-left: none;
 
     &.isOpen {
-      border-left: 1px solid var(--mb-color-border);
+      border-left: 1px solid var(--mb-color-border-neutral);
     }
 
     @media screen and (max-width: 40em) {
@@ -20,7 +20,7 @@
     border-right: none;
 
     &.isOpen {
-      border-right: 1px solid var(--mb-color-border);
+      border-right: 1px solid var(--mb-color-border-neutral);
     }
   }
 }

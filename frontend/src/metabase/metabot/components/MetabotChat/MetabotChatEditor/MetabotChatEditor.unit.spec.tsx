@@ -11,7 +11,7 @@ import {
 import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
@@ -30,6 +30,7 @@ const defaultProps = {
   onSubmit: jest.fn(),
   onStop: jest.fn(),
   suggestionConfig: {
+    // Unjustified type cast. FIXME
     suggestionModels: [
       "table",
       "database",
@@ -42,6 +43,7 @@ const defaultProps = {
 
 // "fetch-mock" can accept an array, the types are incorrect
 const asFetchMockModelParams = (models: string[]) =>
+  // Unjustified type cast. FIXME
   models as unknown as string;
 
 const setup = (
@@ -78,7 +80,7 @@ const setup = (
 
 const getEditor = () =>
   // eslint-disable-next-line testing-library/no-node-access
-  document.querySelector('[contenteditable="true"]')! as HTMLElement;
+  document.querySelector('[contenteditable="true"]') as HTMLElement;
 const getPopup = () => screen.findByTestId("mini-picker");
 
 describe("MetabotChatEditor", () => {

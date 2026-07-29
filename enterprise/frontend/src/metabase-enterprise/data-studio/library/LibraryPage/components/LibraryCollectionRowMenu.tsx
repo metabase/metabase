@@ -1,9 +1,10 @@
 import { useCallback } from "react";
-import { t } from "ttag";
 import _ from "underscore";
 
-import { CollectionRowMenu } from "metabase/collections/components/CollectionRowMenu";
+import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
 import type { Collection, CollectionId } from "metabase-types/api";
+
+import { getArchiveLibraryCollectionsMessage } from "../utils";
 
 type LibraryCollectionRowMenuProps = {
   childCount: number;
@@ -52,7 +53,7 @@ export function LibraryCollectionRowMenu(props: LibraryCollectionRowMenuProps) {
       }}
       customArchiveMessage={
         isLibraryDataCollection && childCount > 0
-          ? t`Archiving this collection will also unpublish the tables inside it and archive any other child items.`
+          ? getArchiveLibraryCollectionsMessage(1)
           : undefined
       }
       onArchiveSuccess={onArchiveSuccess}

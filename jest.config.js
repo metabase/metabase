@@ -2,11 +2,48 @@
 /** eslint-disable-next-line import/no-commonjs */
 const esmPackages = require("./jest.esm-packages.js");
 
+const swcJestTransform = [
+  "@swc/jest",
+  {
+    jsc: {
+      // Jest runs on Node so we can target a modern engine and skip a bunch
+      // of polyfills/transforms that `env.targets: ["defaults"]` would emit.
+      target: "es2022",
+      loose: true,
+      parser: {
+        syntax: "typescript",
+        tsx: true,
+      },
+      transform: {
+        react: {
+          runtime: "automatic",
+        },
+      },
+      experimental: {
+        plugins: [
+          ["@swc-contrib/mut-cjs-exports", {}],
+          ["@swc/plugin-emotion", { sourceMap: false }],
+        ],
+      },
+    },
+    module: {
+      type: "commonjs",
+    },
+    sourceMaps: "inline",
+    minify: false,
+  },
+];
+
 const baseConfig = {
+  transform: {
+    "^.+\\.m?[jt]sx?$": swcJestTransform,
+  },
   moduleNameMapper: {
     // Force jose to use Node.js runtime instead of browser runtime in jsdom environment.
     // The browser runtime expects CryptoKey to be globally available, which jsdom doesn't provide.
     "^jose$": "<rootDir>/node_modules/jose/dist/node/cjs/index.js",
+    // remend only declares an `import` export condition, so jest's CJS resolver can't find it.
+    "^remend$": "<rootDir>/node_modules/remend/dist/index.js",
     "^build-configs/(.*)$": "<rootDir>/frontend/build/$1",
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
@@ -31,6 +68,7 @@ const baseConfig = {
     "sdk-iframe-embedding-ee-plugins":
       "<rootDir>/frontend/src/metabase/utils/noop.ts",
     "ee-plugins": "<rootDir>/frontend/src/metabase/utils/noop.ts",
+    "ee-overrides": "<rootDir>/frontend/src/metabase/utils/noop.ts",
     /**
      * Imports which are only applicable to the embedding sdk.
      * As we use SDK components in new iframe embedding, we need to import them here.
@@ -67,6 +105,7 @@ const baseConfig = {
   ],
   modulePathIgnorePatterns: [
     "<rootDir>/target/cljs_release/.*",
+    "<rootDir>/target/classes/.*",
     "<rootDir>/resources/frontend_client",
     "<rootDir>/.*/__mocks__",
     "<rootDir>/enterprise/frontend/src/custom-viz",
@@ -101,7 +140,12 @@ const baseConfig = {
 
 /** @type {import('jest').Config} */
 const config = {
-  reporters: ["default", "jest-junit"],
+  // `addFileAttribute` makes jest-junit emit the source path as a `file`
+  // attribute on each <testcase>. Additive — it leaves classname/name untouched,
+  // so Trunk's existing test identity is preserved — and it lets both Trunk
+  // (codeowners/file attribution) and the ci-conductor reporter resolve a real
+  // source file. Output dir/name come from the JEST_JUNIT_OUTPUT_* env vars.
+  reporters: ["default", ["jest-junit", { addFileAttribute: "true" }]],
   coverageReporters: ["html", "lcov"],
   watchPlugins: [
     "jest-watch-typeahead/filename",
@@ -133,6 +177,10 @@ const config = {
     {
       ...baseConfig,
       displayName: "core",
+      setupFilesAfterEnv: [
+        ...baseConfig.setupFilesAfterEnv,
+        "<rootDir>/frontend/test/jest-setup-env-core.js",
+      ],
       testPathIgnorePatterns: [
         ...(baseConfig.testPathIgnorePatterns || []),
         "<rootDir>/frontend/src/embedding-sdk-bundle",
@@ -147,6 +195,7 @@ const config = {
       displayName: "lint-rules",
       testMatch: ["<rootDir>/frontend/lint/tests/**/*.unit.spec.js"],
       testEnvironment: "node",
+      transform: baseConfig.transform,
       transformIgnorePatterns: baseConfig.transformIgnorePatterns,
     },
   ],

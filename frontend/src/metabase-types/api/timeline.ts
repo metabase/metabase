@@ -11,9 +11,13 @@ export type TimelineEventId = number;
 export type TimelineEventSource = "question" | "collections" | "api";
 
 export type TimelineIcon =
+  | "info"
+  | "note"
+  | "event"
   | "star"
   | "cake"
   | "mail"
+  | "mail_at"
   | "warning"
   | "bell"
   | "cloud";
@@ -55,10 +59,10 @@ export interface TimelineEventData {
   question_id?: CardId;
 }
 
-export interface ListTimelinesRequest {
+export type ListTimelinesRequest = {
   include?: "events";
   archived?: boolean;
-}
+};
 
 export interface ListCollectionTimelinesRequest {
   id: CollectionId;

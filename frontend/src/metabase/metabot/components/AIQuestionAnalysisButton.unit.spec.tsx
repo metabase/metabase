@@ -1,21 +1,28 @@
 import userEvent from "@testing-library/user-event";
+import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { mockStreamedEndpoint } from "metabase/api/ai-streaming/test-utils";
 import { MetabotProvider } from "metabase/metabot/context";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
+import { lastReqBody } from "metabase/metabot/tests/utils";
 import { createMockState } from "metabase/redux/store/mocks";
 
 import { AIQuestionAnalysisButton } from "./AIQuestionAnalysisButton";
 
 const mockAgentEndpoint = () =>
   mockStreamedEndpoint("/api/metabot/agent-streaming", {
-    textChunks: [
-      `0:"Here is an analysis of the chart."`,
-      `d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`,
+    events: [
+      { type: "text-start", id: "t1" },
+      {
+        type: "text-delta",
+        id: "t1",
+        delta: "Here is an analysis of the chart.",
+      },
+      { type: "text-end", id: "t1" },
     ],
   });
 
@@ -31,13 +38,18 @@ function setup({
   setupUserMetabotPermissionsEndpoint();
   setupEnterprisePlugins();
 
-  const metabotState = getMetabotInitialState();
+  const metabotState = assocIn(
+    getMetabotInitialState(),
+    ["conversations", "omnibot", "title"],
+    "Chart analysis",
+  );
 
   renderWithProviders(
     <MetabotProvider>
       <AIQuestionAnalysisButton />
     </MetabotProvider>,
     {
+      // Unjustified type cast. FIXME
       storeInitialState: createMockState({
         settings,
         metabot: metabotState,
@@ -81,9 +93,7 @@ describe("AIQuestionAnalysisButton", () => {
       await screen.findByRole("button", { name: "Explain this chart" }),
     );
 
-    await waitFor(() => expect(agentSpy).toHaveBeenCalled());
-    const lastCall = agentSpy.mock.lastCall;
-    const body = JSON.parse(lastCall?.[1]?.body as string);
+    const body = await lastReqBody(agentSpy);
     expect(body.message).toBe("Analyze this chart");
   });
 

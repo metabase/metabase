@@ -82,7 +82,6 @@
         (let [{source-table-id :table-id}          (lib.metadata/field metadata-providerable pk-id)
               {table-name :name, :as source-table} (lib.metadata/table metadata-providerable source-table-id)
               alias-for-join                       (join-alias table-name (or fk-field-name (:name fk-field)) fk-join-alias)]
-
           (-> (lib/join-clause source-table)
               (lib/with-join-alias alias-for-join)
               (lib/with-join-conditions [(lib/= [:field
@@ -130,7 +129,7 @@
   (let [fk-field-infos (->> field-clauses-with-source-field
                             (keep (fn [clause]
                                     (match/match-one clause
-                                      [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) (id :guard integer?)]
+                                      [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) (_id :guard integer?)]
                                       (field-opts->fk-field-info metadata-providerable opts))))
                             distinct
                             not-empty)
@@ -181,7 +180,7 @@
    stage :- ::lib.schema/stage]
   (or (when-let [fk-field-info->join-alias (not-empty (construct-fk-field-info->join-alias query path stage))]
         (let [stage' (match/replace stage
-                       [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) id-or-name]
+                       [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-name]
                        (if-not (some #{:lib/stage-metadata} &parents)
                          (let [join-alias (or (fk-field-info->join-alias (field-opts->fk-field-info query opts))
                                               (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
@@ -401,7 +400,7 @@
   [query :- ::lib.schema/query]
   (-> query
       (lib.walk/walk-stages first-pass)
-        ;; The second pass must go backwards, pushing implicitly joined fields downward until they are resolved.
-        ;; See #63245 and
-        ;; [[metabase.query-processor.middleware.add-implicit-joins-test/implicit-join-from-much-earlier-stage-test]].
+      ;; The second pass must go backwards, pushing implicitly joined fields downward until they are resolved.
+      ;; See #63245 and
+      ;; [[metabase.query-processor.middleware.add-implicit-joins-test/implicit-join-from-much-earlier-stage-test]].
       (lib.walk/walk-stages second-pass {:reversed? true})))

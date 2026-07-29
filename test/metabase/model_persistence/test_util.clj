@@ -16,7 +16,8 @@
       (let [persist-fn (fn persist-fn []
                          (#'task.persist-refresh/refresh-tables!
                           (data/id)
-                          (var-get #'task.persist-refresh/dispatching-refresher)))]
+                          (var-get #'task.persist-refresh/dispatching-refresher)
+                          nil))]
         (f persist-fn)))))
 
 (defmacro with-persistence-enabled!

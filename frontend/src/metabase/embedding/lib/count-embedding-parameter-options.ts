@@ -11,6 +11,7 @@ export const countEmbeddingParameterOptions = (
       acc[value] += 1;
       return acc;
     },
+    // Unjustified type cast. FIXME
     { disabled: 0, locked: 0, enabled: 0 } as Record<
       EmbeddingParameterVisibility,
       number

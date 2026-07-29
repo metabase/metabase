@@ -28,16 +28,19 @@ describe("DashboardEntityIdCard (EE with token)", () => {
       createMockDashboardTab({
         id: 1,
         name: "Tab 1",
+        // Unjustified type cast. FIXME
         entity_id: "tab-1-entity-id" as BaseEntityId,
       }),
       createMockDashboardTab({
         id: 2,
         name: "Tab 2",
+        // Unjustified type cast. FIXME
         entity_id: "tab-2-entity-id" as BaseEntityId,
       }),
       createMockDashboardTab({
         id: 3,
         name: "Tab 3",
+        // Unjustified type cast. FIXME
         entity_id: "tab-3-entity-id" as BaseEntityId,
       }),
     ];
@@ -57,6 +60,7 @@ describe("DashboardEntityIdCard (EE with token)", () => {
     tabs.forEach(async (tab) => {
       expect(
         await screen.findByRole("listitem", { name: tab.name }),
+        // Unjustified type cast. FIXME
       ).toHaveTextContent(tab.entity_id as string);
     });
   });

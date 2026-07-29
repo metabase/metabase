@@ -1,6 +1,6 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
+import { Link } from "metabase/router";
 import { Button, Icon, Modal, Stack, Text } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 const CHANNELS_CONFIG: {

@@ -124,12 +124,13 @@ function SeparatorInput({
         onBlur={handleBlur}
         styles={{
           input: {
+            // Unjustified type cast. FIXME
             fontFamily: fontFamilyMonospace as string,
           },
         }}
       />
       {!hasFocus && formatSeparator(value) !== value && (
-        <Text color="text-tertiary" className={styles.placeholder}>
+        <Text color="text-disabled" className={styles.placeholder}>
           {formatSeparator(value)}
         </Text>
       )}

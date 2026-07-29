@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { push } from "react-router-redux";
 
 import {
   setupCollectionByIdEndpoint,
@@ -20,21 +19,13 @@ import {
 import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,
+  createMockDashboard,
   createMockRecentTableDatabaseInfo,
   createMockRecentTableItem,
   createMockUser,
 } from "metabase-types/api/mocks";
 
-jest.mock("react-router-redux", () => ({
-  push: jest.fn(() => ({
-    type: "@@router/CALL_HISTORY_METHOD",
-    payload: { method: "push" },
-  })),
-}));
-
 import { EmbeddingHub } from "./EmbeddingHub";
-
-const mockPush = push as jest.MockedFunction<typeof push>;
 
 const setup = ({ isAdmin = true, checklist = {} } = {}) => {
   mockGetBoundingClientRect();
@@ -87,14 +78,13 @@ const setup = ({ isAdmin = true, checklist = {} } = {}) => {
     "data-isolation-strategy": null,
   });
 
-  return renderWithProviders(<EmbeddingHub />, { storeInitialState: state });
+  return renderWithProviders(<EmbeddingHub />, {
+    storeInitialState: state,
+    withUndos: true,
+  });
 };
 
 describe("EmbeddingHub", () => {
-  beforeEach(() => {
-    mockPush.mockClear();
-  });
-
   it("opens AddDataModal when 'Connect a database' is clicked", async () => {
     setup();
 
@@ -108,7 +98,19 @@ describe("EmbeddingHub", () => {
     });
   });
 
-  it("opens table picker when 'Create a dashboard' is clicked", async () => {
+  it("creates and saves an x-ray dashboard when a table is picked", async () => {
+    const xrayDashboard = createMockDashboard({
+      id: 10,
+      name: "A look at Foo Bar Table",
+    });
+    const savedDashboard = createMockDashboard({
+      id: 42,
+      name: "A look at Foo Bar Table",
+    });
+
+    fetchMock.get("path:/api/automagic-dashboards/table/10", xrayDashboard);
+    fetchMock.post("path:/api/dashboard/save", savedDashboard);
+
     setup();
 
     await userEvent.click(await screen.findByText("Create a dashboard"));
@@ -128,9 +130,34 @@ describe("EmbeddingHub", () => {
 
     await userEvent.click(within(dialog).getByText("Foo Bar Table"));
 
-    expect(mockPush).toHaveBeenCalledWith(
-      "/auto/dashboard/table/10?returnToEmbeddingSetupGuide=true",
-    );
+    expect(
+      await screen.findByText("Your dashboard was saved"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("See it")).toBeInTheDocument();
+
+    expect(screen.queryByTestId("entity-picker-modal")).not.toBeInTheDocument();
+  });
+
+  it("shows an error toast when x-ray dashboard creation fails", async () => {
+    fetchMock.get("path:/api/automagic-dashboards/table/10", 500);
+
+    setup();
+
+    await userEvent.click(await screen.findByText("Create a dashboard"));
+
+    const dialog = await screen.findByTestId("entity-picker-modal");
+
+    await userEvent.click(await screen.findByText("Recent items"));
+
+    expect(
+      await within(dialog).findByText("Foo Bar Table"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByText("Foo Bar Table"));
+
+    expect(
+      await screen.findByText("Failed to create dashboard"),
+    ).toBeInTheDocument();
   });
 
   it("shows success banner when first 3 steps are completed", async () => {

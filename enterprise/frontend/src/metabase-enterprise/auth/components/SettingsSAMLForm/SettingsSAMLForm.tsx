@@ -264,6 +264,7 @@ export function SettingsSAMLForm() {
                   <FormTextInput
                     name="saml-attribute-group"
                     label={t`Group attribute name`}
+                    placeholder="member_of"
                     nullable
                     {...getExtraFormFieldProps(
                       settingDetails?.["saml-attribute-group"],

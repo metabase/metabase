@@ -22,7 +22,6 @@
       (is (= {:metabot-id "bot-456"} @received-args) "Handler should receive metabot-id in args")
       (is (= "conv-123" (:conversation_id result)))
       (is (= {:message "hello"} (:structured_output result)))))
-
   (testing "invoke-tool with no arguments schema and no metabot-id"
     (let [received-args (atom nil)
           handler       (fn [args]
@@ -88,7 +87,6 @@
       (is (= 'metabase.api.macros/defendpoint (first expansion)))
       (is (= :post (second expansion)))
       (is (= "/test-endpoint" (nth expansion 2)))))
-
   (testing "deftool macro expands correctly for no-args tool"
     (let [expansion (macroexpand-1 '(metabase.metabot.tools.deftool/deftool "/no-args"
                                       "No args tool"
@@ -96,7 +94,6 @@
                                        :handler       identity}))]
       (is (seq? expansion))
       (is (= 'metabase.api.macros/defendpoint (first expansion)))))
-
   (testing "deftool macro always includes request in binding vector"
     (let [expansion (macroexpand-1 '(metabase.metabot.tools.deftool/deftool "/test"
                                       "Test"

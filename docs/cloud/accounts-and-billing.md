@@ -12,57 +12,50 @@ layout: new-docs
 
 Managing billing and accounts in the Metabase Store.
 
-## Try out a free 14-day trial of Pro
-
-If you're on a [Starter](https://www.metabase.com/product/starter) cloud plan, you can try out [all the features of Metabase Pro](https://www.metabase.com/product/pro) for free for 14 days with no commitment.
-
-If you want to stick with Pro, you'll have the chance to upgrade. Otherwise, your plan will automatically switch back to Starter.
-
-1. Log in to your Metabase [Store account](https://store.metabase.com).
-2. In the **Instances** section, select your instance.
-3. Click on **Try a free 14-day trial of Pro**.
-
-Once selected, the Store will display the status of your trial, along with a trial end date. We'll also send you an email with details about the trial.
-
-If you like the Pro features and want to upgrade, you'll need to upgrade your instance, either by clicking on the **Upgrade to Pro** button, or by managing your plan (see the next section).
-
 ## Upgrade to Pro (or downgrade to Starter)
 
-If you'd like to switch plans:
+To switch your plan:
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
 2. In the **Instances** section, select the instance you want to change.
-3. Click on **Manage plan**.
+3. Click **Manage plan**.
 4. Select the plan you want.
 5. Click **Change plan**.
 
-## Add people to manage your Metabase Store account
+## Add managers
 
-You can add people to your account to allow them to manage your Metabase Store account (not your Metabase instance).
-
-1. Log in to your Metabase [Store account](https://store.metabase.com).
-2. Go to **Settings**.
-3. Scroll to **Managers**.
-4. Enter email address of the person(s) you'd like to invite.
-5. The Store will send them an email prompting them to create a Metabase Store account.
-
-## Add people to receive billing and/or technical notifications
-
-You can include contacts to receive billing notifications, as well as technical notifications, like info about new Metabase releases.
+To invite users to manage your Metabase Store account:
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
-2. Go to **Settings**.
-3. Scroll to **Contacts**.
-4. Enter email address of the person(s) you'd like to invite.
-5. The Store will send them an email notifying them that they've been added to Metabase's contact list.
+2. Navigate to **Settings**.
+3. Find the **Managers** section.
+4. In the **Invite managers** field, enter the email address of each user you want to invite.
+5. Metabase sends them an email prompting them to create a Metabase Store account.
+
+> This action adds each invited user as a manager of your Metabase Store account only, not as a user of your Metabase instance.
+
+## Add contacts to receive billing or technical notifications
+
+To add contacts who receive billing or technical notifications:
+
+1. Log in to your Metabase [Store account](https://store.metabase.com).
+2. Navigate to **Settings**.
+3. Find the **Contacts** section.
+4. In the **Add contacts** field, enter the email address of each contact you want to add.
+5. In the **Email type** dropdown, choose between **All**, **Billing**, and **Technical**.
+6. Click **Add**.
+7. Metabase sends each contact an email notifying them that they've been added to your contact list.
 
 ## Cancel a subscription or trial
 
-To cancel a Starter or Pro plan directly in the Metabase Store:
+To cancel a Starter or Pro plan:
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
-2. Go to **Instances**.
-3. Under the instance with the subscription that you want to cancel, click **Cancel subscription and delete instance**. If you're on an Enterprise plan, you'll need to [contact support](https://www.metabase.com/help-premium).
+2. Navigate to **Instances**.
+3. In the instance you want to cancel, click **Settings**.
+4. Click **Cancel subscription and delete instance**. If you have an Enterprise plan, [contact support](https://www.metabase.com/help-premium).
+5. Optional: let us know why you're cancelling so we can improve Metabase. Click **Share feedback**, or click **Skip**.
+6. To confirm, click **Yes, cancel**.
 
 ## Update payment information
 
@@ -76,14 +69,15 @@ If your Metabase was suspended due to a failed payment, the Store will automatic
 
 ## Switch to annual billing
 
-1. Log in to your Metabase [Store account](https://store.metabase.com).
-2. Go to **Instances**.
-3. Navigate to the instance you want to switch to annual billing.
-4. Click on **Manage plan** next to the plan name.
-5. Confirm the plan selection and toggle on **Switch to annual billing**.
-6. Click on **Switch plan**.
+To switch to annual billing:
 
-Note that you cannot switch back to monthly billing until your annual cycle has completed.
+1. Log in to your Metabase [Store account](https://store.metabase.com).
+2. Navigate to **Instances**.
+3. In the instance you want to switch, click **Manage plan**.
+4. Enable the **Switch to annual billing** toggle.
+5. Click **Change plan**.
+
+> You can't switch back to monthly billing until your annual cycle has completed.
 
 ## Download past invoices
 
@@ -98,9 +92,9 @@ See Metabase's updated [W9 form](https://www.metabase.com/files/2024_W9_signed.p
 ## Update your Tax ID
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
-2. Go to **Billing**.
-3. Click on **Invoice Tax IDs**.
-4. Enter your country and Tax ID.
+2. Navigate to **Billing**.
+3. Find the **Payment details** section.
+4. In the **Invoice Tax IDs** field, select your country from the drop-down and enter your Tax ID.
 5. Click **Save**.
 
 ## Change the company name on invoices/receipts
@@ -113,24 +107,26 @@ If you need to reset your Admin password, [contact support](https://www.metabase
 
 ## Change your company name
 
-1. Navigate to your Metabase Store.
-2. Go to **Settings**.
-3. Click **Change company name**.
+1. Log in to your Metabase [Store account](https://store.metabase.com).
+2. Navigate to **Settings**.
+3. Find the **Company name** section.
+4. In the **Change company name** field, enter a new company name.
+5. Click **Update**.
 
 ## Change your billing address
 
-1. Navigate to your Metabase Store.
-2. Go to **Billing**.
-3. Click on **Billing address**.
-4. Update your billing address.
+1. Log in to your Metabase [Store account](https://store.metabase.com).
+2. Navigate to **Billing**.
+3. Find the **Payment details** section.
+4. In the **Billing address** field, enter your new billing address.
 5. Click **Save**.
 
-### Add or change your shipping address
+## Add or change your shipping address
 
-1. Navigate to your Metabase Store.
-2. Go to **Billing**.
-3. Click on **Shipping address**.
-4. Add or update your shipping address.
+1. Log in to your Metabase [Store account](https://store.metabase.com).
+2. Navigate to **Billing**.
+3. Find the **Payment details** section.
+4. In the **Shipping address** field, add or update your shipping address.
 5. Click **Save**.
 
 ## Change the primary account holder

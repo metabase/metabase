@@ -62,6 +62,7 @@ function parseFactor(ctx: ParseCtx): ExpressionRef | number | null {
   }
 
   while (isOperatorAtPrecedence(ctx, 2)) {
+    // Unjustified type cast. FIXME
     const op = (ctx.tokens[ctx.pos] as { type: "operator"; op: MathOperator })
       .op;
     ctx.pos++;
@@ -82,6 +83,7 @@ function parseExpressionWithContext(ctx: ParseCtx): ExpressionRef | null {
   }
 
   while (isOperatorAtPrecedence(ctx, 1)) {
+    // Unjustified type cast. FIXME
     const op = (ctx.tokens[ctx.pos] as { type: "operator"; op: MathOperator })
       .op;
     ctx.pos++;

@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { useSdkInternalNavigation } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
@@ -35,6 +36,23 @@ export const InteractiveDashboardContent = (
   const globalPlugins = useSdkSelector(getPlugins);
   const { push: pushNavigation } = useSdkInternalNavigation();
 
+  const {
+    dashboardId,
+    withTitle,
+    withDownloads,
+    withSubscriptions,
+    autoRefreshInterval,
+    enableEntityNavigation,
+  } = props;
+
+  useTrackSdkComponentMount("InteractiveDashboard", dashboardId, {
+    with_title: withTitle,
+    with_downloads: withDownloads,
+    with_subscriptions: withSubscriptions,
+    auto_refresh: autoRefreshInterval != null,
+    enable_entity_navigation: enableEntityNavigation,
+  });
+
   const plugins: MetabasePluginsConfig = useMemo(() => {
     return { ...globalPlugins, ...props.plugins };
   }, [globalPlugins, props.plugins]);
@@ -44,6 +62,7 @@ export const InteractiveDashboardContent = (
       getEmbeddingMode({
         question,
         queryMode: createEmbeddingSdkMode({ pushNavigation }),
+        // Unjustified type cast. FIXME
         plugins: plugins as InternalMetabasePluginsConfig,
       }),
     [plugins, pushNavigation],

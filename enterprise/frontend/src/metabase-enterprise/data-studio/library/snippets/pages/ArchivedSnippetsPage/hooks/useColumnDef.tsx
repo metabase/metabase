@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { CollectionRowMenu } from "metabase/collections/components/CollectionRowMenu";
+import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   isCollectionData,

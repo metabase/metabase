@@ -243,11 +243,9 @@
     (perms/check-has-application-permission :monitoring)
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-has-application-permission :subscription false)))
-
   (let [pulse-before-update (api/write-check (models.pulse/retrieve-pulse id))]
     (check-card-read-permissions cards)
     (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
-
     ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can
     ;; update pulse's recipients
     (when (premium-features/enable-advanced-permissions?)
@@ -263,7 +261,6 @@
                        has-subscription-perms?
                        (empty? to-add-recipients))
                    [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")])))
-
     (let [pulse-updates (maybe-add-recipients pulse-updates pulse-before-update)]
       (t2/with-transaction [_conn]
         ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,

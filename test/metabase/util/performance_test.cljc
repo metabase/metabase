@@ -30,6 +30,28 @@
                                      (= r 2) vec)))))]
       (is (= (apply concat inputs) (apply perf/concat inputs))))))
 
+(deftest insert-test
+  (testing "basic insertion positions"
+    (is (= [0 1 2 3]    (perf/insert [1 2 3] 0 0)))
+    (is (= [1 2 99 3 4] (perf/insert [1 2 3 4] 2 99)))
+    (is (= [1 2 99 3]   (perf/insert [1 2 3] 2 99)))
+    (is (= [1 2 3 99]   (perf/insert [1 2 3] 3 99))))
+  (testing "empty and single-element vectors"
+    (is (= [42]    (perf/insert [] 0 42)))
+    (is (= [99 1]  (perf/insert [1] 0 99)))
+    (is (= [1 99]  (perf/insert [1] 1 99))))
+  (testing "accepts non-vector collection inputs"
+    (is (= [0 1 2 3]    (perf/insert '(1 2 3) 0 0)))
+    (is (= [0 1 99 2 3 4] (perf/insert (range 5) 2 99))))
+  (testing "works for long collections"
+    (is (= (concat [0] (range 50)) (perf/insert (range 50) 0 0)))
+    (is (= (concat (range 50) [0]) (perf/insert (range 50) 50 0)))
+    (is (= (concat (range 20) [0] (range 20 50)) (perf/insert (range 50) 20 0))))
+  (testing "throws on illegal inputs"
+    (is (thrown? #?(:clj Exception :cljs js/Error) (perf/insert [] 1 99)))
+    (is (thrown? #?(:clj Exception :cljs js/Error) (perf/insert [1 2 3] -1 99)))
+    (is (thrown? #?(:clj Exception :cljs js/Error) (perf/insert [1 2 3] 10 99)))))
+
 (defn- mapv-via-run! [f coll]
   (let [v (volatile! [])]
     (perf/run! #(vswap! v conj (f %)) coll)
@@ -87,7 +109,6 @@
                   y nil]
          [x y])
        #_=> [])
-
      (are [i o] (= o i)
        (with-out-str
          (perf/doseq [x (range 3)
@@ -168,23 +189,18 @@
 (deftest test-update-keys
   (is (= {"a" 1 "b" 2 "c" 3} (perf/update-keys {:a 1 :b 2 :c 3} name)))
   (is (= {} (perf/update-keys nil keyword)))
-
   (testing "no changes"
     (let [original {:a 1 :b 2 :c 3}
           result (perf/update-keys original identity)]
       (is (identical? original result))))
-
   (testing "empty"
     (is (identical? {} (perf/update-keys {} str))))
-
   (testing "partial key transformation"
     (is (= {:keep-me 1 :changed 2}
            (perf/update-keys {:keep-me 1 :change-me 2} #(if (= % :change-me) :changed %)))))
-
   (testing "key collision - later keys should overwrite"
     (is (= {:same 20}
            (perf/update-keys {:a 10 :b 20} (constantly :same)))))
-
   (testing "f returns nil keys"
     (is (= {nil 2} (perf/update-keys {:a 1 :b 2} (constantly nil))))))
 
@@ -195,24 +211,19 @@
     (is (= 42 (perf/get-in {:key 42} [:key])))
     (is (= {:a 1} (perf/get-in {:a 1} [])))
     (is (nil? (perf/get-in nil [:a :b]))))
-
   (testing "missing keys return nil"
     (is (nil? (perf/get-in {:a {:b 3}} [:a :c])))
     (is (nil? (perf/get-in {:a 1} [:x :y :z]))))
-
   (testing "with not-found value"
     (is (= :default (perf/get-in {:a {:b 3}} [:a :c] :default)))
     (is (nil? (perf/get-in {:a {:b 3}} [:a :c] nil)))
     (is (nil? (perf/get-in {:a {:b nil}} [:a :b] :something-else))))
-
   (testing "nil values vs missing keys"
     (is (nil? (perf/get-in {:a {:b nil}} [:a :b])))
     (is (= :default (perf/get-in {:a {:b nil}} [:a :c] :default))))
-
   (testing "works with vectors"
     (is (= 2 (perf/get-in [[1 2] [3 4]] [0 1])))
     (is (= 30 (perf/get-in {:items [10 20 30]} [:items 2]))))
-
   (testing "partial path exists"
     (is (nil? (perf/get-in {:a 1} [:a :b])))
     (is (= :fallback (perf/get-in {:a "not-a-map"} [:a :b] :fallback)))))
@@ -238,23 +249,23 @@
 #?(:clj
    (defspec mapv-single-coll-equivalence 100
      (prop/for-all [coll (mg/generator [:sequential :int])]
-                   (= (mapv str coll)
-                      (perf/mapv str coll)))))
+       (= (mapv str coll)
+          (perf/mapv str coll)))))
 
 #?(:clj
    (defspec mapv-two-coll-equivalence 100
      (prop/for-all [c1 (mg/generator [:sequential :int])
                     c2 (mg/generator [:sequential :int])]
-                   (= (mapv str c1 c2)
-                      (perf/mapv str c1 c2)))))
+       (= (mapv str c1 c2)
+          (perf/mapv str c1 c2)))))
 
 #?(:clj
    (defspec mapv-three-coll-equivalence 100
      (prop/for-all [c1 (mg/generator [:sequential :int])
                     c2 (mg/generator [:sequential :int])
                     c3 (mg/generator [:sequential :int])]
-                   (= (mapv str c1 c2 c3)
-                      (perf/mapv str c1 c2 c3)))))
+       (= (mapv str c1 c2 c3)
+          (perf/mapv str c1 c2 c3)))))
 
 #?(:clj
    (defspec mapv-four-coll-equivalence 100
@@ -262,67 +273,67 @@
                     c2 (mg/generator [:sequential :int])
                     c3 (mg/generator [:sequential :int])
                     c4 (mg/generator [:sequential :int])]
-                   (= (mapv str c1 c2 c3 c4)
-                      (perf/mapv str c1 c2 c3 c4)))))
+       (= (mapv str c1 c2 c3 c4)
+          (perf/mapv str c1 c2 c3 c4)))))
 
 #?(:clj
    (defspec smallest-count-does-not-over-realize-2-colls 100
      (prop/for-all [short-len (mg/generator [:int {:min 0 :max 33}])
                     extra-len (mg/generator [:int {:min 34 :max 100}])]
-                   (let [short-coll (vec (range short-len))
-                         trap-coll  (trap-seq (+ short-len extra-len))]
-                     (= (#'perf/smallest-count short-coll trap-coll)
-                        (min short-len extra-len))))))
+       (let [short-coll (vec (range short-len))
+             trap-coll  (trap-seq (+ short-len extra-len))]
+         (= (#'perf/smallest-count short-coll trap-coll)
+            (min short-len extra-len))))))
 
 #?(:clj
    (defspec mapv-does-not-over-realize-2-colls 1000
      (prop/for-all [short-len (mg/generator [:int {:min 0 :max 50}])
                     extra-len (mg/generator [:int {:min 34 :max 100}])]
-                   (let [short-coll (vec (range short-len))
-                         trap-coll  (trap-seq (+ short-len extra-len))]
-                     (= (mapv vector short-coll trap-coll)
-                        (perf/mapv vector short-coll trap-coll))))))
+       (let [short-coll (vec (range short-len))
+             trap-coll  (trap-seq (+ short-len extra-len))]
+         (= (mapv vector short-coll trap-coll)
+            (perf/mapv vector short-coll trap-coll))))))
 
 #?(:clj
    (defspec mapv-does-not-over-realize-3-colls 1000
      (prop/for-all [short-len (mg/generator [:int {:min 0 :max 33}])
                     extra-len (mg/generator [:int {:min 34 :max 100}])]
-                   (let [short-coll (vec (range short-len))
-                         trap-coll  (trap-seq (+ short-len extra-len))]
-                     (= (mapv vector short-coll trap-coll trap-coll)
-                        (perf/mapv vector short-coll trap-coll trap-coll))))))
+       (let [short-coll (vec (range short-len))
+             trap-coll  (trap-seq (+ short-len extra-len))]
+         (= (mapv vector short-coll trap-coll trap-coll)
+            (perf/mapv vector short-coll trap-coll trap-coll))))))
 
 #?(:clj
    (defspec mapv-does-not-over-realize-4-colls 1000
      (prop/for-all [short-len (mg/generator [:int {:min 0 :max 33}])
                     extra-len (mg/generator [:int {:min 34 :max 100}])]
-                   (let [short-coll (vec (range short-len))
-                         trap-coll  (trap-seq (+ short-len extra-len))]
-                     (= (mapv vector short-coll trap-coll trap-coll trap-coll)
-                        (perf/mapv vector short-coll trap-coll trap-coll trap-coll))))))
+       (let [short-coll (vec (range short-len))
+             trap-coll  (trap-seq (+ short-len extra-len))]
+         (= (mapv vector short-coll trap-coll trap-coll trap-coll)
+            (perf/mapv vector short-coll trap-coll trap-coll trap-coll))))))
 
 #?(:clj
    (defspec mapv-handles-infinite-seqs-2-colls 1000
      (prop/for-all [coll (mg/generator [:vector {:min 0 :max 50} :int])]
-                   (= (mapv vector coll (range))
-                      (perf/mapv vector coll (range))))))
+       (= (mapv vector coll (range))
+          (perf/mapv vector coll (range))))))
 
 #?(:clj
    (defspec mapv-handles-infinite-seqs-3-colls 1000
      (prop/for-all [coll (mg/generator [:vector {:min 0 :max 50} :int])]
-                   (= (mapv vector coll (range) (iterate inc 0))
-                      (perf/mapv vector coll (range) (iterate inc 0))))))
+       (= (mapv vector coll (range) (iterate inc 0))
+          (perf/mapv vector coll (range) (iterate inc 0))))))
 
 #?(:clj
    (defspec mapv-handles-infinite-seqs-4-colls 1000
      (prop/for-all [coll (mg/generator [:vector {:min 0 :max 50} :int])]
-                   (= (mapv vector coll (range) (iterate inc 0) (repeat 1))
-                      (perf/mapv vector coll (range) (iterate inc 0) (repeat 1))))))
+       (= (mapv vector coll (range) (iterate inc 0) (repeat 1))
+          (perf/mapv vector coll (range) (iterate inc 0) (repeat 1))))))
 
 #?(:clj
    (defspec mapv-boundary-32-equivalence 1000
      (prop/for-all [n (mg/generator [:int {:min 28 :max 36}])]
-                   (let [c1 (vec (range n))
-                         c2 (vec (range n))]
-                     (= (mapv + c1 c2)
-                        (perf/mapv + c1 c2))))))
+       (let [c1 (vec (range n))
+             c2 (vec (range n))]
+         (= (mapv + c1 c2)
+            (perf/mapv + c1 c2))))))

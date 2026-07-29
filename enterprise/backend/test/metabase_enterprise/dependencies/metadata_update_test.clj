@@ -133,7 +133,7 @@
                                      [:model/Card :id :result_metadata :card_schema]
                                      :id [:in [parent-id child-id grandchild-id]])))
             (t2/update! :model/Card parent-id {:dataset_query (lib/query mp orders)})
-            (with-redefs [async/submit! (fn [f] (f))]
+            (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
               (events/publish-event! :event/card-update
                                      {:object (assoc parent-card :dataset_query (lib/query mp orders))
                                       :previous-object parent-card
@@ -158,7 +158,7 @@
                                               :to_entity_type :card
                                               :to_entity_id parent-id}]
             (t2/update! :model/Card child-id {:result_metadata nil})
-            (with-redefs [async/submit! (fn [f] (f))]
+            (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
               (events/publish-event! :event/card-update
                                      {:object (assoc parent-card :dataset_query native-query)
                                       :previous-object parent-card
@@ -194,7 +194,7 @@
                                                 [0 :display_name]
                                                 "new-name")]
               (t2/update! :model/Card parent-id {:result_metadata new-result-metadata})
-              (with-redefs [async/submit! (fn [f] (f))]
+              (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
                 (events/publish-event! :event/card-update
                                        {:object (assoc parent-card :result_metadata new-result-metadata)
                                         :previous-object parent-card
@@ -237,7 +237,7 @@
               (t2/update! :model/Card parent-id {:result_metadata new-parent-metadata})
               (t2/update! :model/Card child-id {:result_metadata new-child-metadata})
               (t2/update! :model/Card grandchild-id {:result_metadata new-grandchild-metadata})
-              (with-redefs [async/submit! (fn [f] (f))]
+              (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
                 (events/publish-event! :event/card-update
                                        {:object (assoc parent-card :result_metadata new-parent-metadata)
                                         :previous-object parent-card
@@ -279,7 +279,7 @@
               (t2/update! :model/Card parent-id {:result_metadata new-parent-metadata})
               (t2/update! :model/Card child-id {:result_metadata new-child-metadata})
               (t2/update! :model/Card grandchild-id {:result_metadata nil})
-              (with-redefs [async/submit! (fn [f] (f))]
+              (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
                 (events/publish-event! :event/card-update
                                        {:object (assoc parent-card :result_metadata new-parent-metadata)
                                         :previous-object parent-card
@@ -296,10 +296,8 @@
       (doseq [statement ["CREATE TABLE \"test_table\" (\"id\" INTEGER PRIMARY KEY, \"filter_col\" VARCHAR);"
                          "INSERT INTO \"test_table\" (\"id\", \"filter_col\") VALUES (1, 'value1'), (2, 'value2');"]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
-
       ;; Sync the database to pick up the new table
       (sync/sync-database! (mt/db))
-
       (let [table-id        (t2/select-one-fn :id :model/Table :db_id (mt/id) :name "test_table")
             filter-field-id (t2/select-one-fn :id :model/Field :table_id table-id :name "filter_col")
             ;; Step 2: Create a card with a filter on filter_col
@@ -315,21 +313,18 @@
                                          :from_entity_id card-id
                                          :to_entity_type :table
                                          :to_entity_id table-id})
-
           ;; Step 3: Run analysis - should succeed with no errors
           (let [card (t2/select-one :model/Card card-id)]
             ;; NOTE: The metadata provider caches must be small here - if the cache spans a sync it will see
             ;; old values after the sync!
             (lib-be/with-metadata-provider-cache
               (deps.findings/upsert-analysis! card)))
-
           (testing "Initial analysis succeeds"
             (is (true?
                  (t2/select-one-fn :result :model/AnalysisFinding
                                    :analyzed_entity_type :card
                                    :analyzed_entity_id card-id)))
             (is (empty? (deps.analysis-finding-error/errors-for-entity :card card-id))))
-
           ;; Backdate the analysis timestamp and table/field updated_at so
           ;; synced-db->direct-dependents-of-changed-tables will detect it as stale (analyzed_at < field.updated_at)
           ;; after a new sync makes an edit.
@@ -343,7 +338,6 @@
                         {:updated_at old-time})
             (t2/update! :model/Table :id table-id
                         {:updated_at old-time}))
-
           ;; Setup complete: Now call the thunk for the actual test run.
           (thunk {:db-id           (:id (mt/db))
                   :card-id         card-id
@@ -360,15 +354,12 @@
                                                       :analyzed_entity_id card-id)]
           ;; Step 4: Remove the column used in the filter
           (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" DROP COLUMN \"filter_col\";"])
-
           ;; Step 5: Re-sync the database. The sync-end event will detect the stale analysis
           ;; (because analyzed_at < field.updated_at) and mark it for re-analysis.
           (sync/sync-database! (mt/db))
-
           ;; Verify the field is now inactive
           (testing "Field is marked inactive after sync"
             (is (false? (t2/select-one-fn :active :model/Field :id filter-field-id))))
-
           ;; Step 6 & 7: The sync-end event marks dependents as stale and triggers the job.
           ;; Due to race conditions, the entity may be either stale (job hasn't run yet)
           ;; or already reanalyzed (job ran). Check for either valid outcome.
@@ -400,26 +391,23 @@
                                                       :analyzed_entity_type :card
                                                       :analyzed_entity_id card-id)
               db-deps-checked       (atom [])
-              original-deps-check   @#'deps.events/synced-db->direct-dependents-of-changed-tables
+              original-deps-check   (mt/original-fn #'deps.events/synced-db->direct-dependents-of-changed-tables)
               table-before          (into {} (t2/select-one :model/Table :id table-id))
               filter-field-before   (into {} (t2/select-one :model/Field :id filter-field-id))]
           ;; Re-sync the database, having made no changes to it.
-          (with-redefs [deps.events/synced-db->direct-dependents-of-changed-tables
-                        (fn [db-id]
-                          (u/prog1 (original-deps-check db-id)
-                            (swap! db-deps-checked conj [db-id <>])))]
+          (mt/with-dynamic-fn-redefs [deps.events/synced-db->direct-dependents-of-changed-tables
+                                      (fn [db-id]
+                                        (u/prog1 (original-deps-check db-id)
+                                          (swap! db-deps-checked conj [db-id <>])))]
             (sync/sync-database! (mt/db)))
-
           (testing "sync doesn't update tables or fields that haven't changed"
             (let [table-after        (into {} (t2/select-one :model/Table :id table-id))
                   filter-field-after (into {} (t2/select-one :model/Field :id filter-field-id))]
               (is (= table-before table-after))
               (is (= filter-field-before filter-field-after))))
-
           (testing "the DB is were checked for tables that need deps updates, but none were found"
             (is (=? [[db-id empty?]]
                     @db-deps-checked)))
-
           (testing "No re-analysis was done, the analysis for the card is ~1 hour ago"
             (let [finding (t2/select-one :model/AnalysisFinding
                                          :analyzed_entity_type :card

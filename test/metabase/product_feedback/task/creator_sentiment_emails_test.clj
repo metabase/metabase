@@ -76,7 +76,7 @@
       (doseq [hosted? [true false]]
         (mt/reset-inbox!)
         (mt/with-dynamic-fn-redefs [creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}])
-                      ;; can't use mt/with-temporary-setting-values because of a custom :getter
+                                    ;; can't use mt/with-temporary-setting-values because of a custom :getter
                                     premium-features/is-hosted?             (constantly hosted?)]
           (mt/with-temporary-setting-values [site-url "http://metabase.com"]
             (#'creator-sentiment-emails/send-creator-sentiment-emails! 45)
@@ -101,7 +101,6 @@
       (let [creators (#'creator-sentiment-emails/fetch-creators false)]
         (is (= 1 (count creators)))
         (is (= creator-email (-> creators first :email)))))
-
     (testing "Whitelabelling only fetches superusers (doesn't fetch anyone)."
       (let [creators (#'creator-sentiment-emails/fetch-creators true)]
         (is (= 0 (count creators)))))))

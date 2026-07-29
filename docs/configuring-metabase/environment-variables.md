@@ -82,12 +82,18 @@ Whether AI features are enabled.
 
 ### `MB_AI_USAGE_MAX_RETENTION_DAYS`
 
-- Type: string
+- Type: integer
 - Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `ai-usage-max-retention-days`.
+- [Configuration file name](./config-file.md): `ai-usage-max-retention-days`
 
-Number of days to retain rows in the ai_usage_log table. Minimum value is 30; set to 0 to retain data indefinitely.
+Number of days to retain rows in the ai_usage_log, metabot_conversation, and metabot_message tables. Minimum value is 30; set to 0 to retain data indefinitely.
 
-Sets the maximum number of days Metabase preserves rows in the `ai_usage_log` table.
+Sets the maximum number of days Metabase preserves rows for the following application database tables:
+
+- `ai_usage_log`
+- `metabot_conversation`
+- `metabot_message`
 
 Once a day, Metabase deletes rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
 If set to 0, Metabase will keep all rows.
@@ -348,6 +354,24 @@ Identify when new versions of Metabase are available.
 Whether to (asynchronously) sync newly created Databases during config-from-file initialization. By default, true,
   but you can disable this behavior if you want to sync it manually or use SerDes to populate its data model.
 
+### `MB_CSP_IMG_ALLOWED_HOSTS`
+
+- Type: string
+- Default: ``
+- [Exported as](../installation-and-operation/serialization.md): `csp-img-allowed-hosts`.
+- [Configuration file name](./config-file.md): `csp-img-allowed-hosts`
+
+Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations.
+
+### `MB_CSP_IMG_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `csp-img-enabled`.
+- [Configuration file name](./config-file.md): `csp-img-enabled`
+
+Restrict the browser Content Security Policy so images can only load from this Metabase instance or the hosts listed in `csp-img-allowed-hosts`. Must be on to enable Custom Visualizations.
+
 ### `MB_CSV_FIELD_SEPARATOR`
 
 - Type: string
@@ -443,8 +467,7 @@ By default, this is 20 minutes.
 Timeout in minutes for the database's query execution, both for the Metabase application database and any data connections.
   If you have long-running queries, you might consider increasing this value. Adjusting the timeout does not impact Metabase’s frontend.
 
-  This setting also applies to individual queries executed within transforms, so make sure the duration is long enough
-  that it doesn't timeout any long-running queries in your transforms.
+  This setting does not apply to queries executed within transforms; those are governed by MB_TRANSFORM_TIMEOUT instead.
 
   Please be aware that other services (like Nginx) may still drop long-running queries.
 
@@ -456,6 +479,13 @@ Timeout in minutes for the database's query execution, both for the Metabase app
 - [Configuration file name](./config-file.md): `default-maps-enabled`
 
 Whether or not the default GeoJSON maps are enabled.
+
+### `MB_DISABLE_AUTO_SYNC`
+
+- Type: boolean
+- Default: `false`
+
+When true, suppresses automatically-triggered syncs: the scheduled sync-and-analyze and update-field-values jobs do not run (and new triggers are not registered), and adding a new database does not kick off an initial sync. Syncs originating from an explicit request — the Sync-now REST endpoints, or a transform finalizing its output table — are unaffected. For deployments that load database metadata from disk at startup and should not have Metabase re-discover it.
 
 ### `MB_DISABLE_CORS_ON_LOCALHOST`
 
@@ -499,6 +529,17 @@ The email address you want to use for the sender of emails from your custom SMTP
 - [Configuration file name](./config-file.md): `email-from-name`
 
 The name you want to use for the sender of emails.
+
+### `MB_EMAIL_MAX_RECIPIENTS_PER_MESSAGE`
+
+- Type: integer
+- Default: `50`
+- [Exported as](../installation-and-operation/serialization.md): `email-max-recipients-per-message`.
+- [Configuration file name](./config-file.md): `email-max-recipients-per-message`
+
+The maximum number of recipients allowed on a single email. Notifications with more recipients than
+                this are split into multiple messages. This guards against SMTP providers (e.g. Amazon SES) that reject
+                any message exceeding their per-message recipient cap. Defaults to 50; set to 0 to disable batching.
 
 ### `MB_EMAIL_MAX_RECIPIENTS_PER_SECOND`
 
@@ -743,6 +784,16 @@ Enable admins to create publicly viewable links (and embeddable iframes) for Que
 
 Allow users to explore data using X-rays.
 
+### `MB_FINGERPRINT_MAX_FIELDS_PER_TABLE`
+
+- Type: integer
+- Default: `10000`
+- [Exported as](../installation-and-operation/serialization.md): `fingerprint-max-fields-per-table`.
+
+Maximum number of fields per table to fingerprint. If a table has more eligible fields than this, the rest are
+  skipped during fingerprinting analysis -- loading that many fields into memory at once can exhaust the heap (this has
+  OOM'd instances syncing document databases like MongoDB with very large or dynamic schemas).
+
 ### `MB_FOLLOW_UP_EMAIL_SENT`
 
 - Type: boolean
@@ -857,6 +908,38 @@ Whether or not we should install the Metabase analytics database on startup. Def
   via environmment variable.
 
 Setting this environment variable to false will prevent installing the analytics database, which is handy in a migration use-case where it conflicts with the incoming database.
+
+### `MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_CHECKOUT_TIMEOUT_MS`
+
+- Type: integer
+- Default: `0`
+
+Number of milliseconds a query will wait for a free data-warehouse connection once the c3p0 pool has hit
+  jdbc-data-warehouse-max-connection-pool-size before giving up. Maps to c3p0's `checkoutTimeout`. `0` waits
+  indefinitely (the old, unbounded behavior); a positive value fails fast, which the query processor surfaces to the
+  frontend as an HTTP 503 (Service Unavailable) rather than letting the request queue grow without limit.
+
+When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum time (in milliseconds) a query will wait before failing with a "service unavailable" (HTTP 503) error
+  instead of queueing indefinitely. Raise it if you routinely run more concurrent queries than
+  MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE and would rather have them wait; set it to `0` to wait forever.
+
+### `MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_MAX_PENDING_CHECKOUTS`
+
+- Type: integer
+- Default: `0`
+
+Maximum number of queries allowed to be waiting for a free data-warehouse connection at once, once the c3p0 pool has
+  hit jdbc-data-warehouse-max-connection-pool-size. When this many queries are already queued waiting for a
+  connection, further queries fail fast instead of joining the queue, which the query processor surfaces to the
+  frontend as an HTTP 503 (Service Unavailable). `0` (the default) lets the queue grow without bound (the old
+  behavior). Complements jdbc-data-warehouse-connection-pool-checkout-timeout-ms, which bounds how long each query
+  waits; this bounds how many can wait at the same time.
+
+When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum number of queries that may be waiting at the same time before further queries fail immediately with a
+  "service unavailable" (HTTP 503) error instead of joining the queue. Raise it to tolerate deeper bursts; set it to
+  `0` to allow an unbounded queue.
 
 ### `MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE`
 
@@ -1018,7 +1101,7 @@ When set to `true`, users who log in via JWT will automatically get a Metabase a
 - [Exported as](../installation-and-operation/serialization.md): `landing-page`.
 - [Configuration file name](./config-file.md): `landing-page`
 
-Enter a URL of the landing page to show the user. This overrides the custom homepage setting above.
+Enter a relative URL like /dashboard/1 or /collection/2.
 
 ### `MB_LANDING_PAGE_ILLUSTRATION`
 
@@ -1204,6 +1287,14 @@ When set to `true`, users who log in via LDAP will automatically get a Metabase 
 
 The array of last two ISO8601 dates when an admin dismissed the license token missing banner.
 
+### `MB_LLM_ANTHROPIC_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.anthropic.com`
+- [Configuration file name](./config-file.md): `llm-anthropic-api-base-url`
+
+The Anthropic API base URL.
+
 ### `MB_LLM_ANTHROPIC_API_KEY`
 
 - Type: string
@@ -1212,13 +1303,149 @@ The array of last two ISO8601 dates when an admin dismissed the license token mi
 
 The Anthropic API Key.
 
+### `MB_LLM_ANTHROPIC_MODEL`
+
+- Type: string
+- Default: `claude-opus-4-5-20251101`
+- [Configuration file name](./config-file.md): `llm-anthropic-model`
+
+The Anthropic model to use.
+
+### `MB_LLM_AZURE_API_BASE_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-azure-api-base-url`
+
+The base URL of the Azure resource's OpenAI- or Anthropic-compatible surface, e.g. `https://<resource>.services.ai.azure.com/openai`.
+
+### `MB_LLM_AZURE_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-azure-api-key`
+
+The API key for the Azure resource hosting your models.
+
+### `MB_LLM_BEDROCK_ACCESS_KEY_ID`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-bedrock-access-key-id`
+
+The AWS Access Key ID for Amazon Bedrock.
+
+### `MB_LLM_BEDROCK_REGION`
+
+- Type: string
+- Default: `us-east-1`
+- [Configuration file name](./config-file.md): `llm-bedrock-region`
+
+The AWS region for Amazon Bedrock (e.g. us-east-1).
+
+### `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-bedrock-secret-access-key`
+
+The AWS Secret Access Key for Amazon Bedrock.
+
+### `MB_LLM_BEDROCK_SESSION_TOKEN`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-bedrock-session-token`
+
+The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials.
+
+### `MB_LLM_CONNECTION_TIMEOUT_MS`
+
+- Type: integer
+- Default: `5000`
+- [Configuration file name](./config-file.md): `llm-connection-timeout-ms`
+
+Connection timeout in milliseconds for LLM API requests.
+
+### `MB_LLM_MAX_TOKENS`
+
+- Type: integer
+- Default: `4096`
+- [Configuration file name](./config-file.md): `llm-max-tokens`
+
+Maximum tokens for LLM responses.
+
 ### `MB_LLM_METABOT_PROVIDER`
 
 - Type: string
 - Default: `anthropic/claude-sonnet-4-6`
 - [Configuration file name](./config-file.md): `llm-metabot-provider`
 
-The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4.1-mini`, `openrouter/anthropic/claude-haiku-4-5`.
+The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`.
+
+### `MB_LLM_OPENAI_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.openai.com`
+- [Configuration file name](./config-file.md): `llm-openai-api-base-url`
+
+The OpenAI API base URL.
+
+### `MB_LLM_OPENAI_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-openai-api-key`
+
+The OpenAI API Key.
+
+### `MB_LLM_OPENAI_MODEL`
+
+- Type: string
+- Default: `gpt-5.4`
+- [Configuration file name](./config-file.md): `llm-openai-model`
+
+The OpenAI Model (e.g. 'gpt-5.5', 'gpt-5.4-mini').
+
+### `MB_LLM_OPENROUTER_API_BASE_URL`
+
+- Type: string
+- Default: `https://openrouter.ai/api`
+- [Configuration file name](./config-file.md): `llm-openrouter-api-base-url`
+
+The OpenRouter API base URL used for Chat Completions.
+
+### `MB_LLM_OPENROUTER_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-openrouter-api-key`
+
+The OpenRouter API Key.
+
+### `MB_LLM_RATE_LIMIT_PER_IP`
+
+- Type: integer
+- Default: `100`
+- [Configuration file name](./config-file.md): `llm-rate-limit-per-ip`
+
+Maximum SQL generation requests per IP address per minute.
+
+### `MB_LLM_RATE_LIMIT_PER_USER`
+
+- Type: integer
+- Default: `20`
+- [Configuration file name](./config-file.md): `llm-rate-limit-per-user`
+
+Maximum SQL generation requests per user per minute.
+
+### `MB_LLM_REQUEST_TIMEOUT_MS`
+
+- Type: integer
+- Default: `60000`
+- [Configuration file name](./config-file.md): `llm-request-timeout-ms`
+
+Socket timeout in milliseconds for LLM API requests.
 
 ### `MB_LOAD_ANALYTICS_CONTENT`
 
@@ -1296,6 +1523,13 @@ Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vs
 
 Whether Metabot is enabled for regular usage.
 
+### `MB_METABOT_RECENT_VIEWS_ENABLED`
+
+- Type: boolean
+- Default: `true`
+
+Whether the user's recently viewed items are included in the Metabot system prompt.
+
 ### `MB_METABOT_SLACK_SIGNING_SECRET`
 
 - Type: string
@@ -1303,6 +1537,21 @@ Whether Metabot is enabled for regular usage.
 - [Configuration file name](./config-file.md): `metabot-slack-signing-secret`
 
 Signing secret for verifying requests from the Metabot Slack app.
+
+### `MB_MFA_CHALLENGE_SIGNING_KEY`
+
+- Type: string
+- Default: `null`
+
+Key used to sign MFA challenge tokens. Generated automatically on first use.
+
+### `MB_MFA_ENFORCEMENT`
+
+- Type: keyword
+- Default: `off`
+- [Configuration file name](./config-file.md): `mfa-enforcement`
+
+Controls whether two-factor authentication is available to users. :off disables it entirely; :optional allows users to enroll voluntarily.
 
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 
@@ -1475,6 +1724,14 @@ Allow persisting models into the source database.
 
 Token for premium features. Go to the MetaStore to get yours!
 
+### `MB_QUERY_CACHING_EARLY_REFRESH_RATIO`
+
+- Type: double
+- Default: `0.1`
+- [Configuration file name](./config-file.md): `query-caching-early-refresh-ratio`
+
+Refresh cached results this fraction of their cache duration before they expire, so requests keep being served from cache instead of waiting for a recomputation. Set to 0 to only refresh once results have expired.
+
 ### `MB_QUERY_CACHING_MAX_KB`
 
 - Type: integer
@@ -1490,6 +1747,27 @@ The maximum size of the cache, per saved question, in kilobytes.
 - [Configuration file name](./config-file.md): `query-caching-max-ttl`
 
 The absolute maximum time to keep any cached query results, in seconds.
+
+### `MB_QUEUE_BACKEND`
+
+- Type: string
+- Default: `null`
+
+Which queue backend to use. Valid values: `quartz`, `memory`. When unset, defaults to `quartz`, or to `memory` when the task scheduler is disabled (`MB_DISABLE_SCHEDULER`).
+
+### `MB_QUEUE_MAX_RETRIES`
+
+- Type: integer
+- Default: `5`
+
+Maximum number of times a failed queue message will be retried before being dropped.
+
+### `MB_QUEUE_NO_LISTENER_MAX_AGE_MS`
+
+- Type: integer
+- Default: `86400000`
+
+How long (in milliseconds) a Quartz queue message with no listener anywhere in the cluster is kept before the reaper drops it. With node-affinity, such a message is never acquired and just waits in the store; this bounds that wait so a message for a queue no node handles (e.g. a new queue whose node was rolled back) does not linger forever. Generous by default (1 day) so a node can restart or be re-upgraded and still deliver it.
 
 ### `MB_REDIRECT_ALL_REQUESTS_TO_HTTPS`
 
@@ -1530,6 +1808,14 @@ The remote branch to sync with, e.g. `main`.
 - [Configuration file name](./config-file.md): `remote-sync-check-changes-cache-ttl-seconds`
 
 Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.
+
+### `MB_REMOTE_SYNC_GIT_TIMEOUT_SECONDS`
+
+- Type: integer
+- Default: `60`
+- [Configuration file name](./config-file.md): `remote-sync-git-timeout-seconds`
+
+Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely.
 
 ### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
 
@@ -1747,8 +2033,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 - Default: `null`
 - [Configuration file name](./config-file.md): `saml-identity-provider-slo-uri`
 
-This is the URL where your users go to logout of your identity provider. Depending on which IdP you're
-using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`.
+If SAML single logout (SLO) is enabled, Metabase will make an HTTP-Redirect SLO request to this endpoint when a user logs out of Metabase.
 
 ### `MB_SAML_IDENTITY_PROVIDER_URI`
 
@@ -1799,7 +2084,7 @@ Absolute path to the Keystore file to use for signing SAML requests.
 - Default: `false`
 - [Configuration file name](./config-file.md): `saml-slo-enabled`
 
-Is SAML Single Log Out enabled?
+If enabled, Metabase will redirect users to your configured SAML Single Logout endpoint when they log out of Metabase.
 
 ### `MB_SAML_USER_PROVISIONING_ENABLED`
 
@@ -1812,6 +2097,16 @@ Is SAML Single Log Out enabled?
 Determines what happens when a user logs in via SAML and doesn't have a Metabase account.
 
 When set to `true`, users who log in via SAML will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via SAML.
+
+### `MB_SCAN_MAX_FIELDS_PER_TABLE`
+
+- Type: integer
+- Default: `10000`
+- [Exported as](../installation-and-operation/serialization.md): `scan-max-fields-per-table`.
+
+Maximum number of fields per table to scan for field values. If a table has more active fields than this, the rest
+  are skipped when scanning field values -- scanning that many fields would load them all into memory and, on non-SQL
+  drivers like MongoDB, issue a warehouse request per field.
 
 ### `MB_SCIM_ENABLED`
 
@@ -2160,6 +2455,16 @@ Enable or disable surveys.
 
 Maximum number of leaf fields synced per collection of document database. Currently relevant for Mongo. Not to be confused with total number of synced fields. For every chosen leaf field, all intermediate fields from root to leaf are synced as well.
 
+### `MB_SYNC_MAX_FIELDS_PER_TABLE`
+
+- Type: integer
+- Default: `10000`
+- [Exported as](../installation-and-operation/serialization.md): `sync-max-fields-per-table`.
+
+Maximum number of fields per table to sync as :model/Field rows. If a table's warehouse schema has more fields than
+  this, only the first (by name) are synced and the rest are skipped -- keeps document databases with very large or
+  dynamic schemas (e.g. MongoDB) from creating an unbounded number of Fields.
+
 ### `MB_SYNCHRONOUS_BATCH_UPDATES`
 
 - Type: boolean
@@ -2179,6 +2484,18 @@ By default, this is 0 and the thread interrupt escalation does not run.
 Timeout in milliseconds to wait after query cancellation before escalating to thread interruption.
         This is used to free up threads that are stuck waiting for a DB response after a query has been cancelled.
 
+### `MB_TRANSFORM_RUN_JOB_SQL_CONCURRENCY`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: integer
+- Default: `3`
+
+Maximum number of SQL-backed transforms a single transform-job run may execute in parallel.
+
+This setting is only configurable on instances with the transforms add-on; OSS
+  deployments without the add-on always use the default.
+
 ### `MB_TRANSFORM_TIMEOUT`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -2188,16 +2505,23 @@ Timeout in milliseconds to wait after query cancellation before escalating to th
 
 The timeout for a transform job, in minutes.
 
-Each query executed by a transform is also subject to the MB_DB_QUERY_TIMEOUT_MINUTES timeout,
-  so make sure that value isn't lower, or it will timeout your transform.
+Controls the timeout for transform runs, including the queries they execute. This takes precedence
+  over MB_DB_QUERY_TIMEOUT_MINUTES for queries executed inside a transform, so transforms can run longer than regular
+  Metabase queries. Enforced per-statement via `Statement.setQueryTimeout`; transforms also use a separate JDBC
+  connection pool whose c3p0 leak-detector tolerates this longer runtime, so non-transform connections continue to
+  use the shorter `MB_DB_QUERY_TIMEOUT_MINUTES` leak-detector.
 
 ### `MB_TRANSFORMS_ENABLED`
 
 - Type: boolean
-- Default: `false`
+- Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `transforms-enabled`.
 - [Configuration file name](./config-file.md): `transforms-enabled`
 
-Enable transforms for instances that have not explicitly purchased the transform add-on.
+Whether transforms are enabled.
+
+When enabled, data analysts and admins can write, schedule and run transforms.
+  Disabling this feature will hide all transform features, prevent transform editing or creation, and prevent any new runs.
 
 ### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
 
@@ -2253,6 +2577,34 @@ Upload settings.
 - Default: `null`
 
 Prefix for upload table names.
+
+### `MB_USAGE_METADATA_ENABLED`
+
+- Type: boolean
+- Default: `false`
+
+Whether usage-driven metadata batch processing is enabled.
+
+### `MB_USAGE_METADATA_LAST_COMPLETED_DAY`
+
+- Type: string
+- Default: `null`
+
+Internal watermark for the last completed usage metadata day.
+
+### `MB_USAGE_METADATA_RETENTION_DAYS`
+
+- Type: integer
+- Default: `90`
+
+How many days of usage metadata rollups to retain.
+
+### `MB_USAGE_METADATA_SCHEDULE`
+
+- Type: string
+- Default: `0 0 2 * * ? *`
+
+Cron schedule (in UTC) for usage metadata batch processing.
 
 ### `MB_USER_VISIBILITY`
 
@@ -2718,7 +3070,7 @@ Comma-separated namespaces to trace. **WARNING:** Could log sensitive informatio
 
 ### `MB_PASSWORD_COMPLEXITY`
 
-Type: string (`"weak"`, `"normal"`, `"strong"`)<br>
+Type: string (`"weak"`, `"normal"`, `"strong"`, `"strong-enough"`)<br>
 Default: `"normal"`
 
 Enforce a password complexity rule to increase security for regular logins. This only applies to new users or users that are changing their password. Related [MB_PASSWORD_LENGTH](#mb_password_length)
@@ -2726,6 +3078,7 @@ Enforce a password complexity rule to increase security for regular logins. This
 - `weak` no character constraints
 - `normal` at least 1 digit
 - `strong` minimum 8 characters w/ 2 lowercase, 2 uppercase, 1 digit, and 1 special character
+- `strong-enough` minimum 15 characters
 
 ### `MB_PASSWORD_LENGTH`
 

@@ -4,6 +4,7 @@ import {
   setupFieldSearchValuesEndpoint,
   setupFieldsValuesEndpoints,
 } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
   screen,
@@ -11,19 +12,22 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import type { Database } from "metabase-types/api";
+import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
 import {
   PEOPLE,
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import {
   createQuery,
   createQueryWithStringFilter,
   findStringColumn,
-  storeInitialState,
 } from "../test-utils";
 
 import { StringFilterPicker } from "./StringFilterPicker";
@@ -40,6 +44,7 @@ const EXPECTED_OPERATORS = [
 ];
 
 type SetupOpts = {
+  database?: Database;
   query?: Lib.Query;
   column?: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
@@ -47,6 +52,7 @@ type SetupOpts = {
 };
 
 function setup({
+  database = createSampleDatabase(),
   query = createQuery(),
   column = findStringColumn(query),
   filter,
@@ -56,6 +62,10 @@ function setup({
   const onBack = jest.fn();
 
   setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES, PRODUCT_VENDOR_VALUES]);
+
+  const state = createMockState({
+    entities: createMockEntitiesState({ databases: [database] }),
+  });
 
   renderWithProviders(
     <StringFilterPicker
@@ -70,7 +80,7 @@ function setup({
       onChange={onChange}
       onBack={onBack}
     />,
-    { storeInitialState },
+    { storeInitialState: state },
   );
 
   const getNextFilterParts = () => {
@@ -225,6 +235,26 @@ describe("StringFilterPicker", () => {
         options: { caseSensitive: true },
       });
       expect(getNextFilterColumnName()).toBe("Product → Description");
+    });
+
+    it("should show the case sensitive option for partial operators", async () => {
+      setup();
+
+      await setOperator("Contains");
+      expect(screen.getByLabelText("Case sensitive")).toBeInTheDocument();
+    });
+
+    it("should hide the case sensitive option when the database does not support it", async () => {
+      setup({
+        database: createSampleDatabase({
+          features: COMMON_DATABASE_FEATURES.filter(
+            (feature) => feature !== "case-sensitivity-string-filter-options",
+          ),
+        }),
+      });
+
+      await setOperator("Contains");
+      expect(screen.queryByLabelText("Case sensitive")).not.toBeInTheDocument();
     });
 
     it("should add a filter with multiple values", async () => {

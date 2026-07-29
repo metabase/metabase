@@ -90,7 +90,12 @@ describe("MoveDashboardStepContent", () => {
   });
 
   it("moves dashboard to shared collection when Move button is clicked", async () => {
-    fetchMock.put("path:/api/dashboard/200", 200);
+    fetchMock.put("path:/api/dashboard/200", {
+      id: 200,
+      name: "A look at Invoices",
+      collection_id: 42,
+      dashcards: [],
+    });
 
     const { onCompleted } = setup({ hasXrayDashboard: true });
 
@@ -124,7 +129,12 @@ describe("MoveDashboardStepContent", () => {
       collection_id: 42,
       dashcards: [],
     });
-    fetchMock.put("path:/api/dashboard/999", 200);
+    fetchMock.put("path:/api/dashboard/999", {
+      id: 999,
+      name: "Sample dashboard",
+      collection_id: 42,
+      dashcards: [],
+    });
 
     const { onCompleted } = setup({ hasXrayDashboard: false });
 

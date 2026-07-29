@@ -8,7 +8,6 @@ export * from "./embed";
 export * from "./entities";
 export * from "./pulse";
 export * from "./qb";
-export * from "./requests";
 export * from "./settings";
 export * from "./setup";
 export * from "./state";

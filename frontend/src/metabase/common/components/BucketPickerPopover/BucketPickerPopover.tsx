@@ -1,6 +1,5 @@
 import cx from "classnames";
 import {
-  type CSSProperties,
   type MouseEvent,
   type TouchEvent,
   useCallback,
@@ -40,7 +39,7 @@ export function BucketPickerPopover({
   items,
   onSelect,
   initiallyVisibleItemsCount,
-  color: colorProp = "brand",
+  color: colorProp = "core-brand",
   hasChevronDown,
   className,
   classNames = {},
@@ -100,7 +99,7 @@ export function BucketPickerPopover({
           h="auto"
           py={0}
           variant="subtle"
-          color="white"
+          color="core-white"
           classNames={{ label: S.triggerButtonLabel }}
         >
           <Ellipsified>{triggerLabel}</Ellipsified>
@@ -124,12 +123,10 @@ export function BucketPickerPopover({
         <SelectList
           p="sm"
           miw="10rem"
-          style={
-            {
-              "--bucket-picker-active-color": activeColor,
-              overscrollBehavior: "contain",
-            } as CSSProperties
-          }
+          style={{
+            "--bucket-picker-active-color": activeColor,
+            overscrollBehavior: "contain",
+          }}
         >
           {visibleItems.map((item) => (
             <SelectList.Item
@@ -150,7 +147,7 @@ export function BucketPickerPopover({
               className={S.moreButton}
               onClick={handleExpand}
               variant="subtle"
-              color="brand"
+              color="core-brand"
               fullWidth
               px="md"
               py="sm"

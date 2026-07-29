@@ -63,7 +63,7 @@ export const ChartTypeSidebar = ({
     let cancelled = false;
     Promise.all(
       customVizPlugins.map((plugin) =>
-        PLUGIN_CUSTOM_VIZ.loadCustomVizPlugin(plugin, undefined, onInfo),
+        PLUGIN_CUSTOM_VIZ.loadCustomVizPlugin(plugin, { onInfo }),
       ),
     ).then(() => {
       if (!cancelled) {

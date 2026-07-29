@@ -1,11 +1,11 @@
 import type { NodeViewProps } from "@tiptap/core";
 import { useCallback } from "react";
 
-import { navigateToCardFromDocument } from "metabase/documents/actions";
-import { updateVizSettings } from "metabase/documents/documents.slice";
-import type { UseCardDataResult } from "metabase/documents/hooks/use-card-data";
-import { useDraftCardOperations } from "metabase/documents/hooks/use-draft-card-operations";
 import { useDispatch, useSelector } from "metabase/redux";
+import {
+  type UseCardDataResult,
+  useEditorHost,
+} from "metabase/rich_text_editing/tiptap/EditorHost";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
@@ -26,12 +26,13 @@ export const useUpdateCardOperations = ({
   embedIndex: number;
   cardId: number;
 }) => {
+  const host = useEditorHost();
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
 
   const { card, draftCard, regularDataset } = regularCardData;
 
-  const { ensureDraftCard } = useDraftCardOperations(
+  const { ensureDraftCard } = host.useDraftCardOperations(
     draftCard,
     card,
     cardId,
@@ -60,7 +61,7 @@ export const useUpdateCardOperations = ({
         const adhocCard = { ...nextCard, id: null };
         const question = new Question(adhocCard, metadata);
         const url = Urls.question(question);
-        dispatch(navigateToCardFromDocument(url, document));
+        dispatch(host.navigateToCard(url, document));
       } catch (error) {
         console.error("Failed to create question URL:", error);
         // Fallback: navigate to a new question with the dataset_query
@@ -68,15 +69,12 @@ export const useUpdateCardOperations = ({
           const params = new URLSearchParams();
           params.set("dataset_query", JSON.stringify(nextCard.dataset_query));
           dispatch(
-            navigateToCardFromDocument(
-              `/question?${params.toString()}`,
-              document,
-            ),
+            host.navigateToCard(`/question?${params.toString()}`, document),
           );
         }
       }
     },
-    [dispatch, metadata, document],
+    [dispatch, host, metadata, document],
   );
 
   const handleUpdateVisualizationSettings = useCallback(
@@ -92,13 +90,15 @@ export const useUpdateCardOperations = ({
             { visualization_settings: newSettings },
             true,
           );
-          dispatch(updateVizSettings({ cardId: actualCardId, settings }));
+          dispatch(
+            host.actions.updateVizSettings({ cardId: actualCardId, settings }),
+          );
         } else {
-          dispatch(updateVizSettings({ cardId, settings }));
+          dispatch(host.actions.updateVizSettings({ cardId, settings }));
         }
       }
     },
-    [card, cardId, dispatch, draftCard, embedIndex, ensureDraftCard],
+    [card, cardId, dispatch, draftCard, embedIndex, ensureDraftCard, host],
   );
 
   const handleUpdateQuestion = useCallback(() => {

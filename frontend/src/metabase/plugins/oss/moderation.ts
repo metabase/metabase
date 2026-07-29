@@ -23,8 +23,6 @@ export type RevisionOrModerationEvent = {
 const getDefaultPluginModeration = () => ({
   isEnabled: () => false,
   EntityModerationIcon: PluginPlaceholder,
-  QuestionModerationSection: PluginPlaceholder,
-  ModerationReviewBanner: PluginPlaceholder,
   ModerationReviewTextForQuestion: PluginPlaceholder,
   ModerationReviewTextForDashboard: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
@@ -32,11 +30,13 @@ const getDefaultPluginModeration = () => ({
   getStatusIcon: (_moderated_status?: string): string | IconProps | undefined =>
     undefined,
   getModerationTimelineEvents: (_reviews: any, _currentUser: BaseUser | null) =>
+    // Unjustified type cast. FIXME
     [] as RevisionOrModerationEvent[],
   useDashboardMenuItems: (_model?: Dashboard, _reload?: () => void) => [],
   useQuestionMenuItems: (_model?: Question, _reload?: () => void) => [],
   useCardMenuItems: (_model?: Card, _reload?: () => void) => [],
   MetabotVerifiedContentConfigurationPane:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as React.ComponentType<{ metabot: MetabotInfo }>,
 });
 

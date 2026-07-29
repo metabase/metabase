@@ -1,5 +1,4 @@
-import type { ContentTranslationFunction } from "metabase/i18n/types";
-import type { OptionsType } from "metabase/utils/formatting";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import {
@@ -18,6 +17,7 @@ import {
   isTitle,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
+  ColumnSettings,
   DatasetColumn,
   Field,
   RowValue,
@@ -33,7 +33,7 @@ export function renderValue(
   tc: ContentTranslationFunction,
   value: RowValue | undefined,
   column: DatasetColumn,
-  optionsOverride?: OptionsType,
+  optionsOverride?: ColumnSettings,
 ) {
   const mockSeries: Series = [
     {
@@ -161,7 +161,7 @@ export function getRowValue(
 
 export const getColumnTitle = (
   column: DatasetColumn,
-  settings: OptionsType,
+  settings: ColumnSettings,
 ) => {
   const series: Series = [
     {

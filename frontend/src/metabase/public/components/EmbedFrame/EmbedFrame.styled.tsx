@@ -34,9 +34,9 @@ export const Root = styled.div<{
   ${(props) =>
     props.isBordered &&
     css`
-      border: 1px solid var(--mb-color-border);
+      border: 1px solid var(--mb-color-border-neutral);
       border-radius: 8px;
-      box-shadow: 0 2px 2px var(--mb-color-shadow);
+      box-shadow: 0 2px 2px var(--mb-color-shadow-default);
     `}
 
   ${(props) =>
@@ -100,7 +100,7 @@ export const DashboardTabsContainer = styled(FullWidthContainer, {
 `;
 
 export const Separator = styled.div`
-  border-bottom: 2px solid var(--mb-color-border);
+  border-bottom: 2px solid var(--mb-color-border-neutral);
 `;
 
 export const Body = styled.main`

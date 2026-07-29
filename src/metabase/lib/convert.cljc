@@ -1,7 +1,7 @@
 (ns metabase.lib.convert
   (:refer-clojure :exclude [mapv some select-keys not-empty #?(:clj doseq) #?(:clj for)])
   (:require
-   [clojure.data :as data]
+   #?@(:cljs [[clojure.data :as data]])
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.error :as me]
@@ -75,10 +75,9 @@
                                              :diff (first (data/diff almost-stage new-stage))})))
           #?(:cljs (js/console.warn "Clean: Removing bad clause due to error!" error-location error-desc
                                     (u/pprint-to-str (first (data/diff almost-stage new-stage))))
-             :clj  (log/warnf "Clean: Removing bad clause in %s due to error %s:\n%s"
+             :clj  (log/warnf "Clean: Removing bad clause in %s due to error %s"
                               (u/colorize :yellow (pr-str error-location))
-                              (u/colorize :yellow error-desc)
-                              (u/colorize :red (u/pprint-to-str (first (data/diff almost-stage new-stage))))))
+                              (u/colorize :yellow error-desc)))
           (if (= new-stage almost-stage)
             almost-stage
             (recur new-stage (conj removals [error-type error-location]))))
@@ -278,7 +277,7 @@
         :else
         (recur (conj acc col) aggregation-index more)))
     (catch #?(:clj Throwable :cljs :default) e
-      (log/error e "Error adding :lib/source-uuid to cols")
+      (log/errorf "Error adding :lib/source-uuid to cols: %s" (ex-message e))
       cols)))
 
 (defmethod ->mbql5 :mbql.stage/mbql
@@ -456,10 +455,12 @@
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
   like [[metabase.legacy-mbql.normalize/normalize]], and then probably to [[->mbql5]]."
   [database-id inner-query]
-  (merge {:database database-id, :type :query}
+  (merge {:database database-id}
          (if (:native inner-query)
-           {:native (set/rename-keys inner-query {:native :query})}
-           {:query inner-query})))
+           {:native (set/rename-keys inner-query {:native :query})
+            :type   :native}
+           {:query inner-query
+            :type  :query})))
 
 (defmulti ->legacy-MBQL
   "Coerce something to legacy MBQL (the version of MBQL understood by the query processor and Metabase Lib v1) if it's
@@ -761,10 +762,11 @@
           query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
                         :native
                         :query)]
-      (merge (dissoc base :stages :parameters :lib.convert/converted?)
-             (cond-> {:type query-type}
-               (seq inner-query) (assoc query-type inner-query)
-               (seq parameters)  (assoc :parameters parameters))))
+      (->> (merge (dissoc base :stages :parameters :lib.convert/converted?)
+                  (cond-> {:type query-type}
+                    (seq inner-query) (assoc query-type inner-query)
+                    (seq parameters)  (assoc :parameters parameters)))
+           (lib.normalize/normalize ::mbql.s/Query)))
     (catch #?(:clj Throwable :cljs :default) e
       (throw (ex-info (lib.util/format "Error converting MBQL 5 query to legacy MBQL query: %s" (ex-message e))
                       {:query query}

@@ -1,16 +1,22 @@
-import type { PayloadAction } from "@reduxjs/toolkit";
+import { type PayloadAction, nanoid } from "@reduxjs/toolkit";
 import { merge } from "icepick";
 import type { WritableDraft } from "immer";
 import { match } from "ts-pattern";
 
-import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
+import {
+  METABOT_PROFILE_OVERRIDES,
+  getToolMessage,
+} from "metabase/metabot/constants";
 import { uuid } from "metabase/utils/uuid";
 
 import type {
+  MetabotAgentChainOfThoughtMessage,
   MetabotAgentId,
   MetabotAgentTurnDisplayError,
   MetabotAgentTurnError,
   MetabotConverstationState,
+  MetabotDebugToolCallMessage,
+  MetabotSearchResults,
   MetabotState,
 } from "./types";
 import { createMessageId } from "./utils";
@@ -19,13 +25,221 @@ export type ConvoPayloadAction<
   Value extends Record<string, any> = Record<string, any>,
 > = PayloadAction<{ agentId: MetabotAgentId } & Value>;
 
+export const findLastToolCallMessage = (
+  convo: WritableDraft<MetabotConverstationState>,
+  toolCallId: string,
+) =>
+  convo.messages.findLast(
+    (m): m is MetabotDebugToolCallMessage =>
+      m.type === "tool_call" && m.id === toolCallId,
+  );
+
+export const pushNewToolCall = (
+  convo: WritableDraft<MetabotConverstationState>,
+  {
+    toolCallId,
+    toolName,
+    args,
+  }: { toolCallId: string; toolName: string; args?: string },
+) => {
+  convo.messages.push({
+    id: toolCallId,
+    role: "agent",
+    type: "tool_call",
+    name: toolName,
+    args,
+    status: "started",
+  });
+  convo.activeToolCalls.push({
+    id: toolCallId,
+    name: toolName,
+    message: getToolMessage(toolName)?.active(),
+    status: "started",
+  });
+};
+
+const activeChain = (convo: WritableDraft<MetabotConverstationState>) => {
+  const chain = convo.activeChainId
+    ? convo.messages.find((m) => m.id === convo.activeChainId)
+    : undefined;
+  return chain?.type === "chain_of_thought" ? chain : undefined;
+};
+
+const stampChainSpan = (
+  chain: WritableDraft<MetabotAgentChainOfThoughtMessage>,
+  nowMs?: number,
+) => {
+  if (nowMs == null) {
+    return;
+  }
+  chain.startedAtMs ??= nowMs;
+  chain.endedAtMs = nowMs;
+};
+
+const ensureChain = (
+  convo: WritableDraft<MetabotConverstationState>,
+  nowMs?: number,
+): WritableDraft<MetabotAgentChainOfThoughtMessage> => {
+  const existing = activeChain(convo);
+  if (existing) {
+    stampChainSpan(existing, nowMs);
+    return existing;
+  }
+  const chain: WritableDraft<MetabotAgentChainOfThoughtMessage> = {
+    id: createMessageId(),
+    role: "agent",
+    type: "chain_of_thought",
+    steps: [],
+    startedAtMs: nowMs,
+    endedAtMs: nowMs,
+  };
+  convo.messages.push(chain);
+  convo.activeChainId = chain.id;
+  return chain;
+};
+
+export const openChain = (convo: WritableDraft<MetabotConverstationState>) => {
+  ensureChain(convo);
+};
+
+const dropChain = (
+  convo: WritableDraft<MetabotConverstationState>,
+  id: string,
+) => {
+  convo.messages = convo.messages.filter((m) => m.id !== id);
+};
+
+export const startChainReasoning = (
+  convo: WritableDraft<MetabotConverstationState>,
+  nowMs?: number,
+) => {
+  ensureChain(convo, nowMs).steps.push({
+    kind: "reasoning",
+    text: "",
+    startedAtMs: nowMs,
+  });
+};
+
+export const appendChainReasoning = (
+  convo: WritableDraft<MetabotConverstationState>,
+  text: string,
+  nowMs?: number,
+) => {
+  const chain = ensureChain(convo, nowMs);
+  const last = chain.steps.at(-1);
+  if (last?.kind === "reasoning") {
+    last.text += text;
+  } else {
+    chain.steps.push({ kind: "reasoning", text, startedAtMs: nowMs });
+  }
+};
+
+export const addChainTool = (
+  convo: WritableDraft<MetabotConverstationState>,
+  {
+    id,
+    name,
+    title,
+    nowMs,
+  }: { id: string; name: string; title?: string; nowMs?: number },
+) => {
+  const existing = findChainToolStep(convo, id);
+  if (!existing) {
+    ensureChain(convo, nowMs).steps.push({
+      kind: "tool",
+      id,
+      name,
+      title,
+      status: "started",
+      startedAtMs: nowMs,
+    });
+    return;
+  }
+  if (title) {
+    existing.step.title = title;
+  }
+  if (existing.chain.id === convo.activeChainId) {
+    stampChainSpan(existing.chain, nowMs);
+  }
+};
+
+const findChainToolStep = (
+  convo: WritableDraft<MetabotConverstationState>,
+  toolCallId: string,
+) => {
+  for (const message of convo.messages) {
+    if (message.type === "chain_of_thought") {
+      const step = message.steps.find(
+        (s) => s.kind === "tool" && s.id === toolCallId,
+      );
+      if (step?.kind === "tool") {
+        return { chain: message, step };
+      }
+    }
+  }
+  return undefined;
+};
+
+export const setChainToolSearchResults = (
+  convo: WritableDraft<MetabotConverstationState>,
+  toolCallId: string,
+  searchResults: MetabotSearchResults,
+) => {
+  const found = findChainToolStep(convo, toolCallId);
+  if (found) {
+    found.step.searchResults = searchResults;
+  }
+};
+
+export const setChainToolTitle = (
+  convo: WritableDraft<MetabotConverstationState>,
+  toolCallId: string,
+  title: string,
+) => {
+  const found = findChainToolStep(convo, toolCallId);
+  if (found) {
+    found.step.title = title;
+  }
+};
+
+export const endChainTool = (
+  convo: WritableDraft<MetabotConverstationState>,
+  id: string,
+  nowMs?: number,
+) => {
+  const found = findChainToolStep(convo, id);
+  if (!found) {
+    return;
+  }
+  found.step.status = "ended";
+  const chainStillActive = found.chain.id === convo.activeChainId;
+  if (chainStillActive && nowMs != null) {
+    found.chain.endedAtMs = nowMs;
+  }
+};
+
+export const closeChain = (
+  convo: WritableDraft<MetabotConverstationState>,
+  nowMs?: number,
+) => {
+  const chain = activeChain(convo);
+  if (chain && chain.steps.length === 0) {
+    dropChain(convo, chain.id);
+  } else if (chain && nowMs != null) {
+    chain.endedAtMs = nowMs;
+  }
+  convo.activeChainId = undefined;
+};
+
 export const getRequestConversation = (
   state: WritableDraft<MetabotState>,
   action: {
-    meta: { arg: { agentId: MetabotAgentId; conversation_id: string } };
+    meta: {
+      arg: { agentId: MetabotAgentId; conversation_id: string; loadId: string };
+    };
   },
 ) => {
-  const { agentId, conversation_id } = action.meta.arg;
+  const { agentId, conversation_id, loadId } = action.meta.arg;
   const convo = state.conversations[agentId];
 
   if (!convo) {
@@ -40,6 +254,13 @@ export const getRequestConversation = (
     return undefined;
   }
 
+  if (loadId !== convo.loadId) {
+    console.warn(
+      `Metabot conversation ${conversation_id} was reloaded since the request started, ignoring its result`,
+    );
+    return undefined;
+  }
+
   return convo;
 };
 
@@ -48,6 +269,9 @@ const agentOverridesByAgentId: Partial<
 > = {
   sql: {
     profileOverride: METABOT_PROFILE_OVERRIDES.SQL,
+  },
+  ask: {
+    profileOverride: METABOT_PROFILE_OVERRIDES.NLQ,
   },
 };
 
@@ -60,15 +284,18 @@ export const createConversation = (
 
   return {
     isProcessing: false,
+    title: undefined,
+    forkedFromConversationId: undefined,
     messages: [],
     visible: false,
-    history: [],
     state: {},
     activeToolCalls: [],
+    activeChainId: undefined,
     profileOverride: undefined,
     pendingMessageExternalId: undefined,
     ...overrides,
     conversationId: overrides?.conversationId ?? uuid(),
+    loadId: overrides?.loadId ?? nanoid(),
     experimental: {
       developerMessage: "",
       metabotReqIdOverride: undefined,
@@ -156,6 +383,7 @@ export const getMetabotInitialState = (): MetabotState => {
     conversations: {
       omnibot: createConversation("omnibot"),
       sql: createConversation("sql"),
+      ask: createConversation("ask"),
     },
     reactions: {
       navigateToPath: null,
@@ -163,6 +391,8 @@ export const getMetabotInitialState = (): MetabotState => {
       // NOTE: suggestedTransforms should be folded into suggestedCodeEdits eventually
       suggestedTransforms: [],
     },
+    titlePollingConversationIds: [],
     debugMode: false,
+    savedChartCardIds: {},
   };
 };

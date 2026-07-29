@@ -78,7 +78,7 @@ export function MeasureAggregationPicker({
         items={aggregations}
         initialAddText={t`Pick an aggregation function`}
         readOnly={readOnly}
-        color="summarize"
+        color="core-summarize"
         isLastOpened={false}
         hasAddButton={hasAddButton}
         hasRemoveButton={hasRemoveButton}

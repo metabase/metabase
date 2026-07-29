@@ -54,6 +54,7 @@ import {
 } from "../model/series";
 import { getBarSeriesDataLabelKey } from "../model/util";
 
+import { getPadding } from "./ticks";
 import { getSeriesYAxisIndex } from "./utils";
 
 const MIN_LABEL_SPACING_PX = 40;
@@ -166,6 +167,7 @@ export function getDataLabelFormatter(
   );
 
   return (params: CallbackDataParams) => {
+    // Unjustified type cast. FIXME
     const datum = params.data as Datum;
     const value = accessor != null ? accessor(datum) : datum[dataKey];
 
@@ -297,7 +299,7 @@ export const buildEChartsLabelOptions = (
     fontWeight: CHART_STYLE.seriesLabels.weight,
     fontSize,
     color: renderingContext.getColor("text-primary"),
-    textBorderColor: renderingContext.getColor("background-primary"),
+    textBorderColor: renderingContext.getColor("background_page-primary"),
     textBorderWidth: 3,
     formatter:
       formatter &&
@@ -325,8 +327,12 @@ export const computeContinuousScaleBarWidth = (
     return 1;
   }
 
+  const padding = isTimeSeriesAxis(xAxisModel)
+    ? getPadding(xAxisModel.intervalsCount)
+    : 0.5;
+
   let barWidth =
-    (boundaryWidth / (xAxisModel.intervalsCount + 2)) *
+    (boundaryWidth / (xAxisModel.intervalsCount + 1 + 2 * padding)) *
     CHART_STYLE.series.barWidth;
 
   if (!stackedOrSingleSeries) {
@@ -392,6 +398,7 @@ export const buildEChartsStackLabelOptions = (
       renderingContext.getColor,
     ),
     formatter: (params: CallbackDataParams) => {
+      // Unjustified type cast. FIXME
       const transformedDatum = params.data as Datum;
       const originalIndex = transformedDatum[INDEX_KEY] ?? params.dataIndex;
       const datum = originalDataset[originalIndex];
@@ -438,7 +445,7 @@ function getDataLabelSeriesOption(
       fontWeight: CHART_STYLE.seriesLabels.weight,
       fontSize: CHART_STYLE.seriesLabels.size,
       color: renderingContext.getColor("text-primary"),
-      textBorderColor: renderingContext.getColor("background-primary"),
+      textBorderColor: renderingContext.getColor("background_page-primary"),
       textBorderWidth: 3,
     },
     labelLayout: {
@@ -694,7 +701,7 @@ const buildEChartsLineAreaSeries = (
     },
     symbol: "circle", // default is "emptyCircle", but it's filled with white, so we need to handle the fill ourselves for dark mode
     itemStyle: {
-      color: renderingContext.getColor("background-primary"),
+      color: renderingContext.getColor("background_page-primary"),
       borderColor: seriesModel.color,
       borderWidth: lineWidth,
       opacity: isSymbolVisible ? 1 : 0, // Make the symbol invisible to keep it for event trigger for tooltip
@@ -748,6 +755,7 @@ function getStackedDataLabelFormatter(
     }
 
     const stackValue = getStackTotalValue(
+      // Unjustified type cast. FIXME
       params.data as Datum,
       stackDataKeys,
       signKey,
@@ -848,6 +856,7 @@ export const getStackTotalsSeries = (
   );
 
   return Object.values(seriesByStackName).flatMap((seriesOptions) => {
+    // Unjustified type cast. FIXME
     const stackDataKeys = seriesOptions // we set string dataKeys as series IDs
       .map((s) => s.id)
       .filter(isNotNull) as string[];
@@ -855,6 +864,7 @@ export const getStackTotalsSeries = (
 
     const labelFormatter = firstSeriesInStack.stack
       ? chartModel.stackedLabelsFormatters?.[
+          // Unjustified type cast. FIXME
           firstSeriesInStack.stack as "bar" | "area"
         ]
       : undefined;
@@ -927,6 +937,7 @@ export const buildEChartsSeries = (
       );
       return acc;
     },
+    // Unjustified type cast. FIXME
     {} as Record<DataKey, number>,
   );
 

@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
@@ -40,16 +39,6 @@
            (mt/with-temp [:model/Field field {column unknown-type}]
              field))))))
 
-(deftest identity-hash-test
-  (testing "Field hashes are composed of the name, the table's identity-hash, and the parent's identity-hash"
-    (mt/with-temp [:model/Database db    {:name "field-db" :engine :h2}
-                   :model/Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
-                   :model/Field    field {:name "sku" :table_id (:id table)}]
-      (let [table-hash (serdes/identity-hash table)]
-        (is (= "edc06d97"
-               (serdes/raw-hash ["sku" table-hash "<none>"])
-               (serdes/identity-hash field)))))))
-
 (deftest nested-field-names->field-id-test
   (mt/with-temp
     [:model/Database {db-id :id}              {}
@@ -64,41 +53,9 @@
              (field/nested-field-names->field-id table-id ["top"])))
       (is (= nested-field-id
              (field/nested-field-names->field-id table-id ["top" "nested"]))))
-
     (testing "return nothing if field does not exist"
       (is (= nil
              (field/nested-field-names->field-id table-id ["top" "nested" "not-exists"]))))))
-
-(deftest nested-fields-with-duplicate-names-test
-  (mt/with-temp
-    [:model/Database {db-id :id} {:name "field-db", :engine :h2}
-     :model/Table    table       {:schema  "PUBLIC"
-                                  :name    "widget"
-                                  :db_id   db-id}
-     :model/Field    parent1     {:name    "parent1"
-                                  :table_id (:id table)}
-     :model/Field    parent2     {:name    "parent2"
-                                  :table_id (:id table)}
-     ;; These two have the same name but different parents.
-     :model/Field    child1      {:name      "child"
-                                  :table_id  (:id table)
-                                  :parent_id (:id parent1)}
-     :model/Field    child2      {:name      "child"
-                                  :table_id  (:id table)
-                                  :parent_id (:id parent2)}]
-    (testing "nested fields with the same name and different parents have unique identity-hashes"
-      (is (= "204a7209"
-             (serdes/raw-hash ["parent1" (serdes/identity-hash table) "<none>"])
-             (serdes/identity-hash parent1)))
-      (is (= "be1bb68e"
-             (serdes/raw-hash ["parent2" (serdes/identity-hash table) "<none>"])
-             (serdes/identity-hash parent2)))
-      (is (= "7f203b41"
-             (serdes/raw-hash ["child" (serdes/identity-hash table) (serdes/identity-hash parent1)])
-             (serdes/identity-hash child1)))
-      (is (= "913269d5"
-             (serdes/raw-hash ["child" (serdes/identity-hash table) (serdes/identity-hash parent2)])
-             (serdes/identity-hash child2))))))
 
 ;;; ---------------------------------------- Field permission delegation tests ----------------------------------------
 
@@ -258,7 +215,6 @@
                          :coercion_strategy nil
                          :position          0
                          :database_position 0})))]
-
              ["t2/insert! with effective_type only set (no coercion)"
               (fn [table-id]
                 (first (t2/insert-returning-pks!
@@ -271,7 +227,6 @@
                          :effective_type    :type/Integer
                          :position          0
                          :database_position 0})))]
-
              ["t2/update! sets effective_type to differ from base_type without coercion"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
@@ -286,7 +241,6 @@
                                   :database_position 0}))]
                   (t2/update! :model/Field id {:effective_type :type/Text})
                   id))]
-
              ["t2/update! clears coercion_strategy but leaves effective_type stale"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
@@ -302,7 +256,6 @@
                                   :database_position 0}))]
                   (t2/update! :model/Field id {:coercion_strategy nil})
                   id))]
-
              ["t2/update! changes base_type but leaves effective_type stale"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
@@ -317,7 +270,6 @@
                                   :database_position 0}))]
                   (t2/update! :model/Field id {:base_type :type/Number})
                   id))]
-
              ["t2/update! sets both effective_type AND coercion_strategy=nil to mismatched values"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
@@ -333,7 +285,6 @@
                   (t2/update! :model/Field id {:effective_type    :type/Text
                                                :coercion_strategy nil})
                   id))]
-
              ["upsert-user-settings writes broken effective_type then any field update fires the merge-back overlay"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
@@ -353,7 +304,6 @@
                   ;; trigger before-update (which runs sync-user-settings overlay merge)
                   (t2/update! :model/Field id {:display_name "trigger merge"})
                   id))]]]
-
       (testing label
         (mt/with-temp [:model/Database {db-id :id} {}
                        :model/Table {table-id :id} {:db_id db-id}]

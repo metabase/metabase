@@ -1,6 +1,6 @@
 import P from "metabase/admin/performance/components/PerformanceApp.module.css";
-import { PerformanceTabId } from "metabase/admin/performance/types";
 import { getPerformanceTabName } from "metabase/admin/performance/utils";
+import { PerformanceTabId } from "metabase/plugins";
 import { Tabs } from "metabase/ui";
 
 export const DashboardAndQuestionCachingTab = () => {

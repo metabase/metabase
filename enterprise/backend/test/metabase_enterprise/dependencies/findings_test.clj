@@ -5,6 +5,7 @@
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
+   [metabase-enterprise.dependencies.models.analysis-finding-error :as models.analysis-finding-error]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -157,7 +158,7 @@
                               :analyzed_entity_id card-id)))))))))
 
 (deftest mark-dependents-stale-test
-  (testing "mark-dependents-stale! marks direct dependents as stale"
+  (testing "mark-transitive-dependents-stale! marks direct dependents as stale"
     (let [mp (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))]
       (mt/with-premium-features #{:dependencies}
@@ -175,13 +176,13 @@
                      (stale-map [parent-card-id child-card-id]))
                   "neither should be stale before marking")
               (t2/with-transaction [_conn]
-                (deps.findings/mark-dependents-stale! :card parent-card-id)
+                (deps.findings/mark-transitive-dependents-stale! {:card [parent-card-id]})
                 (is (= {parent-card-id false, child-card-id true}
                        (stale-map [parent-card-id child-card-id]))
                     "parent should NOT be stale, child should be stale")))))))))
 
 (deftest mark-dependents-stale-transitive-test
-  (testing "mark-dependents-stale! marks transitive dependents as stale"
+  (testing "mark-transitive-dependents-stale! marks transitive dependents as stale"
     (let [mp (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))]
       (mt/with-premium-features #{:dependencies}
@@ -201,13 +202,13 @@
               (run! deps.findings/upsert-analysis!
                     (t2/select :model/Card :id [:in [grandparent-id parent-id child-id]]))
               (t2/with-transaction [_conn]
-                (deps.findings/mark-dependents-stale! :card grandparent-id)
+                (deps.findings/mark-transitive-dependents-stale! {:card [grandparent-id]})
                 (is (= {grandparent-id false, parent-id true, child-id true}
                        (stale-map [grandparent-id parent-id child-id]))
                     "grandparent should NOT be stale, parent and child should be stale (transitive)")))))))))
 
-(deftest ^:sequential wave-propagation-via-entity-check-test
-  (testing "analyze-and-propagate! marks immediate dependents stale, and the job loop drains them in waves"
+(deftest ^:sequential mark-subtree-stale-then-drain-test
+  (testing "marking an entity stale also marks its whole transitive subtree up front, and check-entities! drains it"
     (backfill-all-entity-analyses!)
     (let [mp (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))]
@@ -226,20 +227,19 @@
               (is (= {gp-id false, p-id false, c-id false}
                      (stale-map [gp-id p-id c-id]))
                   "all should start as not stale")
-              ;; Mark only the immediate dependents of grandparent (just parent, not child)
-              (deps.findings/mark-immediate-dependents-stale! :card gp-id)
-              (is (= {gp-id false, p-id true, c-id false}
+              ;; A change to the grandparent marks it AND its whole transitive subtree (parent and child) stale up front
+              (deps.findings/mark-entity-and-transitive-dependents-stale! :card gp-id)
+              (is (= {gp-id true, p-id true, c-id true}
                      (stale-map [gp-id p-id c-id]))
-                  "only parent should be stale (immediate), child should NOT be stale yet")
-              ;; Run the entity-check job loop — it should analyze parent, which marks child stale,
-              ;; then analyze child in the next wave
+                  "the grandparent and its whole subtree should be stale")
+              ;; The drain analyzes each once, without re-marking anything stale during draining
               (#'task.entity-check/check-entities!)
               (is (= {gp-id false, p-id false, c-id false}
                      (stale-map [gp-id p-id c-id]))
-                  "after check-entities!, all should be re-analyzed (not stale) — wave propagation worked"))))))))
+                  "after check-entities!, the whole subtree should be re-analyzed (not stale)"))))))))
 
-(deftest ^:sequential wave-propagation-through-non-analyzable-entity-test
-  (testing "Wave propagation skips non-analyzable intermediaries (e.g., tables) and reaches cards beyond them"
+(deftest ^:sequential transitive-marking-through-non-analyzable-entity-test
+  (testing "marking dependents stale reaches analyzable entities beyond non-analyzable intermediaries (e.g., tables)"
     (backfill-all-entity-analyses!)
     (let [mp (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))
@@ -247,12 +247,12 @@
       (mt/with-premium-features #{:dependencies}
         (lib-be/with-metadata-provider-cache
           (mt/with-model-cleanup [:model/AnalysisFinding]
-            ;; Chain: transform → (depends on) table ← (depends on) card
-            ;; Table is not analyzable, but card should still be reached by the wave
+            ;; Chain: card → (depends on) table → (depends on) transform.
+            ;; The table is not analyzable, but the card beyond it should still be reached.
             (mt/with-temp [:model/Transform {transform-id :id :as transform}
                            {:source {:type :query :query (lib/query mp products)}
-                            :name "test_wave_transform"
-                            :target {:schema "public" :name "wave_test_table" :type :table}}
+                            :name "test_transitive_transform"
+                            :target {:schema "public" :name "transitive_test_table" :type :table}}
                            :model/Card {card-id :id :as card}
                            {:dataset_query (lib/query mp products)}
                            ;; table depends on transform (downstream of transform)
@@ -266,14 +266,94 @@
               (deps.findings/upsert-analysis! card)
               (is (false? (finding-stale? :card card-id))
                   "card should start as not stale")
-              ;; Mark only immediate dependents of transform stale
-              ;; The immediate dependent is the table, which is NOT analyzable
-              ;; The card is two hops away: transform → table → card
-              (deps.findings/mark-immediate-dependents-stale! :transform transform-id)
-              ;; The look-through should have reached the card through the non-analyzable table
+              ;; The card is two hops downstream of the transform: transform → table → card
+              (deps.findings/mark-transitive-dependents-stale! {:transform [transform-id]})
               (is (true? (finding-stale? :card card-id))
-                  "card should be stale — look-through reached it via non-analyzable table")
+                  "card should be stale — transitive marking reached it via the non-analyzable table")
               ;; Run entity-check to drain stale entities
               (#'task.entity-check/check-entities!)
               (is (false? (finding-stale? :card card-id))
                   "card should be re-analyzed after entity-check"))))))))
+
+(deftest ^:sequential cyclic-dependency-drain-terminates-test
+  (testing "check-entities! terminates on a cyclic dependency graph — staleness is fixed up front and never re-marked
+            during the drain"
+    (backfill-all-entity-analyses!)
+    (let [mp (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))]
+      (mt/with-premium-features #{:dependencies}
+        (lib-be/with-metadata-provider-cache
+          (mt/with-model-cleanup [:model/AnalysisFinding]
+            (mt/with-temp [:model/Card {a-id :id :as a-card} {:dataset_query (lib/query mp products)}
+                           :model/Card {b-id :id :as b-card} {:dataset_query (lib/query mp products)}
+                           ;; cycle: a depends on b, and b depends on a
+                           :model/Dependency _ {:from_entity_type :card :from_entity_id a-id
+                                                :to_entity_type :card :to_entity_id b-id}
+                           :model/Dependency _ {:from_entity_type :card :from_entity_id b-id
+                                                :to_entity_type :card :to_entity_id a-id}]
+              (run! deps.findings/upsert-analysis! [a-card b-card])
+              (deps.findings/mark-entity-and-transitive-dependents-stale! :card a-id)
+              (is (= {a-id true, b-id true}
+                     (stale-map [a-id b-id]))
+                  "both cycle members should be marked stale")
+              ;; Under the old wave-propagation design this drain would loop forever; bound it so a regression fails fast.
+              (let [done (future (#'task.entity-check/check-entities!))]
+                (is (not= ::timeout (deref done 30000 ::timeout))
+                    "check-entities! must terminate on a cyclic graph")
+                (is (= {a-id false, b-id false}
+                       (stale-map [a-id b-id]))
+                    "both cycle members should be drained (re-analyzed, not stale)")))))))))
+
+(deftest ^:sequential unanalyzable-entity-records-terminal-error-test
+  (testing "A stale entity whose database can't be resolved records a terminal error finding instead of no-oping forever."
+    ;; Without the fix, instance-db-id -> nil makes upsert-analysis! no-op: the stale flag is never
+    ;; cleared, so the entity is re-selected and re-attempted on every run. The fix records a terminal
+    ;; error, clearing the flag.
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
+        (mt/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT 1"})
+                                         :database_id   (mt/id)}]
+          (let [cid (:id card)]
+            ;; seed a clean finding, mark it stale, then make its database unresolvable
+            (models.analysis-finding/upsert-analysis! :card cid true [])
+            (models.analysis-finding/mark-stale! :card [cid])
+            (with-redefs-fn {#'deps.findings/instance-db-id (constantly nil)}
+              (fn []
+                (lib-be/with-metadata-provider-cache
+                  (deps.findings/upsert-analysis! (t2/instance :model/Card card)))))
+            (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
+                                          :analyzed_entity_type :card :analyzed_entity_id cid))
+                "the stale flag is cleared, so the entity stops being re-selected forever")
+            (is (seq (models.analysis-finding-error/errors-for-entity :card cid))
+                "an error finding is recorded explaining why the entity couldn't be analyzed")))))))
+
+(deftest ^:sequential unanalyzable-entity-rechecks-when-database-resolvable-again-test
+  (testing "After a no-DB terminal error, the entity is analyzed normally once its database resolves again."
+    ;; The terminal error finding is not sticky: it clears the stale flag but does not block future
+    ;; analysis. When the entity is next marked stale and its database now resolves, upsert-analysis!
+    ;; takes the normal path and replaces the terminal error with a real analysis result.
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
+        (let [mp       (mt/metadata-provider)
+              products (lib.metadata/table mp (mt/id :products))]
+          (mt/with-temp [:model/Card card {:dataset_query (lib/query mp products)}]
+            (let [cid (:id card)]
+              ;; phase 1: database unresolvable -> terminal error recorded, stale cleared
+              (with-redefs-fn {#'deps.findings/instance-db-id (constantly nil)}
+                (fn []
+                  (lib-be/with-metadata-provider-cache
+                    (deps.findings/upsert-analysis! (t2/instance :model/Card card)))))
+              (is (seq (models.analysis-finding-error/errors-for-entity :card cid))
+                  "phase 1: a terminal error is recorded while the database is unresolvable")
+              (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
+                                            :analyzed_entity_type :card :analyzed_entity_id cid))
+                  "phase 1: stale flag cleared")
+              ;; phase 2: database resolvable again; re-trigger analysis (as an event/job would)
+              (models.analysis-finding/mark-stale! :card [cid])
+              (lib-be/with-metadata-provider-cache
+                (deps.findings/upsert-analysis! (t2/instance :model/Card card)))
+              (is (empty? (models.analysis-finding-error/errors-for-entity :card cid))
+                  "phase 2: re-analyzed normally — the terminal db error is replaced by a clean result")
+              (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
+                                            :analyzed_entity_type :card :analyzed_entity_id cid))
+                  "phase 2: re-analysis cleared stale again"))))))))

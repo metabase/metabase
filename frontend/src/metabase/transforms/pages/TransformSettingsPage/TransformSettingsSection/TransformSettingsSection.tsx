@@ -8,6 +8,7 @@ import {
   useUpdateTransformMutation,
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
+import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import CS from "metabase/css/core/index.css";
 import { UserInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -18,7 +19,6 @@ import { Button, Divider, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName, Transform, UserId } from "metabase-types/api";
 
-import { TitleSection } from "../../../components/TitleSection";
 import { isTransformRunning, sourceDatabaseId } from "../../../utils";
 
 import { UpdateIncrementalSettings } from "./UpdateIncrementalSettings";

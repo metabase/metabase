@@ -128,7 +128,7 @@ export const ParameterSettings = () => {
   }
 
   return (
-    <Text size="sm" c="text-tertiary">
+    <Text size="sm" c="text-disabled">
       {t`Parameters are not available for this ${experience}.`}
     </Text>
   );

@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Flex, Text, rem } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
@@ -143,7 +143,7 @@ export function JoinDraft({
       {rhsTable && (
         <>
           <Flex className={S.JoinConditionOn}>
-            <Text c="brand" fw="bold">{t`on`}</Text>
+            <Text c="core-brand" fw="bold">{t`on`}</Text>
           </Flex>
           <NotebookCell
             className={S.JoinConditionCell}

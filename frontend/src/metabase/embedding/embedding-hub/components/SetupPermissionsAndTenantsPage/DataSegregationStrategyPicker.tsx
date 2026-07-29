@@ -58,6 +58,7 @@ export const DataSegregationStrategyPicker = ({
     <Stack gap="md">
       <Radio.Group
         value={value}
+        // Unjustified type cast. FIXME
         onChange={(nextValue) => onChange(nextValue as DataSegregationStrategy)}
       >
         <Stack gap="md">

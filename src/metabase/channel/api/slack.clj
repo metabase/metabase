@@ -119,7 +119,6 @@
           (setting/set-many! {:slack-app-token    slack-app-token
                               :slack-token-valid? true})
           (slack/refresh-channels-and-usernames-when-needed!))))
-
     (when (contains? body :slack-bug-report-channel)
       (let [processed-bug-channel (channel.settings/process-files-channel-name slack-bug-report-channel)]
         (when (and processed-bug-channel
@@ -127,7 +126,6 @@
           (throw (ex-info (tru "Slack channel not found.")
                           {:errors {:slack-bug-report-channel (tru "channel not found")}})))
         (channel.settings/slack-bug-report-channel! processed-bug-channel)))
-
     {:ok true}
     (catch clojure.lang.ExceptionInfo info
       {:status 400, :body (ex-data info)})))
@@ -220,7 +218,7 @@
                                         :app_id)
                                     (catch Exception e
                                       ;; bots.info requires users:read scope which may not be present
-                                      (log/warn e "Failed to fetch app_id from bots.info (may require users:read scope)")
+                                      (log/warnf "Failed to fetch app_id from bots.info (may require users:read scope): %s" (ex-message e))
                                       nil)))
                 scopes-header   (get-in auth-response [:metabase.channel.slack/headers "x-oauth-scopes"])
                 actual-scopes   (if (str/blank? scopes-header)

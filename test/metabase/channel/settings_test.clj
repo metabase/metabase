@@ -71,7 +71,6 @@
 
 (deftest smtp-override-enabled
   (mt/with-premium-features [:cloud-custom-smtp]
-
     (testing "cannot enable cloud-smtp without hostname set"
       (mt/with-temporary-setting-values [smtp-override-enabled nil
                                          email-smtp-host-override nil]
@@ -93,6 +92,9 @@
       (testing "finds by name with # prefix"
         (is (= {:display-name "#data-team" :name "data-team" :id "C002"}
                (channel.settings/find-cached-slack-channel-or-username "#data-team"))))
+      (testing "finds a user by name with @ prefix"
+        (is (= {:display-name "@alice" :name "alice" :id "U001"}
+               (channel.settings/find-cached-slack-channel-or-username "@alice"))))
       (testing "finds by ID"
         (is (= {:display-name "@alice" :name "alice" :id "U001"}
                (channel.settings/find-cached-slack-channel-or-username "U001"))))

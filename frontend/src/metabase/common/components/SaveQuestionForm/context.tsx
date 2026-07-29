@@ -12,12 +12,12 @@ import { usePrevious } from "react-use";
 import { isEqual } from "underscore";
 
 import { useListRecentsQuery } from "metabase/api";
-import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import {
   canPlaceEntityInCollection,
   getEntityTypeFromCardType,
   isInstanceAnalyticsCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
@@ -27,7 +27,11 @@ import type { CollectionId, DashboardId } from "metabase-types/api";
 
 import { SAVE_QUESTION_SCHEMA } from "./schema";
 import type { FormValues, SaveQuestionProps } from "./types";
-import { getInitialValues, submitQuestion } from "./util";
+import {
+  getInitialValues,
+  resolveCollectionReference,
+  submitQuestion,
+} from "./util";
 
 type SaveQuestionContextType = {
   question: Question;
@@ -70,20 +74,32 @@ export const SaveQuestionProvider = ({
   onSave,
   multiStep = false,
   targetCollection: userTargetCollection,
+  initialCollectionId: userInitialCollectionId,
   children,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
 
-  const defaultCollectionId = useGetDefaultCollectionId(
-    originalQuestion?.collectionId(),
-  );
-
   const currentUser = useSelector(getUser);
 
-  const targetCollection =
-    userTargetCollection === "personal" && currentUser
-      ? currentUser.personal_collection_id
-      : userTargetCollection;
+  // Resolve the `"personal"` / `"tenant"` sentinels to the current user's real
+  // collection id. Without this, `"tenant"` collapses to the root collection,
+  // which tenant users cannot write to (EMB-2107).
+  const targetCollection = resolveCollectionReference(
+    userTargetCollection,
+    currentUser,
+  );
+  const resolvedInitialCollectionId = resolveCollectionReference(
+    userInitialCollectionId,
+    currentUser,
+  );
+
+  // When a target collection is set the picker is hidden and the save is forced
+  // into it, so the default-collection lookup is unused — skipping it also
+  // avoids a `GET /api/collection/root` that tenant users get a 403 for.
+  const defaultCollectionId = useGetDefaultCollectionId(
+    originalQuestion?.collectionId(),
+    { disabled: userTargetCollection != null },
+  );
 
   const { data: recentItems } = useListRecentsQuery({
     context: ["selections"],
@@ -121,13 +137,20 @@ export const SaveQuestionProvider = ({
   const initialDashboardId =
     question.type() === "question" &&
     !isAnalytics &&
-    // `userTargetCollection` comes from the `targetCollection` sdk prop and should take precedence over the recent dashboards
+    // `userTargetCollection` and `userInitialCollectionId` come from the
+    // `targetCollection` / `initialCollection` sdk props and should take
+    // precedence over the recent dashboards.
     userTargetCollection === undefined &&
+    userInitialCollectionId === undefined &&
     lastSelectedDashboard?.can_write
       ? lastSelectedDashboard?.id
       : undefined;
 
+  // When a caller passes `initialCollectionId` explicitly, it takes precedence
+  // over the recent-items logic. Used by the SDK so the picker opens on the
+  // collection the user is browsing.
   const initialCollectionId =
+    resolvedInitialCollectionId ??
     (!isAnalytics
       ? lastSelectedDashboard?.parent_collection.id
       : defaultCollectionId) ??
@@ -241,6 +264,7 @@ export const FormValuesPatcher = <T extends object>({
       return;
     }
     const patches: Partial<T> = {};
+    // Unjustified type cast. FIXME
     for (const key of Object.keys(nextValues) as (keyof T)[]) {
       if (isEqual(formValues[key], prevValues[key])) {
         /**

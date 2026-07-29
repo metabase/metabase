@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
+   [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
    [metabase.test :as mt]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
@@ -121,7 +122,6 @@
                                                                                    :table_id      transactions-table-id
                                                                                    :parent_id     details-field-id
                                                                                    :active        true)))]
-
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should become inactive
@@ -189,3 +189,19 @@
 
 (deftest auto-cruft-fields-none-are-crufted-with-no-hit-pattern
   (run-cruft-test ["^it was the best$" "^of times it was$" "^the worst of times$"] {:normal 12}))
+
+(deftest remove-fields-with-too-long-names-test
+  (testing "Fields whose name is too long to store in the app DB are dropped, so they don't abort the whole batch"
+    (let [remove-too-long @#'sync-instances/remove-fields-with-too-long-names
+          table           (t2/instance :model/Table {:id 1, :name "t", :schema "s"})
+          field           (fn [nm] {:name nm, :database-type "TEXT", :base-type :type/Text, :database-position 0})
+          ok              (field "short_name")
+          too-long        (field (apply str (repeat 300 "a")))]
+      (testing "an over-long name is removed while the rest are kept"
+        (is (= #{ok} (remove-too-long table #{ok too-long}))))
+      (testing "everything is kept when all names fit"
+        (is (= #{ok} (remove-too-long table #{ok}))))
+      (testing "boundary: a name of exactly the max length is kept; one character longer is dropped"
+        (let [at-limit   (field (apply str (repeat 254 "a")))
+              over-limit (field (apply str (repeat 255 "a")))]
+          (is (= #{at-limit} (remove-too-long table #{at-limit over-limit}))))))))

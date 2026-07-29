@@ -358,7 +358,6 @@
                {:fields [{:id                (mt/id :venues :price)
                           :coercion-strategy :Coercion/UNIXSeconds->DateTime
                           :effective-type    :type/Instant}]})]
-
     (is (=? {:status :completed}
             (qp/process-query (assoc query :lib/metadata mp'))))))
 

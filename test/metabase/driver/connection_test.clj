@@ -4,7 +4,6 @@
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.driver.connection :as driver.conn]
-   [metabase.driver.connection.workspaces :as driver.w]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -78,45 +77,37 @@
       (driver.conn/with-write-connection
         (is (nil? (driver.conn/effective-details nil)))))))
 
-(deftest write-connection-requested?-test
-  (testing "write-connection-requested? returns false by default"
-    (is (false? (driver.conn/write-connection-requested?))))
-  (testing "write-connection-requested? returns true inside with-write-connection"
-    (mt/with-premium-features #{:writable-connection}
-      (driver.conn/with-write-connection
-        (is (true? (driver.conn/write-connection-requested?)))))))
+(deftest connection-telemetry-info-test
+  (testing "connection-telemetry-info describes the current connection context as prose, for logging only"
+    (is (= "the default connection" (driver.conn/connection-telemetry-info)))
+    (driver.conn/with-write-connection
+      (is (= "the write-data connection" (driver.conn/connection-telemetry-info))))
+    (driver.conn/with-admin-connection
+      (is (= "the admin connection" (driver.conn/connection-telemetry-info))))
+    (driver.conn/with-transform-connection
+      (is (= "the transform connection" (driver.conn/connection-telemetry-info))))))
 
-(deftest effective-details-with-workspace-swap-test
-  (testing "effective-details applies workspace swap in :default connection type"
-    (let [database {:lib/type :metadata/database
-                    :id       1
-                    :details  {:host "read-host" :user "admin" :port 5432}}]
-      (driver.w/with-swapped-connection-details 1 {:user "ws-user" :password "ws-pass"}
-        (is (=? {:host "read-host" :user "ws-user" :password "ws-pass" :port 5432}
-                (driver.conn/effective-details database))))))
+(deftest effective-details-default-with-admin-details-test
+  (testing "effective-details returns :details when *connection-type* is :default, even when :admin-details present"
+    (let [details       {:host "read-host" :port 5432}
+          admin-details {:host "admin-host" :port 5432 :user "root"}
+          database      {:lib/type      :metadata/database
+                         :details       details
+                         :admin-details admin-details}]
+      (is (=? details
+              (driver.conn/effective-details database))))))
 
-  (mt/when-ee-evailable
-   (mt/with-premium-features #{:writable-connection}
-     (testing "effective-details applies workspace swap AFTER write-data merge"
-       (let [database {:lib/type           :metadata/database
-                       :id                 1
-                       :details            {:host "host" :user "admin" :port 5432}
-                       :write-data-details {:user "writer" :password "write-pass" :write true}}]
-         (driver.w/with-swapped-connection-details 1 {:user "ws-user" :password "ws-pass"}
-           (driver.conn/with-write-connection
-             (is (=? {:host "host" :user "ws-user" :password "ws-pass" :port 5432 :write true}
-                     (driver.conn/effective-details database)))))))
-
-     (testing "without workspace swap, effective-details is unchanged (regression)"
-       (let [database {:lib/type           :metadata/database
-                       :id                 1
-                       :details            {:host "host" :user "admin"}
-                       :write-data-details {:user "writer"}}]
-         (is (=? {:host "host" :user "admin"}
-                 (driver.conn/effective-details database)))
-         (driver.conn/with-write-connection
-           (is (=? {:host "host" :user "writer"}
-                   (driver.conn/effective-details database)))))))))
+(deftest effective-details-admin-without-feature-test
+  (testing "without an admin-overlay feature, with-admin-connection falls back to main connection details"
+    (mt/with-premium-features #{}
+      (let [details       {:host "read-host" :port 5432}
+            admin-details {:host "admin-host" :port 5432 :user "root"}
+            database      {:lib/type      :metadata/database
+                           :details       details
+                           :admin-details admin-details}]
+        (driver.conn/with-admin-connection
+          (is (=? details
+                  (driver.conn/effective-details database))))))))
 
 (deftest type-resolved-metric-test
   (mt/when-ee-evailable
@@ -147,17 +138,6 @@
                          :details            {:host "read-host" :port 5432}
                          :write-data-details {:host "write-host"}}]
            (driver.conn/effective-details database)
-           (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-db-connection/type-resolved
-                                                           {:connection-type "write-data"}))))))
-     (testing "type-resolved counter does NOT increment when workspace swap is active"
-       (mt/with-prometheus-system! [_ system]
-         (let [database {:lib/type           :metadata/database
-                         :id                 1
-                         :details            {:host "read-host" :port 5432}
-                         :write-data-details {:host "write-host"}}]
-           (driver.w/with-swapped-connection-details 1 {:user "ws-user"}
-             (driver.conn/with-write-connection
-               (driver.conn/effective-details database)))
            (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-db-connection/type-resolved
                                                            {:connection-type "write-data"}))))))
      (testing "type-resolved counter does NOT increment inside without-resolution-telemetry"

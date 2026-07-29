@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="robots" content="noindex" />
+    <base href="{{{instanceUrlRaw}}}/" />
 
     <title>Metabase</title>
 
@@ -14,7 +15,7 @@
 
       body {
         margin: 0;
-        height: 500px;
+        height: 550px;
       }
 
       body {
@@ -30,6 +31,9 @@
         color: var(--vscode-foreground);
         background: var(--vscode-editor-background);
         font-family: var(--vscode-font-family);
+
+        /* Remove card padding from cursor */
+        padding: 0;
       }
 
       .mcp-loading {

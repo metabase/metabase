@@ -137,8 +137,8 @@ const pieToFunnel = (
       ...otherSettings,
       "funnel.metric": metric,
       "funnel.dimension": dimension,
-      "graph.metrics": [metric].filter(isNotNull) as string[],
-      "graph.dimensions": [dimension].filter(isNotNull) as string[],
+      "graph.metrics": [metric].filter(isNotNull),
+      "graph.dimensions": [dimension].filter(isNotNull),
     },
   };
 };

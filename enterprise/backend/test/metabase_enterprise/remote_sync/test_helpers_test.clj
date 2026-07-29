@@ -5,6 +5,15 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as th]))
 
+(defn- write-files!
+  "Wholesale-write `files` ({:path :content}) to `snapshot` via the commit builder (clear managed dirs,
+  stage every file, push)."
+  [snapshot message files]
+  (let [c (source.p/open-commit snapshot)]
+    (source.p/replace-all! c)
+    (doseq [f files] (source.p/stage-upsert! c f))
+    (source.p/finish-commit! c message)))
+
 (deftest mock-source-write-files-managed-dir-cleanup-test
   (testing "MockSource removes files in managed dirs not in write set"
     (let [source (th/create-mock-source
@@ -14,8 +23,8 @@
                                           "other/file4.yaml" "content4"}}
                   :managed-dirs #{"collections"})
           snapshot (source.p/snapshot source)]
-      (source.p/write-files! snapshot "Write only abc"
-                             [{:path "collections/abc/file1.yaml" :content "new-content1"}])
+      (write-files! snapshot "Write only abc"
+                    [{:path "collections/abc/file1.yaml" :content "new-content1"}])
       (is (= #{"collections/abc/file1.yaml" "other/file4.yaml"}
              (set (source.p/list-files snapshot)))
           "Only written files in managed dirs should remain; unmanaged dirs untouched"))))
@@ -27,8 +36,8 @@
                                           "unmanaged/file2.yaml" "content2"}}
                   :managed-dirs #{"collections"})
           snapshot (source.p/snapshot source)]
-      (source.p/write-files! snapshot "Write collections"
-                             [{:path "collections/abc/file1.yaml" :content "new-content"}])
+      (write-files! snapshot "Write collections"
+                    [{:path "collections/abc/file1.yaml" :content "new-content"}])
       (is (= #{"collections/abc/file1.yaml" "unmanaged/file2.yaml"}
              (set (source.p/list-files snapshot)))
           "Unmanaged directory files should be preserved"))))
@@ -41,8 +50,8 @@
                   :managed-dirs #{"collections" "snippets"})
           snapshot (source.p/snapshot source)]
       ;; Write only to collections, nothing to snippets
-      (source.p/write-files! snapshot "Write only collections"
-                             [{:path "collections/abc/file1.yaml" :content "new-content"}])
+      (write-files! snapshot "Write only collections"
+                    [{:path "collections/abc/file1.yaml" :content "new-content"}])
       (is (= #{"collections/abc/file1.yaml"}
              (set (source.p/list-files snapshot)))
           "Snippets dir should be cleaned even though no snippet files were written"))))

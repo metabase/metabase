@@ -48,6 +48,11 @@
     (upstream-deps:native-query query)
     (upstream-deps:mbql-query query)))
 
+(mu/defn- upstream-deps:dimension-mappings :- ::deps.schema/upstream-deps
+  "Table dependencies of `dimension-mappings`, gathered from their `:table-id`s."
+  [dimension-mappings]
+  {:table (into #{} (keep :table-id) dimension-mappings)})
+
 (mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps
   [{{tables :source-tables} :source :as _py-transform}
    :- [:map [:source-tables {:optional true} [:sequential ::transforms-base.u/source-table-entry]]]]
@@ -72,23 +77,25 @@
 ;;; ------------------------------------------------ defmethods ------------------------------------------------
 
 (defmethod calculate-deps* :card
-  [_ {query :dataset_query :as card}]
+  [_ {query :dataset_query, dimension-mappings :dimension_mappings :as card}]
   {:pre [(some? query)]}
-  (let [query-deps (upstream-deps:query query)
+  (let [base-deps      (merge-with into
+                                   (upstream-deps:query query)
+                                   (upstream-deps:dimension-mappings dimension-mappings))
         param-card-ids (keep #(-> % :values_source_config :card_id) (:parameters card))]
     (reduce (fn [deps card-id]
               (update deps :card (fnil conj #{}) card-id))
-            query-deps
+            base-deps
             param-card-ids)))
 
 (defmethod calculate-deps* :transform
   [_ {{:keys [query]} :source :as transform}]
-  (let [source-type (transforms-base.u/transform-type transform)]
-    (case source-type
-      :query (upstream-deps:query query)
-      :python (upstream-deps:python-transform transform)
-      (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'" (:id transform) source-type)
-          {}))))
+  (cond
+    (transforms-base.u/query-transform? transform)  (upstream-deps:query query)
+    (transforms-base.u/python-transform? transform) (upstream-deps:python-transform transform)
+    :else (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'"
+                         (:id transform) (-> transform :source :type))
+              {})))
 
 (defmethod calculate-deps* :snippet
   [_ {:keys [template_tags] :as _snippet}]

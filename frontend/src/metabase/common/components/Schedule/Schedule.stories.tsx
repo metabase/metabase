@@ -2,14 +2,11 @@ import type { Store } from "@reduxjs/toolkit";
 import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { getStore } from "__support__/entities-store";
+import { getPublicStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { Api } from "metabase/api";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
-import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -21,17 +18,8 @@ const storeInitialState = createMockState({
   settings: mockSettings(),
   entities: createMockEntitiesState({}),
 });
-const publicReducerNames = Object.keys(publicReducers);
-const initialState = _.pick(storeInitialState, ...publicReducerNames) as State;
-const reducers = publicReducers;
-
-const storeMiddleware = [Api.middleware];
-
-const store = getStore(
-  reducers,
-  initialState,
-  storeMiddleware,
-) as unknown as Store<State>;
+// Unjustified type cast. FIXME
+const store = getPublicStore(storeInitialState) as unknown as Store<State>;
 
 const ReduxDecorator = (Story: StoryFn) => {
   return (

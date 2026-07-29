@@ -53,7 +53,8 @@ describe("build output validation", () => {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
     expect(manifest.name).toBe("test-viz-build");
     expect(manifest).toHaveProperty("icon");
-    expect(manifest).toHaveProperty("assets");
+    // Custom viz no longer ship arbitrary assets — only the icon is served.
+    expect(manifest).not.toHaveProperty("assets");
   });
 
   it("build produces an upload-ready .tgz", () => {

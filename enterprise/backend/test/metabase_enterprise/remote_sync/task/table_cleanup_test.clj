@@ -61,12 +61,10 @@
                                                              :ended_at (t/minus now (t/days 60))}]
             ;; Verify all tasks were created
             (is (= 6 (t2/count :model/RemoteSyncTask)))
-
             ;; Run cleanup
             (let [deleted-count (#'table-cleanup/trim-remote-sync-tasks!)]
               ;; Should delete tasks at 31 and 60 days (2 tasks)
               (is (= 2 deleted-count)))
-
             ;; Verify only recent tasks remain
             (is (= 4 (t2/count :model/RemoteSyncTask)))
             (is (some? (t2/select-one :model/RemoteSyncTask :id (:id task-today))))
@@ -106,10 +104,8 @@
                                                   :started_at (t/minus now (t/days 29))
                                                   :ended_at (t/minus now (t/days 29))}]
             (is (= 3 (t2/count :model/RemoteSyncTask)))
-
             ;; Run cleanup
             (let [deleted-count (#'table-cleanup/trim-remote-sync-tasks!)]
               (is (= 0 deleted-count)))
-
             ;; All tasks should remain
             (is (= 3 (t2/count :model/RemoteSyncTask)))))))))

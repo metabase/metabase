@@ -153,6 +153,18 @@
    (or (config/config-int :mb-application-db-max-connection-pool-size)
        ;; 15 is the c3p0 default but it's always nice to be explicit in case that changes
        15)
+   ;;
+   ;; Milliseconds a thread will wait for a c3p0 Connection to become available when the pool is fully checked out before
+   ;; giving up and throwing.
+   ;; We default to 30s so a stuck checkout fails loudly with a
+   ;; stack trace break cycle deadlocks. Operators who
+   ;; truly want the legacy wait-forever behavior can set the env var to 0.
+   ;;
+   ;; https://www.mchange.com/projects/c3p0/#checkoutTimeout
+   ;;
+   "checkoutTimeout"
+   (or (config/config-int :mb-application-db-checkout-timeout-ms)
+       30000)
 
    "unreturnedConnectionTimeout"
    ;; `MB_APPLICATION_DB_UNRETURNED_CONNECTION_TIMEOUT` is the legacy unsuffixed name (its value has always been

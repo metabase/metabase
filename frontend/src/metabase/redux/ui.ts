@@ -36,6 +36,7 @@ function validateSerializableProps(props: unknown): void {
   );
 }
 
+// Unjustified type cast. FIXME
 const DEFAULT_MODAL_STATE = {
   id: null,
   props: null,

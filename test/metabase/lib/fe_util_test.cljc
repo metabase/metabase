@@ -229,7 +229,6 @@
                  :lib/expression-name expression-name
                  :lib/source :source/expressions}
                 (lib/expression-parts query stage-number [:expression {:base-type :type/Integer} expression-name])))))
-
     (testing "nested expression references"
       (mu/disable-enforcement
         (is (=? {:lib/type :metadata/column
@@ -306,7 +305,6 @@
           (is (=? operator (:operator res)))
           (is (=? options  (:options res)))
           (is (=? (map :id args) (map :id (:args res)))))))
-
     (testing "case pairs should be unflattened in expression clause"
       (doseq [[expected-expression parts] test-cases]
         (let [{:keys [operator options args]} parts
@@ -315,7 +313,6 @@
               [actual-op _ actual-args] actual-expression]
           (is (=? expected-op actual-op))
           (is (=? (map :id expected-args) (map :id actual-args))))))
-
     (testing "case/if should round-trip through expression-parts and expression-clause"
       (doseq [[clause] test-cases]
         (let [parts                     (lib.fe-util/expression-parts query clause)
@@ -324,7 +321,6 @@
                                          (:args parts)
                                          nil)
               round-tripped-parts       (lib.fe-util/expression-parts query round-tripped-expression)]
-
           (is (=? (:operator parts) (:operator round-tripped-parts)))
           (is (=? (map :id (:args parts)) (map :id (:args round-tripped-parts)))))))))
 
@@ -339,7 +335,6 @@
                       :args [boolean-field
                              string-field
                              "default"]}
-
                      {:lib/type :mbql/expression-parts
                       :operator :upper
                       :options {}
@@ -354,7 +349,6 @@
                                       :args [boolean-field
                                              string-field
                                              "default"]}]}]}
-
                      {:lib/type :mbql/expression-parts
                       :operator :upper
                       :options {}
@@ -365,7 +359,6 @@
                                       :operator :case
                                       :options {}
                                       :args [boolean-field string-field]}]}]}]]
-
         (let [expression (lib.fe-util/expression-clause
                           (:operator parts)
                           (:args parts)
@@ -708,6 +701,17 @@
       (are [clause] (nil? (lib.fe-util/relative-date-filter-parts query -1 clause))
         (lib.filter/is-null column)
         (lib.filter/and (lib.filter/time-interval column -10 :month) true)))))
+
+(deftest ^:parallel relative-date-filter-parts-on-temporal-expression-test
+  (testing "QUE-2567 a relative-date filter over a temporal expression column round-trips to date-picker parts"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/expression "Foo" (lib/datetime-add (meta/field-metadata :orders :created-at) 5 :day)))
+          query (lib/filter query (lib/time-interval (lib/expression-ref query "Foo") -12 :month))
+          parts (lib.fe-util/relative-date-filter-parts query -1 (first (lib/filters query)))]
+      (is (some? parts))
+      (is (=? {:value -12
+               :unit  :month}
+              parts)))))
 
 (deftest ^:parallel exclude-date-filter-parts-test
   (let [query  (lib.tu/venues-query)
@@ -1076,23 +1080,23 @@
 
 (deftest ^:parallel dependent-metadata-test-10
   (testing "Native query snippets should be included in dependent metadata"
-    (let [;; lib/native-query would try to look up the snippets:
+    (let [ ;; lib/native-query would try to look up the snippets:
           query {:lib/type :mbql/query
                  :database 1
-                 :stages [{:lib/type :mbql.stage/native
-                           :native "SELECT * WHERE {{snippet: filter1}} AND {{snippet: filter2}}"
-                           :template-tags {"snippet: filter1" {:type :snippet
-                                                               :snippet-id 10
-                                                               :snippet-name "filter1"
-                                                               :name "snippet: filter1"
-                                                               :display-name "Filter 1"
-                                                               :id "def456"}
-                                           "snippet: filter2" {:type :snippet
-                                                               :snippet-id 20
-                                                               :snippet-name "filter2"
-                                                               :name "snippet: filter2"
-                                                               :display-name "Filter 2"
-                                                               :id "ghi789"}}}]}]
+                 :stages   [{:lib/type      :mbql.stage/native
+                             :native        "SELECT * WHERE {{snippet: filter1}} AND {{snippet: filter2}}"
+                             :template-tags [{:type         :snippet
+                                              :snippet-id   10
+                                              :snippet-name "filter1"
+                                              :name         "snippet: filter1"
+                                              :display-name "Filter 1"
+                                              :id           "def456"}
+                                             {:type         :snippet
+                                              :snippet-id   20
+                                              :snippet-name "filter2"
+                                              :name         "snippet: filter2"
+                                              :display-name "Filter 2"
+                                              :id           "ghi789"}]}]}]
       (is (=? [{:type :database}
                {:type :schema}
                {:type :native-query-snippet :id 10}

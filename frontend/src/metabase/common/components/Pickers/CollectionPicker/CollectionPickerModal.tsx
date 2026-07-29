@@ -5,7 +5,7 @@ import {
   type EntityType,
   canPlaceEntityInCollection,
   canPlaceEntityInCollectionOrDescendants,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { PLUGIN_TENANTS } from "metabase/plugins/oss/tenants";
 
 import {

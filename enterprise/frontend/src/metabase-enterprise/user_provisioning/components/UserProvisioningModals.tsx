@@ -99,7 +99,7 @@ export const UserProvisioningRegenerateTokenModal = ({
         // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin settings
         message={t`This will delete the existing token. You'll need to update your identity provider with the new token, otherwise people won't be able to log in to your Metabase.`}
         confirmButtonText={t`Regenerate now`}
-        confirmButtonProps={{ variant: "filled", color: "brand" }}
+        confirmButtonProps={{ variant: "filled", color: "core-brand" }}
         onConfirm={handleConfirmRegenerate}
       />
     );

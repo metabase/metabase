@@ -1,4 +1,4 @@
-(ns metabase.view-log.events.view-log-test
+(ns ^:synchronous metabase.view-log.events.view-log-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.view-log.events.view-log-test]}}}}}}
   (:require
    [clojure.test :refer :all]
@@ -21,6 +21,10 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+                        (thunk))))
 
 (defn latest-view
   "Returns the most recent view for a given user and model ID"
@@ -67,6 +71,23 @@
         (is (= nil (latest-view (u/id user) (u/id card)))
             "view log entries should not be made in OSS")))))
 
+(deftest card-query-model-read-ee-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/User user     {}
+                   :model/Card model    {:type :model    :creator_id (u/id user)}
+                   :model/Card question {:type :question :creator_id (u/id user)}]
+      (testing "An ad-hoc card-query on a model is recorded as a card view (GDGT-2693)"
+        (events/publish-event! :event/card-query {:card-id (u/id model) :user-id (u/id user) :context :ad-hoc})
+        (is (partial= {:user_id (u/id user) :model "card" :model_id (u/id model) :context :question :has_access true}
+                      (latest-view (u/id user) (u/id model)))))
+      (testing "An ad-hoc card-query on a non-model card is not recorded (card-read handles questions)"
+        (events/publish-event! :event/card-query {:card-id (u/id question) :user-id (u/id user) :context :ad-hoc})
+        (is (nil? (latest-view (u/id user) (u/id question)))))
+      (testing "A non-ad-hoc card-query on a model is not recorded (downloads and card-read paths are excluded)"
+        (events/publish-event! :event/card-query {:card-id (u/id model) :user-id (u/id user) :context :csv-download})
+        (is (= 1 (t2/count :model/ViewLog :user_id (u/id user) :model_id (u/id model)))
+            "only the ad-hoc view is recorded")))))
+
 (deftest collection-read-ee-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/Collection coll {}]
@@ -98,7 +119,6 @@
                (-> (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id-1)
                    t/offset-date-time
                    (.withNano 0))))))
-
     (testing "if the existing last_viewed_at is greater than the updating values, do not override it"
       (mt/with-temp
         [:model/Dashboard {dashboard-id-2 :id} {:last_viewed_at now}]
@@ -121,13 +141,11 @@
                 :has_access nil
                 :context    nil}
                (latest-view (u/id user) (u/id table)))))
-
         (testing "If a user is bound, has_access is recorded in EE based on the user's current permissions"
           (mt/with-full-data-perms-for-all-users!
             (mt/with-current-user (u/id user)
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
               (is (true? (:has_access (latest-view (u/id user) (u/id table))))))
-
             ;; Bind the user again to flush the perms cache
             (mt/with-current-user (u/id user)
               (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/create-queries :no)
@@ -165,6 +183,19 @@
           (is (= 1 (t2/select-one-fn :view_count :model/Card (:id card))))
           (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
           (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))))))))
+
+(deftest card-query-model-view-count-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-temp [:model/User user  {}
+                     :model/Card model {:type :model :creator_id (u/id user)}]
+        (testing "An ad-hoc card-query on a model increments its view_count (GDGT-2693)"
+          (is (= 0 (:view_count model))
+              "view_count should be 0 before the event is published")
+          (events/publish-event! :event/card-query {:card-id (u/id model) :user-id (u/id user) :context :ad-hoc})
+          (is (= 1 (t2/select-one-fn :view_count :model/Card (u/id model))))
+          (events/publish-event! :event/card-query {:card-id (u/id model) :user-id (u/id user) :context :ad-hoc})
+          (is (= 2 (t2/select-one-fn :view_count :model/Card (u/id model)))))))))
 
 (deftest dashboard-read-view-count-test
   (mt/test-helpers-set-global-values!
@@ -244,6 +275,20 @@
           (mt/user-http-request :crowberto :post 202 (format "card/%s/query" (u/id card)))
           (is (partial= {:user_id (mt/user->id :crowberto), :model "card", :model_id (u/id card), :context :question}
                         (latest-view (mt/user->id :crowberto) (u/id card)))))))))
+
+(deftest model-dataset-query-view-log-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "Opening a model runs an ad-hoc card__<id> query that is recorded in the view_log (GDGT-2693)"
+      (mt/with-temp [:model/Card model {:name          "My Model"
+                                        :type          :model
+                                        :dataset_query (mt/mbql-query venues {:limit 1})}]
+        (testing "POST /api/dataset with a card__<model-id> source records a card view"
+          (mt/user-http-request :crowberto :post 202 "dataset"
+                                {:database (mt/id)
+                                 :type     :query
+                                 :query    {:source-table (str "card__" (u/id model))}})
+          (is (partial= {:user_id (mt/user->id :crowberto) :model "card" :model_id (u/id model) :context :question}
+                        (latest-view (mt/user->id :crowberto) (u/id model)))))))))
 
 (deftest get-dashboard-view-log-test
   (mt/with-premium-features #{:audit-app}
@@ -551,7 +596,6 @@
                 (is (= "card"                  (:entity_type row)))
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
-
                 (is (= false                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_sdk_version row)))
                 (is (= "public"                (:auth_method row)))
@@ -564,7 +608,6 @@
               (let [row (latest-v-query-log (:id card))]
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
-
                 (is (= false                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_sdk_version row)))
                 (is (= "public"                (:auth_method row)))
@@ -591,7 +634,6 @@
                 (is (= "card"                  (:entity_type row)))
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
-
                 (is (= false                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_sdk_version row)))
                 (is (= "public"                (:auth_method row)))
@@ -604,7 +646,6 @@
               (let [row (latest-v-query-log (:id card))]
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
-
                 (is (= false                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_sdk_version row)))
                 (is (= "public"                (:auth_method row)))

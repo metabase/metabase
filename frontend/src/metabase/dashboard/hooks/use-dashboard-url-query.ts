@@ -1,7 +1,4 @@
-import type { Location } from "history";
 import { useEffect, useMemo } from "react";
-import type { InjectedRouter } from "react-router";
-import { push, replace } from "react-router-redux";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
@@ -9,6 +6,13 @@ import { useSetting } from "metabase/common/hooks";
 import { isEmbedPreview } from "metabase/embedding/config";
 import { useDispatch, useSelector } from "metabase/redux";
 import { selectTab } from "metabase/redux/dashboard";
+import {
+  type InjectedRouter,
+  type Location,
+  push,
+  queryToSearch,
+  replace,
+} from "metabase/router";
 import * as Urls from "metabase/urls";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
@@ -91,7 +95,7 @@ export function useDashboardUrlQuery(
         queryParams.tab !== previousQueryParams.tab;
 
       const action = isDashboardTabChange ? push : replace;
-      dispatch(action({ ...location, query: nextQuery }));
+      dispatch(action({ ...location, search: queryToSearch(nextQuery) }));
     }
   }, [
     dashboardId,

@@ -17,6 +17,7 @@ export const CardAlerts = ({ alerts, fullWidth }: CardAlertsProps) => {
     <Stack gap="xs" w={fullWidth ? "100%" : undefined}>
       {alerts.map((alert) => (
         <Alert
+          size="compact"
           key={alert.id}
           icon={
             <Icon
@@ -29,7 +30,7 @@ export const CardAlerts = ({ alerts, fullWidth }: CardAlertsProps) => {
           color={match(alert.severity)
             .with("error", () => "error" as const)
             .with("warning", () => "warning" as const)
-            .otherwise(() => "brand" as const)}
+            .otherwise(() => "core-brand" as const)}
           variant="light"
         >
           {alert.message}

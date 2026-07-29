@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
 import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
@@ -12,6 +11,7 @@ import {
   Messages,
 } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { getIssueTypeLabel } from "metabase/metabot/components/MetabotChat/feedback-issue-types";
+import { useBranchableMessages } from "metabase/metabot/hooks";
 import type {
   MetabotAgentTextChatMessage,
   MetabotChatMessage,
@@ -19,6 +19,7 @@ import type {
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
+import type { WithRouterProps } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -37,13 +38,15 @@ import {
 import { question as ML_getUrl } from "metabase/urls/questions";
 import { formatNumber } from "metabase/utils/formatting";
 import { getUserName } from "metabase/utils/user";
+import * as EnterpriseUrls from "metabase-enterprise/urls";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
-import { useGetMetabotConversationQuery } from "../../api";
+import { useGetMetabotAnalyticsConversationQuery } from "../../api";
 import type { ConversationFeedback, GeneratedQuery } from "../../types";
 
 import { ConversationHeader } from "./ConversationHeader";
+import { ForkBoundary } from "./ForkBoundary";
 
 export function ConversationDetailPage({ params }: WithRouterProps) {
   const convoId = params.convoId;
@@ -52,17 +55,28 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     data: conversation,
     isLoading,
     error,
-  } = useGetMetabotConversationQuery(convoId, {
+  } = useGetMetabotAnalyticsConversationQuery(convoId, {
     refetchOnMountOrArgChange: true,
   });
 
-  const chatMessages = useMemo(() => {
-    return normalizeFetchedChatMessages(conversation?.chat_messages ?? [], {
-      isSlack:
-        conversation?.profile_id === "slackbot" ||
-        conversation?.profile_id === "slack",
-    });
-  }, [conversation]);
+  const isSlack =
+    conversation?.profile_id === "slackbot" ||
+    conversation?.profile_id === "slack";
+
+  const conversationMessages = useMemo(
+    () => conversation?.messages ?? [],
+    [conversation?.messages],
+  );
+
+  const { messages, getExtraActions } = useBranchableMessages(
+    conversationMessages,
+    { isSlack },
+  );
+
+  const feedbackChatMessages = normalizeFetchedChatMessages(
+    conversationMessages,
+    { isSlack },
+  );
 
   if (isLoading || error) {
     return (
@@ -83,7 +97,23 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     query_count,
     queries,
     feedback,
+    fork_boundary_message_id,
+    forked_from_conversation_id,
   } = conversation;
+
+  const forkBoundaryHref = forked_from_conversation_id
+    ? EnterpriseUrls.adminMetabotUsageAuditingConversation(
+        forked_from_conversation_id,
+      )
+    : undefined;
+
+  const forkBoundaryMessage = fork_boundary_message_id
+    ? messages.findLast(
+        (message) =>
+          "externalId" in message &&
+          message.externalId === fork_boundary_message_id,
+      )
+    : undefined;
 
   return (
     <MetabotAdminLayout>
@@ -108,7 +138,8 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                 <FeedbackCard
                   key={item.id}
                   feedback={item}
-                  chatMessages={chatMessages}
+                  chatMessages={feedbackChatMessages}
+                  conversationId={convoId}
                 />
               ))}
             </Stack>
@@ -126,10 +157,17 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
           </Flex>
           <Card withBorder shadow="none" p="xl">
             <Messages
-              messages={chatMessages}
+              messages={messages}
+              getExtraActions={getExtraActions}
               isDoingScience={false}
               debug
               readonly
+              conversationId={convoId}
+              renderAfterMessage={(message) =>
+                message === forkBoundaryMessage ? (
+                  <ForkBoundary href={forkBoundaryHref} />
+                ) : null
+              }
             />
           </Card>
         </Stack>
@@ -166,22 +204,20 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function FeedbackCard({
   feedback,
   chatMessages,
+  conversationId,
 }: {
   feedback: ConversationFeedback;
   chatMessages: MetabotChatMessage[];
+  conversationId: string;
 }) {
-  const agentResponse = useMemo(
-    () =>
-      feedback.external_id
-        ? chatMessages.find(
-            (m): m is MetabotAgentTextChatMessage =>
-              m.role === "agent" &&
-              m.type === "text" &&
-              m.externalId === feedback.external_id,
-          )
-        : undefined,
-    [feedback.external_id, chatMessages],
-  );
+  const agentResponse = feedback.external_id
+    ? chatMessages.find(
+        (message): message is MetabotAgentTextChatMessage =>
+          message.role === "agent" &&
+          message.type === "text" &&
+          message.externalId === feedback.external_id,
+      )
+    : undefined;
 
   const submitterName = feedback.user
     ? getUserName(feedback.user) || null
@@ -198,7 +234,7 @@ function FeedbackCard({
           />
           <Text fw={700}>{feedback.positive ? t`Positive` : t`Negative`}</Text>
           {!feedback.positive && feedback.issue_type && (
-            <Badge variant="light" bg="background-error" c="error" ml="xs">
+            <Badge color="negative" ml="xs" size="sm">
               {getIssueTypeLabel(feedback.issue_type)}
             </Badge>
           )}
@@ -213,14 +249,14 @@ function FeedbackCard({
             message={agentResponse}
             debug
             readonly
+            conversationId={conversationId}
             hideActions
             getCopyText={noopGetCopyText}
-            showFeedbackButtons={false}
             submittedFeedback={undefined}
-            bg="background-secondary"
+            bg="background_page-secondary"
             p="md"
             pb="0"
-            bd="1px solid var(--mb-color-border)"
+            bd="1px solid var(--mb-color-border-neutral)"
             bdrs="1rem"
           />
         )}

@@ -44,6 +44,10 @@ const typeFilters = [
     label: "Indexed record",
     type: "indexed-entity",
   },
+  {
+    label: "Document",
+    type: "document",
+  },
 ];
 
 const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -156,6 +160,20 @@ describe("scenarios > search", () => {
             pkName: "ID",
             valueName: "TITLE",
           });
+        });
+
+        H.createDocument({
+          name: "Releases overview",
+          document: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                attrs: { _id: "1" },
+                content: [{ type: "text", text: "Document body" }],
+              },
+            ],
+          },
         });
       });
 

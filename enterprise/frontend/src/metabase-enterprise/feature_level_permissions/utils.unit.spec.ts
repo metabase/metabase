@@ -26,8 +26,31 @@ describe("getDataColumns", () => {
         },
         { name: "Manage table metadata" },
         { name: "Manage database" },
-        { name: "Transforms", hint: null },
+        {
+          name: "Transforms",
+          hint: "This lets users see, edit, and run transforms based on this database.",
+        },
       ]);
+    });
+
+    it("explains the Transforms permission and notes the Data Analysts requirement for non-analyst groups", () => {
+      PLUGIN_TRANSFORMS.isEnabled = true;
+
+      const columns = getDataColumns({
+        subject: "schemas",
+        showTransformPermissions: true,
+      });
+      const transformsColumn = columns.find(
+        ({ name }) => name === "Transforms",
+      );
+
+      expect(transformsColumn?.hint).not.toBeNull();
+      // `jt` returns an array of nodes; the description is the leading string.
+      expect(transformsColumn?.hint).toEqual(
+        expect.arrayContaining([
+          "This lets users see, edit, and run transforms based on this database.",
+        ]),
+      );
     });
 
     it("returns 3 permissions when the transform token feature is disabled", () => {

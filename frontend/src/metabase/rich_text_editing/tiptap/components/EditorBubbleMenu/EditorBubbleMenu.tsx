@@ -1,7 +1,6 @@
 import type { BubbleMenuOptions } from "@tiptap/extension-bubble-menu";
 import type { EditorState } from "@tiptap/pm/state";
 import type { Editor as TiptapEditor } from "@tiptap/react";
-// @ts-expect-error - BubbleMenu is a Tiptap extension that is registered through @tiptap/extension-bubble-menu
 import { BubbleMenu } from "@tiptap/react/menus";
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -56,6 +55,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
 }) => {
   const forceUpdate = useForceUpdate();
   const [initialLinkUrl, setInitialLinkUrl] = useState<string | null>(null);
+  const [contentKey, setContentKey] = useState(0);
 
   const handleLinkClick = () => {
     const existingLink = editor.getAttributes("link");
@@ -93,8 +93,13 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
       className={className}
       editor={editor}
       options={{
-        onHide: () => setInitialLinkUrl(null),
         ...options,
+        onHide: () => {
+          setInitialLinkUrl(null);
+          //remount the content to clean up any lingering tooltips
+          setContentKey((key) => key + 1);
+          options?.onHide?.();
+        },
       }}
       shouldShow={({
         editor,
@@ -140,6 +145,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
       }}
     >
       <Flex
+        key={contentKey}
         gap={4}
         p="2px"
         className={S.bubbleMenu}

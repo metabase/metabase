@@ -9,6 +9,7 @@
    [metabase.actions.init]
    [metabase.activity-feed.init]
    [metabase.agent-api.init]
+   [metabase.ai-tracing.init]
    [metabase.analytics.init]
    [metabase.api-scope.init]
    [metabase.api.init]
@@ -33,6 +34,7 @@
    [metabase.embedding.init]
    [metabase.events.init]
    [metabase.geojson.init]
+   [metabase.health-inspector.init]
    [metabase.indexed-entities.init]
    [metabase.lib-be.init]
    [metabase.lib.init]
@@ -43,6 +45,7 @@
    [metabase.metabot.init]
    [metabase.model-persistence.init]
    [metabase.models.init]
+   [metabase.mq.init]
    [metabase.notification.init]
    [metabase.oauth-server.init]
    [metabase.parameters.init]
@@ -76,8 +79,10 @@
    [metabase.transforms.init]
    [metabase.types.init]
    [metabase.upload.init]
+   [metabase.usage-metadata.init]
    [metabase.user-key-value.init]
    [metabase.users.init]
+   [metabase.util.experiment.init]
    [metabase.version.init]
    [metabase.view-log.init]
    [metabase.warehouses.init]
@@ -86,5 +91,4 @@
 ;; load EE init code on system launch if it exists.
 (when (and (not *compile-files*)
            config/ee-available?)
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (require 'metabase-enterprise.core.init))

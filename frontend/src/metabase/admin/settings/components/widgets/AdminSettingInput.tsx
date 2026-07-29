@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
 import { useAdminSetting } from "metabase/api/utils";
-import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import {
   Box,
   type BoxProps,
@@ -258,22 +257,6 @@ function hasBooleanOptions(options: { label: string; value: string }[]) {
 function stringToBoolean(value: string): boolean | string {
   return value === "true";
 }
-
-export const SetByEnvVar = ({ varName }: { varName: string }) => {
-  const { url } = useDocsUrl("configuring-metabase/environment-variables", {
-    anchor: varName?.toLowerCase(),
-  });
-
-  return (
-    <Box data-testid="setting-env-var-message" fw="bold" p="sm">
-      {jt`This has been set by the ${(
-        <ExternalLink key="link" href={url}>
-          {varName}
-        </ExternalLink>
-      )} environment variable.`}
-    </Box>
-  );
-};
 
 type SetByEnvVarWrapperProps<S extends EnterpriseSettingKey> = {
   settingKey: S;

@@ -1,5 +1,14 @@
-import type { SetupStep } from "metabase/setup/types";
 import type { DatabaseData, UsageReason } from "metabase-types/api";
+
+export type SetupStep =
+  | "welcome"
+  | "language"
+  | "user_info"
+  | "usage_question"
+  | "db_connection"
+  | "license_token"
+  | "data_usage"
+  | "completed";
 
 export interface Locale {
   name: string;

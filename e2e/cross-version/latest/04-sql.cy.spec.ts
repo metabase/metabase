@@ -71,7 +71,7 @@ describe("Cross-version questions - sql", () => {
   it("verify: sql question can be filtered", { tags: ["@target"] }, () => {
     cy.signIn("admin", { skipCache: true });
 
-    cy.visit("/collection/root");
+    X.visitRootCollectionAndWait();
 
     cy.findAllByTestId("collection-entry-name")
       .filter(`:contains(${Q4_SQL_NAME})`)

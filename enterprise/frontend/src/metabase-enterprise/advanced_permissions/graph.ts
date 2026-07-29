@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import type { EntityId } from "metabase/admin/permissions/types";
 import {
   isSchemaEntityId,
   isTableEntityId,
@@ -16,13 +15,13 @@ import {
   DataPermission,
   DataPermissionValue,
   type GroupsPermissions,
-  type NativePermissions,
+  type PermissionEntityId,
 } from "metabase-types/api";
 
 export function shouldRestrictNativeQueryPermissions(
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   _permission: DataPermission,
   value: DataPermissionValue,
   _database: Database,
@@ -55,8 +54,8 @@ export function shouldRestrictNativeQueryPermissions(
 export function upgradeViewPermissionsIfNeeded(
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
-  value: NativePermissions,
+  entityId: PermissionEntityId,
+  value: DataPermissionValue,
   database: Database,
 ) {
   // get permission for item up one level or db if we're already at the top most entity:

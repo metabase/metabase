@@ -27,7 +27,6 @@
                                      (.format ^DateTimeFormatter formatter t))]
   (defn- json-zdt->yyyymmddhhmmss [s]
     (-> s u.date/parse format))
-
   (defn- yyyymmddhhmmss->json-zdt
     [yyyymmddhhmmss]
     (-> (LocalDateTime/parse yyyymmddhhmmss formatter)

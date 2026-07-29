@@ -36,6 +36,7 @@ import {
   getXValues,
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
+import { createRawSeries } from "metabase/visualizations/lib/series";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -60,7 +61,7 @@ import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 import { cleanIndexFlags } from "./model-indexes/actions";
-import { createRawSeries, getWritableColumnProperties } from "./utils";
+import { getWritableColumnProperties } from "./utils";
 
 // This selector can be called from public questions / dashboards, which do not have state.qb
 export const getUiControls = (state: State) => state.qb?.uiControls;
@@ -594,7 +595,11 @@ export const getCanZoomPreviousRow = createSelector(
 export const getCanZoomNextRow = createSelector(
   [getQueryResults, getZoomedObjectRowIndex],
   (queryResults, rowIndex) => {
-    if (!Array.isArray(queryResults) || !queryResults.length) {
+    if (
+      !Array.isArray(queryResults) ||
+      !queryResults.length ||
+      !queryResults[0].data
+    ) {
       return;
     }
     const rowCount = queryResults[0].data.rows.length;
@@ -787,7 +792,7 @@ export const getTimeseriesXValues = createSelector(
       : null,
 );
 
-const getTimeseriesDataInterval = createSelector(
+export const getTimeseriesDataInterval = createSelector(
   [
     getTransformedSeries,
     getVisualizationSettings,
@@ -822,6 +827,7 @@ export const getTimeseriesXDomain = createSelector(
   [getIsTimeseries, getTimeseriesXValues],
   (isTimeseries, xValues) => {
     if (isTimeseries && Array.isArray(xValues) && xValues.length > 0) {
+      // Unjustified type cast. FIXME
       return d3.extent(xValues as Array<d3.Numeric>) as Domain<dayjs.Dayjs>;
     }
     return null;
@@ -886,6 +892,7 @@ function getXDomainForTimelines<T extends Numeric>(
       maxValue = maxValue.subtract(1, "day");
     }
 
+    // Unjustified type cast. FIXME
     return [xDomain[0], maxValue as T];
   }
 

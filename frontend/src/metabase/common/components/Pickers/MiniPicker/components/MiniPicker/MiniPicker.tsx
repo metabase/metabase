@@ -26,6 +26,7 @@ export type MiniPickerProps = {
   models: MiniPickerPickableItem["model"][];
   onBrowseAll?: () => void;
   shouldHide?: (item: MiniPickerItem | unknown) => boolean;
+  includeHiddenSchemas?: boolean;
   shouldShowLibrary?: boolean;
   forceSearch?: boolean;
   showSearchInput?: boolean;
@@ -53,6 +54,7 @@ export function MiniPicker({
   shouldShowLibrary = true,
   forceSearch = false,
   showSearchInput = false,
+  includeHiddenSchemas = false,
   searchInputPlaceholder,
   searchParams,
   onSearchResults,
@@ -111,6 +113,7 @@ export function MiniPicker({
         searchInputPlaceholder,
         searchParams,
         onSearchResults,
+        includeHiddenSchemas,
       }}
     >
       <Menu

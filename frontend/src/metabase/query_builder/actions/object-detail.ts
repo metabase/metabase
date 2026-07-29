@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { datasetApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
 import { RESET_ROW_ZOOM } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
@@ -142,6 +142,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
         const aggregatedQuery = Lib.aggregateByCount(baseQuery, -1);
         const query = filterByFk(
           aggregatedQuery,
+          // Unjustified type cast. FIXME
           fk.origin.getPlainObject() as Field,
           objectId,
         );
@@ -156,7 +157,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
         };
 
         try {
-          const result = await entityCompatibleQuery(
+          const result = await runRtkEndpoint(
             finalCard,
             dispatch,
             datasetApi.endpoints.getAdhocQuery,

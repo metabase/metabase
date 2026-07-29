@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
@@ -19,7 +18,8 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { ROOT_COLLECTION as ROOT } from "metabase/collections/constants";
+import { ROOT_COLLECTION as ROOT } from "metabase/common/collections/constants";
+import { Route } from "metabase/router";
 import { checkNotNull, isNotNull } from "metabase/utils/types";
 import type {
   BaseEntityId,
@@ -125,6 +125,7 @@ const CARD_IN_PUBLIC_SUBCOLLECTION = createMockCard({
   id: getNextId(),
   name: "Model Uno",
   type: "model",
+  // Unjustified type cast. FIXME
   collection_id: SUBCOLLECTION.id as number,
   collection: SUBCOLLECTION,
 });
@@ -134,6 +135,7 @@ const CARD_IN_PERSONAL_COLLECTION = createMockCard({
   name: "Card in a personal collection",
   type: "model",
   collection: PERSONAL_COLLECTION,
+  // Unjustified type cast. FIXME
   collection_id: PERSONAL_COLLECTION.id as number,
 });
 
@@ -162,6 +164,7 @@ const dashboardInPublicSubcollection = createMockDashboard({
   id: getNextId(),
   name: "Dashboard in public subcollection",
   collection: SUBCOLLECTION,
+  // Unjustified type cast. FIXME
   collection_id: SUBCOLLECTION.id as number,
   model: "dashboard",
 });
@@ -170,6 +173,7 @@ const dashboardInPersonalSubcollection = createMockDashboard({
   id: getNextId(),
   name: "Dashboard in personal subcollection",
   collection: PERSONAL_SUBCOLLECTION,
+  // Unjustified type cast. FIXME
   collection_id: PERSONAL_SUBCOLLECTION.id as number,
   model: "dashboard",
 });
@@ -177,6 +181,7 @@ const dashboardInPersonalSubcollection = createMockDashboard({
 const dashboardInPersonalCollection = createMockDashboard({
   id: getNextId(),
   name: "Dashboard in personal collection",
+  // Unjustified type cast. FIXME
   collection_id: PERSONAL_COLLECTION.id as number,
   model: "dashboard",
 });
@@ -247,7 +252,9 @@ const setup = async ({
           .map((c) =>
             createMockCollectionItem({
               ...c,
+              // Unjustified type cast. FIXME
               id: c.id as number,
+              // Unjustified type cast. FIXME
               entity_id: c.entity_id as BaseEntityId,
               effective_location: c.location || "/",
               location: c.location || "/",
@@ -266,6 +273,7 @@ const setup = async ({
           .map((d) =>
             createMockCollectionItem({
               ...d,
+              // Unjustified type cast. FIXME
               id: d.id as number,
               model: "dashboard",
             }),
@@ -285,13 +293,13 @@ const setup = async ({
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <AddToDashSelectDashModal
           card={card}
           onChangeLocation={onChangeLocation}
           onClose={() => undefined}
         />
-      )}
+      }
     />,
     {
       withRouter: true,
