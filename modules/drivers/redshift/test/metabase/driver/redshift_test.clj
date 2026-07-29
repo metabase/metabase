@@ -345,8 +345,13 @@
                   "CREATE MATERIALIZED VIEW %2$s AS SELECT * FROM %1$s;")
              qual-tbl-nm
              qual-mview-nm)
-            (is (some #(= mview-nm (:name %))
-                      (:tables (sql-jdbc.describe-database/describe-database :redshift database))))))))))
+            (u/auto-retry 3
+              (let [table-names (into #{} (map :name) (:tables (sql-jdbc.describe-database/describe-database :redshift database)))]
+                (when-not (contains? table-names mview-nm)
+                  (Thread/sleep 1000)
+                  (throw (ex-info "Materialized view not yet visible in describe-database results"
+                                  {:expected mview-nm :actual table-names})))
+                (is (contains? table-names mview-nm))))))))))
 
 (mt/defdataset unix-timestamps
   [["timestamps"
