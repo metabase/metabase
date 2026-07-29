@@ -405,17 +405,6 @@ function CandidateRow({
   onDismiss: () => void;
   onRestore: () => void;
 }) {
-  const actionLabel =
-    candidate.modeling_status === "modeled"
-      ? t`View details`
-      : candidate.modeling_status === "partially-modeled"
-        ? t`Review`
-        : candidate.creation_blockers.includes("table-not-published")
-          ? t`Publish and create`
-          : candidate.candidate_type === "measure"
-            ? t`Create Measure`
-            : t`Create Segment`;
-
   return (
     <Card withBorder p="md" data-testid={`cleanup-candidate-${candidate.id}`}>
       <Flex gap="lg" align="center" wrap="nowrap">
@@ -438,7 +427,7 @@ function CandidateRow({
           ) : (
             <>
               <Button variant="outline" onClick={onOpen}>
-                {actionLabel}
+                {t`Review`}
               </Button>
               <Button
                 aria-label={t`Dismiss suggestion`}

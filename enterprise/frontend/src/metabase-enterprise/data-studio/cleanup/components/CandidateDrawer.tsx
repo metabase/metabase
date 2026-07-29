@@ -298,7 +298,7 @@ function CandidateDrawerBody({
       <Divider />
       <Stack p="lg" gap="xl" style={{ overflowY: "auto" }}>
         <Stack gap="sm">
-          <ModelingStatusBadge status={candidate.modeling_status} />
+          <CandidateStatusCard candidate={candidate} />
           <CandidateDefinition candidate={candidate} />
         </Stack>
 
@@ -376,6 +376,51 @@ function CandidateDrawerBody({
       </Box>
     </Stack>
   );
+}
+
+function CandidateStatusCard({
+  candidate,
+}: {
+  candidate: UsageMetadataCandidateDetail;
+}) {
+  const { title, description } = getCandidateStatusCopy(candidate);
+
+  return (
+    <Card withBorder p="md">
+      <Stack gap="xs">
+        <Group gap="sm">
+          <ModelingStatusBadge status={candidate.modeling_status} />
+          <Text fw="bold">{title}</Text>
+        </Group>
+        <Text size="sm" c="text-secondary">
+          {description}
+        </Text>
+      </Stack>
+    </Card>
+  );
+}
+
+function getCandidateStatusCopy(candidate: UsageMetadataCandidateDetail) {
+  const entityType =
+    candidate.candidate_type === "measure" ? t`Measure` : t`Segment`;
+
+  switch (candidate.modeling_status) {
+    case "missing":
+      return {
+        title: t`${entityType} is missing from the Library`,
+        description: t`Saved content uses this definition, but the Library has no related ${entityType}.`,
+      };
+    case "partially-modeled":
+      return {
+        title: t`${entityType} differs from related Library definitions`,
+        description: t`Compare the related definitions before deciding whether to create another ${entityType}.`,
+      };
+    case "modeled":
+      return {
+        title: t`${entityType} is already modeled, but still used raw`,
+        description: t`An exact Library ${entityType} exists, but saved content still uses this raw definition.`,
+      };
+  }
 }
 
 function EvidenceSection({

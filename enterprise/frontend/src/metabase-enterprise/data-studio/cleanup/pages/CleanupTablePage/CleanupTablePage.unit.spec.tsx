@@ -122,14 +122,14 @@ const refreshStatus: UsageMetadataRefreshStatus = {
   fresh: true,
 };
 
-function setup() {
+function setup(candidateOverride = candidate) {
   setupDatabaseListEndpoint([createMockDatabase({ id: 1 })]);
   setupTableQueryMetadataEndpoint(
     createMockTable({ id: 1, db_id: 1, display_name: "Orders" }),
   );
   setupUsageMetadataTableEndpoint(1, tableDetail);
   setupUsageMetadataCandidatesEndpoint({
-    data: [candidate],
+    data: [candidateOverride],
     total: 42,
     limit: 20,
     offset: 0,
@@ -176,6 +176,7 @@ describe("CleanupTablePage", () => {
     expect(screen.queryByText("Sum of order totals")).not.toBeInTheDocument();
     expect(screen.queryByText("Read-only definition")).not.toBeInTheDocument();
     expect(screen.queryByText("Not in Library")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Review" })).toBeInTheDocument();
 
     const listCall = fetchMock.callHistory.lastCall(
       "path:/api/ee/data-studio/usage-metadata/candidates",
@@ -202,10 +203,18 @@ describe("CleanupTablePage", () => {
     setup();
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Create Measure" }),
+      await screen.findByRole("button", { name: "Review" }),
     );
 
     expect(await screen.findByText("Read-only definition")).toBeInTheDocument();
+    expect(
+      screen.getByText("Measure is missing from the Library"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Saved content uses this definition, but the Library has no related Measure.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Sum of order totals")).not.toBeInTheDocument();
     expect(
       screen.queryByText("No related Library definition was found."),
@@ -215,4 +224,36 @@ describe("CleanupTablePage", () => {
       within(screen.getByRole("dialog")).getByText("12 sources · 400 views"),
     ).toBeInTheDocument();
   });
+
+  it.each([
+    {
+      modelingStatus: "partially-modeled" as const,
+      title: "Measure differs from related Library definitions",
+      description:
+        "Compare the related definitions before deciding whether to create another Measure.",
+    },
+    {
+      modelingStatus: "modeled" as const,
+      title: "Measure is already modeled, but still used raw",
+      description:
+        "An exact Library Measure exists, but saved content still uses this raw definition.",
+    },
+  ])(
+    "clearly explains the $modelingStatus case in the drawer",
+    async ({ modelingStatus, title, description }) => {
+      const statusCandidate = {
+        ...candidate,
+        modeling_status: modelingStatus,
+      };
+      setupUsageMetadataCandidateEndpoint(candidate.id, statusCandidate);
+      setup(statusCandidate);
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Review" }),
+      );
+
+      expect(await screen.findByText(title)).toBeInTheDocument();
+      expect(screen.getByText(description)).toBeInTheDocument();
+    },
+  );
 });
