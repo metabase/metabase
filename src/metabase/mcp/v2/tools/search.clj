@@ -68,7 +68,12 @@
  :search-result
  {:concise  (fn [row]
               (m/remove-vals nil? (select-keys row concise-row-keys)))
-  :detailed identity
+  ;; The v1 engine enriches some rows (metrics) with its own field vocabulary; the v2 surface
+  ;; names entity ids `entity_id` and never emits portable FK arrays, so translate/strip here.
+  :detailed (fn [row]
+              (cond-> (dissoc row :portable_entity_id :base_table_portable_fk)
+                (and (:portable_entity_id row) (nil? (:entity_id row)))
+                (assoc :entity_id (:portable_entity_id row))))
   :sample   {:id                     1
              :type                   "question"
              :name                   "x"
@@ -92,11 +97,10 @@
              :table_id               1
              :table_name             "x"
              :table_schema           "x"
-             :portable_entity_id     "x"
+             :entity_id              "x"
              :base_table_id          1
              :base_table_name        "x"
-             :base_table_schema      "x"
-             :base_table_portable_fk ["x"]}})
+             :base_table_schema      "x"}})
 
 ;;; --------------------------------------------- Collection paths -------------------------------------------------
 

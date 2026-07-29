@@ -2,7 +2,8 @@
   "The v2 MCP query-execution tools.
 
    `execute_query`: one surface where v1 shipped three (`construct_query` + `query` +
-   `execute_query`). A fresh portable MBQL 5 `query` runs the representations pipeline
+   `execute_query`). A fresh MBQL 5 `query` — numeric ids, with the portable name dialect
+   also accepted — runs the representations pipeline
    (validate → repair → resolve against database metadata, with teaching errors); a
    `query_handle` or `cursor` resolves through the handle store with the fresh-query guards
    re-run. Every call mints a handle — what the agent later saves or visualizes through it is
@@ -34,7 +35,6 @@
    [metabase.mcp.v2.query :as v2.query]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
-   [metabase.metabot.tools.construct :as metabot.construct]
    [metabase.models.interface :as mi]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
@@ -60,7 +60,7 @@
                    cursor       (conj :cursor))]
     (when-not (= 1 (count provided))
       (common/throw-teaching-error
-       (str "Pass exactly one of query | query_handle | cursor: `query` for a fresh portable "
+       (str "Pass exactly one of query | query_handle | cursor: `query` for a fresh "
             "MBQL query, `query_handle` to re-run a stored query, `cursor` to continue a "
             "truncated result.")))
     (first provided)))
@@ -79,7 +79,7 @@
     :query
     (do
       (query-guards/reject-native-query! query)
-      {:query  (-> (metabot.construct/execute-representations-query query)
+      {:query  (-> (common/execute-representations-query query)
                    (get-in [:structured-output :query])
                    lib/prepare-for-serialization)
        :prompt prompt})
@@ -224,22 +224,22 @@
 (def ^:private execute-query-args-schema
   [:map {:closed true}
    [:query {:optional true}
-    [:maybe [:map {:description "A fresh query in the portable MBQL 5 dialect (see the tool description): named refs, not numeric ids, never base64. Exactly one of query | query_handle | cursor."}]]]
+    [:maybe [:map {:description "A fresh query (see the tool description): numeric table/field ids from browse_data, never base64. Exactly one of query | query_handle | cursor."}]]]
    [:query_handle {:optional true}
     [:maybe [:string {:min 1 :description "A query_handle from a previous call — re-validates and re-runs the exact stored query. Exactly one of query | query_handle | cursor."}]]]
    [:cursor {:optional true}
     [:maybe [:string {:min 1 :description "The next_cursor from a previous truncated response — fetches the next page. Pass it alone. Exactly one of query | query_handle | cursor."}]]]
    [:prompt {:optional true}
-    [:maybe [:string {:min 1 :max 10000 :description "The user's original request, stored with the minted query_handle so visualize_query can surface it in the feedback flow."}]]]
+    [:maybe [:string {:min 1 :max 10000 :description "The user's original request, stored with the minted query_handle and carried along its cursor pages."}]]]
    [:validate_only {:optional true}
     [:maybe [:boolean {:description "true validates against schema + database metadata and mints a query_handle without executing (default false)."}]]]
    [:row_limit {:optional true}
     [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
 
 (registry/deftool execute-query
-  "Validate and execute an MBQL query, returning rows plus a query_handle. Pass exactly one of: query (a fresh portable MBQL 5 query), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — what you later save or visualize through it is exactly the query that ran. validate_only: true checks against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; on next_cursor, call again with cursor (row_limit alongside keeps the page size), otherwise narrow the query (filter/aggregate) or raise row_limit (max 2000).
+  "Validate and execute a query, returning rows plus a query_handle. Pass exactly one of: query (a fresh query in the dialect below), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — what you later save or visualize through it is exactly the query that ran. validate_only: true checks against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; on next_cursor, call again with cursor (row_limit alongside keeps the page size), otherwise narrow the query (filter/aggregate) or raise row_limit (max 2000).
 
-Dialect (portable MBQL 5, JSON): discover exact database/schema/table/column NAMES first (search, browse_data) — never invent identifiers, never numeric ids, never base64. Top level: {\"lib/type\": \"mbql/query\", \"stages\": [...]}; each stage \"lib/type\": \"mbql.stage/mbql\" plus source-table: [\"<db>\", \"<schema-or-null>\", \"<table>\"] or source-card: \"<entity_id>\" on the FIRST stage only — later stages read the previous stage's output. Every clause is [\"op\", {}, ...args], options map mandatory at position 1. Field refs: [\"field\", {}, [\"<db>\", \"<schema-or-null>\", \"<table>\", \"<column>\"]], or a bare column-name string against a previous stage ([\"field\", {}, \"count\"]). Stage keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Example (order count by month): {\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", \"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"], \"aggregation\": [[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, [\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}. Call learn(\"query-dialect\") before authoring a non-trivial query (joins, expressions, multi-stage); learn(\"query-dialect\", \"operators\") lists every operator. Native SQL is rejected at any depth — use execute_sql."
+Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (browse_data get_fields lists every column's id) — never invent or guess ids, never base64. Top level: {\"lib/type\": \"mbql/query\", \"stages\": [...]}; each stage \"lib/type\": \"mbql.stage/mbql\" plus source-table: <numeric table id> or source-card: \"<entity_id>\" (numeric card id also accepted) on the FIRST stage only — later stages read the previous stage's output. Every clause is [\"op\", {}, ...args], options map mandatory at position 1. Field refs: [\"field\", {}, <numeric field id>], or a bare column-name string against a previous stage ([\"field\", {}, \"count\"]). Stage keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Example (order count by month, ORDERS = table 5, CREATED_AT = field 42): {\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", \"source-table\": 5, \"aggregation\": [[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, 42]]}]}. get_content's definition include returns queries in this same shape, so an edited definition can be sent back as-is. Call learn(\"query-dialect\") before authoring a non-trivial query (joins, expressions, multi-stage); learn(\"query-dialect\", \"operators\") lists every operator. Native SQL is rejected at any depth — use execute_sql."
   {:name        "execute_query"
    :scope       metabot.scope/agent-query-execute
    :annotations {:readOnlyHint true}
@@ -379,14 +379,14 @@ Dialect (portable MBQL 5, JSON): discover exact database/schema/table/column NAM
              ;; needs an explicit caller signal rather than a guess at the string's shape.
              :keyword [:or :string number? :boolean]]]]
    [:prompt {:optional true}
-    [:maybe [:string {:min 1 :max 10000 :description "The user's original request, stored with the minted query_handle so visualize_query can surface it in the feedback flow."}]]]
+    [:maybe [:string {:min 1 :max 10000 :description "The user's original request, stored with the minted query_handle and carried along its cursor pages."}]]]
    [:validate_only {:optional true}
     [:maybe [:boolean {:description "true mints a query_handle without executing — template tags and permissions are checked, the SQL text itself is not (default false)."}]]]
    [:row_limit {:optional true}
     [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
 
 (registry/deftool execute-sql
-  "Execute a raw SQL string against a database, returning rows plus a query_handle. Requires native-query permission on the database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. Prefer execute_query for anything MBQL can express. The sql runs verbatim against the warehouse, so it is the injection surface — never splice caller- or user-supplied values into it; put values behind {{tag}} placeholders bound via template_tag_values, driver-level prepared-statement parameters that are injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (tags and permissions checked; the SQL text itself is not) — stage SQL for saving or visualizing without pulling rows into context. The query_handle is accepted by question_write and visualize_query; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination: the server cannot know whether arbitrary SQL has a total order, so page it yourself — ORDER BY a unique key plus WHERE <key> > <last value returned>, which is exact where an offset would silently repeat or skip rows. Otherwise narrow the SQL (filters/aggregation) or raise row_limit (max 2000)."
+  "Execute a raw SQL string against a database, returning rows plus a query_handle. Requires native-query permission on the database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. Prefer execute_query for anything MBQL can express. The sql runs verbatim against the warehouse, so it is the injection surface — never splice caller- or user-supplied values into it; put values behind {{tag}} placeholders bound via template_tag_values, driver-level prepared-statement parameters that are injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (tags and permissions checked; the SQL text itself is not) — stage SQL for saving or visualizing without pulling rows into context. The query_handle is accepted by question_write; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination: the server cannot know whether arbitrary SQL has a total order, so page it yourself — ORDER BY a unique key plus WHERE <key> > <last value returned>, which is exact where an offset would silently repeat or skip rows. Otherwise narrow the SQL (filters/aggregation) or raise row_limit (max 2000)."
   ;; No `:readOnlyHint` — unlike execute_query, arbitrary SQL can write. MCP's defaults for an
   ;; unannotated tool (not read-only, possibly destructive) are the honest ones here.
   {:name  "execute_sql"

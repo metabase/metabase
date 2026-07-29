@@ -6,16 +6,15 @@
    becomes that item's `{type, id, error}` object and never sinks the rest of the batch.
 
    Per-type notes:
-   - question/model/metric ride one Card fetch; `definition` exports the stored numeric-ref
-     `dataset_query` to the portable external dialect through the permission-aware content
-     store, so referenced entity_ids never leak past the caller's read boundary.
+   - question/model/metric ride one Card fetch; `definition` returns the stored `dataset_query`
+     normalized and serialized — the numeric-id MBQL 5 shape execute_query and question_write
+     accept back verbatim.
    - dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one
      summary row per dashcard) — never the raw REST `dashcards` array.
    - alert/subscription redact recipients for non-admin callers exactly as `/api/pulse` does;
      subscription reads cover live Pulse rows and rows migrated to the notification API."
   (:require
    [clojure.string :as str]
-   [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
    [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
@@ -28,7 +27,6 @@
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
-   [metabase.metabot.tools.shared.content-store :as content-store]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.notification.models :as models.notification]
@@ -103,8 +101,7 @@
 
 (defn- card-definition
   [row]
-  (when-let [query (::query row)]
-    (repr.resolve/try-export-query (::mp row) query content-store/default-store)))
+  (some-> (::query row) lib/prepare-for-serialization))
 
 ;; The question/model projection (`:question`) is the one canonical card projection, registered
 ;; in [[metabase.mcp.v2.projections]] because browse_collection shares it. metric/measure/etc.
@@ -139,8 +136,8 @@
                            (fn [id] (api/read-check (t2/select-one model :id id)))))
 
 (defn- measure-or-segment-definition
-  "The measure's aggregation clause / segment's filter clauses in the portable external dialect,
-   or nil when the stored definition can't be exported."
+  "The measure's aggregation clause / segment's filter clauses in the numeric-id MBQL 5 shape,
+   or nil when the stored definition can't be serialized."
   [kind row]
   (try
     (let [table          (t2/select-one :model/Table :id (:table_id row))
@@ -149,8 +146,9 @@
                            :measure (lib.metadata/measure mp (:id row))
                            :segment (lib.metadata/segment mp (:id row)))
           definition-key (case kind :measure :aggregation :segment :filters)]
-      (some-> (repr.resolve/try-export-query mp (:definition metadata) content-store/default-store)
-              (get-in ["stages" 0 (name definition-key)])))
+      (some-> (:definition metadata)
+              lib/prepare-for-serialization
+              (get-in [:stages 0 definition-key])))
     (catch Exception _ nil)))
 
 ;;; -------------------------------------------------- dimensions --------------------------------------------------
@@ -517,16 +515,15 @@
                ::transform transform))))
 
 (defn- transform-definition
-  "The transform's source in the external dialect: query sources have their query exported to
-   portable form; other source types (e.g. python) pass through as stored."
+  "The transform's source: query sources have their query normalized and serialized to the
+   numeric-id MBQL 5 shape; other source types (e.g. python) pass through as stored."
   [row]
   (let [source (get-in row [::transform :source])]
     (if-let [query (:query source)]
-      (let [mp       (some-> (:database query) lib-be/application-database-metadata-provider)
-            exported (some->> (card-query mp query)
-                              (#(repr.resolve/try-export-query mp % content-store/default-store)))]
-        (when exported
-          (assoc (dissoc source :query) :query exported)))
+      (let [mp         (some-> (:database query) lib-be/application-database-metadata-provider)
+            serialized (some-> (card-query mp query) lib/prepare-for-serialization)]
+        (when serialized
+          (assoc (dissoc source :query) :query serialized)))
       source)))
 
 (def ^:private transform-concise-keys
@@ -687,14 +684,14 @@
              [:fields {:optional true}
               [:maybe [:sequential [:string {:min 1 :description "Dot-paths picked from this type's detailed projection (see the fields catalog resource), item-relative inside arrays. Mutually exclusive with response_format and include."}]]]]]]]
    [:include {:optional true}
-    [:maybe [:sequential [:enum {:description "Extra sections, each applied to every item whose type supports it and ignored for the rest — so a mixed-type batch can ask for several at once: definition (query-bearing types, returned in the external dialect the write/execute tools accept), fields (question/model column metadata), parameters (dashboard's full parameter array), layout (dashboard grid + tabs, document block outline), dimensions (metric/measure), comments (document comment threads, each anchored into the returned markdown by {start, end, text} character offsets — the exact slice of the block the thread is attached to; comments attach to whole blocks, a block nested inside a list/blockquote anchors to its outermost block's span, and an empty block gives start == end; threads whose block no longer exists come back under orphaned_comments so they can be re-anchored by editing the right block, and if the document read fell back to flattened text no thread carries an anchor). A section no item in the batch supports is an error."}
+    [:maybe [:sequential [:enum {:description "Extra sections, each applied to every item whose type supports it and ignored for the rest — so a mixed-type batch can ask for several at once: definition (query-bearing types, returned as the stored query — numeric ids, the shape execute_query and question_write accept back verbatim), fields (question/model column metadata), parameters (dashboard's full parameter array), layout (dashboard grid + tabs, document block outline), dimensions (metric/measure), comments (document comment threads, each anchored into the returned markdown by {start, end, text} character offsets — the exact slice of the block the thread is attached to; comments attach to whole blocks, a block nested inside a list/blockquote anchors to its outermost block's span, and an empty block gives start == end; threads whose block no longer exists come back under orphaned_comments so they can be re-anchored by editing the right block, and if the document read fell back to flattened text no thread carries an anchor). A section no item in the batch supports is an error."}
                           "definition" "fields" "parameters" "layout" "dimensions" "comments"]]]]
    [:response_format {:optional true}
     [:maybe [:enum {:description "concise (default) returns each type's essential shape; detailed adds entity_id, creator, timestamps, and other secondary columns."}
              "concise" "detailed"]]]])
 
 (registry/deftool get-content
-  "Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database/table/source card), display, one-line query summary, raw template_tags (in the stored shape question_write accepts back verbatim — read-modify-write round-trips), and materialized parameters (the same tags viewed as parameters, not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text; alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins); a transform returns source type, target, latest run. include adds sections on demand — definition returns the query in the same external dialect execute_query and the write tools accept, so read-modify-write round-trips; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown. Extra scopes: alerts/subscriptions need agent:notification:read, transforms agent:transforms:read, snippets agent:snippets:read, documents agent:document:read."
+  "Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database/table/source card), display, one-line query summary, raw template_tags (in the stored shape question_write accepts back verbatim — read-modify-write round-trips), and materialized parameters (the same tags viewed as parameters, not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text; alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins); a transform returns source type, target, latest run. include adds sections on demand — definition returns the stored query (numeric ids), the same shape execute_query and question_write accept, so read-modify-write round-trips; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown. Extra scopes: alerts/subscriptions need agent:notification:read, transforms agent:transforms:read, snippets agent:snippets:read, documents agent:document:read."
   {:name         "get_content"
    :scope        metabot.scope/agent-resource-read
    :extra-scopes [metabot.scope/agent-notification-read metabot.scope/agent-transforms-read

@@ -119,10 +119,13 @@
   oracle, so both get this identical message.
 
   The LLM can still self-correct in one turn by listing the parent database's tables with
-  `read_resource`; the message points it at that path."
+  the calling surface's discovery tool; the message points it at that path."
   [_metadata-provider [_path-db-name _path-schema _path-table-name :as path]]
-  (ex-info (tru "No table found matching portable FK {0}. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and schemas, then retry with an exact portable FK from the response."
-                (pr-str path))
+  (ex-info (str (tru "No table found matching portable FK {0}." (pr-str path))
+                " "
+                (resolve/surface-hint
+                 {:metabot (tru "Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and schemas, then retry with an exact portable FK from the response.")
+                  :mcp-v2  (tru "Call `browse_data` with action \"list_tables\" for the database and retry with the numeric table id from the response as `source-table`.")}))
            {:status-code  400
             :error        :unknown-table
             :agent-error? true
@@ -180,8 +183,12 @@
         ;; Deliberately do NOT enumerate the matching `[schema name id]` tuples — the metadata
         ;; provider is un-sandboxed, so a leaked candidate list could surface tables the caller
         ;; cannot otherwise see (parity with the `unknown-table-ex-info` strip above).
-        (throw (ex-info (tru "Ambiguous portable table FK {0}: {1} candidates. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and retry with a more specific portable FK."
-                             (pr-str path) (count candidates))
+        (throw (ex-info (str (tru "Ambiguous portable table FK {0}: {1} candidates."
+                                  (pr-str path) (count candidates))
+                             " "
+                             (resolve/surface-hint
+                              {:metabot (tru "Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and retry with a more specific portable FK.")
+                               :mcp-v2  (tru "Call `browse_data` with action \"list_tables\" for the database to list available tables, then retry with the numeric table id — it is never ambiguous.")}))
                         {:status-code  400
                          :error        :ambiguous-table
                          :agent-error? true
@@ -207,11 +214,15 @@
         ;; column name. The metadata provider is un-sandboxed, the `:agent-error?` flag
         ;; relays this message verbatim to the user, and a leaked FK-candidate path would
         ;; reveal table names the caller may not be permitted to see. The LLM can recover
-        ;; by reading the parent table's fields with `read_resource`.
+        ;; by listing the parent table's fields with the calling surface's discovery tool.
         unknown-field-ex
         (fn [segment]
-          (ex-info (tru "No column {0} on table {1}.{2}.{3}. Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns."
-                        (pr-str segment) (pr-str db) (pr-str schema) (pr-str table-name))
+          (ex-info (str (tru "No column {0} on table {1}.{2}.{3}."
+                             (pr-str segment) (pr-str db) (pr-str schema) (pr-str table-name))
+                        " "
+                        (resolve/surface-hint
+                         {:metabot (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns.")
+                          :mcp-v2  (tru "Call `browse_data` with action \"get_fields\" for this table to list its columns with their numeric ids.")}))
                    {:status-code  400
                     :error        :unknown-field
                     :path         full-path
@@ -443,8 +454,11 @@
         card-db-id    (when card (or (:database-id card) (:database_id card)))]
     (cond
       (nil? card)
-      (throw (ex-info (tru "No saved question or model found with entity_id {0}. Do not invent or guess entity_ids: call `read_resource` with `metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the exact `portable_entity_id` from the response into `source-card:`."
-                           (pr-str entity-id))
+      (throw (ex-info (str (tru "No saved question or model found with entity_id {0}." (pr-str entity-id))
+                           " "
+                           (resolve/surface-hint
+                            {:metabot (tru "Do not invent or guess entity_ids: call `read_resource` with `metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the exact `portable_entity_id` from the response into `source-card:`.")
+                             :mcp-v2  (tru "Do not invent or guess entity_ids: find the question or model with `search`, then copy the exact `entity_id` from the result into `source-card:` (its numeric id also works).")}))
                       {:agent-error? true
                        :status-code  400
                        :error        :unknown-card
@@ -479,8 +493,11 @@
         current-db-id    (:id (lib.metadata/database metadata-provider))]
     (cond
       (nil? measure)
-      (throw (ex-info (tru "No measure found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the measure with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<measure>` tag."
-                           (pr-str entity-id))
+      (throw (ex-info (str (tru "No measure found with entity_id {0}." (pr-str entity-id))
+                           " "
+                           (resolve/surface-hint
+                            {:metabot (tru "Do not invent or guess entity_ids: read the table that owns the measure with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<measure>` tag.")
+                             :mcp-v2  (tru "Do not invent or guess entity_ids: call `browse_data` with action \"get_fields\" for the table that owns the measure and use the numeric id from its measures list.")}))
                       {:agent-error? true
                        :status-code  400
                        :error        :unknown-measure
@@ -578,8 +595,11 @@
         current-db-id    (:id (lib.metadata/database metadata-provider))]
     (cond
       (nil? segment)
-      (throw (ex-info (tru "No segment found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag."
-                           (pr-str entity-id))
+      (throw (ex-info (str (tru "No segment found with entity_id {0}." (pr-str entity-id))
+                           " "
+                           (resolve/surface-hint
+                            {:metabot (tru "Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag.")
+                             :mcp-v2  (tru "Do not invent or guess entity_ids: call `browse_data` with action \"get_fields\" for the table that owns the segment and use the numeric id from its segments list.")}))
                       {:agent-error? true
                        :status-code  400
                        :error        :unknown-segment

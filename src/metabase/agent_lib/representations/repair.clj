@@ -1868,9 +1868,10 @@
 ;;; ============================================================
 
 (defn- field-clause?
-  "A repaired field clause of shape `[\"field\" <opts-map> <portable-fk-vector>]`. We require the
-  opts map to be a real map and the portable FK to be a vector of >= 4 elements (DB, SCHEMA,
-  TABLE, FIELD, …)."
+  "A repaired field clause of shape `[\"field\" <opts-map> <target>]` whose target names a
+  concrete column. We require the opts map to be a real map and the target to be either a
+  portable FK vector of >= 4 elements (DB, SCHEMA, TABLE, FIELD, …) or — on a surface that
+  accepts numeric ids — a numeric field id."
   [v]
   (and (vector? v)
        (not (map-entry? v))
@@ -1878,7 +1879,8 @@
        (= "field" (nth v 0))
        (map? (nth v 1))
        (let [fk (nth v 2)]
-         (and (vector? fk) (>= (count fk) 4)))))
+         (or (and (vector? fk) (>= (count fk) 4))
+             (and (pos-int? fk) (resolve/numeric-ids-allowed?))))))
 
 (defn- try-resolve-source-table-id
   "Resolve the stage's `source-table` portable FK to a numeric id. Returns nil on any failure
@@ -1887,17 +1889,23 @@
   surface with a better message."
   [import-resolver source-table-fk]
   (try
-    (when (and import-resolver (vector? source-table-fk) (= 3 (count source-table-fk)))
+    (cond
+      (and (pos-int? source-table-fk) (resolve/numeric-ids-allowed?))
+      source-table-fk
+
+      (and import-resolver (vector? source-table-fk) (= 3 (count source-table-fk)))
       (resolve/import-table-fk import-resolver source-table-fk))
     (catch Exception _ nil)))
 
 (defn- try-resolve-field-target-table-id
-  "Resolve the target-table-id of a portable field FK, by looking up the field and following its
-  `:table-id`. Walks JSON-unfolded parent chains via the resolver's `import-field-fk`. Returns
-  nil on failure."
+  "Resolve the target-table-id of a field target — a portable field FK or a numeric field id —
+  by looking up the field and following its `:table-id`. Walks JSON-unfolded parent chains via
+  the resolver's `import-field-fk`. Returns nil on failure."
   [mp import-resolver field-fk]
   (try
-    (when-let [fid (resolve/import-field-fk import-resolver field-fk)]
+    (when-let [fid (if (pos-int? field-fk)
+                     field-fk
+                     (resolve/import-field-fk import-resolver field-fk))]
       (:table-id (lib.metadata.protocols/field mp fid)))
     (catch Exception _ nil)))
 
@@ -1956,7 +1964,9 @@
           (let [candidates (get outbound-fks-by-target target-table-id)]
             (case (count candidates)
               0 (let [src-name (display-source-table mp source-table-id)
-                      tbl-name (nth fk 2)]
+                      tbl-name (if (vector? fk)
+                                 (nth fk 2)
+                                 (display-source-table mp target-table-id))]
                   (throw (ex-info (tru "Field {0} is on table {1} but there is no foreign key from the source table {2} to {3}. Either add an explicit joins: entry, or use a field from the source table."
                                        (display-portable fk)
                                        (pr-str tbl-name)
@@ -1976,13 +1986,18 @@
               ;; Deliberately do NOT enumerate the candidate FK columns: the metadata provider
               ;; is un-sandboxed and any leaked `[db schema table field]` path could surface
               ;; bridge-table column names the caller is not permitted to see (`:agent-error?`
-              ;; relays the message verbatim to the user). The LLM can recover by reading the
-              ;; source table's fields with `read_resource` to inspect available foreign-key columns.
+              ;; relays the message verbatim to the user). The LLM can recover by listing the
+              ;; source table's fields with the surface's own discovery tool to inspect the
+              ;; available foreign-key columns.
               (let [src-name (display-source-table mp source-table-id)]
-                (throw (ex-info (tru "Field {0} can be reached from {1} via {2} foreign keys. Specify the `source-field` option on the field clause to disambiguate; call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list the available foreign-key columns."
-                                     (display-portable fk)
-                                     (pr-str src-name)
-                                     (count candidates))
+                (throw (ex-info (str (tru "Field {0} can be reached from {1} via {2} foreign keys. Specify the `source-field` option on the field clause to disambiguate."
+                                          (display-portable fk)
+                                          (pr-str src-name)
+                                          (count candidates))
+                                     " "
+                                     (resolve/surface-hint
+                                      {:metabot (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list the available foreign-key columns.")
+                                       :mcp-v2  (tru "Call `browse_data` with action \"get_fields\" for the source table to list the available foreign-key columns.")}))
                                 {:status-code  400
                                  :error        :ambiguous-fk
                                  :agent-error? true
@@ -2661,23 +2676,26 @@
   LLM-actionable explanation pointing at the portable-FK syntax.
 
   Carried over from the sexp pipeline's
-  `validate/operators.clj/validate-operator-specific!` `field` branch."
+  `validate/operators.clj/validate-operator-specific!` `field` branch. A no-op on surfaces
+  that accept numeric field ids (see [[metabase.models.serialization.resolve/*agent-surface*]])."
   [form]
-  (walk/postwalk
-   (fn [node]
-     (when (and (vector? node)
-                (not (map-entry? node))
-                (= 3 (count node))
-                (= "field" (nth node 0))
-                (map? (nth node 1))
-                (integer? (nth node 2)))
-       (throw (ex-info
-               (tru "`field` clause needs a portable FK in its third slot, not a numeric id. Use a vector `[<database>, <schema>, <table>, <column>]` (resolved against the metadata provider) or a string column-name (for cross-stage references).")
-               {:agent-error? true
-                :error        :numeric-field-id
-                :clause       node})))
-     node)
-   form))
+  (when-not (resolve/numeric-ids-allowed?)
+    (walk/postwalk
+     (fn [node]
+       (when (and (vector? node)
+                  (not (map-entry? node))
+                  (= 3 (count node))
+                  (= "field" (nth node 0))
+                  (map? (nth node 1))
+                  (integer? (nth node 2)))
+         (throw (ex-info
+                 (tru "`field` clause needs a portable FK in its third slot, not a numeric id. Use a vector `[<database>, <schema>, <table>, <column>]` (resolved against the metadata provider) or a string column-name (for cross-stage references).")
+                 {:agent-error? true
+                  :error        :numeric-field-id
+                  :clause       node})))
+       node)
+     form))
+  form)
 
 ;;; ----- friendly-errors pipeline driver -----------------------------------------------
 

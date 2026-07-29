@@ -53,7 +53,7 @@ Per-column formatting keys are **JSON-encoded arrays passed as strings** — inn
     "[\"name\",\"CREATED_AT\"]": {"date_style": "MMMM D, YYYY"}}}
 ```
 
-Always use the `["name", "<output column>"]` form. (A legacy `["ref", ["field", id, opts]]` form appears in read-back — its inner ref uses the legacy id-second order; don't author it.)
+Always use the `["name", "<output column>"]` form. (A `["ref", ["field", id, opts]]` form appears in read-back — don't author it; when editing such a card, keep those keys verbatim.)
 
 ## Escape hatch
 

@@ -14,6 +14,8 @@
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.projections :as projections]
+   [metabase.metabot.tools.construct :as metabot.construct]
+   [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log])
@@ -339,6 +341,18 @@
       [:update id (dissoc args :method :id)])
 
     (throw-teaching-error (format "Invalid method %s — use \"create\" or \"update\"." (pr-str method)))))
+
+;;; -------------------------------------------- Representations pipeline ------------------------------------------
+
+(defn execute-representations-query
+  "Run the shared representations pipeline (validate → repair → resolve) with the MCP v2
+   surface bound — the one entry point for v2 tools that accept an agent-authored MBQL query.
+   Under the v2 surface the pipeline accepts numeric table/field ids inside query bodies
+   alongside the portable name forms, and its recovery hints name the v2 discovery tools
+   (`browse_data`, `search`) rather than v1's `read_resource` / `metabase://` URIs."
+  [external-query]
+  (binding [serdes.resolve/*agent-surface* :mcp-v2]
+    (metabot.construct/execute-representations-query external-query)))
 
 ;;; ------------------------------------------------ Query handles -------------------------------------------------
 

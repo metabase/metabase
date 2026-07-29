@@ -14,7 +14,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.tools.construct :as construct]
-   [metabase.models.serialization :as serdes]))
+   [metabase.models.serialization :as serdes]
+   [metabase.models.serialization.resolve :as serdes.resolve]))
 
 (set! *warn-on-reflection* true)
 
@@ -1012,3 +1013,140 @@
               opts      (nth field-ref 1)]
           (is (= "TOTAL" (nth field-ref 2)))
           (is (= "type/Float" (get opts "base-type"))))))))
+
+;;; ============================================================
+;;; Numeric-id dialect — accepted on the MCP v2 surface, rejected on the default (v1) surface
+;;; ============================================================
+
+(defmacro ^:private with-v2-surface
+  "Run `body` with the MCP v2 agent surface bound, the way
+  `metabase.mcp.v2.common/execute-representations-query` binds it."
+  [& body]
+  `(binding [serdes.resolve/*agent-surface* :mcp-v2]
+     ~@body))
+
+(deftest numeric-ids-rejected-on-default-surface-test
+  (testing "the v1 surface keeps the portable-only contract: a numeric field id is a teaching error"
+    (with-mp-and-stubs!
+      (fn []
+        (try
+          (construct/execute-representations-query
+           (query-data
+            {"lib/type" "mbql/query"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "filters"      [["=" {} ["field" {} 100] 0]]}]}))
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :numeric-field-id (:error d))))))))))
+
+(deftest numeric-source-rejected-on-default-surface-test
+  (testing "the v1 surface does not recognize a numeric source-table as a source at all"
+    (try
+      (construct/resolve-database-id-from-first-stage
+       {"lib/type" "mbql/query"
+        "stages"   [{"lib/type" "mbql.stage/mbql" "source-table" 10}]})
+      (is false "expected throw")
+      (catch clojure.lang.ExceptionInfo e
+        (is (= :missing-source-in-first-stage (:error (ex-data e))))))))
+
+(deftest numeric-ids-resolve-on-v2-surface-test
+  (testing "on the MCP v2 surface a fully numeric query body resolves like the portable one"
+    (with-mp-and-stubs!
+      (fn []
+        (with-v2-surface
+          (let [result (construct/execute-representations-query
+                        (query-data
+                         {"lib/type" "mbql/query"
+                          "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                       "source-table" 10
+                                       "aggregation"  [["count" {}]]
+                                       "filters"      [[">" {} ["field" {} 101] 0]]}]}))
+                q      (get-in result [:structured-output :query])]
+            (is (= :mbql/query (:lib/type q)))
+            (is (= 1 (:database q)))
+            (is (= 10 (get-in q [:stages 0 :source-table])))
+            (testing "the numeric field ref survives resolution and gets its base-type stamped"
+              (let [filter-ref (nth (get-in q [:stages 0 :filters 0]) 2)]
+                (is (= [:field 101] [(first filter-ref) (nth filter-ref 2)]))
+                (is (= :type/Float (get-in filter-ref [1 :base-type])))))))))))
+
+(deftest numeric-implicit-join-resolves-on-v2-surface-test
+  (testing "repair auto-wires `source-field` for a numeric field ref on an FK-related table"
+    (with-mp-and-stubs!
+      (fn []
+        (with-v2-surface
+          (let [result (construct/execute-representations-query
+                        (query-data
+                         {"lib/type" "mbql/query"
+                          "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                       "source-table" 10
+                                       "aggregation"  [["count" {}]]
+                                       "breakout"     [["field" {} 201]]}]}))
+                q            (get-in result [:structured-output :query])
+                breakout-ref (get-in q [:stages 0 :breakout 0])]
+            (is (= 201 (nth breakout-ref 2)))
+            (is (= 102 (get-in breakout-ref [1 :source-field]))
+                "the FK column from ORDERS to PRODUCTS is filled in, same as for a portable ref")))))))
+
+(deftest portable-dialect-still-resolves-on-v2-surface-test
+  (testing "surface isolation: the identical portable query resolves under both surfaces"
+    (with-mp-and-stubs!
+      (fn []
+        (let [q  (query-data
+                  {"lib/type" "mbql/query"
+                   "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                "aggregation"  [["count" {}]]}]})
+              strip-run-specific
+              (fn [query]
+                (walk/postwalk (fn [node]
+                                 (cond-> node (map? node) (dissoc :lib/uuid :lib/metadata)))
+                               query))
+              v1 (get-in (construct/execute-representations-query q) [:structured-output :query])
+              v2 (with-v2-surface
+                   (get-in (construct/execute-representations-query q) [:structured-output :query]))]
+          (is (= 10 (get-in v1 [:stages 0 :source-table])))
+          (is (= (strip-run-specific v1) (strip-run-specific v2))))))))
+
+(deftest v2-surface-error-hints-name-v2-tools-test
+  (testing "resolution errors under the v2 surface steer to browse_data/search, never read_resource"
+    (with-mp-and-stubs!
+      (fn []
+        (with-v2-surface
+          (try
+            (construct/execute-representations-query
+             (query-data
+              {"lib/type" "mbql/query"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "NOPE"]
+                            "aggregation"  [["count" {}]]}]}))
+            (is false "expected throw")
+            (catch clojure.lang.ExceptionInfo e
+              (is (= :unknown-table (:error (ex-data e))))
+              (is (re-find #"browse_data" (ex-message e)))
+              (is (not (re-find #"read_resource|metabase://" (ex-message e)))))))))))
+
+(deftest numeric-aggregation-index-ref-in-order-by-v2-test
+  (testing (str "`[aggregation, {}, <index>]` composes with numeric field refs: the repair pass\n"
+                "rewrites it to the canonical UUID-keyed form, so the agent never authors a lib/uuid")
+    (with-mp-and-stubs!
+      (fn []
+        (with-v2-surface
+          (let [result    (construct/execute-representations-query
+                           (query-data
+                            {"lib/type" "mbql/query"
+                             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                          "source-table" 10
+                                          "aggregation"  [["sum" {} ["field" {} 101]]
+                                                          ["count" {}]]
+                                          "breakout"     [["field" {} 102]]
+                                          "order-by"     [["desc" {} ["aggregation" {} 0]]]}]}))
+                q         (get-in result [:structured-output :query])
+                agg-uuid  (get-in q [:stages 0 :aggregation 0 1 :lib/uuid])
+                order-ref (get-in q [:stages 0 :order-by 0 2])]
+            (is (string? agg-uuid))
+            (is (= :aggregation (first order-ref)))
+            (is (= agg-uuid (nth order-ref 2)))))))))

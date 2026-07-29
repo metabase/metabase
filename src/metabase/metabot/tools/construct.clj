@@ -123,6 +123,18 @@
                (string? (nth fk 0)))
       fk)))
 
+(defn- first-stage-numeric-source-table
+  "Pull the numeric table id out of `stages[0].source-table`, or `nil` if not numeric."
+  [parsed-query]
+  (let [st (get-in parsed-query ["stages" 0 "source-table"])]
+    (when (pos-int? st) st)))
+
+(defn- first-stage-numeric-source-card
+  "Pull the numeric card id out of `stages[0].source-card`, or `nil` if not numeric."
+  [parsed-query]
+  (let [sc (get-in parsed-query ["stages" 0 "source-card"])]
+    (when (pos-int? sc) sc)))
+
 (def ^:private metabase-uri-source-table-pattern
   "Matches values the LLM sometimes writes into `source-table:` by confusing the Metabase
   `metabase://<entity-type>/<id>` URIs (which appear in prompts as a way to read entities)
@@ -145,22 +157,37 @@
       (when-let [[_ entity-type entity-id] (re-find metabase-uri-source-table-pattern raw)]
         (let [hint (case entity-type
                      "metric"
-                     (str "Metrics are aggregations, not sources. To use metric " entity-id
-                          ", put its base table into `source-table:` — combine the `database_name` "
-                          "and `base_table_fully_qualified_name` attributes from its search result "
-                          "or `read_resource metabase://metric/" entity-id "` — and reference the "
-                          "metric as `aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
+                     (serdes.resolve/surface-hint
+                      {:metabot (str "Metrics are aggregations, not sources. To use metric " entity-id
+                                     ", put its base table into `source-table:` — combine the `database_name` "
+                                     "and `base_table_fully_qualified_name` attributes from its search result "
+                                     "or `read_resource metabase://metric/" entity-id "` — and reference the "
+                                     "metric as `aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
+                       :mcp-v2  (str "Metrics are aggregations, not sources. To use metric " entity-id
+                                     ", put its base table's numeric id into `source-table:` (find it via "
+                                     "`search` or `browse_data`) and reference the metric as "
+                                     "`aggregation: [[metric, {}, \"<entity_id>\"]]`.")})
                      ("question" "model" "card")
-                     (str "To reference saved " entity-type " " entity-id
-                          " as a query source, put its `portable_entity_id` (the 21-char "
-                          "string from its search result or `read_resource`) into "
-                          "`source-card:` — not a URI.")
+                     (serdes.resolve/surface-hint
+                      {:metabot (str "To reference saved " entity-type " " entity-id
+                                     " as a query source, put its `portable_entity_id` (the 21-char "
+                                     "string from its search result or `read_resource`) into "
+                                     "`source-card:` — not a URI.")
+                       :mcp-v2  (str "To reference saved " entity-type " " entity-id
+                                     " as a query source, put its numeric id or its `entity_id` (the "
+                                     "21-char string from its search result) into `source-card:` — not a URI.")})
                      "table"
-                     (str "Use the portable FK `[<db-name>, <schema>, <table-name>]` in "
-                          "`source-table:` — not a URI. `read_resource metabase://table/" entity-id
-                          "` reports the exact names.")
-                     (str "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` "
-                          "or, via `source-card:`, a saved-card `portable_entity_id`."))]
+                     (serdes.resolve/surface-hint
+                      {:metabot (str "Use the portable FK `[<db-name>, <schema>, <table-name>]` in "
+                                     "`source-table:` — not a URI. `read_resource metabase://table/" entity-id
+                                     "` reports the exact names.")
+                       :mcp-v2  (str "Use the bare numeric table id in `source-table:` — not a URI: "
+                                     "`\"source-table\": " entity-id "`.")})
+                     (serdes.resolve/surface-hint
+                      {:metabot (str "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` "
+                                     "or, via `source-card:`, a saved-card `portable_entity_id`.")
+                       :mcp-v2  (str "`source-table:` accepts a numeric table id; `source-card:` accepts a "
+                                     "saved-card numeric id or `entity_id`.")}))]
           (throw (ex-info (tru "`source-table:` does not accept URIs like `{0}`. {1}"
                                raw hint)
                           {:agent-error? true
@@ -190,11 +217,13 @@
   permissions. Before any repair pass can inspect fields/FKs on the requested source table,
   resolve the portable table FK and run the normal API query permission check."
   [metadata-provider parsed-query]
-  (when-let [table-fk (first-stage-source-table-fk parsed-query)]
-    (let [resolver (resolve.mp/import-resolver metadata-provider permission-aware-content-store)
-          table-id (serdes.resolve/import-table-fk resolver table-fk)]
-      (api/query-check :model/Table table-id)
-      nil)))
+  (when-let [table-id (if-let [table-fk (first-stage-source-table-fk parsed-query)]
+                        (let [resolver (resolve.mp/import-resolver metadata-provider permission-aware-content-store)]
+                          (serdes.resolve/import-table-fk resolver table-fk))
+                        (when (serdes.resolve/numeric-ids-allowed?)
+                          (first-stage-numeric-source-table parsed-query)))]
+    (api/query-check :model/Table table-id)
+    nil))
 
 (defn resolve-database-id-from-first-stage
   "Resolve the application database id from the first stage's source.
@@ -204,8 +233,11 @@
     * If `stages[0].source-table` is a portable FK `[db schema table]`, look up the database
       by that `db` name. Unknown / ambiguous names surface `:unknown-database` / `:ambiguous-database-name`
       agent-errors.
+    * On a surface that accepts numeric ids, a numeric `stages[0].source-table` resolves through
+      the table row's `:db_id`. Unknown / inactive ids surface `:unknown-table`.
     * Otherwise, if `stages[0].source-card` is an entity_id string, look up the card by entity_id
-      and use its `:database_id`. Unknown entity_id surfaces `:unknown-card`.
+      and use its `:database_id`. Unknown entity_id surfaces `:unknown-card`. On a numeric-id
+      surface a numeric `source-card` resolves the same way, behind a read check.
     * Otherwise, surface `:missing-source-in-first-stage`.
 
   All error paths are raised with `:agent-error? true` so the tool wrapper can relay a clean
@@ -217,15 +249,20 @@
   step 14 follow-up."
   [parsed-query]
   (detect-metabase-uri-source-table! parsed-query)
-  (if-let [table-fk (first-stage-source-table-fk parsed-query)]
-    (let [db-name (nth table-fk 0)
+  (cond
+    (first-stage-source-table-fk parsed-query)
+    (let [db-name (nth (first-stage-source-table-fk parsed-query) 0)
           ids     (t2/select-pks-vec :model/Database :name db-name)]
       (case (count ids)
-        0 (throw (ex-info (tru (str "Unknown database: `{0}`. Use the exact database name as "
-                                    "reported by search / `read_resource` (it appears "
-                                    "as the first element of every portable FK, e.g. "
-                                    "`source-table: [<db-name>, <schema>, <table>]`).")
-                               db-name)
+        0 (throw (ex-info (str (tru "Unknown database: `{0}`." db-name)
+                               " "
+                               (serdes.resolve/surface-hint
+                                {:metabot (tru (str "Use the exact database name as "
+                                                    "reported by search / `read_resource` (it appears "
+                                                    "as the first element of every portable FK, e.g. "
+                                                    "`source-table: [<db-name>, <schema>, <table>]`)."))
+                                 :mcp-v2  (tru (str "Use a numeric table id in `source-table:` (from `browse_data` "
+                                                    "action \"list_tables\"), which needs no database name at all."))}))
                           {:agent-error? true
                            :status-code  400
                            :error        :unknown-database
@@ -240,25 +277,64 @@
                          :error        :ambiguous-database-name
                          :database     db-name
                          :database-ids (vec (sort ids))}))))
-    (if-let [eid (first-stage-source-card-eid parsed-query)]
+
+    (and (serdes.resolve/numeric-ids-allowed?)
+         (first-stage-numeric-source-table parsed-query))
+    (let [table-id (first-stage-numeric-source-table parsed-query)]
+      (or (t2/select-one-fn :db_id :model/Table :id table-id :active true)
+          ;; the id renders via str, not as a number — tru's MessageFormat would add locale
+          ;; digit grouping ("999,999,999")
+          (throw (ex-info (tru "No table found with id {0}. Call `browse_data` with action \"list_tables\" to list available tables with their numeric ids."
+                               (str table-id))
+                          {:agent-error? true
+                           :status-code  400
+                           :error        :unknown-table
+                           :table-id     table-id}))))
+
+    (first-stage-source-card-eid parsed-query)
+    (let [eid (first-stage-source-card-eid parsed-query)]
       (if-let [card (tools.u/get-card-by-entity-id eid)]
         (:database_id card)
-        (throw (ex-info (tru (str "No saved question or model found with entity_id {0}. Do not invent "
-                                  "or guess entity_ids: call `read_resource` with "
-                                  "`metabase://question/<numeric id>` or `metabase://model/<numeric id>` "
-                                  "first, then copy the exact `portable_entity_id` from the response "
-                                  "into `source-card:`.")
-                             (pr-str eid))
+        (throw (ex-info (str (tru "No saved question or model found with entity_id {0}." (pr-str eid))
+                             " "
+                             (serdes.resolve/surface-hint
+                              {:metabot (tru (str "Do not invent "
+                                                  "or guess entity_ids: call `read_resource` with "
+                                                  "`metabase://question/<numeric id>` or `metabase://model/<numeric id>` "
+                                                  "first, then copy the exact `portable_entity_id` from the response "
+                                                  "into `source-card:`."))
+                               :mcp-v2  (tru (str "Do not invent or guess entity_ids: find the question or "
+                                                  "model with `search`, then copy the exact `entity_id` from "
+                                                  "the result into `source-card:` (its numeric id also works)."))}))
                         {:agent-error? true
                          :status-code  400
                          :error        :unknown-card
-                         :entity-id    eid})))
-      (throw (ex-info (tru (str "First stage must have either `source-table:` (as a portable FK "
-                                "`[<db-name>, <schema>, <table>]`) or `source-card:` (as an "
-                                "entity_id string). Neither was found in `stages[0]`."))
-                      {:agent-error? true
-                       :status-code  400
-                       :error        :missing-source-in-first-stage})))))
+                         :entity-id    eid}))))
+
+    (and (serdes.resolve/numeric-ids-allowed?)
+         (first-stage-numeric-source-card parsed-query))
+    (let [card-id (first-stage-numeric-source-card parsed-query)
+          card    (t2/select-one :model/Card :id card-id)]
+      (when-not card
+        (throw (ex-info (tru "No saved question or model found with id {0}. Find it with `search` and use its numeric id or `entity_id` in `source-card:`."
+                             (str card-id))
+                        {:agent-error? true
+                         :status-code  400
+                         :error        :unknown-card
+                         :card-id      card-id})))
+      (when api/*current-user-id*
+        (api/read-check card))
+      (:database_id card))
+
+    :else
+    (throw (ex-info (str (tru "First stage must have either `source-table:` or `source-card:`; neither was found in `stages[0]`.")
+                         " "
+                         (serdes.resolve/surface-hint
+                          {:metabot (tru "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an entity_id string.")
+                           :mcp-v2  (tru "`source-table:` takes a numeric table id (or a portable FK `[<db-name>, <schema>, <table>]`); `source-card:` takes a saved-card numeric id or entity_id string.")}))
+                    {:agent-error? true
+                     :status-code  400
+                     :error        :missing-source-in-first-stage}))))
 
 ;;; ---------------------------------------- Result columns ----------------------------------------
 

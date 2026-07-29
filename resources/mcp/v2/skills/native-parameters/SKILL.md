@@ -5,7 +5,7 @@ description: Template tags for native SQL questions written through question_wri
 
 # Native SQL parameters (template tags)
 
-**Prefer MBQL** (`execute_query` + `question_write`'s `query` — portable and validated); use `native` only when MBQL can't express it (engine-specific functions, CTEs, hand-tuned SQL) or the user asks for SQL.
+**Prefer MBQL** (`execute_query` + `question_write`'s `query` — validated server-side); use `native` only when MBQL can't express it (engine-specific functions, CTEs, hand-tuned SQL) or the user asks for SQL.
 
 ```
 question_write {"method": "create", "name": "Orders by status",

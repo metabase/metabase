@@ -445,3 +445,99 @@
   (testing "GHY-4142: the tool advertises itself read-only"
     (let [tool (first (filter #(= "execute_query" (:name %)) (registry/list-tools nil)))]
       (is (true? (get-in tool [:annotations :readOnlyHint]))))))
+
+;;; --------------------------------------------- Numeric-id dialect -----------------------------------------------
+
+(defn- numeric-orders-query
+  "A fresh MBQL 5 query over ORDERS in the numeric-id dialect, optionally with extra stage
+   clauses merged in."
+  ([] (numeric-orders-query nil))
+  ([stage-extra]
+   {:lib/type "mbql/query"
+    :stages   [(merge {:lib/type     "mbql.stage/mbql"
+                       :source-table (mt/id :orders)}
+                      stage-extra)]}))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest numeric-ids-happy-path-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid    (str (random-uuid))
+            result (call! sid {:query (numeric-orders-query
+                                       {:filters [["<=" {} ["field" {} (mt/id :orders :id)] 3]]})})
+            body   (payload result)]
+        (testing "a numeric-id query body executes and mints a query_handle"
+          (is (= 3 (:returned body)))
+          (is (string? (:query_handle body)))
+          (is (= [1 2 3] (sort (row-ids body)))))
+        (testing "the minted handle re-runs the same query"
+          (is (= [1 2 3] (sort (row-ids (payload (call! sid {:query_handle (:query_handle body)})))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest numeric-ids-implicit-join-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid    (str (random-uuid))
+            result (call! sid {:query (numeric-orders-query
+                                       {:aggregation [["count" {}]]
+                                        :breakout    [["field" {} (mt/id :products :category)]]})})
+            body   (payload result)]
+        (testing "a numeric field ref on an FK-related table gets its implicit join wired by repair"
+          (is (= 4 (:returned body)))
+          (is (some #(= "CATEGORY" (:name %)) (:cols body))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest numeric-ids-validate-only-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid    (str (random-uuid))
+            result (call! sid {:query         (numeric-orders-query {:limit 2})
+                               :validate_only true})
+            body   (payload result)]
+        (testing "validate_only accepts the numeric dialect and mints a handle without executing"
+          (is (= 0 (:returned body)))
+          (is (string? (:query_handle body))))
+        (testing "the handle then executes the validated query"
+          (is (= 2 (:returned (payload (call! sid {:query_handle (:query_handle body)}))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest numeric-source-card-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders {:limit 5})}]
+        (let [sid    (str (random-uuid))
+              result (call! sid {:query {:lib/type "mbql/query"
+                                         :stages   [{:lib/type    "mbql.stage/mbql"
+                                                     :source-card (:id card)
+                                                     :limit       2}]}})
+              body   (payload result)]
+          (testing "a numeric source-card id resolves to the saved card"
+            (is (= 2 (:returned body)))))))))
+
+(deftest ^:parallel numeric-unknown-table-teaching-error-test
+  ;; Error paths mint nothing — call through registry/call-tool directly, like the other
+  ;; ^:parallel error-path tests above.
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                              {:query {:lib/type "mbql/query"
+                                                       :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                   :source-table 999999999}]}}))]
+      (testing "an unknown numeric table id is a teaching error steering to browse_data"
+        (is (str/includes? msg "No table found with id 999999999"))
+        (is (str/includes? msg "browse_data"))))))
+
+(deftest ^:parallel error-hints-name-v2-tools-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          mp  (lib-be/application-database-metadata-provider (mt/id))
+          db  (:name (lib.metadata/database mp))]
+      (testing "a name-resolution miss steers to browse_data, never to the v1 read_resource surface"
+        (let [msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                                  {:query {:lib/type "mbql/query"
+                                                           :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                       :source-table [db "PUBLIC" "NO_SUCH_TABLE"]}]}}))]
+          (is (str/includes? msg "No table found matching portable FK"))
+          (is (str/includes? msg "browse_data"))
+          (is (not (str/includes? msg "read_resource")))
+          (is (not (str/includes? msg "metabase://"))))))))

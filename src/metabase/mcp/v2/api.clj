@@ -100,7 +100,7 @@
   "The `initialize` result's `instructions` — the only channel that reaches the model before any
    tool call, so it points at the `learn` skills once, in three lines."
   (str "This server ships task-shaped docs as skills. learn() lists the topics; learn(topic) returns one.\n"
-       "Before your first complex write — native template_tags, dashboard parameter wiring, a portable MBQL query, "
+       "Before your first complex write — native template_tags, dashboard parameter wiring, an MBQL query, "
        "visualization settings — read the matching skill unless it is already in context.\n"
        "Teaching errors embed the relevant contract, so a failed call always names its fix."))
 

@@ -1,6 +1,6 @@
-# Operator catalog — portable MBQL 5
+# Operator catalog
 
-Every operator for `execute_query` / `question_write` queries; structure rules (options at position 1, name-based refs) are in the skill body. `<field>` abbreviates `["field", {}, ["<db>", "<schema-or-null>", "<table>", "<column>"]]` (or a string-name ref against a previous stage).
+Every operator for `execute_query` / `question_write` queries; structure rules (options at position 1, numeric-id refs) are in the skill body. `<field>` abbreviates `["field", {}, <numeric field id>]` (or a string-name ref against a previous stage).
 
 ## Filters
 

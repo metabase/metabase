@@ -28,6 +28,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.lib.schema :as lib.schema]
+   [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]))
@@ -179,6 +180,13 @@
        (non-blank-string? (nth x 0))
        (options-map? (nth x 1))))
 
+(defn- numeric-id-when-allowed?
+  "A numeric id in a source slot, valid only on a surface that accepts numeric ids (checked at
+  validation time via [[metabase.models.serialization.resolve/numeric-ids-allowed?]], so the
+  same schema serves both surfaces)."
+  [x]
+  (and (pos-int? x) (serdes.resolve/numeric-ids-allowed?)))
+
 (def ^:private registry
   {::table-fk [:and vector?
                [:fn {:error/message "table FK must be [db-name, schema-or-null, table-name]"}
@@ -207,8 +215,14 @@
    ::stage    [:map
                {:closed false}
                ["lib/type"     [:= "mbql.stage/mbql"]]
-               ["source-table" {:optional true} [:ref ::table-fk]]
-               ["source-card"  {:optional true} :string]
+               ["source-table" {:optional true}
+                [:or [:ref ::table-fk]
+                 [:fn {:error/message "numeric table ids are accepted on numeric-id surfaces only"}
+                  numeric-id-when-allowed?]]]
+               ["source-card"  {:optional true}
+                [:or :string
+                 [:fn {:error/message "numeric card ids are accepted on numeric-id surfaces only"}
+                  numeric-id-when-allowed?]]]
                ["joins"        {:optional true} [:sequential [:ref ::join]]]
                ["filters"      {:optional true} [:sequential [:ref ::clause]]]
                ["aggregation"  {:optional true} [:sequential [:ref ::clause]]]
