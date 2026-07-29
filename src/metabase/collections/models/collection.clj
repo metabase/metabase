@@ -840,8 +840,11 @@
    :c.type
    :c.namespace])
 
-(mu/defn visible-collection-query
-  "Given a `CollectionVisibilityConfig`, return a HoneySQL query that selects all visible Collection IDs."
+(mu/defn- visible-collection-query
+  "Given a `CollectionVisibilityConfig`, return a HoneySQL query that selects all visible Collection IDs. Private on
+  purpose: a raw id-set select invites `IN (SELECT ...)` filters, which Postgres degrades to an O(n^2) subplan past
+  work_mem in non-unnestable contexts — use [[visible-collection-filter-clause]] (or [[visible-collection-ids-cte]]
+  for the shared-CTE pattern) instead."
   ([visibility-config :- CollectionVisibilityConfig]
    (visible-collection-query visibility-config
                              {:current-user-id api/*current-user-id*
@@ -953,6 +956,14 @@
                             (visible-collection-query visibility-config user-scope))
                           :visible_collection]]
                 :where  [:= :visible_collection.id collection-id-field]}]])))
+
+(mu/defn visible-collection-ids-cte
+  "CTE definition `[:visible_collection_ids <query>]` of the Collection ids visible under `visibility-config`, for
+  queries that filter against the visible set many times: add it to the query's `:with` and pass
+  `{:cte-name :visible_collection_ids}` to [[visible-collection-filter-clause]] so each filter references the CTE
+  instead of recomputing visibility."
+  [visibility-config :- CollectionVisibilityConfig]
+  [:visible_collection_ids (visible-collection-query visibility-config)])
 
 (defn- effective-child-of-filter-clause
   [parent-coll collection-table-alias visibility-config]

@@ -1098,7 +1098,7 @@
                      :archive-operation-id nil
                      :permission-level (if archived? :write :read)
                      :include-trash-collection? archived?}
-        rows-query  {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
+        rows-query  {:with     [(collection/visible-collection-ids-cte viz-config)]
                      :select   [:* [[:over [[:count :*] {} :total_count]]]]
                      :from     [[{:union-all queries} :dummy_alias]]
                      :order-by sql-order}

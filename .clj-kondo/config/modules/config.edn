@@ -1213,7 +1213,6 @@
            lib-be
            metabot
            models
-           permissions
            premium-features
            request
            settings
@@ -1350,6 +1349,7 @@
               transforms
               transforms-base
               util
+              warehouse-schema
               warehouses}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot

@@ -8,13 +8,13 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.table :as warehouse-table]
    [toucan2.core :as t2])
   (:import
    (java.io StringWriter Writer)))
@@ -103,19 +103,16 @@
    Returns a map of table-id -> table record."
   [table-ids]
   (when (seq table-ids)
-    (let [{:keys [clause with left-join]} (perms/visible-table-filter-with-cte
-                                           :metabase_table.id
-                                           {:user-id       api/*current-user-id*
-                                            :is-superuser? api/*is-superuser?*}
-                                           {:perms/view-data      :unrestricted
-                                            :perms/create-queries :query-builder-and-native})
-          tables (t2/select :model/Table
+    (let [tables (t2/select :model/Table
                             :metabase_table.id [:in table-ids]
                             :active true
                             :visibility_type nil
-                            (cond-> {:where clause}
-                              with      (assoc :with with)
-                              left-join (assoc :left-join left-join)))]
+                            {:where (warehouse-table/visible-table-filter-clause
+                                     :metabase_table.id
+                                     {:user-id       api/*current-user-id*
+                                      :is-superuser? api/*is-superuser?*}
+                                     {:perms/view-data      :unrestricted
+                                      :perms/create-queries :query-builder-and-native})})]
       (into {} (map (juxt :id identity)) tables))))
 
 (defn get-accessible-card-ids

@@ -4,8 +4,8 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.metabot.query-analyzer :as query-analyzer]
-   [metabase.permissions.core :as perms]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
@@ -39,24 +39,19 @@
                       priority-tables []
                       exclude-table-ids #{}}}]
    (let [priority-table-ids (set (map :id priority-tables))
-         {table-where-clause :clause
-          table-cte          :with
-          table-join         :left-join} (perms/visible-table-filter-with-cte
-                                          :metabase_table.id
-                                          {:user-id       api/*current-user-id*
-                                           :is-superuser? api/*is-superuser?*}
-                                          {:perms/view-data      :unrestricted
-                                           :perms/create-queries :query-builder-and-native})
          ;; Fetch most viewed tables, excluding priority tables and excluded tables
          fill-tables (t2/select [:model/Table :id :db_id :name :schema :description]
                                 :db_id           database-id
                                 :active          true
                                 :visibility_type nil
-                                (cond-> {:where    table-where-clause
-                                         :order-by [[:view_count :desc]]
-                                         :limit    all-tables-limit}
-                                  table-cte  (assoc :with table-cte)
-                                  table-join (assoc :left-join table-join)))
+                                {:where    (table/visible-table-filter-clause
+                                            :metabase_table.id
+                                            {:user-id       api/*current-user-id*
+                                             :is-superuser? api/*is-superuser?*}
+                                            {:perms/view-data      :unrestricted
+                                             :perms/create-queries :query-builder-and-native})
+                                 :order-by [[:view_count :desc]]
+                                 :limit    all-tables-limit})
          fill-tables (remove #(or (priority-table-ids (:id %))
                                   (exclude-table-ids (:id %))) fill-tables)
          fill-tables (t2/hydrate fill-tables :fields)
@@ -115,17 +110,12 @@
 
 (defn- visible-filter-clause
   []
-  (let [{table-where-clause :clause
-         table-cte          :with
-         table-join         :left-join} (perms/visible-table-filter-with-cte
-                                         :metabase_table.id
-                                         {:user-id       api/*current-user-id*
-                                          :is-superuser? api/*is-superuser?*}
-                                         {:perms/view-data      :unrestricted
-                                          :perms/create-queries :query-builder-and-native})]
-    (cond-> {:where table-where-clause}
-      table-cte  (assoc :with table-cte)
-      table-join (assoc :left-join table-join))))
+  {:where (table/visible-table-filter-clause
+           :metabase_table.id
+           {:user-id       api/*current-user-id*
+            :is-superuser? api/*is-superuser?*}
+           {:perms/view-data      :unrestricted
+            :perms/create-queries :query-builder-and-native})})
 
 (defn find-matching-tables
   "Find tables in the database that are similar to the unrecognized tables using fuzzy matching.
