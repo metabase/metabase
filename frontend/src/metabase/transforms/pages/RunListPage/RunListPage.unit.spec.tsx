@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupGetTransformEndpoint,
+  setupListDatabaseSchemasEndpoint,
   setupListTransformRunsEndpoint,
   setupListTransformTagsEndpoint,
   setupListTransformsEndpoint,
@@ -45,6 +46,7 @@ function setup({ runs = [] }: SetupOpts = {}) {
   setupListTransformTagsEndpoint([]);
   transforms.forEach((transform) => {
     setupGetTransformEndpoint(transform);
+    setupListDatabaseSchemasEndpoint(transform.target.database, []);
   });
   mockGetBoundingClientRect({ width: 1200, height: 800 });
 
