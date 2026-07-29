@@ -166,6 +166,20 @@
           (is (=? {:mode :unavailable, :resolved? false} (probe 1000)))
           (is (true? (deref started 5000 ::never-ran)))
           (is (true? (deref released 5000 ::still-hung))))))
+    (testing "a support check that errored is unresolved: unsupported and unknown both read as :unavailable"
+      (reset! semantic.db.datasource/app-db-support-check-errored? true)
+      (try
+        (mt/with-dynamic-fn-redefs
+          [mdb/db-is-set-up?                               (constantly true)
+           semantic.db.datasource/dedicated-url-configured? (constantly false)
+           semantic.u/semantic-search-configured?           (constantly true)
+           semantic.db.datasource/pgvector-mode             (constantly :unavailable)]
+          (is (=? {:mode :unavailable, :connected? false, :resolved? false} (probe 60000)))
+          (testing "one that answered no is an answer, and holds for the interval"
+            (reset! semantic.db.datasource/app-db-support-check-errored? false)
+            (is (=? {:mode :unavailable, :connected? false, :resolved? true} (probe 60000)))))
+        (finally
+          (reset! semantic.db.datasource/app-db-support-check-errored? false))))
     (testing "an app db that is not migrated yet is unresolved, not an answer to cache for an hour"
       (mt/with-dynamic-fn-redefs
         [mdb/db-is-set-up?                               (constantly false)

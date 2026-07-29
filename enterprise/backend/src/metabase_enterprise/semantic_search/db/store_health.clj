@@ -96,7 +96,11 @@
 
     :else
     (let [mode (semantic.datasource/pgvector-mode)]
-      {:mode mode, :connected? (store-connected? mode), :resolved? true})))
+      {:mode       mode
+       :connected? (store-connected? mode)
+       ;; A support check that errored also reads as :unavailable, and that is a guess, not an answer.
+       :resolved?  (or (not= mode :unavailable)
+                       (not @semantic.datasource/app-db-support-check-errored?))})))
 
 (defn- probe-store
   "[[resolve-store]] within `deadline-ms`, reporting no store when it can't answer in that time.

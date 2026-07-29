@@ -340,9 +340,10 @@
    (prometheus/gauge :metabase-pgvector/store-connected
                      {:description (str "Whether the most recent connection probe to the given pgvector "
                                         "storage backing succeeded. Probed hourly, so an outage takes up "
-                                        "to an hour to show up. The probe opens its own connection, so a "
-                                        "store that is up but whose pool is saturated still reads as "
-                                        "connected -- watch metabase_database_c3p0_* for that.")
+                                        "to an hour to show up. The dedicated probe opens its own "
+                                        "connection, so a store that is up but whose pool is saturated "
+                                        "still reads as connected -- watch metabase_database_c3p0_* for "
+                                        "that. The app-db probe shares the application pool, and does not.")
                       :labels      [:storage]})
    (prometheus/gauge :metabase-pgvector/store-last-success-timestamp-seconds
                      {:description (str "Unix timestamp in seconds of the most recent successful "

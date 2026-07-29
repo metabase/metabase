@@ -243,6 +243,12 @@
   re-query the catalog on every search and 20s indexer tick. Tests reset it."
   (atom nil))
 
+(def app-db-support-check-errored?
+  "Whether the last app-db pgvector support check failed to answer, rather than answering no.
+  Both outcomes read as unsupported, but only the second is a fact: the readiness probe uses this to report
+  that it couldn't find out instead of publishing a guess it would then sit on for an hour. Tests reset it."
+  (atom false))
+
 (def ^:private probe-cooldown-ms
   "How long an unsupported or failed app-db pgvector probe is trusted before re-probing.
   Long enough that a never-provisioned instance isn't running a rolled-back CREATE probe into its DDL audit
@@ -354,6 +360,7 @@
                                 " dedicated pgvector database."))
                  (reset! app-db-pgvector-support true)
                  (reset! probe-cooldown-timer nil)
+                 (reset! app-db-support-check-errored? false)
                  true)
                (do
                  (when (compare-and-set! logged-pgvector-absent? false true)
@@ -362,9 +369,11 @@
                                   " schema). Install pgvector and grant CREATE, or set MB_PGVECTOR_DB_URL;"
                                   " it is picked up automatically, no restart needed.")))
                  (reset! probe-cooldown-timer (u/start-timer))
+                 (reset! app-db-support-check-errored? false)
                  false))
              (catch Exception e
                (reset! probe-cooldown-timer (u/start-timer))
+               (reset! app-db-support-check-errored? true)
                (log/warn (str "Semantic search: pgvector support check on the application database failed;"
                               " will retry after the cooldown:")
                          (ex-message e))
