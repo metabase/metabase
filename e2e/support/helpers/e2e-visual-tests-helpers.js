@@ -116,7 +116,9 @@ export function cartesianChartCircleWithColors(colors) {
 }
 
 export function cartesianChartCircleWithFillColor(color) {
-  return echartsContainer().find(`path[d="${CIRCLE_PATH}"][fill="${color}"]`);
+  return echartsContainer()
+    .find(`path[d="${CIRCLE_PATH}"]`)
+    .filter((_, element) => getComputedStyle(element).fill === color);
 }
 
 export function otherSeriesChartPaths() {
