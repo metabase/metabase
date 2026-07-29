@@ -316,6 +316,40 @@
                                                       (wire {:method "update" :id (:id notification)
                                                              :active false}))))))))))
 
+(deftest update-refuses-to-replace-an-unmanaged-channel-test
+  (testing "an alert delivering over a channel this tool doesn't manage — an http webhook paging
+            an on-call rota, say — must survive an edit that names a channel the tool does manage.
+            Guarding the requested channel rather than the stored one let `channel: \"email\"`
+            replace the webhook handler outright and still report success."
+    (mt/with-temp [:model/Channel {chan-id :id} {:name    "PagerDuty"
+                                                 :type    :channel/http
+                                                 :active  true
+                                                 :details {:url         "https://events.pagerduty.example/enqueue"
+                                                           :auth-method "none"}}]
+      (notification.tu/with-card-notification
+        [notification {:card         {}
+                       :notification {:creator_id (mt/user->id :crowberto)}
+                       :handlers     [{:channel_type :channel/http :channel_id chan-id}]}]
+        (let [handlers #(t2/select [:model/NotificationHandler :id :channel_type :channel_id]
+                                   :notification_id (:id notification))
+              before   (handlers)]
+          (testing "omitting channel is refused"
+            (is (re-find #"doesn't manage"
+                         (tool-error (call-tool! :crowberto nil
+                                                 (wire {:method "update" :id (:id notification)
+                                                        :recipients ["me@example.com"]}))))))
+          (testing "and naming a managed channel is refused too, rather than clobbering the webhook"
+            (is (re-find #"doesn't manage"
+                         (tool-error (call-tool! :crowberto nil
+                                                 (wire {:method "update" :id (:id notification)
+                                                        :channel "email"}))))))
+          (testing "the stored handler is untouched by either attempt"
+            (is (= before (handlers))))
+          (testing "an edit that leaves delivery alone still goes through"
+            (is (false? (:active (tool-result (call-tool! :crowberto nil
+                                                          (wire {:method "update" :id (:id notification)
+                                                                 :active false}))))))))))))
+
 (deftest update-preserves-a-stale-goal-condition-test
   (testing "GHY-4155: an alert whose chart lost its goal line since creation must still be pausable —
             the goal check belongs to setting the condition, not to every update"

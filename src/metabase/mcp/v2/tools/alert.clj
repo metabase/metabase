@@ -142,7 +142,10 @@
                           (some-> existing-type (str/replace #"^channel/" ""))
                           "email")
         base          (if (= (str "channel/" channel-type) existing-type) existing {})]
-    (when-not (#{"email" "slack"} channel-type)
+    ;; Guard the *stored* channel rather than the requested one. Replacing a handler alert_write
+    ;; doesn't manage — an http webhook, say — drops that delivery silently, so an explicit
+    ;; `channel` must not be able to talk its way past this guard by naming a type we do manage.
+    (when (and existing-type (not (#{"channel/email" "channel/slack"} existing-type)))
       (common/throw-teaching-error
        (format (str "This alert delivers over %s, which alert_write doesn't manage — edit it in Metabase, "
                     "or leave channel, slack_channel, and recipients out to keep it as it is.")
