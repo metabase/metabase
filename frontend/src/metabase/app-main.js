@@ -15,6 +15,9 @@ import { push } from "metabase/router";
 import { getRoutes } from "metabase/routes";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
+// Let embedded children detect that their parent is a Metabase instance.
+window.METABASE = true;
+
 // If any of these receives a 403, we should display the "not authorized" page.
 const NOT_AUTHORIZED_TRIGGERS = [
   /\/api\/dashboard\/\d+$/,
