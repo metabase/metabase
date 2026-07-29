@@ -26,6 +26,11 @@
     :mysql    (SQLException. "Deadlock found when trying to get lock; try restarting transaction" "40001" 1213)
     :h2       (SQLException. "Deadlock" "40001" 40001)))
 
+(defn- cause-chain
+  "`t` followed by each of its causes, so an assertion can look past a wrapper the db layer added."
+  [t]
+  (take-while some? (iterate ex-cause t)))
+
 (deftest retry-if-error?-test
   (testing "transient deadlocks retry only when :retry-transient? is opted in"
     ;; opted out (default) — a multi-master deadlock is NOT retried (preserves behavior for callers whose
@@ -79,7 +84,25 @@
                    (catch Throwable t t))]
       (is (not (contains? (ex-data thrown) :lock-names))
           "a body failure must stay distinguishable from contention")
-      (is (instance? SQLIntegrityConstraintViolationException thrown)))))
+      ;; on a row-lock appdb toucan2 wraps a body throw from inside the tx, so look down the chain rather
+      ;; than at the top-level exception
+      (is (some (partial instance? SQLIntegrityConstraintViolationException) (cause-chain thrown))
+          "the original body error must still be reachable"))))
+
+(deftest h2-body-error-does-not-re-run-the-body-test
+  ;; The row-lock branch may retry the body because it rides a transaction that rolls back first. The h2
+  ;; branch has no transaction, so a retried body would re-apply work that already committed — the
+  ;; `:retry-transient?` statistics writers would double-count. Only acquisition is retried there.
+  (when (= :h2 (mdb/db-type))
+    (testing "a retryable error raised by the body must not re-run it"
+      (let [attempts (atom 0)]
+        (is (thrown? Throwable
+                     (sut/do-with-cluster-lock
+                      {:lock ::h2-body-no-retry :retry-config {:max-retries 3 :delay-ms 1}}
+                      (fn []
+                        (swap! attempts inc)
+                        (throw (SQLIntegrityConstraintViolationException. "body blew up"))))))
+        (is (= 1 @attempts))))))
 
 (deftest h2-contention-skips-rather-than-blocking-forever-test
   ;; h2 acquired with an untimed Lock.lock(), so a second trigger blocked indefinitely: the documented
@@ -185,6 +208,23 @@
         result   (deref entered timeout-ms :timeout)]
     (future-cancel acquired)
     (= result :yes)))
+
+(deftest h2-partial-acquisition-releases-held-locks-test
+  ;; Multi-lock acquisition takes the locks in order; if a later one times out the earlier ones must be
+  ;; released before the failure propagates, or the next attempt contends with locks we ourselves hold.
+  (when (= :h2 (mdb/db-type))
+    (let [blocker (run-with-lock {:lock ::h2-partial-second})]
+      (try
+        (is (.await ^CountDownLatch (:entered blocker) 3 TimeUnit/SECONDS))
+        (testing "acquiring [free, contended] fails"
+          (is (false? (acquirable-within? {:locks [::h2-partial-first ::h2-partial-second]
+                                           :timeout-seconds 1 :retry-config {:max-retries 0}}
+                                          3000))))
+        (testing "and leaves the first lock free rather than held"
+          (is (true? (acquirable-within? {:lock ::h2-partial-first} 3000))))
+        (finally
+          (.countDown ^CountDownLatch (:release blocker))
+          (is (= :ok (deref (:done blocker) 3000 :timeout))))))))
 
 (deftest share-exclusive-mode-test
   ;; h2 uses in-process ReentrantReadWriteLock; everything else uses real row locks.
@@ -311,37 +351,37 @@
                           (sut/with-detached-cluster-lock {:lock ::detached-reentry}
                             (sut/with-detached-cluster-lock {:lock ::detached-reentry}
                               :nope)))))
-  ;; the transactional-path guard lives in the row-lock impl; h2 takes its in-process reentrant lock
-  (when (not= (mdb/db-type) :h2)
-    (testing "a transactional acquisition of a lock this scope holds detached also throws"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already held detached"
-                            (sut/with-detached-cluster-lock {:lock ::detached-reentry}
-                              (sut/with-cluster-lock ::detached-reentry
-                                :nope)))))
-    (testing "taking a different lock inside a detached body works normally"
-      (is (= :ok (sut/with-detached-cluster-lock {:lock ::detached-reentry}
-                   (sut/with-cluster-lock ::detached-reentry-other
-                     :ok)))))))
+  ;; h2 takes a *reentrant* in-process lock, so without an explicit guard this would silently succeed
+  ;; there and only blow up on a row-lock appdb — the guard has to live on both paths.
+  (testing "a transactional acquisition of a lock this scope holds detached also throws"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already held detached"
+                          (sut/with-detached-cluster-lock {:lock ::detached-reentry}
+                            (sut/with-cluster-lock ::detached-reentry
+                              :nope)))))
+  (testing "taking a different lock inside a detached body works normally"
+    (is (= :ok (sut/with-detached-cluster-lock {:lock ::detached-reentry}
+                 (sut/with-cluster-lock ::detached-reentry-other
+                   :ok))))))
 
 (deftest detached-lock-mutual-exclusion-test
-  ;; h2 uses the in-process rw-lock path; real row-lock semantics only.
-  (when (not= (mdb/db-type) :h2)
-    ;; warm up the row first so we're not racing on the initial INSERT
-    (sut/with-detached-cluster-lock {:lock ::detached-mutex} :warm)
-    (let [held (run-with-lock {:lock ::detached-mutex :detached? true})]
-      (is (.await ^CountDownLatch (:entered held) 3 TimeUnit/SECONDS))
-      (testing "a detached holder blocks another detached acquirer"
-        (is (not (acquirable-within? {:lock ::detached-mutex :detached? true
-                                      :timeout-seconds 1 :retry-config {:max-retries 0}}
-                                     3000))))
-      (testing "a detached holder blocks a transactional acquirer"
-        (is (not (acquirable-within? {:lock ::detached-mutex
-                                      :timeout-seconds 1 :retry-config {:max-retries 0}}
-                                     3000))))
-      (.countDown ^CountDownLatch (:release held))
-      (is (= :ok (deref (:done held) 3000 :timeout)))
-      (testing "released once the body completes"
-        (is (acquirable-within? {:lock ::detached-mutex :detached? true} 3000))))))
+  ;; Runs on h2 too: the guard above only covers re-acquisition from the *same* scope, so this is what
+  ;; pins that a detached hold actually excludes other threads on the in-process lock.
+  ;; warm up the row first so we're not racing on the initial INSERT
+  (sut/with-detached-cluster-lock {:lock ::detached-mutex} :warm)
+  (let [held (run-with-lock {:lock ::detached-mutex :detached? true})]
+    (is (.await ^CountDownLatch (:entered held) 3 TimeUnit/SECONDS))
+    (testing "a detached holder blocks another detached acquirer"
+      (is (not (acquirable-within? {:lock ::detached-mutex :detached? true
+                                    :timeout-seconds 1 :retry-config {:max-retries 0}}
+                                   3000))))
+    (testing "a detached holder blocks a transactional acquirer"
+      (is (not (acquirable-within? {:lock ::detached-mutex
+                                    :timeout-seconds 1 :retry-config {:max-retries 0}}
+                                   3000))))
+    (.countDown ^CountDownLatch (:release held))
+    (is (= :ok (deref (:done held) 3000 :timeout)))
+    (testing "released once the body completes"
+      (is (acquirable-within? {:lock ::detached-mutex :detached? true} 3000)))))
 
 (defn- query-canceled-exception
   "Build a query-canceled SQLException for the current appdb type. Mirrors the codes in

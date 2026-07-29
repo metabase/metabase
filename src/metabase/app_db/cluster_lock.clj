@@ -169,6 +169,19 @@
   transactional — would block against our own row lock; acquisitions fail fast instead."
   #{})
 
+(defn- check-not-held-detached!
+  "Throw if any of `lock-name-strs` is already held detached in this scope.
+
+  Both lock impls need this, for different reasons: a detached row lock lives on a dedicated connection,
+  so re-acquiring it here would block against our own row until the timeout; the h2 lock is *reentrant*,
+  so re-acquiring it would silently succeed and let a caller violate the no-reentry rule on h2 while
+  failing on every other appdb."
+  [lock-name-strs]
+  (doseq [lock-name-str lock-name-strs]
+    (when (*detached-locks-held* lock-name-str)
+      (throw (ex-info "Cluster lock is already held detached in this scope"
+                      {:lock-name lock-name-str})))))
+
 (defn- do-with-cluster-locks*
   "Acquire all `locks` (each a `{:lock-name-str, :mode}` map) inside a single
   transaction, then run `thunk`.
@@ -177,10 +190,7 @@
   failure of `thunk` itself. It is reset on entry because each retry re-runs this fn."
   [locks timeout-seconds entered thunk]
   (vreset! entered false)
-  (doseq [{:keys [lock-name-str]} locks]
-    (when (*detached-locks-held* lock-name-str)
-      (throw (ex-info "Cluster lock is already held detached in this scope"
-                      {:lock-name lock-name-str}))))
+  (check-not-held-detached! (map :lock-name-str locks))
   (t2/with-transaction [conn]
     (doseq [{:keys [lock-name-str mode]} locks]
       (acquire-lock-row! conn lock-name-str timeout-seconds mode))
@@ -224,11 +234,15 @@
       (doseq [{:keys [lock-name-str mode]} locks]
         (let [rw (h2-rw-lock lock-name-str)
               ^Lock lock (if (= mode :share) (.readLock rw) (.writeLock rw))]
-          (when-not (.tryLock lock (long timeout-seconds) TimeUnit/SECONDS)
-            ;; Marked so `retryable?` treats this like the row-lock wait timeout: retried by the
-            ;; shared retry config, then surfaced as the usual :lock-names ex-info.
-            (throw (ex-info (str "Timed out acquiring h2 cluster lock: " lock-name-str)
-                            {::acquisition-timeout true :lock-name lock-name-str})))
+          (if (pos? timeout-seconds)
+            (when-not (.tryLock lock (long timeout-seconds) TimeUnit/SECONDS)
+              ;; Marked so `retryable?` treats this like the row-lock wait timeout: retried by the
+              ;; shared retry config, then surfaced as the usual :lock-names ex-info.
+              (throw (ex-info (str "Timed out acquiring h2 cluster lock: " lock-name-str)
+                              {::acquisition-timeout true :lock-name lock-name-str})))
+            ;; `.setQueryTimeout 0` means *no* limit, so the row-lock branch waits indefinitely for 0 —
+            ;; match that rather than letting 0 mean "don't wait at all" here
+            (.lock lock))
           (vswap! held conj lock)
           (log/debugf "Obtained h2 cluster lock: %s (%s)" lock-name-str mode)))
       @held
@@ -237,10 +251,16 @@
         (throw e)))))
 
 (defn- do-with-h2-cluster-locks*
-  "h2 counterpart of [[do-with-cluster-locks*]]; `entered` carries the same meaning."
-  [locks timeout-seconds entered thunk]
-  (vreset! entered false)
-  (let [held (acquire-h2-locks! locks timeout-seconds)]
+  "h2 counterpart of [[do-with-cluster-locks*]]; `entered` carries the same meaning.
+
+  Only *acquisition* is retried here, where the row-lock branch retries the whole thing. That branch's
+  body rides a transaction that rolls back before a re-run, so re-running it is safe; this one has no
+  transaction (see [[with-cluster-lock]]), so a re-run would re-apply work that already committed —
+  the `:retry-transient?` statistics writers would double-count. Nothing is lost by not retrying:
+  `:retry-transient?` exists for multi-master row-lock appdbs, which h2 is not."
+  [locks timeout-seconds config entered thunk]
+  (check-not-held-detached! (map :lock-name-str locks))
+  (let [held (retry/with-retry config (acquire-h2-locks! locks timeout-seconds))]
     (vreset! entered true)
     (try
       (thunk)
@@ -326,7 +346,17 @@
   replicated across nodes, so the lock can't serialize writers and the conflicting
   commit comes back as a deadlock. Only opt in when the body is safe to re-run from
   scratch — idempotent, with no side effects outside the appdb transaction (a
-  rolled-back deadlock undoes only the db writes, not external calls)."
+  rolled-back deadlock undoes only the db writes, not external calls).
+
+  `:timeout-seconds` bounds how long each attempt waits to *acquire*, not how long the
+  body may hold the lock — a hold lasts as long as the body runs. 0 means wait
+  indefinitely. Acquisition is retried per `:retry-config`, so the wall-clock budget
+  before contention is reported is roughly
+  `(max-retries + 1) * timeout-seconds + max-retries * delay-ms`.
+
+  On an h2 appdb only acquisition is retried: the body has no transaction to roll back
+  (see [[with-cluster-lock]]), so re-running it would re-apply committed work. Acquisition
+  timeout, retry budget and error shape are the same on both."
   [opts :- [:or
             :keyword
             [:map
@@ -337,7 +367,8 @@
                                                     [:lock :keyword]
                                                     [:mode {:optional true} [:enum :exclusive :share]]]]]]
              [:mode             {:optional true} [:enum :exclusive :share]]
-             [:timeout-seconds  {:optional true} :int]
+             ;; 0 means "wait indefinitely", matching `.setQueryTimeout`
+             [:timeout-seconds  {:optional true} [:int {:min 0}]]
              [:retry-config     {:optional true} [:ref ::retry/retry-overrides]]
              [:retry-transient? {:optional true} :boolean]]]
    thunk :- ifn?]
@@ -346,16 +377,15 @@
         ;; Set once all locks are held, so the catch below can tell "could not acquire" from "the body
         ;; failed". Without it a retryable error thrown by `thunk` — an appdb statement timeout, say — was
         ;; wrapped as contention, and callers that skip on :lock-names dropped a genuine failure silently.
-        entered     (volatile! false)
-        acquire+run (if (= (mdb.connection/db-type) :h2)
-                      ;; h2 does not respect the query timeout when taking the lock and is not
-                      ;; cross-process, so we use an in-process ReentrantReadWriteLock per lock name.
-                      #(do-with-h2-cluster-locks* locks timeout-seconds entered thunk)
-                      #(do-with-cluster-locks* locks timeout-seconds entered thunk))
-        config      (assoc (merge default-retry-config retry-config)
-                           :retry-if (fn [_ e] (retry-if-error? retry-transient? e)))]
+        entered (volatile! false)
+        config  (assoc (merge default-retry-config retry-config)
+                       :retry-if (fn [_ e] (retry-if-error? retry-transient? e)))]
     (try
-      (retry/with-retry config (acquire+run))
+      (if (= (mdb.connection/db-type) :h2)
+        ;; h2 does not respect the query timeout when taking the lock and is not cross-process, so we
+        ;; use an in-process ReentrantReadWriteLock per lock name. It runs its own acquisition retry.
+        (do-with-h2-cluster-locks* locks timeout-seconds config entered thunk)
+        (retry/with-retry config (do-with-cluster-locks* locks timeout-seconds entered thunk)))
       (catch Throwable e
         ;; only a genuine lock-acquisition failure gets the "Failed to obtain cluster lock" wrapper;
         ;; an exhausted transient body error (e.g. deadlock) propagates raw so the message stays truthful.
@@ -404,14 +434,12 @@
     :or   {timeout-seconds cluster-lock-timeout-seconds}}
    :- [:map
        [:lock            :keyword]
-       [:timeout-seconds {:optional true} :int]
+       [:timeout-seconds {:optional true} [:int {:min 0}]]
        [:retry-config    {:optional true} [:ref ::retry/retry-overrides]]]
    thunk :- ifn?]
   (let [lock-name-str (keyword->lock-name-str lock)
         config        (merge default-retry-config retry-config)]
-    (when (*detached-locks-held* lock-name-str)
-      (throw (ex-info "Cluster lock is already held detached in this scope"
-                      {:lock-name lock-name-str})))
+    (check-not-held-detached! [lock-name-str])
     (if (= (mdb.connection/db-type) :h2)
       ;; the h2 in-process lock never holds a transaction, so it is already 'detached'. It still goes
       ;; through the retry and :lock-names wrapping, so a contended detached hold looks the same on h2 as
