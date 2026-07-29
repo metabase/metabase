@@ -6,7 +6,7 @@ import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
-import type { WithRouterProps } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { Flex } from "metabase/ui";
 
 import { useLazyListMetabotAnalyticsConversationsQuery } from "../../api";
@@ -15,7 +15,8 @@ import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
 import { ConversationsTable } from "./ConversationsTable";
 import { PAGE_SIZE, urlStateConfig } from "./utils";
 
-export function ConversationsPage({ location }: WithRouterProps) {
+export function ConversationsPage() {
+  const { location } = useRouter();
   const [
     { page, sort_column, sort_direction, date, user, group, tenant },
     { patchUrlState },

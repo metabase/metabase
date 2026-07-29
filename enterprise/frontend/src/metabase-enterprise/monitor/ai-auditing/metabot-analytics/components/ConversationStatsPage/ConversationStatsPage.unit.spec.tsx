@@ -10,7 +10,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { ClickObject } from "metabase-lib";
 import type { Dataset, RawSeries, RowValue } from "metabase-types/api";
@@ -78,8 +78,6 @@ jest.mock("metabase/visualizations/components/Visualization", () => {
 
   return { __esModule: true, default: StubVisualization };
 });
-
-const RoutedConversationStatsPage = withRouteProps(ConversationStatsPage);
 
 const STATS_PATH = Urls.monitorAiAuditingUsage();
 const CONVERSATIONS_PATH = Urls.monitorAiAuditingConversations();
@@ -221,7 +219,7 @@ function setup({
 
   return renderWithProviders(
     <>
-      <Route path={STATS_PATH} element={<RoutedConversationStatsPage />} />
+      <Route path={STATS_PATH} element={<ConversationStatsPage />} />
       <Route
         path={CONVERSATIONS_PATH}
         element={<div data-testid="conversations-page" />}

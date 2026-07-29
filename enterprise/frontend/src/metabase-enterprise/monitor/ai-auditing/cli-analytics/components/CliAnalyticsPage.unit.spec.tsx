@@ -15,7 +15,7 @@ import {
   within,
 } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Database, Dataset, Field } from "metabase-types/api";
 import {
@@ -33,8 +33,6 @@ import {
 import { AUDIT_DB_ID } from "../constants";
 
 import { CliAnalyticsPage } from "./CliAnalyticsPage";
-
-const RoutedCliAnalyticsPage = withRouteProps(CliAnalyticsPage);
 
 registerVisualizations();
 
@@ -160,10 +158,7 @@ function setup({ dataset }: { dataset?: Dataset } = {}) {
   setupEndpoints(dataset);
 
   return renderWithProviders(
-    <Route
-      path="/monitor/ai-auditing/cli"
-      element={<RoutedCliAnalyticsPage />}
-    />,
+    <Route path="/monitor/ai-auditing/cli" element={<CliAnalyticsPage />} />,
     {
       initialRoute: "/monitor/ai-auditing/cli",
       withRouter: true,

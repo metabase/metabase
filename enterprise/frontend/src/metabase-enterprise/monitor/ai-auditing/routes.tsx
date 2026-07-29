@@ -1,4 +1,4 @@
-import { Route, redirect, withRouteProps } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 
 import { CliAnalyticsPage } from "./cli-analytics/components/CliAnalyticsPage";
 import {
@@ -11,28 +11,22 @@ import { ConversationStatsPage } from "./metabot-analytics/components/Conversati
 import { ConversationsPage } from "./metabot-analytics/components/ConversationsPage";
 import { MetabotAnalyticsUpsellPage } from "./metabot-analytics/components/MetabotAnalyticsUpsellPage/MetabotAnalyticsUpsellPage";
 
-const RoutedConversationStatsPage = withRouteProps(ConversationStatsPage);
-const RoutedConversationsPage = withRouteProps(ConversationsPage);
-const RoutedConversationDetailPage = withRouteProps(ConversationDetailPage);
-const RoutedMcpAnalyticsPage = withRouteProps(McpAnalyticsPage);
-const RoutedCliAnalyticsPage = withRouteProps(CliAnalyticsPage);
-
 export function getAiAuditingRoutes() {
   return (
     <>
       <Route index element={redirect("usage")} />
       <Route element={<MetabotAnalyticsAvailabilityLayout />}>
-        <Route path="usage" element={<RoutedConversationStatsPage />} />
-        <Route path="conversations" element={<RoutedConversationsPage />} />
+        <Route path="usage" element={<ConversationStatsPage />} />
+        <Route path="conversations" element={<ConversationsPage />} />
         <Route
           path="conversations/:convoId"
-          element={<RoutedConversationDetailPage />}
+          element={<ConversationDetailPage />}
         />
       </Route>
       <Route element={<McpAnalyticsAvailabilityLayout />}>
-        <Route path="mcp" element={<RoutedMcpAnalyticsPage />} />
+        <Route path="mcp" element={<McpAnalyticsPage />} />
       </Route>
-      <Route path="cli" element={<RoutedCliAnalyticsPage />} />
+      <Route path="cli" element={<CliAnalyticsPage />} />
     </>
   );
 }
@@ -43,9 +37,9 @@ export function getAiAuditingUpsellRoutes() {
       <Route index element={redirect("usage")} />
       <Route path="usage" element={<MetabotAnalyticsUpsellPage />} />
       <Route element={<McpAnalyticsAvailabilityLayout />}>
-        <Route path="mcp" element={<RoutedMcpAnalyticsPage />} />
+        <Route path="mcp" element={<McpAnalyticsPage />} />
       </Route>
-      <Route path="cli" element={<RoutedCliAnalyticsPage />} />
+      <Route path="cli" element={<CliAnalyticsPage />} />
     </>
   );
 }

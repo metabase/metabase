@@ -22,7 +22,7 @@ import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
-import type { WithRouterProps } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -50,7 +50,8 @@ import type { ConversationFeedback, GeneratedQuery } from "../../types";
 import { ConversationHeader } from "./ConversationHeader";
 import { ToolCallDetailsSidebar } from "./ToolCallDetailsSidebar";
 
-export function ConversationDetailPage({ params }: WithRouterProps) {
+export function ConversationDetailPage() {
+  const { params } = useRouter();
   const convoId = params.convoId;
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [selectedToolCall, setSelectedToolCall] =

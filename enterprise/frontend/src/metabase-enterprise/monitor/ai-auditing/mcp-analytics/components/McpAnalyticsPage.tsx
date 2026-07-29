@@ -7,7 +7,7 @@ import { useSetting } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
-import type { WithRouterProps } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
 
 import {
@@ -31,7 +31,8 @@ import { McpEventsTable } from "./McpEventsTable";
  * across two tabs (Charts and a row-level Events table), sharing URL-state date/user/group
  * filters.
  */
-export function McpAnalyticsPage({ location }: WithRouterProps) {
+export function McpAnalyticsPage() {
+  const { location } = useRouter();
   const [
     { date, user, group, tenant, tab, page, sort_column, sort_direction },
     { patchUrlState },
