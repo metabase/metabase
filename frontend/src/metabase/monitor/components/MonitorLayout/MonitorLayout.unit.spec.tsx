@@ -8,11 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import {
-  createMockLocation,
-  createMockRoutingState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TokenFeatures } from "metabase-types/api";
@@ -115,9 +111,6 @@ const setup = ({
 
   const state = createMockState({
     currentUser: user,
-    routing: createMockRoutingState({
-      locationBeforeTransitions: createMockLocation({ pathname: initialRoute }),
-    }),
     settings,
   });
 
@@ -158,7 +151,7 @@ describe("MonitorLayout", () => {
       ["Background tasks", Urls.monitorTasks()],
       ["Scheduled jobs", Urls.monitorJobs()],
       ["Application logs", Urls.monitorLogs()],
-      ["Model caching log", Urls.monitorModelCaching()],
+      ["Model persistence log", Urls.monitorModelPersistenceLog()],
     ];
 
     expectedTabs.forEach(([name, href]) => {
@@ -198,8 +191,8 @@ describe("MonitorLayout", () => {
       section: "logs",
     },
     {
-      label: "Model caching log",
-      route: Urls.monitorModelCaching(),
+      label: "Model persistence log",
+      route: Urls.monitorModelPersistenceLog(),
       section: "model-caching",
     },
   ] as const;
@@ -308,7 +301,7 @@ describe("MonitorLayout", () => {
       "Scheduled jobs",
       "Application logs",
       "Erroring questions",
-      "Model caching log",
+      "Model persistence log",
       "Alerts management",
     ].forEach((name) => {
       expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
@@ -335,7 +328,7 @@ describe("MonitorLayout", () => {
       "Background tasks",
       "Scheduled jobs",
       "Application logs",
-      "Model caching log",
+      "Model persistence log",
     ].forEach((name) => {
       expect(screen.getByRole("link", { name })).toBeInTheDocument();
     });

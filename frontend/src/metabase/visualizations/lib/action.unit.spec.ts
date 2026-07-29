@@ -34,7 +34,6 @@ describe("performAction", () => {
           {
             hash: "",
             pathname: "/auto/dashboard/adhoc/123Abc",
-            query: {},
             search: "",
           },
         ],
@@ -98,7 +97,6 @@ describe("performAction", () => {
               {
                 hash: "",
                 pathname: url,
-                query: {},
                 search: "",
               },
             ],
@@ -137,7 +135,6 @@ describe("performAction", () => {
               {
                 hash: "",
                 pathname: "/" + url,
-                query: {},
                 search: "",
               },
             ],
@@ -177,7 +174,6 @@ describe("performAction", () => {
             {
               hash: "",
               pathname: "/auto/dashboard/adhoc/123Abc",
-              query: {},
               search: "",
             },
           ],
@@ -217,7 +213,6 @@ describe("performAction", () => {
               hash: "",
               pathname:
                 "/invalid_protocol://localhost/metabase/auto/dashboard/adhoc/123Abc",
-              query: {},
               search: "",
             },
           ],

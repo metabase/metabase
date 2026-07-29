@@ -216,14 +216,20 @@ function McpEventsTableInner({
     [hasTenants, hasPii],
   );
 
+  // Derive from the primitive sort values, not the `sortingOptions` object: the object identity
+  // changes on every render of the parent, and a fresh `effectiveSorting` rebuilds the query below,
+  // which mints fresh metabase-lib UUIDs, churns the RTK cache key, and causes a redundant refetch
+  // on incidental re-renders.
+  const { sort_column: sortColumn, sort_direction: sortDirection } =
+    sortingOptions;
   const effectiveSorting = useMemo(() => {
     const visibleSortColumns = new Set(
       columns.map((column) => column.sort).filter(Boolean),
     );
-    return visibleSortColumns.has(sortingOptions.sort_column)
-      ? sortingOptions
+    return visibleSortColumns.has(sortColumn)
+      ? { sort_column: sortColumn, sort_direction: sortDirection }
       : DEFAULT_SORTING;
-  }, [columns, sortingOptions]);
+  }, [columns, sortColumn, sortDirection]);
 
   const query = useMemo(
     () =>

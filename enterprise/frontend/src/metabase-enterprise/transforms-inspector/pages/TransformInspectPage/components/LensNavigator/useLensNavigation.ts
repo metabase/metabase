@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
 import type { Location } from "metabase/router";
-import { push, replace } from "metabase/router";
+import { push, queryToSearch, replace } from "metabase/router";
 import type { InspectorLensMetadata } from "metabase-types/api";
 
 import type { LensHandle, RouteParams } from "../../types";
@@ -30,7 +30,7 @@ type UseLensNavigationResult = {
 
 export const useLensNavigation = (
   availableLenses: InspectorLensMetadata[],
-  params: RouteParams,
+  params: Partial<RouteParams>,
   location: Location,
 ): UseLensNavigationResult => {
   const dispatch = useDispatch();
@@ -95,7 +95,9 @@ export const useLensNavigation = (
     (handle: LensHandle, isReplace: boolean = false) => {
       const action = isReplace ? replace : push;
       const path = `${basePath}/${handle.id}`;
-      dispatch(action({ pathname: path, query: handle.params }));
+      dispatch(
+        action({ pathname: path, search: queryToSearch(handle.params ?? {}) }),
+      );
     },
     [basePath, dispatch],
   );

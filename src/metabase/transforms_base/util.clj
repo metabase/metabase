@@ -16,6 +16,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
@@ -32,7 +33,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -237,13 +237,15 @@
 
 ;;; ------------------------------------------------- Incremental/Checkpoint Helpers -------------------------------------------------
 
-(defn supported-incremental-filter-type?
-  "Returns true if the given base-type is supported for incremental filtering.
+(defn supported-checkpoint-column?
+  "Returns true if `column` (or any map with `:base-type`/`:effective-type`) can be used for
+  incremental checkpoint filtering.
 
-  We only support temporal (timestamp/tz) and numeric (int/float) types."
-  [base-type]
-  (or (isa? base-type :type/Temporal)
-      (isa? base-type :type/Number)))
+  We support date/datetime and numeric (int/float) columns. Time-only columns are excluded:
+  their watermarks wrap at midnight, so `>` comparisons against them are meaningless."
+  [column]
+  (or (lib.types.isa/date-or-datetime? column)
+      (lib.types.isa/numeric? column)))
 
 (defn- encode-checkpoint-value [v]
   (if (number? v)
@@ -310,10 +312,66 @@
     :else (throw (ex-info (str "Unsupported checkpoint type: " (pr-str base-type))
                           {:base-type base-type}))))
 
-(defn- tag-checkpoint-value
-  "Wrap a raw checkpoint value from the QP into a map `{:value parsed}`."
-  [base-type raw-value]
-  {:value (parse-checkpoint-value base-type raw-value)})
+(declare ->instant)
+
+(defn- apply-lookback
+  "Push a checkpoint lower bound back by the lookback window (`value` `unit`s). Only supported
+  for date and datetime checkpoint columns: time-only columns wrap at midnight, so a window
+  behind the watermark is meaningless (and day-based units don't apply to them)."
+  [checkpoint column {:keys [value unit] :as lookback}]
+  (let [invalid! (fn [msg] (throw (ex-info msg {:transform-message msg, :lookback lookback})))]
+    (cond
+      (not (lib.types.isa/date-or-datetime? column))
+      (invalid! (i18n/tru "A lookback window is only supported for date or datetime checkpoint columns."))
+
+      (nil? unit)
+      (invalid! (i18n/tru "A lookback window requires a unit."))
+
+      (not (pos-int? value))
+      (invalid! (i18n/tru "A lookback window requires a positive integer value."))
+
+      :else
+      (u.date/add checkpoint (keyword unit) (- value)))))
+
+(defn- checkpoint-compare
+  "Compare two parsed checkpoint values. Temporal values compare as instants, since the stored
+  watermark and a fresh QP max can parse to incomparable temporal classes."
+  [base-type a b]
+  (if (isa? base-type :type/Temporal)
+    (compare (->instant a) (->instant b))
+    (compare a b)))
+
+(defn- validate-incremental-source!
+  "Throws a user-facing error when an incremental transform can't compute its source range: a
+  native query without a table variable to inject the filter into, or no checkpoint field
+  selected."
+  [{:keys [source] :as transform}]
+  (when (incremental-target? transform)
+    (when (and (native-query-transform? transform)
+               (not (some (fn [tag] (#{:table "table"} (:type tag)))
+                          (lib/template-tags (:query source)))))
+      (let [msg (i18n/tru (str "Incremental transform with a native query requires a table variable. "
+                               "Please add a table variable to the query and update the checkpoint field."))]
+        (throw (ex-info msg {:transform-message msg}))))
+    (when-not (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])
+      (let [msg (i18n/tru (str "Incremental transform is enabled but no checkpoint field is selected. "
+                               "Please select a checkpoint field in the transform settings."))]
+        (throw (ex-info msg {:transform-message msg}))))))
+
+(defn- checkpoint-column
+  "The checkpoint column fetched from `metadata-provider`, validated to exist, be active, and have
+  a type supported for incremental filtering."
+  [metadata-provider checkpoint-filter-field-id]
+  (let [column (lib.metadata/field metadata-provider checkpoint-filter-field-id)]
+    (when (or (nil? column) (not (:active column)))
+      (throw (ex-info "Checkpoint field does not exist or is not active"
+                      {:checkpoint-filter-field-id checkpoint-filter-field-id})))
+    (when-not (supported-checkpoint-column? column)
+      (throw (ex-info (str "Checkpoint column '" (:name column) "' has unsupported type "
+                           (pr-str (lib.types.isa/column-type column)) ". "
+                           "Only numeric and temporal columns are supported for incremental filtering.")
+                      {:column column})))
+    column))
 
 (defn- inject-filters-into-table-tag
   "Inject `:source-filters` into the table template tag matching the checkpoint field's table.
@@ -354,36 +412,20 @@
    :hi                         values in the source table must be <= this :value.
    :rows-available             count of source rows in (lo, hi] from the same scan; nil if unavailable."
   [{:keys [source] :as transform}]
-  (let [{:keys [source-incremental-strategy]} source
-        {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
-    (when (and (incremental-target? transform)
-               (native-query-transform? transform)
-               (not (some (fn [tag] (#{:table "table"} (:type tag)))
-                          (lib/template-tags (:query source)))))
-      (let [msg (i18n/tru (str "Incremental transform with a native query requires a table variable. "
-                               "Please add a table variable to the query and update the checkpoint field."))]
-        (throw (ex-info msg {:transform-message msg}))))
-    (when (and (incremental-target? transform)
-               (not checkpoint-filter-field-id))
-      (let [msg (i18n/tru (str "Incremental transform is enabled but no checkpoint field is selected. "
-                               "Please select a checkpoint field in the transform settings."))]
-        (throw (ex-info msg {:transform-message msg}))))
+  (let [{:keys [checkpoint-filter-field-id lookback]} (:source-incremental-strategy source)]
+    (validate-incremental-source! transform)
     (when checkpoint-filter-field-id
       (let [{:keys [last_checkpoint_value]} (cond-> transform
                                               (full-incremental-run? transform)
                                               (assoc :last_checkpoint_value nil))
             db-id             (transforms-base.i/target-db-id transform)
             metadata-provider (lib-be/application-database-metadata-provider db-id)
-            column            (lib.metadata/field metadata-provider checkpoint-filter-field-id)
-            _                   (when (or (nil? column) (not (:active column)))
-                                  (throw (ex-info "Checkpoint field does not exist or is not active"
-                                                  {:checkpoint-filter-field-id checkpoint-filter-field-id})))
-            _ (when-not (supported-incremental-filter-type? (:base-type column))
-                (throw (ex-info (str "Checkpoint column '" (:name column) "' has unsupported type " (pr-str (:base-type column)) ". "
-                                     "Only numeric and temporal columns are supported for incremental filtering.")
-                                {:column column})))
-            base-type         (:base-type column)
-            lo                (when last_checkpoint_value (parse-checkpoint-value base-type last_checkpoint_value))
+            column            (checkpoint-column metadata-provider checkpoint-filter-field-id)
+            base-type         (lib.types.isa/column-type column)
+            ;; `checkpoint-lo` is the stored watermark; `lo` is the scan bound, pushed back by any lookback.
+            checkpoint-lo     (when last_checkpoint_value (parse-checkpoint-value base-type last_checkpoint_value))
+            lo                (cond-> checkpoint-lo
+                                (and checkpoint-lo lookback) (apply-lookback column lookback))
 
             ;; Combine max + count in one scan: avoids a second round-trip and pins both
             ;; numbers to the same point-in-time view of the source.
@@ -401,12 +443,23 @@
               ;; instead of NULL for `max()` over an empty relation when the column is non-nullable. Only
               ;; trust the max when the count from the same scan says there were rows, otherwise the
               ;; watermark would silently regress and the next run would reprocess already-seen rows.
-              [(when-not (and cv (zero? cv)) mv) cv])]
+              [(when-not (and cv (zero? cv)) mv) cv])
+
+            ;; The new watermark, clamped to the stored one: with a lookback the scan starts behind
+            ;; it, so an empty scan or a max() over only late rows must not regress `hi` — it would
+            ;; slide further back on every run.
+            hi
+            (cond
+              (some? max-value) (let [parsed-max (parse-checkpoint-value base-type max-value)]
+                                  (if (and checkpoint-lo
+                                           (neg? (checkpoint-compare base-type parsed-max checkpoint-lo)))
+                                    checkpoint-lo
+                                    parsed-max))
+              checkpoint-lo     checkpoint-lo)]
         (cond-> {:column                     column
                  :checkpoint-filter-field-id checkpoint-filter-field-id
                  :lo                         (when lo {:value lo})
-                 :hi                         (cond (some? max-value) (tag-checkpoint-value base-type max-value)
-                                                   lo {:value lo})}
+                 :hi                         (when (some? hi) {:value hi})}
           (some? rows-available) (assoc :rows-available rows-available))))))
 
 (defn preprocess-incremental-query
@@ -468,43 +521,23 @@
         {driver :engine :as database} (t2/select-one :model/Database db-id)]
     (driver/table-exists? driver database target)))
 
-(defn- canonicalize-target
-  "If `target` is workspace-rewritten (i.e. its `(schema, name)` matches the
-   to-side of an active TableRemapping for `db-id`), return `target` with
-   `:schema` and `:name` swapped back to canonical. Else return `target`
-   unchanged. The transform pipeline mutates `:target.schema` to the workspace
-   output schema in `metabase.transforms.execute/resolve-target` so writes
-   land in isolation; `:model/Table` rows must stay at the canonical schema,
-   so we invert here.
-
-   `canonical-schema+name` returns a `{:db :schema :name}` map with slot
-   values already normalized to `:model/Table` row vocabulary (nil for
-   engines that don't emit a slot, string otherwise) — directly usable as a
-   Table-row predicate without further translation."
-  [db-id target]
-  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}]
-    (if-let [{:keys [db schema name]} (ws.table-remapping/canonical-schema+name db-id lookup-spec)]
-      (assoc target :db db :schema schema :name name)
-      target)))
-
 (defn- sync-table!
   ([database target] (sync-table! database target nil))
   ([database target {:keys [create?]}]
-   (let [target (canonicalize-target (:id database) target)]
-     (when-let [table (or (target-table (:id database) target)
-                          (when create?
-                            (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
-       ;; If the table has nil schema, check if the physical table actually lives under
-       ;; the driver's default schema. If so, fix the Table record before syncing.
-       (let [table (if (nil? (:schema table))
-                     (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
-                       (do (t2/update! :model/Table (:id table) {:schema actual-schema})
-                           (-> (t2/select-one :model/Table (:id table))
-                               (t2/hydrate :db)))
-                       table)
-                     table)]
-         (sync/sync-table! table)
-         table)))))
+   (when-let [table (or (target-table (:id database) target)
+                        (when create?
+                          (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
+     ;; If the table has nil schema, check if the physical table actually lives under
+     ;; the driver's default schema. If so, fix the Table record before syncing.
+     (let [table (if (nil? (:schema table))
+                   (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
+                     (do (t2/update! :model/Table (:id table) {:schema actual-schema})
+                         (-> (t2/select-one :model/Table (:id table))
+                             (t2/hydrate :db)))
+                     table)
+                   table)]
+       (sync/sync-table! table)
+       table))))
 
 (defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
@@ -532,37 +565,14 @@
     ;; TODO this should probably be a function in the sync module
     (t2/update! :model/Table (:id table) {:active false})))
 
-(defn- isolated-drop-target
-  "Resolve `target` to the physical warehouse table to drop.
-
-  On a workspace child the canonical target is backed by an isolation-namespace copy recorded
-  in `table_remapping`; the workspace user can only DROP inside its isolation namespace, so the
-  drop must hit that copy — not the canonical table. Looks the copy up via the general
-  canonical→isolated workspace hook (symmetric with [[canonicalize-target]], which uses the
-  inverse). The isolated namespace lives in `:schema` for schema-based drivers and in `:db` for
-  MySQL; collapse to the single `:schema` slot the driver drop path qualifies on. Off-workspace
-  the hook returns nil and `target` is dropped unchanged."
-  [db-id target]
-  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}]
-    (if-let [{:keys [db schema name]} (ws.table-remapping/workspace-remap-schema+name db-id lookup-spec)]
-      (assoc target :schema (or schema db) :name name)
-      target)))
-
 (defn delete-target-table!
-  "Drop a transform's output table and deactivate its app-db Table row.
-
-  In workspace-isolation mode the transform writes to an isolation-namespace copy, so the drop
-  resolves the canonical `:target` to that copy (see [[isolated-drop-target]]); dropping the
-  canonical name would fail (the workspace user is read-only there) or hit the wrong table. The
-  app-db Table row that gets deactivated is always the canonical `:target`, since that is what
-  sync surfaces. Off-workspace the two are identical."
+  "Drop a transform's output table and deactivate its app-db Table row."
   [{:keys [id target], :as transform}]
   (when target
     (let [database-id (transforms-base.i/target-db-id transform)]
       (when database-id
         (if-let [{driver :engine :as database} (t2/select-one :model/Database database-id)]
-          (let [drop-target (->> (update target :type keyword)
-                                 (isolated-drop-target database-id))]
+          (let [drop-target (update target :type keyword)]
             (driver/drop-transform-target! driver database drop-target)
             (log/info "Deactivating  target " (pr-str target) "for transform" id)
             (deactivate-table! database target))
@@ -727,7 +737,7 @@
       (driver/refresh-table-stats! (:engine database) database (:schema target) (:name target)
                                    (keyword (:type target)))
       (catch Throwable t
-        (log/warnf t "refresh-table-stats! failed for %s.%s" (:schema target) (:name target))))
+        (log/warnf "refresh-table-stats! failed for %s.%s: %s" (:schema target) (:name target) (ex-message t))))
     ;; Publish event after sync so the table exists in AppDB.
     (when publish-events?
       (events/publish-event! :event/transform-run-complete

@@ -55,9 +55,9 @@
 ;; Set of `:model/X` keywords defined by this module that it allows others to reference. By default all are private.
 ;; If you know what you're doing, we support an :any keyword, but let's prefer explicit sets for now.
 ;;
-;;    enterprise/workspaces
+;;    transforms
 ;;    {...
-;;     :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}}
+;;     :model-exports #{:model/Transform :model/TransformRun}}
 ;;
 ;; ## `model-imports`:
 ;;
@@ -109,8 +109,7 @@
            search
            settings
            util
-           warehouses
-           workspaces}
+           warehouses}
    :model-exports #{:model/Action}
    :model-imports #{:model/Card
                     :model/Collection
@@ -157,8 +156,7 @@
 
   agent-api
   {:team    "Metabot"
-   :api     #{metabase.agent-api.api
-              metabase.agent-api.init}
+   :api     #{metabase.agent-api.api metabase.agent-api.init metabase.agent-api.usage}
    :uses    #{ai-tracing
               api
               auth-identity
@@ -170,6 +168,7 @@
               lib-be
               llm
               metabot
+              premium-features
               queries
               query-permissions
               query-processor
@@ -184,7 +183,8 @@
                     :model/DashboardTab
                     :model/Database
                     :model/Table
-                    :model/User}}
+                    :model/User}
+   :model-exports #{:model/AgentApiCallLog}}
 
   agent-lib
   {:team "Metabot"
@@ -851,10 +851,8 @@
            metabase.driver.sql-jdbc.execute
            metabase.driver.sql-jdbc.execute.diagnostic
            metabase.driver.sql-jdbc.sync
-           ;; TODO (lbrdnk 2025/12/17): We should revisit addition of the following line. I've added it to make
-           ;; tests pass as we are using it directly with ee/workspaces module. I believe later, when workspaces
-           ;; are in better state quality wise, it should become part of the driver api and that should be used
-           ;; instead of calling directly into the normalize module.
+           ;; TODO (lbrdnk 2025/12/17): We should revisit addition of the following line. Ideally this would
+           ;; become part of the driver api rather than callers reaching directly into the normalize module.
            metabase.driver.sql.normalize
            metabase.driver.sql.query-processor
            metabase.driver.sql.util
@@ -878,10 +876,7 @@
            tracing
            util
            warehouse-schema
-           warehouses
-           ;; `metabase.driver.sync/include-schema?` skips workspace iso schemas
-           ;; on parent (non-workspace-mode) instances. See GHY-3489.
-           workspaces}
+           warehouses}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
   driver-api
@@ -1048,6 +1043,7 @@
   health-inspector
   {:team "Querying Platform"
    :api #{metabase.health-inspector.api
+          metabase.health-inspector.core
           metabase.health-inspector.init}
    :uses #{api
            lib
@@ -1418,8 +1414,7 @@
            task
            task-history
            tracing
-           util
-           workspaces}
+           util}
    :model-exports #{:model/PersistedInfo}
    :model-imports #{:model/Card :model/Database}}
 
@@ -1627,7 +1622,9 @@
            request
            settings
            util}
-   :model-imports #{:model/DataPermissions
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DataPermissions
                     :model/Database
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
@@ -1879,7 +1876,6 @@
               metabase.query-processor.interface
               metabase.query-processor.metadata
               metabase.query-processor.middleware.constraints
-              metabase.query-processor.middleware.enterprise
               metabase.query-processor.middleware.permissions
               metabase.query-processor.parameters.dates
               metabase.query-processor.parameters.operators
@@ -1928,8 +1924,7 @@
            system
            tracing
            users
-           util
-           workspaces}
+           util}
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
@@ -2016,6 +2011,7 @@
            metabase.search.core
            metabase.search.engine
            metabase.search.in-place.scoring
+           metabase.search.index-health
            metabase.search.ingestion
            metabase.search.init
            metabase.search.scoring
@@ -2030,6 +2026,7 @@
            collections
            config
            events
+           health-inspector
            lib
            lib-be
            models
@@ -2299,8 +2296,7 @@
            tracing
            util
            warehouse-schema
-           warehouses
-           workspaces}
+           warehouses}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
@@ -2483,8 +2479,7 @@
            premium-features
            query-processor
            sync
-           util
-           workspaces}
+           util}
    :friends #{transforms
               enterprise/transforms-python}}
 
@@ -2560,8 +2555,7 @@
            settings
            sync
            util
-           warehouse-schema
-           workspaces}
+           warehouse-schema}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -2814,13 +2808,6 @@
                     :model/Field
                     :model/Table}}
 
-  workspaces
-  {:team "Graphy"
-   :api #{metabase.workspaces.core
-          metabase.workspaces.table-remapping}
-   :uses #{premium-features
-           util}}
-
   xrays
   {:team "Graphy"
    :api  #{metabase.xrays.api
@@ -2894,8 +2881,7 @@
            setup
            sync
            users
-           util
-           enterprise/workspaces}
+           util}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
   enterprise/advanced-permissions
@@ -2922,6 +2908,17 @@
                     :model/Sandbox
                     :model/Table}}
 
+  enterprise/agent-api
+  {:team "Metabot"
+   :api  #{metabase-enterprise.agent-api.init}
+   :uses #{agent-api
+           analytics
+           metabot
+           premium-features
+           task
+           util}
+   :model-imports #{:model/AgentApiCallLog}}
+
   enterprise/analytics
   {:team "UX West"
    :api  #{}
@@ -2932,7 +2929,7 @@
            enterprise/scim
            enterprise/semantic-search
            enterprise/sso}
-   :model-imports #{:model/Database :model/Sandbox :model/Workspace}}
+   :model-imports #{:model/Database :model/Sandbox}}
 
   enterprise/api
   {:team "UX West"
@@ -3169,8 +3166,7 @@
            settings
            util
            warehouse-schema
-           warehouses
-           workspaces}
+           warehouses}
    :model-exports #{:model/DatabaseRouter}
    :model-imports #{:model/Database :model/Transform}}
 
@@ -3257,9 +3253,12 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.entity-retrieval.init}
    :uses #{analytics-interface
+           app-db
            collections
            entity-retrieval
+           health-inspector
            premium-features
+           search
            task
            util
            enterprise/semantic-search}
@@ -3540,8 +3539,7 @@
            settings
            system
            users
-           util
-           enterprise/serialization}
+           util}
    :model-imports #{:model/ApiKey
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
@@ -3582,7 +3580,9 @@
            metabase-enterprise.semantic-search.core
            metabase-enterprise.semantic-search.db.datasource
            metabase-enterprise.semantic-search.embedding
-           metabase-enterprise.semantic-search.init}
+           metabase-enterprise.semantic-search.embedding-health
+           metabase-enterprise.semantic-search.init
+           metabase-enterprise.semantic-search.util}
    :uses #{activity-feed
            analytics
            analytics-interface
@@ -3592,6 +3592,7 @@
            config
            connection-pool
            events
+           health-inspector
            lib-be
            llm
            metabot
@@ -3609,10 +3610,7 @@
 
   enterprise/serialization
   {:team "Graphy"
-   :api  #{metabase-enterprise.serialization.api
-           metabase-enterprise.serialization.cmd
-           metabase-enterprise.serialization.core
-           metabase-enterprise.serialization.v2.backfill-ids}
+   :api  #{metabase-enterprise.serialization.api metabase-enterprise.serialization.cmd metabase-enterprise.serialization.core}
    :friends #{enterprise/memoize-monitor}
    :uses #{analytics
            api
@@ -3693,7 +3691,7 @@
 
   enterprise/tenants
   {:team "Admin Webapp"
-   :api  #{metabase-enterprise.tenants.api}
+   :api  #{metabase-enterprise.tenants.api metabase-enterprise.tenants.init}
    :uses #{api
            audit-app
            auth-identity
@@ -3772,31 +3770,7 @@
            premium-features
            upload
            util}
-   :model-imports #{:model/Database :model/Table}}
-
-  enterprise/workspaces
-  {:team "Graphy"
-   :api  #{metabase-enterprise.workspaces.api
-           metabase-enterprise.workspaces.core
-           metabase-enterprise.workspaces.init}
-   :uses #{api
-           app-db
-           cache
-           driver
-           lib
-           models
-           permissions
-           premium-features
-           query-processor
-           sample-data
-           settings
-           sql-tools
-           util
-           workspaces}
-   :model-exports #{:model/Workspace}
-   :model-imports #{:model/Database
-                    :model/Table
-                    :model/User}}}
+   :model-imports #{:model/Database :model/Table}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

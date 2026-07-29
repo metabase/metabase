@@ -33,7 +33,7 @@ import { McpEventsTable } from "./McpEventsTable";
  */
 export function McpAnalyticsPage({ location }: WithRouterProps) {
   const [
-    { date, user, group, tenant, tab, page, sortColumn, sortDirection },
+    { date, user, group, tenant, tab, page, sort_column, sort_direction },
     { patchUrlState },
   ] = useUrlState(location, mcpUrlStateConfig);
 
@@ -64,8 +64,8 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
   const chartFilters = { dateFilter, userId, groupId, tenantId };
 
   const sortingOptions = useMemo(
-    () => ({ sort_column: sortColumn, sort_direction: sortDirection }),
-    [sortColumn, sortDirection],
+    () => ({ sort_column, sort_direction }),
+    [sort_column, sort_direction],
   );
 
   const { isInitialLoading, isRefetching, hasData, count, error } =
@@ -236,8 +236,8 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
                     sortingOptions={sortingOptions}
                     onSortingOptionsChange={(newSorting) =>
                       patchUrlState({
-                        sortColumn: newSorting.sort_column,
-                        sortDirection: newSorting.sort_direction,
+                        sort_column: newSorting.sort_column,
+                        sort_direction: newSorting.sort_direction,
                         page: 0,
                       })
                     }

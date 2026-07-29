@@ -20,7 +20,7 @@ Metabase Cloud only works with:
 
 - [Metabase's officially supported databases](../databases/connecting.md#connecting-to-supported-databases) (with the exception of SQLite and H2).
 
-Metabase Cloud doesn't support [community database drivers](../developers-guide/community-drivers.md), or file-based databases (SQLite and H2), because there's currently no file storage available.
+Metabase Cloud doesn't support [community database drivers](../developers-guide/community-drivers.md), or file-based databases (SQLite), because there's currently no file storage available.
 
 ## Limited custom certificate support
 

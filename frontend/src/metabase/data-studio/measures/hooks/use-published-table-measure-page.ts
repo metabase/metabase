@@ -20,7 +20,7 @@ type PublishedTableMeasurePageParams = {
 };
 
 export function usePublishedTableMeasurePage(
-  params: PublishedTableMeasurePageParams,
+  params: Partial<PublishedTableMeasurePageParams>,
 ) {
   const dispatch = useDispatch();
   const [sendToast] = useToast();

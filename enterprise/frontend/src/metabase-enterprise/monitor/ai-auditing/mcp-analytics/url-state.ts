@@ -19,8 +19,8 @@ type McpPageUrlState = {
   tab: McpTab;
   /** Current page of the row-level events table, 0-indexed. */
   page: number;
-  sortColumn: McpEventSortColumn;
-  sortDirection: SortDirection;
+  sort_column: McpEventSortColumn;
+  sort_direction: SortDirection;
 };
 
 export type McpUrlState = FilterUrlState & McpPageUrlState;
@@ -58,15 +58,15 @@ const mcpPageUrlStateConfig: UrlStateConfig<McpPageUrlState> = {
   parse: (query) => ({
     tab: parseTab(query.tab),
     page: parsePage(query.page),
-    sortColumn: parseSortColumn(query.sortColumn),
-    sortDirection: parseSortDirection(query.sortDirection),
+    sort_column: parseSortColumn(query.sort_column),
+    sort_direction: parseSortDirection(query.sort_direction),
   }),
-  serialize: ({ tab, page, sortColumn, sortDirection }) => ({
+  serialize: ({ tab, page, sort_column, sort_direction }) => ({
     tab: tab === DEFAULT_TAB ? undefined : tab,
     page: page === 0 ? undefined : String(page),
-    sortColumn: sortColumn === DEFAULT_SORT_COLUMN ? undefined : sortColumn,
-    sortDirection:
-      sortDirection === DEFAULT_SORT_DIRECTION ? undefined : sortDirection,
+    sort_column: sort_column === DEFAULT_SORT_COLUMN ? undefined : sort_column,
+    sort_direction:
+      sort_direction === DEFAULT_SORT_DIRECTION ? undefined : sort_direction,
   }),
 };
 

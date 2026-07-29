@@ -165,8 +165,7 @@
         (try
           (u.date/with-time-zone-same-instant t results-timezone)
           (catch Throwable _
-            (log/warnf "Failed to construct ZonedDateTime from `%s` using `%s` timezone."
-                       (pr-str t)
+            (log/warnf "Failed to construct ZonedDateTime using `%s` timezone."
                        (pr-str results-timezone))
             t))))))
 
@@ -358,11 +357,11 @@
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
    Such as prepare statement"
   [database query]
-  (log/infof "Running Athena query : '%s'..." query)
+  (log/info "Running Athena query...")
   (try
     (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database) (str/replace query ";" " ") {:raw? true})
     (catch Exception e
-      (log/error (u/format-color 'red "Failed to execute query: %s %s" query (.getMessage e))))))
+      (log/error (u/format-color 'red "Failed to execute query: %s" (.getMessage e))))))
 
 (defn- describe-database->clj
   "Workaround for wrong getColumnCount response by the driver (huh?)"
@@ -472,7 +471,7 @@
           (describe-table-fields-with-nested-fields database schema table-name)
           (describe-table-fields-without-nested-fields driver schema table-name columns)))
       (catch Throwable e
-        (log/errorf e "Error retrieving fields for DB %s.%s" schema table-name)
+        (log/errorf "Error retrieving fields for DB %s.%s: %s" schema table-name (ex-message e))
         (throw e)))))
 
 ;; Because describe-table-fields might fail, we catch the error here and return an empty set of columns

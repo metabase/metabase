@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { useDispatch, useSelector } from "metabase/redux";
-import { push, replace } from "metabase/router";
-import { getLocation } from "metabase/selectors/routing";
+import { useDispatch } from "metabase/redux";
+import { push, replace, useLocation } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { TablePicker } from "./components";
@@ -11,7 +10,7 @@ import type { ChangeOptions, TreePath } from "./types";
 export function RouterTablePicker(props: TreePath) {
   const dispatch = useDispatch();
   const [value, setValue] = useState(props);
-  const location = useSelector(getLocation);
+  const location = useLocation();
   const isSegments = location.pathname?.startsWith("/admin/datamodel/segment");
 
   const onChange = useCallback(

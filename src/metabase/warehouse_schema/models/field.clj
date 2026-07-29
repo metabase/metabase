@@ -269,10 +269,6 @@
      :id
      {:default false})))
 
-(defmethod serdes/hash-fields :model/Field
-  [_field]
-  [:name (serdes/hydrated-hash :table :table_id) (serdes/hydrated-hash :parent :parent_id)])
-
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
 (defn values

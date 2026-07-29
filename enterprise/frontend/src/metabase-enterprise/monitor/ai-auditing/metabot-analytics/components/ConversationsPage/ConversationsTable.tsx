@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useScrollToTop } from "metabase/common/hooks";
 import { useSortingStateChange } from "metabase/common/hooks/use-sorting-state-change";
@@ -15,6 +16,7 @@ import {
   Card,
   Center,
   Ellipsified,
+  type RenderRowLink,
   SortableHeaderPill,
   Tooltip,
   TreeTable,
@@ -88,6 +90,11 @@ export function ConversationsTable({
     [],
   );
 
+  const renderRowLink = useCallback<RenderRowLink<ConversationRow>>(
+    (row, props) => <Link to={getRowHref(row)} {...props} />,
+    [getRowHref],
+  );
+
   // This only covers keyboard activation (Enter on a keyboard-focused row).
   const handleRowActivate = useCallback(
     (row: Row<ConversationRow>) => {
@@ -145,7 +152,7 @@ export function ConversationsTable({
           ariaLabel={t`Conversations`}
           emptyState={<MonitorEmptyState label={t`No conversations found`} />}
           getRowProps={() => ({ "data-testid": "conversation" })}
-          getRowHref={getRowHref}
+          renderRowLink={renderRowLink}
         />
       )}
     </Card>

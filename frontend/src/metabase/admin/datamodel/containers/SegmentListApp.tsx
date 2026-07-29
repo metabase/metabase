@@ -13,7 +13,7 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import type { Location } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { getShallowTables } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button } from "metabase/ui";
@@ -94,11 +94,8 @@ function SegmentListAppInner({ segments, tableSelector }: Props) {
 
 const FilteredSegmentList = FilteredToUrlTable(SegmentListAppInner);
 
-type SegmentListAppProps = {
-  location: Location<{ table?: string }>;
-};
-
-export function SegmentListApp({ location }: SegmentListAppProps) {
+export function SegmentListApp() {
+  const { location } = useRouter();
   const { data: segments, isLoading, error } = useListSegmentsQuery();
 
   if (isLoading || error || !segments) {

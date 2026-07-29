@@ -222,6 +222,31 @@ function setup({
   );
 }
 
+// pMBQL order-by clause: [direction, opts, ["field", opts, fieldId]]
+type OrderByClause = [string, unknown, [string, unknown, number]];
+
+type EventsMbqlStage = {
+  page?: { page: number; items: number };
+  "order-by"?: OrderByClause[];
+};
+
+/**
+ * The first MBQL stage of every adhoc `dataset` request issued so far. The row-level events query
+ * is the one that carries a `:page` clause on stage 0 (the chart queries don't), so tests filter
+ * on `.page`. Non-string bodies are skipped.
+ */
+const eventsDatasetStages = (): EventsMbqlStage[] =>
+  fetchMock.callHistory
+    .calls("dataset")
+    .map((call) => call.options?.body)
+    .filter((body): body is string => typeof body === "string")
+    .map((body) => {
+      // JSON.parse is untyped (`any`); the request body is an MBQL query, so assert its shape.
+      const query = JSON.parse(body) as { stages?: EventsMbqlStage[] };
+      return query.stages?.[0];
+    })
+    .filter((stage): stage is EventsMbqlStage => stage != null);
+
 describe("McpAnalyticsPage", () => {
   it("renders the header, filters, and charts tab", async () => {
     setup();
@@ -279,16 +304,9 @@ describe("McpAnalyticsPage", () => {
     );
 
     await waitFor(() => {
-      const sortedAscending = fetchMock.callHistory
-        .calls("dataset")
-        .some((call) => {
-          const body = call.options?.body;
-          if (typeof body !== "string") {
-            return false;
-          }
-          const stage = JSON.parse(body).stages?.[0];
-          return stage?.page && stage["order-by"]?.[0]?.[0] === "asc";
-        });
+      const sortedAscending = eventsDatasetStages().some(
+        (stage) => stage.page != null && stage["order-by"]?.[0]?.[0] === "asc",
+      );
       expect(sortedAscending).toBe(true);
     });
   });
@@ -313,15 +331,9 @@ describe("McpAnalyticsPage", () => {
 
     // Advancing issues an adhoc dataset query for the second MBQL page (1-indexed).
     await waitFor(() => {
-      const requestedPage2 = fetchMock.callHistory
-        .calls("dataset")
-        .some((call) => {
-          const body = call.options?.body;
-          if (typeof body !== "string") {
-            return false;
-          }
-          return JSON.parse(body)?.stages?.[0]?.page?.page === 2;
-        });
+      const requestedPage2 = eventsDatasetStages().some(
+        (stage) => stage.page?.page === 2,
+      );
       expect(requestedPage2).toBe(true);
     });
   });
@@ -342,6 +354,32 @@ describe("McpAnalyticsPage", () => {
     expect(history?.getCurrentLocation().search).toContain("page=1");
   });
 
+  it("issues exactly one events query per page change (no redundant refetch)", async () => {
+    const { history } = setup({ dataset: multiPageDatasetResponse });
+
+    await screen.findByRole("heading", { name: "MCP analytics" });
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Tool calls" }),
+    );
+    await within(screen.getByRole("tabpanel")).findByRole("treegrid");
+
+    // Dataset calls for the events query's second page (MBQL `:page` is 1-indexed, so UI page 1).
+    const page2EventsCalls = () =>
+      eventsDatasetStages().filter((stage) => stage.page?.page === 2);
+
+    await userEvent.click(await screen.findByLabelText("Next page"));
+
+    // Wait for the debounced URL update to land — it's the last re-render trigger around a page
+    // change, and where the old `sortingOptions`-object dependency used to fire redundant refetches.
+    await waitFor(() =>
+      expect(history?.getCurrentLocation().search).toContain("page=1"),
+    );
+
+    // The query memo depends on the primitive sort values, so it stays referentially stable across
+    // those re-renders: one page change → exactly one events request, not one per render.
+    expect(page2EventsCalls()).toHaveLength(1);
+  });
+
   it("orders the events query by a total order (created_at + tool_call_id) for stable paging", async () => {
     setup();
 
@@ -354,19 +392,10 @@ describe("McpAnalyticsPage", () => {
     // created_at followed by the tool_call_id (PK) tiebreaker, so pages can't skip/duplicate rows
     // on tied timestamps.
     await waitFor(() => {
-      const eventsStage = fetchMock.callHistory
-        .calls("dataset")
-        .map((call) => call.options?.body)
-        .filter((body): body is string => typeof body === "string")
-        .map((body) => JSON.parse(body).stages?.[0])
-        .find((stage) => stage?.page);
-      // pMBQL order-by clause: [direction, opts, ["field", opts, fieldId]]
-      const orderBy = eventsStage?.["order-by"] as [
-        string,
-        object,
-        [string, object, number],
-      ][];
-      expect(orderBy?.map((clause) => clause[2][2])).toEqual([
+      const eventsStage = eventsDatasetStages().find(
+        (stage) => stage.page != null,
+      );
+      expect(eventsStage?.["order-by"]?.map((clause) => clause[2][2])).toEqual([
         CREATED_AT_FIELD_ID,
         TOOL_CALL_ID_FIELD_ID,
       ]);

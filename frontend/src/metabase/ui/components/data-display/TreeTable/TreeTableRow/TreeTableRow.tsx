@@ -5,8 +5,6 @@ import type { MouseEvent } from "react";
 import { memo, useMemo } from "react";
 import { t } from "ttag";
 
-// eslint-disable-next-line boundaries/element-types -- this UI-library row renders a routing Link; it predates the metabase/router facade and should move out of metabase/ui
-import { Link } from "metabase/router";
 import { Flex, Loader } from "metabase/ui";
 
 import { ExpandButton } from "../ExpandButton";
@@ -251,7 +249,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
   classNames,
   styles,
   getRowProps,
-  href,
+  renderRowLink,
   renderSubRow,
   hierarchical = true,
   isClickable,
@@ -287,18 +285,15 @@ export function TreeTableRow<TData extends TreeNodeData>({
   );
 
   const renderContent = () => {
-    const subRowContent = renderSubRow?.(row) ?? null;
-    return href ? (
-      <Link to={href} className={S.link}>
-        {content}
-        {subRowContent}
-      </Link>
-    ) : (
+    const rowContent = (
       <>
         {content}
-        {subRowContent}
+        {renderSubRow?.(row) ?? null}
       </>
     );
+    return renderRowLink
+      ? renderRowLink(row, { className: S.link, children: rowContent })
+      : rowContent;
   };
 
   if (typeof virtualItemOrPinnedPosition === "string") {

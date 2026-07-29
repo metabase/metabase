@@ -34,10 +34,6 @@ Generates a markdown file with some documentation and an example configuration f
 
 Print a list of all multimethods available for a driver to implement, optionally with their docstrings.
 
-## `drop-entity-ids`
-
-Drop entity IDs for instances of serializable models. Useful for migrating from v1 serialization (x.46 and earlier) to v2 (x.47+).
-
 ## `dump-to-h2 h2-filename opts`
 
 Transfer data from existing database to newly created H2 DB with specified filename. Target H2 file is deleted before dump, unless the --keep-existing flag is given.
@@ -102,10 +98,6 @@ Reset the password for a user with `email-address`.
 ## `rotate-encryption-key new-key`
 
 Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars.
-
-## `seed-entity-ids`
-
-Add entity IDs for instances of serializable models that don't already have them.
 
 ## `version`
 

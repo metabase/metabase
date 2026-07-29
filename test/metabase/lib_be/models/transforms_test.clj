@@ -112,3 +112,52 @@
              (lib-be/normalize-query {:database 1
                                       :type     :query
                                       :query    {:source-table 2}}))))))
+
+(defn- write-read-query [query]
+  ((:out lib-be/transform-query) ((:in lib-be/transform-query) query)))
+
+(defn- native-card-tag-query [tag-name tag]
+  {:database (mt/id)
+   :type     :native
+   :native   {:query         (str "SELECT * FROM {{" tag-name "}}")
+              :template-tags {tag-name tag}}})
+
+(deftest ^:parallel card-template-tag-names-preserved-on-save-test
+  (testing "card tag names are stored verbatim on save, whatever id or slug they embed; the FE owns
+            tag naming, and stale ids are only repaired during serdes import (#77516)"
+    (let [tag-name "#999-some_arbitrary-slug"]
+      (is (=? {:stages [{:native        (str "SELECT * FROM {{" tag-name "}}")
+                         :template-tags [{:type         :card
+                                          :name         tag-name
+                                          :display-name "Anything At All"
+                                          :card-id      123}]}]}
+              (write-read-query
+               (native-card-tag-query tag-name
+                                      {:id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
+                                       :name         tag-name
+                                       :display-name "Anything At All"
+                                       :type         :card
+                                       :card-id      123})))))))
+
+(deftest ^:parallel duplicate-card-template-tags-preserved-on-save-test
+  (testing "two refs to the same card under different tag names save unchanged (#77516)"
+    (let [tag-a "#123-foo"
+          tag-b "#123-bar"
+          sql   (str "SELECT 1 FROM {{" tag-a "}} AS a, {{" tag-b "}} AS b")]
+      (is (=? {:stages [{:native        sql
+                         :template-tags [{:type :card, :name tag-a, :card-id 123}
+                                         {:type :card, :name tag-b, :card-id 123}]}]}
+              (write-read-query
+               {:database (mt/id)
+                :type     :native
+                :native   {:query         sql
+                           :template-tags {tag-a {:id           "cc000001-0000-0000-0000-000000000001"
+                                                  :name         tag-a
+                                                  :display-name "Foo"
+                                                  :type         :card
+                                                  :card-id      123}
+                                           tag-b {:id           "cc000002-0000-0000-0000-000000000002"
+                                                  :name         tag-b
+                                                  :display-name "Bar"
+                                                  :type         :card
+                                                  :card-id      123}}}}))))))

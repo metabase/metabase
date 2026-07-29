@@ -57,17 +57,11 @@
                 (string? id-str)
                 (re-matches #"^[A-Za-z0-9_-]{21}$" id-str))))
 
-(defn identity-hash?
-  "Returns true if s is a valid identity hash string."
-  [s]
-  (boolean (re-matches #"^[0-9a-fA-F]{8}$" s)))
-
 (defn- portable-id?
-  "True if the provided string is either an Entity ID or identity-hash string."
+  "True if the provided string is an Entity ID."
   [s]
   (and (string? s)
-       (or (entity-id? s)
-           (identity-hash? s))))
+       (entity-id? s)))
 
 (defn serialized-query-source-table
   "Given a serialized query (with portable references), returns the portable reference of the table it is based

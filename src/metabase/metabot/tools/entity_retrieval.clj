@@ -197,6 +197,6 @@
       ;; library is empty" — say so in :output (the only channel the agent reads) so it doesn't confidently
       ;; tell the user nothing matches. No :structured-output: that feeds the FE a result payload, and there's
       ;; no successful search to render.
-      (log/error e "Error in retrieve_library_entities")
+      (log/errorf "Error in retrieve_library_entities: %s" (ex-message e))
       {:output (str "The library search is temporarily unavailable (" (or (ex-message e) "unknown error")
                     "). This does not mean the library is empty; the search could not be run.")})))

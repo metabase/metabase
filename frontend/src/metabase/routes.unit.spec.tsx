@@ -100,8 +100,8 @@ describe("application routes", () => {
       ["/admin/tools/logs", "/monitor/logs"],
       ["/admin/tools/logs/levels", "/monitor/logs/levels"],
       ["/admin/tools/errors", "/monitor/errors"],
-      ["/admin/tools/model-caching", "/monitor/model-caching"],
-      ["/admin/tools/model-caching/9", "/monitor/model-caching/9"],
+      ["/admin/tools/model-caching", "/monitor/model-persistence-log"],
+      ["/admin/tools/model-caching/9", "/monitor/model-persistence-log/9"],
       ["/admin/tools/notifications", "/monitor/notifications"],
       ["/admin/tools/notifications/13", "/monitor/notifications/13"],
     ])("redirects %s to %s", async (initialRoute, expectedPathname) => {

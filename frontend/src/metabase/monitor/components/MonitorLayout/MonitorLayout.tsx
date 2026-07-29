@@ -19,8 +19,7 @@ import {
   AreaTabGroup,
 } from "metabase/nav/components/AreaLayout";
 import { useSelector } from "metabase/redux";
-import { Outlet } from "metabase/router";
-import { getLocation } from "metabase/selectors/routing";
+import { Outlet, useLocation } from "metabase/router";
 import { FixedSizeIcon, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -42,7 +41,7 @@ function getActiveSection(pathname: string): MonitorSection | null {
     .with(P.string.startsWith(Urls.monitorJobs()), () => "jobs")
     .with(P.string.startsWith(Urls.monitorLogs()), () => "logs")
     .with(
-      P.string.startsWith(Urls.monitorModelCaching()),
+      P.string.startsWith(Urls.monitorModelPersistenceLog()),
       () => "model-caching",
     )
     .with(
@@ -71,7 +70,7 @@ export function MonitorLayout() {
   });
   const isNavbarOpened = _isNavbarOpened !== false;
 
-  const { pathname } = useSelector(getLocation);
+  const { pathname } = useLocation();
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
   const hasAiControlsFeature = useHasTokenFeature("ai_controls");
@@ -159,9 +158,9 @@ export function MonitorLayout() {
             onClick={() => trackMonitorSectionClicked("logs")}
           />
           <AreaTab
-            label={t`Model caching log`}
+            label={t`Model persistence log`}
             icon="bolt"
-            to={Urls.monitorModelCaching()}
+            to={Urls.monitorModelPersistenceLog()}
             isSelected={activeSection === "model-caching"}
             showLabel={isNavbarOpened}
             onClick={() => trackMonitorSectionClicked("model-caching")}

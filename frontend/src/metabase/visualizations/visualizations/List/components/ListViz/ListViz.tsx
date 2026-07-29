@@ -13,6 +13,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
   ColumnSettingDefinition,
+  FormattableColumn,
   VisualizationDefinition,
   VisualizationPassThroughProps,
   VisualizationProps,
@@ -105,7 +106,7 @@ const vizDefinition: VisualizationDefinition = {
   },
 
   // TODO Unify with the same code in Table viz
-  columnSettings: (column: DatasetColumn) => {
+  columnSettings: (column: FormattableColumn) => {
     const settings: Record<
       string,
       ColumnSettingDefinition<unknown, unknown>
@@ -251,7 +252,7 @@ const vizDefinition: VisualizationDefinition = {
   },
 };
 
-export const ListViz = ({
+const ListVizComponent = ({
   card,
   metadata,
   data,
@@ -331,4 +332,4 @@ export const ListViz = ({
   );
 };
 
-Object.assign(ListViz, vizDefinition);
+export const ListViz = Object.assign(ListVizComponent, vizDefinition);

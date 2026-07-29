@@ -58,8 +58,8 @@
 
 (def ^:dynamic *deserializing?*
   "This is dynamically bound to true when deserializing. A few pieces of the Toucan magic are undesirable for
-  deserialization. Most notably, we don't want to generate an `:entity_id`, as that would lead to duplicated entities
-  on a future deserialization."
+  deserialization and are skipped based on this var. (Entity ids are not one of them: the insert hook generates an
+  `:entity_id` whenever it is missing, deserializing or not — ingested entities carry their own.)"
   false)
 
 (def ^{:arglists '([x & _args])} dispatch-on-model
@@ -157,7 +157,7 @@
     (try
       (json/decode s keywordize-keys?)
       (catch Throwable e
-        (log/error e "Error parsing JSON")
+        (log/errorf "Error parsing JSON: %s" (ex-message e))
         s))
     s))
 
@@ -206,7 +206,7 @@
     (try
       (doall (f x))
       (catch Throwable e
-        (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red x))
+        (log/errorf "Unable to normalize: %s" (ex-message e))
         nil))))
 
 (def ^{:deprecated "0.57.0"} transform-legacy-field-ref
@@ -314,8 +314,8 @@
       (catch Throwable e
         (if (or (encryption/possibly-encrypted-string? decrypted)
                 (encryption/possibly-encrypted-bytes? decrypted))
-          (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
-          (log/error e "Error parsing JSON"))  ; same message as in `json-out`
+          (log/error "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
+          (log/errorf "Error parsing JSON: %s" (ex-message e)))  ; same message as in `json-out`
         v))))
 
 ;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
@@ -366,7 +366,7 @@
                          :else                 (try
                                                  (mbql.normalize/normalize x)
                                                  (catch Throwable e
-                                                   (log/debugf e "Error normalizing column settings key %s" (pr-str x))
+                                                   (log/debugf "Error normalizing column settings key %s: %s" (pr-str x) (ex-message e))
                                                    nil)))))
                     json/encode))
           (normalize-column-settings [column-settings]
@@ -393,7 +393,7 @@
                 (mbql.normalize/normalize form)
                 (catch Exception e
                   (log/warnf "Unable to normalize visualization-settings part %s: %s"
-                             (u/pprint-to-str 'red form)
+                             (pr-str form)
                              (ex-message e))
                   form))
 
@@ -565,12 +565,8 @@
       add-updated-at-timestamp))
 
 (defn- add-entity-id [obj & _]
-  (if (or (contains? obj :entity_id)
-          *deserializing?*)
-    ;; Don't generate a new entity_id if either: (a) there's already one set; or (b) we're deserializing.
-    ;; Generating them at deserialization time can lead to duplicated entities if they're deserialized again.
-    obj
-    (assoc obj :entity_id (u/generate-nano-id))))
+  (cond-> obj
+    (nil? (:entity_id obj)) (assoc :entity_id (u/generate-nano-id))))
 
 (t2/define-before-insert :hook/entity-id
   [instance]

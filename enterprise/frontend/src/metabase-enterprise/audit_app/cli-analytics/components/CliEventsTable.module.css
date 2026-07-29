@@ -1,0 +1,8 @@
+/* Call rows can hold long values (operations, ids, error text); keep them on one line so the
+   body scrolls horizontally rather than wrapping into tall, hard-to-scan rows. */
+.table thead th,
+.table thead th *,
+.table td,
+.table th {
+  white-space: nowrap;
+}
