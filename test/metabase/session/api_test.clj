@@ -292,6 +292,21 @@
     (is (= nil
            (mt/client :post 204 "session/forgot_password" {:email "not-found@metabase.com"})))))
 
+(deftest forgot-password-deactivated-user-test
+  (testing "POST /api/session/forgot_password - deactivated user gets a 204 but no reset link (metabase#66379)"
+    (with-redefs [api.session/forgot-password-impl
+                  (let [orig @#'api.session/forgot-password-impl]
+                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+      (mt/with-temp [:model/User {user-id :id} {:email "deactivated@metabase.com", :is_active false}]
+        (mt/with-fake-inbox
+          (is (= nil
+                 (mt/client :post 204 "session/forgot_password" {:email "deactivated@metabase.com"}))
+              "the response looks identical either way, so this doesn't reveal the account is disabled")
+          (is (nil? (:reset_token (t2/select-one [:model/User :reset_token] :id user-id)))
+              "no reset token should be generated for a deactivated account")
+          (is (false? (mt/received-email-subject? "deactivated@metabase.com" #"Password Reset"))
+              "no email should be sent"))))))
+
 (deftest forgot-password-google-sso-enabled-test
   (testing "POST /api/session/forgot_password - Google SSO user cannot reset when Google SSO enabled"
     (with-redefs [api.session/forgot-password-impl

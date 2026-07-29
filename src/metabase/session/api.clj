@@ -269,26 +269,31 @@
                (t2/select-one [:model/User :id :sso_source :is_active]
                               :%lower.email
                               (u/lower-case-en email))]
-      (cond
-        ;; SSO users should use their SSO provider, not password reset.
-        (sso-password-reset-disabled? sso-source)
-        (messages/send-password-reset-email! email sso-source nil is-active?)
+      ;; Disabled accounts can't do anything with a reset link (the token they'd get is later
+      ;; rejected as invalid anyway), so don't create one, don't email it, and don't record a
+      ;; password-reset-initiated event -- nothing was actually initiated. The response above is
+      ;; already the same generic 204 either way, so this doesn't leak whether the account is disabled.
+      (when is-active?
+        (cond
+          ;; SSO users should use their SSO provider, not password reset.
+          (sso-password-reset-disabled? sso-source)
+          (messages/send-password-reset-email! email sso-source nil is-active?)
 
-        ;; Support-access users get a refreshed token bound to the grant.
-        ;; If the grant has expired, refresh-support-access-token! returns nil and we silently
-        ;; do nothing (same as a nonexistent account).
-        (t2/exists? :model/AuthIdentity :user_id user-id :provider "support-access-grant")
-        (when-let [reset-token (refresh-support-access-token! user-id)]
-          (let [password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
+          ;; Support-access users get a refreshed token bound to the grant.
+          ;; If the grant has expired, refresh-support-access-token! returns nil and we silently
+          ;; do nothing (same as a nonexistent account).
+          (t2/exists? :model/AuthIdentity :user_id user-id :provider "support-access-grant")
+          (when-let [reset-token (refresh-support-access-token! user-id)]
+            (let [password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
+              (messages/send-password-reset-email! email nil password-reset-url is-active?)))
+
+          ;; Normal password reset.
+          :else
+          (let [reset-token        (auth-identity/create-password-reset! user-id)
+                password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
             (messages/send-password-reset-email! email nil password-reset-url is-active?)))
-
-        ;; Normal password reset.
-        :else
-        (let [reset-token        (auth-identity/create-password-reset! user-id)
-              password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
-          (messages/send-password-reset-email! email nil password-reset-url is-active?)))
-      (events/publish-event! :event/password-reset-initiated
-                             {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))}))))
+        (events/publish-event! :event/password-reset-initiated
+                               {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))})))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
