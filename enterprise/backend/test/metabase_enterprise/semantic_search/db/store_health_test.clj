@@ -54,7 +54,7 @@
                   (readiness-gauges system))))))
     (testing "a connected app-db pgvector store is available and healthy"
       (mt/with-dynamic-fn-redefs
-        [mdb/db-is-set-up?                               (constantly true)
+        [mdb/db-is-set-up?                                (constantly true)
          semantic.db.datasource/dedicated-url-configured? (constantly false)
          semantic.u/semantic-search-configured?           (constantly true)
          semantic.db.datasource/pgvector-mode             (constantly :app-db)
@@ -65,7 +65,7 @@
               (readiness-gauges system))))
     (testing "an app-db store whose vector extension went away reads available but disconnected"
       (mt/with-dynamic-fn-redefs
-        [mdb/db-is-set-up?                               (constantly true)
+        [mdb/db-is-set-up?                                (constantly true)
          semantic.db.datasource/dedicated-url-configured? (constantly false)
          semantic.u/semantic-search-configured?           (constantly true)
          semantic.db.datasource/pgvector-mode             (constantly :app-db)
@@ -101,7 +101,7 @@
       (is (=? {"dedicated" pos?} (exposed-last-success system)))
       (testing "switching storage drops the old timestamp, which would otherwise never advance again"
         (mt/with-dynamic-fn-redefs
-          [mdb/db-is-set-up?                               (constantly true)
+          [mdb/db-is-set-up?                                (constantly true)
            semantic.db.datasource/dedicated-url-configured? (constantly false)
            semantic.u/semantic-search-configured?           (constantly true)
            semantic.db.datasource/pgvector-mode             (constantly :app-db)
@@ -112,7 +112,7 @@
             "the abandoned label is gone rather than zeroed -- a 0 would read as 1970"))
       (testing "losing the store keeps the timestamp: that is when it is worth knowing"
         (mt/with-dynamic-fn-redefs
-          [mdb/db-is-set-up?                               (constantly true)
+          [mdb/db-is-set-up?                                (constantly true)
            semantic.db.datasource/dedicated-url-configured? (constantly false)
            semantic.u/semantic-search-configured?           (constantly false)]
           (@#'semantic.store-health/collect-pgvector-readiness-metrics!))
@@ -154,7 +154,7 @@
       (let [started  (promise)
             released (promise)]
         (mt/with-dynamic-fn-redefs
-          [mdb/db-is-set-up?                               (constantly true)
+          [mdb/db-is-set-up?                                (constantly true)
            semantic.db.datasource/dedicated-url-configured? (constantly false)
            semantic.u/semantic-search-configured?           (constantly true)
            semantic.db.datasource/pgvector-mode             (fn []
@@ -170,7 +170,7 @@
       (reset! semantic.db.datasource/app-db-support-check-errored? true)
       (try
         (mt/with-dynamic-fn-redefs
-          [mdb/db-is-set-up?                               (constantly true)
+          [mdb/db-is-set-up?                                (constantly true)
            semantic.db.datasource/dedicated-url-configured? (constantly false)
            semantic.u/semantic-search-configured?           (constantly true)
            semantic.db.datasource/pgvector-mode             (constantly :unavailable)]
@@ -182,7 +182,7 @@
           (reset! semantic.db.datasource/app-db-support-check-errored? false))))
     (testing "an app db that is not migrated yet is unresolved, not an answer to cache for an hour"
       (mt/with-dynamic-fn-redefs
-        [mdb/db-is-set-up?                               (constantly false)
+        [mdb/db-is-set-up?                                (constantly false)
          semantic.db.datasource/dedicated-url-configured? (constantly false)
          semantic.db.datasource/pgvector-mode             #(throw (ex-info "must not probe" {}))]
         (is (=? {:mode :unavailable, :connected? false, :resolved? false} (probe 60000)))))))
@@ -201,7 +201,7 @@
     (mt/with-premium-features #{}
       (mt/with-prometheus-system! [_ system]
         (mt/with-dynamic-fn-redefs
-          [mdb/db-is-set-up?                               (constantly true)
+          [mdb/db-is-set-up?                                (constantly true)
            semantic.db.datasource/dedicated-url-configured? (constantly false)
            semantic.db.datasource/pgvector-mode             #(throw (ex-info "must not probe" {}))]
           (@#'semantic.store-health/collect-pgvector-readiness-metrics!)
