@@ -10,9 +10,18 @@
    [metabase.test :as mt]
    [next.jdbc :as jdbc])
   (:import
-   (clojure.lang ExceptionInfo)))
+   (clojure.lang ExceptionInfo)
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
+
+(defn- stub-connection
+  "The support check borrows a connection to bound it at the socket level; these tests stub every statement
+  on it, so it only has to close and accept the bound."
+  ^Connection []
+  (reify Connection
+    (setNetworkTimeout [_ _ _] nil)
+    (close [_] nil)))
 
 (defmacro ^:private with-support-cache
   "Run body with all three pieces of app-db probe state rebound to fresh atoms: the support cache (holding
@@ -57,7 +66,8 @@
   (testing "supported only when the vector extension and the semantic_search schema exist or can be created"
     (letfn [(check [] (semantic.db.datasource/check-app-db-pgvector-support))
             (catalog [m] (fn [& _] m))]
-      (with-redefs [mdb/data-source (constantly ::app-pool)]
+      (with-redefs [mdb/data-source      (constantly ::app-pool)
+                    jdbc/get-connection (fn [_] (stub-connection))]
         (testing "extension neither installed nor available → unsupported, no provisioning probe"
           (with-redefs [jdbc/execute-one! (catalog {:installed false :available false :schema-exists false})
                         semantic.db.datasource/app-db-can-provision-pgvector?

@@ -13,7 +13,8 @@
    (com.mchange.v2.c3p0 DataSources PooledDataSource)
    (java.net URLDecoder)
    (java.nio.charset StandardCharsets)
-   (java.sql SQLException)
+   (java.sql SQLException SQLFeatureNotSupportedException)
+   (java.util.concurrent Executor)
    (org.postgresql PGProperty)))
 
 (set! *warn-on-reflection* true)
@@ -302,15 +303,39 @@
                        (contains? provisioning-denied-sql-states (.getSQLState ^SQLException %)))
                  (exception-chain e))))
 
+(def ^:private probe-network-timeout-ms
+  "Socket-level bound on every operation of a probe's app-db connection.
+  A statement timeout needs a working connection to carry the cancel, so it does nothing against a host that
+  has stopped answering. This does, and unlike a statement timeout it also covers the rollback and the
+  check-in that follow -- the readiness probe cannot be interrupted out of any of them, and one stuck there
+  would block every later refresh for the life of the process."
+  (int (* 15 1000)))
+
+(def ^:private ^Executor same-thread-executor
+  "For [[java.sql.Connection/setNetworkTimeout]], which requires an executor but only runs bookkeeping on it."
+  (reify Executor
+    (execute [_ r] (.run ^Runnable r))))
+
+(defn- with-probe-connection
+  "Call `f` with an app-db connection bounded by [[probe-network-timeout-ms]] at the socket level."
+  [f]
+  (with-open [conn (jdbc/get-connection (mdb/data-source))]
+    (try
+      (.setNetworkTimeout conn same-thread-executor probe-network-timeout-ms)
+      (catch SQLFeatureNotSupportedException _
+        ;; Only Postgres app dbs ever host the store, so this skips the bound only where it cannot apply.
+        nil))
+    (f conn)))
+
 (defn- app-db-can-provision-pgvector?
   "Whether the app-db user can create whichever store pieces are still missing, checked without persisting
   them: the CREATEs run in a transaction that always rolls back.
   Attempts CREATE EXTENSION only when `create-extension?` and CREATE SCHEMA only when `create-schema?`, so
   an already-installed extension or existing schema needs no create privilege.
   A refusal reads as false; a check that never got that far throws, so the caller can tell the two apart."
-  [app-datasource create-extension? create-schema?]
+  [conn create-extension? create-schema?]
   (try
-    (jdbc/with-transaction [tx app-datasource {:rollback-only true}]
+    (jdbc/with-transaction [tx conn {:rollback-only true}]
       (when create-extension?
         (jdbc/execute! tx ["CREATE EXTENSION IF NOT EXISTS vector"]
                        {:timeout probe-query-timeout-seconds}))
@@ -334,29 +359,30 @@
   The probe persists nothing, so the unlicensed and disabled instances whose availability predicates reach
   here never mutate the app db; the persisted CREATE EXTENSION / CREATE SCHEMA run only on the activation
   path ([[metabase-enterprise.semantic-search.pgvector-api/init-semantic-search!]]).
-  Every statement is timeout-bounded: the readiness probe calls this on a thread it can abandon but cannot
-  interrupt out of a stuck query, so the statement timeout is what actually ends one."
+  Runs on one [[with-probe-connection]], so a host that stops answering ends the check instead of stranding
+  the readiness probe, which cannot be interrupted out of a stuck read."
   []
-  (let [app-datasource (mdb/data-source)
-        ;; The schema_exists SQL alias reads information_schema.schemata (privilege-filtered), not
-        ;; pg_namespace. It answers "a semantic_search schema this role can use exists", not mere catalog
-        ;; presence: a schema the app-db role lacks USAGE on reads as absent, so the store degrades to
-        ;; unavailable rather than passing here and crashing later when init creates tables it can't write.
-        {:keys [installed available schema-exists]}
-        (jdbc/execute-one! app-datasource
-                           [(str "SELECT"
-                                 " EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS installed,"
-                                 " EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') AS available,"
-                                 " EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = ?) AS schema_exists")
-                            app-db-schema]
-                           {:builder-fn jdbc.rs/as-unqualified-kebab-maps
-                            :timeout    probe-query-timeout-seconds})]
-    (cond
-      (not (or installed available)) false
-      (and installed schema-exists)  true
-      :else                          (app-db-can-provision-pgvector? app-datasource
-                                                                     (not installed)
-                                                                     (not schema-exists)))))
+  (with-probe-connection
+    (fn [conn]
+      ;; The schema_exists SQL alias reads information_schema.schemata (privilege-filtered), not
+      ;; pg_namespace. It answers "a semantic_search schema this role can use exists", not mere catalog
+      ;; presence: a schema the app-db role lacks USAGE on reads as absent, so the store degrades to
+      ;; unavailable rather than passing here and crashing later when init creates tables it can't write.
+      (let [{:keys [installed available schema-exists]}
+            (jdbc/execute-one! conn
+                               [(str "SELECT"
+                                     " EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS installed,"
+                                     " EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') AS available,"
+                                     " EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = ?) AS schema_exists")
+                                app-db-schema]
+                               {:builder-fn jdbc.rs/as-unqualified-kebab-maps
+                                :timeout    probe-query-timeout-seconds})]
+        (cond
+          (not (or installed available)) false
+          (and installed schema-exists)  true
+          :else                          (app-db-can-provision-pgvector? conn
+                                                                         (not installed)
+                                                                         (not schema-exists)))))))
 
 (defn probe-app-db-store!
   "Whether the app db is a usable pgvector store right now: it answers, and it can still host the store.
@@ -366,11 +392,7 @@
   two can't disagree. Demanding an installed extension instead would report every instance that has not
   activated semantic search yet -- where nothing has run `CREATE EXTENSION` -- as permanently unreachable."
   []
-  (boolean
-   (and (jdbc/execute-one! (mdb/data-source)
-                           ["SELECT 1 AS test"]
-                           {:timeout probe-query-timeout-seconds})
-        (check-app-db-pgvector-support))))
+  (check-app-db-pgvector-support))
 
 (defn- app-db-pgvector-supported?
   "Whether the application database can act as the pgvector store, via a cached probe.

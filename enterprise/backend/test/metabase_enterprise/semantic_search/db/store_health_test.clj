@@ -230,17 +230,20 @@
     (mt/with-dynamic-fn-redefs
       [semantic.store-health/collect-pgvector-readiness-metrics! #(swap! collects inc)]
       (testing "a fresh probe is reported as-is, without running another"
-        (reset! probe (fresh-probe {:storage nil, :connected? false}))
+        (reset! probe (fresh-probe {:storage nil, :connected? false, :resolved? true}))
         (is (nil? (check)) "omitted when there is no store to reach")
-        (reset! probe (fresh-probe {:storage "dedicated", :connected? true}))
+        (reset! probe (fresh-probe {:storage "dedicated", :connected? true, :resolved? true}))
         (is (=? {:health 100, :message #"pgvector store \(dedicated\) reachable\."} (check)))
-        (reset! probe (fresh-probe {:storage "appdb", :connected? false}))
+        (reset! probe (fresh-probe {:storage "appdb", :connected? false, :resolved? true}))
         (is (=? {:health 0, :message #"pgvector store \(appdb\) unreachable\."} (check)))
         (is (zero? @collects)))
+      (testing "a probe that could not answer is degraded, not omitted as inapplicable"
+        (reset! probe (fresh-probe {:storage nil, :connected? false, :resolved? false}))
+        (is (=? {:health 0, :message #"Could not determine whether a pgvector store is reachable\."} (check))))
       (testing "a missing or stale probe is refreshed, so an unscraped instance still reports"
         (reset! probe nil)
         (check)
-        (reset! probe {:storage "dedicated", :connected? true, :at 0})
+        (reset! probe {:storage "dedicated", :connected? true, :resolved? true, :at 0})
         (check)
         (is (= 2 @collects))))))
 
