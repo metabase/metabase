@@ -1,14 +1,14 @@
 import type { FormikConfig, FormikValues } from "formik";
 import { Formik } from "formik";
 import { useMemo } from "react";
-import type { AnySchema } from "yup";
 
 import type { FormStatus } from "../../contexts";
 import { FormContext } from "../../contexts";
+import type { ValidationSchema } from "../../hooks";
 import { useFormSubmit, useFormValidation } from "../../hooks";
 
 export interface FormProviderProps<T, C> extends FormikConfig<T> {
-  validationSchema?: AnySchema;
+  validationSchema?: ValidationSchema<T>;
   validationContext?: C;
 }
 

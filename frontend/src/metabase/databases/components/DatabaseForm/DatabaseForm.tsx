@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
+import _ from "underscore";
 
 import { Form, FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/redux";
-import type { DatabaseData, EngineKey } from "metabase-types/api";
+import type { DatabaseData } from "metabase-types/api";
 
 import { getEngines } from "../../selectors";
 import type { FormLocation } from "../../types";
@@ -67,38 +68,32 @@ export const DatabaseForm = ({
   const initialEngineKey = useMemo(() => {
     return getEngineKey(engines, initialData, isAdvanced);
   }, [engines, initialData, isAdvanced]);
-  const [engineKey, setEngineKey] = useState(initialEngineKey);
-  const engine = getEngine(engines, engineKey);
 
-  const validationSchema = useMemo(() => {
-    return getValidationSchema(engine, engineKey, isAdvanced);
-  }, [engine, engineKey, isAdvanced]);
+  const getSchema = useMemo(() => {
+    return _.memoize((engineKey: string | undefined) =>
+      getValidationSchema(getEngine(engines, engineKey), engineKey, isAdvanced),
+    );
+  }, [engines, isAdvanced]);
+
+  // The form's shape depends on the engine, so the schema has to follow `values.engine`.
+  const validationSchema = useCallback(
+    (values: DatabaseData) => getSchema(values.engine),
+    [getSchema],
+  );
 
   const initialValues = useMemo(() => {
-    return validationSchema.cast(
-      { ...initialData, engine: engineKey },
+    return getSchema(initialEngineKey).cast(
+      { ...initialData, engine: initialEngineKey },
       { stripUnknown: true },
     );
-  }, [initialData, engineKey, validationSchema]);
-
-  useEffect(() => {
-    // during page load, if initialData changes, initialEngineKey will also change
-    setEngineKey(initialEngineKey);
-  }, [initialEngineKey]);
+  }, [getSchema, initialData, initialEngineKey]);
 
   const handleSubmit = useCallback(
     (values: DatabaseData) => {
+      const engine = getEngine(engines, values.engine);
       return onSubmit?.(getSubmitValues(engine, values, isAdvanced));
     },
-    [engine, isAdvanced, onSubmit],
-  );
-
-  const handleEngineChange = useCallback(
-    (engineKey: string | undefined) => {
-      setEngineKey(engineKey);
-      onEngineChange?.(engineKey);
-    },
-    [onEngineChange],
+    [engines, isAdvanced, onSubmit],
   );
 
   return (
@@ -119,13 +114,10 @@ export const DatabaseForm = ({
       >
         <FormDirtyStateProvider onDirtyStateChange={onDirtyStateChange}>
           <DatabaseFormBody
-            engine={engine}
-            // casting won't be needed after migrating all usages of engineKey
-            engineKey={engineKey as EngineKey}
             engines={engines}
             autofocusFieldName={autofocusFieldName}
             isAdvanced={isAdvanced}
-            onEngineChange={handleEngineChange}
+            onEngineChange={onEngineChange}
             config={config}
             showSampleDatabase={showSampleDatabase}
             location={location}
