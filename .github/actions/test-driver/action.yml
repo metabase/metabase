@@ -87,7 +87,6 @@ runs:
     # failure (JUnit report, logs, ci-conductor) and must run regardless of the verdict below.
     - name: Quarantine gate
       if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
-      continue-on-error: ${{ inputs.quarantine-engine != 'ci-conductor' }}
       uses: ./.github/actions/quarantine-gate
       with:
         adapter: backend
