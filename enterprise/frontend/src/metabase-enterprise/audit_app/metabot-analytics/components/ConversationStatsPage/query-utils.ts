@@ -204,7 +204,7 @@ export function applyUsageStatsAggregation(
 ): Query {
   return match(metric)
     .with("conversations", () => Lib.aggregateByCount(query, 0))
-    .with("messages", () => addSumAggregation(query, "message_count"))
+    .with("messages", () => addSumAggregation(query, "new_message_count"))
     .with("tokens", () =>
       addSumAggregation(
         addSumAggregation(query, "prompt_tokens"),

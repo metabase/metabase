@@ -8,8 +8,6 @@ SELECT
     CASE a.source
         WHEN 'metabot_agent'                     THEN 'Metabot'
         WHEN 'agent'                             THEN 'Metabot'
-        WHEN 'contextual_interestingness'        THEN 'Contextual Interestingness'
-        WHEN 'exploration'                       THEN 'Explorations'
         WHEN 'document_generate_content'         THEN 'Documents'
         WHEN 'example_question_generation_batch' THEN 'Suggested Prompts'
         WHEN 'slack'                             THEN 'Slackbot'
@@ -40,6 +38,7 @@ SELECT
     c.embedding_path                                                  AS embedding_path,
     c.user_agent                                                      AS user_agent,
     c.sanitized_user_agent                                            AS sanitized_user_agent,
+    c.forked_from_conversation_id                                     AS forked_from_conversation_id,
     a.tenant_id,
     a.request_id,
     a.cache_creation_tokens,

@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { Box, HoverCard, Icon, Text, UnstyledButton } from "metabase/ui";
 import { TIMELINE_EVENTS_BAND } from "metabase/visualizations/echarts/cartesian/constants/style";
+import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
 import S from "./TimelineEventsBand.module.css";
@@ -25,6 +26,7 @@ interface TimelineEventChipProps {
   eventsGroup: PositionedTimelineEventGroup;
   centerY: number;
   selectedEventIds: TimelineEventId[];
+  onGroupHover?: (group: TimelineEventGroup | null) => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (events: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
@@ -35,6 +37,7 @@ export const TimelineEventChip = ({
   eventsGroup,
   centerY,
   selectedEventIds,
+  onGroupHover,
   onOpenTimelines,
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
@@ -112,6 +115,8 @@ export const TimelineEventChip = ({
             isSingleEvent ? events[0].name : t`${events.length} events`
           }
           onClick={canSelect ? handleChipClick : undefined}
+          onMouseEnter={() => onGroupHover?.(group)}
+          onMouseLeave={() => onGroupHover?.(null)}
         >
           {isSingleEvent ? (
             <Icon name={getTimelineEventGroupIconName(group)} size={12} />

@@ -10,6 +10,7 @@ SELECT
     COUNT(m.id)                                                       AS message_count,
     COUNT(CASE WHEN m.role = 'user' THEN 1 END)                       AS user_message_count,
     COUNT(CASE WHEN m.role = 'assistant' THEN 1 END)                  AS assistant_message_count,
+    COUNT(CASE WHEN m.forked_from_message_id IS NULL THEN 1 END)      AS new_message_count,
     COALESCE(MAX(a.total_tokens), 0)                                  AS total_tokens,
     COALESCE(MAX(a.prompt_tokens), 0)                                 AS prompt_tokens,
     COALESCE(MAX(a.completion_tokens), 0)                             AS completion_tokens,
@@ -28,7 +29,6 @@ SELECT
                 WHEN 'slackbot'                  THEN 'Slackbot'
                 WHEN 'transforms_codegen'        THEN 'Transforms codegen'
                 WHEN 'document-generate-content' THEN 'Documents'
-                WHEN 'explorations'              THEN 'Explorations'
                 ELSE mm.profile_id
             END
      FROM metabot_message mm
@@ -58,8 +58,6 @@ SELECT
                 WHEN 'oss-sql-gen'                       THEN 'SQL'
                 WHEN 'sql-gen'                           THEN 'SQL'
                 WHEN 'unknown'                           THEN 'Unknown'
-                WHEN 'contextual_interestingness'        THEN 'Contextual Interestingness'
-                WHEN 'exploration'                       THEN 'Explorations'
                 ELSE aul.source
             END
      FROM ai_usage_log aul
@@ -71,6 +69,7 @@ SELECT
     c.embedding_path                                                  AS embedding_path,
     c.user_agent                                                      AS user_agent,
     c.sanitized_user_agent                                            AS sanitized_user_agent,
+    c.forked_from_conversation_id                                     AS forked_from_conversation_id,
     MAX(a.tenant_id)                                                  AS tenant_id,
     MAX(t.name)                                                       AS tenant_name,
     (SELECT aul.model

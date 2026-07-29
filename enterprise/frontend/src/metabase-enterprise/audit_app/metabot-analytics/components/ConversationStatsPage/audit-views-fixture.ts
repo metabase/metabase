@@ -66,6 +66,7 @@ const conversationsTable = buildTable(
     ["text", "profile_name", "type/Category"],
     ["text", "ip_address", null],
     ["bigInteger", "message_count", "type/Quantity"],
+    ["bigInteger", "new_message_count", "type/Quantity"],
     ["bigInteger", "prompt_tokens", "type/Quantity"],
     ["bigInteger", "completion_tokens", "type/Quantity"],
   ],
