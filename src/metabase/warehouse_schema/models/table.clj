@@ -324,14 +324,16 @@
   "HoneySQL predicate selecting Tables (by `id-column`) whose metadata the current user can read -- the SQL
   counterpart of `mi/can-read? :model/Table` above; keep the two in sync. nil when no filtering is needed
   (superusers, data analysts, no bound user). Compiles to a correlated EXISTS, so qualify `id-column` whenever its
-  bare name is also a `metabase_table` column."
-  [id-column]
-  (when-let [user-id api/*current-user-id*]
-    (perms/visible-table-exists-clause
-     {:user-id          user-id
-      :is-superuser?    api/*is-superuser?*
-      :is-data-analyst? api/*is-data-analyst?*}
-     id-column)))
+  bare name is also a `metabase_table` column. `user-info` is a `perms/UserInfo`-shaped map, defaulting to the
+  current user."
+  ([id-column]
+   (when-let [user-id api/*current-user-id*]
+     (visible-table-filter-clause id-column
+                                  {:user-id          user-id
+                                   :is-superuser?    api/*is-superuser?*
+                                   :is-data-analyst? api/*is-data-analyst?*})))
+  ([id-column user-info]
+   (perms/visible-table-exists-clause user-info id-column)))
 
 (defmethod mi/can-query? :model/Table
   ;; Check if user can execute queries against this table.

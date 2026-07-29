@@ -84,9 +84,10 @@
 (defn visible-segment-filter-clause
   "HoneySQL predicate selecting Segments (by `table-id-column`, default `:table_id`) that the current user can
   read -- the SQL counterpart of `mi/can-read? :model/Segment` above, delegating to the Table clause the same way.
-  nil when no filtering is needed."
+  nil when no filtering is needed. `user-info` is a `perms/UserInfo`-shaped map, defaulting to the current user."
   ([] (visible-segment-filter-clause :table_id))
-  ([table-id-column] (table/visible-table-filter-clause table-id-column)))
+  ([table-id-column] (table/visible-table-filter-clause table-id-column))
+  ([table-id-column user-info] (table/visible-table-filter-clause table-id-column user-info)))
 
 ;; Segments can be created by
 ;; a) superusers

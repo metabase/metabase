@@ -25,10 +25,15 @@
 (defn visible-transform-tag-filter-clause
   "HoneySQL predicate selecting TransformTags the current user can read -- the SQL counterpart of
   `mi/can-read? :model/TransformTag` above. nil when no filtering is needed (data analysts, superusers, no bound
-  user)."
-  []
-  (when (and api/*current-user-id* (not (api/is-data-analyst?)))
-    [:= [:inline 1] [:inline 0]]))
+  user). `user-info` is a `perms/UserInfo`-shaped map, defaulting to the current user."
+  ([]
+   (when api/*current-user-id*
+     (visible-transform-tag-filter-clause {:user-id          api/*current-user-id*
+                                           :is-superuser?    api/*is-superuser?*
+                                           :is-data-analyst? api/*is-data-analyst?*})))
+  ([{:keys [is-superuser? is-data-analyst?]}]
+   (when-not (or is-superuser? is-data-analyst?)
+     [:= [:inline 1] [:inline 0]])))
 
 (defmethod mi/can-write? :model/TransformTag
   ([instance]
