@@ -1,7 +1,8 @@
 import { useMemo } from "react";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
@@ -67,10 +68,11 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
     [sortColumn, sortDirection],
   );
 
-  const { isInitialLoading, isRefetching, hasData, count } = useMcpHasData({
-    ...dataSources,
-    ...chartFilters,
-  });
+  const { isInitialLoading, isRefetching, hasData, count, error } =
+    useMcpHasData({
+      ...dataSources,
+      ...chartFilters,
+    });
   // Initial load shows a loader (never the empty state). After the first result, a filter
   // change keeps the charts mounted so they show their own skeletons while refetching; the
   // empty state only appears once a load has resolved to zero rows.
@@ -129,7 +131,14 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
             hasTenants={hasTenants}
           />
 
-          {match({ isInitialLoading, showEmpty })
+          {match({ isInitialLoading, showEmpty, error })
+            .with({ error: P.nonNullable }, () => (
+              <Tabs.Panel value={tab} mt="md">
+                <Flex mih="60vh" align="center" justify="center">
+                  <LoadingAndErrorWrapper loading={false} error={error} />
+                </Flex>
+              </Tabs.Panel>
+            ))
             .with({ isInitialLoading: true }, () => (
               // Keeps the active tab's panel/tabpanel relationship intact (aria-controls on the
               // selected tab must point at a rendered element) while the initial load is pending.

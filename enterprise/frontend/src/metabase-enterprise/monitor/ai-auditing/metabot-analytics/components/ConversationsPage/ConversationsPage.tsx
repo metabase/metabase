@@ -91,7 +91,7 @@ export function ConversationsPage({ location }: WithRouterProps) {
           }
         />
 
-        {!isLoading && error == null && (
+        {!isLoading && !error && (
           <Flex justify="flex-end">
             <PaginationControls
               onPreviousPage={() =>

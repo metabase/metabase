@@ -25,6 +25,8 @@ type Result = {
   hasData: boolean;
   /** Total number of tool calls matching the current filters — drives the events pagination. */
   count: number;
+  /** Set when the count query itself failed (e.g. a 500) — the page should show an error, not spin forever. */
+  error: unknown;
 };
 
 /**
@@ -68,11 +70,13 @@ export function useMcpHasData({
     ],
   );
 
-  const { data, isFetching } = useAdhocBreakoutQuery(query);
+  const { data, isFetching, error } = useAdhocBreakoutQuery(query);
 
-  // Latch once the first count resolves; from then on a fetch is a refetch, not initial load.
+  // Latch once the first count resolves (successfully or not); from then on a fetch is a
+  // refetch, not initial load.
   const hasLoadedOnce = useRef(false);
-  const resolved = query != null && !isFetching && data != null;
+  const resolved =
+    query != null && !isFetching && (data != null || error != null);
   if (resolved) {
     hasLoadedOnce.current = true;
   }
@@ -86,5 +90,6 @@ export function useMcpHasData({
     isRefetching: hasLoadedOnce.current && isFetching,
     hasData: count > 0,
     count,
+    error,
   };
 }

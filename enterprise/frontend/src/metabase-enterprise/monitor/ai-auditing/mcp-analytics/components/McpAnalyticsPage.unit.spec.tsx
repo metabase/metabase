@@ -176,20 +176,33 @@ const emptyDatasetResponse: Dataset = createMockDataset({
 });
 
 /** Mock the audit-DB metadata, users/groups, and the `/api/dataset` adhoc endpoint (with the given dataset). */
-function setupEndpoints(dataset: Dataset = datasetResponse) {
+function setupEndpoints(
+  dataset: Dataset = datasetResponse,
+  datasetError = false,
+) {
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
   setupUsersEndpoints([createMockUser({ id: 1, first_name: "Ada" })]);
   setupGroupsEndpoint([createMockGroup({ id: 1, name: "All Users" })]);
-  fetchMock.post("path:/api/dataset", dataset, { name: "dataset" });
+  if (datasetError) {
+    fetchMock.post("path:/api/dataset", {
+      status: 500,
+      body: { message: "Audit query failed" },
+    });
+  } else {
+    fetchMock.post("path:/api/dataset", dataset, { name: "dataset" });
+  }
 }
 
 /** Render `McpAnalyticsPage` at its route with EE plugins + `audit_app`, optionally overriding the dataset response. */
-function setup({ dataset }: { dataset?: Dataset } = {}) {
+function setup({
+  dataset,
+  datasetError,
+}: { dataset?: Dataset; datasetError?: boolean } = {}) {
   // TreeTable measures column/row sizes via the DOM; jsdom needs a stubbed rect
   // for its virtualized rows to render.
   mockGetBoundingClientRect({ width: 100, height: 100 });
   setupEnterprisePlugins();
-  setupEndpoints(dataset);
+  setupEndpoints(dataset, datasetError);
 
   return renderWithProviders(
     <Route
@@ -274,7 +287,7 @@ describe("McpAnalyticsPage", () => {
             return false;
           }
           const stage = JSON.parse(body).stages?.[0];
-          return stage?.page != null && stage["order-by"]?.[0]?.[0] === "asc";
+          return stage?.page && stage["order-by"]?.[0]?.[0] === "asc";
         });
       expect(sortedAscending).toBe(true);
     });
@@ -346,7 +359,7 @@ describe("McpAnalyticsPage", () => {
         .map((call) => call.options?.body)
         .filter((body): body is string => typeof body === "string")
         .map((body) => JSON.parse(body).stages?.[0])
-        .find((stage) => stage?.page != null);
+        .find((stage) => stage?.page);
       // pMBQL order-by clause: [direction, opts, ["field", opts, fieldId]]
       const orderBy = eventsStage?.["order-by"] as [
         string,
@@ -379,5 +392,17 @@ describe("McpAnalyticsPage", () => {
     const panel = screen.getByRole("tabpanel");
     expect(usageTab).toHaveAttribute("aria-controls", panel.id);
     expect(within(panel).getByText("No MCP activity")).toBeInTheDocument();
+  });
+
+  it("shows an error instead of spinning forever when the count query fails", async () => {
+    setup({ datasetError: true });
+
+    expect(
+      await screen.findByRole("heading", { name: "MCP analytics" }),
+    ).toBeInTheDocument();
+    // Regression: the count query erroring (e.g. a 500) used to leave isInitialLoading
+    // stuck true forever, so the page never got past the loader.
+    expect(await screen.findByText("Audit query failed")).toBeInTheDocument();
+    expect(screen.queryByText("Calls by tool")).not.toBeInTheDocument();
   });
 });

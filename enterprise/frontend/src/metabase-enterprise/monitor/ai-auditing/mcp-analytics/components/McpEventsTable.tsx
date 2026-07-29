@@ -291,7 +291,7 @@ function McpEventsTableInner({
         width: "auto",
         minWidth: 120,
         maxAutoWidth: 320,
-        enableSorting: column.sort != null,
+        enableSorting: !!column.sort,
         sortDescFirst: column.sort === "created_at",
         accessorFn: (row) => row[column.key],
         cell: ({ row }) => {
@@ -342,7 +342,7 @@ function McpEventsTableInner({
         withBorder
         data-testid="mcp-events-table"
       >
-        {data == null ? (
+        {!data ? (
           <TreeTableSkeleton columnWidths={skeletonColumnWidths} />
         ) : (
           <>
@@ -358,7 +358,7 @@ function McpEventsTableInner({
         )}
       </Card>
 
-      {data != null && (
+      {data && (
         <Flex justify="flex-end">
           <PaginationControls
             page={page}

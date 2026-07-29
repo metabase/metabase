@@ -112,7 +112,7 @@ export function ConversationsTable({
     skip: isFetching,
   });
 
-  if (error != null) {
+  if (error) {
     return (
       <Card
         flex="0 1 auto"

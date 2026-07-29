@@ -91,7 +91,7 @@ export const TaskListPage = ({ location }: WithRouterProps) => {
         />
       )}
 
-      {!isLoading && error == null && (
+      {!isLoading && !error && (
         <Flex justify="end">
           <PaginationControls
             page={page}
