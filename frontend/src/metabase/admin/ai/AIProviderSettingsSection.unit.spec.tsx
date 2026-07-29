@@ -16,6 +16,7 @@ import {
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { AIProviderConfigurationForm } from "metabase/metabot";
 import { reinitialize } from "metabase/plugins";
 import type {
   LlmConnectionModels,
@@ -440,5 +441,64 @@ describe("AIProviderSettingsSection", () => {
         }),
       ).toBe(true);
     });
+  });
+});
+
+describe("AIProviderConfigurationForm (ad-hoc connect modal)", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
+  async function setupModal() {
+    const sessionProperties = createMockSettings({
+      "llm-metabot-provider": null,
+    });
+
+    setupPropertiesEndpoints(sessionProperties);
+    setupSettingsEndpoints([
+      createMockSettingDefinition({ key: "llm-metabot-provider", value: null }),
+    ]);
+    setupUpdateSettingEndpoint();
+    setupLlmProviderTypesEndpoint([ANTHROPIC_TYPE]);
+    setupLlmProvidersEndpoint([]);
+    setupLlmModelsEndpoint(CONNECTION_MODELS);
+    setupCreateLlmProviderEndpoint(ANTHROPIC_CONNECTION);
+
+    const onClose = jest.fn();
+    renderWithProviders(
+      <AIProviderConfigurationForm isModal onClose={onClose} />,
+      {
+        storeInitialState: {
+          settings: mockSettings(sessionProperties),
+          currentUser: createMockUser({ is_superuser: true }),
+        },
+      },
+    );
+
+    return { onClose };
+  }
+
+  it("shows the model picker after connecting rather than closing", async () => {
+    const { onClose } = await setupModal();
+
+    await userEvent.click(await screen.findByLabelText("Provider"));
+    await selectOption("Anthropic");
+    await userEvent.type(screen.getByLabelText(/API key/), "sk-ant-test");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    expect(await screen.findByLabelText("Model")).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("does not offer a way to add a second provider", async () => {
+    await setupModal();
+
+    expect(
+      screen.queryByRole("button", { name: /Add a provider/ }),
+    ).not.toBeInTheDocument();
+    expect(await screen.findByLabelText("Provider")).toBeInTheDocument();
   });
 });
