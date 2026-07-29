@@ -6,6 +6,13 @@ export function crudGroupMappingsWidget(authenticationMethod) {
   // Create mapping, then delete it along with its groups
   createMapping("cn=People1");
   addGroupsToMapping("cn=People1", ["Administrators", "data", "nosql"]);
+  // Re-read the mapping from committed server state before deleting it.
+  // Each group selection optimistically patches the settings cache, but the
+  // setting update also invalidates and refetches session properties; a
+  // trailing stale refetch can revert the last-added group. Reloading aborts
+  // those in-flight refetches and settles on a single server-read state, so
+  // all mapped groups are present when the delete fires one request per group.
+  reloadAndConfirmMappingGroupsSettled(authenticationMethod, "cn=People1");
   deleteMappingWithGroups("cn=People1");
 
   cy.wait(["@deleteGroup", "@deleteGroup"]);
@@ -16,6 +23,8 @@ export function crudGroupMappingsWidget(authenticationMethod) {
   // Groups deleted along with first mapping should not be offered
   cy.findByText("data").should("not.exist");
   cy.findByText("nosql").should("not.exist");
+
+  reloadAndConfirmMappingGroupsSettled(authenticationMethod, "cn=People2");
 
   cy.findByTestId("admin-content-table").within(() => {
     cy.icon("close").click({ force: true });
@@ -66,6 +75,19 @@ export function checkGroupConsistencyAfterDeletingMappings(
     cy.findByText("readonly");
   });
 }
+
+// Reload the auth settings page and wait until the mapping row reflects its
+// fully-settled group set (Administrators + two others, or two non-admin
+// groups, both render as "2 other groups"). This is a positive readiness
+// anchor: it only passes once mappings and the groups list have loaded from a
+// clean server read, guaranteeing every group is mapped before we act on it.
+const reloadAndConfirmMappingGroupsSettled = (
+  authenticationMethod,
+  mappingName,
+) => {
+  cy.visit("/admin/settings/authentication/" + authenticationMethod);
+  cy.findByText(mappingName).closest("tr").should("contain", "2 other groups");
+};
 
 const deleteMappingWithGroups = (mappingName) => {
   cy.findByText(mappingName)
