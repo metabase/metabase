@@ -912,8 +912,11 @@
   [_ {:keys [models]} _collection rows]
   (let [tables (map #(-> (t2/instance :model/Table %)
                          (update :archived api/bit->boolean)) rows)]
-    (if (contains? models :measure)
-      (t2/hydrate tables :measures)
+    (if (and (contains? models :measure) (seq tables))
+      (let [id->table (t2/select-pk->fn identity :model/Table :id [:in (map :id tables)])]
+        (for [table (t2/hydrate tables :measures)]
+          (update table :measures
+                  (partial filterv #(mi/can-read? (assoc % :table (get id->table (:id table))))))))
       tables)))
 
 ;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
