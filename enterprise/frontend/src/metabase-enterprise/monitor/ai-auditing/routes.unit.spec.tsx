@@ -142,11 +142,12 @@ describe("AI Auditing routes", () => {
   });
 
   it.each([false, true])(
-    "renders CLI analytics regardless of MCP or provider setup when upsell is %s",
+    "renders CLI analytics unconditionally when upsell is %s",
     (upsell) => {
       setup({
         route: Urls.monitorAiAuditingCli(),
         upsell,
+        aiFeaturesEnabled: false,
         isConfigured: false,
         mcpEnabled: false,
       });
@@ -154,16 +155,6 @@ describe("AI Auditing routes", () => {
       expect(screen.getByText("CLI analytics page")).toBeInTheDocument();
     },
   );
-
-  it("blocks CLI analytics when AI features are disabled", () => {
-    setup({
-      route: Urls.monitorAiAuditingCli(),
-      aiFeaturesEnabled: false,
-    });
-
-    expect(screen.getByText("AI features are disabled")).toBeInTheDocument();
-    expect(screen.queryByText("CLI analytics page")).not.toBeInTheDocument();
-  });
 
   it("applies MCP availability to the upsell route set", () => {
     setup({
