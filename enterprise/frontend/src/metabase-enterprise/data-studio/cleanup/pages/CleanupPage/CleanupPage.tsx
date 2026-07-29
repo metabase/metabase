@@ -9,12 +9,12 @@ import { useDispatch } from "metabase/redux";
 import { replace, useSearchParams } from "metabase/router";
 import {
   Badge,
-  Box,
   Card,
   Center,
   Flex,
   Group,
   Icon,
+  ScrollArea,
   Stack,
   Text,
   Title,
@@ -54,7 +54,14 @@ export function CleanupPage() {
 
   return (
     <SectionLayout>
-      <Stack h="100%" px="3.5rem" pb="lg" gap="md">
+      <Stack
+        h="100%"
+        mih={0}
+        px="3.5rem"
+        pb="lg"
+        gap="md"
+        style={{ overflow: "hidden" }}
+      >
         <CleanupHeader
           snapshot={snapshot}
           refreshStatus={refresh.status}
@@ -72,7 +79,12 @@ export function CleanupPage() {
             />
           </>
         )}
-        <Box flex={1} mih={0}>
+        <ScrollArea
+          flex={1}
+          mih={0}
+          type="auto"
+          data-testid="cleanup-table-list"
+        >
           {query.isLoading ? (
             <Center h="100%">
               <LoadingAndErrorWrapper loading />
@@ -99,7 +111,7 @@ export function CleanupPage() {
               ))}
             </Stack>
           )}
-        </Box>
+        </ScrollArea>
         {query.data && query.data.data.length > 0 && (
           <Flex justify="flex-end">
             <PaginationControls

@@ -28,6 +28,7 @@ import {
   Flex,
   Group,
   Icon,
+  ScrollArea,
   Stack,
   Tabs,
   Text,
@@ -217,7 +218,11 @@ export function CleanupTablePage() {
 
   return (
     <SectionLayout>
-      <PageContainer data-testid="cleanup-table-page">
+      <PageContainer
+        data-testid="cleanup-table-page"
+        mih={0}
+        style={{ overflow: "hidden" }}
+      >
         <PaneHeader
           breadcrumbs={
             <DataStudioBreadcrumbs>
@@ -315,42 +320,49 @@ export function CleanupTablePage() {
           </Group>
         )}
 
-        {candidatesQuery.isLoading ? (
-          <Center mih="16rem">
-            <LoadingAndErrorWrapper loading />
-          </Center>
-        ) : candidatesQuery.error ? (
-          <Center mih="16rem">
-            <LoadingAndErrorWrapper error={candidatesQuery.error} />
-          </Center>
-        ) : candidatesQuery.data?.data.length === 0 ? (
-          <Center mih="16rem">
-            <Stack align="center">
-              <Icon name="search" size={36} />
-              <Title order={3}>{t`No matching candidates`}</Title>
-              <Text c="text-secondary">{t`Try changing the filters.`}</Text>
+        <ScrollArea
+          flex={1}
+          mih={0}
+          type="auto"
+          data-testid="cleanup-candidate-list"
+        >
+          {candidatesQuery.isLoading ? (
+            <Center mih="16rem">
+              <LoadingAndErrorWrapper loading />
+            </Center>
+          ) : candidatesQuery.error ? (
+            <Center mih="16rem">
+              <LoadingAndErrorWrapper error={candidatesQuery.error} />
+            </Center>
+          ) : candidatesQuery.data?.data.length === 0 ? (
+            <Center mih="16rem">
+              <Stack align="center">
+                <Icon name="search" size={36} />
+                <Title order={3}>{t`No matching candidates`}</Title>
+                <Text c="text-secondary">{t`Try changing the filters.`}</Text>
+              </Stack>
+            </Center>
+          ) : (
+            <Stack gap="sm">
+              {candidatesQuery.data?.data.map((candidate) => (
+                <CandidateRow
+                  key={candidate.id}
+                  candidate={candidate}
+                  isMutating={dismissState.isLoading || restoreState.isLoading}
+                  onOpen={() => {
+                    trackDataStudioCleanupCandidateInspected(
+                      candidate.id,
+                      candidate.candidate_type,
+                    );
+                    updateParams({ ...params, candidateId: candidate.id });
+                  }}
+                  onDismiss={() => handleDismiss(candidate)}
+                  onRestore={() => restoreDismissedCandidate(candidate)}
+                />
+              ))}
             </Stack>
-          </Center>
-        ) : (
-          <Stack gap="sm">
-            {candidatesQuery.data?.data.map((candidate) => (
-              <CandidateRow
-                key={candidate.id}
-                candidate={candidate}
-                isMutating={dismissState.isLoading || restoreState.isLoading}
-                onOpen={() => {
-                  trackDataStudioCleanupCandidateInspected(
-                    candidate.id,
-                    candidate.candidate_type,
-                  );
-                  updateParams({ ...params, candidateId: candidate.id });
-                }}
-                onDismiss={() => handleDismiss(candidate)}
-                onRestore={() => restoreDismissedCandidate(candidate)}
-              />
-            ))}
-          </Stack>
-        )}
+          )}
+        </ScrollArea>
 
         {candidatesQuery.data && candidatesQuery.data.data.length > 0 && (
           <Flex justify="flex-end">
