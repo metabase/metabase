@@ -1,6 +1,8 @@
 import { Route, redirect, withRouteProps } from "metabase/router";
 
+import { CliAnalyticsPage } from "./cli-analytics/components/CliAnalyticsPage";
 import {
+  CliAnalyticsAvailabilityLayout,
   McpAnalyticsAvailabilityLayout,
   MetabotAnalyticsAvailabilityLayout,
 } from "./components/AvailabilityLayouts";
@@ -14,6 +16,7 @@ const RoutedConversationStatsPage = withRouteProps(ConversationStatsPage);
 const RoutedConversationsPage = withRouteProps(ConversationsPage);
 const RoutedConversationDetailPage = withRouteProps(ConversationDetailPage);
 const RoutedMcpAnalyticsPage = withRouteProps(McpAnalyticsPage);
+const RoutedCliAnalyticsPage = withRouteProps(CliAnalyticsPage);
 
 export function getAiAuditingRoutes() {
   return (
@@ -30,6 +33,9 @@ export function getAiAuditingRoutes() {
       <Route element={<McpAnalyticsAvailabilityLayout />}>
         <Route path="mcp" element={<RoutedMcpAnalyticsPage />} />
       </Route>
+      <Route element={<CliAnalyticsAvailabilityLayout />}>
+        <Route path="cli" element={<RoutedCliAnalyticsPage />} />
+      </Route>
     </>
   );
 }
@@ -41,6 +47,9 @@ export function getAiAuditingUpsellRoutes() {
       <Route path="usage" element={<MetabotAnalyticsUpsellPage />} />
       <Route element={<McpAnalyticsAvailabilityLayout />}>
         <Route path="mcp" element={<RoutedMcpAnalyticsPage />} />
+      </Route>
+      <Route element={<CliAnalyticsAvailabilityLayout />}>
+        <Route path="cli" element={<RoutedCliAnalyticsPage />} />
       </Route>
     </>
   );

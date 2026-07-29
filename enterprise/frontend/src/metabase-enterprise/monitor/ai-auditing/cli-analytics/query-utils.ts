@@ -1,11 +1,4 @@
 import type { DateFilterValue } from "metabase/querying/common/types";
-import {
-  applyDateFilter,
-  applyIdFilter,
-  breakoutByColumn,
-  findColumn,
-  joinGroupMembers,
-} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/query-utils";
 import type {
   CardMetadata,
   MetadataProvider,
@@ -14,6 +7,14 @@ import type {
 } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { SortDirection } from "metabase-types/api";
+
+import {
+  applyDateFilter,
+  applyIdFilter,
+  breakoutByColumn,
+  findColumn,
+  joinGroupMembers,
+} from "../metabot-analytics/components/ConversationStatsPage/query-utils";
 
 export type CliFilters = {
   dateFilter: DateFilterValue;

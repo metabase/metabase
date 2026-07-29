@@ -1,12 +1,12 @@
 import { useMemo, useRef } from "react";
 
-import { useAdhocBreakoutQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAdhocBreakoutQuery";
 import type {
   CardMetadata,
   MetadataProvider,
   TableMetadata,
 } from "metabase-lib";
 
+import { useAdhocBreakoutQuery } from "../../metabot-analytics/hooks/useAdhocBreakoutQuery";
 import type { CliFilters } from "../query-utils";
 import { buildTotalCountQuery } from "../query-utils";
 

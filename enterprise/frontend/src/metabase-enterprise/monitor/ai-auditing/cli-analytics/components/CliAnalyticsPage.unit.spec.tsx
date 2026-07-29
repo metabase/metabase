@@ -152,11 +152,11 @@ function setup({ dataset }: { dataset?: Dataset } = {}) {
 
   return renderWithProviders(
     <Route
-      path="/admin/metabot/usage-auditing/cli"
+      path="/monitor/ai-auditing/cli"
       element={<RoutedCliAnalyticsPage />}
     />,
     {
-      initialRoute: "/admin/metabot/usage-auditing/cli",
+      initialRoute: "/monitor/ai-auditing/cli",
       withRouter: true,
       storeInitialState: createMockState({
         settings: mockSettings({

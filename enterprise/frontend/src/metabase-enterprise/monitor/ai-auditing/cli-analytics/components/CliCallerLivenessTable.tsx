@@ -2,8 +2,6 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Skeleton } from "metabase/ui";
-import { BreakoutChartCard } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/BreakoutChartCard";
-import { useAdhocBreakoutQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAdhocBreakoutQuery";
 import type {
   CardMetadata,
   MetadataProvider,
@@ -11,6 +9,8 @@ import type {
 } from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
 
+import { BreakoutChartCard } from "../../metabot-analytics/components/ConversationStatsPage/BreakoutChartCard";
+import { useAdhocBreakoutQuery } from "../../metabot-analytics/hooks/useAdhocBreakoutQuery";
 import type { CliFilters } from "../query-utils";
 import { buildCallerLivenessQuery } from "../query-utils";
 

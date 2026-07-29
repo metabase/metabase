@@ -68,6 +68,27 @@ export function MetabotAnalyticsAvailabilityLayout() {
   return <Outlet />;
 }
 
+/**
+ * CLI analytics has no dedicated enabled/disabled setting of its own — it's available whenever AI
+ * features are on.
+ */
+export function CliAnalyticsAvailabilityLayout() {
+  const aiFeaturesEnabled = !!useSetting("ai-features-enabled?");
+
+  if (!aiFeaturesEnabled) {
+    return (
+      <UnavailablePage
+        title={t`AI features are disabled`}
+        message={t`Enable AI features in Admin settings to view CLI analytics.`}
+        action={t`Go to AI Settings`}
+        link={Urls.adminAiSettings()}
+      />
+    );
+  }
+
+  return <Outlet />;
+}
+
 export function McpAnalyticsAvailabilityLayout() {
   const aiFeaturesEnabled = !!useSetting("ai-features-enabled?");
   const mcpEnabled = !!useSetting("mcp-enabled?");

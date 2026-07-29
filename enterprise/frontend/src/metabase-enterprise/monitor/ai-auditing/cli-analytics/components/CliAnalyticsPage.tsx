@@ -2,19 +2,19 @@ import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useSetting } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import type { WithRouterProps } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
+
 import {
   // The shared audit filter bar; aliased since it has nothing to do with Metabot "conversations".
   ConversationFilters as CliCallsFilter,
   useFilterOptions,
-} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
-import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
-
+} from "../../metabot-analytics/components/ConversationFilters";
+import { useAuditTable } from "../../metabot-analytics/hooks/useAuditTable";
 import { VIEW_AGENT_API_CALLS, VIEW_GROUP_MEMBERS } from "../constants";
 import { useCliHasData } from "../hooks/useCliHasData";
 import { buildCallsByDayByStatusQuery } from "../query-utils";
@@ -28,7 +28,7 @@ import { CliCallsTimelineChart } from "./CliCallsTimelineChart";
 import { CliEventsTable } from "./CliEventsTable";
 
 /**
- * Admin CLI analytics page. Renders live ad-hoc queries over the `v_agent_api_calls` audit view
+ * AI Auditing CLI analytics page. Renders live ad-hoc queries over the `v_agent_api_calls` audit view
  * across two tabs (Charts and a row-level Calls table), sharing URL-state date/user/group
  * filters. Shows a single empty state (no tabs) when the filtered view has no activity.
  */
@@ -91,23 +91,23 @@ export function CliAnalyticsPage({ location }: WithRouterProps) {
   });
 
   return (
-    <MetabotAdminLayout fullWidth>
-      <SettingsPageWrapper mt="sm">
-        <Flex align="center" justify="space-between">
-          <Title order={2}>{t`CLI analytics`}</Title>
+    <MonitorMain>
+      <Stack gap="lg">
+        <MonitorHeaderTitle>{t`CLI analytics`}</MonitorHeaderTitle>
 
+        <Flex justify="flex-end">
           <CliCallsFilter
             date={date}
-            onDateChange={(val) => patchUrlState({ date: val })}
+            onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
             user={user}
-            onUserChange={(val) => patchUrlState({ user: val })}
+            onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
             userOptions={userOptions}
             group={group}
-            onGroupChange={(val) => patchUrlState({ group: val })}
+            onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
             groupOptions={groupOptions}
             groupNoFilterValue={groupNoFilterValue}
             tenant={tenant}
-            onTenantChange={(val) => patchUrlState({ tenant: val })}
+            onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
             tenantOptions={tenantOptions}
             hasTenants={hasTenants}
           />
@@ -122,6 +122,7 @@ export function CliAnalyticsPage({ location }: WithRouterProps) {
           .with({ showEmpty: true }, () => <CliAnalyticsEmptyState />)
           .otherwise(() => (
             <Tabs
+              variant="pills"
               value={tab}
               // tab/val _is_ a CliTab, but Mantine's Tab only deals with strings ¯\_(ツ)_/¯
               onChange={(val) => patchUrlState({ tab: val as CliTab })}
@@ -218,7 +219,7 @@ export function CliAnalyticsPage({ location }: WithRouterProps) {
               </Tabs.Panel>
             </Tabs>
           ))}
-      </SettingsPageWrapper>
-    </MetabotAdminLayout>
+      </Stack>
+    </MonitorMain>
   );
 }

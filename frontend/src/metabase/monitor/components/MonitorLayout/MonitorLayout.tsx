@@ -49,6 +49,10 @@ function getActiveSection(pathname: string): MonitorSection | null {
       () => "ai-auditing-mcp",
     )
     .with(
+      P.string.startsWith(Urls.monitorAiAuditingCli()),
+      () => "ai-auditing-cli",
+    )
+    .with(
       P.string.startsWith(Urls.monitorAiAuditingConversations()),
       () => "ai-auditing-conversations",
     )
@@ -199,6 +203,14 @@ export function MonitorLayout() {
             isSelected={activeSection === "ai-auditing-mcp"}
             showLabel={isNavbarOpened}
             onClick={() => trackMonitorSectionClicked("ai-auditing-mcp")}
+          />
+          <AreaTab
+            label={t`CLI analytics`}
+            icon="code_block"
+            to={Urls.monitorAiAuditingCli()}
+            isSelected={activeSection === "ai-auditing-cli"}
+            showLabel={isNavbarOpened}
+            onClick={() => trackMonitorSectionClicked("ai-auditing-cli")}
           />
         </AreaTabGroup>
       )}

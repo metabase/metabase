@@ -7,6 +7,7 @@ import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import {
+  CliAnalyticsAvailabilityLayout,
   McpAnalyticsAvailabilityLayout,
   MetabotAnalyticsAvailabilityLayout,
 } from "./AvailabilityLayouts";
@@ -146,6 +147,27 @@ describe("McpAnalyticsAvailabilityLayout", () => {
 
   it("renders the child route when MCP is enabled", () => {
     setup(<McpAnalyticsAvailabilityLayout />);
+
+    expect(screen.getByText("Analytics content")).toBeInTheDocument();
+  });
+});
+
+describe("CliAnalyticsAvailabilityLayout", () => {
+  it("links to AI Settings when AI features are disabled", () => {
+    setup(<CliAnalyticsAvailabilityLayout />, { aiFeaturesEnabled: false });
+
+    expect(screen.getByText("AI features are disabled")).toBeInTheDocument();
+    expect(screen.queryByText("Analytics content")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Go to AI Settings" }),
+    ).toHaveAttribute("href", Urls.adminAiSettings());
+  });
+
+  it("renders the child route whenever AI features are on, regardless of MCP or provider setup", () => {
+    setup(<CliAnalyticsAvailabilityLayout />, {
+      isConfigured: false,
+      mcpEnabled: false,
+    });
 
     expect(screen.getByText("Analytics content")).toBeInTheDocument();
   });
