@@ -22,6 +22,7 @@ import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
+import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
@@ -237,6 +238,7 @@ function NameCell({ metric }: { metric?: MetricResult }) {
       <Flex align="center" gap="0.5rem" ps="1.4rem" pe="0.5rem">
         {metric ? (
           <Link
+            className={CS.overflowHidden}
             to={Urls.metric({
               id: metric.id,
               name: metric.name,
