@@ -444,16 +444,19 @@
               (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
                              :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
                              :model/Database   {db-id :id}    {}
-                             :model/Table      {_t :id}       {:db_id db-id :collection_id data-id :is_published true
+                             :model/Table      {table-id :id} {:db_id db-id :collection_id data-id :is_published true
                                                                :active true :name "orders" :display_name "orders"}]
                 (try
                   (semantic.tu/with-mock-embeddings {"orders" [1.0 0.0 0.0 0.0]}
                     (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model)))
-                  ;; a dim-1 query vector against the dim-4 index column -> pgvector SQLState 22000 -> degrade to []
-                  (semantic.tu/with-mock-embeddings {"q" [1.0]}
-                    ;; Call the EE impl, not the shim: [] is also the shim's OSS answer, so a broken
-                    ;; defenterprise dispatch would pass this assertion without running the query.
-                    #_{:clj-kondo/ignore [:discouraged-var]}
+                  ;; Every entry point here is a defenterprise dispatcher that answers [] in OSS, so pair the
+                  ;; degrade assertion with a control: an unrun query and a degraded one both look like [].
+                  #_{:clj-kondo/ignore [:discouraged-var]}
+                  (semantic.tu/with-mock-embeddings {"orders" [1.0 0.0 0.0 0.0] "q" [1.0]}
+                    (is (=? [{:model "table" :id table-id}]
+                            (distinct (map :entity (entity-retrieval.core/search-unfiltered "orders" 10))))
+                        "the query really runs, so the [] below is the degrade path and not a fallback")
+                    ;; a dim-1 query vector against the dim-4 index column -> pgvector SQLState 22000
                     (is (= [] (entity-retrieval.core/search-unfiltered "q" 10))))
                   (finally
                     (jdbc/execute! ds [(str "DROP TABLE IF EXISTS \"" (index-table/vectors-table)
