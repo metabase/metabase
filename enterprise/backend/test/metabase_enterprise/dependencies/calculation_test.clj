@@ -66,6 +66,27 @@
               :table #{checkins-id venues-id users-id}}
              (calculation/calculate-deps :card card))))))
 
+(deftest ^:parallel upstream-deps-metric-dimension-mappings-test
+  (testing "a metric v2's dimension mappings contribute their columns' tables as dependencies, even
+            when the base query doesn't reference them"
+    (let [mp            (mt/metadata-provider)
+          venues-id     (mt/id :venues)
+          categories-id (mt/id :categories)
+          base-query    (-> (lib/query mp (lib.metadata/table mp venues-id))
+                            (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Card metric {:type               :metric
+                                         :dataset_query      base-query
+                                         :dimension_mappings [{:type         :table
+                                                               :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+                                                               :table-id     categories-id
+                                                               :target       [:field {} (mt/id :categories :name)]}]}]
+        (is (= {:card    #{}
+                :measure #{}
+                :segment #{}
+                :table   #{venues-id categories-id}}
+               (calculation/calculate-deps :card metric))
+            "the mapped column's table (categories) is a dependency alongside the query's own table (venues)")))))
+
 (deftest ^:parallel upstream-deps-card-implicit-join-filter-test
   (let [mp (mt/metadata-provider)
         checkins-id (mt/id :checkins)

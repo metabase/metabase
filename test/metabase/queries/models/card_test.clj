@@ -1742,7 +1742,7 @@
               "Metric Card should have dimensions populated immediately after insert"))))))
 
 (deftest metric-card-resyncs-dimensions-on-dataset-query-update-test
-  (testing "Updating a metric Card's :dataset_query re-syncs dimensions"
+  (testing "Updating a metric Card's :dataset_query re-syncs dimension status"
     (let [mp           (mt/metadata-provider)
           venues-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                            (lib/aggregate (lib/count)))
@@ -1756,13 +1756,17 @@
         (let [before (t2/select-one :model/Card :id (:id metric))
               venues-dim-names (set (map :name (:dimensions before)))]
           (is (seq venues-dim-names) "Should have venues dimensions before update")
+          (is (every? #(= :status/active (:status %)) (:dimensions before))
+              "Seeded dimensions start out active")
           (t2/update! :model/Card (:id metric) {:dataset_query checkins-query
                                                 :table_id      (mt/id :checkins)})
-          (let [after (t2/select-one :model/Card :id (:id metric))
-                checkins-dim-names (set (map :name (:dimensions after)))]
-            (is (seq checkins-dim-names) "Should have dimensions after update")
-            (is (not= venues-dim-names checkins-dim-names)
-                "Dimensions should reflect new dataset_query (different table)")))))))
+          ;; Curated dimensions are authoritative: a query change never rewrites or drops them, it
+          ;; only re-runs the status refresh, so columns that no longer exist become orphaned.
+          (let [after (t2/select-one :model/Card :id (:id metric))]
+            (is (= venues-dim-names (set (map :name (:dimensions after))))
+                "The curated dimension set is preserved across the query change")
+            (is (every? #(= :status/orphaned (:status %)) (:dimensions after))
+                "Dimensions whose columns are gone from the new query are marked orphaned")))))))
 
 (deftest non-metric-card-skips-dimension-sync-test
   (testing "Inserting a regular question Card does NOT populate :dimensions"

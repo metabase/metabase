@@ -68,7 +68,9 @@
    [metabase.api.common :as api]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.shared :as shared]
@@ -77,6 +79,7 @@
    [metabase.models.interface :as mi]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
@@ -873,6 +876,82 @@
       _ (throw (ex-info (str "Unsupported URI: " uri)
                         {:uri uri :segments segments})))))
 
+;; ----- Display titles -----
+
+(def ^:private link-models
+  "URI leading segment -> model, for entities rendered as `metabase://` links. Mirrors
+   `METABASE_PROTOCOL_ENTITY_MODELS` in metabot/utils/links.ts — keep the two in sync."
+  {"dashboard"  :model/Dashboard
+   "database"   :model/Database
+   "collection" :model/Collection
+   "table"      :model/Table
+   "question"   :model/Card
+   "model"      :model/Card
+   "document"   :model/Document
+   "transform"  :model/Transform})
+
+(def ^:private plain-models
+  "URI leading segment -> model for entities that aren't `metabase://`-linkable; their
+   name still shows as plain text instead of the bare \"Reading resource\" fallback."
+  {"metric"  :model/Card
+   "measure" :model/Measure
+   "segment" :model/Segment})
+
+(defn- nav-noun
+  "Localized noun for a top-level navigation URI, so browsing reads as e.g.
+   \"Read databases\" rather than the bare fallback."
+  [segments]
+  (case segments
+    ["databases"]           (tru "databases")
+    ["collections"]         (tru "collections")
+    ["user" "recent-items"] (tru "recent items")
+    nil))
+
+(defn- aspect-noun
+  "Localized noun for the sub-resource an `entity/{id}/…` URI drills into; words match
+   existing site copy. nil for the bare entity."
+  [segment aspect]
+  (if (and (= segment "dashboard") (= aspect "items"))
+    (tru "cards")
+    (case aspect
+      "fields"         (tru "fields")
+      "derived"        (tru "dependents")
+      "sources"        (tru "sources")
+      "dimensions"     (tru "dimensions")
+      "items"          (tru "items")
+      "tables"         (tru "tables")
+      "models"         (tru "models")
+      "schemas"        (tru "schemas")
+      "subcollections" (tru "subcollections")
+      "target"         (tru "target")
+      nil)))
+
+(defn- uri-label
+  "Label for one successfully read resource, built from what the read returned — no
+   extra queries. The entity plus any drilled-into aspect (`[Orders](…) columns`), an
+   aspect noun alone when the result carries no entity name (`tables`), or a
+   navigation noun (`databases`). nil when nothing fits."
+  [{:keys [uri content]}]
+  (let [{segments :segments} (parse-uri uri)
+        [segment id-str & rst] segments
+        id          (some-> id-str parse-long)
+        ;; tables carry a raw :name (ORDERS) and a friendly :display_name (Orders);
+        ;; prefer the latter so the label matches the search results
+        entity-name (when (and id (or (link-models segment) (plain-models segment)))
+                      (let [so (:structured-output content)]
+                        (or (:display_name so) (:name so))))
+        title       (when (string? entity-name)
+                      (if (link-models segment)
+                        (te/link entity-name "metabase://" segment "/" id)
+                        entity-name))
+        ;; drop the trailing field/dimension id so `.../fields/10` still reads as "fields"
+        noun        (when id (aspect-noun segment (last (remove parse-long rst))))]
+    (cond
+      (and title noun) (str title " " noun)
+      title            title
+      noun             noun
+      :else            (nav-noun segments))))
+
 ;; ----- Tool entry points -----
 
 (defn- fetch-single-uri
@@ -949,15 +1028,24 @@
 
   ;; Fetch all URIs (sequentially for now, could parallelize with pmap)
   (let [resources (mapv fetch-single-uri uris)
-        formatted (format-resources resources)]
+        formatted (format-resources resources)
+        labels    (into []
+                        (comp (filter :content)
+                              (keep #(try (uri-label %) (catch Throwable _ nil)))
+                              (distinct))
+                        resources)]
     (log/info "Fetched resources" {:total      (count resources)
                                    :successful (count (filter :content resources))
                                    :errors     (count (filter :error resources))})
-    {:resources resources
-     :output formatted}))
+    (cond-> {:resources resources
+             :output    formatted}
+      (seq labels)
+      ;; just the object (the entities/aspects) — the client wraps it in the verb
+      ;; + tense ("Reading …" while active, "Read …" once settled)
+      (assoc :data-parts [(streaming/tool-title-part (str/join ", " labels))]))))
 
-(mu/defn ^{:tool-name "read_resource"
-           :scope     scope/agent-resource-read}
+(mu/defn ^{:tool-name  "read_resource"
+           :scope      scope/agent-resource-read}
   read-resource-tool
   "Read detailed information about Metabase resources via URI patterns. Use this to navigate
   the instance and drill into specific entities. URIs returned by `search` can be fed directly

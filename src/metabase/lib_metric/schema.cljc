@@ -320,13 +320,16 @@
    [:id               ::dimension-id]
    [:name             {:optional true} [:maybe :string]]
    [:display-name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:description      {:optional true} [:maybe :string]]
    [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:semantic-type    {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
    [:status           {:optional true} [:maybe ::dimension-status]]
    [:status-message   {:optional true} [:maybe :string]]
    [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
-   [:group            {:optional true} [:maybe ::dimension-group]]])
+   [:group            {:optional true} [:maybe ::dimension-group]]
+   ;; At most one dimension per entity may be the default.
+   [:default          {:optional true} [:maybe :boolean]]])
 
 (mr/def ::persisted-dimensions
   "Schema for a sequence of persisted dimensions."
@@ -374,6 +377,7 @@
    [:status-message   {:optional true} [:maybe :string]]
    [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
    [:group            {:optional true} [:maybe ::dimension-group]]
+   [:default          {:optional true} [:maybe :boolean]]
    ;; Source tracking
    [:source-type      ::dimension-source-type]
    [:source-id        pos-int?]

@@ -6,6 +6,7 @@ import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import type { MetricsViewerDimensionBreakoutProjectionConfig } from "metabase/metrics-viewer/types";
 import {
   type DimensionFilterValue,
+  getDimensionBreakoutLabel,
   getProjectionInfo,
 } from "metabase/metrics-viewer/utils";
 import { Box, Button, Flex, Icon } from "metabase/ui";
@@ -44,6 +45,8 @@ export function ControlsContent(props: ControlsContentProps) {
   const {
     activeDimensionBreakout: dimensionBreakout,
     availableDimensions,
+    definitions,
+    metricSlots,
     sourceOrder,
     openSidebar,
     updateActiveDimensionBreakout,
@@ -102,9 +105,9 @@ export function ControlsContent(props: ControlsContentProps) {
   );
 
   const columnPickerLabel =
-    dimensionBreakout?.type === "time"
-      ? t`Time`
-      : (dimensionBreakout?.label ?? t`Select column`);
+    (dimensionBreakout
+      ? getDimensionBreakoutLabel(dimensionBreakout, definitions, metricSlots)
+      : null) ?? t`Select column`;
   const dimensionFilter = dimensionBreakout?.projectionConfig.dimensionFilter;
 
   return (

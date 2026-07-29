@@ -1,7 +1,7 @@
 import * as Lib from "metabase-lib";
 import type { DimensionMetadata } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-import type { IconName } from "metabase-types/api";
+import type { IconName, MetricDimension } from "metabase-types/api";
 
 export function getColumnIcon(
   column: Lib.ColumnMetadata | Lib.ColumnTypeInfo,
@@ -40,7 +40,18 @@ export function getColumnIcon(
   return "list";
 }
 
-export function getDimensionIcon(dimension: DimensionMetadata): IconName {
+export function getDimensionIcon(
+  dimension: DimensionMetadata | MetricDimension,
+): IconName {
+  if ("display_name" in dimension) {
+    return getColumnIcon(
+      Lib.legacyColumnTypeInfo({
+        effective_type: dimension.effective_type,
+        semantic_type: dimension.semantic_type,
+      }),
+    );
+  }
+
   if (LibMetric.isPrimaryKey(dimension)) {
     return "label";
   }

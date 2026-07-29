@@ -61,7 +61,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { ClickObject, OrderByDirection } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
+import { isFK, isID, isPK, isString } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
   DatasetColumn,
@@ -591,6 +591,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         align,
         wrap,
         sortDirection,
+        sortingFn: isString(col) ? "alphanumeric" : undefined,
         enableResizing: true,
         getBackgroundColor,
         formatter: formatter.rich,

@@ -40,7 +40,10 @@
   (testing "internal keys and annotated Field columns other than :dimension-interestingness are stripped"
     (is (= {:id "d3" :name "BAR" :display_name "BAR" :effective_type nil :semantic_type nil}
            (metrics.dimension/->api-dimension
-            {:id "d3" :name "BAR" :lib/source :source/table-defaults :source-type :metric :description "field col"}))))
+            {:id "d3" :name "BAR" :lib/source :source/table-defaults :source-type :metric}))))
+  (testing ":description is a curated dimension field, so it survives to the wire"
+    (is (= "A price"
+           (:description (metrics.dimension/->api-dimension {:id "d3b" :name "BAR" :description "A price"})))))
   (testing "a zero :dimension-interestingness is kept, nil is dropped"
     (is (= 0 (:dimension_interestingness (metrics.dimension/->api-dimension {:id "d4" :dimension-interestingness 0}))))
     (is (not (contains? (metrics.dimension/->api-dimension {:id "d5" :dimension-interestingness nil})

@@ -15,6 +15,37 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(deftest ^:parallel search-display-test
+  (testing "joins keyword and semantic queries into the search object (client owns the verb/tense)"
+    (is (= "revenue, orders"
+           (#'search/search-display {:keyword_queries ["revenue"] :semantic_queries ["orders"]}))))
+  (testing "dedupes overlapping queries"
+    (is (= "revenue"
+           (#'search/search-display {:keyword_queries ["revenue"] :semantic_queries ["revenue"]}))))
+  (testing "no queries -> nil"
+    (is (nil? (#'search/search-display {})))))
+
+(deftest ^:parallel search-result->item-test
+  (testing "trims a result to the fields the results card renders, nesting collection id+name"
+    (is (= {:id 1 :type "table" :name "orders" :display_name "Orders"
+            :database_id 2 :database_schema "PUBLIC" :database_name "Sample"
+            :collection {:id 3 :name "Finance"}}
+           (#'search/search-result->item
+            {:id 1 :type "table" :name "orders" :display_name "Orders"
+             :database_id 2 :database_schema "PUBLIC" :database_name "Sample"
+             :collection {:id 3 :name "Finance" :authority_level nil}
+             :score 0.99 :description "wide table"}))))
+  (testing "no collection -> no collection key"
+    (is (= {:id 5 :type "dashboard" :name "Revenue"}
+           (#'search/search-result->item
+            {:id 5 :type "dashboard" :name "Revenue" :collection nil}))))
+  (testing "carries a question's display (as a string) + moderated_status for the exact icon"
+    (is (= {:id 7 :type "question" :name "Revenue" :display "line"
+            :moderated_status "verified"}
+           (#'search/search-result->item
+            {:id 7 :type "question" :name "Revenue" :display :line
+             :moderated_status "verified"})))))
+
 (deftest ^:parallel reciprocal-rank-fusion-test
   (testing "Basic RRF with single list"
     (let [single-list [[{:id 1 :model "card" :name "Card 1"}
@@ -283,6 +314,7 @@
                     :database_id nil
                     :verified true
                     :official false
+                    :moderated_status "verified"
                     :collection {:id 11 :name "Analytics" :authority_level nil}
                     :updated_at "2024-01-04"
                     :created_at "2024-01-04"}]
@@ -620,6 +652,28 @@
             (testing "base_table_portable_fk is `[database_name, schema, table_name]`"
               (is (= [db-name (:schema orders-t) (:name orders-t)]
                      (:base_table_portable_fk metric-res))))))))))
+
+(deftest enrich-with-metric-base-tables-respects-table-permissions-test
+  (testing "a readable metric does not reveal metadata for an unreadable base table"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-test-user :rasta
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Card {metric-id :id} {:name          "Restricted Base Table Metric"
+                                                      :type          :metric
+                                                      :database_id   (mt/id)
+                                                      :table_id      (mt/id :orders)
+                                                      :dataset_query {:database (mt/id)
+                                                                      :type     :query
+                                                                      :query    {:source-table (mt/id :orders)
+                                                                                 :aggregation  [[:count]]}}}]
+            (let [results    (search/search {:term-queries ["Restricted Base Table Metric"]})
+                  metric-res (some #(when (= [metric-id "metric"] [(:id %) (:type %)]) %) results)]
+              (is (some? metric-res) "collection access still makes the metric searchable")
+              (is (not-any? #(contains? metric-res %)
+                            [:base_table_id
+                             :base_table_name
+                             :base_table_schema
+                             :base_table_portable_fk])))))))))
 
 (deftest remove-unreadable-transforms-test
   (testing "remove-unreadable-transforms correctly filters transforms based on source database access"

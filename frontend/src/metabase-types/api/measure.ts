@@ -1,42 +1,10 @@
 import type { FieldValue } from "./field";
+import type { DimensionId, DimensionMapping, MetricDimension } from "./metric";
 import type { DatasetQuery, OpaqueDatasetQuery } from "./query";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 
 export type MeasureId = number;
-export type DimensionId = string;
-
-export type MetricDimensionGroup = {
-  id: string;
-  type: "main" | "connection";
-  display_name: string;
-};
-
-export type MetricDimensionSource = {
-  type: string;
-  "field-id": number;
-};
-
-export type MetricDimension = {
-  id: DimensionId;
-  name: string;
-  display_name: string;
-  effective_type: string;
-  semantic_type: string | null;
-  has_field_values?: "list" | "search" | "none" | null;
-  status_message?: string | null;
-  dimension_interestingness?: number | null;
-  group?: MetricDimensionGroup;
-  sources?: MetricDimensionSource[];
-};
-
-export type DimensionMappingTarget = ["field", Record<string, unknown>, number];
-
-export type DimensionMapping = {
-  dimension_id: DimensionId;
-  table_id: number;
-  target: DimensionMappingTarget;
-};
 
 export interface Measure {
   id: MeasureId;

@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
+import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
 import { getDimensionIcon } from "metabase/common/utils/columns";
 import { createSeriesCard } from "metabase/common/utils/series";
 import type {
@@ -667,15 +668,17 @@ function buildStandaloneDimensionItem(
       return null;
     }
 
-    const dimensionInfo = LibMetric.displayInfo(
-      modifiedDefinition,
-      projectionDimension,
+    const dimension = getDimensionDescriptors(defEntry.definition).get(
+      dimensionId,
     );
 
     return {
       type: "metric",
       slotIndex: slot.slotIndex,
-      label: dimensionInfo.longDisplayName,
+      label:
+        dimension?.displayName ??
+        LibMetric.displayInfo(modifiedDefinition, projectionDimension)
+          .displayName,
       icon: getDimensionIcon(projectionDimension),
       colors: entryColors,
       availableOptions: computeAvailableOptions(
@@ -745,10 +748,11 @@ function buildExpressionMetricSources(
           LibMetric.projectionDimension(modifiedDefinition, projections[0]) ??
           undefined;
         if (currentDimension) {
-          currentDimensionLabel = LibMetric.displayInfo(
-            modifiedDefinition,
-            currentDimension,
-          ).longDisplayName;
+          currentDimensionLabel =
+            getDimensionDescriptors(defEntry.definition).get(dimensionId)
+              ?.displayName ??
+            LibMetric.displayInfo(modifiedDefinition, currentDimension)
+              .displayName;
           currentDimensionIcon = getDimensionIcon(currentDimension);
         }
       }

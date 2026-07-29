@@ -166,6 +166,18 @@
   [mappings]
   (mapv ->api-dimension-mapping mappings))
 
+(defn ->api-group
+  "Convert an internal dimension group `{:id :type :display-name}` to the API shape."
+  [group]
+  (when group
+    ((api-encoder ::group) group)))
+
+(defn ->api-addable-dimension
+  "Convert a computed dimension/mapping pair to the API shape."
+  [{:keys [dimension mapping]}]
+  (assoc (->api-dimension dimension)
+         :mapping_target (lib-metric/field-ref->key (:target mapping))))
+
 (defn- dimension-field-id
   "Field id behind `dim` on `metric`, or nil when it can't be resolved — the dimension is
    missing from the metric, orphaned, or mapped to a column name rather than a Field id.

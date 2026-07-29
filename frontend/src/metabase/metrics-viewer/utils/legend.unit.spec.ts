@@ -3,6 +3,7 @@ import Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
   createMockMetric,
   createMockMetricDimension,
+  createMockMetricDimensionGroup,
 } from "metabase-types/api/mocks/metric";
 
 import type {
@@ -26,9 +27,14 @@ const REVENUE_METRIC = createMockMetric({
     }),
     createMockMetricDimension({
       id: "dim-2",
-      display_name: "Category",
+      display_name: "Product type",
       effective_type: "type/Text",
       semantic_type: "type/Category",
+      group: createMockMetricDimensionGroup({
+        id: "products",
+        type: "connection",
+        display_name: "Products",
+      }),
     }),
   ],
 });
@@ -158,7 +164,7 @@ describe("buildLegendGroups", () => {
     ).toEqual([
       {
         key: 0,
-        header: "Category",
+        header: "Product type",
         subtitle: "Revenue",
         items: [
           { label: "Gadgets", color: "#509EE3" },

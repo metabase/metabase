@@ -88,8 +88,15 @@ export const getDataColumn = <TRow, TValue>(
   truncateWidth: number,
   onExpand: (columnName: string, content: React.ReactNode) => void,
 ): ColumnDef<TRow, TValue> => {
-  const { id, accessorFn, wrap, cell, header, headerClickTargetSelector } =
-    columnOptions;
+  const {
+    id,
+    accessorFn,
+    wrap,
+    cell,
+    header,
+    headerClickTargetSelector,
+    sortingFn,
+  } = columnOptions;
   const columnWidth = columnSizing[id] ?? 0;
   const measuredColumnWidth = measuredColumnSizing[id] ?? 0;
 
@@ -101,6 +108,7 @@ export const getDataColumn = <TRow, TValue>(
   const columnDefinition: ColumnDef<TRow, TValue> = {
     accessorFn,
     id,
+    ...(sortingFn != null ? { sortingFn } : {}),
     header:
       typeof header !== "string"
         ? memo(header ?? getDefaultHeaderTemplate(columnOptions))

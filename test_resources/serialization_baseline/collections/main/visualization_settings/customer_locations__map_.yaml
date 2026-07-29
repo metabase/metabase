@@ -451,7 +451,7 @@ visualization_settings:
   map.pin_type: markers
   map.type: pin
   map.zoom: 4
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: CI61cHgBAKPBEDTxhK8X3
   label: customer_locations__map_

@@ -134,7 +134,7 @@
   "Extract AISDK parts from a step, filtering out non-message types."
   [step]
   (->> (:parts step)
-       (filter #(#{:text :tool-input :tool-output} (:type %)))))
+       (filter #(#{:text :tool-input :tool-output :reasoning} (:type %)))))
 
 (defn- messages-with-injected-context
   "Returns messages from memory and injects context into the most recent one."
