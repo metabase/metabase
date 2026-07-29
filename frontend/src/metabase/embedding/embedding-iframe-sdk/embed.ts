@@ -20,6 +20,7 @@ import type {
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
 } from "./types/embed";
+import { listenForEajsMessages } from "./utils/post-message";
 import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
 
 // Import EE Iframe Embedding script plugins
@@ -156,6 +157,7 @@ export abstract class MetabaseEmbedElement
     Set<SdkIframeEmbedEventHandler>
   > = new Map();
   private _authManager: EmbedAuthManager | null = null;
+  private _removeMessageListener: (() => void) | null = null;
 
   get globalSettings() {
     return (window as any).metabaseConfig || {};
@@ -265,7 +267,8 @@ export abstract class MetabaseEmbedElement
   }
 
   destroy() {
-    window.removeEventListener("message", this._handleMessage);
+    this._removeMessageListener?.();
+    this._removeMessageListener = null;
     this._isEmbedReady = false;
     this._eventHandlers.clear();
     this._authManager = null;
@@ -354,7 +357,11 @@ export abstract class MetabaseEmbedElement
 
     this._iframe.setAttribute("data-metabase-embed", "true");
 
-    window.addEventListener("message", this._handleMessage);
+    this._removeMessageListener = listenForEajsMessages({
+      messageSource: "iframe-content",
+      iframe: this._iframe,
+      handler: this._handleMessage,
+    });
 
     this.appendChild(this._iframe);
   }
@@ -405,19 +412,8 @@ export abstract class MetabaseEmbedElement
     }
   }
 
-  private _handleMessage = async (
-    event: MessageEvent<SdkIframeEmbedTagMessage>,
-  ) => {
-    if (event.source !== this._iframe?.contentWindow) {
-      // ignore messages from other iframes
-      return;
-    }
-
-    if (!event.data) {
-      return;
-    }
-
-    if (event.data.type === "metabase.embed.iframeReady") {
+  private _handleMessage = async (message: SdkIframeEmbedTagMessage) => {
+    if (message.type === "metabase.embed.iframeReady") {
       if (this._isEmbedReady) {
         return;
       }
@@ -431,7 +427,7 @@ export abstract class MetabaseEmbedElement
       this._emitEvent({ type: "ready" });
     }
 
-    if (event.data.type === "metabase.embed.requestSessionToken") {
+    if (message.type === "metabase.embed.requestSessionToken") {
       await this._authenticate();
     }
   };
