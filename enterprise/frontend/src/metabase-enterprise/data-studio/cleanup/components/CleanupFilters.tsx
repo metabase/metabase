@@ -69,11 +69,15 @@ const QUEUES: UsageMetadataCleanupQueue[] = [
 export function CleanupQueueTabs({
   params,
   onChange,
-}: Pick<CleanupFiltersProps, "params" | "onChange">) {
+  variant,
+}: Pick<CleanupFiltersProps, "params" | "onChange"> & {
+  variant?: "default" | "pills";
+}) {
   const queue = params.queue ?? "suggested";
 
   return (
     <Tabs
+      variant={variant}
       value={queue}
       onChange={(value) =>
         onChange({

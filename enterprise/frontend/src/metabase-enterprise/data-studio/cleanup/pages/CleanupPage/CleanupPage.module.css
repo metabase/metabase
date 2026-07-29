@@ -1,0 +1,5 @@
+.tableRow {
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}

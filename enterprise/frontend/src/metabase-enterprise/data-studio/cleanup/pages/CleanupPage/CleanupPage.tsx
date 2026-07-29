@@ -31,6 +31,8 @@ import { CleanupHeader } from "../../components/CleanupHeader";
 import { useCleanupRefresh } from "../../hooks/useCleanupRefresh";
 import { hasActiveFilters, parseCleanupParams } from "../../utils";
 
+import S from "./CleanupPage.module.css";
+
 const PAGE_SIZE = 50;
 
 export function CleanupPage() {
@@ -101,15 +103,16 @@ export function CleanupPage() {
               queue={params.queue}
             />
           ) : (
-            <Stack gap="sm">
-              {query.data?.data.map((row) => (
+            <Card withBorder p={0}>
+              {query.data?.data.map((row, index, rows) => (
                 <CleanupTableRow
                   key={String(row.table.id)}
                   row={row}
                   params={params}
+                  isLast={index === rows.length - 1}
                 />
               ))}
-            </Stack>
+            </Card>
           )}
         </ScrollArea>
         {query.data && query.data.data.length > 0 && (
@@ -135,9 +138,11 @@ export function CleanupPage() {
 function CleanupTableRow({
   row,
   params,
+  isLast,
 }: {
   row: UsageMetadataTableSummary;
   params: Urls.DataStudioCleanupParams;
+  isLast: boolean;
 }) {
   const { table, candidate_count: candidateCount } = row;
 
@@ -147,8 +152,11 @@ function CleanupTableRow({
       to={Urls.dataStudioCleanupTable(table.id, {
         queue: params.queue,
       })}
-      withBorder
-      p="lg"
+      className={S.tableRow}
+      p="md"
+      radius={0}
+      shadow="none"
+      bd={isLast ? undefined : "0 0 1px 0 solid var(--mb-color-border-neutral)"}
       c="inherit"
       style={{ textDecoration: "none" }}
       data-testid={`cleanup-table-${table.id}`}

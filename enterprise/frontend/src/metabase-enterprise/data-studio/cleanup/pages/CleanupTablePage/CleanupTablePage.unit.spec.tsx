@@ -175,11 +175,13 @@ describe("CleanupTablePage", () => {
 
     expect(await screen.findByText("Total revenue")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Measure" })).toBeInTheDocument();
-    expect(screen.getByText("Showing 1–20 of 42")).toBeInTheDocument();
+    expect(screen.getByTestId("pagination-total")).toHaveTextContent("42");
     expect(screen.queryByText("Sum of order totals")).not.toBeInTheDocument();
     expect(screen.queryByText("Read-only definition")).not.toBeInTheDocument();
     expect(screen.queryByText("Not in Library")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Review" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Total revenue" }),
+    ).toBeInTheDocument();
 
     const listCall = fetchMock.callHistory.lastCall(
       "path:/api/ee/data-studio/usage-metadata/candidates",
@@ -206,9 +208,12 @@ describe("CleanupTablePage", () => {
     setup();
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Review" }),
+      await screen.findByRole("button", { name: "Total revenue" }),
     );
 
+    const panel = await screen.findByRole("complementary", {
+      name: "Candidate report",
+    });
     expect(await screen.findByText("Read-only definition")).toBeInTheDocument();
     expect(
       screen.getByText("Measure is missing from the Library"),
@@ -224,11 +229,30 @@ describe("CleanupTablePage", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByText("Technical details")).not.toBeInTheDocument();
     expect(
-      within(screen.getByRole("dialog")).getByText("12 sources · 400 views"),
+      within(panel).getByText("12 sources · 400 views"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("cleanup-table-page")).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`cleanup-candidate-${candidate.id}`),
+    ).toHaveAttribute("data-selected");
+
+    await userEvent.click(
+      within(panel).getByRole("button", {
+        name: "Close candidate details",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("complementary", { name: "Candidate report" }),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("button", { name: "Total revenue" }),
     ).toBeInTheDocument();
   });
 
-  it("clearly explains a partially modeled candidate in the drawer", async () => {
+  it("clearly explains a partially modeled candidate in the report panel", async () => {
     const statusCandidate = {
       ...candidate,
       modeling_status: "partially-modeled" as const,
@@ -237,7 +261,7 @@ describe("CleanupTablePage", () => {
     setup(statusCandidate);
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Review" }),
+      await screen.findByRole("button", { name: "Total revenue" }),
     );
 
     expect(
@@ -262,9 +286,12 @@ describe("CleanupTablePage", () => {
     setup(modeledCandidate, "/data-studio/cleanup/tables/1?queue=used-raw");
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "View report" }),
+      await screen.findByRole("button", { name: "Total revenue" }),
     );
 
+    const panel = await screen.findByRole("complementary", {
+      name: "Candidate report",
+    });
     expect(
       await screen.findByText("Measure is already modeled, but still used raw"),
     ).toBeInTheDocument();
@@ -274,17 +301,17 @@ describe("CleanupTablePage", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByRole("dialog")).queryByRole("button", {
+      within(panel).queryByRole("button", {
         name: "Dismiss",
       }),
     ).not.toBeInTheDocument();
     expect(
-      within(screen.getByRole("dialog")).queryByRole("button", {
+      within(panel).queryByRole("button", {
         name: "Create Measure",
       }),
     ).not.toBeInTheDocument();
     expect(
-      within(screen.getByRole("dialog")).queryByRole("button", {
+      within(panel).queryByRole("button", {
         name: "View in Library",
       }),
     ).not.toBeInTheDocument();

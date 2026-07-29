@@ -21,7 +21,9 @@ import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { replace, useParams, useSearchParams } from "metabase/router";
 import {
+  ActionIcon,
   Badge,
+  Box,
   Button,
   Card,
   Center,
@@ -33,6 +35,8 @@ import {
   Tabs,
   Text,
   Title,
+  Tooltip,
+  UnstyledButton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import {
@@ -45,13 +49,15 @@ import {
 import type { UsageMetadataCandidateSummary } from "metabase-types/api";
 
 import { getCandidateIcon } from "../../components/CandidateDefinition";
-import { CandidateDrawer } from "../../components/CandidateDrawer";
+import { CandidatePanel } from "../../components/CandidatePanel";
 import {
   CleanupFilters,
   CleanupQueueTabs,
 } from "../../components/CleanupFilters";
 import { useCleanupRefresh } from "../../hooks/useCleanupRefresh";
 import { parseCleanupParams } from "../../utils";
+
+import S from "./CleanupTablePage.module.css";
 
 const PAGE_SIZE = 20;
 
@@ -161,6 +167,9 @@ export function CleanupTablePage() {
         candidateType: candidate.candidate_type,
         result: "success",
       });
+      if (params.candidateId === candidate.id) {
+        closeCandidate();
+      }
       sendSuccessToast(
         t`Suggestion dismissed`,
         () => restoreDismissedCandidate(candidate),
@@ -191,7 +200,7 @@ export function CleanupTablePage() {
     }
     previousSnapshotId.current = snapshotId;
     // Only react to the snapshot identity; params are intentionally read from
-    // the current render so a completed refresh closes an obsolete drawer.
+    // the current render so a completed refresh closes an obsolete report.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshotId]);
 
@@ -217,252 +226,282 @@ export function CleanupTablePage() {
   const detail = tableQuery.data;
 
   return (
-    <SectionLayout>
-      <PageContainer
-        data-testid="cleanup-table-page"
-        mih={0}
-        style={{ overflow: "hidden" }}
-      >
-        <PaneHeader
-          breadcrumbs={
-            <DataStudioBreadcrumbs>
-              <Link to={Urls.dataStudioCleanup({ queue: params.queue })}>
-                {t`Cleanup`}
-              </Link>
-              <span>{detail.table.display_name}</span>
-            </DataStudioBreadcrumbs>
-          }
-          title={detail.table.display_name}
-          icon="table"
-          actions={
-            <Group>
-              {detail.snapshot?.finished_at && (
-                <Text c="text-secondary" size="sm">
-                  {t`Analyzed ${dayjs(detail.snapshot.finished_at).fromNow()}`}
-                </Text>
-              )}
-              <Badge color={detail.table.is_published ? "positive" : "neutral"}>
-                {detail.table.is_published ? t`Published` : t`Unpublished`}
-              </Badge>
-              {!detail.table.is_published && (
-                <Button
-                  onClick={() => {
-                    trackDataStudioCleanupPublicationStarted(Number(tableId));
-                    setShowPublishModal(true);
-                  }}
-                >
-                  {t`Publish table`}
-                </Button>
-              )}
-            </Group>
-          }
-          py={0}
-        />
-
-        {refresh.isRefreshing && (
-          <Card withBorder p="sm">
-            <Group>
-              <Icon name="sync" />
-              <Text>{t`A new instance analysis is running. These results remain available until it finishes.`}</Text>
-            </Group>
-          </Card>
-        )}
-
-        <CleanupQueueTabs params={params} onChange={updateParams} />
-
-        <Tabs
-          value={params.candidateType ?? "all"}
-          onChange={(value) =>
-            updateParams({
-              ...params,
-              candidateType:
-                value === "measure" || value === "segment" ? value : undefined,
-              page: undefined,
-              candidateId: undefined,
-            })
-          }
-        >
-          <Tabs.List>
-            <Tabs.Tab value="all">{t`All candidates`}</Tabs.Tab>
-            <Tabs.Tab value="measure">{t`Measures`}</Tabs.Tab>
-            <Tabs.Tab value="segment">{t`Segments`}</Tabs.Tab>
-          </Tabs.List>
-        </Tabs>
-
-        <CleanupFilters
-          params={params}
-          onChange={updateParams}
-          showDatabaseFilter={false}
-          searchPlaceholder={
-            params.queue === "used-raw"
-              ? t`Search raw usage`
-              : t`Search suggestions`
-          }
-        />
-
-        {!candidatesQuery.isLoading && candidatesQuery.data && (
-          <Group justify="space-between">
-            <Stack gap={0}>
-              <Text fw="bold">{getQueueHeading(params.queue)}</Text>
-              <Text c="text-secondary" size="sm">
-                {getQueueDescription(params.queue)}
-              </Text>
-            </Stack>
-            <Text c="text-secondary" size="sm">
-              {t`Showing ${Math.min(
-                candidatesQuery.data.total,
-                page * PAGE_SIZE + 1,
-              )}–${Math.min(
-                candidatesQuery.data.total,
-                (page + 1) * PAGE_SIZE,
-              )} of ${candidatesQuery.data.total}`}
-            </Text>
-          </Group>
-        )}
-
-        <ScrollArea
-          flex={1}
+    <>
+      <SectionLayout>
+        <Flex
+          h="100%"
           mih={0}
-          type="auto"
-          data-testid="cleanup-candidate-list"
+          miw={0}
+          className={S.workspace}
+          data-testid="cleanup-table-workspace"
         >
-          {candidatesQuery.isLoading ? (
-            <Center mih="16rem">
-              <LoadingAndErrorWrapper loading />
-            </Center>
-          ) : candidatesQuery.error ? (
-            <Center mih="16rem">
-              <LoadingAndErrorWrapper error={candidatesQuery.error} />
-            </Center>
-          ) : candidatesQuery.data?.data.length === 0 ? (
-            <Center mih="16rem">
-              <Stack align="center">
-                <Icon name="search" size={36} />
-                <Title order={3}>{t`No matching candidates`}</Title>
-                <Text c="text-secondary">{t`Try changing the filters.`}</Text>
-              </Stack>
-            </Center>
-          ) : (
-            <Stack gap="sm">
-              {candidatesQuery.data?.data.map((candidate) => (
-                <CandidateRow
-                  key={candidate.id}
-                  candidate={candidate}
-                  isMutating={dismissState.isLoading || restoreState.isLoading}
-                  onOpen={() => {
-                    trackDataStudioCleanupCandidateInspected(
-                      candidate.id,
-                      candidate.candidate_type,
-                    );
-                    updateParams({ ...params, candidateId: candidate.id });
-                  }}
-                  onDismiss={() => handleDismiss(candidate)}
-                  onRestore={() => restoreDismissedCandidate(candidate)}
+          <PageContainer
+            data-testid="cleanup-table-page"
+            flex="1 0 48rem"
+            miw="48rem"
+            px="xl"
+            pb="md"
+            gap="md"
+            mih={0}
+            style={{ overflow: "hidden" }}
+          >
+            <PaneHeader
+              breadcrumbs={
+                <DataStudioBreadcrumbs>
+                  <Link to={Urls.dataStudioCleanup({ queue: params.queue })}>
+                    {t`Cleanup`}
+                  </Link>
+                  <span>{detail.table.display_name}</span>
+                </DataStudioBreadcrumbs>
+              }
+              title={detail.table.display_name}
+              icon="table"
+              tabs={
+                <CleanupQueueTabs
+                  params={params}
+                  onChange={updateParams}
+                  variant="pills"
                 />
-              ))}
-            </Stack>
-          )}
-        </ScrollArea>
-
-        {candidatesQuery.data && candidatesQuery.data.data.length > 0 && (
-          <Flex justify="flex-end">
-            <PaginationControls
-              page={page}
-              pageSize={PAGE_SIZE}
-              itemsLength={candidatesQuery.data.data.length}
-              total={candidatesQuery.data.total}
-              showTotal
-              onPreviousPage={() =>
-                updateParams({
-                  ...params,
-                  page: Math.max(0, page - 1),
-                  candidateId: undefined,
-                })
               }
-              onNextPage={() =>
-                updateParams({
-                  ...params,
-                  page: page + 1,
-                  candidateId: undefined,
-                })
+              actions={
+                <Group>
+                  {detail.snapshot?.finished_at && (
+                    <Text c="text-secondary" size="sm">
+                      {t`Analyzed ${dayjs(detail.snapshot.finished_at).fromNow()}`}
+                    </Text>
+                  )}
+                  <Badge
+                    color={detail.table.is_published ? "positive" : "neutral"}
+                  >
+                    {detail.table.is_published ? t`Published` : t`Unpublished`}
+                  </Badge>
+                  {!detail.table.is_published && (
+                    <Button
+                      onClick={() => {
+                        trackDataStudioCleanupPublicationStarted(
+                          Number(tableId),
+                        );
+                        setShowPublishModal(true);
+                      }}
+                    >
+                      {t`Publish table`}
+                    </Button>
+                  )}
+                </Group>
               }
+              py={0}
             />
-          </Flex>
-        )}
-      </PageContainer>
 
-      <CandidateDrawer
-        candidateId={params.candidateId}
-        onClose={closeCandidate}
-        onStale={handleStale}
-        onTablePublished={handlePublished}
-      />
+            {refresh.isRefreshing && (
+              <Card withBorder p="sm">
+                <Group>
+                  <Icon name="sync" />
+                  <Text>{t`A new instance analysis is running. These results remain available until it finishes.`}</Text>
+                </Group>
+              </Card>
+            )}
 
+            <Flex gap="sm" align="center" wrap="nowrap">
+              <Box flex={1}>
+                <CleanupFilters
+                  params={params}
+                  onChange={updateParams}
+                  showDatabaseFilter={false}
+                  searchPlaceholder={
+                    params.queue === "used-raw"
+                      ? t`Search raw usage`
+                      : t`Search suggestions`
+                  }
+                />
+              </Box>
+              <Tabs
+                variant="pills"
+                value={params.candidateType ?? "all"}
+                onChange={(value) =>
+                  updateParams({
+                    ...params,
+                    candidateType:
+                      value === "measure" || value === "segment"
+                        ? value
+                        : undefined,
+                    page: undefined,
+                    candidateId: undefined,
+                  })
+                }
+              >
+                <Tabs.List>
+                  <Tabs.Tab value="all">{t`All`}</Tabs.Tab>
+                  <Tabs.Tab value="measure">{t`Measures`}</Tabs.Tab>
+                  <Tabs.Tab value="segment">{t`Segments`}</Tabs.Tab>
+                </Tabs.List>
+              </Tabs>
+            </Flex>
+
+            <ScrollArea
+              flex={1}
+              mih={0}
+              type="auto"
+              data-testid="cleanup-candidate-list"
+            >
+              {candidatesQuery.isLoading ? (
+                <Center mih="16rem">
+                  <LoadingAndErrorWrapper loading />
+                </Center>
+              ) : candidatesQuery.error ? (
+                <Center mih="16rem">
+                  <LoadingAndErrorWrapper error={candidatesQuery.error} />
+                </Center>
+              ) : candidatesQuery.data?.data.length === 0 ? (
+                <Center mih="16rem">
+                  <Stack align="center">
+                    <Icon name="search" size={36} />
+                    <Title order={3}>{t`No matching candidates`}</Title>
+                    <Text c="text-secondary">{t`Try changing the filters.`}</Text>
+                  </Stack>
+                </Center>
+              ) : (
+                <Card withBorder p={0}>
+                  <Stack gap={0}>
+                    {candidatesQuery.data?.data.map(
+                      (candidate, index, rows) => (
+                        <CandidateRow
+                          key={candidate.id}
+                          candidate={candidate}
+                          isSelected={params.candidateId === candidate.id}
+                          isLast={index === rows.length - 1}
+                          isMutating={
+                            dismissState.isLoading || restoreState.isLoading
+                          }
+                          onOpen={() => {
+                            trackDataStudioCleanupCandidateInspected(
+                              candidate.id,
+                              candidate.candidate_type,
+                            );
+                            updateParams({
+                              ...params,
+                              candidateId: candidate.id,
+                            });
+                          }}
+                          onDismiss={() => handleDismiss(candidate)}
+                        />
+                      ),
+                    )}
+                  </Stack>
+                </Card>
+              )}
+            </ScrollArea>
+
+            {candidatesQuery.data && candidatesQuery.data.data.length > 0 && (
+              <Flex justify="flex-end">
+                <PaginationControls
+                  page={page}
+                  pageSize={PAGE_SIZE}
+                  itemsLength={candidatesQuery.data.data.length}
+                  total={candidatesQuery.data.total}
+                  showTotal
+                  onPreviousPage={() =>
+                    updateParams({
+                      ...params,
+                      page: Math.max(0, page - 1),
+                      candidateId: undefined,
+                    })
+                  }
+                  onNextPage={() =>
+                    updateParams({
+                      ...params,
+                      page: page + 1,
+                      candidateId: undefined,
+                    })
+                  }
+                />
+              </Flex>
+            )}
+          </PageContainer>
+
+          {params.candidateId != null && (
+            <CandidatePanel
+              candidateId={params.candidateId}
+              onClose={closeCandidate}
+              onStale={handleStale}
+              onTablePublished={handlePublished}
+            />
+          )}
+        </Flex>
+      </SectionLayout>
       <PLUGIN_LIBRARY.PublishTablesModal
         isOpened={showPublishModal}
         tableIds={[tableId]}
         onPublish={handlePublished}
         onClose={() => setShowPublishModal(false)}
       />
-    </SectionLayout>
+    </>
   );
 }
 
 function CandidateRow({
   candidate,
+  isSelected,
+  isLast,
   isMutating,
   onOpen,
   onDismiss,
-  onRestore,
 }: {
   candidate: UsageMetadataCandidateSummary;
+  isSelected: boolean;
+  isLast: boolean;
   isMutating: boolean;
   onOpen: () => void;
   onDismiss: () => void;
-  onRestore: () => void;
 }) {
   return (
-    <Card withBorder p="md" data-testid={`cleanup-candidate-${candidate.id}`}>
-      <Flex gap="lg" align="center" wrap="nowrap">
-        <Icon
-          name={getCandidateIcon(candidate)}
-          c="text-secondary"
-          aria-label={
-            candidate.candidate_type === "measure" ? t`Measure` : t`Segment`
-          }
-        />
-        <Stack gap="xs" flex={1} miw={0}>
-          <Text fw="bold">{candidate.suggested_name}</Text>
-          <Evidence candidate={candidate} />
-        </Stack>
-        <Group gap="xs" wrap="nowrap">
-          {candidate.modeling_status === "modeled" ? (
-            <Button variant="outline" onClick={onOpen}>
-              {t`View report`}
-            </Button>
-          ) : candidate.dismissed ? (
-            <Button variant="outline" loading={isMutating} onClick={onRestore}>
-              {t`Restore`}
-            </Button>
-          ) : (
-            <>
-              <Button variant="outline" onClick={onOpen}>
-                {t`Review`}
-              </Button>
-              <Button
-                aria-label={t`Dismiss suggestion`}
-                variant="subtle"
-                leftSection={<Icon name="close" />}
-                disabled={isMutating}
-                onClick={onDismiss}
-              >
-                {t`Dismiss`}
-              </Button>
-            </>
-          )}
-        </Group>
+    <Flex
+      className={S.candidateRow}
+      data-selected={isSelected || undefined}
+      data-testid={`cleanup-candidate-${candidate.id}`}
+      align="stretch"
+      bd={isLast ? undefined : "0 0 1px 0 solid var(--mb-color-border-neutral)"}
+    >
+      <UnstyledButton
+        aria-label={candidate.suggested_name}
+        p="md"
+        flex={1}
+        onClick={onOpen}
+      >
+        <Flex gap="md" align="center" wrap="nowrap">
+          <Icon
+            name={getCandidateIcon(candidate)}
+            c="text-secondary"
+            aria-label={
+              candidate.candidate_type === "measure" ? t`Measure` : t`Segment`
+            }
+          />
+          <Stack gap={4} flex={1} miw={0}>
+            <Text fw="bold" lineClamp={2}>
+              {candidate.suggested_name}
+            </Text>
+            <Evidence candidate={candidate} />
+          </Stack>
+          <Icon name="chevronright" c="text-secondary" />
+        </Flex>
+      </UnstyledButton>
+      <Flex align="center" pr="md">
+        {candidate.modeling_status !== "modeled" && !candidate.dismissed && (
+          <Tooltip label={t`Dismiss suggestion`}>
+            <ActionIcon
+              variant="subtle"
+              aria-label={t`Dismiss suggestion`}
+              disabled={isMutating}
+              onClick={(event) => {
+                event.stopPropagation();
+                onDismiss();
+              }}
+            >
+              <Icon name="close" />
+            </ActionIcon>
+          </Tooltip>
+        )}
       </Flex>
-    </Card>
+    </Flex>
   );
 }
 
@@ -490,26 +529,4 @@ function getErrorStatus(error: unknown) {
   return typeof error === "object" && error != null && "status" in error
     ? error.status
     : undefined;
-}
-
-function getQueueHeading(queue: Urls.DataStudioCleanupParams["queue"]) {
-  switch (queue) {
-    case "suggested":
-      return t`Suggested candidates`;
-    case "used-raw":
-      return t`Modeled, but still used raw`;
-    case "discarded":
-      return t`Discarded candidates`;
-  }
-}
-
-function getQueueDescription(queue: Urls.DataStudioCleanupParams["queue"]) {
-  switch (queue) {
-    case "suggested":
-      return t`Measures and Segments mined from saved content on this table.`;
-    case "used-raw":
-      return t`Library definitions that saved content still expresses as raw query clauses.`;
-    case "discarded":
-      return t`Restore a suggestion if it should return to the cleanup queue.`;
-  }
 }
