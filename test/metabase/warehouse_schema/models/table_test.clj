@@ -2,6 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
@@ -788,5 +789,12 @@
             (mt/with-current-user (mt/user->id :crowberto)
               (is (nil? (table/visible-filter-clause :metabase_table.id)))
               (is (= table-ids (can-read-visible)))))
+          (testing "data analysts get a nil clause, matching can-read?, which grants them implicit
+                    manage-table-metadata on every table"
+            (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:is_data_analyst true}
+              (mt/with-current-user (mt/user->id :rasta)
+                (binding [api/*is-data-analyst?* true]
+                  (is (nil? (table/visible-filter-clause :metabase_table.id)))
+                  (is (= table-ids (can-read-visible)))))))
           (testing "no bound user -> nil clause; outside the request cycle filtering is the caller's concern"
             (is (nil? (table/visible-filter-clause :metabase_table.id)))))))))
