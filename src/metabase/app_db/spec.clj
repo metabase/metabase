@@ -63,7 +63,13 @@
     :subprotocol "mysql"
     ;; mariadb-java-client 3.x only claims `jdbc:mysql:` URLs when the URL string itself contains
     ;; `permitMysqlScheme` (`Driver.acceptsURL` never sees the Properties), so it must ride the subname
-    :subname     (append-url-param (make-subname host (or port 3306) db) "permitMysqlScheme=true")}
+    :subname     (append-url-param (make-subname host (or port 3306) db) "permitMysqlScheme=true")
+    ;; mariadb-java-client 3.x flipped this default to `false`, making nil-catalog metadata calls
+    ;; (`DatabaseMetaData.getTables` etc.) scan every schema on the server. The appdb relies on current-db
+    ;; scoping — liquibase's `fresh-install?` check mistakes another schema's DATABASECHANGELOG for its
+    ;; own and fresh installs then fail to start. Same pin as the warehouse driver's
+    ;; [[metabase.driver.mysql/default-connection-args]] (see #75929 for the full rationale).
+    :nullCatalogMeansCurrent true}
    (when aws-iam
      ;; the wrapper's `mariadb` protocol, not `mysql`: it resolves `mysql` to Connector/J (com.mysql.cj),
      ;; which is not on our classpath, and its DriverManager fallback strips the query string, so
