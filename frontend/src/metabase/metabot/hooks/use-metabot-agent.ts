@@ -18,6 +18,7 @@ import {
   getIsLongMetabotConversation,
   getIsProcessing,
   getMessages,
+  getMetabotConversationForkedFrom,
   getMetabotConversationId,
   getMetabotConversationTitle,
   getMetabotId,
@@ -186,6 +187,9 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
       getMetabotConversationId(state, agentId),
     ),
     title: useSelector((state) => getMetabotConversationTitle(state, agentId)),
+    forkedFromConversationId: useSelector((state) =>
+      getMetabotConversationForkedFrom(state, agentId),
+    ),
     messages: useSelector((state) => getMessages(state, agentId)),
     isDoingScience: useSelector((state) => getIsProcessing(state, agentId)),
     isLongConversation: useSelector((state) =>
