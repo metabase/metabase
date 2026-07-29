@@ -89,12 +89,12 @@
   [topic event]
   (assert (not *compile-files*) "Calls to publish-event! are not allowed in the top level.")
   (let [{:keys [object]} event]
-    (log/debugf "Publishing %s event (name and id):\n\n%s"
+    (log/debugf "Publishing %s event (model and id): %s"
                 (u/colorize :yellow (pr-str topic))
-                (u/pprint-to-str (let [model (mi/model object)]
-                                   (cond-> (select-keys object [:name :id])
-                                     model
-                                     (assoc :model model))))))
+                (pr-str (let [model (mi/model object)]
+                          (cond-> (select-keys object [:id])
+                            model
+                            (assoc :model model))))))
   (assert (and (qualified-keyword? topic)
                (isa? topic :metabase/event))
           (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))

@@ -523,10 +523,10 @@ describe("monitor > tools", () => {
       name: "Erroring questions",
     }).should("be.visible");
 
-    cy.log("We should be able to switch to the model caching page");
+    cy.log("We should be able to switch to the model persistence log page");
 
-    cy.findByTestId("monitor-nav").findByText("Model caching log").click();
-    cy.location("pathname").should("eq", "/monitor/model-caching");
+    cy.findByTestId("monitor-nav").findByText("Model persistence log").click();
+    cy.location("pathname").should("eq", "/monitor/model-persistence-log");
 
     cy.log(
       "Once the audit_app feature flag is gone, tools should display an upsell",

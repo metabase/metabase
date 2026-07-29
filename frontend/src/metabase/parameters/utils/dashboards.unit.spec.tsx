@@ -92,6 +92,37 @@ describe("metabase/parameters/utils/dashboards", () => {
         type: "category",
       });
     });
+
+    it("should preserve parameter settings when duplicating", () => {
+      expect(
+        createParameter(
+          {
+            name: "Category",
+            type: "string/=",
+            sectionId: "string",
+            default: ["Gadget"],
+            required: true,
+            isMultiSelect: false,
+            values_query_type: "list",
+            values_source_type: "static-list",
+            values_source_config: { values: ["Gadget", "Widget"] },
+          },
+          [],
+        ),
+      ).toEqual({
+        id: expect.any(String),
+        name: "Category",
+        slug: "category",
+        type: "string/=",
+        sectionId: "string",
+        default: ["Gadget"],
+        required: true,
+        isMultiSelect: false,
+        values_query_type: "list",
+        values_source_type: "static-list",
+        values_source_config: { values: ["Gadget", "Widget"] },
+      });
+    });
   });
 
   describe("setParameterName", () => {

@@ -51,10 +51,10 @@
         (if (= 200 (:status response))
           (:body response)
           (do
-            (log/warnf "OIDC discovery failed with status %s: %s" (:status response) (:body response))
+            (log/warnf "OIDC discovery failed with status %s" (:status response))
             nil)))
       (catch Exception e
-        (log/warnf e "Failed to fetch OIDC discovery document from %s" url)
+        (log/warnf "Failed to fetch OIDC discovery document from %s: %s" url (ex-message e))
         nil))))
 
 (defn clear-cache!

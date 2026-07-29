@@ -8,6 +8,7 @@ import {
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { getPlan } from "metabase/common/utils/plan";
 import { createMockState } from "metabase/redux/store/mocks";
+import { getSettings } from "metabase/selectors/settings";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
@@ -30,8 +31,9 @@ const setup = () => {
     },
   );
 
-  const storeUrl = store.getState().settings.values["store-url"];
-  const plan = getPlan(store.getState().settings.values["token-features"]);
+  const settings = getSettings(store.getState());
+  const storeUrl = settings["store-url"];
+  const plan = getPlan(settings["token-features"]);
   const metabaseStoreLink = `${storeUrl}/checkout?migration-source-plan=${plan}&migration-id=${BASE_RESPONSE.external_id}`;
 
   return { mockMigrationStart, store, metabaseStoreLink };

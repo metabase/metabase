@@ -63,7 +63,7 @@
                                                                           cnt->ids))]}
                        :where  [:in :id (apply concat (vals cnt->ids))]})))))
     (catch Exception e
-      (log/error e "Failed to increment view counts"))))
+      (log/errorf "Failed to increment view counts: %s" (ex-message e)))))
 
 (def ^:private increment-view-count-interval-seconds 20)
 
@@ -90,7 +90,7 @@
   (try
     (t2/insert! :model/ViewLog views)
     (catch Exception e
-      (log/error e "Failed to record views"))))
+      (log/errorf "Failed to record views: %s" (ex-message e)))))
 
 (defonce ^:private record-view-queue
   (delay (grouper/start!
@@ -137,7 +137,7 @@
       (increment-view-counts! :model/Card object-id)
       (record-views! (generate-view :model :model/Card event))
       (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+        (log/warnf "Failed to process view event. %s: %s" topic (ex-message e))))))
 
 (derive ::card-query-model-view :metabase/event)
 (derive :event/card-query ::card-query-model-view)
@@ -159,7 +159,7 @@
                                       :user-id   user-id
                                       :context   :question)))
       (catch Throwable e
-        (log/warnf e "Failed to process card query view event. %s" topic)))))
+        (log/warnf "Failed to process card query view event. %s: %s" topic (ex-message e))))))
 
 (derive ::dashboard-queried :metabase/event)
 (derive :event/dashboard-queried ::dashboard-queried)
@@ -187,7 +187,7 @@
                             :updated_at :updated_at}
                    :where  [:in :id (keys dashboard-id->timestamp)]}))
       (catch Exception e
-        (log/error e "Failed to update dashboard last_viewed_at")))))
+        (log/errorf "Failed to update dashboard last_viewed_at: %s" (ex-message e))))))
 
 (def ^:private update-dashboard-last-viewed-at-queue
   (delay (grouper/start!
@@ -208,7 +208,7 @@
   (try
     (update-dashboard-last-viewed-at! object-id)
     (catch Throwable e
-      (log/warnf e "Failed to process dashboard query event. %s" topic))))
+      (log/warnf "Failed to process dashboard query event. %s: %s" topic (ex-message e)))))
 
 (derive ::collection-read-event :metabase/event)
 (derive :event/collection-read ::collection-read-event)
@@ -221,7 +221,7 @@
         generate-view
         record-views!)
     (catch Throwable e
-      (log/warnf e "Failed to process view event. %s" topic))))
+      (log/warnf "Failed to process view event. %s: %s" topic (ex-message e)))))
 
 (derive ::read-permission-failure :metabase/event)
 (derive :event/read-permission-failure ::read-permission-failure)
@@ -237,7 +237,7 @@
           generate-view
           record-views!))
     (catch Throwable e
-      (log/warnf e "Failed to process view event. %s" topic))))
+      (log/warnf "Failed to process view event. %s: %s" topic (ex-message e)))))
 
 (derive ::dashboard-read :metabase/event)
 (derive :event/dashboard-read ::dashboard-read)
@@ -253,7 +253,7 @@
       (increment-view-counts! :model/Dashboard object-id)
       (record-views! (generate-view :model :model/Dashboard event))
       (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+        (log/warnf "Failed to process view event. %s: %s" topic (ex-message e))))))
 
 (derive ::table-read :metabase/event)
 (derive :event/table-read ::table-read)
@@ -277,4 +277,4 @@
             generate-view
             record-views!))
       (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+        (log/warnf "Failed to process view event. %s: %s" topic (ex-message e))))))

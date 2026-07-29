@@ -45,7 +45,7 @@
 
 (defn- freeze!
   [^OutputStream os obj]
-  (log/tracef "Freezing %s" (pr-str obj))
+  (log/tracef "Freezing %s" (class obj))
   (nippy/freeze-to-out! os obj))
 
 (defn do-with-serialization
@@ -85,7 +85,7 @@
                 (try
                   (freeze! os obj)
                   (catch Throwable e
-                    (log/trace e "Caught error when freezing object")
+                    (log/tracef "Caught error when freezing object: %s" (ex-message e))
                     (reset! error e))))
               nil)
             (fn result* []
