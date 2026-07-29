@@ -105,9 +105,16 @@
 (deftest probe-deadline-test
   (let [probe @#'semantic.store-health/probe-connected?]
     (testing "a probe that outruns the deadline reads as disconnected instead of stranding the caller"
-      (mt/with-dynamic-fn-redefs
-        [semantic.db.datasource/probe-dedicated-connection! (fn [] @(promise))]
-        (is (false? (probe :dedicated 50)))))
+      (let [released (promise)]
+        (mt/with-dynamic-fn-redefs
+          [semantic.db.datasource/probe-dedicated-connection!
+           ;; Never returns on its own, so the deadline is the only thing that can end it.
+           (fn [] (try
+                    @(promise)
+                    (catch InterruptedException _ (deliver released true))))]
+          (is (false? (probe :dedicated 50)))
+          (is (true? (deref released 5000 ::still-hung))
+              "the abandoned probe is interrupted, not left holding a pool thread forever"))))
     (testing "an ordinary failure still reads as disconnected"
       (mt/with-dynamic-fn-redefs
         [semantic.db.datasource/probe-dedicated-connection! #(throw (ex-info "nope" {}))]
