@@ -129,11 +129,17 @@
                            {:password password}))]
                  [s nil])
          ;; mariadb-java-client 3.x only claims `jdbc:mysql:` URLs when the URL string itself contains
-         ;; `permitMysqlScheme` -- see [[metabase.app-db.spec]] for the broken-out-details equivalent
+         ;; `permitMysqlScheme`, and flips `nullCatalogMeansCurrent` to false (scanning every schema on
+         ;; nil-catalog metadata calls -- liquibase's fresh-install check then mistakes another schema's
+         ;; DATABASECHANGELOG for its own). See [[metabase.app-db.spec]] for the broken-out-details
+         ;; equivalents; explicit user settings in the URI win.
          s     (cond-> s
                  (and (str/starts-with? s "jdbc:mysql:")
                       (not (str/includes? s "permitMysqlScheme")))
-                 (str (if (str/includes? s "?") "&" "?") "permitMysqlScheme=true"))
+                 (mdb.spec/append-url-param "permitMysqlScheme=true")
+                 (and (str/starts-with? s "jdbc:mysql:")
+                      (not (str/includes? s "nullCatalogMeansCurrent")))
+                 (mdb.spec/append-url-param "nullCatalogMeansCurrent=true"))
          ;; these can't be i18n'ed because the app DB isn't set up yet
          _     (when (and (:user m) (seq username))
                  (log/error "Connection string contains a username, but MB_DB_USER is specified. MB_DB_USER will be used."))

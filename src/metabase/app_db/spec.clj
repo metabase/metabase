@@ -49,7 +49,7 @@
      (make-aws-iam-spec "postgresql"))
    (dissoc opts :host :port :db :aws-iam)))
 
-(defn- append-url-param
+(defn append-url-param
   "Append a `param=value` pair to a connection subname/URL, using `&` when it already has a query string."
   [url param]
   (str url (if (str/includes? url "?") "&" "?") param))
