@@ -25,6 +25,7 @@ Default to a **field filter** (`"type": "dimension"`) whenever the tag filters a
 - A **field filter** binds a column (`field_id`) and gets a smart widget (`widget_type`): value dropdown, date picker. Write it **bare** — `WHERE {{category}}` — and Metabase expands the right SQL (`category IN (...)`, `BETWEEN` for dates). `WHERE category = {{category}}` around a field filter **breaks the expansion** — the most common native-SQL bug.
 - A **raw variable** (`"type": "text" | "number" | "date" | "boolean"`) is a literal splice; you write the operator: `WHERE total > {{min_total}}`, `LIMIT {{n}}`. Plain input box.
 - Field filters bind only a **real, connected database column** — not an expression, aggregate, or subquery/CTE column; anything else must be a raw variable.
+- **Empty values degrade differently.** A field filter with no value compiles to `1 = 1`, so the query still runs. A raw variable with no value does not — outside `[[ ]]` it fails the run with "missing required parameters" even when the tag isn't marked `required`. Give every main-clause raw variable a `default`, or wrap its clause in `[[ ]]`. Caveat: a boolean tag's `false` default is treated as unset — for a main-clause boolean, pass the value explicitly on every run, or keep its clause in `[[ ]]`.
 - A **temporal-unit** tag (`"type": "temporal-unit", "field_id": …`) gives the viewer a time-bucket picker (day/week/month) for a datetime column.
 
 ## The tag shape
@@ -58,6 +59,7 @@ Wrap any clause that should drop when its value is empty, keyword included: `WHE
 ## Snippet and card references
 
 - `{{#42}}` (or `{{#42-slug}}`) inlines saved card 42 as a subquery: `SELECT * FROM {{#42}}`, `WITH x AS {{#42}} …`. It runs with its own saved defaults — its parameters can't be set from the parent.
+- The subquery's columns are the card's **result** columns. MBQL aggregations get machine names — `count`, `avg`, then `avg_2` for the second average — which collide with SQL keywords, so quote them: `SELECT cs."avg", cs."count" FROM {{#42}} cs`. Run the card once (execute_query or run_saved_question) to see the exact names.
 - `{{snippet: Name}}` splices a shared SQL snippet by name — it must already exist (find via `search` or `get_content` type `snippet`).
 - Neither takes a value or wires to a dashboard parameter — only field filters and raw variables are user-fillable. Nothing to configure in `template_tags`; entries for them (as `get_content` returns) are accepted on round-trip and ignored.
 
@@ -69,6 +71,8 @@ Wrap any clause that should drop when its value is empty, keyword included: `WHE
 run_saved_question {"id": 522, "parameters": [{"slug": "category", "value": ["Gadget"]},
                                               {"slug": "min_total", "value": 100}]}
 ```
+
+Date parameters (a `date` variable or a date field filter) take Metabase's date-string grammar, never a SQL fragment: `"2026-01-05"` (day), `"2026-01-01~2026-03-31"` (range), `"2026-01"` (month), `"past30days"`, `"thisyear"`.
 
 **Wire to a dashboard filter** — `dashboard_write`'s `wire_parameter` names the tag; the server derives the mapping from the tag's type, so field filters and variables wire identically:
 
@@ -90,3 +94,4 @@ The dashboard parameter's `type` must be compatible with the tag's widget_type (
 - Don't use native SQL for DDL or `;`-chained statements — single read statement only.
 - Don't expect `[[ ]]` to fix a case/type mismatch — `WHERE plan = {{p}}` returns zero rows on a case-sensitive engine when the value's case is off.
 - Don't name a tag in `template_tags` with no `{{tag}}` in the SQL — an error, not a no-op.
+- Don't rely on `default: false` on a boolean tag — a false default reads as no default, and a run that omits the value fails with "missing required parameters". Pass the boolean on every run, or wrap its clause in `[[ ]]`.
