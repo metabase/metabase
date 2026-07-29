@@ -121,6 +121,28 @@
     (cond-> {:where table-where-clause}
       table-cte (assoc :with table-cte))))
 
+(defn query-builder-visible-filter-clause
+  "Honey SQL fragment (`:where` plus an optional `:with`) restricting a Table select to tables the current user can
+  see through the *query builder*.
+
+  Same shape as the private [[visible-filter-clause]] used by the native-SQL paths, but one notch less restrictive:
+  `:perms/create-queries :query-builder` rather than `:query-builder-and-native`. Native-query paths need the
+  stricter level because seeing a table named in hand-written SQL implies native access; MBQL/notebook paths do not,
+  and requiring `:query-builder-and-native` there would hide tables the user is legitimately building queries against.
+
+  `:include-published-via-collection?` mirrors the corresponding branch of `can-read?` for `:model/Table`, so
+  library-published tables readable via their collection stay visible."
+  []
+  (let [{table-where-clause :clause table-cte :with} (mi/visible-filter-clause :model/Table
+                                                                               :id
+                                                                               {:user-id       api/*current-user-id*
+                                                                                :is-superuser? api/*is-superuser?*}
+                                                                               {:perms/view-data      :unrestricted
+                                                                                :perms/create-queries :query-builder}
+                                                                               {:include-published-via-collection? true})]
+    (cond-> {:where table-where-clause}
+      table-cte (assoc :with table-cte))))
+
 (defn readable-table-ids
   "The subset of `table-ids` the current user can read, as a set.
 
