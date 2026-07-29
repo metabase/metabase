@@ -27,39 +27,39 @@
   (testing "duplicate rows keep every distinct value visible to coalescing, and each table-level row keeps its own
             schema_name (data_permissions has no unique constraint on (group_id, perm_type, db_id, table_id), and
             schema_name is denormalized so rows for one table can disagree)"
-    (let [entry (get-in (#'data-perms/rows->full-perms
-                         identity
-                         [{:perm_type  :perms/create-queries
-                           :db_id      20
-                           :group_id   1
-                           :table_id   nil
-                           :schema_name nil
-                           :perm_value :query-builder}
-                          {:perm_type  :perms/create-queries
-                           :db_id      20
-                           :group_id   1
-                           :table_id   nil
-                           :schema_name nil
-                           :perm_value :no}
-                          {:perm_type  :perms/create-queries
-                           :db_id      20
-                           :group_id   1
-                           :table_id   10
-                           :schema_name "public"
-                           :perm_value :query-builder}
-                          {:perm_type  :perms/create-queries
-                           :db_id      20
-                           :group_id   1
-                           :table_id   10
-                           :schema_name "public"
-                           :perm_value :no}
-                          {:perm_type  :perms/create-queries
-                           :db_id      20
-                           :group_id   2
-                           :table_id   10
-                           :schema_name "legacy"
-                           :perm_value :query-builder}])
-                        [:perms/create-queries 20])]
+    (let [entry (get (#'data-perms/rows->full-perms
+                      identity
+                      [{:perm_type  :perms/create-queries
+                        :db_id      20
+                        :group_id   1
+                        :table_id   nil
+                        :schema_name nil
+                        :perm_value :query-builder}
+                       {:perm_type  :perms/create-queries
+                        :db_id      20
+                        :group_id   1
+                        :table_id   nil
+                        :schema_name nil
+                        :perm_value :no}
+                       {:perm_type  :perms/create-queries
+                        :db_id      20
+                        :group_id   1
+                        :table_id   10
+                        :schema_name "public"
+                        :perm_value :query-builder}
+                       {:perm_type  :perms/create-queries
+                        :db_id      20
+                        :group_id   1
+                        :table_id   10
+                        :schema_name "public"
+                        :perm_value :no}
+                       {:perm_type  :perms/create-queries
+                        :db_id      20
+                        :group_id   2
+                        :table_id   10
+                        :schema_name "legacy"
+                        :perm_value :query-builder}])
+                     20)]
       (is (= {1 #{:query-builder :no}}
              (:groups entry)))
       (is (= {10 {1 #{{:schema "public" :value :query-builder}
@@ -68,14 +68,50 @@
              (:tables entry))))))
 
 (deftest ^:parallel rows->distinct-perms-test
-  (is (= {:perms/create-queries
-          {20 #{{:group-id 1, :schema nil,      :value :query-builder, :table-level? false}
-                {:group-id 1, :schema "public", :value :no,            :table-level? true}}}}
+  (is (= {20 #{{:group-id 1, :schema nil,      :value :query-builder, :table-level? false}
+               {:group-id 1, :schema "public", :value :no,            :table-level? true}}}
          (#'data-perms/rows->distinct-perms
-          [{:perm_type :perms/create-queries, :db_id 20, :group_id 1, :schema_name nil,
+          [{:db_id 20, :group_id 1, :schema_name nil,
             :perm_value :query-builder, :table_level 0}
-           {:perm_type :perms/create-queries, :db_id 20, :group_id 1, :schema_name "public",
+           {:db_id 20, :group_id 1, :schema_name "public",
             :perm_value :no, :table_level 1}]))))
+
+(deftest permission-caches-load-per-type-test
+  (let [user-id        1
+        full-loads     (atom [])
+        distinct-loads (atom [])
+        full-cache     (atom {:db-ids {} :perms {}})
+        distinct-cache (atom {:perm-types #{} :perms {}})]
+    (binding [api/*current-user-id*             user-id
+              data-perms/*full-perms-cache*     full-cache
+              data-perms/*distinct-perms-cache* distinct-cache]
+      (with-redefs-fn
+        {#'data-perms/load-full-perms
+         (fn [_interner _user-id db-ids perm-type]
+           (swap! full-loads conj [perm-type db-ids])
+           (zipmap db-ids (repeat {:groups {} :tables {}})))
+         #'data-perms/load-distinct-perms
+         (fn [_user-id perm-type]
+           (swap! distinct-loads conj perm-type)
+           {10 #{{:value perm-type}}})}
+        (fn []
+          (#'data-perms/full-perms user-id [10] :perms/view-data)
+          (#'data-perms/full-perms user-id [10 11] :perms/view-data)
+          (#'data-perms/full-perms user-id [10] :perms/create-queries)
+          (is (= [[:perms/view-data [10]]
+                  [:perms/view-data [11]]
+                  [:perms/create-queries [10]]]
+                 @full-loads))
+          (is (= {:perms/view-data      #{10 11}
+                  :perms/create-queries #{10}}
+                 (:db-ids @full-cache)))
+
+          (#'data-perms/distinct-perms user-id :perms/view-data)
+          (#'data-perms/distinct-perms user-id :perms/view-data)
+          (#'data-perms/distinct-perms user-id :perms/create-queries)
+          (is (= [:perms/view-data :perms/create-queries] @distinct-loads))
+          (is (= #{:perms/view-data :perms/create-queries}
+                 (:perm-types @distinct-cache))))))))
 
 (deftest ^:parallel at-least-as-permissive?-test
   (testing "at-least-as-permissive? correctly compares permission values"
@@ -347,31 +383,6 @@
                 (t2/with-call-count [call-count]
                   (is (= :query-builder (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1)))
                   (is (zero? (call-count))))))))))))
-
-(deftest prime-db-cache-test
-  (testing "primes both the full and distinct request caches"
-    (mt/with-temp [:model/PermissionsGroup           {group-id :id}    {}
-                   :model/User                       {user-id :id}     {}
-                   :model/PermissionsGroupMembership {}                {:user_id user-id, :group_id group-id}
-                   :model/Database                   {database-id :id} {}
-                   :model/Table                      {table-id :id}    {:db_id database-id}]
-      (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-table-permission! group-id table-id :perms/create-queries :query-builder)
-        (binding [api/*current-user-id* user-id]
-          (data-perms/with-relevant-permissions-for-user user-id
-            (testing "does not load either cache when there are no databases"
-              (t2/with-call-count [call-count]
-                (data-perms/prime-db-cache [])
-                (is (zero? (call-count)))))
-            (data-perms/prime-db-cache [database-id])
-            (t2/with-call-count [call-count]
-              (is (= :query-builder
-                     (data-perms/table-permission-for-user
-                      user-id :perms/create-queries database-id table-id)))
-              (is (= :query-builder
-                     (data-perms/full-db-permission-for-user
-                      user-id :perms/create-queries database-id)))
-              (is (zero? (call-count))))))))))
 
 (deftest inactive-table-permission-test
   (testing "An inactive table appears as if it has no permissions, and is not cached"
