@@ -1140,7 +1140,7 @@
 (defmethod driver/create-schema-if-needed! :sqlserver
   [driver conn-spec schema]
   (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = %s) EXEC('CREATE SCHEMA %s;');"
-                      (sql.u/quote-literal schema)
+                      (sql.u/quote-literal schema :ansi)
                       (quote-schema schema))]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
@@ -1149,8 +1149,8 @@
   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
     (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
       (let [sql (format "EXEC sp_rename %s, %s;"
-                        (sql.u/quote-literal (name old-table-name))
-                        (sql.u/quote-literal (name new-table-name)))]
+                        (sql.u/quote-literal (name old-table-name) :ansi)
+                        (sql.u/quote-literal (name new-table-name) :ansi))]
         (.execute stmt sql)))))
 
 (defmethod driver/table-name-length-limit :sqlserver
@@ -1203,7 +1203,7 @@
 (defn- sql-string-literal
   "A SQL Server `N'...'` string literal for trusted `s`, escaping embedded quotes."
   [s]
-  (str "N" (sql.u/quote-literal s)))
+  (str "N" (sql.u/quote-literal s :ansi)))
 
 (defmethod driver/compile-create-index :sqlserver
   [_driver schema table {index-name :name, :keys [if-not-exists] :as structured}]

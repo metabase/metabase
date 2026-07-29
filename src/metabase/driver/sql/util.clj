@@ -130,16 +130,16 @@
                        (str/replace "'" "\\'")))))
 
 (defn quote-literal
-  "Wrap `s` in single quotes as a SQL string literal, escaping embedded quotes per `escape-style` (default `:ansi`).
+  "Wrap `s` in single quotes as a SQL string literal, escaping embedded quotes per `escape-style`.
 
-    (quote-literal \"Tito's Tacos\")              ; -> \"'Tito''s Tacos'\"
+    (quote-literal \"Tito's Tacos\" :ansi)        ; -> \"'Tito''s Tacos'\"
     (quote-literal \"Tito's Tacos\" :backslashes) ; -> \"'Tito\\'s Tacos'\"
 
   For trusted strings only -- pass user input as a query parameter where the driver supports it."
-  (^String [^String s]
-   (quote-literal s :ansi))
-  (^String [^String s escape-style]
-   (str \' (escape-sql s escape-style) \')))
+  ^String [^String s escape-style]
+  (when s
+    (case escape-style
+      (:ansi :backslashes) (str \' (escape-sql s escape-style) \'))))
 
 (defn validate-convert-timezone-args
   "Validate the arguments of convert-timezone.
