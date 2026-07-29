@@ -1,12 +1,12 @@
-{:api-any-namespaces 79
- :largest-api 32
- :largest-ns-scc 502
- :largest-scc-modules 105
- :largest-scc-namespaces 1361
- :max-file-deftests 18159
- :max-file-test-namespaces 1444
- :module-count 204
+{:api-any-namespaces 80
+ :largest-api 31
+ :largest-ns-scc 500
+ :largest-scc-modules 103
+ :largest-scc-namespaces 1340
+ :max-file-deftests 17892
+ :max-file-test-namespaces 1423
+ :module-count 202
  :module-exports 67
  :ns-prefix-overrides 77
  :parent-team-mismatches 26
- :total-api 573}
+ :total-api 570}

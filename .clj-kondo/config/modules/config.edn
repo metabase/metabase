@@ -896,8 +896,7 @@
            util.classloader
            util.config
            warehouses
-           warehouses.schema
-           workspaces}
+           warehouses.schema}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
 
@@ -1296,6 +1295,7 @@
               collections
               documents
               driver
+              events
               interestingness
               lib
               lib.agent-lib
@@ -1354,8 +1354,7 @@
   metabot.agent-api
   {:team    "Metabot"
    :ns-prefix "metabase.agent-api"
-   :api     #{metabase.agent-api.api
-              metabase.agent-api.init}
+   :api     #{metabase.agent-api.api metabase.agent-api.init metabase.agent-api.usage}
    :uses    #{ai-tracing
               api
               channel
@@ -1366,6 +1365,7 @@
               lib.be
               metabot
               metabot.llm
+              premium-features
               queries
               query-permissions
               query-processor
@@ -1381,7 +1381,8 @@
                     :model/DashboardTab
                     :model/Database
                     :model/Table
-                    :model/User}}
+                    :model/User}
+   :model-exports #{:model/AgentApiCallLog}}
 
   metabot.llm
   {:team    "Metabot"
@@ -1984,8 +1985,7 @@
            tracing
            users
            util
-           util.config
-           workspaces}
+           util.config}
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
@@ -2410,8 +2410,7 @@
            util
            util.config
            warehouses
-           warehouses.schema
-           workspaces}
+           warehouses.schema}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
@@ -2611,8 +2610,7 @@
            query-processor
            sync
            transforms.indexes
-           util
-           workspaces}}
+           util}}
 
   transforms.indexes
   {:team "Gadget"
@@ -2706,8 +2704,7 @@
            settings
            sync
            util
-           warehouses.schema
-           workspaces}
+           warehouses.schema}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -2939,6 +2936,7 @@
            warehouses}
    :model-exports #{:model/Dimension
                     :model/Field
+                    :model/FieldUserSettings
                     :model/FieldValues
                     :model/Table}
    :model-imports #{:model/Card
@@ -3067,6 +3065,7 @@
            util}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
+
   enterprise/analytics
   {:team "UX West"
    :api  #{}
@@ -3077,7 +3076,7 @@
            enterprise/search.semantic
            enterprise/sso
            enterprise/sso.scim}
-   :model-imports #{:model/Database :model/Sandbox :model/Workspace}}
+   :model-imports #{:model/Database :model/Sandbox}}
 
   enterprise/analytics.internal-stats
   {:team "UX West"
@@ -3313,16 +3312,14 @@
            settings
            util
            warehouses
-           warehouses.schema
-           workspaces}
+           warehouses.schema}
    :model-exports #{:model/DatabaseRouter}
    :model-imports #{:model/Database :model/Transform}}
 
   enterprise/dependencies
   {:team "Graphy"
    :module-exports #{enterprise/dependencies.replacement}
-   :api  #{metabase-enterprise.dependencies.analysis
-           metabase-enterprise.dependencies.api
+   :api  #{metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init
            metabase-enterprise.dependencies.models.dependency}
@@ -3362,23 +3359,6 @@
                     :model/Segment
                     :model/Table
                     :model/Transform}}
-
-  enterprise/dependencies.checker
-  {:team "Graphy"
-   :ns-prefix "metabase-enterprise.checker"
-   ;; todo: add ability to prevent usage (transitive even) of app db
-   :api  #{}
-   :uses #{lib
-           lib.metadata
-           lib.schema
-           models
-           plugins
-           query-processor
-           sql-tools
-           util
-           util.classloader
-           enterprise/dependencies}
-   :model-imports #{:model/Database}}
 
   enterprise/dependencies.replacement
   {:team "Graphy"
@@ -3500,6 +3480,18 @@
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/Transform}}
+
+  enterprise/metabot.agent-api
+  {:team "Metabot"
+   :ns-prefix "metabase-enterprise.agent-api"
+   :api #{metabase-enterprise.agent-api.init}
+   :uses #{analytics
+           metabot
+           metabot.agent-api
+           premium-features
+           task
+           util}
+   :model-imports #{:model/AgentApiCallLog}}
 
   enterprise/metabot.analytics
   {:team "Metabot"
@@ -3740,8 +3732,11 @@
    :ns-prefix "metabase-enterprise.entity-retrieval"
    :api  #{metabase-enterprise.entity-retrieval.init}
    :uses #{analytics.interface
+           app-db
            collections
+           health-inspector
            premium-features
+           search
            search.entity-retrieval
            task
            util
@@ -3770,6 +3765,7 @@
            collections
            connection-pool
            events
+           health-inspector
            lib.be
            metabot
            metabot.llm
@@ -3812,7 +3808,10 @@
 
   enterprise/serialization
   {:team "Graphy"
-   :api  #{metabase-enterprise.serialization.api metabase-enterprise.serialization.cmd metabase-enterprise.serialization.core}
+   :api  #{metabase-enterprise.serialization.api
+           metabase-enterprise.serialization.cmd
+           metabase-enterprise.serialization.core
+           metabase-enterprise.serialization.dump}
    :uses #{analytics
            api
            app-db
@@ -3820,7 +3819,6 @@
            collections
            events
            lib
-           lib.schema
            logger
            models
            plugins
@@ -3828,9 +3826,7 @@
            search
            server
            setup
-           sync
-           util
-           warehouses.schema}
+           util}
    :model-imports :bypass}
 
   enterprise/sso
@@ -3875,8 +3871,7 @@
            settings
            system
            users
-           util
-           enterprise/serialization}
+           util}
    :model-imports #{:model/ApiKey
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
