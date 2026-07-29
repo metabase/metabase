@@ -131,9 +131,12 @@
   "Get field values for a field, creating them if they don't exist.
    Uses the user-aware API that respects sandboxing/impersonation."
   [id->values id]
-  (-> (get id->values id)
-      (or (params.field-values/get-or-create-field-values! (t2/select-one :model/Field :id id)))
-      :values))
+  (if-some [field-values (get id->values id)]
+    (:values field-values)
+    (let [field (t2/select-one :model/Field :id id)]
+      (when (and field
+                 (params.field-values/current-user-can-fetch-field-values? field))
+        (:values (params.field-values/get-or-create-field-values-for-current-user! field))))))
 
 (defn- add-field-values
   [cols]
@@ -141,6 +144,29 @@
     (let [id->values (params.field-values/field-id->field-values-for-current-user field-ids)]
       (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
+
+(defn- permission-filter-columns
+  "Remove columns whose owning Tables are unreadable and hide unreadable FK targets on retained columns."
+  [columns]
+  (let [columns                   (vec columns)
+        target-field-ids          (into #{} (keep :fk-target-field-id) columns)
+        target-field-id->table-id (when (seq target-field-ids)
+                                    (t2/select-pk->fn :table_id :model/Field :id [:in target-field-ids]))
+        table-ids                 (into #{}
+                                        (concat (keep :table-id columns)
+                                                (vals target-field-id->table-id)))
+        readable-table-ids        (when (seq table-ids)
+                                    (->> (t2/select :model/Table :id [:in table-ids])
+                                         (filter mi/can-read?)
+                                         (map :id)
+                                         set))
+        readable-table?           #(or (nil? %) (contains? readable-table-ids %))]
+    (->> columns
+         (filter (comp readable-table? :table-id))
+         (mapv (fn [{:keys [fk-target-field-id] :as column}]
+                 (cond-> column
+                   (not (readable-table? (get target-field-id->table-id fk-target-field-id)))
+                   (dissoc :fk-target-field-id)))))))
 
 (defn metric-details
   "Get metric details as returned by tools."
@@ -184,7 +210,8 @@
                         (lib.metadata/table metadata-provider source-table-id))
          base-table-portable-fk (when (and database-name source-table)
                                   [database-name (:schema source-table) (:name source-table)])
-         query-needed? (or with-default-temporal-breakout? with-queryable-dimensions? with-segments?)
+         query-needed? (and source-table
+                            (or with-default-temporal-breakout? with-queryable-dimensions? with-segments?))
          metric-query (when query-needed?
                         (lib/query metadata-provider (lib.metadata/card metadata-provider id)))
          breakouts (when query-needed?
@@ -193,11 +220,16 @@
                       (lib/remove-all-breakouts metric-query))
          visible-cols (when query-needed?
                         (->> (lib/visible-columns base-query)
+                             permission-filter-columns
                              (map #(metabot.tools.u/add-table-reference base-query %))))
-         default-temporal-breakout (when with-default-temporal-breakout?
+         default-temporal-breakout (when (and query-needed? with-default-temporal-breakout?)
                                      (->> breakouts
                                           (map #(lib/find-matching-column % visible-cols))
-                                          (m/find-first lib.types.isa/temporal?)))]
+                                          (m/find-first lib.types.isa/temporal?)))
+         queryable-columns (when (and query-needed? with-queryable-dimensions?)
+                             (->> (lib/filterable-columns base-query)
+                                  permission-filter-columns
+                                  field-values-fn))]
      (cond-> {:id id
               :type :metric
               :name (:name card)
@@ -210,9 +242,6 @@
               ;; Accept both shapes (see `source-table-id` note above): t2 rows use
               ;; `:entity_id`, `lib.metadata/card` maps use `:entity-id`.
               :portable_entity_id (or (:entity-id card) (:entity_id card))
-              :default_time_dimension_field_id (some-> default-temporal-breakout
-                                                       (->> (metabot.tools.u/->result-column metric-query))
-                                                       :field_id)
               :verified (verified-review? id "card")}
        ;; Base table the metric aggregates. The LLM uses `:base_table_portable_fk`
        ;; verbatim as `source-table:` in the query that consumes the metric. These fields
@@ -222,14 +251,18 @@
               :base_table_name (:name source-table)
               :base_table_portable_fk base-table-portable-fk)
 
-       with-queryable-dimensions?
+       (and source-table with-default-temporal-breakout?)
+       (assoc :default_time_dimension_field_id (some-> default-temporal-breakout
+                                                       (->> (metabot.tools.u/->result-column metric-query))
+                                                       :field_id))
+
+       (and source-table with-queryable-dimensions?)
        (assoc :queryable-dimensions (into []
                                           (comp (map #(metabot.tools.u/add-table-reference base-query %))
                                                 (map #(metabot.tools.u/->result-column metric-query %)))
-                                          (->> (lib/filterable-columns base-query)
-                                               field-values-fn)))
+                                          queryable-columns))
 
-       with-segments?
+       (and source-table with-segments?)
        (assoc :segments (if-let [segments (lib/available-segments metric-query)]
                           (mapv #(convert-measure-or-segment % :filters) segments)
                           []))))))
