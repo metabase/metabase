@@ -186,7 +186,9 @@
                           "0A000" "the extension is not available on this server"
                           "58P01" "the extension's control file is missing"}]
       (testing what
-        (is (false? (can-provision? (failing-datasource (SQLException. what state)) true true))))))
+        ;; Hinted: SQLException also has a (String, Throwable) ctor, so untyped args reflect.
+        (is (false? (can-provision? (failing-datasource (SQLException. ^String what ^String state))
+                                    true true))))))
   (testing "a check that never got an answer throws, rather than reading as a settled no"
     (doseq [[e what] {(SQLTimeoutException. "statement timeout" "57014") "a timed-out DDL probe"
                       (SQLException. "connection refused" "08006")      "a dropped connection"
