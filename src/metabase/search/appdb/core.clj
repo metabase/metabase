@@ -290,7 +290,7 @@
       (log/errorf "Error during reindexing: %s" (ex-message e))
       (throw e))))
 
-(derive :event/setting-update ::settings-changed-event)
+(events/derive! :event/setting-update ::settings-changed-event)
 
 (methodical/defmethod events/publish-event! ::settings-changed-event
   [_topic event]

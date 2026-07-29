@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.api.channel-test :as api.channel-test]
+   [metabase.events.core :as events]
    [metabase.notification.models :as models.notification]
    [metabase.notification.task.send :as task.notification]
    [metabase.notification.test-util :as notification.tu]
@@ -156,11 +157,7 @@
 (deftest notification-subscription-event-name-test
   (mt/with-temp [:model/Notification {n-id :id} {}]
     (testing "success path"
-      ;; we derive other keywords into this hierarchy
-      ;; like ::api-events, :metabase.audit-app.events.audit-log/remote-sync-event, etc. This was non-deterministic
-      ;; for a long time
-      (let [random-event (first (filter (comp #{"event"} namespace)
-                                        (descendants :metabase/event)))
+      (let [random-event (first (events/event-descendants :metabase/event))
             sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/system-event
                                                                              :event_name      random-event
                                                                              :notification_id n-id})]
