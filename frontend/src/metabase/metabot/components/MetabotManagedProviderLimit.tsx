@@ -16,7 +16,7 @@ import {
   Text,
 } from "metabase/ui";
 
-import { AIProviderConfigurationForm } from "./AIProviderConfigurationForm";
+import { AIProviderSetup } from "./AIProviderConfigurationForm";
 
 const METABOT_MANAGED_PROVIDER_LIMIT_TOAST_ID =
   "metabot-managed-provider-limit";
@@ -48,7 +48,7 @@ export const MetabotManagedProviderLimitActions = ({
       opened={isOpen}
       size="lg"
     >
-      <AIProviderConfigurationForm isModal onClose={close} />
+      <AIProviderSetup onDone={close} />
     </Modal>
   );
 

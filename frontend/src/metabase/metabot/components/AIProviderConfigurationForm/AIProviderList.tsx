@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -8,62 +9,32 @@ import {
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import {
-  Button,
-  Card,
-  Flex,
-  Group,
-  Icon,
-  Menu,
-  Skeleton,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Button, Card, Group, Icon, Menu, Stack, Text } from "metabase/ui";
 import type {
   LlmProviderConnection,
   LlmProviderType,
 } from "metabase-types/api";
 
 import { LlmModelPicker } from "./LlmModelPicker";
-import { ProviderConnectionForm } from "./ProviderConnectionForm";
 import { ProviderConnectionModal } from "./ProviderConnectionModal";
+import { ProviderListSkeleton } from "./ProviderListSkeleton";
 
-export function AIProviderConfigurationForm({
-  isModal = false,
-  onClose,
-}: {
-  isModal?: boolean;
-  onClose?: (connection?: LlmProviderConnection) => void;
-}) {
+export function AIProviderList() {
   const { data: connections = [], isLoading: isLoadingConnections } =
     useListLlmProvidersQuery();
   const { data: providerTypes = [], isLoading: isLoadingProviderTypes } =
     useListLlmProviderTypesQuery();
   const [deleteProvider] = useDeleteLlmProviderMutation();
 
+  const [isAdding, { open: startAdding, close: stopAdding }] =
+    useDisclosure(false);
   const [editing, setEditing] = useState<LlmProviderConnection | undefined>();
-  const [isAdding, setIsAdding] = useState(false);
   const [deleting, setDeleting] = useState<LlmProviderConnection | undefined>();
-  const [hasConnectedHere, setHasConnectedHere] = useState(false);
   const onProviderRemoved = PLUGIN_METABOT.useOnProviderRemoved();
 
-  const handleModalClose = (saved?: LlmProviderConnection) => {
-    setIsAdding(false);
+  const handleModalClose = () => {
+    stopAdding();
     setEditing(undefined);
-    if (saved && isModal) {
-      onClose?.(saved);
-    }
-  };
-
-  const handleConnectedInModal = (saved?: LlmProviderConnection) => {
-    const providerType = providerTypes.find(
-      (type) => type.type === saved?.type,
-    );
-    if (providerType && !providerType.managed) {
-      setHasConnectedHere(true);
-    } else {
-      onClose?.(saved);
-    }
   };
 
   const handleConfirmDelete = async () => {
@@ -74,6 +45,10 @@ export function AIProviderConfigurationForm({
     }
   };
 
+  if (isLoadingConnections || isLoadingProviderTypes) {
+    return <ProviderListSkeleton />;
+  }
+
   const hasConnections = connections.length > 0;
 
   const addableProviderTypes = providerTypes.filter(
@@ -81,28 +56,6 @@ export function AIProviderConfigurationForm({
       !providerType.singleton ||
       !connections.some((connection) => connection.type === providerType.type),
   );
-
-  if (isLoadingConnections || isLoadingProviderTypes) {
-    return <ProviderListSkeleton />;
-  }
-
-  if (isModal) {
-    return hasConnections || hasConnectedHere ? (
-      <Stack gap="lg">
-        <LlmModelPicker />
-        <Flex justify="end">
-          <Button variant="filled" onClick={() => onClose?.()}>
-            {t`Done`}
-          </Button>
-        </Flex>
-      </Stack>
-    ) : (
-      <ProviderConnectionForm
-        providerTypes={addableProviderTypes}
-        onSaved={handleConnectedInModal}
-      />
-    );
-  }
 
   return (
     <Stack gap="lg">
@@ -126,13 +79,13 @@ export function AIProviderConfigurationForm({
         <Button
           variant={hasConnections ? "subtle" : "filled"}
           leftSection={<Icon name="add" />}
-          onClick={() => setIsAdding(true)}
+          onClick={startAdding}
         >
           {hasConnections ? t`Add another provider` : t`Add a provider`}
         </Button>
       </Group>
 
-      {hasConnections && !isModal && <LlmModelPicker />}
+      {hasConnections && <LlmModelPicker />}
 
       {(isAdding || editing) && (
         <ProviderConnectionModal
@@ -150,15 +103,6 @@ export function AIProviderConfigurationForm({
         confirmButtonText={t`Remove provider`}
         onConfirm={handleConfirmDelete}
       />
-    </Stack>
-  );
-}
-
-function ProviderListSkeleton() {
-  return (
-    <Stack gap="sm" data-testid="provider-list-skeleton">
-      <Skeleton h="4rem" radius="md" />
-      <Skeleton h="4rem" radius="md" />
     </Stack>
   );
 }

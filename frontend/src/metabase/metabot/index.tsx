@@ -1,5 +1,6 @@
 export * from "./context";
 export {
-  AIProviderConfigurationForm,
+  AIProviderList,
+  AIProviderSetup,
   LlmModelPicker,
 } from "./components/AIProviderConfigurationForm";
