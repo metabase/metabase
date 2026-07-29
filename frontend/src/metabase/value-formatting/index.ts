@@ -12,11 +12,6 @@ export {
   getTimeStyleOptions,
 } from "./date";
 export {
-  DEFAULT_DATE_STYLE,
-  DEFAULT_TIME_STYLE,
-  hasHour,
-} from "./datetime-utils";
-export {
   isSafeUrl,
   renderLinkURLForClick,
   type ValueAndColumnForColumnNameDate,
