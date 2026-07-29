@@ -72,6 +72,21 @@
                                {:id (:id metadata) :key definition-key :error (ex-message e)})
                      nil)))))))
 
+(defn- readable-measures-or-segments
+  "Filter lib `:metadata/measure` / `:metadata/segment` maps down to those whose parent table the current user can read.
+
+  `can-read?` for both `:model/Measure` and `:model/Segment` delegates to the parent Table, and both metadata schemas
+  carry a required `:table-id`, so filtering on it reproduces exactly what a per-item read-check would allow.
+
+  This is *not* redundant with the enclosing Card read-check. A Card is readable through **collection** permissions
+  (`:perms/use-parent-collection-perms`), which say nothing about data access to its source table — without this
+  filter, collection access to a saved question or metric hands out that table's measure/segment names, descriptions,
+  and full definitions."
+  [items]
+  (when (seq items)
+    (let [readable (table-utils/readable-table-ids (map :table-id items))]
+      (filterv (comp readable :table-id) items))))
+
 (defn verified-review?
   "Return true if the most recent ModerationReview for the given item id/type is verified."
   [id item-type]
@@ -284,6 +299,8 @@
                                                 (map #(metabot.tools.u/->result-column metric-query %)))
                                           queryable-columns))
 
+       ;; No readability filter needed on these segments: `source-table` is nil unless the base Table is
+       ;; readable, and `available-segments` only ever returns segments belonging to that same table.
        (and source-table with-segments?)
        (assoc :segments (if-let [segments (lib/available-segments metric-query)]
                           (mapv #(convert-measure-or-segment % :filters) segments)
@@ -381,10 +398,12 @@
                                                      (lib/available-metrics table-query))))
                          :measures (when with-measures?
                                      (not-empty (mapv #(convert-measure-or-segment % :aggregation)
-                                                      (lib/available-measures table-query))))
+                                                      (readable-measures-or-segments
+                                                       (lib/available-measures table-query)))))
                          :segments (when with-segments?
                                      (not-empty (mapv #(convert-measure-or-segment % :filters)
-                                                      (lib/available-segments table-query)))))
+                                                      (readable-measures-or-segments
+                                                       (lib/available-segments table-query))))))
            (merge related))))))
 
 (defn- fk-related-table-groups
@@ -543,12 +562,18 @@
           :metrics (when with-metrics?
                      (not-empty (mapv #(convert-metric % metadata-provider options)
                                       (lib/available-metrics card-query))))
+          ;; Empty today for ordinary cards — `lib/query` wraps them as a `:source-card` stage, and
+          ;; `available-measures`/`available-segments` only look at a stage-0 `:source-table`. The pivot-question
+          ;; branch above *does* build from `dataset-query`, which carries `:source-table`, so this really can emit;
+          ;; filtering unconditionally also keeps the general case closed if lib's resolution ever changes.
           :measures (when with-measures?
                       (not-empty (mapv #(convert-measure-or-segment % :aggregation)
-                                       (lib/available-measures card-query))))
+                                       (readable-measures-or-segments
+                                        (lib/available-measures card-query)))))
           :segments (when with-segments?
                       (not-empty (mapv #(convert-measure-or-segment % :filters)
-                                       (lib/available-segments card-query)))))
+                                       (readable-measures-or-segments
+                                        (lib/available-segments card-query))))))
          (merge related)))))
 
 (defn cards-details

@@ -439,6 +439,28 @@
         (is (= raw-values
                (#'entity-details/get-field-values {} field-id)))))))
 
+(deftest table-measures-and-segments-are-permission-filtered-test
+  (testing "measures and segments are filtered on their own parent table, not just on the enclosing entity"
+    (let [measure-def (measure-definition (mt/id :orders) (mt/id :orders :total))
+          segment-def (segment-definition (mt/id :orders) (mt/id :orders :total) 100)]
+      (mt/with-temp [:model/Measure _ {:name "Orders Total" :table_id (mt/id :orders) :definition measure-def}
+                     :model/Segment _ {:name "Big Orders" :table_id (mt/id :orders) :definition segment-def}]
+        ;; `manage-table-metadata` grants table read without data access, so the table itself stays reachable
+        ;; while `can-read?` on the measure/segment (which delegates to the same table) is still satisfied —
+        ;; the positive half of the filter.
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-table-permission! (perms-group/all-users) (mt/id :orders)
+                                            :perms/manage-table-metadata :yes)
+          (mt/with-test-user :rasta
+            (let [output (:structured-output (entity-details/get-table-details
+                                              {:entity-type        :table
+                                               :entity-id          (mt/id :orders)
+                                               :with-field-values? false
+                                               :with-measures?     true
+                                               :with-segments?     true}))]
+              (is (= ["Orders Total"] (map :name (:measures output))))
+              (is (= ["Big Orders"] (map :name (:segments output)))))))))))
+
 ;;; ============================================================
 ;;; Base-table surfacing on get-metric-details (regression)
 ;;; ============================================================
