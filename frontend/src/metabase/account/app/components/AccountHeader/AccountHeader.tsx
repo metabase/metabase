@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { UserAvatar } from "metabase/common/components/UserAvatar";
-import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
 import { Box, Flex, Tabs, Title, rem } from "metabase/ui";
 import { getFullName } from "metabase/utils/user";
 import type { User } from "metabase-types/api";

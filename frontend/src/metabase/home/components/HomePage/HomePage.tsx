@@ -1,13 +1,13 @@
 import { useLayoutEffect } from "react";
 import { t } from "ttag";
 
-import { useUpdateSettingMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHomepageDashboard } from "metabase/home/use-homepage-dashboard";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { replace } from "metabase/router";
 import { getHasDismissedCustomHomePageToast } from "metabase/selectors/app";
+import { useUpdateSettingMutation } from "metabase/settings";
 
 import { HomeContent } from "../HomeContent";
 import { HomeLayout } from "../HomeLayout";

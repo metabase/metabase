@@ -7,7 +7,7 @@ import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Outlet, push, useParams } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { Center, Loader } from "metabase/ui";
 
 import {

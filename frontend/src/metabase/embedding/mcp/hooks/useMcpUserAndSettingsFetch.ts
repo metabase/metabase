@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import { refetchCurrentUser, refetchSiteSettings } from "metabase/api";
+import { refetchCurrentUser } from "metabase/api";
+import { refetchSiteSettings } from "metabase/settings";
 
 import {
   type McpAppsUserAndSettingsFetchErrorType,

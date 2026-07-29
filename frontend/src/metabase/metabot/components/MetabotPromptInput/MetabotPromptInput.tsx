@@ -20,7 +20,7 @@ import { createMetabotMentionSuggestionNew } from "metabase/rich_text_editing/ti
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { createBareSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { getCspNonce } from "metabase/utils/csp";
 import type { DatabaseId } from "metabase-types/api";
 

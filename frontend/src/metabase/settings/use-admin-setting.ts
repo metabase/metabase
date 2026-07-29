@@ -3,9 +3,12 @@ import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useToast } from "metabase/common/hooks";
+import { getErrorMessage } from "metabase/api/utils/errors";
+// TODO(toast-home): `useToast` belongs in `metabase/ui`. Until it moves, this is
+// the module's one edge into `common` — imported by concrete path rather than the
+// barrel so the module doesn't pull all of `common/hooks` in behind it.
+import { useToast } from "metabase/common/hooks/use-toast";
 import { useSelector } from "metabase/redux";
-import { getSetting, getSettings } from "metabase/selectors/settings";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
@@ -13,14 +16,13 @@ import type {
   SettingDefinition,
 } from "metabase-types/api";
 
-import { useGetSettingsQuery } from "../session";
 import {
   useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
   useUpdateSettingMutation,
   useUpdateSettingsMutation,
-} from "../settings";
-
-import { getErrorMessage } from "./errors";
+} from "./api";
+import { getSetting, getSettings } from "./selectors";
 
 /**
  * One hook to get setting values and mutators for a given setting

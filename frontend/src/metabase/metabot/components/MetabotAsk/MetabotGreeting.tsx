@@ -5,11 +5,11 @@ import _ from "underscore";
 
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
-import { useSetting } from "metabase/common/hooks";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
+import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
   Box,

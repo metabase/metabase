@@ -28,7 +28,7 @@ import {
   useLocation,
   useNavigationType,
 } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { Box, Flex, Icon, UnstyledButton, rem } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";

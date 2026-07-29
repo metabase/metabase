@@ -1,5 +1,13 @@
 import _ from "underscore";
 
+import { Api } from "metabase/api/api";
+import { invalidateTags, listTag, tag } from "metabase/api/tags";
+import { handleQueryFulfilled } from "metabase/api/utils/lifecycle";
+import {
+  isValidColorScheme,
+  setUserColorSchemeAfterUpdate,
+} from "metabase/utils/color-scheme";
+import MetabaseSettings from "metabase/utils/settings";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
@@ -8,9 +16,7 @@ import type {
   SettingDefinitionMap,
 } from "metabase-types/api";
 
-import { Api } from "./api";
-import { sessionApi } from "./session";
-import { invalidateTags, listTag, tag } from "./tags";
+export const sessionPropertiesPath = "/api/session/properties";
 
 export type UpdateSettingArg = {
   key: EnterpriseSettingKey;
@@ -25,6 +31,32 @@ const putSettingQuery = ({ key, value }: UpdateSettingArg) => ({
 
 export const settingsApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    // The instance's settings payload. This is the read side of the whole
+    // module: `getSettings`/`useSetting` resolve out of this cache entry.
+    getSessionProperties: builder.query<EnterpriseSettings, void>({
+      query: () => ({
+        method: "GET",
+        url: sessionPropertiesPath,
+      }),
+      providesTags: ["session-properties"],
+      // Subscriptions keep the entry fresh and invalidation-safe
+      // Infinity keeps it from aging out if the subscriptions happen to be gone
+      keepUnusedDataFor: Infinity,
+      onQueryStarted: (_, { queryFulfilled }) =>
+        handleQueryFulfilled(queryFulfilled, (data) => {
+          // Keep the non-redux settings consumers in sync. `MetabaseSettings`
+          // is read by code that runs outside the store/React (i18n, dom helpers, theming).
+          MetabaseSettings.setAll(data);
+
+          // Sync color-scheme setting to window.MetabaseUserColorScheme
+          if (
+            data["color-scheme"] &&
+            isValidColorScheme(data["color-scheme"])
+          ) {
+            setUserColorSchemeAfterUpdate(data["color-scheme"]);
+          }
+        }),
+    }),
     // admin-only endpoint that returns all settings with lots of extra metadata
     getAdminSettingsDetails: builder.query<SettingDefinitionMap, void>({
       query: () => ({
@@ -104,7 +136,7 @@ export const settingsApi = Api.injectEndpoints({
       query: putSettingQuery,
       onQueryStarted: async ({ key, value }, { dispatch, queryFulfilled }) => {
         const patch = dispatch(
-          sessionApi.util.updateQueryData(
+          settingsApi.util.updateQueryData(
             "getSessionProperties",
             undefined,
             (draft) => {
@@ -130,7 +162,7 @@ export const settingsApi = Api.injectEndpoints({
           // where this mutation causes a refetch.
           if (patch.patches.length === 0) {
             dispatch(
-              sessionApi.util.invalidateTags([tag("session-properties")]),
+              settingsApi.util.invalidateTags([tag("session-properties")]),
             );
           }
         } catch {
@@ -148,7 +180,23 @@ export const {
   useGetSettingQuery,
   useGetVersionInfoQuery,
   useGetAdminSettingsDetailsQuery,
+  useGetSessionPropertiesQuery,
+  useLazyGetSessionPropertiesQuery,
   useUpdateSettingMutation,
   useUpdateSettingsMutation,
   useUpdateUserSettingMutation,
 } = settingsApi;
+
+// aliases for easier use
+export const useGetSettingsQuery = useGetSessionPropertiesQuery;
+export const useLazyGetSettingsQuery = useLazyGetSessionPropertiesQuery;
+
+/**
+ * Force a refetch of the session properties (settings) from non-React code.
+ * Dispatch it via `dispatch(refetchSiteSettings())`.
+ * In React, prefer `useLazyGetSettingsQuery()`'s trigger instead.
+ */
+export const refetchSiteSettings = () =>
+  settingsApi.endpoints.getSessionProperties.initiate(undefined, {
+    forceRefetch: true,
+  });

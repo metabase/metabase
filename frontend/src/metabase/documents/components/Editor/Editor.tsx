@@ -37,7 +37,7 @@ import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLin
 import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { Box, Center, Loader } from "metabase/ui";
 
 import { DocumentBlockShell } from "./DocumentBlockShell";

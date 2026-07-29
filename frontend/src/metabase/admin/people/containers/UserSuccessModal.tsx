@@ -11,7 +11,8 @@ import CS from "metabase/css/core/index.css";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { push, replace } from "metabase/router";
-import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
+import { isSsoEnabled } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
 import type { User } from "metabase-types/api";
 

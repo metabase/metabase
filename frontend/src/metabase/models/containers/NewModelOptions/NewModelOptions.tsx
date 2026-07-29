@@ -7,12 +7,14 @@ import CS from "metabase/css/core/index.css";
 import { NewModelOption } from "metabase/models/components/NewModelOption";
 import { useSelector } from "metabase/redux";
 import { useLocation } from "metabase/router";
-import { getLearnUrl, getSetting } from "metabase/selectors/settings";
+import { getLearnUrl } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { getSetting } from "metabase/settings";
 import { Flex, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
