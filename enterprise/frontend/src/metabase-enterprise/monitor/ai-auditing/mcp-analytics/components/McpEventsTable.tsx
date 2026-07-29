@@ -63,7 +63,11 @@ const EVENT_COLUMN_META: Record<
     title: t`Created at`,
     sort: "created_at",
     render: (value) =>
-      value == null ? EMPTY_CELL_PLACEHOLDER : <DateTime value={String(value)} />,
+      value == null ? (
+        EMPTY_CELL_PLACEHOLDER
+      ) : (
+        <DateTime value={String(value)} />
+      ),
   }),
   tool_name: () => ({ title: t`Tool`, sort: "tool_name" }),
   client_display_name: () => ({
