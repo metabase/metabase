@@ -567,27 +567,24 @@
     (some? is-data-analyst?)                (sql.helpers/where (if is-data-analyst?
                                                                  :core_user.is_data_analyst
                                                                  [:not :core_user.is_data_analyst]))
+    (some? can-access-data-studio?)         (sql.helpers/left-join
+                                             [{:select-distinct [:pgm.user_id]
+                                               :from [[:permissions_group_membership :pgm]]
+                                               :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
+                                               :where [:and
+                                                       [:= :p.perm_type "perms/manage-table-metadata"]
+                                                       [:= :p.perm_value "yes"]]}
+                                              :mtm_user]
+                                             [:= :mtm_user.user_id :core_user.id])
     (some? can-access-data-studio?)         (sql.helpers/where (if can-access-data-studio?
                                                                  [:or
                                                                   :core_user.is_data_analyst
                                                                   :core_user.is_superuser
-                                                                  [:in :core_user.id
-                                                                   {:select-distinct [:pgm.user_id]
-                                                                    :from [[:permissions_group_membership :pgm]]
-                                                                    :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
-                                                                    :where [:and
-                                                                            [:= :p.perm_type "perms/manage-table-metadata"]
-                                                                            [:= :p.perm_value "yes"]]}]]
+                                                                  [:not= :mtm_user.user_id nil]]
                                                                  [:and
                                                                   [:not :core_user.is_data_analyst]
                                                                   [:not :core_user.is_superuser]
-                                                                  [:not-in :core_user.id
-                                                                   {:select-distinct [:pgm.user_id]
-                                                                    :from [[:permissions_group_membership :pgm]]
-                                                                    :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
-                                                                    :where [:and
-                                                                            [:= :p.perm_type "perms/manage-table-metadata"]
-                                                                            [:= :p.perm_value "yes"]]}]]))
+                                                                  [:= :mtm_user.user_id nil]]))
     (some? group-ids)                       (sql.helpers/right-join
                                              :permissions_group_membership
                                              [:= :core_user.id :permissions_group_membership.user_id])

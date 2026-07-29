@@ -51,16 +51,19 @@
     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection table :read))))
 
 (defenterprise published-table-visible-clause
-  "Returns a HoneySQL clause matching published tables that are readable via collection permissions."
+  "Returns a correlated-EXISTS HoneySQL clause matching published tables that are readable via collection
+  permissions. `table-id-column` must be table-qualified (e.g. `:metabase_table.id`) so the correlation references
+  the outer query."
   :feature :library
   [table-id-column {:keys [user-id is-superuser?]}]
-  [:in table-id-column
-   {:select [:id]
-    :from   [:metabase_table]
+  [:exists
+   {:select [[[:inline 1]]]
+    :from   [[:metabase_table :published_table]]
     :where  [:and
-             [:= :is_published true]
+             [:= :published_table.id table-id-column]
+             [:= :published_table.is_published true]
              (collection/visible-collection-filter-clause
-              :collection_id
+              :published_table.collection_id
               {}
               {:current-user-id user-id
                :is-superuser?   is-superuser?})]}])

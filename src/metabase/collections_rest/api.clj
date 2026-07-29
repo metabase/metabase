@@ -114,7 +114,7 @@
                         (when (seq namespaces)
                           [:in :namespace namespaces])]
                        (collection/visible-collection-filter-clause
-                        :id
+                        :collection.id
                         {:include-archived-items    (if archived
                                                       :only
                                                       :exclude)
@@ -802,7 +802,7 @@
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
   (let [descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-filter-clause
-                                                                         :id
+                                                                         :collection.id
                                                                          {:include-archived-items :all}))
 
         descendant-collection-ids (mapv u/the-id descendant-collections)

@@ -102,18 +102,19 @@
    Returns a map of table-id -> table record."
   [table-ids]
   (when (seq table-ids)
-    (let [{:keys [clause with]} (mi/visible-filter-clause
-                                 :model/Table :id
-                                 {:user-id       api/*current-user-id*
-                                  :is-superuser? api/*is-superuser?*}
-                                 {:perms/view-data      :unrestricted
-                                  :perms/create-queries :query-builder-and-native})
+    (let [{:keys [clause with left-join]} (mi/visible-filter-clause
+                                           :model/Table :metabase_table.id
+                                           {:user-id       api/*current-user-id*
+                                            :is-superuser? api/*is-superuser?*}
+                                           {:perms/view-data      :unrestricted
+                                            :perms/create-queries :query-builder-and-native})
           tables (t2/select :model/Table
-                            :id [:in table-ids]
+                            :metabase_table.id [:in table-ids]
                             :active true
                             :visibility_type nil
                             (cond-> {:where clause}
-                              with (assoc :with with)))]
+                              with      (assoc :with with)
+                              left-join (assoc :left-join left-join)))]
       (into {} (map (juxt :id identity)) tables))))
 
 (defn get-accessible-card-ids

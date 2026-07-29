@@ -61,7 +61,7 @@
                                      collection/library-data-collection-type
                                      collection/library-metrics-collection-type]]
                          (collection/visible-collection-filter-clause
-                          :id
+                          :collection.id
                           {:include-archived-items    :exclude
                            :include-trash-collection? false
                            :permission-level          :read

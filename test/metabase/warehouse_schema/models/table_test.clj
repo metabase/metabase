@@ -171,12 +171,13 @@
 ;;; ------------------------------------------ visible-filter-clause tests ------------------------------------------
 
 (defn- fetch-visible-table-ids
-  "Fetches visible table IDs using `visible-filter-clause` with the new `:clause/:with` return structure."
+  "Fetches visible table IDs using `visible-filter-clause` with the `:clause/:with/:left-join` return structure."
   [db-id user-info permission-mapping table-id-field]
-  (let [{:keys [clause with]} (mi/visible-filter-clause :model/Table table-id-field user-info permission-mapping)]
+  (let [{:keys [clause with left-join]} (mi/visible-filter-clause :model/Table table-id-field user-info permission-mapping)]
     (t2/select-pks-set [:model/Table]
-                       (cond-> {:where [:and [:= :db_id db-id] clause]}
-                         with (assoc :with with)))))
+                       (cond-> {:where [:and [:= :metabase_table.db_id db-id] clause]}
+                         with      (assoc :with with)
+                         left-join (assoc :left-join left-join)))))
 
 (defn- superuser-info
   "Returns user-info map for a superuser."
@@ -207,7 +208,7 @@
                                         (superuser-info (mt/user->id :rasta))
                                         {:perms/view-data      :unrestricted
                                          :perms/create-queries :query-builder}
-                                        :id)))))))
+                                        :metabase_table.id)))))))
 
 (deftest visible-filter-clause-filters-by-view-and-query-perms-test
   (testing "Non-superuser sees only tables where they have both view and query permissions"
@@ -232,7 +233,7 @@
                                         (regular-user-info (mt/user->id :rasta))
                                         {:perms/view-data      :unrestricted
                                          :perms/create-queries :query-builder}
-                                        :id)))))))
+                                        :metabase_table.id)))))))
 
 (deftest visible-filter-clause-coalesce-expression-test
   (testing "Filter clause works with coalesce expression for table ID"
@@ -254,7 +255,7 @@
                                         (regular-user-info (mt/user->id :rasta))
                                         {:perms/view-data      :unrestricted
                                          :perms/create-queries :query-builder}
-                                        [:coalesce :id :metabase_table.id])))))))
+                                        [:coalesce :metabase_table.id :metabase_table.id])))))))
 
 (deftest visible-filter-clause-qualified-keyword-test
   (testing "Filter clause works with qualified keyword for table ID"
@@ -301,7 +302,7 @@
                                         (regular-user-info (mt/user->id :rasta))
                                         {:perms/view-data      :unrestricted
                                          :perms/create-queries :no}
-                                        :id)))))))
+                                        :metabase_table.id)))))))
 
 (deftest visible-filter-clause-legacy-no-self-service-test
   (testing "Non-superuser requiring :view-data :legacy-no-self-service sees tables at that level or above"
@@ -329,7 +330,7 @@
                                         (regular-user-info (mt/user->id :rasta))
                                         {:perms/view-data      :legacy-no-self-service
                                          :perms/create-queries :no}
-                                        :id)))))))
+                                        :metabase_table.id)))))))
 
 (deftest visible-filter-clause-blocked-level-sees-all-test
   (testing "Non-superuser requiring :view-data :blocked sees all tables since all values are more permissive"
@@ -357,7 +358,7 @@
                                         (regular-user-info (mt/user->id :rasta))
                                         {:perms/view-data      :blocked
                                          :perms/create-queries :no}
-                                        :id)))))))
+                                        :metabase_table.id)))))))
 
 (deftest visible-filter-clause-blocked-takes-precedence-test
   (testing "Blocked permission takes precedence over legacy-no-self-service across groups"
@@ -390,7 +391,7 @@
                                         (regular-user-info (mt/user->id :rasta))
                                         {:perms/view-data      :legacy-no-self-service
                                          :perms/create-queries :no}
-                                        :id)))))))
+                                        :metabase_table.id)))))))
 
 ;;; ---------------------------------------- DB-level permissions tests ----------------------------------------
 
@@ -407,7 +408,7 @@
                                       (superuser-info (mt/user->id :rasta))
                                       {:perms/view-data      :unrestricted
                                        :perms/create-queries :query-builder}
-                                      :id))))))
+                                      :metabase_table.id))))))
 
 (deftest visible-filter-clause-db-level-no-query-perms-test
   (testing "Non-superuser with DB-level view but no query perms sees no tables when both are required"
@@ -421,7 +422,7 @@
                                            (regular-user-info (mt/user->id :rasta))
                                            {:perms/view-data      :unrestricted
                                             :perms/create-queries :query-builder}
-                                           :id))))))
+                                           :metabase_table.id))))))
 
 (deftest visible-filter-clause-db-level-coalesce-test
   (testing "Filter clause with coalesce works for DB-level permissions"
@@ -434,7 +435,7 @@
                                            (regular-user-info (mt/user->id :rasta))
                                            {:perms/view-data      :unrestricted
                                             :perms/create-queries :query-builder}
-                                           [:coalesce :id :metabase_table.id]))))))
+                                           [:coalesce :metabase_table.id :metabase_table.id]))))))
 
 (deftest visible-filter-clause-db-level-qualified-keyword-test
   (testing "Filter clause with qualified keyword works for DB-level permissions"
@@ -462,7 +463,7 @@
                                       (regular-user-info (mt/user->id :rasta))
                                       {:perms/view-data      :unrestricted
                                        :perms/create-queries :no}
-                                      :id))))))
+                                      :metabase_table.id))))))
 
 (deftest visible-filter-clause-db-level-blocked-test
   (testing "Non-superuser requiring :blocked sees all tables since all values are more permissive"
@@ -477,7 +478,7 @@
                                       (regular-user-info (mt/user->id :rasta))
                                       {:perms/view-data      :blocked
                                        :perms/create-queries :no}
-                                      :id))))))
+                                      :metabase_table.id))))))
 
 (deftest prevent-metabase-transform-data-source-change-test
   (testing "Cannot change data_source from metabase-transform"

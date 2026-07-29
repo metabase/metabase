@@ -178,12 +178,14 @@
      (perm-type-to-int-inline perm-type required-level)]))
 
 (mu/defn visible-table-filter-with-cte
-  "Returns a map with :with (CTE definitions) and :clause (WHERE clause fragment) for filtering
-   tables visible to the user. Uses a CTE to compute permitted table IDs once rather than using
-   correlated subqueries, which provides better performance for large numbers of tables.
+  "Returns a map with :with (CTE definitions), :left-join (`[table-spec condition]` joining the CTE on
+   `column-or-exp`) and :clause (WHERE fragment testing the joined id) for filtering tables visible to the user.
+   Uses a CTE to compute permitted table IDs once rather than correlated subqueries, and a left join + IS NOT NULL
+   rather than `IN (SELECT ...)`, which Postgres degrades to an O(n^2) subplan past work_mem in non-unnestable
+   contexts; the CTE ids are unique, so the join cannot duplicate rows.
 
-   The returned map can be merged into a query by adding :with to the query's :with vector
-   and using :clause in the WHERE clause.
+   The returned map can be merged into a query by adding :with to the query's :with vector, :left-join to its
+   joins, and using :clause in the WHERE clause.
 
    Uses UNION ALL to separate table-level and database-level permission lookups, avoiding
    inefficient BitmapOr scans that occur with OR joins.
@@ -247,7 +249,8 @@
                 :from     [[:table_permissions :dp]]
                 :group-by [:dp.id]
                 :having   having-conditions}]]
-       :clause [:in column-or-exp {:select [:id] :from [:permitted_tables]}]})))
+       :left-join [[:permitted_tables :pt] [:= :pt.id column-or-exp]]
+       :clause [:not= :pt.id nil]})))
 
 (mu/defn select-tables-and-groups-granting-perm
   "Selects table.id and the group.id of all permissions groups that give the provided user the provided permission level or a
