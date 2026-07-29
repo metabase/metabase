@@ -55,6 +55,8 @@ export const MetabotChat = ({
   const metabotName = useMetabotName();
   const { isConfigured } = useUserMetabotPermissions();
   const showIllustrations = useSetting("metabot-show-illustrations");
+  const supportsReasoning =
+    useSetting("llm-metabot-supports-reasoning?") ?? true;
 
   const hasMessages = metabot.messages.length > 0;
 
@@ -176,6 +178,7 @@ export const MetabotChat = ({
                   metabot.loadConversation(metabot.conversationId);
                 }}
                 isDoingScience={metabot.isDoingScience}
+                supportsReasoning={supportsReasoning}
                 debug={metabot.debugMode}
                 conversationId={metabot.conversationId}
               />
