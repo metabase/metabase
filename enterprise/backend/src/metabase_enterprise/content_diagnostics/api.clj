@@ -161,7 +161,7 @@
    [:map
     [:threshold :int]
     [:unit      :string]
-    [:as_of     {:optional true} some?]]])
+    [:as_of     {:optional true} ms/TemporalString]]])
 
 (def ^:private ImbalancedFinding
   "Response item for the `/imbalanced` endpoint. `empty`/`sparse`/`crowded` share one count-vs-threshold
