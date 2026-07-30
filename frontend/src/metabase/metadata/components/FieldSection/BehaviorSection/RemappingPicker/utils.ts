@@ -84,7 +84,11 @@ function hasMappableNumeralValues(
 export function getFieldRemappedValues(
   fieldValues: FieldValue[] | undefined,
 ): Map<number, string> {
-  return new Map(getRemappings({ values: fieldValues }));
+  return new Map(
+    // Cast: Map rejects FieldValue [value] 1-tuples, and the pre-existing return
+    // type overstates the data (null keys, undefined labels); honest in a follow-up.
+    getRemappings({ values: fieldValues }) as [number, string][],
+  );
 }
 
 /**
