@@ -9,7 +9,6 @@ describe("Cross-version questions - nested model", () => {
     "setup: creates a model based on another question",
     { tags: ["@source"] },
     () => {
-      H.restoreCrossVersionDev("02-complete");
       cy.signIn("admin", { skipCache: true });
 
       cy.log("-- Create a model from a previous question --");
@@ -78,8 +77,6 @@ describe("Cross-version questions - nested model", () => {
 
       cy.findByTestId("scalar-value").should("not.exist");
       cy.findByTestId("header-cell").should("contain", "Total Discount (€)");
-
-      H.snapshotCrossVersionDev("03-complete");
     },
   );
 });
