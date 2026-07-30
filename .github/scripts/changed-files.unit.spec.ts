@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
   type Deps,
   type EventContext,
+  listPullRequestFiles,
   parseNameStatus,
   readEventContext,
   resolveChangeSet,
@@ -20,29 +21,28 @@ const context = (overrides: Partial<EventContext> = {}): EventContext => ({
   defaultBranch: "master",
   pullRequestNumber: null,
   repository: "metabase/metabase",
-  token: "token",
   ...overrides,
 });
 
-// Returns canned stdout per git subcommand and records the calls made.
-function fakeGit(
+// Canned stdout keyed by "<command> <subcommand>", e.g. "git diff", "gh api".
+// Records every invocation so call shape can be asserted.
+function fakeRun(
   responses: Record<string, string | Error> = {},
-): Deps["git"] & { calls: string[][] } {
+): Deps["run"] & { calls: string[][] } {
   const calls: string[][] = [];
-  const git = (args: string[]) => {
-    calls.push(args);
-    const response = responses[args[0]];
+  const run = (command: string, args: string[]) => {
+    calls.push([command, ...args]);
+    const response = responses[`${command} ${args[0]}`];
     if (response instanceof Error) {
       throw response;
     }
     return response ?? "";
   };
-  return Object.assign(git, { calls });
+  return Object.assign(run, { calls });
 }
 
 const deps = (overrides: Partial<Deps> = {}): Deps => ({
-  git: fakeGit(),
-  listPullRequestFiles: async () => [],
+  run: fakeRun(),
   log: () => {},
   ...overrides,
 });
@@ -141,36 +141,106 @@ describe("readEventContext", () => {
   });
 });
 
+describe("listPullRequestFiles", () => {
+  const ghLine = (filename: string, status: string) =>
+    JSON.stringify({ filename, status });
+
+  it("asks gh for the PR's files, one JSON object per line", () => {
+    const run = fakeRun({
+      "gh api": `${ghLine("src/a.clj", "modified")}\n${ghLine("b.md", "added")}\n`,
+    });
+
+    expect(listPullRequestFiles(context({ pullRequestNumber: 7 }), deps({ run }))).toEqual([
+      { filename: "src/a.clj", status: "modified" },
+      { filename: "b.md", status: "added" },
+    ]);
+    expect(run.calls[0]).toEqual([
+      "gh",
+      "api",
+      "--paginate",
+      "repos/metabase/metabase/pulls/7/files",
+      "--jq",
+      ".[] | {filename, status} | @json",
+    ]);
+  });
+
+  it("translates the API's status vocabulary to git's", () => {
+    const run = fakeRun({
+      "gh api": [
+        ghLine("gone.clj", "removed"),
+        ghLine("moved.clj", "renamed"),
+        ghLine("perms.clj", "changed"),
+        ghLine("same.clj", "unchanged"),
+      ].join("\n"),
+    });
+
+    expect(
+      listPullRequestFiles(context({ pullRequestNumber: 7 }), deps({ run })).map(
+        (file) => file.status,
+      ),
+    ).toEqual(["deleted", "renamed", "modified", "unknown"]);
+  });
+
+  it("reads a PR that changed nothing", () => {
+    const run = fakeRun({ "gh api": "\n" });
+
+    expect(
+      listPullRequestFiles(context({ pullRequestNumber: 7 }), deps({ run })),
+    ).toEqual([]);
+  });
+
+  it("refuses to guess when the event carries no PR number", () => {
+    expect(() =>
+      listPullRequestFiles(context({ pullRequestNumber: null }), deps()),
+    ).toThrow();
+  });
+});
+
 describe("resolveChangeSet", () => {
   describe("pull_request", () => {
-    it("takes the file list from the API", async () => {
-      const files = [{ filename: "src/a.clj", status: "modified" as const }];
-      const result = await resolveChangeSet(
-        context({ eventName: "pull_request", pullRequestNumber: 1 }),
-        deps({ listPullRequestFiles: async () => files }),
-      );
-
-      expect(result).toEqual({ kind: "files", files });
-    });
-
-    it("does not touch git", async () => {
-      const git = fakeGit();
-      await resolveChangeSet(
-        context({ eventName: "pull_request", pullRequestNumber: 1 }),
-        deps({ git }),
-      );
-
-      expect(git.calls).toEqual([]);
-    });
-
-    it("fails open when the API call fails", async () => {
-      const result = await resolveChangeSet(
-        context({ eventName: "pull_request", pullRequestNumber: 1 }),
-        deps({
-          listPullRequestFiles: async () => {
-            throw new Error("403");
-          },
+    it("takes the file list from gh", () => {
+      const run = fakeRun({
+        "gh api": JSON.stringify({
+          filename: "src/a.clj",
+          status: "modified",
         }),
+      });
+      const result = resolveChangeSet(
+        context({ eventName: "pull_request", pullRequestNumber: 1 }),
+        deps({ run }),
+      );
+
+      expect(result).toEqual({
+        kind: "files",
+        files: [{ filename: "src/a.clj", status: "modified" }],
+      });
+    });
+
+    it("does not touch git", () => {
+      const run = fakeRun();
+      resolveChangeSet(
+        context({ eventName: "pull_request", pullRequestNumber: 1 }),
+        deps({ run }),
+      );
+
+      expect(run.calls.filter(([command]) => command === "git")).toEqual([]);
+    });
+
+    it("fails open when gh fails", () => {
+      const run = fakeRun({ "gh api": new Error("gh: HTTP 403") });
+      const result = resolveChangeSet(
+        context({ eventName: "pull_request", pullRequestNumber: 1 }),
+        deps({ run }),
+      );
+
+      expect(result).toMatchObject({ kind: "all" });
+    });
+
+    it("fails open when gh returns something unparseable", () => {
+      const run = fakeRun({ "gh api": "not json" });
+      const result = resolveChangeSet(
+        context({ eventName: "pull_request", pullRequestNumber: 1 }),
+        deps({ run }),
       );
 
       expect(result).toMatchObject({ kind: "all" });
@@ -178,15 +248,16 @@ describe("resolveChangeSet", () => {
   });
 
   describe("push to the default branch", () => {
-    it("diffs against the commit before the push", async () => {
-      const git = fakeGit({ diff: "M\0src/a.clj\0" });
-      const result = await resolveChangeSet(context(), deps({ git }));
+    it("diffs against the commit before the push", () => {
+      const run = fakeRun({ "git diff": "M\0src/a.clj\0" });
+      const result = resolveChangeSet(context(), deps({ run }));
 
       expect(result).toEqual({
         kind: "files",
         files: [{ filename: "src/a.clj", status: "modified" }],
       });
-      expect(git.calls).toContainEqual([
+      expect(run.calls).toContainEqual([
+        "git",
         "diff",
         "--name-status",
         "-z",
@@ -195,45 +266,43 @@ describe("resolveChangeSet", () => {
       ]);
     });
 
-    it("fails open on a new branch, where there is no previous commit", async () => {
-      const result = await resolveChangeSet(
-        context({ before: EMPTY_SHA }),
-        deps(),
-      );
+    it("fails open on a new branch, where there is no previous commit", () => {
+      const result = resolveChangeSet(context({ before: EMPTY_SHA }), deps());
 
       expect(result).toMatchObject({ kind: "all" });
     });
 
-    it("fails open when the payload carries no previous commit", async () => {
-      const result = await resolveChangeSet(context({ before: null }), deps());
+    it("fails open when the payload carries no previous commit", () => {
+      const result = resolveChangeSet(context({ before: null }), deps());
 
       expect(result).toMatchObject({ kind: "all" });
     });
 
-    it("fails open when the commit stays unreachable after deepening", async () => {
-      const git = fakeGit({
-        "cat-file": new Error("missing"),
-        fetch: new Error("cannot deepen"),
+    it("fails open when the commit stays unreachable after deepening", () => {
+      const run = fakeRun({
+        "git cat-file": new Error("missing"),
+        "git fetch": new Error("cannot deepen"),
       });
-      const result = await resolveChangeSet(context(), deps({ git }));
+      const result = resolveChangeSet(context(), deps({ run }));
 
       expect(result).toMatchObject({ kind: "all" });
     });
   });
 
   describe("push to another branch", () => {
-    it("takes a three-dot diff against the merge-base with the default branch", async () => {
-      const git = fakeGit({ diff: "A\0src/b.clj\0" });
-      const result = await resolveChangeSet(
+    it("takes a three-dot diff against the merge-base with the default branch", () => {
+      const run = fakeRun({ "git diff": "A\0src/b.clj\0" });
+      const result = resolveChangeSet(
         context({ refName: "release-x.63.x" }),
-        deps({ git }),
+        deps({ run }),
       );
 
       expect(result).toEqual({
         kind: "files",
         files: [{ filename: "src/b.clj", status: "added" }],
       });
-      expect(git.calls).toContainEqual([
+      expect(run.calls).toContainEqual([
+        "git",
         "diff",
         "--name-status",
         "-z",
@@ -241,14 +310,14 @@ describe("resolveChangeSet", () => {
       ]);
     });
 
-    it("fails open when no merge-base can be found", async () => {
-      const git = fakeGit({
-        "merge-base": new Error("unrelated histories"),
-        fetch: new Error("no such ref"),
+    it("fails open when no merge-base can be found", () => {
+      const run = fakeRun({
+        "git merge-base": new Error("unrelated histories"),
+        "git fetch": new Error("no such ref"),
       });
-      const result = await resolveChangeSet(
+      const result = resolveChangeSet(
         context({ refName: "release-x.63.x" }),
-        deps({ git }),
+        deps({ run }),
       );
 
       expect(result).toMatchObject({ kind: "all" });
@@ -257,16 +326,16 @@ describe("resolveChangeSet", () => {
 
   it.each(["merge_group", "schedule", "workflow_dispatch", ""])(
     "fails open on the unhandled %s event",
-    async (eventName) => {
-      const result = await resolveChangeSet(context({ eventName }), deps());
+    (eventName) => {
+      const result = resolveChangeSet(context({ eventName }), deps());
 
       expect(result).toMatchObject({ kind: "all" });
     },
   );
 
-  it("fails open when git itself blows up", async () => {
-    const git = fakeGit({ diff: new Error("not a repository") });
-    const result = await resolveChangeSet(context(), deps({ git }));
+  it("fails open when git itself blows up", () => {
+    const run = fakeRun({ "git diff": new Error("not a repository") });
+    const result = resolveChangeSet(context(), deps({ run }));
 
     expect(result).toMatchObject({ kind: "all" });
   });

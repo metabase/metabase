@@ -20,7 +20,7 @@ import {
   parseNameStatus,
   readEventContext,
   resolveChangeSet,
-  runGit,
+  runCommand,
 } from "./changed-files";
 import {
   type ChangeSet,
@@ -101,7 +101,7 @@ function localChangeSet(base: string): ChangeSet {
     return {
       kind: "files",
       files: parseNameStatus(
-        runGit(["diff", "--name-status", "-z", `${base}...HEAD`]),
+        runCommand("git", ["diff", "--name-status", "-z", `${base}...HEAD`]),
       ),
     };
   } catch (error) {
@@ -177,11 +177,11 @@ function report(result: FilterResult, changes: ChangeSet): void {
   );
 }
 
-async function main(): Promise<void> {
+function main(): void {
   const options = parseArgs(process.argv.slice(2));
   const filters = parseFilters(readFileSync(options.filterFile, "utf8"));
 
-  const changes = await resolveChanges(options);
+  const changes = resolveChanges(options);
   const result = matchFilters(filters, changes);
 
   if (options.githubOutput) {
@@ -197,7 +197,7 @@ async function main(): Promise<void> {
 
 // Chooses the change source: an explicit file list, the workflow event, or a
 // local diff against `--base`.
-async function resolveChanges(options: Options): Promise<ChangeSet> {
+function resolveChanges(options: Options): ChangeSet {
   if (options.files) {
     return {
       kind: "files",
@@ -215,4 +215,4 @@ async function resolveChanges(options: Options): Promise<ChangeSet> {
   return localChangeSet(options.base);
 }
 
-await main();
+main();

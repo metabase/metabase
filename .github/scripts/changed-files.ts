@@ -1,7 +1,7 @@
 // Works out which files changed for the current event, matching how
 // dorny/paths-filter sources its diff:
-//   - `pull_request`: the GitHub REST API's file list for the PR, so no git
-//     history is needed and a depth-1 checkout is enough
+//   - `pull_request`: the GitHub API's file list for the PR, so no git history
+//     is needed and a depth-1 checkout is enough
 //   - `push` to the default branch: diff against the commit before the push
 //   - `push` to any other branch: three-dot diff against the merge-base with
 //     the default branch, deepening the shallow clone until it is reachable
@@ -30,12 +30,10 @@ export type EventContext = {
   defaultBranch: string;
   pullRequestNumber: number | null;
   repository: string | null;
-  token: string | null;
 };
 
 export type Deps = {
-  git: (args: string[]) => string;
-  listPullRequestFiles: (context: EventContext) => Promise<ChangedFile[]>;
+  run: (command: string, args: string[]) => string;
   log: (message: string) => void;
 };
 
@@ -64,59 +62,14 @@ const API_STATUS: Record<string, ChangeStatus> = {
   unchanged: "unknown",
 };
 
-export const runGit = (args: string[]): string =>
-  execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+export const runCommand = (command: string, args: string[]): string =>
+  execFileSync(command, args, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 
-export async function fetchPullRequestFiles(
-  context: EventContext,
-): Promise<ChangedFile[]> {
-  const { repository, pullRequestNumber, token } = context;
-  if (!repository || !pullRequestNumber || !token) {
-    throw new Error("Missing repository, PR number or token for the API call");
-  }
-
-  const files: ChangedFile[] = [];
-  // The endpoint caps out at 100 per page and 3000 files overall; a PR that
-  // large is already a full run by any sensible filter.
-  for (let page = 1; ; page++) {
-    const response = await fetch(
-      `https://api.github.com/repos/${repository}/pulls/${pullRequestNumber}/files?per_page=100&page=${page}`,
-      {
-        headers: {
-          accept: "application/vnd.github+json",
-          authorization: `Bearer ${token}`,
-          "x-github-api-version": "2022-11-28",
-        },
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error(
-        `GitHub API returned ${response.status} ${response.statusText}`,
-      );
-    }
-
-    const batch = (await response.json()) as {
-      filename: string;
-      status: string;
-    }[];
-
-    files.push(
-      ...batch.map(({ filename, status }) => ({
-        filename,
-        status: API_STATUS[status] ?? "unknown",
-      })),
-    );
-
-    if (batch.length < 100) {
-      return files;
-    }
-  }
-}
-
-const defaultDeps: Deps = {
-  git: runGit,
-  listPullRequestFiles: fetchPullRequestFiles,
+export const defaultDeps: Deps = {
+  run: runCommand,
   log: (message) => process.stderr.write(`${message}\n`),
 };
 
@@ -144,6 +97,36 @@ export function parseNameStatus(output: string): ChangedFile[] {
   return files;
 }
 
+// `gh` resolves its own auth: GH_TOKEN in CI, the local login otherwise.
+// `--paginate` concatenates one JSON array per page, which is not valid JSON on
+// its own, so `--jq` reduces each page to one object per line.
+export function listPullRequestFiles(
+  context: EventContext,
+  deps: Deps,
+): ChangedFile[] {
+  const { repository, pullRequestNumber } = context;
+
+  if (!repository || !pullRequestNumber) {
+    throw new Error("No repository or pull request number in the event");
+  }
+
+  const output = deps.run("gh", [
+    "api",
+    "--paginate",
+    `repos/${repository}/pulls/${pullRequestNumber}/files`,
+    "--jq",
+    ".[] | {filename, status} | @json",
+  ]);
+
+  return output
+    .split("\n")
+    .filter((line) => line.trim() !== "")
+    .map((line) => {
+      const { filename, status } = JSON.parse(line);
+      return { filename, status: API_STATUS[status] ?? "unknown" };
+    });
+}
+
 export function readEventContext(
   env: NodeJS.ProcessEnv = process.env,
 ): EventContext {
@@ -160,7 +143,6 @@ export function readEventContext(
     pullRequestNumber:
       (payload.pull_request as { number?: number })?.number ?? null,
     repository: env.GITHUB_REPOSITORY ?? null,
-    token: env.GITHUB_TOKEN ?? null,
   };
 }
 
@@ -177,7 +159,7 @@ function readEventPayload(path: string | undefined): Record<string, unknown> {
 
 const commitExists = (deps: Deps, sha: string): boolean => {
   try {
-    deps.git(["cat-file", "-e", `${sha}^{commit}`]);
+    deps.run("git", ["cat-file", "-e", `${sha}^{commit}`]);
     return true;
   } catch {
     return false;
@@ -215,7 +197,8 @@ function pushToDefaultBranch(deps: Deps, context: EventContext): ChangeSet {
   const reachable = deepenUntil(
     deps,
     () => commitExists(deps, before),
-    (depth) => deps.git(["fetch", "--no-tags", `--deepen=${depth}`, "origin"]),
+    (depth) =>
+      deps.run("git", ["fetch", "--no-tags", `--deepen=${depth}`, "origin"]),
   );
 
   if (!reachable) {
@@ -228,7 +211,7 @@ function pushToDefaultBranch(deps: Deps, context: EventContext): ChangeSet {
   return {
     kind: "files",
     files: parseNameStatus(
-      deps.git(["diff", "--name-status", "-z", before, sha]),
+      deps.run("git", ["diff", "--name-status", "-z", before, sha]),
     ),
   };
 }
@@ -241,14 +224,14 @@ function pushToOtherBranch(deps: Deps, context: EventContext): ChangeSet {
     deps,
     () => {
       try {
-        deps.git(["merge-base", remoteBase, sha]);
+        deps.run("git", ["merge-base", remoteBase, sha]);
         return true;
       } catch {
         return false;
       }
     },
     (depth) => {
-      deps.git([
+      deps.run("git", [
         "fetch",
         "--no-tags",
         `--depth=${depth}`,
@@ -256,7 +239,7 @@ function pushToOtherBranch(deps: Deps, context: EventContext): ChangeSet {
         `+refs/heads/${defaultBranch}:refs/remotes/${remoteBase}`,
       ]);
       try {
-        deps.git(["fetch", "--no-tags", `--deepen=${depth}`, "origin"]);
+        deps.run("git", ["fetch", "--no-tags", `--deepen=${depth}`, "origin"]);
       } catch {
         // Already a complete clone; nothing to deepen.
       }
@@ -273,21 +256,18 @@ function pushToOtherBranch(deps: Deps, context: EventContext): ChangeSet {
   return {
     kind: "files",
     files: parseNameStatus(
-      deps.git(["diff", "--name-status", "-z", `${remoteBase}...${sha}`]),
+      deps.run("git", ["diff", "--name-status", "-z", `${remoteBase}...${sha}`]),
     ),
   };
 }
 
-export async function resolveChangeSet(
+export function resolveChangeSet(
   context: EventContext,
   deps: Deps = defaultDeps,
-): Promise<ChangeSet> {
+): ChangeSet {
   try {
     if (context.eventName === "pull_request") {
-      return {
-        kind: "files",
-        files: await deps.listPullRequestFiles(context),
-      };
+      return { kind: "files", files: listPullRequestFiles(context, deps) };
     }
 
     if (context.eventName === "push") {
