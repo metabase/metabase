@@ -7,8 +7,7 @@ import { IFrameViz } from "./IFrameViz";
 import { LinkViz } from "./LinkViz";
 import { Text } from "./Text";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function () {
+export function registerDashboardVisualizations() {
   registerVisualization(ActionViz);
   registerVisualization(DashCardPlaceholder);
   registerVisualization(Heading);

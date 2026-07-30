@@ -394,15 +394,18 @@
             (when (driver/table-exists? driver (mt/db) {:name test-table :schema schema})
               (driver/drop-table! driver db-id qualified-table))))))))
 
-(def ^:private sql-jdbc-drivers
-  "Every registered sql-jdbc driver. These tests build SQL without connecting, so they run against
-  the whole hierarchy rather than whichever drivers happen to be available."
-  (descendants driver/hierarchy :sql-jdbc))
+(defn- sql-jdbc-drivers
+  "Every sql-jdbc driver, namespace loaded. A driver is registered from its plugin manifest before its
+  namespace is, so until `the-driver` forces the load its multimethods still resolve to defaults.
+  These tests build SQL without connecting, so they run against the whole hierarchy rather than
+  whichever drivers happen to be available."
+  []
+  (into #{} (map driver/the-driver) (descendants driver/hierarchy :sql-jdbc)))
 
 (deftest ^:parallel insert-into-sqls-boolean-literal-test
   (testing "boolean row values bind as parameters, never as inlined literals -- not every
             dialect has a boolean literal keyword"
-    (doseq [driver sql-jdbc-drivers]
+    (doseq [driver (sql-jdbc-drivers)]
       (testing driver
         (let [[sql & params] (first (#'driver.sql-jdbc/insert-into!-sqls driver :dbo/t ["id" "flag"]
                                                                          [[1 true] [2 false]] false))]
@@ -422,7 +425,7 @@
   (let [create-sql #(#'driver.sql-jdbc/create-table!-sql %1 %2 [["id" [:int]]])]
     (testing "a dash in a schema/catalog segment survives -- munged to an underscore, CREATE TABLE
               targets a schema that isn't there"
-      (doseq [driver sql-jdbc-drivers]
+      (doseq [driver (sql-jdbc-drivers)]
         (testing driver
           (let [sql (create-sql driver (keyword "test-data" "some_tbl"))]
             (is (re-find #"test-data" sql))
@@ -441,7 +444,7 @@
   (let [drop-sql #'driver.sql-jdbc/drop-table-sql]
     (testing "a dash in a schema/catalog segment survives -- munged to an underscore, DROP TABLE IF
               EXISTS targets a nonexistent object and silently no-ops, leaking the table"
-      (doseq [driver sql-jdbc-drivers]
+      (doseq [driver (sql-jdbc-drivers)]
         (testing driver
           (let [sql (drop-sql driver (keyword "test-data" "some_tbl"))]
             (is (re-find #"test-data" sql))

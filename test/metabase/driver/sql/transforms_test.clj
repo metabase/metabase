@@ -60,7 +60,9 @@
             (MySQL error 1049)."
     ;; Only the shared `:sql` implementation reads :output-db. Drivers that override
     ;; compile-transform qualify their target differently and drop it, so they exclude themselves.
-    (doseq [driver (descendants driver/hierarchy :sql-jdbc)
+    ;; `the-driver` forces the namespace load: a driver is registered from its plugin manifest
+    ;; before its namespace is, so until then its overrides still resolve to the `:sql` default.
+    (doseq [driver (map driver/the-driver (descendants driver/hierarchy :sql-jdbc))
             :when  (identical? (get-method driver/compile-transform driver)
                                (get-method driver/compile-transform :sql))]
       (testing driver
