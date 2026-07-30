@@ -47,6 +47,39 @@
           (log/warnf "Invalid version range in manifest: %s — %s" metabase_version (ex-message e))
           false)))))
 
+(def tested-sdk-version-range
+  "npm-semver range of @metabase/custom-viz versions this Metabase release was
+   tested against. Update it on every SDK release. Keep it closed on both ends
+   so it never includes unreleased SDK versions."
+  ">=2.0.0 <=2.0.0")
+
+(defn sdk-version-tested?
+  "Whether `sdk-version` satisfies [[tested-sdk-version-range]]. A nil/blank
+   version means the bundle predates stamping and was built with SDK 1.x.
+   Malformed versions count as untested. Pre-release and build metadata is
+   stripped before matching so canary versions match like their releases."
+  [sdk-version]
+  (if-let [v (Semver/coerce (if (str/blank? sdk-version) "1.0.0" sdk-version))]
+    (.satisfies (.withClearedPreReleaseAndBuild v) ^String tested-sdk-version-range)
+    false))
+
+(defn warnings
+  "Soft version warnings for a plugin. Computed at read time and never stored,
+   since they depend on the running Metabase version. Each warning carries a
+   machine-readable `:type` plus params the frontend builds messages from."
+  [{:keys [metabase_version manifest] :as plugin}]
+  (let [sdk-version (get-in manifest [:sdk :version])]
+    (cond-> []
+      (not (sdk-version-tested? sdk-version))
+      (conj {:type             "sdk-version-mismatch"
+             :sdk_version      sdk-version
+             :tested_sdk_range tested-sdk-version-range})
+
+      (not (compatible? plugin))
+      (conj {:type             "metabase-version-mismatch"
+             :metabase_version metabase_version
+             :current_version  (:tag config/mb-version-info)}))))
+
 ;;; ------------------------------------------------ Assets ------------------------------------------------
 
 (def ^:private image-extensions

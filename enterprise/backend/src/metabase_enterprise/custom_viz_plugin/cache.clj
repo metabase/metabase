@@ -18,7 +18,6 @@
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
-   [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.files :as u.files]
@@ -94,7 +93,9 @@
   "Extract an uploaded tar+gzip `bundle-bytes` into a scratch directory and
    validate its contents against the expected layout. Returns
    `{:bytes bundle-bytes :hash sha :manifest m :version-str v}` on success.
-   Throws ex-info with `:status-code 400` for any user-facing failure."
+   Throws ex-info with `:status-code 400` for any user-facing failure. Version
+   mismatches don't fail validation; they surface as soft warnings at read time
+   (see `manifest/warnings`)."
   [^bytes bundle-bytes]
   (when (or (nil? bundle-bytes) (zero? (alength bundle-bytes)))
     (throw (ex-info "Bundle is empty" {:status-code 400})))
@@ -125,12 +126,6 @@
         (when (str/blank? (:name parsed))
           (throw (ex-info (str (manifest/manifest-path) " is missing a \"name\" field")
                           {:status-code 400})))
-        (when (and version-str
-                   (not (manifest/compatible? {:metabase_version version-str})))
-          (throw (ex-info
-                  (format "Plugin requires Metabase version %s but current version is %s"
-                          version-str (:tag config/mb-version-info))
-                  {:status-code 400 :metabase_version version-str})))
         {:bytes       bundle-bytes
          :hash        (bytes-hash bundle-bytes)
          :manifest    parsed

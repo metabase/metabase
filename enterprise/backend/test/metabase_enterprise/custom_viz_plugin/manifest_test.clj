@@ -51,6 +51,50 @@
                   config/mb-version-info {:tag "vLOCAL_DEV"}]
       (is (true? (manifest/compatible? {:metabase_version ">=1.59"}))))))
 
+(deftest sdk-version-tested?-test
+  (with-redefs [manifest/tested-sdk-version-range ">=2.0.0 <=2.0.3"]
+    (testing "versions inside the range are tested, bounds inclusive"
+      (is (true? (manifest/sdk-version-tested? "2.0.0")))
+      (is (true? (manifest/sdk-version-tested? "2.0.2")))
+      (is (true? (manifest/sdk-version-tested? "2.0.3"))))
+    (testing "prereleases order below their release, so they fall inside the range"
+      (is (true? (manifest/sdk-version-tested? "2.0.1-canary.2"))))
+    (testing "versions outside the range are untested"
+      (is (false? (manifest/sdk-version-tested? "2.0.4")))
+      (is (false? (manifest/sdk-version-tested? "2.1.0")))
+      (is (false? (manifest/sdk-version-tested? "3.0.0")))
+      (is (false? (manifest/sdk-version-tested? "1.0.5"))))
+    (testing "nil/blank means a pre-stamping bundle, i.e. SDK 1.x"
+      (is (false? (manifest/sdk-version-tested? nil)))
+      (is (false? (manifest/sdk-version-tested? ""))))
+    (testing "malformed versions are untested"
+      (is (false? (manifest/sdk-version-tested? "garbage"))))))
+
+(deftest warnings-test
+  (with-redefs [config/is-dev? false
+                config/mb-version-info {:tag "v1.64.0"}
+                manifest/tested-sdk-version-range ">=2.0.0 <=2.0.0"]
+    (testing "no warnings for a stamped, in-range, satisfied plugin"
+      (is (= []
+             (manifest/warnings {:metabase_version ">=1.60.0"
+                                 :manifest         {:sdk {:version "2.0.0"}}}))))
+    (testing "unstamped plugin warns as untested SDK 1.x"
+      (is (= [{:type             "sdk-version-mismatch"
+               :sdk_version      nil
+               :tested_sdk_range ">=2.0.0 <=2.0.0"}]
+             (manifest/warnings {:metabase_version nil
+                                 :manifest         {}}))))
+    (testing "unsatisfied metabase.version warns"
+      (is (= [{:type             "metabase-version-mismatch"
+               :metabase_version ">=1.99"
+               :current_version  "v1.64.0"}]
+             (manifest/warnings {:metabase_version ">=1.99"
+                                 :manifest         {:sdk {:version "2.0.0"}}}))))
+    (testing "both warnings can apply at once"
+      (is (= ["sdk-version-mismatch" "metabase-version-mismatch"]
+             (map :type (manifest/warnings {:metabase_version ">=1.99"
+                                            :manifest         {:sdk {:version "1.0.5"}}})))))))
+
 ;;; ------------------------------------------------ Path Safety ------------------------------------------------
 
 (deftest safe-relative-path?-test

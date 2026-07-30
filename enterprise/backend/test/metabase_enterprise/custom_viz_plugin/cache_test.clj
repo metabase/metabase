@@ -91,13 +91,13 @@
                             #"max uncompressed bytes"
                             (cache/validate-bundle! bytes))))))
 
-(deftest validate-bundle-rejects-incompatible-version-test
-  (testing "plugin requiring incompatible Metabase version is rejected"
+(deftest validate-bundle-accepts-incompatible-version-test
+  (testing "version incompatibilities never fail validation — they surface as soft warnings at read time"
     (with-redefs [config/mb-version-info {:tag "v1.60.0"}
                   config/is-dev?         false]
-      (let [bytes (cvp.tu/valid-bundle-bytes "bad-ver" {:metabase-version ">=1.99.0"})]
-        (is (thrown-with-msg? Exception #"version"
-                              (cache/validate-bundle! bytes)))))))
+      (let [bytes (cvp.tu/valid-bundle-bytes "bad-ver" {:metabase-version ">=1.99.0"})
+            res   (cache/validate-bundle! bytes)]
+        (is (= ">=1.99.0" (:version-str res)))))))
 
 ;;; ------------------------------------------------ dev-base-url URL validation ------------------------------------------------
 
