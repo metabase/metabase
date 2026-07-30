@@ -395,12 +395,10 @@
               (driver/drop-table! driver db-id qualified-table))))))))
 
 (defn- sql-jdbc-drivers
-  "Every sql-jdbc driver, namespace loaded. A driver is registered from its plugin manifest before its
-  namespace is, so until `the-driver` forces the load its multimethods still resolve to defaults.
-  These tests build SQL without connecting, so they run against the whole hierarchy rather than
-  whichever drivers happen to be available."
+  "Every registered sql-jdbc driver. These tests build SQL without connecting, so they run against the
+  whole hierarchy rather than whichever drivers happen to be available."
   []
-  (into #{} (map driver/the-driver) (descendants driver/hierarchy :sql-jdbc)))
+  (descendants driver/hierarchy :sql-jdbc))
 
 (deftest ^:parallel insert-into-sqls-boolean-literal-test
   (testing "boolean row values bind as parameters, never as inlined literals -- not every
