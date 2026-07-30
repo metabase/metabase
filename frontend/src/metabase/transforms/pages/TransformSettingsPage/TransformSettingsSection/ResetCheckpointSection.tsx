@@ -10,9 +10,42 @@ import {
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { CheckpointValue } from "metabase/transforms/components/CheckpointValue";
-import { isTransformRunning } from "metabase/transforms/utils";
+import {
+  hasCodeManagedSyncCursor,
+  isTransformRunning,
+} from "metabase/transforms/utils";
 import { Box, Button, Code, Group, Icon, Text } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
+
+function SyncCursorSection({
+  transform,
+  onReset,
+  isResetting,
+}: {
+  transform: Transform;
+  onReset: () => void;
+  isResetting: boolean;
+}) {
+  const labelId = useId();
+
+  return (
+    <Group gap="md" align="center">
+      <Box c="text-secondary" role="group" aria-labelledby={labelId}>
+        <span id={labelId}>{t`Sync cursor`}: </span>
+        <Code bg="background_page-tertiary" style={{ whiteSpace: "pre-wrap" }}>
+          {JSON.stringify(transform.sync_state)}
+        </Code>
+      </Box>
+      <Button
+        leftSection={<Icon name="revert" aria-hidden />}
+        disabled={isTransformRunning(transform) || isResetting}
+        onClick={onReset}
+      >
+        {t`Reset cursor`}
+      </Button>
+    </Group>
+  );
+}
 
 export function ResetCheckpointSection({
   transform,
@@ -42,6 +75,33 @@ export function ResetCheckpointSection({
       sendSuccessToast(t`Checkpoint has been reset`);
     }
   };
+
+  // An ingestion transform has no checkpoint field: its cursor is whatever its code returned,
+  // so show that instead. Resetting it is the same endpoint — it clears both.
+  const isCodeManaged =
+    transform.source != null && hasCodeManagedSyncCursor(transform.source);
+  if (isCodeManaged) {
+    if (transform.sync_state == null) {
+      return null;
+    }
+    return (
+      <>
+        <SyncCursorSection
+          transform={transform}
+          onReset={openModal}
+          isResetting={isLoading}
+        />
+        <ConfirmModal
+          title={t`Reset the sync cursor?`}
+          message={t`The next run will start from scratch instead of continuing from the stored position. Depending on the transform, this may re-fetch everything from the source.`}
+          opened={isModalOpen}
+          onClose={closeModal}
+          onConfirm={handleConfirm}
+          confirmButtonText={t`Reset cursor`}
+        />
+      </>
+    );
+  }
 
   if (transform.last_checkpoint_value == null) {
     return null;

@@ -38,6 +38,11 @@ const IncrementalTransformSettingsWrapper = ({
     }
   };
 
+  // Either kind of watermark is resettable: a checkpoint field's value, or the opaque cursor an
+  // ingestion transform returns from its code.
+  const hasResettableCursor =
+    transform.last_checkpoint_value != null || transform.sync_state != null;
+
   return (
     <IncrementalTransformSettings
       source={transform.source}
@@ -47,7 +52,7 @@ const IncrementalTransformSettingsWrapper = ({
       readOnly={readOnly}
       targetTableId={transform.table?.id}
       extraActions={
-        !readOnly && transform.last_checkpoint_value != null ? (
+        !readOnly && hasResettableCursor ? (
           <ResetCheckpointSection transform={transform} />
         ) : undefined
       }

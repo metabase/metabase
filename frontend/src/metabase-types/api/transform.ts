@@ -58,6 +58,9 @@ export type Transform = {
 
   last_checkpoint_value?: string | null;
 
+  // opaque cursor an ingestion transform returns from its code to resume the next run
+  sync_state?: unknown;
+
   // names of configured secret env vars (values never leave the server)
   secret_keys?: string[];
 
