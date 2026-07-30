@@ -211,10 +211,7 @@ export const Comments = ({
       <Tabs
         className={S.tabsContainer}
         value={activeTab}
-        onChange={(value) => {
-          // Unjustified type cast. FIXME
-          setActiveTab(value as SidesheetTab);
-        }}
+        onChange={setActiveTab}
       >
         {availableTabs.length > 0 && (
           <Tabs.List px="1.625rem" className={S.tabsList}>

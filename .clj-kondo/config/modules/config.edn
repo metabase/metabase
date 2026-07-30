@@ -146,6 +146,7 @@
            config
            events
            models
+           permissions
            util}
    :model-imports #{:model/Card
                     :model/Collection
@@ -2578,6 +2579,7 @@
            metabot
            metrics
            models
+           permissions
            system
            types
            util}
