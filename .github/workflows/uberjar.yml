@@ -139,7 +139,11 @@ jobs:
       - name: Check out the code
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.inputs.commit }}
+          # Only override the ref when a commit was asked for explicitly. Left empty, checkout
+          # takes the event's own ref — for `pull_request` that is the merge ref, which is what
+          # the rest of CI expects to be testing. Pinning to head.sha here would quietly change
+          # what every PR build compiles.
+          ref: ${{ inputs.commit || github.event.inputs.commit }}
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
         with:
@@ -162,6 +166,9 @@ jobs:
         uses: ./.github/actions/prepare-uberjar-artifact
         with:
           edition: ${{ matrix.edition }}
+          # Same key `check-existing-artifacts` and `check-jar-health` look up, so a build for an
+          # explicitly passed commit uploads where the caller will go looking for it.
+          commit: ${{ inputs.commit || github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
 
   check-jar-health:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}

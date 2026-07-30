@@ -6,6 +6,13 @@ inputs:
     required: false
     default: "ee"
     description: Metabase edition (ee or oss)
+  commit:
+    required: false
+    default: ""
+    description: |
+      Commit the artifact is keyed on. Must match what `fetch-artifact` will later look up —
+      callers building a commit other than the event's own have to pass it, or the upload lands
+      under a name nothing will find. Defaults to the event's commit.
 
 runs:
   using: "composite"
@@ -19,7 +26,7 @@ runs:
     - name: Upload JARs as artifact
       uses: actions/upload-artifact@v7
       with:
-        name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+        name: metabase-${{ inputs.edition }}-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
         path: |
           ./target/uberjar/metabase.jar
           ./COMMIT-ID

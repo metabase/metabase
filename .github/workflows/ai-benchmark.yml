@@ -11,7 +11,7 @@ on:
         required: false
         default: ""
       ref:
-        description: "Metabase ref"
+        description: "Metabase branch, tag or sha (resolved to a full sha; ignored if pr is set)"
         required: false
         default: ""
       scope:
@@ -74,11 +74,68 @@ jobs:
             const { data } = await github.rest.issues.createComment({ owner, repo, issue_number, body });
             core.setOutput('comment_id', String(data.id));
 
+  resolve:
+    # Collapse the dispatch inputs into the one full sha everything downstream needs: it keys the
+    # uberjar artifact, tags the ECR image, and tells eval-run which commit was measured. `pr` was
+    # not consulted at all before, so `pr: 12345` built the tip of whatever branch the run was
+    # launched from and then reported the result against the PR.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+    steps:
+      - name: Resolve pr/ref to a full commit sha
+        id: sha
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ inputs.pr }}
+          REF: ${{ inputs.ref }}
+          DEFAULT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$PR" ]]; then
+            SHA=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" --jq .head.sha)
+            echo "PR #${PR} head -> ${SHA}"
+          elif [[ -n "$REF" ]]; then
+            # `ref` accepts a branch or tag; fetch-artifact and the image tag need a full sha.
+            SHA=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${REF}" --jq .sha)
+            echo "ref ${REF} -> ${SHA}"
+          else
+            SHA="$DEFAULT_SHA"
+            echo "neither pr nor ref given; using this run's commit -> ${SHA}"
+          fi
+          if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::could not resolve a full commit sha (got '${SHA}')"
+            exit 1
+          fi
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+
   image:
+    needs: [resolve]
+    # `resolve` is workflow_dispatch-only, so tolerate it being skipped. The label guard is not
+    # optional: the trigger is `pull_request: [labeled]` with no filter of its own, so without it
+    # any label on any same-repo PR builds ee+oss and pushes to ECR — and since announce/smoke/
+    # finalize all skip in that case, a failure shows up as a bare red check with nothing
+    # explaining it.
+    if: >-
+      !cancelled()
+      && (needs.resolve.result == 'success' || needs.resolve.result == 'skipped')
+      && (github.event_name == 'workflow_dispatch'
+          || (github.event_name == 'pull_request'
+              && github.event.label.name == 'evals/smoke'
+              && github.event.pull_request.head.repo.full_name == github.repository))
     uses: ./.github/workflows/build-private-ee-docker-image.yml
-    secrets: inherit
+    secrets:
+      PR_ENV_IAM_ROLE: ${{ secrets.PR_ENV_IAM_ROLE }}
+      PR_ENV_AWS_ACCOUNT_ID: ${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}
     with:
-     commit: ${{ github.event.inputs.ref || github.event.pull_request.head.sha || github.sha }}
+      # Empty on the label path on purpose — the image workflow then falls back to the PR head,
+      # which is the artifact run-tests has already built and cached under that sha.
+      commit: ${{ needs.resolve.outputs.sha }}
 
   smoke:
     needs: [announce, image]
@@ -96,8 +153,7 @@ jobs:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          # TODO: Reset to main before merging!!! (after review)
-          EVALS_BRANCH: evals-docker-registry
+          EVALS_BRANCH: main
         run: |
           gh api repos/metabase/evals/actions/workflows/eval-run.yml/dispatches \
             -f ref="$EVALS_BRANCH" \
@@ -110,6 +166,8 @@ jobs:
             -f "inputs[comment_id]=$COMMENT_ID"
 
   finalize:
+    # If the build or dispatch fell over, eval-run never took over the comment — leave a
+    # failure verdict instead of a comment stuck at "building the image…".
     needs: [announce, image, smoke]
     if: always() && needs.announce.result == 'success' && needs.smoke.result != 'success'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -146,7 +204,10 @@ jobs:
             }).catch(() => {});
 
   dispatch:
-    needs: [image]
+    needs: [resolve, image]
+    # Deliberately no `always()`: benchmarking without the image this run was supposed to produce
+    # would measure a stale build or nothing at all. A failed `image` fails the run, which is the
+    # signal here — unlike the PR path there is no comment for `finalize` to stamp.
     if: github.event_name == 'workflow_dispatch'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
@@ -156,7 +217,8 @@ jobs:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           EVALS_BRANCH: ${{ github.event.inputs.evals_branch }}
           PR: ${{ inputs.pr }}
-          REF: ${{ inputs.ref }}
+          # The sha the image was actually built and tagged with, not the raw `ref` input.
+          REF: ${{ needs.resolve.outputs.sha }}
           SCOPE: ${{ inputs.scope }}
           SAMPLE: ${{ inputs.sample }}
         run: |

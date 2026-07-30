@@ -24,7 +24,9 @@ jobs:
     if: github.event.pull_request.head.repo.full_name == github.repository
     name: Build Metabase Docker image
     uses: ./.github/workflows/build-private-ee-docker-image.yml
-    secrets: inherit
+    secrets:
+      PR_ENV_IAM_ROLE: ${{ secrets.PR_ENV_IAM_ROLE }}
+      PR_ENV_AWS_ACCOUNT_ID: ${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}
   deploy_pr:
     needs: [build]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
