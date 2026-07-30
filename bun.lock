@@ -30,6 +30,11 @@
         "@emotion/styled": "^11.11.0",
         "@floating-ui/dom": "^1.7.4",
         "@floating-ui/react": "^0.27.16",
+        "@formatjs/intl-datetimeformat": "^7.4.9",
+        "@formatjs/intl-getcanonicallocales": "^3.2.10",
+        "@formatjs/intl-locale": "^5.3.9",
+        "@formatjs/intl-numberformat": "^9.3.11",
+        "@formatjs/intl-pluralrules": "^6.3.10",
         "@juggle/resize-observer": "^3.4.0",
         "@lezer/highlight": "^1.2.1",
         "@lezer/lr": "^1.4.2",
@@ -1013,6 +1018,24 @@
     "@floating-ui/react-dom": ["@floating-ui/react-dom@2.1.6", "", { "dependencies": { "@floating-ui/dom": "^1.7.4" } }, "sha512-4JX6rEatQEvlmgU80wZyq9RT96HZJa88q8hp0pBd+LrczeDI4o6uA2M+uvxngVHo4Ihr8uibXxH6+70zhAFrVw=="],
 
     "@floating-ui/utils": ["@floating-ui/utils@0.2.10", "", {}, "sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ=="],
+
+    "@formatjs/bigdecimal": ["@formatjs/bigdecimal@0.2.6", "", {}, "sha512-aPzKsGQOkQRHUEbyO/ZtYfr4EqaBQnSs6U4tzTla1xBnIdEHgY2GqEqso28UMwWRkzKqqTj5+/6BmuOsRkfn2A=="],
+
+    "@formatjs/fast-memoize": ["@formatjs/fast-memoize@3.1.6", "", {}, "sha512-H5aexk1Le7T9TPmscacZ+1pR6CTa2n1wq+HDVGXhH8TzUlQQpeXzZs91dRtmFHrbeNbjPFPfQujUqm7MHgVoXQ=="],
+
+    "@formatjs/intl-datetimeformat": ["@formatjs/intl-datetimeformat@7.4.9", "", { "dependencies": { "@formatjs/bigdecimal": "0.2.6", "@formatjs/intl-localematcher": "0.8.10" } }, "sha512-dpGGhYrAq+3X0ME9V161qCgQcaY1IGhKUR6y58mep53qd3sg86ai+WkjlLbP0Hr2TFpPU9Z+i4oCxh1RUvW6mA=="],
+
+    "@formatjs/intl-getcanonicallocales": ["@formatjs/intl-getcanonicallocales@3.2.10", "", {}, "sha512-iH9faynSJ7EO8h7VgMfkjGBMUvmmalyio2dTqB2tSSi8UZuWWfHmeQ/RT+Ztl/SUdrN5tm0SO3218uLQIkCGXw=="],
+
+    "@formatjs/intl-locale": ["@formatjs/intl-locale@5.3.9", "", { "dependencies": { "@formatjs/intl-getcanonicallocales": "3.2.10", "@formatjs/intl-supportedvaluesof": "2.3.8" } }, "sha512-h8xk+FFg0R9jZmX2r+75BglH5Bd++7pnCn5veN4Fv9a+E6TiYgD0QnYXbYOzOskLPKaTnFrUFkQ7OYJUasuONw=="],
+
+    "@formatjs/intl-localematcher": ["@formatjs/intl-localematcher@0.8.10", "", { "dependencies": { "@formatjs/fast-memoize": "3.1.6" } }, "sha512-P/IC3qws3jH+1fEs+o0RIFgXKRaQlFehjS5W0FPAqdo6hgzawLl+eD0q0JjheQ3XtoOe5n8WSYfX06KQZI/QJA=="],
+
+    "@formatjs/intl-numberformat": ["@formatjs/intl-numberformat@9.3.11", "", { "dependencies": { "@formatjs/bigdecimal": "0.2.6", "@formatjs/intl-localematcher": "0.8.10" } }, "sha512-AF7I2OIV/kSTvUBBV5nnP+SBA71DiSRcK5O9buEcHohqcg5ZhAcWmLf9FCpMya/saHahi2E0IOS2oSP+keRP5g=="],
+
+    "@formatjs/intl-pluralrules": ["@formatjs/intl-pluralrules@6.3.10", "", { "dependencies": { "@formatjs/bigdecimal": "0.2.6", "@formatjs/intl-localematcher": "0.8.10" } }, "sha512-pMoqKYhsfz2ostOQsh/5e66EJPiYWzy4yO7k9zcBLfw0pgOf15TRDYaT6lPghqUe9gdEEfP74QL7u6gwomxCTg=="],
+
+    "@formatjs/intl-supportedvaluesof": ["@formatjs/intl-supportedvaluesof@2.3.8", "", { "dependencies": { "@formatjs/fast-memoize": "3.1.6" } }, "sha512-webY7Ylc4CRRgxXFxZ4yRIr+9SKZyMLh+Hrsim4vG3HKSpD+T7d9XXvTdd6UDILyXf7BsqAa8l5/Nn2eENWCqw=="],
 
     "@gerrit0/mini-shiki": ["@gerrit0/mini-shiki@3.23.0", "", { "dependencies": { "@shikijs/engine-oniguruma": "^3.23.0", "@shikijs/langs": "^3.23.0", "@shikijs/themes": "^3.23.0", "@shikijs/types": "^3.23.0", "@shikijs/vscode-textmate": "^10.0.2" } }, "sha512-bEMORlG0cqdjVyCEuU0cDQbORWX+kYCeo0kV1lbxF5bt4r7SID2l9bqsxJEM0zndaxpOUT7riCyIVEuqq/Ynxg=="],
 
