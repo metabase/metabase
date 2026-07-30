@@ -1,7 +1,9 @@
 (ns metabase.lib-be.locked-query-map
+  (:refer-clojure :exclude [some])
   (:require
    [clojure.string :as str]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some]]
    [potemkin :as p]
    [pretty.core :as pretty]))
 
@@ -10,25 +12,33 @@
 (declare ->LockedQuery)
 
 (def ^:private allowed-class-name-prefixes
-  #{"metabase.driver"
-    "metabase.legacy_mbql"
+  #{;; these are allowed because they're "friends" of the query map
     "metabase.lib"
     "metabase.lib_be"
     "metabase.query_processor"
-    "metabase.util.malli.registry"})
-;; TODO -- allow tests as well
+    "metabase.driver"
+    ;; these are allowed as a kind of "ratchet"; we'd like to remove access but
+    ;; our main priority is preventing access from spreading
+    "metabase.util.malli.registry" ; which functions?
+    "metabase.models.interface$elide_data"
+    "metabase_enterprise.impersonation.middleware" ; apply-impersonation-postprocessing
+    })
+
+(defn- relevant-frame [^StackTraceElement frame]
+  (let [class-name (.getClassName frame)]
+    (when (and (str/starts-with? class-name "metabase")
+               ;; m.u.performance functions should be treated like clojure.core
+               (not (str/starts-with? class-name "metabase.util.performance"))
+               (not (str/starts-with? class-name "metabase.lib_be.locked_query_map")))
+      class-name)))
 
 (defn- assert-allowed-to-touch []
-  (when-let [mb-class-name (some (fn [^StackTraceElement frame]
-                                   (let [class-name (.getClassName frame)]
-                                     (when (and (str/starts-with? class-name "metabase")
-                                                (not (str/starts-with? class-name "metabase.lib_be.locked_query_map")))
-                                       class-name)))
+  (when-let [mb-class-name (some relevant-frame
                                  (.getStackTrace (Thread/currentThread)))]
-    (or (some (fn [s]
-                (str/starts-with? mb-class-name s))
-              allowed-class-name-prefixes)
-        (throw (ex-info "No raw MBQL manipulation outside of Lib or the QP!" {:disallowed-class-name mb-class-name})))))
+    (or (some (partial str/starts-with? mb-class-name) allowed-class-name-prefixes)
+        (re-find #"test" mb-class-name)
+        (throw (ex-info "No raw MBQL manipulation outside of Lib or the QP!"
+                        {:disallowed-class-name mb-class-name})))))
 
 (p/def-map-type LockedQuery [m]
   (get [_this k default-value]
@@ -52,6 +62,7 @@
   (meta [_this]
     (meta m))
   (entryAt [this k]
+    (assert-allowed-to-touch)
     (when (contains? m k)
       (potemkin.PersistentMapProxy$MapEntry. this k)))
   (with-meta [this metta]
@@ -68,14 +79,14 @@
     (list `locked-query m)))
 
 (defn locked-query
-  "Create a new map that handles either `snake_case` or `kebab-case` keys, but warns is you use `snake_case`
-  keys (in prod) or throws an Exception (in dev and tests). This is here so we can catch code that needs to be updated
-  to use MLv2 metadata in 48+."
-  ([]
-   (locked-query {}))
+  "Create a query map which can only be used from namespaces that have access.
+  The idea is to make all queries use this map type (in dev at least) and then
+  force people to use Lib to poke at queries."
+  ([] (locked-query {}))
   ([m]
    (-> (or m {})
-       (vary-meta assoc :metabase.driver/metadata-type :metabase.driver/metadata-type.mlv2)
+       (vary-meta assoc
+                  :metabase.driver/metadata-type :metabase.driver/metadata-type.mlv2)
        ->LockedQuery))
   ([k v & more]
    (locked-query (into {k v} (partition-all 2) more))))

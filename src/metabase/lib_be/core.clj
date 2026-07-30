@@ -1,6 +1,7 @@
 (ns metabase.lib-be.core
   (:require
    [metabase.lib-be.hash]
+   [metabase.lib-be.locked-query-map]
    [metabase.lib-be.metadata.bootstrap]
    [metabase.lib-be.metadata.jvm]
    [metabase.lib-be.models.transforms]
@@ -19,6 +20,8 @@
 (p/import-vars
  [metabase.lib-be.hash
   query-hash]
+ [metabase.lib-be.locked-query-map
+  locked-query]
  [metabase.lib-be.metadata.bootstrap
   resolve-database]
  [metabase.lib-be.metadata.jvm
