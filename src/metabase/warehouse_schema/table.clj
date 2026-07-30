@@ -71,7 +71,7 @@
   ([ids {:keys [include-sensitive-fields?]}]
    (when (seq ids)
      (let [tables (t2/select :model/Table :id [:in ids])
-           _      (perms/prime-table-perms-cache (into #{} (map :db_id) tables))
+           _      (perms/prime-db-perms-cache (into #{} (map :db_id) tables))
            tables (filter can-access-table-for-query-metadata? tables)
            tables (t2/hydrate tables
                               [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]

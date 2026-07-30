@@ -107,7 +107,7 @@
 
     :else
     (do
-      (perms/prime-table-perms-cache (into #{} (map :db_id) tables))
+      (perms/prime-db-perms-cache (into #{} (map :db_id) tables))
       (filter
        (fn [{table-id :id db-id :db_id}]
          (perms/user-has-permission-for-table?

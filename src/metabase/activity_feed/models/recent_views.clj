@@ -580,7 +580,7 @@
                                    (group-by (comp keyword :model) views)
                                    (update-vals views #(mapv :model_id %)))
         tables (table-recents table-ids)]
-    (perms/prime-table-perms-cache (into #{} (keep :db_id) tables))
+    (perms/prime-db-perms-cache (into #{} (keep :db_id) tables))
     {:card       (m/index-by :id (card-recents card-ids))
      :dashboard  (m/index-by :id (dashboard-recents dashboard-ids))
      :collection (m/index-by :id (collection-recents collection-ids))

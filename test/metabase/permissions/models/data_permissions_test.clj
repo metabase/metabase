@@ -22,100 +22,56 @@
       :blocked         [:perms/view-data #{:blocked}]
       nil              [:perms/view-data #{}])))
 
-(defn- rows->table-perms [rows]
-  (reduce #'data-perms/fold-table-perm-row (java.util.HashMap.) rows))
+(deftest ^:parallel ranks->most-permissive-value-test
+  (testing "reconstructs coalesce from a bucket's [min max] value ranks"
+    ;; :perms/create-queries values: [:query-builder-and-native :query-builder :no]
+    (are [expected pair] (= expected (#'data-perms/ranks->most-permissive-value :perms/create-queries pair))
+      :query-builder-and-native [0 2]
+      :query-builder            [1 1]
+      :no                       [2 2]
+      nil                       nil))
+  (testing ":perms/view-data's special rule: a :blocked row overrides :legacy-no-self-service but not :unrestricted"
+    ;; :perms/view-data values: [:unrestricted :legacy-no-self-service :blocked]
+    (are [expected pair] (= expected (#'data-perms/ranks->most-permissive-value :perms/view-data pair))
+      :unrestricted           [0 2]
+      :blocked                [1 2]
+      :legacy-no-self-service [1 1]
+      :blocked                [2 2])))
 
-(deftest ^:parallel fold-table-perm-rows-test
-  (testing "returns an empty map when there are no rows"
-    (is (= {} (rows->table-perms []))))
-  (testing "duplicate rows keep every distinct value visible to coalescing, and each table-level row keeps its own
-            schema_name (data_permissions has no unique constraint on (group_id, perm_type, db_id, table_id), and
-            schema_name is denormalized so rows for one table can disagree)"
-    (let [entry (get-in (rows->table-perms
-                         [{:perm_type  :perms/create-queries
-                           :db_id      20
-                           :group_id   1
-                           :table_id   nil
-                           :schema_name nil
-                           :perm_value :query-builder}
-                          {:perm_type  :perms/create-queries
-                           :db_id      20
-                           :group_id   1
-                           :table_id   nil
-                           :schema_name nil
-                           :perm_value :no}
-                          {:perm_type  :perms/create-queries
-                           :db_id      20
-                           :group_id   1
-                           :table_id   10
-                           :schema_name "public"
-                           :perm_value :query-builder}
-                          {:perm_type  :perms/create-queries
-                           :db_id      20
-                           :group_id   1
-                           :table_id   10
-                           :schema_name "public"
-                           :perm_value :no}
-                          {:perm_type  :perms/create-queries
-                           :db_id      20
-                           :group_id   2
-                           :table_id   10
-                           :schema_name "legacy"
-                           :perm_value :query-builder}])
-                        [:perms/create-queries 20])]
-      (is (= {1 #{:query-builder :no}}
-             (:groups entry)))
-      (is (= {10 {1 #{{:schema "public" :value :query-builder}
-                      {:schema "public" :value :no}}
-                  2 #{{:schema "legacy" :value :query-builder}}}}
-             (:tables entry))))))
-
-(deftest ^:parallel fold-schema-perm-rows-test
-  (is (= {:perms/create-queries
-          {20 #{{:group-id 1, :schema nil,      :value :query-builder, :table-level? false}
-                {:group-id 1, :schema "public", :value :no,            :table-level? true}}}}
-         (reduce #'data-perms/fold-schema-perm-row
-                 (java.util.HashMap.)
-                 [{:perm_type :perms/create-queries, :db_id 20, :group_id 1, :schema_name nil,
-                   :perm_value :query-builder, :table_level 0}
-                  {:perm_type :perms/create-queries, :db_id 20, :group_id 1, :schema_name "public",
-                   :perm_value :no, :table_level 1}]))))
+(deftest ^:parallel combine-rank-pairs-test
+  (is (= [0 2] (#'data-perms/combine-rank-pairs [1 2] [0 1])))
+  (is (= [1 1] (#'data-perms/combine-rank-pairs nil [1 1])))
+  (is (nil? (#'data-perms/combine-rank-pairs nil nil))))
 
 (deftest permission-caches-load-on-demand-test
-  (let [user-id      1
-        table-loads  (atom [])
-        schema-loads (atom [])
-        table-cache  (atom {:db-ids #{} :perms {}})
-        schema-cache (atom {:db-ids #{} :perms {}})]
-    (binding [api/*current-user-id*           user-id
-              data-perms/*table-perms-cache*  table-cache
-              data-perms/*schema-perms-cache* schema-cache]
-      (mt/with-dynamic-fn-redefs [data-perms/load-table-perms
+  (let [user-id 1
+        loads   (atom [])
+        cache   (atom {:db-ids #{} :perms {}})]
+    (binding [api/*current-user-id*       user-id
+              data-perms/*database-permission-cache* cache]
+      (mt/with-dynamic-fn-redefs [data-perms/load-database-permission-perms
                                   (fn [_user-id db-ids]
-                                    (swap! table-loads conj db-ids)
-                                    {:perms/view-data (zipmap db-ids (repeat {:groups {} :tables {}}))})
-                                  data-perms/load-schema-perms
-                                  (fn [_user-id db-ids]
-                                    (swap! schema-loads conj (or db-ids :all))
-                                    {:perms/view-data (zipmap (or db-ids [10]) (repeat #{{:value :unrestricted}}))})]
-        (testing "the table cache loads only databases not already fetched"
-          (#'data-perms/table-perms user-id [10])
-          (#'data-perms/table-perms user-id [10 11])
-          (#'data-perms/table-perms user-id [10 11])
-          (is (= [[10] [11]] @table-loads))
-          (is (= #{10 11} (:db-ids @table-cache))))
-        (testing "the schema cache loads only databases not already fetched"
-          (#'data-perms/schema-perms user-id [10])
-          (#'data-perms/schema-perms user-id [10 11])
-          (is (= [[10] [11]] @schema-loads))
-          (is (= #{10 11} (:db-ids @schema-cache))))))))
+                                    (swap! loads conj db-ids)
+                                    {:perms/view-data (zipmap db-ids (repeat :unrestricted))})]
+        (testing "a per-function cache loads only databases not already fetched"
+          (letfn [(check! [db-ids]
+                    (#'data-perms/cached-db-perms cache
+                                                  @#'data-perms/load-database-permission-perms
+                                                  user-id db-ids))]
+            (check! [10])
+            (check! [10 11])
+            (check! [10 11])
+            (is (= [[10] [11]] @loads))
+            (is (= #{10 11} (:db-ids @cache)))
+            (is (= :unrestricted
+                   (get-in @cache [:perms user-id :perms/view-data 10])))))))))
 
 (deftest permission-caches-memoize-most-permissive-values-test
   (let [user-id 1
         loads   (atom 0)
         cache   (atom {})]
     (binding [api/*current-user-id*                     user-id
-              data-perms/*most-permissive-perms-cache*  cache]
+              data-perms/*most-permissive-permission-cache*  cache]
       (mt/with-dynamic-fn-redefs [data-perms/load-most-permissive-db-perms
                                   (fn [_user-id perm-type]
                                     (swap! loads inc)
@@ -354,13 +310,13 @@
             (t2/with-call-count [call-count]
               (is (= :yes (data-perms/database-permission-for-user user-id :perms/manage-database database-id-1)))
               (is (zero? (call-count)))))
-          ;; Fetching perms for a different DB is a cache miss (the load goes through next.jdbc directly, so spy on
-          ;; the load fn rather than the toucan2 call count)
+          ;; Fetching perms for a different DB is a cache miss (spy on the load fn rather than counting queries so the
+          ;; assertion doesn't depend on how many statements a load issues)
           (let [loads (atom 0)
-                orig  (dynamic-redefs/original-fn #'data-perms/load-schema-perms)]
-            (mt/with-dynamic-fn-redefs [data-perms/load-schema-perms (fn [user-id db-ids]
-                                                                       (swap! loads inc)
-                                                                       (orig user-id db-ids))]
+                orig  (dynamic-redefs/original-fn #'data-perms/load-database-permission-perms)]
+            (mt/with-dynamic-fn-redefs [data-perms/load-database-permission-perms (fn [user-id db-ids]
+                                                                                    (swap! loads inc)
+                                                                                    (orig user-id db-ids))]
               (is (= :no (data-perms/database-permission-for-user user-id :perms/manage-database database-id-2)))
               (is (= 1 @loads)))))))))
 
@@ -618,21 +574,6 @@
                (data-perms.graph/data-permissions-graph :group-id group-id-1
                                                         :db-id database-id-1
                                                         :perm-type :perms/view-data)))))))
-
-(deftest most-restrictive-per-group-works
-  (is (= #{:query-builder-and-native}
-         (#'data-perms/most-restrictive-per-group :perms/create-queries [{:group-id 1 :value :query-builder-and-native}])))
-  (is (= #{:no}
-         (#'data-perms/most-restrictive-per-group :perms/create-queries [{:group-id 1 :value :query-builder}
-                                                                         {:group-id 1 :value :no}])))
-  (is (= #{:no :query-builder-and-native}
-         (#'data-perms/most-restrictive-per-group :perms/create-queries [{:group-id 1 :value :query-builder-and-native}
-                                                                         {:group-id 1 :value :no}
-                                                                         {:group-id 2 :value :query-builder-and-native}])))
-  (is (= #{:no}
-         (#'data-perms/most-restrictive-per-group :perms/create-queries [{:group-id 1 :value :no}
-                                                                         {:group-id 1 :value :query-builder}
-                                                                         {:group-id 1 :value :query-builder-and-native}]))))
 
 (deftest full-schema-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}

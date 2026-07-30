@@ -41,7 +41,7 @@
 (defn- filter-readable-tables
   "Filters tables down to the ones the current user can read."
   [tables]
-  (perms/prime-table-perms-cache (into #{} (map :db_id) tables))
+  (perms/prime-db-perms-cache (into #{} (map :db_id) tables))
   (filter mi/can-read? tables))
 
 (defn select-tables

@@ -77,7 +77,7 @@
                               :visibility_type nil
                               {:order-by [[:%lower.schema :asc]
                                           [:%lower.display_name :asc]]})
-        _ (perms/prime-table-perms-cache (map :id dbs))
+        _ (perms/prime-db-perms-cache (map :id dbs))
         filtered-tables (cond->> (filter mi/can-read? all-tables)
                           can-query?          (filter mi/can-query?)
                           can-write-metadata? (filter mi/can-write?))
@@ -349,7 +349,7 @@
                        base-where)
         dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                         :where where-clause})
-        _ (perms/prime-schema-perms-cache (map :id dbs))]
+        _ (perms/prime-db-perms-cache (map :id dbs))]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
       include-tables?              (add-tables :can-query? can-query? :can-write-metadata? can-write-metadata?)
       include-schemas?             add-schemas
