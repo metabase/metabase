@@ -341,6 +341,10 @@
 
 ;;; Retry settings for delivering notifications via channels. The retry machinery itself lives in
 ;;; [[metabase.util.retry]]; the settings live here so `util` stays settings-free.
+;;;
+;;; TODO (Chris 2026-07-30) -- rename these to `channel-retry-*`: the bare `retry-` names read as global retry
+;;; policy, but they only configure channel delivery. Needs a deprecation alias for the existing names, since
+;;; `MB_RETRY_MAX_RETRIES` and friends are user-facing.
 
 (defsetting retry-max-retries
   (deferred-tru "The maximum number of retries for an event.")
