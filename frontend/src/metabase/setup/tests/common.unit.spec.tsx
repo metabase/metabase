@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { screen } from "__support__/ui";
 import { createMockSettingDefinition } from "metabase-types/api/mocks";
@@ -217,8 +218,9 @@ describe("setup (OSS)", () => {
     });
 
     it("should not autoenable embedding if it was set by an env", async () => {
-      await setup({
-        settingOverrides: [
+      await setup();
+      fetchMock.modifyRoute("settings-list", {
+        response: [
           createMockSettingDefinition({
             key: "enable-embedding",
             value: false,

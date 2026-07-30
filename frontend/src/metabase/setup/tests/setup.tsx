@@ -20,7 +20,6 @@ import {
 } from "metabase/redux/store/mocks";
 import type {
   EnterpriseSettings,
-  SettingDefinition,
   TokenFeatures,
   UsageReason,
 } from "metabase-types/api";
@@ -36,14 +35,12 @@ export interface SetupOpts {
   step?: SetupStep;
   tokenFeatures?: TokenFeatures;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
-  settingOverrides?: SettingDefinition[];
   settings?: Partial<EnterpriseSettings>;
 }
 
 export async function setup({
   tokenFeatures = createMockTokenFeatures(),
   enterprisePlugins,
-  settingOverrides = [],
   settings = {},
 }: SetupOpts = {}) {
   localStorage.clear();
@@ -77,7 +74,7 @@ export async function setup({
   setupPropertiesEndpoints(
     createMockSettings({ ...settings, "token-features": tokenFeatures }),
   );
-  setupSettingsEndpoints(settingOverrides);
+  setupSettingsEndpoints([]);
   fetchMock.put("path:/api/setting", 200);
 
   renderWithProviders(<Setup />, { storeInitialState: state });
