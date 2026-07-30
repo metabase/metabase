@@ -588,6 +588,38 @@
                                                   :schedule     {:schedule_type "hourly"}})))))
         (is (zero? (t2/count :model/Pulse :dashboard_id dash-id)))))))
 
+(deftest query-execute-scope-gates-deferred-execution-test
+  (testing "a subscription is a scheduled run of the dashboard's questions with results delivered,
+            so a token that can't execute queries in-session can't schedule it either — the send
+            happens later, tokenlessly, under the creator's permissions. Mirrors alert_write."
+    (mt/with-temp [:model/Card {card-id :id} {}
+                   :model/Dashboard {dash-id :id} {:name "Sales KPIs"}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}
+                   :model/Pulse {pulse-id :id} {:name "Weekly" :dashboard_id dash-id
+                                                :creator_id (mt/user->id :crowberto)}
+                   :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
+                   :model/PulseChannel _ {:pulse_id pulse-id :channel_type :email
+                                          :schedule_type :daily :schedule_hour 15}]
+      (let [write-only #{"agent:subscription:write"}]
+        (testing "create with only the write scope is refused, naming the missing scope"
+          (is (re-find #"agent:query:execute"
+                       (tool-error (call-tool! :crowberto write-only
+                                               (wire {:method       "create"
+                                                      :dashboard_id dash-id
+                                                      :schedule     {:schedule_type "hourly"}}))))))
+        (testing "redirecting delivery with only the write scope is refused"
+          (is (re-find #"agent:query:execute"
+                       (tool-error (call-tool! :crowberto write-only
+                                               (wire {:method "update" :id pulse-id
+                                                      :recipients ["someone@example.com"]}))))))
+        (testing "but pausing with only the write scope still works — the kill switch must never
+                  need more scope than the thing it kills"
+          (is (true? (:archived (tool-result (call-tool! :crowberto write-only
+                                                         (wire {:method "update" :id pulse-id
+                                                                :archived true}))))))))))
+  (testing "the extra scope is advertised as opt-in, so tokens can request it"
+    (is (contains? (registry/registered-opt-in-scopes) "agent:query:execute"))))
+
 (deftest scope-gates-the-tool-test
   (testing "GHY-4156: a token without the subscribe scope can't call the tool at all"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}]
@@ -612,7 +644,9 @@
                                             :schedule_type :daily :schedule_hour 15}]
         (let [write-scope #{"agent:subscription:write"}]
           (testing "create"
-            (is (pos-int? (:id (tool-result (call-tool! :crowberto write-scope
+            ;; create additionally needs query:execute (it establishes scheduled execution);
+            ;; the write scope under test still gates the method itself.
+            (is (pos-int? (:id (tool-result (call-tool! :crowberto (conj write-scope "agent:query:execute")
                                                         (wire {:method       "create"
                                                                :dashboard_id dash-id
                                                                :schedule     {:schedule_type "hourly"}})))))))

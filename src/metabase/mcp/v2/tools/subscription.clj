@@ -18,6 +18,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
@@ -328,6 +329,20 @@
 (def ^:private subscription-write-entry
   {:create-required [:dashboard_id :schedule]})
 
+(defn- check-query-execute-scope!
+  "A subscription is a scheduled run of every question on its dashboard with the results delivered,
+   so establishing one — or redirecting where one delivers — needs the same scope that seeing those
+   results in-session would. The send itself happens later, tokenlessly, under the creator's
+   permissions; this check at write time is the only place the token's scopes can bound that
+   deferred execution. No-op for unscoped callers (cookie sessions bind the unrestricted sentinel,
+   which matches everything). Mirrors alert_write's check of the same scope."
+  [token-scopes action]
+  (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-execute)
+    (throw (ex-info (format (str "%s runs the dashboard's questions and delivers the results, which requires the "
+                                 "%s scope — this token can manage subscriptions but not execute queries.")
+                            action metabot.scope/agent-query-execute)
+                    {:status-code 403 ::common/error-code common/error-code-invalid-request}))))
+
 (registry/deftool subscription-write
   "Create or update a dashboard subscription — scheduled delivery of a whole dashboard, e.g. \"send me this dashboard
   every Monday morning\". method: \"create\" requires dashboard_id and schedule; method: \"update\" requires id and
@@ -338,17 +353,23 @@
   needs slack_channel, email takes recipients (user ids or raw email addresses, defaulting to you). parameters
   ({id, value} pairs naming the dashboard's own filters) makes a filtered subscription. On update, only the fields
   you pass change: a schedule-only update keeps the recipients, and a recipients list replaces the current one.
-  A subscription that already delivers to both email and Slack needs channel to say which to edit. This is for
-  dashboards on a schedule — use alert_write for a question that fires on a condition. Requires read permission on
-  the dashboard; only its creator (or an admin) can update it."
-  {:name        "subscription_write"
-   :scope       metabot.scope/agent-subscription-write
-   :annotations {:readOnlyHint false :destructiveHint false}
-   :args        subscription-write-args-schema}
-  [args _]
+  A subscription that already delivers to both email and Slack needs channel to say which to edit. Creating a
+  subscription, or changing its delivery, additionally requires the agent:query:execute scope — the subscription runs
+  the dashboard's questions and delivers the results. This is for dashboards on a schedule — use alert_write for a
+  question that fires on a condition. Requires read permission on the dashboard; only its creator (or an admin) can
+  update it."
+  {:name         "subscription_write"
+   :scope        metabot.scope/agent-subscription-write
+   :extra-scopes [metabot.scope/agent-query-execute]
+   :annotations  {:readOnlyHint false :destructiveHint false}
+   :args         subscription-write-args-schema}
+  [args {:keys [token-scopes]}]
   (let [[op a b] (common/dispatch-write subscription-write-entry args)
         id       (case op
-                   :create (create! a)
-                   :update (update! a b))]
+                   :create (do (check-query-execute-scope! token-scopes "Creating a subscription")
+                               (create! a))
+                   :update (do (when (some #(contains? b %) [:channel :slack_channel :recipients])
+                                 (check-query-execute-scope! token-scopes "Changing where a subscription delivers"))
+                               (update! a b)))]
     (common/success-content
      (projections/project :subscription :concise (projections/subscription-row (pulse/retrieve-pulse id))))))
