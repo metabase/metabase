@@ -139,7 +139,7 @@ Referenced by numeric id (copied from tool responses) on a stage whose `source-t
 ## Don't
 
 - Don't invent or guess ids — copy them from `browse_data` / `search` output. A wrong name errors loudly; a wrong id can silently hit the wrong column.
-- Don't use `card__<id>` strings, `metabase://` URIs, or 21-char entity_ids anywhere — `source-card` takes the bare numeric id.
+- Don't use `card__<id>` strings, URI-style references, or 21-char entity_ids anywhere — `source-card` takes the bare numeric id.
 - Don't omit the `{}` options slot or put options anywhere but position 1.
 - Don't put a stage-container key (`aggregation`, `filters`, `breakout`, `limit`) at a clause head — clauses go *inside* those arrays.
 - Don't reference a same-stage aggregation by name (`["field", {}, "count"]`) in `order-by` — use `["aggregation", {}, <index>]`; name refs to aggregations are for the *next* stage.

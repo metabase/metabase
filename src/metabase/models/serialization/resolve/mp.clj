@@ -463,7 +463,7 @@
                            " "
                            (resolve/surface-hint
                             {:metabot (tru "Do not invent or guess entity_ids: call `read_resource` with `metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the exact `portable_entity_id` from the response into `source-card:`.")
-                             :mcp-v2  (tru "Do not invent or guess entity_ids: find the question or model with `search`, then copy the exact `entity_id` from the result into `source-card:` (its numeric id also works).")}))
+                             :mcp-v2  (tru "Find the question or model with `search` and put its bare numeric id into `source-card:`.")}))
                       {:agent-error? true
                        :status-code  400
                        :error        :unknown-card

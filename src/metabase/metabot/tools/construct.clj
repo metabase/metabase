@@ -165,8 +165,8 @@
                                      "metric as `aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
                        :mcp-v2  (str "Metrics are aggregations, not sources. To use metric " entity-id
                                      ", put its base table's numeric id into `source-table:` (find it via "
-                                     "`search` or `browse_data`) and reference the metric as "
-                                     "`aggregation: [[metric, {}, \"<entity_id>\"]]`.")})
+                                     "`search` or `browse_data`) and reference the metric by its numeric id: "
+                                     "`aggregation: [[metric, {}, " entity-id "]]`.")})
                      ("question" "model" "card")
                      (serdes.resolve/surface-hint
                       {:metabot (str "To reference saved " entity-type " " entity-id
@@ -174,8 +174,8 @@
                                      "string from its search result or `read_resource`) into "
                                      "`source-card:` — not a URI.")
                        :mcp-v2  (str "To reference saved " entity-type " " entity-id
-                                     " as a query source, put its numeric id or its `entity_id` (the "
-                                     "21-char string from its search result) into `source-card:` — not a URI.")})
+                                     " as a query source, put its bare numeric id into `source-card:` "
+                                     "— not a URI: `\"source-card\": " entity-id "`.")})
                      "table"
                      (serdes.resolve/surface-hint
                       {:metabot (str "Use the portable FK `[<db-name>, <schema>, <table-name>]` in "
@@ -187,7 +187,7 @@
                       {:metabot (str "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` "
                                      "or, via `source-card:`, a saved-card `portable_entity_id`.")
                        :mcp-v2  (str "`source-table:` accepts a numeric table id; `source-card:` accepts a "
-                                     "saved-card numeric id or `entity_id`.")}))]
+                                     "saved-card numeric id.")}))]
           (throw (ex-info (tru "`source-table:` does not accept URIs like `{0}`. {1}"
                                raw hint)
                           {:agent-error? true
@@ -303,9 +303,8 @@
                                                   "`metabase://question/<numeric id>` or `metabase://model/<numeric id>` "
                                                   "first, then copy the exact `portable_entity_id` from the response "
                                                   "into `source-card:`."))
-                               :mcp-v2  (tru (str "Do not invent or guess entity_ids: find the question or "
-                                                  "model with `search`, then copy the exact `entity_id` from "
-                                                  "the result into `source-card:` (its numeric id also works)."))}))
+                               :mcp-v2  (tru (str "Find the question or model with `search` and put its "
+                                                  "bare numeric id into `source-card:`."))}))
                         {:agent-error? true
                          :status-code  400
                          :error        :unknown-card
@@ -316,7 +315,7 @@
     (let [card-id (first-stage-numeric-source-card parsed-query)
           card    (t2/select-one :model/Card :id card-id)]
       (when-not card
-        (throw (ex-info (tru "No saved question or model found with id {0}. Find it with `search` and use its numeric id or `entity_id` in `source-card:`."
+        (throw (ex-info (tru "No saved question or model found with id {0}. Find it with `search` and put its numeric id in `source-card:`."
                              (str card-id))
                         {:agent-error? true
                          :status-code  400
@@ -331,7 +330,7 @@
                          " "
                          (serdes.resolve/surface-hint
                           {:metabot (tru "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an entity_id string.")
-                           :mcp-v2  (tru "`source-table:` takes a numeric table id (or a portable FK `[<db-name>, <schema>, <table>]`); `source-card:` takes a saved-card numeric id or entity_id string.")}))
+                           :mcp-v2  (tru "`source-table:` takes a numeric table id; `source-card:` takes a saved-card numeric id.")}))
                     {:agent-error? true
                      :status-code  400
                      :error        :missing-source-in-first-stage}))))
