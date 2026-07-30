@@ -1,22 +1,19 @@
 import {
   skipToken,
+  useDeleteTimelineEventMutation,
   useGetTimelineEventQuery,
   useGetTimelineQuery,
-  useUpdateTimelineEventMutation,
 } from "metabase/api";
-import { useSetArchive } from "metabase/archive/hooks";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import DeleteEventModal from "metabase/query_builder/timelines/common/components/DeleteEventModal";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
-import EditEventModal from "metabase/timelines/common/components/EditEventModal";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-
-function EditEventModalContainer({ params, onClose }: ModalComponentProps) {
+function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
   const dispatch = useDispatch();
-  const archive = useSetArchive();
   const timelineId = Urls.extractEntityId(params.timelineId);
   const eventId = Urls.extractEntityId(params.timelineEventId);
   const {
@@ -31,39 +28,29 @@ function EditEventModalContainer({ params, onClose }: ModalComponentProps) {
     isLoading: isEventLoading,
     error: eventError,
   } = useGetTimelineEventQuery(eventId ?? skipToken);
-  const [updateTimelineEvent] = useUpdateTimelineEventMutation();
+  const [deleteTimelineEvent] = useDeleteTimelineEventMutation();
 
-  const onSubmit = async (event: TimelineEvent, timeline?: Timeline) => {
-    await updateTimelineEvent(event).unwrap();
-    if (timeline) {
-      dispatch(push(Urls.timelineInCollection(timeline)));
-    }
-  };
-
-  const onArchive = async (event: TimelineEvent, timeline?: Timeline) => {
-    await archive({ id: event.id, model: "timeline-event" }, true);
-    if (timeline) {
-      dispatch(push(Urls.timelineInCollection(timeline)));
-    }
+  const onSubmit = async (event: TimelineEvent, timeline: Timeline) => {
+    await deleteTimelineEvent(event.id).unwrap();
+    dispatch(push(Urls.timelineArchiveInCollection(timeline)));
   };
 
   const isLoading = isTimelineLoading || isEventLoading;
   const error = timelineError ?? eventError;
 
-  if (isLoading || error || !event) {
+  if (isLoading || error || !event || !timeline) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
-    <EditEventModal
+    <DeleteEventModal
       event={event}
       timeline={timeline}
       onSubmit={onSubmit}
-      onArchive={onArchive}
       onClose={onClose}
     />
   );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default EditEventModalContainer;
+export default DeleteEventModalContainer;

@@ -5,9 +5,9 @@ import {
   useUpdateTimelineEventMutation,
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
+import EditEventModal from "metabase/query_builder/timelines/common/components/EditEventModal";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import EditEventModal from "metabase/timelines/common/components/EditEventModal";
 import type { TimelineEvent } from "metabase-types/api";
 
 interface EditEventModalContainerProps {

@@ -162,7 +162,6 @@ const elements = [
   createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "status" }),
   createElement({ type: "shared", name: "styled-components" }),
-  createElement({ type: "shared", name: "timelines" }),
   createElement({ type: "shared", name: "transforms" }),
   createElement({
     type: "shared",

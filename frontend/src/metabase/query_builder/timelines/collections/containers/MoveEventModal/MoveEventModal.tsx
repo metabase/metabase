@@ -4,12 +4,12 @@ import {
   useGetTimelineEventQuery,
   useListTimelinesQuery,
 } from "metabase/api";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
 import MoveEventModal, {
   type MoveEventModalProps,
-} from "metabase/timelines/common/components/MoveEventModal";
-import { useSetTimeline } from "metabase/timelines/common/hooks";
+} from "metabase/query_builder/timelines/common/components/MoveEventModal";
+import { useSetTimeline } from "metabase/query_builder/timelines/common/hooks";
+import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 

@@ -9,9 +9,9 @@ import {
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useSetCollection } from "metabase/common/hooks";
 import { getDefaultTimelineName } from "metabase/common/utils/timelines";
+import MoveTimelineModal from "metabase/query_builder/timelines/common/components/MoveTimelineModal";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
-import MoveTimelineModal from "metabase/timelines/common/components/MoveTimelineModal";
 import * as Urls from "metabase/urls";
 import type { CollectionId, Timeline } from "metabase-types/api";
 

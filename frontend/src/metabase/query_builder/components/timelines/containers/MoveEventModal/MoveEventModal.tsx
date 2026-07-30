@@ -6,8 +6,8 @@ import {
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import MoveEventModal, {
   type MoveEventModalProps,
-} from "metabase/timelines/common/components/MoveEventModal";
-import { useSetTimeline } from "metabase/timelines/common/hooks";
+} from "metabase/query_builder/timelines/common/components/MoveEventModal";
+import { useSetTimeline } from "metabase/query_builder/timelines/common/hooks";
 import type { CollectionId, Timeline, TimelineEvent } from "metabase-types/api";
 
 type ContainerProps = Omit<

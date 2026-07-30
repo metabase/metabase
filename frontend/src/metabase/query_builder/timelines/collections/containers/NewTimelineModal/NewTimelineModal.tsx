@@ -3,9 +3,9 @@ import {
   useCreateTimelineMutation,
   useGetCollectionQuery,
 } from "metabase/api";
+import NewTimelineModal from "metabase/query_builder/timelines/common/components/NewTimelineModal";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
-import NewTimelineModal from "metabase/timelines/common/components/NewTimelineModal";
 import * as Urls from "metabase/urls";
 import type { CreateTimelineRequest, Timeline } from "metabase-types/api";
 

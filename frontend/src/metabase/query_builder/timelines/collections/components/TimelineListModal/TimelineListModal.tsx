@@ -6,7 +6,7 @@ import {
   getDefaultTimelineName,
   getSortedTimelines,
 } from "metabase/common/utils/timelines";
-import ModalHeader from "metabase/timelines/common/components/ModalHeader";
+import ModalHeader from "metabase/query_builder/timelines/common/components/ModalHeader";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection, Timeline } from "metabase-types/api";

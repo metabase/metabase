@@ -53,6 +53,7 @@ import {
 import { MetabotQueryBuilder } from "metabase/query_builder/components/MetabotQueryBuilder";
 import { QuestionHashRedirect } from "metabase/query_builder/components/QuestionHashRedirect";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
+import getCollectionTimelineRoutes from "metabase/query_builder/timelines/collections/routes";
 import type { State } from "metabase/redux/store";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
 import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
@@ -85,7 +86,6 @@ import {
 import { SearchApp } from "metabase/search/containers/SearchApp";
 import { RedirectIfSetup } from "metabase/setup/components/RedirectIfSetup";
 import { Setup } from "metabase/setup/components/Setup";
-import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import { LoadCurrentUser } from "./LoadCurrentUser";
 import { createEntityIdRedirect } from "./routes-stable-id-aware";

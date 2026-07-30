@@ -5,9 +5,9 @@ import {
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import EditTimelineModal from "metabase/query_builder/timelines/common/components/EditTimelineModal";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
-import EditTimelineModal from "metabase/timelines/common/components/EditTimelineModal";
 import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
 

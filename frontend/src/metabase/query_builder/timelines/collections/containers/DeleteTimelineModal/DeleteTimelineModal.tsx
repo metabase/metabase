@@ -5,9 +5,9 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import DeleteTimelineModal from "metabase/query_builder/timelines/common/components/DeleteTimelineModal";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
-import DeleteTimelineModal from "metabase/timelines/common/components/DeleteTimelineModal";
 import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
 

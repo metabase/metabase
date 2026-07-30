@@ -5,9 +5,9 @@ import {
   useGetCollectionQuery,
 } from "metabase/api";
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
+import NewEventModal from "metabase/query_builder/timelines/common/components/NewEventModal";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
-import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import * as Urls from "metabase/urls";
 import type {
   Collection,
