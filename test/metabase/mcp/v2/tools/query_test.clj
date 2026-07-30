@@ -541,3 +541,125 @@
           (is (str/includes? msg "browse_data"))
           (is (not (str/includes? msg "read_resource")))
           (is (not (str/includes? msg "metabase://"))))))))
+
+;;; -------------------------------- Numeric metric / measure / segment refs ---------------------------------------
+
+;; The numeric-id dialect documents `["measure", {}, 7]`, `["segment", {}, 3]` and
+;; `["metric", {}, 42]`, but nothing in the PR exercises them. These pin the happy path and
+;; the unknown-id recovery message, which is the one an agent that guessed an id actually reads.
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest numeric-measure-ref-executes-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (mt/with-temp [:model/Measure {measure-id :id}
+                     {:name       "query-test order count"
+                      :table_id   (mt/id :orders)
+                      :creator_id (mt/user->id :crowberto)
+                      :definition {:lib/type :mbql/query
+                                   :database (mt/id)
+                                   :stages   [{:lib/type     :mbql.stage/mbql
+                                               :source-table (mt/id :orders)
+                                               :aggregation  [[:count {:lib/uuid (str (random-uuid))}]]}]}}]
+        (let [sid  (str (random-uuid))
+              body (payload (call! sid {:query (numeric-orders-query
+                                                {:aggregation [["measure" {} measure-id]]})}))]
+          (testing "a numeric measure ref executes"
+            (is (= 1 (:returned body)))
+            (is (pos-int? (ffirst (:rows body))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest numeric-segment-ref-executes-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (mt/with-temp [:model/Segment {segment-id :id}
+                     {:name       "query-test first three orders"
+                      :table_id   (mt/id :orders)
+                      :creator_id (mt/user->id :crowberto)
+                      :definition {:lib/type :mbql/query
+                                   :database (mt/id)
+                                   :stages   [{:lib/type     :mbql.stage/mbql
+                                               :source-table (mt/id :orders)
+                                               :filters      [[:<= {:lib/uuid (str (random-uuid))}
+                                                               [:field {:lib/uuid (str (random-uuid))}
+                                                                (mt/id :orders :id)]
+                                                               3]]}]}}]
+        (let [sid  (str (random-uuid))
+              body (payload (call! sid {:query (numeric-orders-query
+                                                {:filters [["segment" {} segment-id]]})}))]
+          (testing "a numeric segment ref executes and filters"
+            (is (= 3 (:returned body)))
+            (is (= [1 2 3] (sort (row-ids body))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest numeric-metric-ref-executes-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (mt/with-temp [:model/Card {metric-id :id}
+                     {:type          :metric
+                      :name          "query-test order count metric"
+                      :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
+        (let [sid  (str (random-uuid))
+              body (payload (call! sid {:query (numeric-orders-query
+                                                {:aggregation [["metric" {} metric-id]]})}))]
+          (testing "a numeric metric (card) ref executes"
+            (is (= 1 (:returned body)))
+            (is (pos-int? (ffirst (:rows body))))))))))
+
+;; An id the agent guessed is echoed back to it, so it has to survive the round trip verbatim.
+;; `tru` formats a bare number through MessageFormat, which applies locale digit grouping and
+;; turns 999999999 into "999,999,999" — an id the agent cannot retry with. The v2 unknown-table
+;; error already guards this by passing `(str table-id)`; these three paths do not.
+(deftest ^:parallel numeric-unknown-measure-teaching-error-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                              {:query (numeric-orders-query
+                                                       {:aggregation [["measure" {} 999999999]]})}))]
+      (testing "the unknown id is echoed verbatim, not locale-grouped"
+        (is (str/includes? msg "999999999"))
+        (is (not (str/includes? msg "999,999,999"))))
+      (testing "and the message steers to the v2 discovery tool"
+        (is (str/includes? msg "browse_data"))
+        (is (not (str/includes? msg "read_resource")))))))
+
+(deftest ^:parallel numeric-unknown-segment-teaching-error-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                              {:query (numeric-orders-query
+                                                       {:filters [["segment" {} 999999999]]})}))]
+      (testing "the unknown id is echoed verbatim, not locale-grouped"
+        (is (str/includes? msg "999999999"))
+        (is (not (str/includes? msg "999,999,999"))))
+      (testing "and the message steers to the v2 discovery tool"
+        (is (str/includes? msg "browse_data"))
+        (is (not (str/includes? msg "read_resource")))))))
+
+(deftest ^:parallel numeric-unknown-metric-teaching-error-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                              {:query (numeric-orders-query
+                                                       {:aggregation [["metric" {} 999999999]]})}))]
+      (testing "the unknown id is echoed verbatim, not locale-grouped"
+        (is (str/includes? msg "999999999"))
+        (is (not (str/includes? msg "999,999,999"))))
+      (testing "and the message steers the agent at a v2 tool, never v1's read_resource"
+        (is (or (str/includes? msg "search") (str/includes? msg "browse_data")))
+        (is (not (str/includes? msg "read_resource")))))))
+
+;; Field refs are the highest-traffic numeric ref in the new dialect, so the unknown-field-id
+;; message is the one an agent hits most often after guessing.
+(deftest ^:parallel numeric-unknown-field-teaching-error-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                              {:query (numeric-orders-query
+                                                       {:filters [[">" {} ["field" {} 999999999] 0]]})}))]
+      (testing "the unknown field id is echoed verbatim, not locale-grouped"
+        (is (str/includes? msg "999999999"))
+        (is (not (str/includes? msg "999,999,999"))))
+      (testing "and the message steers to the v2 discovery tool"
+        (is (str/includes? msg "browse_data"))
+        (is (not (str/includes? msg "read_resource")))))))

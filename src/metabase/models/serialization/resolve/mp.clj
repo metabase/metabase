@@ -416,14 +416,18 @@
           entity-id     (or (:entity-id card) (:entity_id card))]
       (cond
         (nil? card)
-        (throw (ex-info (tru "No saved question, model, or metric found with id {0} in metadata provider." card-id)
+        (throw (ex-info (str (tru "No saved question, model, or metric found with id {0}." (str card-id))
+                             " "
+                             (resolve/surface-hint
+                              {:metabot (tru "Call `read_resource` with `metabase://question/<numeric id>` or `metabase://metric/<numeric id>` to find the one you meant.")
+                               :mcp-v2  (tru "Find it with `search` and use the numeric id from the result.")}))
                         {:status-code 400
                          :error       :unknown-card-id
                          :card-id     card-id}))
 
         (not= card-db-id current-db-id)
-        (throw (ex-info (tru "Saved question / model / metric id {0} belongs to database {1}, but this resolver targets database {2}."
-                             card-id card-db-id current-db-id)
+        (throw (ex-info (tru "Saved question / model / metric id {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
+                             (str card-id) (str card-db-id) (str current-db-id))
                         {:status-code      400
                          :error            :cross-database-card
                          :card-id          card-id
@@ -431,7 +435,8 @@
                          :expected-database current-db-id}))
 
         (not (and (string? entity-id) (seq entity-id)))
-        (throw (ex-info (tru "Saved question, model, or metric id {0} does not have an entity_id, so it cannot be exported as a portable representation." card-id)
+        (throw (ex-info (tru "Saved question, model, or metric id {0} does not have an entity_id, so it cannot be exported as a portable representation."
+                             (str card-id))
                         {:status-code 400
                          :error       :missing-card-entity-id
                          :card-id     card-id}))
@@ -528,21 +533,25 @@
           entity-id        (when measure (or (:entity-id measure) (:entity_id measure)))]
       (cond
         (nil? measure)
-        (throw (ex-info (tru "No measure found with id {0}." measure-id)
+        (throw (ex-info (str (tru "No measure found with id {0}." (str measure-id))
+                             " "
+                             (resolve/surface-hint
+                              {:metabot (tru "Read the table that owns the measure with `read_resource` (`metabase://table/<numeric id>`) and use the id from its `<measure>` tag.")
+                               :mcp-v2  (tru "Call `browse_data` with action \"get_fields\" for the table that owns the measure and use the numeric id from its measures list.")}))
                         {:status-code 400
                          :error       :unknown-measure-id
                          :measure-id  measure-id}))
 
         (nil? measure-table)
-        (throw (ex-info (tru "Measure id {0} belongs to a table outside this metadata provider''s database."
-                             measure-id)
+        (throw (ex-info (tru "Measure id {0} belongs to a table in a different database than this query. Cross-database queries are not supported."
+                             (str measure-id))
                         {:status-code 400
                          :error       :cross-database-measure
                          :measure-id  measure-id}))
 
         (not (and (string? entity-id) (seq entity-id)))
         (throw (ex-info (tru "Measure id {0} does not have an entity_id, so it cannot be exported as a portable representation."
-                             measure-id)
+                             (str measure-id))
                         {:status-code 400
                          :error       :missing-measure-entity-id
                          :measure-id  measure-id}))
@@ -562,21 +571,25 @@
           entity-id        (when segment (or (:entity-id segment) (:entity_id segment)))]
       (cond
         (nil? segment)
-        (throw (ex-info (tru "No segment found with id {0}." segment-id)
+        (throw (ex-info (str (tru "No segment found with id {0}." (str segment-id))
+                             " "
+                             (resolve/surface-hint
+                              {:metabot (tru "Read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and use the id from its `<segment>` tag.")
+                               :mcp-v2  (tru "Call `browse_data` with action \"get_fields\" for the table that owns the segment and use the numeric id from its segments list.")}))
                         {:status-code 400
                          :error       :unknown-segment-id
                          :segment-id  segment-id}))
 
         (nil? segment-table)
-        (throw (ex-info (tru "Segment id {0} belongs to a table outside this metadata provider''s database."
-                             segment-id)
+        (throw (ex-info (tru "Segment id {0} belongs to a table in a different database than this query. Cross-database queries are not supported."
+                             (str segment-id))
                         {:status-code 400
                          :error       :cross-database-segment
                          :segment-id  segment-id}))
 
         (not (and (string? entity-id) (seq entity-id)))
         (throw (ex-info (tru "Segment id {0} does not have an entity_id, so it cannot be exported as a portable representation."
-                             segment-id)
+                             (str segment-id))
                         {:status-code 400
                          :error       :missing-segment-entity-id
                          :segment-id  segment-id}))
@@ -698,7 +711,11 @@
        (when table-id
          (let [t (lib.metadata.protocols/table metadata-provider table-id)]
            (when-not t
-             (throw (ex-info (tru "No table with id {0} in metadata provider." table-id)
+             (throw (ex-info (str (tru "No table found with id {0}." (str table-id))
+                                  " "
+                                  (resolve/surface-hint
+                                   {:metabot (tru "Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables.")
+                                    :mcp-v2  (tru "Call `browse_data` with action \"list_tables\" to list available tables with their numeric ids.")}))
                              {:status-code 400
                               :error       :unknown-table-id
                               :table-id    table-id})))
@@ -707,7 +724,11 @@
        (when field-id
          (let [f (lib.metadata.protocols/field metadata-provider field-id)]
            (when-not f
-             (throw (ex-info (tru "No field with id {0} in metadata provider." field-id)
+             (throw (ex-info (str (tru "No field found with id {0}." (str field-id))
+                                  " "
+                                  (resolve/surface-hint
+                                   {:metabot (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` to list a table''s columns.")
+                                    :mcp-v2  (tru "Call `browse_data` with action \"get_fields\" for the table to list its columns with their numeric ids.")}))
                              {:status-code 400
                               :error       :unknown-field-id
                               :field-id    field-id})))
