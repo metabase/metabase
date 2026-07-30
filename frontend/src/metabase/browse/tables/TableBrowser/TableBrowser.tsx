@@ -89,7 +89,9 @@ export const TableBrowser = (props: TableBrowserContainerProps) => {
     { pollingInterval: reloadInterval || undefined },
   );
   const databaseResult = useGetDatabaseMetadataQuery(
-    dbId != null && !useSchemaTables ? { id: dbId } : skipToken,
+    dbId != null && !useSchemaTables
+      ? { id: dbId, skip_fields: true }
+      : skipToken,
     { pollingInterval: reloadInterval || undefined },
   );
 
