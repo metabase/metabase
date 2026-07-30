@@ -362,6 +362,29 @@ describe("StaleContentPage", () => {
     ]);
   });
 
+  it("resets to all entity types when the last selected type is deselected", async () => {
+    const { history } = setup({
+      findings: FINDINGS,
+      urlParams: { entityTypes: ["model"] },
+    });
+    await waitForListToLoad();
+
+    await userEvent.click(
+      screen.getByTestId("content-diagnostics-filter-button"),
+    );
+    const popover = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(popover).getByRole("checkbox", { name: "Models" }),
+    );
+
+    await waitFor(() => {
+      expect(history?.getCurrentLocation().query).toEqual({});
+    });
+    expect(
+      within(popover).getByRole("checkbox", { name: "Dashboards" }),
+    ).toBeChecked();
+  });
+
   it("filters by personal collections server-side via the Location toggle", async () => {
     const { router } = setup({ findings: FINDINGS });
     await waitForListToLoad();
