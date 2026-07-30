@@ -52,7 +52,6 @@ export function modalRoute(
 ) {
   function ModalRouteComponent() {
     const params = useParams();
-    // The raw v3 location (with `query`), which some modals still read.
     const { location } = useRouter();
     const route = useRoute() ?? undefined;
     const navigate = useNavigate();

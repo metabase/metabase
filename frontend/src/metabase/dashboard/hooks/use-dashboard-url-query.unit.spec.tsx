@@ -44,7 +44,7 @@ type SetupOptions = {
   tabs?: { id: number; name: string }[];
   selectedTabId?: number | null;
   pathname?: string;
-  query?: Record<string, unknown>;
+  search?: string;
 };
 
 function setup({
@@ -54,7 +54,7 @@ function setup({
   tabs,
   selectedTabId = null,
   pathname = `/dashboard/${DASHBOARD_ID}`,
-  query = {},
+  search = "",
 }: SetupOptions = {}) {
   const listeners: ((location: Location) => void)[] = [];
   const unsubscribe = jest.fn();
@@ -68,8 +68,7 @@ function setup({
   // Unjustified type cast. FIXME
   const location = {
     pathname,
-    query,
-    search: "",
+    search,
     hash: "",
     state: null,
   } as unknown as Location;
@@ -186,7 +185,7 @@ describe("useDashboardUrlQuery", () => {
       act(() => {
         listeners[0]({
           ...location,
-          query: { tab: "5-tab-5" },
+          search: "?tab=5-tab-5",
         });
       });
 
@@ -202,7 +201,7 @@ describe("useDashboardUrlQuery", () => {
         listeners[0]({
           ...location,
           pathname: "/dashboard/999",
-          query: { tab: "5-tab-5" },
+          search: "?tab=5-tab-5",
         });
       });
 
@@ -234,7 +233,7 @@ describe("useDashboardUrlQuery", () => {
     setup({
       parameters: [createMockParameter({ id: "1", slug: "text" })],
       parameterValues: { "1": "bar" },
-      query: { objectId: "42" },
+      search: "?objectId=42",
     });
 
     expect(replace).toHaveBeenCalledTimes(1);

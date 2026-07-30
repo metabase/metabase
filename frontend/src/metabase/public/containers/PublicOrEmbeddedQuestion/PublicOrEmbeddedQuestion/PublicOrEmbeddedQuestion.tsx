@@ -18,6 +18,7 @@ import { useParams, useRouter } from "metabase/router";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { parseSearchQuery } from "metabase/utils/browser";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -92,7 +93,7 @@ export const PublicOrEmbeddedQuestion = () => {
       );
       const parameterValuesById = getParameterValuesByIdFromQueryParams(
         parameters,
-        location.query,
+        parseSearchQuery(location.search),
       );
 
       setCard(card);

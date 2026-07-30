@@ -49,10 +49,9 @@ export function useInitialCollectionId({
     disabled ? skipToken : collectionIdParam(idFromSlug),
   );
 
-  // Unjustified type cast. FIXME
-  const idFromQuery = location?.query?.collectionId as
-    | Collection["id"]
-    | undefined;
+  const idFromQuery = Urls.extractCollectionId(
+    new URLSearchParams(location?.search).get("collectionId") ?? undefined,
+  );
   const { data: fromQuery } = useGetCollectionQuery(
     disabled ? skipToken : collectionIdParam(idFromQuery),
   );

@@ -403,8 +403,10 @@ export const isDashboardCacheable = (
 ): dashboard is CacheableDashboard => typeof dashboard.id !== "string";
 
 export function parseTabSlug(location: Location) {
-  const slug = location.query?.tab;
-  if (typeof slug === "string" && slug.length > 0) {
+  const slugs = new URLSearchParams(location.search).getAll("tab");
+  // A repeated `tab` is ambiguous, so treat it as no tab at all.
+  const slug = slugs.length === 1 ? slugs[0] : "";
+  if (slug.length > 0) {
     const id = parseInt(slug, 10);
     return Number.isSafeInteger(id) ? id : null;
   }

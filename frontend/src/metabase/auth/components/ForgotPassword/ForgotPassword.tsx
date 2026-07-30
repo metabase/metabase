@@ -20,12 +20,8 @@ import {
 
 type ViewType = "form" | "disabled" | "success";
 
-interface ForgotPasswordQueryString {
-  email?: string;
-}
-
 interface ForgotPasswordProps {
-  location?: Location<ForgotPasswordQueryString>;
+  location?: Location;
 }
 
 export const ForgotPassword = ({
@@ -34,7 +30,8 @@ export const ForgotPassword = ({
   const isEmailConfigured = useSelector(getIsEmailConfigured);
   const isLdapEnabled = useSelector(getIsLdapEnabled);
   const canResetPassword = isEmailConfigured && !isLdapEnabled;
-  const initialEmail = location?.query?.email;
+  const initialEmail =
+    new URLSearchParams(location?.search).get("email") ?? undefined;
 
   const [view, setView] = useState<ViewType>(
     canResetPassword ? "form" : "disabled",

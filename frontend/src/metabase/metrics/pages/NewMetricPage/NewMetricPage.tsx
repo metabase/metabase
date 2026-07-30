@@ -52,7 +52,7 @@ export function NewMetricPage({
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const initialCollectionId = Urls.extractCollectionId(
-    location.query.collectionId,
+    new URLSearchParams(location.search).get("collectionId") ?? undefined,
   );
   const defaultCollectionId = useGetDefaultCollectionId();
   const dispatch = useDispatch();

@@ -7,7 +7,6 @@ import NoResults from "assets/img/no_results.svg";
 import { Link } from "metabase/common/components/Link";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import { trackSearchClick } from "metabase/common/search/analytics";
-import type { Query } from "metabase/router";
 import { queryToSearch } from "metabase/router";
 import {
   Flex,
@@ -20,6 +19,7 @@ import {
   Text,
   rem,
 } from "metabase/ui";
+import type { SearchQuery } from "metabase/utils/browser";
 import type { SearchResponse } from "metabase-types/api";
 
 import type { PaletteActionImpl } from "../types";
@@ -37,7 +37,7 @@ const FullSearchCTA = ({
   debouncedSearchTerm,
   onClick,
 }: {
-  locationQuery: Query;
+  locationQuery: SearchQuery;
   searchResults: SearchResponse;
   debouncedSearchTerm: string;
   onClick: () => void;
@@ -79,7 +79,7 @@ const FullSearchCTA = ({
 };
 
 type Props = Omit<StackProps, "children"> & {
-  locationQuery: Query;
+  locationQuery: SearchQuery;
   searchRequestId?: string;
   searchResults?: SearchResponse;
   liveSearchTerm: string;

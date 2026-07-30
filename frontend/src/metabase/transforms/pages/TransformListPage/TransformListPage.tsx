@@ -119,7 +119,9 @@ export const TransformListPage = () => {
   const { transformsDatabases = [], isLoadingDatabases } =
     useTransformPermissions();
   const targetCollectionId =
-    Urls.extractEntityId(location.query?.collectionId) ?? null;
+    Urls.extractEntityId(
+      new URLSearchParams(location.search).get("collectionId") ?? undefined,
+    ) ?? null;
   const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");

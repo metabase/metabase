@@ -3,26 +3,8 @@ import type { Location as V7Location } from "react-router";
 import type { Location as HistoryLocation } from "../types";
 
 /**
- * Parse a search string into v3's `location.query` object: repeated keys become
- * an array, an empty value stays `""`, matching history@3's default parser that
- * the `location.query` readers were written against.
- */
-export function searchToQuery(
-  search: string,
-): Record<string, string | string[]> {
-  const params = new URLSearchParams(search);
-  const query: Record<string, string | string[]> = {};
-  for (const key of new Set(params.keys())) {
-    const values = params.getAll(key);
-    query[key] = values.length > 1 ? values : values[0];
-  }
-  return query;
-}
-
-/**
  * Serialize a query object into the `search` string a navigation target carries.
- * Repeated values become repeated keys, mirroring what `searchToQuery` parses.
- * Returns `""` for an empty query.
+ * Repeated values become repeated keys. Returns `""` for an empty query.
  *
  * Keys are sorted, because history@3 stringified the query with `query-string`,
  * which sorts by default. Call sites build the query from an object whose key
@@ -51,22 +33,18 @@ export function queryToSearch(query: Record<string, unknown>): string {
 }
 
 /**
- * Build the v3-shaped `history` location the facade context and the
- * LOCATION_CHANGE payload expect from a v7 location plus the current navigation
- * type.
+ * Build the `Location` the facade context and the LOCATION_CHANGE payload expect
+ * from a v7 location. All that is left to normalize is `state`, which the legacy
+ * readers treat as absent when it is `undefined`.
  */
-export function toV3Location(
-  location: V7Location,
-  action: HistoryLocation["action"],
-): HistoryLocation {
+export function toFacadeLocation(location: V7Location): HistoryLocation {
   return {
     pathname: location.pathname,
     search: location.search,
     hash: location.hash,
-    // v3 leaves state `undefined` when absent; v7 uses `null`.
+    // v3 left state `undefined` when absent; v7 uses `null`. The readers test
+    // for `undefined`, so normalize it here.
     state: location.state ?? undefined,
     key: location.key,
-    query: searchToQuery(location.search),
-    action,
   };
 }

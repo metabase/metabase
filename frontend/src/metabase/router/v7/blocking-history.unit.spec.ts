@@ -72,7 +72,7 @@ describe("withBlocking", () => {
     expect(history.location.pathname).toBe("/a");
   });
 
-  it("hands the hook the attempted location with a PUSH action", () => {
+  it("hands the hook the attempted location and how it was reached", () => {
     const history = setup();
     const hook = jest.fn(() => false);
     register(hook);
@@ -83,8 +83,8 @@ describe("withBlocking", () => {
       expect.objectContaining({
         pathname: "/b",
         search: "?x=1",
-        action: "PUSH",
       }),
+      "PUSH",
     );
   });
 

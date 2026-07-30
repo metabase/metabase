@@ -3,6 +3,7 @@ import { match } from "ts-pattern";
 
 import { useDispatch } from "metabase/redux";
 import {
+  type Action,
   type InjectedRouter,
   type Location,
   type PlainRoute,
@@ -51,7 +52,10 @@ export const useConfirmRouteLeaveModal = ({
   isLocationAllowed = IS_LOCATION_ALLOWED,
 }: UseConfirmLeaveModalInput): UseConfirmLeaveModalResult => {
   const dispatch = useDispatch();
-  const [nextLocation, setNextLocation] = useState<Location | undefined>();
+  const [nextNavigation, setNextNavigation] = useState<{
+    location: Location;
+    navigationType: Action;
+  }>();
 
   const [opened, setOpened] = useState<boolean>(false);
   const close = useCallback(() => setOpened(false), []);
@@ -62,21 +66,29 @@ export const useConfirmRouteLeaveModal = ({
   useBeforeUnload(isEnabled);
 
   useEffect(() => {
-    const removeLeaveHook = router.setRouteLeaveHook(route, (location) => {
-      if (isEnabled && !isConfirmed && !isLocationAllowed?.(location)) {
-        setOpened(true);
-        setNextLocation(location);
-        return false;
-      }
-    });
+    const removeLeaveHook = router.setRouteLeaveHook(
+      route,
+      (location, navigationType) => {
+        if (isEnabled && !isConfirmed && !isLocationAllowed?.(location)) {
+          setOpened(true);
+          setNextNavigation(
+            location && navigationType
+              ? { location, navigationType }
+              : undefined,
+          );
+          return false;
+        }
+      },
+    );
 
     return removeLeaveHook;
   }, [isLocationAllowed, router, route, isEnabled, isConfirmed]);
 
   useEffect(
     function confirmNavigation() {
-      if (isConfirmed && nextLocation) {
-        match(nextLocation.action)
+      if (isConfirmed && nextNavigation) {
+        const { location, navigationType } = nextNavigation;
+        match(navigationType)
           .with("POP", () => {
             /**
              * Ideally we should be using dispatch(go(numberOfPages)), but there is no simple
@@ -86,15 +98,15 @@ export const useConfirmRouteLeaveModal = ({
             dispatch(goBack());
           })
           .with("PUSH", () => {
-            dispatch(push(nextLocation));
+            dispatch(push(location));
           })
           .with("REPLACE", () => {
-            dispatch(replace(nextLocation));
+            dispatch(replace(location));
           })
           .exhaustive();
       }
     },
-    [dispatch, isConfirmed, nextLocation],
+    [dispatch, isConfirmed, nextNavigation],
   );
 
   useEffect(
@@ -113,6 +125,6 @@ export const useConfirmRouteLeaveModal = ({
     opened,
     close,
     confirm,
-    nextLocation,
+    nextLocation: nextNavigation?.location,
   };
 };
