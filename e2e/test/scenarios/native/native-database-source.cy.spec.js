@@ -378,7 +378,7 @@ function assertNoDatabaseSelected() {
 }
 
 function selectDatabase(database) {
-  H.popover().findByText(database).click();
+  H.popover().findByText(database).should("be.visible").click();
   cy.findByTestId("selected-database").should("have.text", database);
 }
 
